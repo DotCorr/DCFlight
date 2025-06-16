@@ -28,4 +28,8 @@ export 'component/error_boundary.dart';
 
 // Re-export store
 export 'component/store.dart';
-// 
+
+// Re-export portal system
+export 'portal/enhanced_portal_manager.dart';
+export 'portal/dcf_portal.dart';
+export 'portal/portal_api.dart';

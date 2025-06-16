@@ -18,6 +18,7 @@ export 'package:dcflight/framework/renderer/vdom/component/store.dart';
 import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
+import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';
 
 /// Virtual DOM implementation with efficient reconciliation and state handling
 class VDom {
@@ -50,6 +51,9 @@ class VDom {
 
   /// Flag to track batch updates in progress
   bool _batchUpdateInProgress = false;
+  
+  /// Enhanced portal manager instance
+  final EnhancedPortalManager _portalManager = EnhancedPortalManager.instance;
   
   /// Root component for the application
   DCFComponentNode? rootComponent;
@@ -448,19 +452,35 @@ class VDom {
         
         // Check if this fragment is a portal placeholder
         if (node.metadata != null && node.metadata!['isPortalPlaceholder'] == true) {
-          // This is a portal placeholder fragment - handle portal logic
+          // This is a portal placeholder fragment - the enhanced portal manager
+          // handles rendering the children to the target
           final targetId = node.metadata!['targetId'] as String?;
           final portalId = node.metadata!['portalId'] as String?;
           
           if (targetId != null && portalId != null) {
             // Portal placeholder fragments don't render anything here
-            // The portal manager handles rendering the children to the target
+            // The enhanced portal manager handles all the portal logic
             
             if (kDebugMode) {
-              print('🎯 VDom: Portal placeholder fragment for target: $targetId');
+              print('🎯 VDom: Portal placeholder fragment for target: $targetId, portal: $portalId');
             }
             
             return null; // Portal placeholders have no native view
+          }
+        }
+        
+        // Check if this fragment is a portal target
+        if (node.metadata != null && node.metadata!['isPortalTarget'] == true) {
+          final targetId = node.metadata!['targetId'] as String?;
+          
+          if (targetId != null) {
+            if (kDebugMode) {
+              print('🎯 VDom: Portal target fragment: $targetId');
+            }
+            
+            // For portal targets, we should render normally but also allow
+            // the portal manager to inject content
+            // The enhanced portal manager will handle the portal content injection
           }
         }
         
