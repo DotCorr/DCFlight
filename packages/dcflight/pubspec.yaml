@@ -11,7 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # web_socket_channel: ^3.0.2
+  dcf_primitives: ^0.0.1
   
 
 dev_dependencies:

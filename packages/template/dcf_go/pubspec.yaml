@@ -15,8 +15,7 @@ dependencies:
 
   dcflight: ^0.0.1
 
-  dcf_primitives:
-    path: ../../dcf_primitives
+  dcf_primitives: ^0.0.1
   icons_launcher: ^3.0.1
 
 dev_dependencies:

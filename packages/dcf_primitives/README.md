@@ -1,6 +1,6 @@
 # DCF Primitives
 
-[![pub package](https://img.shields.io/pub/v/dcf_primitives.svg)](https://pub.dev/packages/dcf_primitives)
+[![pub package](https://img.shields.io/pub/v/dcf_primitives.svg)](https://pub.com/packages/dcf_primitives)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 The official primitive component library for the DCFlight framework. This package provides a comprehensive set of cross-platform UI components that work seamlessly across iOS, Android, and other platforms supported by DCFlight.
@@ -158,7 +158,7 @@ DCF Primitives is built for performance:
 ## Platform Support
 
 - ✅ **iOS** (UIKit)
-- ✅ **Android** (Native Android Views)
+- 🚧 **Android** (Coming soon)
 - 🚧 **macOS** (Coming soon)
 - 🚧 **Windows** (Coming soon)
 - 🚧 **Linux** (Coming soon)
@@ -169,9 +169,9 @@ Check out the [example app](https://github.com/dotcorr/dcflight/tree/main/packag
 
 ## Documentation
 
-- [Component API Reference](https://docs.dcflight.dev/primitives)
-- [DCFlight Framework Docs](https://docs.dcflight.dev)
-- [Getting Started Guide](https://docs.dcflight.dev/getting-started)
+- [Component API Reference](https://docs.dcflight.com/primitives)
+- [DCFlight Framework Docs](https://docs.dcflight.com)
+- [Getting Started Guide](https://docs.dcflight.com/getting-started)
 
 ## Contributing
 
@@ -185,10 +185,10 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 DCF Primitives is part of the DCFlight framework, a next-generation cross-platform mobile development framework that brings React-like component architecture to native mobile development.
 
-- **Website**: [dcflight.dev](https://dcflight.dev)
+- **Website**: [dcflight.com](https://dotcorr/dcf.com)
 - **GitHub**: [github.com/dotcorr/dcflight](https://github.com/dotcorr/dcflight)
-- **Documentation**: [docs.dcflight.dev](https://docs.dcflight.dev)
-- **Community**: [Discord](https://discord.gg/dcflight)
+- **Documentation**: [docs.dcflight.com](https:dotcorr/dcf/docs.com)
+- **Community**: [Discord](https://discord.gg/hqXsYruF)
 
 ---
 
