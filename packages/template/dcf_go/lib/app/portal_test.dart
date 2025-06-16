@@ -1,4 +1,5 @@
 
+import 'package:dcf_go/portal_component.dart';
 import 'package:dcflight/dcflight.dart';
 
 class PortalTest extends StatefulComponent {
@@ -87,11 +88,40 @@ class SourceComponent extends StatelessComponent {
 
         // Portal Component - teleports its children to the target
         if (portalVisible)
-          DCFPortal(
-            key: "main-portal", // CRITICAL FIX: Add stable key for consistent portal identity
-            targetId: "my-target",
-            createTarget: true,
+          DCFPortalHostWrapper(
+           
+            targetId: "test",
+           
             children: [
+               DCFView(
+                layout: LayoutProps(padding: 15),
+                styleSheet: StyleSheet(
+                  backgroundColor: Colors.pink.shade200,
+                  borderRadius: 8,
+                  borderWidth: 2,
+                  borderColor: Colors.pink.shade400,
+                ),
+                children: [
+                 
+                  DCFText(
+                    content: "✨ I'm teleported content 2! ✨",
+                    textProps: DCFTextProps(
+                      fontSize: 16,
+                      fontWeight: "bold",
+                      color: Colors.green.shade800,
+                    ),
+                    layout: LayoutProps(marginBottom: 8, height: 20),
+                  ),
+                  DCFText(
+                    content: "I was defined in the Source Component but I appear in the Target Component below!",
+                    textProps: DCFTextProps(
+                      fontSize: 13,
+                      color: Colors.pink.shade700,
+                    ),
+                    layout: LayoutProps(height: 32),
+                  ),
+                ],
+              ),
               DCFView(
                 layout: LayoutProps(padding: 15),
                 styleSheet: StyleSheet(
@@ -121,6 +151,7 @@ class SourceComponent extends StatelessComponent {
                   ),
                 ],
               ),
+              
             ],
           ),
 
@@ -142,38 +173,12 @@ class SourceComponent extends StatelessComponent {
 class TargetComponent extends StatelessComponent {
   @override
   DCFComponentNode render() {
-    return DCFPortalContainer(
-      targetId: "my-target",
+    return DCFView(
       layout: LayoutProps(
         padding: 20,
         minHeight: 120,
       ),
-      styleSheet: StyleSheet(
-        backgroundColor: Colors.blue.shade100,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: Colors.blue.shade300,
-      ),
-      children: [
-        DCFText(
-          content: "📥 Target Component",
-          textProps: DCFTextProps(
-            fontSize: 18,
-            fontWeight: "bold",
-            color: Colors.blue.shade800,
-          ),
-          layout: LayoutProps(marginBottom: 10, height: 22),
-        ),
-        DCFText(
-          content: "Teleported content will appear below this text:",
-          textProps: DCFTextProps(
-            fontSize: 14,
-            color: Colors.blue.shade600,
-          ),
-          layout: LayoutProps(marginBottom: 15, height: 18),
-        ),
-        // Portaled content will be injected here automatically
-      ],
+    children: [DCFPortalReceiverWrapper(targetId: "test")]
     );
   }
 }
