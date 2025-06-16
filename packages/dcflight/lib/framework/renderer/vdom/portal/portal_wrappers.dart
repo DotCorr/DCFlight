@@ -14,11 +14,7 @@ class DCFPortalHostWrapper extends StatelessComponent {
   DCFComponentNode render() {
     return DCFFragment(
       children: [
-        DCFPortal(
-          targetId: targetId,
-          createTarget: true,
-          children: children,
-        ),
+        DCFPortal(targetId: targetId, createTarget: true, children: children),
       ],
     );
   }

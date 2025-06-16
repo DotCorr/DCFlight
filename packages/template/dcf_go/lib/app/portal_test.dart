@@ -1,5 +1,5 @@
 
-import 'package:dcf_go/portal_component.dart';
+import '../../../../dcflight/lib/framework/renderer/vdom/portal/portal_wrappers.dart';
 import 'package:dcflight/dcflight.dart';
 
 class PortalTest extends StatefulComponent {
