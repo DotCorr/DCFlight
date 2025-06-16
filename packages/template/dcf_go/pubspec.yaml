@@ -13,8 +13,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  dcflight:
-    path: ../../dcflight
+  dcflight: ^0.0.1
 
   dcf_primitives:
     path: ../../dcf_primitives

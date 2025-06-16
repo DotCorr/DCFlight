@@ -1,6 +1,6 @@
 name: dcflight
-description: ""
-version: 0.0.1
+description: "Build Native App UIs with Dart"
+version: 0.0.2
 homepage: https://github.com/Dotcorr/dcflight
 repository: https://github.com/Dotcorr/dcflight
 
@@ -13,8 +13,6 @@ dependencies:
     sdk: flutter
   # web_socket_channel: ^3.0.2
   
-  dcf_primitives:
-    path: ../dcf_primitives
 
 dev_dependencies:
   flutter_test:
