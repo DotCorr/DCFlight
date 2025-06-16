@@ -43,6 +43,18 @@ class PortalSystem {
     return DCFPortalManager.instance.registerPortal(portal);
   }
 
+  /// Ensure a portal is registered (safe to call multiple times)
+  Future<void> ensurePortalRegistered(portal_comp.DCFPortal portal) async {
+    if (!_initialized) {
+      if (kDebugMode) {
+        print('⚠️ PortalSystem: Auto-initializing portal system');
+      }
+      initialize();
+    }
+    
+    return DCFPortalManager.instance.ensurePortalRegistered(portal);
+  }
+
   /// Update portal content
   Future<void> updatePortalContent(portal_comp.DCFPortal portal) async {
     return DCFPortalManager.instance.updatePortalContent(portal);

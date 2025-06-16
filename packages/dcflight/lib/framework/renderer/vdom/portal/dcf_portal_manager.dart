@@ -69,18 +69,39 @@ class DCFPortalManager {
 
   /// Register a portal for rendering
   Future<void> registerPortal(portal_impl.DCFPortal portal) async {
+    final portalId = portal.portalId; // Use stable portal ID
     if (kDebugMode) {
-      print('🚀 DCFPortalManager: Registering portal ${portal.instanceId} for target: ${portal.targetId}');
+      print('🚀 DCFPortalManager: Registering portal $portalId for target: ${portal.targetId}');
     }
     
-    _activePortals[portal.instanceId] = portal;
+    _activePortals[portalId] = portal;
     await _renderPortalContent(portal);
+  }
+
+  /// Ensure a portal is registered (safe to call multiple times)
+  Future<void> ensurePortalRegistered(portal_impl.DCFPortal portal) async {
+    final portalId = portal.portalId; // Use stable portal ID
+    // Check if portal is already registered
+    if (_activePortals.containsKey(portalId)) {
+      if (kDebugMode) {
+        print('🔄 DCFPortalManager: Portal $portalId already registered, updating content');
+      }
+      // Update content if portal exists but may have changed
+      await updatePortalContent(portal);
+    } else {
+      if (kDebugMode) {
+        print('🆕 DCFPortalManager: Portal $portalId not registered, registering now');
+      }
+      // Register new portal
+      await registerPortal(portal);
+    }
   }
 
   /// Update portal content when portal changes
   Future<void> updatePortalContent(portal_impl.DCFPortal portal) async {
+    final portalId = portal.portalId; // Use stable portal ID
     if (kDebugMode) {
-      print('🔄 DCFPortalManager: Updating portal content for ${portal.instanceId}');
+      print('🔄 DCFPortalManager: Updating portal content for $portalId');
     }
     
     // Clean up existing content first
@@ -92,16 +113,18 @@ class DCFPortalManager {
 
   /// Unregister and cleanup a portal
   Future<void> unregisterPortal(portal_impl.DCFPortal portal) async {
+    final portalId = portal.portalId; // Use stable portal ID
     if (kDebugMode) {
-      print('🗑️ DCFPortalManager: Unregistering portal ${portal.instanceId}');
+      print('🗑️ DCFPortalManager: Unregistering portal $portalId');
     }
     
     await _cleanupPortalContent(portal);
-    _activePortals.remove(portal.instanceId);
+    _activePortals.remove(portalId);
   }
 
   /// Render portal content to target using VDOM methods
   Future<void> _renderPortalContent(portal_impl.DCFPortal portal) async {
+    final portalId = portal.portalId; // Use stable portal ID
     var container = _portalContainers[portal.targetId];
     
     if (container == null) {
@@ -118,7 +141,7 @@ class DCFPortalManager {
 
     try {
       // Store portal nodes for proper VDOM tracking
-      _portaledNodes[portal.instanceId] = List.from(portal.children);
+      _portaledNodes[portalId] = List.from(portal.children);
       
       final targetViewId = container?.nativeViewId ?? portal.targetId;
       
@@ -161,7 +184,7 @@ class DCFPortalManager {
       // Get existing children and append portal trees
       if (childViewIds.isNotEmpty) {
         // Store portal view IDs for cleanup later
-        _portalViewIds[portal.instanceId] = List.from(childViewIds);
+        _portalViewIds[portalId] = List.from(childViewIds);
         
         // Get existing children from the target container
         final existingChildren = _vdomApi.getCurrentChildren(targetViewId);
@@ -185,7 +208,7 @@ class DCFPortalManager {
         }
       } else {
         if (kDebugMode) {
-          print('⚠️ DCFPortalManager: No portal trees rendered for portal ${portal.instanceId}');
+          print('⚠️ DCFPortalManager: No portal trees rendered for portal $portalId');
         }
       }
     } catch (e) {
@@ -234,19 +257,20 @@ class DCFPortalManager {
     _queuedPortals[targetId]!.add(portal);
     
     if (kDebugMode) {
-      print('⏳ DCFPortalManager: Queued portal ${portal.instanceId} for target: $targetId');
+      print('⏳ DCFPortalManager: Queued portal ${portal.portalId} for target: $targetId');
     }
   }
 
   /// Clean up portal content using VDOM tracking
   Future<void> _cleanupPortalContent(portal_impl.DCFPortal portal) async {
-    final portaledNodes = _portaledNodes[portal.instanceId];
-    final portalViewIds = _portalViewIds[portal.instanceId];
+    final portalId = portal.portalId; // Use stable portal ID
+    final portaledNodes = _portaledNodes[portalId];
+    final portalViewIds = _portalViewIds[portalId];
     
     if (portaledNodes != null && portaledNodes.isNotEmpty && portalViewIds != null) {
       try {
         if (kDebugMode) {
-          print('🧹 DCFPortalManager: Cleaning up ${portaledNodes.length} portaled nodes (${portalViewIds.length} view IDs) for ${portal.instanceId}');
+          print('🧹 DCFPortalManager: Cleaning up ${portaledNodes.length} portaled nodes (${portalViewIds.length} view IDs) for $portalId');
         }
         
         final container = _portalContainers[portal.targetId];
@@ -271,21 +295,23 @@ class DCFPortalManager {
           }
         }
         
-        // Remove from our tracking
-        _portaledNodes.remove(portal.instanceId);
-        _portalViewIds.remove(portal.instanceId);
+        // CRITICAL FIX: Only remove tracking after successful cleanup
+        // This prevents cleanup from being called multiple times
+        _portaledNodes.remove(portalId);
+        _portalViewIds.remove(portalId);
         
         if (kDebugMode) {
-          print('✅ DCFPortalManager: Portal content cleanup completed for ${portal.instanceId}');
+          print('✅ DCFPortalManager: Portal content cleanup completed for $portalId');
         }
       } catch (e) {
         if (kDebugMode) {
           print('❌ DCFPortalManager: Error cleaning up portal content: $e');
         }
+        // IMPORTANT: Don't remove tracking on error to allow retry
       }
     } else {
       if (kDebugMode) {
-        print('⚠️ DCFPortalManager: No portal content to clean up for ${portal.instanceId}');
+        print('⚠️ DCFPortalManager: No portal content to clean up for $portalId');
       }
     }
   }
@@ -331,6 +357,35 @@ class DCFPortalManager {
       'portalContainers': _portalContainers.length,
       'queuedPortals': _queuedPortals.values.fold(0, (sum, list) => sum + list.length),
       'portaledNodes': _portaledNodes.length,
+      'activePortalIds': _activePortals.keys.toList(),
+      'containerTargetIds': _portalContainers.keys.toList(),
     };
+  }
+
+  /// Check if a portal is currently registered
+  bool isPortalRegistered(String portalId) {
+    return _activePortals.containsKey(portalId);
+  }
+
+  /// Force cleanup of stale portal state (for debugging)
+  void debugCleanupStaleState() {
+    if (kDebugMode) {
+      print('🧹 DCFPortalManager: Debug cleanup of stale state');
+      final stalePortalIds = <String>[];
+      
+      // Find portals that have tracking data but no active registration
+      for (final portalId in _portaledNodes.keys) {
+        if (!_activePortals.containsKey(portalId)) {
+          stalePortalIds.add(portalId);
+        }
+      }
+      
+      // Cleanup stale tracking data
+      for (final portalId in stalePortalIds) {
+        _portaledNodes.remove(portalId);
+        _portalViewIds.remove(portalId);
+        print('🧹 DCFPortalManager: Removed stale tracking for portal: $portalId');
+      }
+    }
   }
 }

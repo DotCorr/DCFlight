@@ -7,6 +7,8 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import 'package:flutter/widgets.dart';
+import 'portal_system.dart';
 
 /// A portal component that renders its children into a different part of the component tree
 class DCFPortal extends StatefulComponent {
@@ -25,6 +27,9 @@ class DCFPortal extends StatefulComponent {
   /// Optional callback when portal is unmounted  
   final Function(String targetId)? onPortalUnmount;
 
+  /// Stable portal ID that persists across component recreations
+  late final String _stablePortalId;
+
   DCFPortal({
     super.key,
     required this.targetId,
@@ -32,10 +37,26 @@ class DCFPortal extends StatefulComponent {
     this.createTarget = false,
     this.onPortalMount,
     this.onPortalUnmount,
-  });
+  }) {
+    // CRITICAL FIX: Create a stable portal ID based on target and key
+    // This ensures the same portal (same target + key) always gets the same instance ID
+    // preventing portal re-registration issues during reconciliation
+    final keyPart = key ?? 'default';
+    _stablePortalId = 'portal_${targetId}_${keyPart}_${runtimeType.toString().hashCode}';
+  }
+
+  /// Get the stable portal ID for manager operations
+  String get portalId => _stablePortalId;
 
   @override
   DCFComponentNode render() {
+    // CRITICAL FIX: Always register portal on render to handle reconciliation edge cases
+    // This ensures portal registration happens even when componentDidMount isn't called
+    // during reconciliation (which is the root cause of the second-time failure)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensurePortalRegistered();
+    });
+    
     // Portal renders as a pure fragment - no native view created
     // All portal metadata stays in the framework layer
     return DCFFragment(
@@ -43,7 +64,7 @@ class DCFPortal extends StatefulComponent {
       metadata: {
         'isPortalPlaceholder': true,
         'targetId': targetId,
-        'portalId': instanceId,
+        'portalId': portalId, // Use stable portal ID
         'createTarget': createTarget,
         'childrenCount': children.length,
       },
@@ -54,7 +75,7 @@ class DCFPortal extends StatefulComponent {
   @override
   void componentDidMount() {
     super.componentDidMount();
-    // Register portal with the portal manager (will be implemented via exports)
+    // Register portal with the portal manager
     _registerPortal();
     onPortalMount?.call(targetId);
   }
@@ -62,8 +83,11 @@ class DCFPortal extends StatefulComponent {
   @override
   void componentDidUpdate(Map<String, dynamic> prevProps) {
     super.componentDidUpdate(prevProps);
-    // Update portal content when children or target changes
-    _updatePortalContent();
+    // CRITICAL FIX: Always ensure portal is registered and content is updated
+    // This handles cases where portal is recreated during reconciliation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensurePortalRegistered();
+    });
   }
 
   @override
@@ -79,9 +103,10 @@ class DCFPortal extends StatefulComponent {
     PortalSystem.instance.registerPortal(this);
   }
 
-  /// Update portal content
-  void _updatePortalContent() {
-    PortalSystem.instance.updatePortalContent(this);
+  /// Ensure portal is registered (safe to call multiple times)
+  void _ensurePortalRegistered() {
+    // Use the portal system to check and register if needed
+    PortalSystem.instance.ensurePortalRegistered(this);
   }
 
   /// Unregister this portal

@@ -88,6 +88,7 @@ class SourceComponent extends StatelessComponent {
         // Portal Component - teleports its children to the target
         if (portalVisible)
           DCFPortal(
+            key: "main-portal", // CRITICAL FIX: Add stable key for consistent portal identity
             targetId: "my-target",
             createTarget: true,
             children: [
