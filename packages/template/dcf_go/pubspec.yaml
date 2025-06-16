@@ -1,0 +1,39 @@
+name: dcf_go
+description: "A new DCFlight project."
+publish_to: 'none' 
+
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  dcflight:
+    path: ../../dcflight
+
+  dcf_primitives:
+    path: ../../dcf_primitives
+  icons_launcher: ^3.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+# setup icon for your app 
+# after updating the image_path, run `flutter pub get dart run icons_launcher:create` 
+icons_launcher:
+  image_path: "assets/dcf/dcf.png"
+  platforms:
+    android:
+      enable: true
+    ios:
+      enable: true
+
+# Assets go here
+flutter:
+  assets:
+    - assets/

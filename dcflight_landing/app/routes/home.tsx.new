@@ -1,0 +1,370 @@
+import type { Route } from "./+types/home";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Github, ExternalLink, Coffee, FileText, Map, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Link } from "react-router";
+
+export default function Home() {
+  const [activeSection, setActiveSection] = useState<'opensource' | 'agency'>('opensource');
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Navigation */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Dotcorr
+              </div>
+              
+              {/* Mesh-based switcher */}
+              <div className="hidden md:flex bg-gray-100 rounded-full p-1">
+                <button
+                  onClick={() => setActiveSection('opensource')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                    activeSection === 'opensource'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Open Source
+                </button>
+                <button
+                  onClick={() => setActiveSection('agency')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                    activeSection === 'agency'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Agency
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-6">
+              <Link to="/docs" className="text-gray-600 hover:text-gray-900 flex items-center space-x-1">
+                <FileText size={16} />
+                <span>Docs</span>
+              </Link>
+              <Link to="/roadmap" className="text-gray-600 hover:text-gray-900 flex items-center space-x-1">
+                <Map size={16} />
+                <span>Roadmap</span>
+              </Link>
+              <a 
+                href="https://github.com/squirelboy360/dcflight" 
+                className="text-gray-600 hover:text-gray-900"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Github size={20} />
+              </a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <AnimatePresence mode="wait">
+        {activeSection === 'opensource' ? (
+          <OpenSourceSection key="opensource" />
+        ) : (
+          <AgencySection key="agency" />
+        )}
+      </AnimatePresence>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <div className="text-gray-600">
+              © 2024 Dotcorr. Building the future of cross-platform development.
+            </div>
+            <div className="flex items-center space-x-4">
+              <a 
+                href="https://coff.ee/squirelboy360" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center space-x-2 bg-yellow-400 hover:bg-yellow-500 text-black px-4 py-2 rounded-lg transition-colors"
+              >
+                <Coffee size={16} />
+                <span>Buy me a coffee</span>
+              </a>
+              <a 
+                href="https://github.com/squirelboy360/dcflight" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-600 hover:text-gray-900"
+              >
+                <Github size={20} />
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function OpenSourceSection() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Hero Section */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.6 }}
+          >
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                DCFlight
+              </span>
+            </h1>
+            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              Build native mobile apps with Dart. No platform views, no abstractions. 
+              Just pure native UI with React-like development experience.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link 
+                to="/docs"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
+              >
+                <span>Get Started</span>
+                <ExternalLink size={16} />
+              </Link>
+              <a 
+                href="https://github.com/squirelboy360/dcflight" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center justify-center space-x-2"
+              >
+                <Github size={16} />
+                <span>View on GitHub</span>
+              </a>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Cross-Platform Illustration */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">One Codebase, Multiple Platforms</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Write once in Dart, render native UI everywhere. DCFlight brings React-like development to native mobile.
+            </p>
+          </div>
+          
+          <CrossPlatformIllustration />
+        </div>
+      </section>
+
+      {/* Key Features */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-3 gap-8">
+            <FeatureCard
+              icon="🚀"
+              title="Native Performance"
+              description="Renders actual native UI components. No bridge overhead, no compromise on performance."
+            />
+            <FeatureCard
+              icon="⚛️"
+              title="React-like DX"
+              description="Familiar development experience with hooks, state management, and component lifecycle."
+            />
+            <FeatureCard
+              icon="🎨"
+              title="No Abstractions"
+              description="Direct access to native views. No platform views or unnecessary abstractions."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Code Example */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Simple, Powerful API</h2>
+            <p className="text-gray-600">Build complex UIs with intuitive Dart syntax</p>
+          </div>
+          
+          <div className="bg-gray-900 rounded-lg p-6 overflow-x-auto">
+            <pre className="text-green-400 text-sm">
+{`void main() {
+  DCFlight.start(app: MyApp());
+}
+
+class MyApp extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final counter = useState(0);
+    
+    return DCFView(
+      layout: LayoutProps(
+        flex: 1,
+        justifyContent: YogaJustifyContent.center,
+        alignItems: YogaAlign.center,
+      ),
+      children: [
+        DCFText(
+          content: "Count: \${counter.value}",
+          textProps: DCFTextProps(fontSize: 24),
+        ),
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Increment"),
+          onPress: () => counter.setValue(counter.value + 1),
+        ),
+      ],
+    );
+  }
+}`}
+            </pre>
+          </div>
+        </div>
+      </section>
+
+      {/* Under Development Notice */}
+      <section className="py-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8">
+            <h3 className="text-2xl font-bold text-yellow-800 mb-4">🚧 Under Active Development</h3>
+            <p className="text-yellow-700 mb-4">
+              DCFlight is currently in rapid development. Expect bugs and breaking changes as we work towards stability.
+            </p>
+            <p className="text-yellow-600">
+              Contributions are welcomed! Help us build the future of cross-platform development.
+            </p>
+          </div>
+        </div>
+      </section>
+    </motion.div>
+  );
+}
+
+function AgencySection() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+    >
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Dotcorr Agency
+            </span>
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            We build beautiful apps and websites for people. Specializing in mobile development 
+            and modern web experiences.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium transition-colors">
+              Start a Project
+            </button>
+            <button className="border border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-3 rounded-lg font-medium transition-colors">
+              View Portfolio
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-3 gap-8">
+            <FeatureCard
+              icon="📱"
+              title="Mobile Apps"
+              description="Native iOS and Android apps built with modern frameworks and best practices."
+            />
+            <FeatureCard
+              icon="🌐"
+              title="Web Development"
+              description="Fast, responsive websites and web applications that deliver exceptional user experiences."
+            />
+            <FeatureCard
+              icon="🎨"
+              title="UI/UX Design"
+              description="Beautiful, intuitive designs that put users first and drive business results."
+            />
+          </div>
+        </div>
+      </section>
+    </motion.div>
+  );
+}
+
+function CrossPlatformIllustration() {
+  return (
+    <div className="relative">
+      {/* Background grid */}
+      <div className="absolute inset-0 opacity-20">
+        <svg className="w-full h-full" viewBox="0 0 100 100" fill="none">
+          <defs>
+            <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100" height="100" fill="url(#grid)" />
+        </svg>
+      </div>
+
+      <div className="relative flex flex-wrap justify-center items-center gap-8 py-12">
+        {/* Laptop */}
+        <DeviceCard icon={<Monitor className="w-8 h-8" />} label="Desktop" color="bg-blue-100" />
+        
+        {/* iPhone */}
+        <DeviceCard icon={<Smartphone className="w-8 h-8" />} label="iOS" color="bg-gray-100" />
+        
+        {/* Android */}
+        <DeviceCard icon={<Smartphone className="w-8 h-8" />} label="Android" color="bg-green-100" />
+        
+        {/* Tablet */}
+        <DeviceCard icon={<Tablet className="w-8 h-8" />} label="Web" color="bg-purple-100" />
+      </div>
+
+      {/* Connecting lines */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-64 h-64 border-2 border-blue-200 rounded-full opacity-30"></div>
+        <div className="absolute w-32 h-32 border-2 border-blue-300 rounded-full opacity-50"></div>
+      </div>
+    </div>
+  );
+}
+
+function DeviceCard({ icon, label, color }: { icon: React.ReactNode; label: string; color: string }) {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      className={`${color} p-6 rounded-2xl shadow-lg flex flex-col items-center space-y-3 min-w-[120px]`}
+    >
+      {icon}
+      <span className="font-medium text-gray-700">{label}</span>
+    </motion.div>
+  );
+}
+
+function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      className="bg-white p-6 rounded-xl shadow-lg border border-gray-100"
+    >
+      <div className="text-3xl mb-4">{icon}</div>
+      <h3 className="text-xl font-semibold text-gray-900 mb-3">{title}</h3>
+      <p className="text-gray-600">{description}</p>
+    </motion.div>
+  );
+}
