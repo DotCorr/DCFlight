@@ -70,7 +70,7 @@ export 'framework/utilities/screen_utilities.dart';
 
 // DevTools (debug mode only)
 export 'framework/devtools/hot_restart.dart';
-// export 'package:dcf_primitives/dcf_primitives.dart';
+export 'package:dcf_primitives/dcf_primitives.dart';
 export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';

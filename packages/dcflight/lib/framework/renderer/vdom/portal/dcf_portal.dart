@@ -7,8 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
-import 'package:flutter/widgets.dart';
-import 'portal_system.dart';
+
 
 /// A portal component that renders its children into a different part of the component tree
 class DCFPortal extends StatefulComponent {
