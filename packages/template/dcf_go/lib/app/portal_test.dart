@@ -1,4 +1,3 @@
-
 import 'package:dcflight/dcflight.dart';
 
 class PortalTest extends StatefulComponent {
@@ -22,7 +21,10 @@ class PortalTest extends StatefulComponent {
         // Toggle Button
         DCFButton(
           buttonProps: DCFButtonProps(
-            title: portalVisible.state ? "Hide Portal Content" : "Show Portal Content",
+            title:
+                portalVisible.state
+                    ? "Hide Portal Content"
+                    : "Show Portal Content",
           ),
           layout: LayoutProps(marginBottom: 30, height: 50),
           styleSheet: StyleSheet(
@@ -56,10 +58,7 @@ class SourceComponent extends StatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: LayoutProps(
-        padding: 20,
-        minHeight: 120,
-      ),
+      layout: LayoutProps(padding: 20, minHeight: 120),
       styleSheet: StyleSheet(
         backgroundColor: Colors.orange.shade100,
         borderRadius: 12,
@@ -78,21 +77,17 @@ class SourceComponent extends StatelessComponent {
         ),
         DCFText(
           content: "Portal content is defined here but renders below:",
-          textProps: DCFTextProps(
-            fontSize: 14,
-            color: Colors.orange.shade700,
-          ),
+          textProps: DCFTextProps(fontSize: 14, color: Colors.orange.shade700),
           layout: LayoutProps(marginBottom: 15, height: 18),
         ),
 
         // Portal Component - teleports its children to the target
         if (portalVisible)
           DCFPortalHostWrapper(
-           
             targetId: "test",
-           
+
             children: [
-               DCFView(
+              DCFView(
                 layout: LayoutProps(padding: 15),
                 styleSheet: StyleSheet(
                   backgroundColor: Colors.pink.shade200,
@@ -101,7 +96,6 @@ class SourceComponent extends StatelessComponent {
                   borderColor: Colors.pink.shade400,
                 ),
                 children: [
-                 
                   DCFText(
                     content: "✨ I'm teleported content 2! ✨",
                     textProps: DCFTextProps(
@@ -112,7 +106,8 @@ class SourceComponent extends StatelessComponent {
                     layout: LayoutProps(marginBottom: 8, height: 20),
                   ),
                   DCFText(
-                    content: "I was defined in the Source Component but I appear in the Target Component below!",
+                    content:
+                        "I was defined in the Source Component but I appear in the Target Component below!",
                     textProps: DCFTextProps(
                       fontSize: 13,
                       color: Colors.pink.shade700,
@@ -141,7 +136,8 @@ class SourceComponent extends StatelessComponent {
                     layout: LayoutProps(marginBottom: 8, height: 20),
                   ),
                   DCFText(
-                    content: "I was defined in the Source Component but I appear in the Target Component below!",
+                    content:
+                        "I was defined in the Source Component but I appear in the Target Component below!",
                     textProps: DCFTextProps(
                       fontSize: 13,
                       color: Colors.green.shade700,
@@ -150,17 +146,14 @@ class SourceComponent extends StatelessComponent {
                   ),
                 ],
               ),
-              
             ],
           ),
 
         if (!portalVisible)
           DCFText(
-            content: "Portal is hidden. Click the toggle button to see the teleportation!",
-            textProps: DCFTextProps(
-              fontSize: 13,
-              color: Colors.grey.shade600,
-            ),
+            content:
+                "Portal is hidden. Click the toggle button to see the teleportation!",
+            textProps: DCFTextProps(fontSize: 13, color: Colors.grey.shade600),
             layout: LayoutProps(height: 18),
           ),
       ],
@@ -173,11 +166,25 @@ class TargetComponent extends StatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: LayoutProps(
-        padding: 20,
-        minHeight: 120,
+      styleSheet: StyleSheet(
+        backgroundColor: Colors.blue.shade50,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: Colors.blue.shade300,
       ),
-    children: [DCFPortalReceiverWrapper(targetId: "test")]
+      layout: LayoutProps(padding: 20, minHeight: 120),
+      children: [
+        DCFText(
+          content: "📤 Target Component",
+          textProps: DCFTextProps(
+            fontSize: 18,
+            fontWeight: "bold",
+            color: Colors.orange.shade800,
+          ),
+          layout: LayoutProps(marginBottom: 10, height: 22),
+        ),
+        DCFPortalReceiverWrapper(targetId: "test"),
+      ],
     );
   }
 }
