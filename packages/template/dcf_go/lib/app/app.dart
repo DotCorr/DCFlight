@@ -13,7 +13,6 @@ import 'package:dcf_go/app/list_state_perf.dart';
 import 'package:dcf_go/app/modal_test.dart';
 import 'package:dcf_go/app/swipeable_test.dart';
 import 'package:dcf_go/app/component_showcase.dart';
-import 'package:dcf_go/app/portal_test.dart';
 import 'package:dcflight/dcflight.dart';
 
 final pagestate = Store<int>(0);
@@ -72,7 +71,7 @@ class App extends StatefulComponent {
                 : pagestateLocal.state == 6
                 ? ComponentShowcase()
                 : pagestateLocal.state == 7
-                ? PortalTest()
+                ? DCFView()
                 : DCFView(),
           ],
         ),
