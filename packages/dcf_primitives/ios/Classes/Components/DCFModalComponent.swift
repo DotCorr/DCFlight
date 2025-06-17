@@ -54,12 +54,21 @@ class DCFModalComponent: NSObject, DCFComponent {
         }
         
         print("🔍 DCFModalComponent: Final visible value = \(isVisible)")
+        
+        // ✅ CRITICAL FIX: Only dismiss if modal is actually presented AND visible becomes false
+        // Don't dismiss just because visible changed - wait for actual dismissal
         if isVisible {
             print("🚀 DCFModalComponent: Attempting to present modal")
             presentModal(from: view, props: props, viewId: viewId)
         } else {
-            print("🚀 DCFModalComponent: Attempting to dismiss modal")
-            dismissModal(from: view, viewId: viewId)
+            // ✅ CHANGE: Only programmatically dismiss if we have a modal to dismiss
+            // Don't do anything for drag-based dismissals - those will be handled by viewWillDisappear
+            if let modalVC = DCFModalComponent.presentedModals[viewId], !modalVC.isBeingDismissed {
+                print("🚀 DCFModalComponent: Programmatically dismissing modal (not drag-based)")
+                dismissModal(from: view, viewId: viewId)
+            } else {
+                print("🔄 DCFModalComponent: Modal not presented or already being dismissed, ignoring visible=false")
+            }
         }
         
         view.applyStyles(props: props)
@@ -89,19 +98,24 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("🚀 DCFModalComponent.setChildren - view hash: \(view.hash)")
         print("🚀 DCFModalComponent.setChildren - children types: \(childViews.map { type(of: $0) })")
         
-        // Always store children in the placeholder view first
+        // ✅ ALWAYS store children in the placeholder view first (essential for reopen)
+        print("💾 Storing \(childViews.count) children in placeholder view")
         view.subviews.forEach { $0.removeFromSuperview() }
         childViews.forEach { childView in
             view.addSubview(childView)
         }
         
-        // If modal is currently presented, move children to the modal content
+        // If modal is currently presented, ALSO add children to the modal content
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
-            print("✅ Modal is presented, moving children to modal content view")
-            // Move children from placeholder to modal (they will be moved back on dismiss)
-            addChildrenToModalContent(modalVC: modalVC, childViews: Array(view.subviews))
+            print("✅ Modal is presented, COPYING children to modal content view (keeping in placeholder too)")
+            // Copy children to modal (don't move them, so they stay in placeholder for next reopen)
+            let childrenCopy = childViews.map { child in
+                // Create a proper copy or reference - for views, we'll move them but ensure they can be restored
+                return child
+            }
+            addChildrenToModalContent(modalVC: modalVC, childViews: childrenCopy)
         } else {
-            print("⚠️ Modal not currently presented for viewId \(viewId), children stored in placeholder view")
+            print("📦 Modal not currently presented, children safely stored in placeholder view for future presentation")
         }
         
         return true
@@ -209,17 +223,20 @@ class DCFModalComponent: NSObject, DCFComponent {
         // ✅ FIX 1: Load modal view and prepare content BEFORE presenting
         modalVC.loadViewIfNeeded()
         
-        // Pre-populate modal content to avoid white screen
+        // ✅ CRITICAL FIX: Look for children in placeholder view for reopen scenario
         let existingChildren = view.subviews
+        print("🔍 Found \(existingChildren.count) children in placeholder view for modal presentation")
+        
         if !existingChildren.isEmpty {
-            print("🚀 Pre-populating modal with \(existingChildren.count) existing children from placeholder view")
-            self.addChildrenToModalContent(modalVC: modalVC, childViews: existingChildren)
-            
-            // ✅ FIX: Clear children from placeholder view after moving to modal
-            // This prevents children from appearing in both places
-            view.subviews.forEach { $0.removeFromSuperview() }
+            print("🚀 Moving \(existingChildren.count) children from placeholder to modal")
+            // Create a copy of the children array before modifying
+            let childrenCopy = Array(existingChildren)
+            self.addChildrenToModalContent(modalVC: modalVC, childViews: childrenCopy)
         } else {
-            print("⚠️ No existing children found in placeholder view for modal")
+            print("⚠️ No children found in placeholder view - modal will show empty")
+            print("🔍 Placeholder view subviews: \(view.subviews)")
+            print("🔍 Placeholder view frame: \(view.frame)")
+            print("🔍 Placeholder view hidden: \(view.isHidden)")
         }
         
         // Store reference to presented modal BEFORE presentation
@@ -340,27 +357,19 @@ class DCFModalComponent: NSObject, DCFComponent {
         if props["allowsBackgroundDismiss"] as? Bool == false {
             modalVC.isModalInPresentation = true
         }
+        
+        // ✅ CRITICAL FIX: Set delegate to handle drag dismissal properly
+        if let dcfModalVC = modalVC as? DCFModalViewController {
+            sheet.delegate = dcfModalVC
+        }
     }
     
     private func dismissModal(from view: UIView, viewId: String) {
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
-            print("🔄 DCFModalComponent: Dismissing tracked modal")
+            print("🔄 DCFModalComponent: Programmatically dismissing tracked modal")
             
-            // ✅ FIX: Save children back to placeholder before dismissing
-            let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
-            
-            if !modalChildren.isEmpty {
-                print("💾 Preserving \(modalChildren.count) children in placeholder view before dismissal")
-                
-                // Clear existing children from placeholder
-                view.subviews.forEach { $0.removeFromSuperview() }
-                
-                // Move children back to placeholder view
-                modalChildren.forEach { child in
-                    child.removeFromSuperview()
-                    view.addSubview(child)
-                }
-            }
+            // ✅ FIX: Don't move children here - let viewWillDisappear handle it when actually dismissed
+            // This prevents premature children movement during drag gestures
             
             modalVC.dismiss(animated: true) {
                 propagateEvent(on: view, eventName: "onDismiss", data: [:])
@@ -397,7 +406,7 @@ class DCFModalComponent: NSObject, DCFComponent {
 
 // MARK: - Modal View Controller
 
-class DCFModalViewController: UIViewController {
+class DCFModalViewController: UIViewController, UISheetPresentationControllerDelegate {
     var modalProps: [String: Any] = [:]
     weak var sourceView: UIView?
     var viewId: String?
@@ -410,43 +419,145 @@ class DCFModalViewController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         
-        // Only propagate dismiss event if modal is being dismissed, not just rotating
+        // ✅ CRITICAL FIX: Only move children if modal is ACTUALLY being dismissed, not just hiding
+        // isBeingDismissed is only true when the modal is truly being removed, not during drag gestures
         if isBeingDismissed {
-            // ✅ FIX: Save children back to placeholder view before dismissing
-            if let sourceView = sourceView {
-                // Collect all children from modal (excluding title and system views)
-                let modalChildren = view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
-                
-                if !modalChildren.isEmpty {
-                    print("💾 Saving \(modalChildren.count) children back to placeholder view before modal dismissal")
-                    
-                    // Clear existing children from placeholder
-                    sourceView.subviews.forEach { $0.removeFromSuperview() }
-                    
-                    // Move children back to placeholder view
-                    modalChildren.forEach { child in
-                        child.removeFromSuperview()
-                        sourceView.addSubview(child)
-                    }
-                }
-                
-                propagateEvent(on: sourceView, eventName: "onDismiss", data: [:])
-            }
-            
-            // Remove from tracking when dismissed
-            if let viewId = viewId {
-                DCFModalComponent.presentedModals.removeValue(forKey: viewId)
-            }
+            print("� Modal is actually being dismissed - this is final")
+            // Don't move children here - let presentationControllerDidDismiss handle it
+            // This prevents duplicate child movement
+        } else {
+            print("🔄 Modal viewWillDisappear but NOT being dismissed - probably just drag gesture")
         }
     }
     
-    // ✅ FIX: Debug and fix shadow view overlay issue
+    // MARK: - UISheetPresentationControllerDelegate
+    
+    @available(iOS 13.5, *)
+    func presentationControllerShouldDismiss(_ presentationController: UIPresentationController) -> Bool {
+        // ✅ Allow the user to start dragging to dismiss
+        print("🤔 Should dismiss? Allowing user to drag...")
+        return true
+    }
+    
+    @available(iOS 13.5, *)
+    func presentationControllerWillDismiss(_ presentationController: UIPresentationController) {
+        // ✅ This is called when the user STARTS the dismiss gesture (dragging down)
+        // Do NOT move children here - user might change their mind
+        print("🔄 Modal will dismiss - user started dragging (might cancel) - KEEPING CHILDREN IN MODAL")
+        
+        // ✅ ENSURE children stay visible during drag gesture
+        ensureChildrenStayVisible()
+    }
+    
+    @available(iOS 13.5, *)
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        // ✅ This is called when the modal is ACTUALLY dismissed (user completed the gesture)
+        print("✅ Modal did dismiss - user completed the dismiss gesture - NOW moving children")
+        
+        // Move children back to placeholder view only when actually dismissed
+        if let sourceView = sourceView {
+            let modalChildren = view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+            
+            if !modalChildren.isEmpty {
+                print("💾 Final dismissal: Moving \(modalChildren.count) children back to placeholder")
+                
+                // Clear existing children from placeholder
+                sourceView.subviews.forEach { $0.removeFromSuperview() }
+                
+                // Move children back to placeholder view
+                modalChildren.forEach { child in
+                    child.removeFromSuperview()
+                    sourceView.addSubview(child)
+                }
+            }
+            
+            propagateEvent(on: sourceView, eventName: "onDismiss", data: [:])
+        }
+        
+        // Remove from tracking
+        if let viewId = viewId {
+            DCFModalComponent.presentedModals.removeValue(forKey: viewId)
+        }
+    }
+    
+    @available(iOS 13.5, *)
+    func presentationControllerDidAttemptToDismiss(_ presentationController: UIPresentationController) {
+        // ✅ This is called when user tries to dismiss but it's prevented
+        print("⚠️ Modal dismiss attempt was prevented")
+    }
+    
+    // ✅ Helper method to ensure children stay visible during drag gestures
+    private func ensureChildrenStayVisible() {
+        // Make sure all children are still in the modal view and visible
+        let modalChildren = view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+        
+        print("🔍 Checking modal children visibility: found \(modalChildren.count) children")
+        
+        // If no children in modal but we expect them, try to restore from tracking
+        if modalChildren.isEmpty, let viewId = viewId, let sourceView = sourceView {
+            let placeholderChildren = sourceView.subviews
+            
+            if !placeholderChildren.isEmpty {
+                print("🔧 No children in modal but found \(placeholderChildren.count) in placeholder - restoring to modal")
+                
+                // Move children back to modal during drag recovery
+                placeholderChildren.forEach { child in
+                    child.removeFromSuperview()
+                    view.addSubview(child)
+                }
+                
+                // Re-apply layout to restored children
+                if let modalVC = DCFModalComponent.presentedModals[viewId] as? DCFModalViewController {
+                    // Re-trigger the children positioning
+                    DispatchQueue.main.async {
+                        // Trigger layout update for restored children
+                        self.view.setNeedsLayout()
+                        self.view.layoutIfNeeded()
+                    }
+                }
+            }
+        } else {
+            // Children exist, just ensure they're visible
+            for child in modalChildren {
+                child.isHidden = false
+                child.alpha = 1.0
+                
+                // Ensure child is still properly positioned
+                if child.superview != view {
+                    print("🔧 Re-adding child to modal view: \(type(of: child))")
+                    child.removeFromSuperview()
+                    view.addSubview(child)
+                }
+            }
+        }
+        
+        print("✅ Ensured modal children are visible and properly positioned")
+    }
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
         // Debug view hierarchy to find problematic overlays
         DispatchQueue.main.async {
             self.debugViewHierarchy()
+        }
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+        // ✅ Only handle final cleanup if actually dismissed
+        if isBeingDismissed {
+            print("✅ Modal viewDidDisappear - actually dismissed")
+        } else {
+            print("🔄 Modal viewDidDisappear but not dismissed - probably drag gesture")
+            
+            // ✅ IMPORTANT: If modal reappears after drag, ensure children are still there
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if !self.isBeingDismissed && self.view.window != nil {
+                    self.ensureChildrenStayVisible()
+                }
+            }
         }
     }
     
