@@ -117,64 +117,78 @@ class DCFModalComponent: NSObject, DCFComponent {
             }
         }
         
-        // ✅ FOLLOW VirtualizedScrollView PATTERN: Manual content positioning, NO Auto Layout constraints
-        var currentY: CGFloat = 60 // Start below title area
-        let containerMargin: CGFloat = 20
-        let availableWidth = modalVC.view.frame.width - (containerMargin * 2)
+        // ✅ GIVE ABSTRACTION LAYER FULL CONTROL: No explicit margins/padding, full width/height
+        let modalFrame = modalVC.view.bounds
+        let availableWidth = modalFrame.width
+        let availableHeight = modalFrame.height
         
-        print("📏 Modal content positioning - available width: \(availableWidth), starting Y: \(currentY)")
+        print("📏 Modal FULL sizing - available: \(availableWidth)x\(availableHeight)")
         
-        // Add each child view with manual frame positioning (like VirtualizedScrollView)
-        for (index, childView) in childViews.enumerated() {
-            print("🔄 Adding child \(index) to modal with manual positioning: \(type(of: childView))")
+        // ✅ AUTO-FILL: Single child fills the entire modal space, let abstraction layer handle layout
+        if childViews.count == 1, let childView = childViews.first {
+            print("🎯 Single child: giving it FULL modal space for abstraction layer control")
             
-            // Remove from any previous parent (including placeholder)
+            // Remove from any previous parent
             childView.removeFromSuperview()
             
-            // ✅ KEY: Disable Auto Layout - use manual frame positioning like VirtualizedScrollView
+            // ✅ KEY: Disable Auto Layout - use manual frame positioning 
             childView.translatesAutoresizingMaskIntoConstraints = true
             
             // Add to modal view
             modalVC.view.addSubview(childView)
             
-            // Calculate child size using intrinsic content size or yoga layout results
-            var childHeight: CGFloat = 44 // Default minimum height
-            let intrinsicSize = childView.intrinsicContentSize
-            
-            if intrinsicSize.height > 0 {
-                childHeight = intrinsicSize.height
-            } else if childView.frame.height > 0 {
-                // Use existing frame height from Yoga if available
-                childHeight = childView.frame.height
-            }
-            
-            // ✅ MANUAL FRAME POSITIONING - exactly like VirtualizedScrollView approach
-            let childFrame = CGRect(
-                x: containerMargin,
-                y: currentY,
+            // ✅ FULL FRAME: Give child the entire modal space (0 margins/padding)
+            childView.frame = CGRect(
+                x: 0,
+                y: 0, 
                 width: availableWidth,
-                height: childHeight
+                height: availableHeight
             )
             
-            childView.frame = childFrame
+            print("📐 Child given FULL modal frame: \(childView.frame)")
             
-            print("📐 Positioned child \(index) at frame: \(childFrame)")
+        } else if childViews.count > 1 {
+            // Multiple children: stack vertically but use full width
+            print("📚 Multiple children: stacking with full width, letting abstraction layer control spacing")
             
-            // Update Y position for next child
-            currentY += childHeight + 10 // 10pt spacing between children
+            var currentY: CGFloat = 0 // Start at top, no margins
+            
+            for (index, childView) in childViews.enumerated() {
+                print("🔄 Adding child \(index) with full width: \(type(of: childView))")
+                
+                // Remove from any previous parent
+                childView.removeFromSuperview()
+                
+                // ✅ KEY: Disable Auto Layout
+                childView.translatesAutoresizingMaskIntoConstraints = true
+                
+                // Add to modal view
+                modalVC.view.addSubview(childView)
+                
+                // Use child's existing height or default
+                var childHeight: CGFloat = childView.frame.height > 0 ? childView.frame.height : 44
+                let intrinsicSize = childView.intrinsicContentSize
+                if intrinsicSize.height > 0 {
+                    childHeight = intrinsicSize.height
+                }
+                
+                // ✅ FULL WIDTH POSITIONING: Let abstraction layer handle internal spacing
+                let childFrame = CGRect(
+                    x: 0, // No left margin
+                    y: currentY,
+                    width: availableWidth, // Full width
+                    height: childHeight
+                )
+                
+                childView.frame = childFrame
+                print("📐 Child \(index) frame: \(childFrame)")
+                
+                // No extra spacing - let abstraction layer control it
+                currentY += childHeight
+            }
         }
         
-        // ✅ ENSURE MODAL VIEW HAS SUFFICIENT CONTENT BOUNDS (like VirtualizedScrollView contentSize)
-        let totalContentHeight = currentY + 20 // Add bottom margin
-        let modalCurrentHeight = modalVC.view.frame.height
-        
-        if totalContentHeight > modalCurrentHeight {
-            print("📏 Modal content height (\(totalContentHeight)) exceeds modal height (\(modalCurrentHeight))")
-            // Note: For modals we don't change the modal's frame, but we ensure content is positioned correctly
-        }
-        
-        print("✅ Successfully positioned \(childViews.count) children using manual frames (VirtualizedScrollView pattern)")
-        print("📏 Total content height: \(totalContentHeight), Modal height: \(modalCurrentHeight)")
+        print("✅ Modal content positioned with FULL space control given to abstraction layer")
     }
     
     // MARK: - Modal Presentation
@@ -479,22 +493,9 @@ class DCFModalViewController: UIViewController {
     private func setupModalContent() {
         view.backgroundColor = UIColor.systemBackground
         
-        // Add title if provided
-        if let title = modalProps["title"] as? String {
-            let titleLabel = UILabel()
-            titleLabel.text = title
-            titleLabel.font = UIFont.boldSystemFont(ofSize: 20)
-            titleLabel.textAlignment = .center
-            titleLabel.translatesAutoresizingMaskIntoConstraints = false
-            titleLabel.tag = 999 // Tag to prevent removal during child management
-            
-            view.addSubview(titleLabel)
-            NSLayoutConstraint.activate([
-                titleLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
-                titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-                titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
-            ])
-        }
+        // ✅ REMOVED: No automatic title rendering - let abstraction layer handle titles
+        // The title prop is still available in modalProps for the abstraction layer to use
+        // but we don't force any specific title rendering or safe area constraints
         
         // Propagate onOpen event
         if let sourceView = sourceView {
