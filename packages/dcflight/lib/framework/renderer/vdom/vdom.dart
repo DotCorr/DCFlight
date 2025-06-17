@@ -52,8 +52,6 @@ class VDom {
   /// Flag to track batch updates in progress
   bool _batchUpdateInProgress = false;
   
-  /// Enhanced portal manager instance
-  final EnhancedPortalManager _portalManager = EnhancedPortalManager.instance;
   
   /// Root component for the application
   DCFComponentNode? rootComponent;
@@ -1167,6 +1165,19 @@ class VDom {
     for (var oldChild in oldChildren) {
       if (!processedOldChildren.contains(oldChild)) {
         hasStructuralChanges = true; // Removal is a structural change
+        
+        // CRITICAL FIX: Call componentWillUnmount on removed components
+        try {
+          oldChild.componentWillUnmount();
+          if (kDebugMode) {
+            print('🗑️ Called componentWillUnmount on removed keyed child: ${oldChild.runtimeType}');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('❌ Error during componentWillUnmount on removed keyed child: $e');
+          }
+        }
+        
         final viewId = oldChild.effectiveNativeViewId;
         if (viewId != null) {
           await _nativeBridge.deleteView(viewId);
@@ -1225,7 +1236,21 @@ class VDom {
       // Remove any extra old children - this is a structural change
       hasStructuralChanges = true;
       for (int i = commonLength; i < oldChildren.length; i++) {
-        final viewId = oldChildren[i].effectiveNativeViewId;
+        final oldChild = oldChildren[i];
+        
+        // CRITICAL FIX: Call componentWillUnmount on removed components
+        try {
+          oldChild.componentWillUnmount();
+          if (kDebugMode) {
+            print('🗑️ Called componentWillUnmount on removed child: ${oldChild.runtimeType}');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('❌ Error during componentWillUnmount on removed child: $e');
+          }
+        }
+        
+        final viewId = oldChild.effectiveNativeViewId;
         if (viewId != null) {
           await _nativeBridge.deleteView(viewId);
           _nodesByViewId.remove(viewId);

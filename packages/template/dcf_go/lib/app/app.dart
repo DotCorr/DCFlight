@@ -58,7 +58,7 @@ class App extends StatefulComponent {
           ),
         ),
         // This is the target where the portal will render its content
-        DCFPortalTarget(targetId: "test"),
+        // DCFPortalTarget(targetId: "test"),
         DCFView(
           layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
           children: [
@@ -108,7 +108,7 @@ class App extends StatefulComponent {
                 gap: 8,
                 height: 50,
                 flexWrap: YogaWrap.nowrap,
-                width: 500,
+                width: "100%",
               ),
               children: [
                 DCFGestureDetector(

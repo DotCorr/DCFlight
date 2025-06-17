@@ -241,6 +241,12 @@ class EnhancedPortalManager {
       print('🚀 EnhancedPortalManager: Registering portal ${portal.portalId} for target: ${portal.targetId}');
     }
     
+    // CRITICAL FIX: Before registering a new portal, check if there are any orphaned
+    // portals for the same target that should be cleaned up. This handles the case
+    // where portal components are conditionally rendered and old instances aren't
+    // properly cleaned up.
+    await _cleanupOrphanedPortalsForTarget(portal.targetId);
+    
     _activePortals[portal.portalId] = portal;
     
     final target = _portalTargets[portal.targetId];
@@ -252,7 +258,7 @@ class EnhancedPortalManager {
         return;
       }
     }
-    
+
     await _renderPortalContent(portal);
     portal.onMount?.call(portal.portalId);
   }
@@ -456,6 +462,37 @@ class EnhancedPortalManager {
     } catch (e) {
       if (kDebugMode) {
         print('❌ EnhancedPortalManager: Error cleaning up portal content: $e');
+      }
+    }
+  }
+
+  /// Clean up orphaned portals for a specific target
+  /// This prevents portal accumulation when components are conditionally rendered
+  Future<void> _cleanupOrphanedPortalsForTarget(String targetId) async {
+    if (kDebugMode) {
+      print('🧹 EnhancedPortalManager: Checking for orphaned portals on target: $targetId');
+    }
+    
+    final portalsForTarget = _activePortals.values
+        .where((portal) => portal.targetId == targetId)
+        .toList();
+    
+    if (portalsForTarget.length > 2) { // Allow some reasonable number
+      if (kDebugMode) {
+        print('⚠️ EnhancedPortalManager: Found ${portalsForTarget.length} portals for target $targetId, cleaning up oldest ones');
+      }
+      
+      // Sort by creation time (older portal IDs have smaller timestamps)
+      portalsForTarget.sort((a, b) => a.portalId.compareTo(b.portalId));
+      
+      // Keep only the 2 most recent portals, cleanup the rest
+      final portalsToCleanup = portalsForTarget.take(portalsForTarget.length - 2).toList();
+      
+      for (final portal in portalsToCleanup) {
+        if (kDebugMode) {
+          print('🗑️ EnhancedPortalManager: Cleaning up orphaned portal: ${portal.portalId}');
+        }
+        await _cleanupPortalInstance(portal);
       }
     }
   }

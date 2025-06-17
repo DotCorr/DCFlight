@@ -41,10 +41,23 @@ class DCFPortal extends StatefulComponent {
     final portalIdState = useState<String?>(null, 'portalId');
     final portalManager = EnhancedPortalManager.instance;
 
+    if (kDebugMode) {
+      print('🎭 DCFPortal.render() called - targetId: $targetId, children: ${children.length}, key: $key');
+    }
+
     // Effect to create portal on mount and handle updates
     useEffect(() {
+      if (kDebugMode) {
+        print('🔥 DCFPortal: Mount effect RUNNING - targetId: $targetId, key: $key');
+        print('🔥 DCFPortal: Mount effect - Current portalId state: ${portalIdState.state}');
+      }
+
       Future<void> createPortal() async {
         try {
+          if (kDebugMode) {
+            print('🔥 DCFPortal: Creating portal for targetId: $targetId');
+          }
+          
           final portalId = await portalManager.createPortal(
             targetId: targetId,
             children: children,
@@ -54,6 +67,10 @@ class DCFPortal extends StatefulComponent {
             onMount: onMount,
             onUnmount: onUnmount,
           );
+          
+          if (kDebugMode) {
+            print('🔥 DCFPortal: Portal created successfully with ID: $portalId');
+          }
           
           portalIdState.setState(portalId);
         } catch (e) {
@@ -67,34 +84,77 @@ class DCFPortal extends StatefulComponent {
 
       // Cleanup function
       return () {
+        if (kDebugMode) {
+          print('🧹 DCFPortal: Mount effect CLEANUP CALLED - targetId: $targetId, key: $key');
+          print('🧹 DCFPortal: Mount effect cleanup - portalId to remove: ${portalIdState.state}');
+        }
+        
         if (portalIdState.state != null) {
+          if (kDebugMode) {
+            print('🧹 DCFPortal: Removing portal ${portalIdState.state}');
+          }
+          
           portalManager.removePortal(portalIdState.state!).catchError((e) {
             if (kDebugMode) {
               print('❌ DCFPortal: Failed to destroy portal: $e');
             }
           });
+        } else {
+          if (kDebugMode) {
+            print('⚠️ DCFPortal: Mount effect cleanup called but no portalId to remove');
+          }
         }
       };
     }, dependencies: []); // Only run once on mount/unmount
 
     // Separate effect to update portal when properties change
     useEffect(() {
+      // Calculate dependencies fresh each time
+      final childrenLength = children.length;
+      final childrenHash = childrenLength == 0 ? 'empty' : children.map((c) => c.hashCode).join(',');
+      
+      if (kDebugMode) {
+        print('🔄 DCFPortal: Update effect RUNNING - targetId: $targetId, key: $key');
+        print('🔄 DCFPortal: Update effect - portalId: ${portalIdState.state}, children.length: $childrenLength');
+        print('🔄 DCFPortal: Children content: ${children.map((c) => c.runtimeType.toString()).toList()}');
+        print('🔄 DCFPortal: Children hash: $childrenHash');
+      }
+      
       if (portalIdState.state != null) {
-        try {
-          portalManager.updatePortal(
-            portalId: portalIdState.state!,
-            children: children,
-            metadata: metadata,
-            priority: priority,
-          );
-        } catch (e) {
-          if (kDebugMode) {
-            print('❌ DCFPortal: Failed to update portal: $e');
+        // Use a microtask to ensure the update happens after the current render cycle
+        Future.microtask(() {
+          try {
+            if (kDebugMode) {
+              print('🔄 DCFPortal: Updating portal ${portalIdState.state} with $childrenLength children');
+            }
+            
+            portalManager.updatePortal(
+              portalId: portalIdState.state!,
+              children: children,
+              metadata: metadata,
+              priority: priority,
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ DCFPortal: Failed to update portal: $e');
+            }
           }
+        });
+      } else {
+        if (kDebugMode) {
+          print('⚠️ DCFPortal: Update effect triggered but no portal ID available yet');
         }
       }
-      return null; // No cleanup needed for this effect
-    }, dependencies: [children, metadata, priority]); // Re-run when these change
+      
+      // Return cleanup function for this effect
+      return () {
+        if (kDebugMode) {
+          print('🧹 DCFPortal: Update effect CLEANUP CALLED - targetId: $targetId, key: $key');
+          print('🧹 DCFPortal: Update effect cleanup - was updating portalId: ${portalIdState.state}');
+          print('🧹 DCFPortal: Update effect cleanup - children count was: $childrenLength');
+        }
+      };
+    }, dependencies: ['${children.length}-${children.map((c) => c.runtimeType).join(',')}']); // Use string-based dependency that changes with content
 
     // Return a placeholder fragment that doesn't render anything
     // The actual content is rendered through the portal system
@@ -112,14 +172,12 @@ class DCFPortal extends StatefulComponent {
 /// DCFPortalTarget component for creating portal targets
 class DCFPortalTarget extends StatefulComponent {
   final String targetId;
-  final String? nativeViewId;
   final Map<String, dynamic>? metadata;
   final int priority;
   final List<DCFComponentNode> children;
 
   DCFPortalTarget({
     required this.targetId,
-    this.nativeViewId,
     this.metadata,
     this.priority = 0,
     this.children = const [],

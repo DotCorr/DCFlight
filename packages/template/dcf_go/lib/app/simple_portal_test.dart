@@ -51,17 +51,18 @@ class SimplePortalTest extends StatefulComponent {
           ],
         ),
         
-        if (showPortal.state)
-          DCFPortal(
-            targetId: 'simple-target',
-            children: [
-              DCFText(
-                content: "🎉 PORTAL CONTENT WORKS!",
-                textProps: DCFTextProps(fontSize: 18, fontWeight: "bold", color: Colors.green),
-                layout: LayoutProps(height: 100),
-              ),
-            ],
-          ),
+        // Always render portal, but conditionally render its children
+        DCFPortal(
+          key: 'simple-portal', // Add a key to maintain identity
+          targetId: 'simple-target',
+          children: showPortal.state ? [
+            DCFText(
+              content: "🎉 PORTAL CONTENT WORKS!",
+              textProps: DCFTextProps(fontSize: 18, fontWeight: "bold", color: Colors.green),
+              layout: LayoutProps(height: 100),
+            ),
+          ] : [], // Empty children when hidden
+        ),
       ],
     );
   }
