@@ -21,9 +21,13 @@ class DCFModalComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         print("🚀 DCFModalComponent.createView called with props: \(props.keys.sorted())")
         
-        // Create a basic container view - this will be the portal host
+        // ✅ FIX: Create a completely invisible placeholder that NEVER shows content in main UI
         let view = UIView()
         view.backgroundColor = UIColor.clear
+        view.isHidden = true // Completely hidden from main UI
+        view.frame = CGRect.zero // Zero size
+        view.clipsToBounds = true // Ensure no overflow
+        view.isUserInteractionEnabled = false // No interactions in main UI
         
         // Apply initial properties
         let _ = updateView(view, withProps: props)
@@ -78,13 +82,26 @@ class DCFModalComponent: NSObject, DCFComponent {
     // MARK: - DCFComponent Protocol Methods
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // Modal components handle their own layout through modal presentation
-        // Apply basic layout to the container if needed
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        // ✅ CRITICAL: Modal placeholder must NEVER take up space in main UI
+        // Force zero size regardless of what layout engine says
+        view.frame = CGRect.zero
+        view.isHidden = true
+        view.clipsToBounds = true
+        view.isUserInteractionEnabled = false
+        
+        // ✅ ALSO: Ensure all children in placeholder are also zero-sized and hidden
+        view.subviews.forEach { child in
+            child.isHidden = true
+            child.alpha = 0.0
+            child.frame = CGRect.zero // Don't let children take up space either
+        }
+        
+        print("📐 DCFModalComponent.applyLayout - Enforced zero-space invisible placeholder")
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // Modal components don't have intrinsic size since they're presented
+        // ✅ CRITICAL: Modal placeholder must NEVER report any intrinsic size
+        // This prevents it from taking up space in layout calculations
         return CGSize.zero
     }
     
@@ -98,24 +115,27 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("🚀 DCFModalComponent.setChildren - view hash: \(view.hash)")
         print("🚀 DCFModalComponent.setChildren - children types: \(childViews.map { type(of: $0) })")
         
-        // ✅ ALWAYS store children in the placeholder view first (essential for reopen)
-        print("💾 Storing \(childViews.count) children in placeholder view")
+        // ✅ ENSURE placeholder view stays invisible in main UI
+        view.isHidden = true
+        view.frame = CGRect.zero
+        view.isUserInteractionEnabled = false
+        
+        // ✅ Store children in placeholder but make them invisible in main UI
+        print("💾 Storing \(childViews.count) children in placeholder view (hidden from main UI)")
         view.subviews.forEach { $0.removeFromSuperview() }
         childViews.forEach { childView in
             view.addSubview(childView)
+            // ✅ CRITICAL: Hide children when in placeholder view (main UI)
+            childView.isHidden = true
+            childView.alpha = 0.0
         }
         
-        // If modal is currently presented, ALSO add children to the modal content
+        // If modal is currently presented, move children to modal content and make them visible
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
-            print("✅ Modal is presented, COPYING children to modal content view (keeping in placeholder too)")
-            // Copy children to modal (don't move them, so they stay in placeholder for next reopen)
-            let childrenCopy = childViews.map { child in
-                // Create a proper copy or reference - for views, we'll move them but ensure they can be restored
-                return child
-            }
-            addChildrenToModalContent(modalVC: modalVC, childViews: childrenCopy)
+            print("✅ Modal is presented, moving children to modal content view and making them visible")
+            addChildrenToModalContent(modalVC: modalVC, childViews: childViews)
         } else {
-            print("📦 Modal not currently presented, children safely stored in placeholder view for future presentation")
+            print("📦 Modal not presented, children stored invisibly in placeholder view")
         }
         
         return true
@@ -151,6 +171,10 @@ class DCFModalComponent: NSObject, DCFComponent {
             // Add to modal view
             modalVC.view.addSubview(childView)
             
+            // ✅ MAKE VISIBLE: Child should be visible in modal (opposite of placeholder)
+            childView.isHidden = false
+            childView.alpha = 1.0
+            
             // ✅ FULL FRAME: Give child the entire modal space (0 margins/padding)
             childView.frame = CGRect(
                 x: 0,
@@ -178,6 +202,10 @@ class DCFModalComponent: NSObject, DCFComponent {
                 
                 // Add to modal view
                 modalVC.view.addSubview(childView)
+                
+                // ✅ MAKE VISIBLE: Child should be visible in modal
+                childView.isHidden = false
+                childView.alpha = 1.0
                 
                 // Use child's existing height or default
                 var childHeight: CGFloat = childView.frame.height > 0 ? childView.frame.height : 44
@@ -368,8 +396,24 @@ class DCFModalComponent: NSObject, DCFComponent {
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
             print("🔄 DCFModalComponent: Programmatically dismissing tracked modal")
             
-            // ✅ FIX: Don't move children here - let viewWillDisappear handle it when actually dismissed
-            // This prevents premature children movement during drag gestures
+            // ✅ FIX: Move children back to placeholder for programmatic dismissal too
+            let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+            
+            if !modalChildren.isEmpty {
+                print("💾 Programmatic dismissal: Moving \(modalChildren.count) children back to placeholder")
+                
+                // Clear existing children from placeholder
+                view.subviews.forEach { $0.removeFromSuperview() }
+                
+                // Move children back to placeholder view and hide them from main UI
+                modalChildren.forEach { child in
+                    child.removeFromSuperview()
+                    view.addSubview(child)
+                    // ✅ CRITICAL: Hide children when moved back to placeholder (main UI)
+                    child.isHidden = true
+                    child.alpha = 0.0
+                }
+            }
             
             modalVC.dismiss(animated: true) {
                 propagateEvent(on: view, eventName: "onDismiss", data: [:])
@@ -464,10 +508,13 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
                 // Clear existing children from placeholder
                 sourceView.subviews.forEach { $0.removeFromSuperview() }
                 
-                // Move children back to placeholder view
+                // Move children back to placeholder view and hide them from main UI
                 modalChildren.forEach { child in
                     child.removeFromSuperview()
                     sourceView.addSubview(child)
+                    // ✅ CRITICAL: Hide children when moved back to placeholder (main UI)
+                    child.isHidden = true
+                    child.alpha = 0.0
                 }
             }
             
