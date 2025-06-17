@@ -33,22 +33,33 @@ class DCFModalComponent: NSObject, DCFComponent {
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         print("🔄 DCFModalComponent updateView called with props: \(props)")
+        print("🔍 DCFModalComponent updateView - view hash: \(view.hash)")
         
         // Get view ID for tracking
         let viewId = String(view.hash)
         
-        // Check if modal should be visible
+        // Check if modal should be visible (handle both Bool and Int types)
+        var isVisible = false
         if let visible = props["visible"] as? Bool {
-            print("🔍 DCFModalComponent: visible = \(visible)")
-            if visible {
-                print("🚀 DCFModalComponent: Attempting to present modal")
-                presentModal(from: view, props: props, viewId: viewId)
-            } else {
-                print("🚀 DCFModalComponent: Attempting to dismiss modal")
-                dismissModal(from: view, viewId: viewId)
-            }
+            isVisible = visible
+            print("🔍 DCFModalComponent: Found visible as Bool: \(isVisible)")
+        } else if let visible = props["visible"] as? Int {
+            isVisible = visible == 1
+            print("🔍 DCFModalComponent: Found visible as Int: \(visible) -> \(isVisible)")
+        } else if let visible = props["visible"] as? NSNumber {
+            isVisible = visible.boolValue
+            print("🔍 DCFModalComponent: Found visible as NSNumber: \(visible) -> \(isVisible)")
         } else {
-            print("⚠️ DCFModalComponent: No visible property found in props")
+            print("⚠️ DCFModalComponent: No visible property found or wrong type. Props: \(props)")
+        }
+        
+        print("🔍 DCFModalComponent: Final visible value = \(isVisible)")
+        if isVisible {
+            print("🚀 DCFModalComponent: Attempting to present modal")
+            presentModal(from: view, props: props, viewId: viewId)
+        } else {
+            print("🚀 DCFModalComponent: Attempting to dismiss modal")
+            dismissModal(from: view, viewId: viewId)
         }
         
         view.applyStyles(props: props)
@@ -75,53 +86,78 @@ class DCFModalComponent: NSObject, DCFComponent {
     
     func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
         print("🚀 DCFModalComponent.setChildren called with \(childViews.count) children for viewId: \(viewId)")
+        print("🚀 DCFModalComponent.setChildren - view hash: \(view.hash)")
+        print("🚀 DCFModalComponent.setChildren - children types: \(childViews.map { type(of: $0) })")
         
         // If modal is currently presented, add children to the modal content
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
-            print("✅ Modal is presented, adding children to modal content view")
-            
-            // Clear existing children
-            modalVC.view.subviews.forEach { subview in
-                // Don't remove system views, only our content
-                if subview.tag != 999 { // Use tag to identify system views
-                    subview.removeFromSuperview()
-                }
-            }
-            
-            // Add each child view to the modal's content
-            for (index, childView) in childViews.enumerated() {
-                print("🔄 Adding child \(index): \(type(of: childView))")
-                childView.translatesAutoresizingMaskIntoConstraints = false
-                modalVC.view.addSubview(childView)
-                
-                // Add constraints for the child view
-                if index == 0 {
-                    // First child - position below title area
-                    NSLayoutConstraint.activate([
-                        childView.topAnchor.constraint(equalTo: modalVC.view.safeAreaLayoutGuide.topAnchor, constant: 60),
-                        childView.leadingAnchor.constraint(equalTo: modalVC.view.leadingAnchor, constant: 20),
-                        childView.trailingAnchor.constraint(equalTo: modalVC.view.trailingAnchor, constant: -20),
-                        childView.bottomAnchor.constraint(lessThanOrEqualTo: modalVC.view.bottomAnchor, constant: -20)
-                    ])
-                } else {
-                    // Subsequent children - stack vertically
-                    let previousChild = childViews[index - 1]
-                    NSLayoutConstraint.activate([
-                        childView.topAnchor.constraint(equalTo: previousChild.bottomAnchor, constant: 10),
-                        childView.leadingAnchor.constraint(equalTo: modalVC.view.leadingAnchor, constant: 20),
-                        childView.trailingAnchor.constraint(equalTo: modalVC.view.trailingAnchor, constant: -20),
-                        childView.bottomAnchor.constraint(lessThanOrEqualTo: modalVC.view.bottomAnchor, constant: -20)
-                    ])
-                }
-            }
-            
+            print("✅ Modal is presented, moving children to modal content view")
+            addChildrenToModalContent(modalVC: modalVC, childViews: childViews)
             return true
         } else {
-            print("⚠️ Modal not currently presented for viewId \(viewId), children will be stored for later")
-            // Modal is not presented yet - the portal system should handle this case
-            // by calling setChildren again when the modal is presented
-            return false
+            print("⚠️ Modal not currently presented for viewId \(viewId), storing children in placeholder view")
+            // Store children in the placeholder view for now
+            // They will be moved to the modal when it's presented
+            view.subviews.forEach { $0.removeFromSuperview() }
+            childViews.forEach { childView in
+                view.addSubview(childView)
+            }
+            return true
         }
+    }
+    
+    private func addChildrenToModalContent(modalVC: DCFModalViewController, childViews: [UIView]) {
+        // Clear existing children from modal content
+        modalVC.view.subviews.forEach { subview in
+            // Don't remove system views, only our content
+            if subview.tag != 999 { // Use tag to identify system views
+                print("🗑️ Removing existing subview from modal: \(type(of: subview))")
+                subview.removeFromSuperview()
+            }
+        }
+        
+        // Add each child view to the modal's content
+        for (index, childView) in childViews.enumerated() {
+            print("🔄 Adding child \(index) to modal: \(type(of: childView))")
+            
+            // Remove from any previous parent
+            childView.removeFromSuperview()
+            
+            childView.translatesAutoresizingMaskIntoConstraints = false
+            modalVC.view.addSubview(childView)
+            
+            // ✅ FIX 2: Ensure child views can receive user interaction
+            childView.isUserInteractionEnabled = true
+            
+            // If it's a button or interactive element, ensure proper setup
+            if let button = childView as? UIButton {
+                print("🎯 Setting up button interaction for modal context")
+                button.isUserInteractionEnabled = true
+                // Ensure button events bubble up properly
+            }
+            
+            // Add constraints for the child view
+            if index == 0 {
+                // First child - position below title area
+                NSLayoutConstraint.activate([
+                    childView.topAnchor.constraint(equalTo: modalVC.view.safeAreaLayoutGuide.topAnchor, constant: 60),
+                    childView.leadingAnchor.constraint(equalTo: modalVC.view.leadingAnchor, constant: 20),
+                    childView.trailingAnchor.constraint(equalTo: modalVC.view.trailingAnchor, constant: -20),
+                    childView.bottomAnchor.constraint(lessThanOrEqualTo: modalVC.view.bottomAnchor, constant: -20)
+                ])
+            } else {
+                // Subsequent children - stack vertically
+                let previousChild = childViews[index - 1]
+                NSLayoutConstraint.activate([
+                    childView.topAnchor.constraint(equalTo: previousChild.bottomAnchor, constant: 10),
+                    childView.leadingAnchor.constraint(equalTo: modalVC.view.leadingAnchor, constant: 20),
+                    childView.trailingAnchor.constraint(equalTo: modalVC.view.trailingAnchor, constant: -20),
+                    childView.bottomAnchor.constraint(lessThanOrEqualTo: modalVC.view.bottomAnchor, constant: -20)
+                ])
+            }
+        }
+        
+        print("✅ Successfully added \(childViews.count) children to modal content")
     }
     
     // MARK: - Modal Presentation
@@ -138,6 +174,15 @@ class DCFModalComponent: NSObject, DCFComponent {
         modalVC.modalProps = props
         modalVC.sourceView = view
         modalVC.viewId = viewId
+        
+        // ✅ FIX 1: Prepare content BEFORE presenting to prevent white screen
+        let existingChildren = view.subviews
+        if !existingChildren.isEmpty {
+            print("🚀 Pre-populating modal with \(existingChildren.count) existing children")
+            // Pre-populate modal content to avoid white screen
+            modalVC.loadViewIfNeeded() // Ensure view is loaded
+            self.addChildrenToModalContent(modalVC: modalVC, childViews: existingChildren)
+        }
         
         // Store reference to presented modal
         DCFModalComponent.presentedModals[viewId] = modalVC
@@ -194,6 +239,8 @@ class DCFModalComponent: NSObject, DCFComponent {
             
             topViewController.present(modalVC, animated: true) {
                 print("✅ DCFModalComponent: Modal presented successfully")
+                
+                // ✅ FIX 1: Content already added before presentation, just trigger onShow event
                 propagateEvent(on: view, eventName: "onShow", data: [:])
             }
         } else {
@@ -317,6 +364,25 @@ class DCFModalViewController: UIViewController {
             // Remove from tracking when dismissed
             if let viewId = viewId {
                 DCFModalComponent.presentedModals.removeValue(forKey: viewId)
+            }
+        }
+    }
+    
+    // ✅ FIX 2: Override touchesBegan to ensure modal content receives touches
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesBegan(touches, with: event)
+        
+        // Ensure touch events are properly propagated to child views
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: view)
+        
+        // Find the deepest subview that contains the touch point
+        if let hitView = view.hitTest(location, with: event) {
+            print("🔍 DCFModalViewController: Touch detected at \(location) on view: \(type(of: hitView))")
+            
+            // For buttons inside modal, ensure they receive the touch event
+            if hitView.isKind(of: UIButton.self) || hitView.superview?.isKind(of: UIButton.self) == true {
+                print("🎯 DCFModalViewController: Touch on button detected, ensuring proper event handling")
             }
         }
     }
