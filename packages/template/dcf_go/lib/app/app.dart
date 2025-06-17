@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcf_go/app/gradient.dart';
 import 'package:dcf_go/app/really_long_list.dart';
 import 'package:dcf_go/app/validation_test.dart';
@@ -58,6 +57,8 @@ class App extends StatefulComponent {
             selectedValue: pagestateLocal.state.toString(),
           ),
         ),
+        // This is the target where the portal will render its content
+        DCFPortalTarget(targetId: "test"),
         DCFView(
           layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
           children: [
