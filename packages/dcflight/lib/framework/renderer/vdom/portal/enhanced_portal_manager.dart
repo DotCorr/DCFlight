@@ -60,8 +60,8 @@ class EnhancedPortalManager {
       priority: priority,
     );
     
-    // Process any queued portals for this target
-    _processQueuedPortalsForTarget(targetId);
+    // Process any queued portals for this target immediately
+    Future.microtask(() => _processQueuedPortalsForTarget(targetId));
   }
 
   /// Unregister a portal target
@@ -430,14 +430,29 @@ class EnhancedPortalManager {
         print('🧹 EnhancedPortalManager: Cleaning up ${portal.renderedViewIds.length} view IDs for portal: ${portal.portalId}');
       }
       
+      // Store view IDs to delete
+      final viewIdsToDelete = List<String>.from(portal.renderedViewIds);
+      
+      // Clear rendered view IDs first
+      portal.renderedViewIds.clear();
+      
       final target = _portalTargets[portal.targetId];
       if (target != null) {
         // Update target by removing portal content
         await _updateTargetWithPortalContent(target);
+        
+        // Explicitly delete the orphaned views
+        try {
+          await _vdomApi.deleteViews(viewIdsToDelete);
+          if (kDebugMode) {
+            print('✅ EnhancedPortalManager: Deleted ${viewIdsToDelete.length} orphaned views');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ EnhancedPortalManager: Error deleting views (may be normal): $e');
+          }
+        }
       }
-      
-      // Clear rendered view IDs
-      portal.renderedViewIds.clear();
     } catch (e) {
       if (kDebugMode) {
         print('❌ EnhancedPortalManager: Error cleaning up portal content: $e');

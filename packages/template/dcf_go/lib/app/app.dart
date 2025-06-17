@@ -12,6 +12,8 @@ import 'package:dcf_go/app/validation_test.dart';
 import 'package:dcf_go/app/list_state_perf.dart';
 import 'package:dcf_go/app/modal_test.dart';
 import 'package:dcf_go/app/portal_test.dart';
+import 'package:dcf_go/app/portal_test_new.dart';
+import 'package:dcf_go/app/simple_portal_test.dart';
 import 'package:dcf_go/app/swipeable_test.dart';
 import 'package:dcf_go/app/component_showcase.dart';
 import 'package:dcflight/dcflight.dart';
@@ -49,7 +51,9 @@ class App extends StatefulComponent {
               DCFDropdownMenuItem(title: "Modal & Alert Test", value: "4"),
               DCFDropdownMenuItem(title: "Swipeable Test", value: "5"),
               DCFDropdownMenuItem(title: "Component Showcase", value: "6"),
-              DCFDropdownMenuItem(title: "Portal Test", value: "7"),
+              DCFDropdownMenuItem(title: "Portal Test (Old)", value: "7"),
+              DCFDropdownMenuItem(title: "Portal Test (New)", value: "8"),
+              DCFDropdownMenuItem(title: "Portal Test (Simple)", value: "9"),
             ],
             selectedValue: pagestateLocal.state.toString(),
           ),
@@ -73,6 +77,10 @@ class App extends StatefulComponent {
                 ? ComponentShowcase()
                 : pagestateLocal.state == 7
                 ? PortalTest()
+                : pagestateLocal.state == 8
+                ? PortalTestNew()
+                : pagestateLocal.state == 9
+                ? SimplePortalTest()
                 : DCFView(),
           ],
         ),

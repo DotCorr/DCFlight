@@ -5,9 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'dart:async';
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
+import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
 import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';
 import 'package:flutter/foundation.dart';
 
@@ -73,9 +75,9 @@ class DCFPortal extends StatefulComponent {
           });
         }
       };
-    }, dependencies: [targetId]); // Re-run when targetId changes
+    }, dependencies: []); // Only run once on mount/unmount
 
-    // Effect to update portal when children or properties change
+    // Separate effect to update portal when properties change
     useEffect(() {
       if (portalIdState.state != null) {
         try {
@@ -127,29 +129,93 @@ class DCFPortalTarget extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final portalManager = EnhancedPortalManager.instance;
+    final elementRef = useRef<DCFElement?>(null);
+    final isRegisteredRef = useRef<bool>(false);
 
-    // Effect to register/unregister target
+    // Effect to register/unregister target after the element is created and has a view ID
     useEffect(() {
-      portalManager.registerTarget(
-        targetId: targetId,
-        nativeViewId: nativeViewId ?? targetId,
-        metadata: metadata,
-        priority: priority,
-      );
+      void attemptRegistration() {
+        final isRegistered = isRegisteredRef.current ?? false;
+        final element = elementRef.current;
+        
+        if (!isRegistered && element?.nativeViewId != null) {
+          final actualViewId = element!.nativeViewId!;
+          
+          if (kDebugMode) {
+            print('🎯 DCFPortalTarget: Registering target $targetId with actual view ID: $actualViewId');
+          }
+          
+          portalManager.registerTarget(
+            targetId: targetId,
+            nativeViewId: actualViewId,
+            metadata: metadata,
+            priority: priority,
+          );
+          
+          isRegisteredRef.current = true;
+        }
+      }
+
+      // Try to register immediately if view ID is already available
+      attemptRegistration();
+
+      // Set up a polling mechanism to check for view ID assignment
+      // This is necessary because the view ID is assigned asynchronously during rendering
+      Timer? pollTimer;
+      final isRegistered = isRegisteredRef.current ?? false;
+      if (!isRegistered) {
+        pollTimer = Timer.periodic(Duration(milliseconds: 10), (timer) {
+          attemptRegistration();
+          final currentRegistered = isRegisteredRef.current ?? false;
+          if (currentRegistered) {
+            timer.cancel();
+          }
+        });
+        
+        // Cancel polling after 1 second to avoid infinite polling
+        Timer(Duration(seconds: 1), () {
+          pollTimer?.cancel();
+          final finalRegistered = isRegisteredRef.current ?? false;
+          if (!finalRegistered && kDebugMode) {
+            print('⚠️ DCFPortalTarget: Failed to get view ID for target $targetId within timeout');
+          }
+        });
+      }
 
       // Cleanup function
       return () {
-        portalManager.unregisterTarget(targetId);
+        pollTimer?.cancel();
+        final isRegistered = isRegisteredRef.current ?? false;
+        if (isRegistered) {
+          // Delay unregistration to allow portal cleanup to complete
+          Future.microtask(() {
+            portalManager.unregisterTarget(targetId);
+          });
+          isRegisteredRef.current = false;
+        }
       };
     }, dependencies: [targetId, nativeViewId, priority]); // Re-run when these change
 
-    // Return the children wrapped in a container that serves as the portal target
-    return DCFFragment(
-      children: children,
-      metadata: {
+    // Create the element that will be our portal target
+    final element = DCFElement(
+      type: 'View', // Use View component to create a native container
+      props: {
         'isPortalTarget': true,
         'targetId': targetId,
+        'flex': 1,
+        "width": "100%",
+        "height": "100%",
+        'backgroundColor': '#E8F4FD', // Light blue background for visibility
+        'borderWidth': 2,
+        'borderColor': '#2196F3', // Blue border to make it visible
+        'minHeight': 50, // Ensure it has some height
       },
+      children: children,
     );
+    
+    // Store reference to the element so we can access its view ID later
+    elementRef.current = element;
+    
+    return element;
   }
 }

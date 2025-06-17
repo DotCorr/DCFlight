@@ -15,6 +15,7 @@ class PortalTest extends StatefulComponent {
     return DCFScrollView(
       layout: LayoutProps(flex: 1, padding: 16),
       children: [
+        // Header
         DCFText(
           content: "Portal System Test",
           textProps: DCFTextProps(fontSize: 24, fontWeight: "bold"),
@@ -29,15 +30,21 @@ class PortalTest extends StatefulComponent {
           layout: LayoutProps(marginBottom: 24, height: 80),
         ),
 
-        // Portal Target Container
+        // Primary Portal Target Container
+        DCFText(
+          content: "Primary Portal Target",
+          textProps: DCFTextProps(fontSize: 18, fontWeight: "600"),
+          layout: LayoutProps(marginBottom: 8, height: 25),
+        ),
+        
         DCFPortalTarget(
-          targetId: 'modal-root',
+          targetId: 'primary-portal',
           children: [
             DCFView(
               layout: LayoutProps(
-                height: 200,
+                height: 120,
                 padding: 16,
-                marginBottom: 24,
+                marginBottom: 16,
               ),
               styleSheet: StyleSheet(
                 backgroundColor: Colors.lightBlue,
@@ -47,19 +54,14 @@ class PortalTest extends StatefulComponent {
               ),
               children: [
                 DCFText(
-                  content: "Portal Target Container",
-                  textProps: DCFTextProps(fontSize: 18, fontWeight: "600"),
+                  content: "Primary Portal Container",
+                  textProps: DCFTextProps(fontSize: 16, fontWeight: "600"),
                   layout: LayoutProps(marginBottom: 8, height: 25),
                 ),
                 DCFText(
-                  content: "This container will receive portal content when the portal is active.",
+                  content: "Portal content will appear here when activated.",
                   textProps: DCFTextProps(fontSize: 14),
-                  layout: LayoutProps(marginBottom: 16, height: 40),
-                ),
-                DCFText(
-                  content: "Portal content will appear below this text.",
-                  textProps: DCFTextProps(fontSize: 12),
-                  layout: LayoutProps(height: 20),
+                  layout: LayoutProps(height: 40),
                 ),
               ],
             ),
@@ -71,9 +73,9 @@ class PortalTest extends StatefulComponent {
           buttonProps: DCFButtonProps(
             title: showPortal.state ? "Hide Portal Content" : "Show Portal Content",
           ),
-          layout: LayoutProps(marginBottom: 16, height: 44),
+          layout: LayoutProps(marginBottom: 24, height: 44),
           styleSheet: StyleSheet(
-            backgroundColor: Colors.green,
+            backgroundColor: showPortal.state ? Colors.red : Colors.green,
             borderRadius: 8,
           ),
           onPress: (v) {
@@ -81,51 +83,19 @@ class PortalTest extends StatefulComponent {
           },
         ),
 
-        // Portal Example
-        if (showPortal.state) 
-          DCFPortal(
-            targetId: 'modal-root',
-            children: [
-              DCFView(
-                layout: LayoutProps(
-                  padding: 16,
-                  marginTop: 8,
-                ),
-                styleSheet: StyleSheet(
-                  backgroundColor: Colors.purple,
-                  borderRadius: 8,
-                ),
-                children: [
-                  DCFText(
-                    content: "🎯 Portal Content!",
-                    textProps: DCFTextProps(fontSize: 16, fontWeight: "600", color: Colors.white),
-                    layout: LayoutProps(marginBottom: 8, height: 25),
-                  ),
-                  DCFText(
-                    content: "This content is rendered through a portal into the target container above, "
-                    "even though it's defined down here in the component tree.",
-                    textProps: DCFTextProps(fontSize: 14, color: Colors.white),
-                    layout: LayoutProps(height: 60),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-        // Multiple Portals Example
+        // Secondary Portal Target Container  
         DCFText(
-          content: "Multiple Portals Example",
-          textProps: DCFTextProps(fontSize: 20, fontWeight: "600"),
-          layout: LayoutProps(marginBottom: 16, marginTop: 32, height: 30),
+          content: "Secondary Portal Target",
+          textProps: DCFTextProps(fontSize: 18, fontWeight: "600"),
+          layout: LayoutProps(marginBottom: 8, height: 25),
         ),
-
-        // Second Portal Target
+        
         DCFPortalTarget(
-          targetId: 'notifications-root',
+          targetId: 'secondary-portal',
           children: [
             DCFView(
               layout: LayoutProps(
-                height: 150,
+                height: 100,
                 padding: 16,
                 marginBottom: 24,
               ),
@@ -135,12 +105,12 @@ class PortalTest extends StatefulComponent {
               ),
               children: [
                 DCFText(
-                  content: "Notifications Portal Target",
+                  content: "Secondary Portal Container",
                   textProps: DCFTextProps(fontSize: 16, fontWeight: "600", color: Colors.white),
                   layout: LayoutProps(marginBottom: 8, height: 25),
                 ),
                 DCFText(
-                  content: "Multiple portal content will appear here:",
+                  content: "Multiple notifications will appear here.",
                   textProps: DCFTextProps(fontSize: 14, color: Colors.white),
                   layout: LayoutProps(height: 40),
                 ),
@@ -149,66 +119,112 @@ class PortalTest extends StatefulComponent {
           ],
         ),
 
-        // Multiple portals to the same target
-        if (showPortal.state) ...[
-          DCFPortal(
-            targetId: 'notifications-root',
-            priority: 1,
-            children: [
-              DCFView(
-                layout: LayoutProps(
-                  padding: 12,
-                  marginTop: 8,
-                ),
-                styleSheet: StyleSheet(
-                  backgroundColor: Colors.green,
-                  borderRadius: 4,
-                ),
-                children: [
-                  DCFText(
-                    content: "📨 High Priority Notification",
-                    textProps: DCFTextProps(fontSize: 14, fontWeight: "600", color: Colors.white),
-                    layout: LayoutProps(height: 25),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          
-          DCFPortal(
-            targetId: 'notifications-root',
-            priority: 0,
-            children: [
-              DCFView(
-                layout: LayoutProps(
-                  padding: 12,
-                  marginTop: 4,
-                ),
-                styleSheet: StyleSheet(
-                  backgroundColor: Colors.cyan,
-                  borderRadius: 4,
-                ),
-                children: [
-                  DCFText(
-                    content: "ℹ️ Normal Priority Notification",
-                    textProps: DCFTextProps(fontSize: 14, color: Colors.white),
-                    layout: LayoutProps(height: 25),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-
+        // Status Text - Always visible
         DCFText(
-          content: "Features Demonstrated:\n"
-          "• Portal rendering outside component hierarchy\n"
+          content: showPortal.state ? "Portal Status: ACTIVE ✅" : "Portal Status: INACTIVE ❌",
+          textProps: DCFTextProps(
+            fontSize: 16, 
+            fontWeight: "600",
+            color: showPortal.state ? Colors.green : Colors.red,
+          ),
+          layout: LayoutProps(marginBottom: 16, height: 25),
+        ),
+
+        // Features Info - Always visible
+        DCFText(
+          content: "Portal Features:\n"
+          "• Render content outside normal hierarchy\n"
           "• Multiple portals per target\n"
-          "• Portal priority system\n"
-          "• Dynamic portal creation/destruction\n"
-          "• React-like portal API",
+          "• Priority-based rendering\n"
+          "• React-like API\n"
+          "• Dynamic creation/cleanup",
           textProps: DCFTextProps(fontSize: 14),
-          layout: LayoutProps(marginTop: 32, height: 120),
+          layout: LayoutProps(marginBottom: 32, height: 120),
+        ),
+
+        // Portal Components - Conditionally rendered but in dedicated container
+        DCFView(
+          layout: LayoutProps(height: showPortal.state ? 100 : 0),
+          children: showPortal.state ? [
+            // Primary portal content
+            DCFPortal(
+              targetId: 'primary-portal',
+              children: [
+                DCFView(
+                  layout: LayoutProps(
+                    padding: 16,
+                    marginTop: 8,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.purple,
+                    borderRadius: 8,
+                  ),
+                  children: [
+                    DCFText(
+                      content: "🎯 Portaled Content!",
+                      textProps: DCFTextProps(fontSize: 16, fontWeight: "600", color: Colors.white),
+                      layout: LayoutProps(marginBottom: 8, height: 25),
+                    ),
+                    DCFText(
+                      content: "This appears in the primary container above through a portal.",
+                      textProps: DCFTextProps(fontSize: 14, color: Colors.white),
+                      layout: LayoutProps(height: 40),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // High priority notification
+            DCFPortal(
+              targetId: 'secondary-portal',
+              priority: 1, // Higher priority
+              children: [
+                DCFView(
+                  layout: LayoutProps(
+                    padding: 12,
+                    marginTop: 8,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.red,
+                    borderRadius: 4,
+                  ),
+                  children: [
+                    DCFText(
+                      content: "� High Priority Alert",
+                      textProps: DCFTextProps(fontSize: 14, fontWeight: "600", color: Colors.white),
+                      layout: LayoutProps(height: 25),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Lower priority notification
+            DCFPortal(
+              targetId: 'secondary-portal',
+              priority: 0, // Lower priority (appears first)
+              children: [
+                DCFView(
+                  layout: LayoutProps(
+                    padding: 12,
+                    marginTop: 4,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.cyan,
+                    borderRadius: 4,
+                  ),
+                  children: [
+                    DCFText(
+                      content: "ℹ️ Info Notification",
+                      textProps: DCFTextProps(fontSize: 14, color: Colors.white),
+                      layout: LayoutProps(height: 25),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ] : [],
         ),
       ],
     );
