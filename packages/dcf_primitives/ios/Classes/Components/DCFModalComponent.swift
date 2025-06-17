@@ -89,21 +89,22 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("🚀 DCFModalComponent.setChildren - view hash: \(view.hash)")
         print("🚀 DCFModalComponent.setChildren - children types: \(childViews.map { type(of: $0) })")
         
-        // If modal is currently presented, add children to the modal content
+        // Always store children in the placeholder view first
+        view.subviews.forEach { $0.removeFromSuperview() }
+        childViews.forEach { childView in
+            view.addSubview(childView)
+        }
+        
+        // If modal is currently presented, move children to the modal content
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
             print("✅ Modal is presented, moving children to modal content view")
-            addChildrenToModalContent(modalVC: modalVC, childViews: childViews)
-            return true
+            // Move children from placeholder to modal (they will be moved back on dismiss)
+            addChildrenToModalContent(modalVC: modalVC, childViews: Array(view.subviews))
         } else {
-            print("⚠️ Modal not currently presented for viewId \(viewId), storing children in placeholder view")
-            // Store children in the placeholder view for now
-            // They will be moved to the modal when it's presented
-            view.subviews.forEach { $0.removeFromSuperview() }
-            childViews.forEach { childView in
-                view.addSubview(childView)
-            }
-            return true
+            print("⚠️ Modal not currently presented for viewId \(viewId), children stored in placeholder view")
         }
+        
+        return true
     }
     
     private func addChildrenToModalContent(modalVC: DCFModalViewController, childViews: [UIView]) {
@@ -127,7 +128,7 @@ class DCFModalComponent: NSObject, DCFComponent {
         for (index, childView) in childViews.enumerated() {
             print("🔄 Adding child \(index) to modal with manual positioning: \(type(of: childView))")
             
-            // Remove from any previous parent
+            // Remove from any previous parent (including placeholder)
             childView.removeFromSuperview()
             
             // ✅ KEY: Disable Auto Layout - use manual frame positioning like VirtualizedScrollView
@@ -197,8 +198,14 @@ class DCFModalComponent: NSObject, DCFComponent {
         // Pre-populate modal content to avoid white screen
         let existingChildren = view.subviews
         if !existingChildren.isEmpty {
-            print("🚀 Pre-populating modal with \(existingChildren.count) existing children")
+            print("🚀 Pre-populating modal with \(existingChildren.count) existing children from placeholder view")
             self.addChildrenToModalContent(modalVC: modalVC, childViews: existingChildren)
+            
+            // ✅ FIX: Clear children from placeholder view after moving to modal
+            // This prevents children from appearing in both places
+            view.subviews.forEach { $0.removeFromSuperview() }
+        } else {
+            print("⚠️ No existing children found in placeholder view for modal")
         }
         
         // Store reference to presented modal BEFORE presentation
@@ -324,6 +331,23 @@ class DCFModalComponent: NSObject, DCFComponent {
     private func dismissModal(from view: UIView, viewId: String) {
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
             print("🔄 DCFModalComponent: Dismissing tracked modal")
+            
+            // ✅ FIX: Save children back to placeholder before dismissing
+            let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+            
+            if !modalChildren.isEmpty {
+                print("💾 Preserving \(modalChildren.count) children in placeholder view before dismissal")
+                
+                // Clear existing children from placeholder
+                view.subviews.forEach { $0.removeFromSuperview() }
+                
+                // Move children back to placeholder view
+                modalChildren.forEach { child in
+                    child.removeFromSuperview()
+                    view.addSubview(child)
+                }
+            }
+            
             modalVC.dismiss(animated: true) {
                 propagateEvent(on: view, eventName: "onDismiss", data: [:])
             }
@@ -374,7 +398,24 @@ class DCFModalViewController: UIViewController {
         
         // Only propagate dismiss event if modal is being dismissed, not just rotating
         if isBeingDismissed {
+            // ✅ FIX: Save children back to placeholder view before dismissing
             if let sourceView = sourceView {
+                // Collect all children from modal (excluding title and system views)
+                let modalChildren = view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+                
+                if !modalChildren.isEmpty {
+                    print("💾 Saving \(modalChildren.count) children back to placeholder view before modal dismissal")
+                    
+                    // Clear existing children from placeholder
+                    sourceView.subviews.forEach { $0.removeFromSuperview() }
+                    
+                    // Move children back to placeholder view
+                    modalChildren.forEach { child in
+                        child.removeFromSuperview()
+                        sourceView.addSubview(child)
+                    }
+                }
+                
                 propagateEvent(on: sourceView, eventName: "onDismiss", data: [:])
             }
             
