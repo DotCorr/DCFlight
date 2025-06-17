@@ -126,15 +126,8 @@ class DCFModalComponent: NSObject, DCFComponent {
             childView.translatesAutoresizingMaskIntoConstraints = false
             modalVC.view.addSubview(childView)
             
-            // ✅ FIX 2: Ensure child views can receive user interaction
-            childView.isUserInteractionEnabled = true
-            
-            // If it's a button or interactive element, ensure proper setup
-            if let button = childView as? UIButton {
-                print("🎯 Setting up button interaction for modal context")
-                button.isUserInteractionEnabled = true
-                // Ensure button events bubble up properly
-            }
+            // ✅ FIX 2: Ensure child views can receive user interaction recursively
+            enableUserInteractionRecursively(view: childView)
             
             // Add constraints for the child view
             if index == 0 {
@@ -160,6 +153,25 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("✅ Successfully added \(childViews.count) children to modal content")
     }
     
+    /// Recursively enable user interaction on a view and all its subviews
+    private func enableUserInteractionRecursively(view: UIView) {
+        view.isUserInteractionEnabled = true
+        
+        // Special handling for interactive elements
+        if let button = view as? UIButton {
+            print("🎯 Setting up button interaction for modal context: \(button.title(for: .normal) ?? "Unknown")")
+            button.isUserInteractionEnabled = true
+            
+            // Ensure button maintains its target-action connections
+            // The button should already have its targets set up from component creation
+        }
+        
+        // Recursively enable interaction for all subviews
+        for subview in view.subviews {
+            enableUserInteractionRecursively(view: subview)
+        }
+    }
+    
     // MARK: - Modal Presentation
     
     private func presentModal(from view: UIView, props: [String: Any], viewId: String) {
@@ -175,16 +187,17 @@ class DCFModalComponent: NSObject, DCFComponent {
         modalVC.sourceView = view
         modalVC.viewId = viewId
         
-        // ✅ FIX 1: Prepare content BEFORE presenting to prevent white screen
+        // ✅ FIX 1: Load modal view and prepare content BEFORE presenting
+        modalVC.loadViewIfNeeded()
+        
+        // Pre-populate modal content to avoid white screen
         let existingChildren = view.subviews
         if !existingChildren.isEmpty {
             print("🚀 Pre-populating modal with \(existingChildren.count) existing children")
-            // Pre-populate modal content to avoid white screen
-            modalVC.loadViewIfNeeded() // Ensure view is loaded
             self.addChildrenToModalContent(modalVC: modalVC, childViews: existingChildren)
         }
         
-        // Store reference to presented modal
+        // Store reference to presented modal BEFORE presentation
         DCFModalComponent.presentedModals[viewId] = modalVC
         
         // Configure modal presentation style
@@ -240,7 +253,7 @@ class DCFModalComponent: NSObject, DCFComponent {
             topViewController.present(modalVC, animated: true) {
                 print("✅ DCFModalComponent: Modal presented successfully")
                 
-                // ✅ FIX 1: Content already added before presentation, just trigger onShow event
+                // Propagate onShow event
                 propagateEvent(on: view, eventName: "onShow", data: [:])
             }
         } else {
