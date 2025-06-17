@@ -44,22 +44,22 @@ Comprehensive documentation of DCFlight's adaptive theming requirements:
 - Framework-level theming control
 
 ### **🌀 [Portal System Guide](./PORTAL_SYSTEM_GUIDE.md)**
-Complete guide to DCFlight's React-like portal system:
+Complete guide to DCFlight's robust, production-ready React-like portal system:
 - Portal architecture and use cases
 - DCFPortal and DCFPortalTarget components
-- Best practices for modal, overlay, and tooltip rendering
-- Common pitfalls and solutions
+- Conditional rendering and multiple portals per target
+- Automatic cleanup and lifecycle management
 - Portal state management patterns
 - Global portal target strategies
 
 ### **🔬 [Portal & VDOM Integration](./PORTAL_VDOM_INTEGRATION.md)**
 Technical deep-dive into portal and VDOM interaction:
-- Portal reconciliation flow
-- Why multiple portals per target cause conflicts
-- VDOM node lifecycle in portals
-- Performance implications and optimizations
-- Debugging portal issues
-- Technical implementation details
+- Enhanced portal manager architecture
+- Automatic cleanup and effect integration
+- Multiple portals per target support
+- VDOM reconciliation fixes and improvements
+- Performance optimizations and best practices
+- Production-ready implementation details
 
 ## 🎯 **Target Audience**
 

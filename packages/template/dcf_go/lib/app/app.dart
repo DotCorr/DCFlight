@@ -5,16 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcf_go/app/gradient.dart';
-import 'package:dcf_go/app/really_long_list.dart';
-import 'package:dcf_go/app/validation_test.dart';
-import 'package:dcf_go/app/list_state_perf.dart';
-import 'package:dcf_go/app/modal_test.dart';
-import 'package:dcf_go/app/portal_test.dart';
-import 'package:dcf_go/app/portal_test_new.dart';
-import 'package:dcf_go/app/simple_portal_test.dart';
-import 'package:dcf_go/app/swipeable_test.dart';
-import 'package:dcf_go/app/component_showcase.dart';
+import 'package:dcf_go/app/examples/gradient.dart';
+import 'package:dcf_go/app/examples/really_long_list.dart';
+import 'package:dcf_go/app/examples/validation_test.dart';
+import 'package:dcf_go/app/examples/list_state_perf.dart';
+import 'package:dcf_go/app/examples/modal_test.dart';
+import 'package:dcf_go/app/examples/portal_test.dart';
+import 'package:dcf_go/app/examples/swipeable_test.dart';
+import 'package:dcf_go/app/examples/component_showcase.dart';
 import 'package:dcflight/dcflight.dart';
 
 final pagestate = Store<int>(0);
@@ -50,9 +48,8 @@ class App extends StatefulComponent {
               DCFDropdownMenuItem(title: "Modal & Alert Test", value: "4"),
               DCFDropdownMenuItem(title: "Swipeable Test", value: "5"),
               DCFDropdownMenuItem(title: "Component Showcase", value: "6"),
-              DCFDropdownMenuItem(title: "Portal Test (Old)", value: "7"),
-              DCFDropdownMenuItem(title: "Portal Test (New)", value: "8"),
-              DCFDropdownMenuItem(title: "Portal Test (Simple)", value: "9"),
+              DCFDropdownMenuItem(title: "Portal Test", value: "7"),
+             
             ],
             selectedValue: pagestateLocal.state.toString(),
           ),
@@ -77,11 +74,9 @@ class App extends StatefulComponent {
                 : pagestateLocal.state == 6
                 ? ComponentShowcase()
                 : pagestateLocal.state == 7
-                ? PortalTest()
-                : pagestateLocal.state == 8
+                
                 ? PortalTestNew()
-                : pagestateLocal.state == 9
-                ? SimplePortalTest()
+               
                 : DCFView(),
           ],
         ),

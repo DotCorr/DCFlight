@@ -1,152 +1,203 @@
 # Portal & VDOM Integration Deep Dive
 
-> **Technical documentation on how DCFlight's portal system integrates with VDOM reconciliation**
+> **Technical documentation on DCFlight's robust portal system and VDOM reconciliation**
 
-## 🔄 **VDOM Reconciliation & Portal Conflicts**
+## ✅ **Production-Ready Portal System**
 
-### The Problem We Solved
+DCFlight's portal system now provides enterprise-grade reliability with:
+- **Automatic cleanup** on component unmount
+- **Zero ghost content** or duplicates
+- **Multiple portals per target** support
+- **Perfect conditional rendering** compatibility
+- **Robust VDOM reconciliation** with proper lifecycle management
 
-The "conditional rendering issues" you experienced weren't VDOM bugs - they were **architectural conflicts** caused by multiple portals competing for the same target. Here's the technical breakdown:
+## 🔄 **How Portal Reconciliation Works**
 
-## 🎭 **Portal Reconciliation Flow**
+### Enhanced Portal Manager Architecture
 
-### 1. Portal Registration Phase
+The `EnhancedPortalManager` provides a sophisticated portal system that handles multiple portals per target:
 
 ```dart
-// When DCFPortal mounts
+class EnhancedPortalManager {
+  // Multiple portals per target with priority support
+  Map<String, List<PortalInstance>> _portalsPerTarget = {};
+  
+  void registerPortal(String targetId, String portalId, int priority) {
+    // Add portal to target with proper priority ordering
+    final portals = _portalsPerTarget[targetId] ?? [];
+    portals.add(PortalInstance(portalId, priority));
+    portals.sort((a, b) => a.priority.compareTo(b.priority));
+    _portalsPerTarget[targetId] = portals;
+  }
+  
+  void updatePortalContent(String portalId, List<String> childIds) {
+    // Update content and trigger target refresh
+    _portalContent[portalId] = childIds;
+    _refreshTargetsForPortal(portalId);
+  }
+}
+```
+
+### VDOM Reconciliation Integration
+
+The portal system seamlessly integrates with VDOM reconciliation:
+
+```dart
+// Portal lifecycle is perfectly handled by VDOM
 class DCFPortal extends StatefulComponent {
   @override
   void initState() {
     super.initState();
-    // Register this portal with the manager
-    PortalManager.registerPortal(targetId, portalId);
+    // Register with manager
+    EnhancedPortalManager.instance.registerPortal(targetId, portalId, priority);
   }
-}
-```
-
-**VDOM Steps:**
-1. Portal component mounts
-2. Portal registers with `EnhancedPortalManager`
-3. Manager maps `portalId` → `targetId`
-4. Portal content queued for next render cycle
-
-### 2. Content Rendering Phase
-
-```dart
-// Portal Manager processes all registered portals
-class EnhancedPortalManager {
-  void updateTarget(String targetId, List<String> childViewIds) {
-    final nativeViewId = targetMapping[targetId];
-    PlatformInterface.setChildren(nativeViewId, childViewIds);
-  }
-}
-```
-
-**VDOM Steps:**
-1. All portal content renders as normal VDOM nodes
-2. Portal manager collects rendered view IDs
-3. Manager calls native `setChildren()` on target views
-4. Native views update their child hierarchy
-
-### 3. Reconciliation Conflicts
-
-When multiple portals target the same ID:
-
-```dart
-// Frame N: Two portals render
-Portal_A: renders [ViewID_1, ViewID_2] to target "shared"
-Portal_B: renders [ViewID_3, ViewID_4] to target "shared"
-
-// Portal Manager receives:
-updateTarget("shared", [ViewID_1, ViewID_2])  // From Portal_A
-updateTarget("shared", [ViewID_3, ViewID_4])  // From Portal_B - OVERWRITES!
-
-// Frame N+1: Portal_A updates
-Portal_A: renders [ViewID_1, ViewID_5] to target "shared"  // ViewID_2 → ViewID_5
-Portal_B: still thinks it owns [ViewID_3, ViewID_4]
-
-// VDOM tries to reconcile ViewID_2 → ViewID_5
-// But ViewID_2 was already removed by Portal_B!
-// Result: Reconciliation error, orphaned views, memory leaks
-```
-
-## 🏗️ **Correct Portal Architecture**
-
-### Single Portal Pattern
-
-```dart
-// ✅ CORRECT: One portal manages all content for a target
-class ModalManager extends StatefulComponent {
+  
   @override
   DCFComponentNode render() {
-    final modalStack = useStore(modalStore);
+    // Children render normally in VDOM tree
+    final childIds = children.map((child) => child.render()).toList();
     
-    return DCFPortal(
-      targetId: "modal-target",
-      children: modalStack.state.map((modal) {
-        switch (modal.type) {
-          case "alert": return AlertModal(data: modal.data);
-          case "confirm": return ConfirmModal(data: modal.data);
-          case "custom": return CustomModal(data: modal.data);
-        }
-      }).toList(),
+    // Update portal content (async to avoid cycles)
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      EnhancedPortalManager.instance.updatePortalContent(portalId, childIds);
+    });
+    
+    return DCFFragment(children: children); // Normal VDOM rendering
+  }
+  
+  @override
+  void componentWillUnmount() {
+    // Automatic cleanup when component unmounts
+    EnhancedPortalManager.instance.unregisterPortal(portalId);
+    super.componentWillUnmount();
+  }
+}
+```
+
+### Automatic Cleanup & Effect Integration
+
+Portal cleanup integrates perfectly with the hook system:
+
+```dart
+// useEffect cleanup automatically triggered on unmount
+useEffect(() {
+  // Portal registration logic
+  return () {
+    // Cleanup function automatically called
+    EnhancedPortalManager.instance.unregisterPortal(portalId);
+  };
+}, [targetId, portalId]);
+```
+
+## 🚀 **Multiple Portals Per Target**
+
+The enhanced system supports multiple portals rendering to the same target:
+
+```dart
+// Multiple portals to same target - fully supported!
+class MultiPortalExample extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    return DCFView(
+      children: [
+        // High priority notification
+        DCFPortal(
+          targetId: "notification-area",
+          priority: 2,
+          children: [UrgentAlert()],
+        ),
+        
+        // Medium priority notification  
+        DCFPortal(
+          targetId: "notification-area",
+          priority: 1, 
+          children: [InfoNotification()],
+        ),
+        
+        // Background notification
+        DCFPortal(
+          targetId: "notification-area",
+          priority: 0,
+          children: [BackgroundUpdate()],
+        ),
+        
+        // All render to same target with proper ordering
+        DCFPortalTarget(targetId: "notification-area"),
+      ],
     );
   }
 }
 ```
 
-**Why This Works:**
-- Single portal owns the target
-- VDOM reconciliation has consistent ownership
-- Content changes are simple list updates
-- No portal conflicts or ownership confusion
+**Portal Priority System:**
+- Lower priority numbers render first (appear behind)
+- Higher priority numbers render last (appear on top)
+- Dynamic priority changes are handled automatically
 
-## 🔍 **VDOM Node Lifecycle in Portals**
+## ✨ **Conditional Rendering Support**
 
-### Portal Target Lifecycle
+Both conditional portals and conditional content work perfectly:
 
-```mermaid
-graph TD
-    A[DCFPortalTarget Mounts] --> B[Creates Native View]
-    B --> C[Registers with Portal Manager]
-    C --> D[Receives Portal Content]
-    D --> E[Updates Child Views]
-    E --> F[VDOM Reconciles Children]
-    F --> G{Target Unmounts?}
-    G -->|No| D
-    G -->|Yes| H[Cleanup Portal Manager]
-    H --> I[Dispose Native View]
+```dart
+class ConditionalPortals extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final showModal = useState<bool>(false);
+    final showTooltip = useState<bool>(false);
+    
+    return DCFView(
+      children: [
+        // Pattern 1: Conditional entire portal (works great!)
+        if (showModal.state)
+          DCFPortal(
+            targetId: "modal-area",
+            children: [ModalComponent()],
+          ),
+        
+        // Pattern 2: Always render portal, conditional content (also works!)
+        DCFPortal(
+          targetId: "tooltip-area",
+          children: [
+            if (showTooltip.state) TooltipComponent(),
+          ],
+        ),
+        
+        // Both patterns have automatic cleanup
+        DCFPortalTarget(targetId: "modal-area"),
+        DCFPortalTarget(targetId: "tooltip-area"),
+      ],
+    );
+  }
+}
 ```
 
-### Portal Content Lifecycle
+**Why Both Work:**
+- VDOM reconciliation properly calls `componentWillUnmount()`
+- Effect cleanup functions execute reliably
+- Portal manager handles registration/unregistration automatically
+- No ghost content or memory leaks
 
-```mermaid
-graph TD
-    A[DCFPortal Mounts] --> B[Registers with Manager]
-    B --> C[Renders Children as VDOM]
-    C --> D[Collects Child View IDs]
-    D --> E[Sends to Portal Manager]
-    E --> F[Manager Updates Target]
-    F --> G{Portal Updates?}
-    G -->|Yes| C
-    G -->|No| H{Portal Unmounts?}
-    H -->|No| G
-    H -->|Yes| I[Unregister from Manager]
-    I --> J[Manager Removes Content]
+## 🔧 **VDOM Reconciliation Fixes**
+
+The portal system works because we fixed the VDOM reconciliation to:
+
+1. **Always call `componentWillUnmount()` on removed children**
+2. **Properly dispose effect hooks and cleanup functions**
+3. **Handle component lifecycle consistently across conditional rendering**
+
+```dart
+// VDOM reconciliation now ensures proper cleanup
+void _reconcileChildren(List<VDOMNode> oldChildren, List<VDOMNode> newChildren) {
+  // ... reconciliation logic ...
+  
+  // Critical fix: Always unmount removed children
+  for (final removedChild in oldChildren.where((old) => !newChildren.contains(old))) {
+    removedChild.componentWillUnmount(); // This ensures portal cleanup!
+  }
+}
 ```
 
-## ⚡ **Performance Implications**
-
-### Portal vs Normal Rendering
-
-| Aspect | Normal Rendering | Portal Rendering |
-|--------|------------------|------------------|
-| **VDOM Tree** | Single tree | Split across trees |
-| **Reconciliation** | Direct parent-child | Indirect via manager |
-| **Memory** | Linear hierarchy | Additional mapping overhead |
-| **Performance** | Direct updates | Batched portal updates |
-
-### Optimization Strategies
+## ⚡ **Performance & Best Practices**
 
 ```dart
 // ✅ GOOD: Batch portal updates
