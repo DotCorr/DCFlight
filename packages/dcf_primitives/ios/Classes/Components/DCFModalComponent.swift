@@ -126,9 +126,6 @@ class DCFModalComponent: NSObject, DCFComponent {
             childView.translatesAutoresizingMaskIntoConstraints = false
             modalVC.view.addSubview(childView)
             
-            // ✅ FIX 2: Ensure child views can receive user interaction recursively
-            enableUserInteractionRecursively(view: childView)
-            
             // Add constraints for the child view
             if index == 0 {
                 // First child - position below title area
@@ -151,25 +148,6 @@ class DCFModalComponent: NSObject, DCFComponent {
         }
         
         print("✅ Successfully added \(childViews.count) children to modal content")
-    }
-    
-    /// Recursively enable user interaction on a view and all its subviews
-    private func enableUserInteractionRecursively(view: UIView) {
-        view.isUserInteractionEnabled = true
-        
-        // Special handling for interactive elements
-        if let button = view as? UIButton {
-            print("🎯 Setting up button interaction for modal context: \(button.title(for: .normal) ?? "Unknown")")
-            button.isUserInteractionEnabled = true
-            
-            // Ensure button maintains its target-action connections
-            // The button should already have its targets set up from component creation
-        }
-        
-        // Recursively enable interaction for all subviews
-        for subview in view.subviews {
-            enableUserInteractionRecursively(view: subview)
-        }
     }
     
     // MARK: - Modal Presentation
@@ -381,22 +359,53 @@ class DCFModalViewController: UIViewController {
         }
     }
     
-    // ✅ FIX 2: Override touchesBegan to ensure modal content receives touches
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        super.touchesBegan(touches, with: event)
+    // ✅ FIX: Debug and fix shadow view overlay issue
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
         
-        // Ensure touch events are properly propagated to child views
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: view)
+        // Debug view hierarchy to find problematic overlays
+        DispatchQueue.main.async {
+            self.debugViewHierarchy()
+        }
+    }
+    
+    private func debugViewHierarchy() {
+        print("🔍 DCFModalViewController view hierarchy:")
+        debugPrintViewHierarchy(view: self.view, level: 0)
         
-        // Find the deepest subview that contains the touch point
-        if let hitView = view.hitTest(location, with: event) {
-            print("🔍 DCFModalViewController: Touch detected at \(location) on view: \(type(of: hitView))")
+        // Look for problematic shadow or overlay views
+        findAndFixProblematicViews(in: self.view)
+    }
+    
+    private func debugPrintViewHierarchy(view: UIView, level: Int) {
+        let indent = String(repeating: "  ", count: level)
+        print("\(indent)- \(type(of: view)) (frame: \(view.frame), userInteractionEnabled: \(view.isUserInteractionEnabled))")
+        
+        for subview in view.subviews {
+            debugPrintViewHierarchy(view: subview, level: level + 1)
+        }
+    }
+    
+    private func findAndFixProblematicViews(in view: UIView) {
+        // Look for shadow views or transparent overlays that might intercept touches
+        for subview in view.subviews {
+            let className = String(describing: type(of: subview))
             
-            // For buttons inside modal, ensure they receive the touch event
-            if hitView.isKind(of: UIButton.self) || hitView.superview?.isKind(of: UIButton.self) == true {
-                print("🎯 DCFModalViewController: Touch on button detected, ensuring proper event handling")
+            // Check for known problematic view types like _UIRoundedRectShadowView
+            if className.contains("Shadow") || className.contains("Rounded") || className.contains("Overlay") || className.contains("_UI") {
+                print("🚨 Found potential problematic view: \(className)")
+                print("   Frame: \(subview.frame)")
+                print("   UserInteractionEnabled: \(subview.isUserInteractionEnabled)")
+                print("   Background: \(String(describing: subview.backgroundColor))")
+                
+                // Try disabling user interaction on problematic views
+                if subview.isUserInteractionEnabled {
+                    print("   🔧 Disabling user interaction on overlay view: \(className)")
+                    subview.isUserInteractionEnabled = false
+                }
             }
+            
+            findAndFixProblematicViews(in: subview)
         }
     }
     
