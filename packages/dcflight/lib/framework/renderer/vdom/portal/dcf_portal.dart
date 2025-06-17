@@ -198,17 +198,13 @@ class DCFPortalTarget extends StatefulComponent {
 
     // Create the element that will be our portal target
     final element = DCFElement(
-      type: 'View', // Use View component to create a native container
+      type: 'View', // Use View component to create a native container(why not fragment or any conceptual/virtual element? Cause portal is porting nodes that already exits into actual native componets so we need a real view to port to)
       props: {
         'isPortalTarget': true,
         'targetId': targetId,
         'flex': 1,
         "width": "100%",
         "height": "100%",
-        'backgroundColor': '#E8F4FD', // Light blue background for visibility
-        'borderWidth': 2,
-        'borderColor': '#2196F3', // Blue border to make it visible
-        'minHeight': 50, // Ensure it has some height
       },
       children: children,
     );
