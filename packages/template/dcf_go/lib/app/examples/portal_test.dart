@@ -238,7 +238,7 @@ class PortalTestNew extends StatefulComponent {
       portals.add(
         DCFPortal(
           targetId: 'notification-area',
-          priority: 1,
+          priority: 0,
           children: [
             DCFView(
               layout: LayoutProps(

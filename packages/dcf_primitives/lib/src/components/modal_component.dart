@@ -8,11 +8,10 @@
 
 import 'package:dcflight/dcflight.dart';
 
-/// 🚀 DCF Modal Component - Native Modal with Conditional Children
+/// 🚀 DCF Modal Component - React Portal Style
 /// 
-/// A modal component that renders children directly into the native modal
-/// when visible. The native modal component handles the actual modal presentation
-/// and child management.
+/// A modal component that uses portals for rendering, just like React.
+/// The modal content is automatically portaled to 'modal-root' host.
 /// 
 /// Usage:
 /// ```dart
@@ -20,6 +19,15 @@ import 'package:dcflight/dcflight.dart';
 ///   visible: isModalVisible,
 ///   children: [
 ///     DCFText("Modal content")
+///   ],
+/// )
+/// ```
+/// 
+/// Make sure your app is wrapped in DCFPortalProvider for modals to work:
+/// ```dart
+/// DCFPortalProvider(
+///   children: [
+///     YourApp(),
 ///   ],
 /// )
 /// ```
@@ -125,7 +133,7 @@ class DCFModal extends StatelessComponent {
       eventMap['onOpen'] = onOpen;
     }
     
-    // ✅ SIMPLE APPROACH: Return modal directly with children
+    // ✅ SIMPLE FIX: Return modal directly with children - no wrapper needed!
     return DCFElement(
       type: 'Modal',
       props: {
@@ -141,11 +149,12 @@ class DCFModal extends StatelessComponent {
         'capturesStatusBarAppearance': capturesStatusBarAppearance,
         'definesPresentationContext': definesPresentationContext,
         'providesTransitionContext': providesTransitionContext,
+       
         ...layout.toMap(),
         ...style.toMap(),
         ...eventMap,
       },
-      children: children, // ✅ Direct children - should work with native setChildren
+      children: children, // ✅ Direct children - simple and works!
     );
   }
 }

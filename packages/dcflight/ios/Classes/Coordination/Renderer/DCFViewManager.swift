@@ -95,8 +95,6 @@ class DCFViewManager {
             return false
         }
         
-        print("✅ DCFViewManager: Found component type for \(viewType)")
-        
         // Create component instance and view
         let componentInstance = componentType.init()
        
