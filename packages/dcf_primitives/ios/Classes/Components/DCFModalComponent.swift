@@ -110,44 +110,70 @@ class DCFModalComponent: NSObject, DCFComponent {
         // Clear existing children from modal content
         modalVC.view.subviews.forEach { subview in
             // Don't remove system views, only our content
-            if subview.tag != 999 { // Use tag to identify system views
+            if subview.tag != 999 && subview.tag != 998 { // Preserve title and container
                 print("🗑️ Removing existing subview from modal: \(type(of: subview))")
                 subview.removeFromSuperview()
             }
         }
         
-        // Add each child view to the modal's content
+        // ✅ FOLLOW VirtualizedScrollView PATTERN: Manual content positioning, NO Auto Layout constraints
+        var currentY: CGFloat = 60 // Start below title area
+        let containerMargin: CGFloat = 20
+        let availableWidth = modalVC.view.frame.width - (containerMargin * 2)
+        
+        print("📏 Modal content positioning - available width: \(availableWidth), starting Y: \(currentY)")
+        
+        // Add each child view with manual frame positioning (like VirtualizedScrollView)
         for (index, childView) in childViews.enumerated() {
-            print("🔄 Adding child \(index) to modal: \(type(of: childView))")
+            print("🔄 Adding child \(index) to modal with manual positioning: \(type(of: childView))")
             
             // Remove from any previous parent
             childView.removeFromSuperview()
             
-            childView.translatesAutoresizingMaskIntoConstraints = false
+            // ✅ KEY: Disable Auto Layout - use manual frame positioning like VirtualizedScrollView
+            childView.translatesAutoresizingMaskIntoConstraints = true
+            
+            // Add to modal view
             modalVC.view.addSubview(childView)
             
-            // Add constraints for the child view
-            if index == 0 {
-                // First child - position below title area
-                NSLayoutConstraint.activate([
-                    childView.topAnchor.constraint(equalTo: modalVC.view.safeAreaLayoutGuide.topAnchor, constant: 60),
-                    childView.leadingAnchor.constraint(equalTo: modalVC.view.leadingAnchor, constant: 20),
-                    childView.trailingAnchor.constraint(equalTo: modalVC.view.trailingAnchor, constant: -20),
-                    childView.bottomAnchor.constraint(lessThanOrEqualTo: modalVC.view.bottomAnchor, constant: -20)
-                ])
-            } else {
-                // Subsequent children - stack vertically
-                let previousChild = childViews[index - 1]
-                NSLayoutConstraint.activate([
-                    childView.topAnchor.constraint(equalTo: previousChild.bottomAnchor, constant: 10),
-                    childView.leadingAnchor.constraint(equalTo: modalVC.view.leadingAnchor, constant: 20),
-                    childView.trailingAnchor.constraint(equalTo: modalVC.view.trailingAnchor, constant: -20),
-                    childView.bottomAnchor.constraint(lessThanOrEqualTo: modalVC.view.bottomAnchor, constant: -20)
-                ])
+            // Calculate child size using intrinsic content size or yoga layout results
+            var childHeight: CGFloat = 44 // Default minimum height
+            let intrinsicSize = childView.intrinsicContentSize
+            
+            if intrinsicSize.height > 0 {
+                childHeight = intrinsicSize.height
+            } else if childView.frame.height > 0 {
+                // Use existing frame height from Yoga if available
+                childHeight = childView.frame.height
             }
+            
+            // ✅ MANUAL FRAME POSITIONING - exactly like VirtualizedScrollView approach
+            let childFrame = CGRect(
+                x: containerMargin,
+                y: currentY,
+                width: availableWidth,
+                height: childHeight
+            )
+            
+            childView.frame = childFrame
+            
+            print("📐 Positioned child \(index) at frame: \(childFrame)")
+            
+            // Update Y position for next child
+            currentY += childHeight + 10 // 10pt spacing between children
         }
         
-        print("✅ Successfully added \(childViews.count) children to modal content")
+        // ✅ ENSURE MODAL VIEW HAS SUFFICIENT CONTENT BOUNDS (like VirtualizedScrollView contentSize)
+        let totalContentHeight = currentY + 20 // Add bottom margin
+        let modalCurrentHeight = modalVC.view.frame.height
+        
+        if totalContentHeight > modalCurrentHeight {
+            print("📏 Modal content height (\(totalContentHeight)) exceeds modal height (\(modalCurrentHeight))")
+            // Note: For modals we don't change the modal's frame, but we ensure content is positioned correctly
+        }
+        
+        print("✅ Successfully positioned \(childViews.count) children using manual frames (VirtualizedScrollView pattern)")
+        print("📏 Total content height: \(totalContentHeight), Modal height: \(modalCurrentHeight)")
     }
     
     // MARK: - Modal Presentation
