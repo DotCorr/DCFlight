@@ -15,6 +15,27 @@ class PortalTest extends StatefulComponent {
     return DCFScrollView(
       layout: LayoutProps(flex: 1, padding: 16),
       children: [
+        DCFButton(buttonProps: DCFButtonProps(
+          title: showPortal.state ? "Hide Portal" : "Show Portal",
+        ),
+        onPress: (v) {
+          showPortal.setState(!showPortal.state);
+        }),
+        if(showPortal.state)
+          DCFPortal(
+            targetId: "test",
+            children: [
+              DCFText(
+                content: "🎉 PORTAL CONTENT WORKS!",
+                textProps: DCFTextProps(
+                  fontSize: 18,
+                  fontWeight: "bold",
+                  color: Colors.green,
+                ),
+                layout: LayoutProps(marginBottom: 10),
+              ),
+            ],
+          ),
         DCFPortalTarget(targetId: "test"),
         // This is the target where the portal will render its content
         DCFPortal(
