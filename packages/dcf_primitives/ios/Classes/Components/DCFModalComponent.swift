@@ -21,13 +21,17 @@ class DCFModalComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         print("🚀 DCFModalComponent.createView called with props: \(props.keys.sorted())")
         
-        // ✅ FIX: Create a completely invisible placeholder that NEVER shows content in main UI
+        // ✅ FIX: Create a completely invisible placeholder that takes ZERO space
         let view = UIView()
         view.backgroundColor = UIColor.clear
         view.isHidden = true // Completely hidden from main UI
         view.frame = CGRect.zero // Zero size
+        view.bounds = CGRect.zero // Zero bounds too
         view.clipsToBounds = true // Ensure no overflow
         view.isUserInteractionEnabled = false // No interactions in main UI
+        
+        // ✅ CRITICAL: Tell layout engine this view should be ignored
+        view.translatesAutoresizingMaskIntoConstraints = true
         
         // Apply initial properties
         let _ = updateView(view, withProps: props)
@@ -60,16 +64,16 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("🔍 DCFModalComponent: Final visible value = \(isVisible)")
         
         // ✅ CRITICAL FIX: Only dismiss if modal is actually presented AND visible becomes false
-        // Don't dismiss just because visible changed - wait for actual dismissal
+        // Don't move children immediately - let the modal animate out first
         if isVisible {
             print("🚀 DCFModalComponent: Attempting to present modal")
             presentModal(from: view, props: props, viewId: viewId)
         } else {
             // ✅ CHANGE: Only programmatically dismiss if we have a modal to dismiss
-            // Don't do anything for drag-based dismissals - those will be handled by viewWillDisappear
+            // DON'T move children here - let dismissal completion handle it
             if let modalVC = DCFModalComponent.presentedModals[viewId], !modalVC.isBeingDismissed {
-                print("🚀 DCFModalComponent: Programmatically dismissing modal (not drag-based)")
-                dismissModal(from: view, viewId: viewId)
+                print("🚀 DCFModalComponent: Programmatically dismissing modal (children stay until animation completes)")
+                dismissModalWithoutMovingChildren(from: view, viewId: viewId)
             } else {
                 print("🔄 DCFModalComponent: Modal not presented or already being dismissed, ignoring visible=false")
             }
@@ -82,26 +86,32 @@ class DCFModalComponent: NSObject, DCFComponent {
     // MARK: - DCFComponent Protocol Methods
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // ✅ CRITICAL: Modal placeholder must NEVER take up space in main UI
-        // Force zero size regardless of what layout engine says
-        view.frame = CGRect.zero
+        // ✅ CRITICAL: Override layout calculation to force ZERO space
+        view.frame = CGRect(x: 0, y: 0, width: 0, height: 0)
+        view.bounds = CGRect.zero
         view.isHidden = true
         view.clipsToBounds = true
         view.isUserInteractionEnabled = false
         
-        // ✅ ALSO: Ensure all children in placeholder are also zero-sized and hidden
+        // ✅ Tell the layout system this view has no size
+        view.translatesAutoresizingMaskIntoConstraints = true
+        
+        // ✅ ALSO: Ensure all children in placeholder take no space
         view.subviews.forEach { child in
             child.isHidden = true
             child.alpha = 0.0
-            child.frame = CGRect.zero // Don't let children take up space either
+            child.frame = CGRect.zero
+            child.bounds = CGRect.zero
+            child.translatesAutoresizingMaskIntoConstraints = true
         }
         
-        print("📐 DCFModalComponent.applyLayout - Enforced zero-space invisible placeholder")
+        print("📐 DCFModalComponent.applyLayout - Enforced ZERO-SPACE placeholder")
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // ✅ CRITICAL: Modal placeholder must NEVER report any intrinsic size
-        // This prevents it from taking up space in layout calculations
+        // ✅ CRITICAL: Modal placeholder must report ZERO intrinsic size
+        // This is crucial for layout engines to not allocate space
+        print("📏 DCFModalComponent.getIntrinsicSize - Returning CGSize.zero")
         return CGSize.zero
     }
     
@@ -115,19 +125,24 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("🚀 DCFModalComponent.setChildren - view hash: \(view.hash)")
         print("🚀 DCFModalComponent.setChildren - children types: \(childViews.map { type(of: $0) })")
         
-        // ✅ ENSURE placeholder view stays invisible in main UI
+        // ✅ ENSURE placeholder view stays invisible and takes NO SPACE in main UI
         view.isHidden = true
         view.frame = CGRect.zero
+        view.bounds = CGRect.zero
         view.isUserInteractionEnabled = false
+        view.clipsToBounds = true
         
-        // ✅ Store children in placeholder but make them invisible in main UI
+        // ✅ Store children in placeholder but make them invisible and take NO SPACE
         print("💾 Storing \(childViews.count) children in placeholder view (hidden from main UI)")
         view.subviews.forEach { $0.removeFromSuperview() }
         childViews.forEach { childView in
             view.addSubview(childView)
-            // ✅ CRITICAL: Hide children when in placeholder view (main UI)
+            // ✅ CRITICAL: Hide children AND make them take no space in main UI
             childView.isHidden = true
             childView.alpha = 0.0
+            childView.frame = CGRect.zero
+            childView.bounds = CGRect.zero
+            childView.clipsToBounds = true
         }
         
         // If modal is currently presented, move children to modal content and make them visible
@@ -389,6 +404,54 @@ class DCFModalComponent: NSObject, DCFComponent {
         // ✅ CRITICAL FIX: Set delegate to handle drag dismissal properly
         if let dcfModalVC = modalVC as? DCFModalViewController {
             sheet.delegate = dcfModalVC
+        }
+    }
+    
+    private func dismissModalWithoutMovingChildren(from view: UIView, viewId: String) {
+        if let modalVC = DCFModalComponent.presentedModals[viewId] {
+            print("🔄 DCFModalComponent: Programmatically dismissing modal (keeping children visible during animation)")
+            
+            // ✅ DON'T move children here - let the modal animate out with children visible
+            // Children will be moved back in the completion block when animation finishes
+            
+            modalVC.dismiss(animated: true) {
+                print("✅ Programmatic dismissal animation completed - NOW moving children back")
+                
+                // NOW move children back to placeholder after animation completes
+                let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+                
+                if !modalChildren.isEmpty {
+                    print("💾 Post-animation: Moving \(modalChildren.count) children back to placeholder")
+                    
+                    // Clear existing children from placeholder
+                    view.subviews.forEach { $0.removeFromSuperview() }
+                    
+                    // Move children back to placeholder view and hide them from main UI
+                    modalChildren.forEach { child in
+                        child.removeFromSuperview()
+                        view.addSubview(child)
+                        // ✅ CRITICAL: Hide children when moved back to placeholder (main UI)
+                        child.isHidden = true
+                        child.alpha = 0.0
+                        child.frame = CGRect.zero
+                        child.bounds = CGRect.zero
+                        child.clipsToBounds = true
+                    }
+                }
+                
+                propagateEvent(on: view, eventName: "onDismiss", data: [:])
+            }
+            
+            // Remove from tracking
+            DCFModalComponent.presentedModals.removeValue(forKey: viewId)
+        } else if let topViewController = getTopViewController(),
+                  topViewController.presentedViewController != nil {
+            print("🔄 DCFModalComponent: Dismissing any presented modal")
+            topViewController.dismiss(animated: true) {
+                propagateEvent(on: view, eventName: "onDismiss", data: [:])
+            }
+        } else {
+            print("ℹ️ DCFModalComponent: No modal to dismiss")
         }
     }
     
