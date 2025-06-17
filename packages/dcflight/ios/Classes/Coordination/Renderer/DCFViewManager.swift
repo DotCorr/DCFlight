@@ -91,7 +91,7 @@ class DCFViewManager {
         
         // Get component type
         guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
-            print("❌ Component not found for type: \(viewType)")
+            
             return false
         }
         
@@ -99,10 +99,10 @@ class DCFViewManager {
         
         // Create component instance and view
         let componentInstance = componentType.init()
-        print("✅ DCFViewManager: Created component instance")
+       
         
         let view = componentInstance.createView(props: props)
-        print("✅ DCFViewManager: Called componentInstance.createView(), got view: \(view)")
+        
         
         // Tag the view with its component type for event registration
         objc_setAssociatedObject(
@@ -114,15 +114,15 @@ class DCFViewManager {
         
         // Register the view
         ViewRegistry.shared.registerView(view, id: viewId, type: viewType)
-        print("✅ DCFViewManager: Registered view in ViewRegistry")
+        
         
         // Create shadow tree node
         YogaShadowTree.shared.createNode(id: viewId, componentType: viewType)
-        print("✅ DCFViewManager: Created shadow tree node")
+        
         
         // Register with layout manager
         DCFLayoutManager.shared.registerView(view, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
-        print("✅ DCFViewManager: Registered with layout manager")
+       
         
         // Apply layout props if any
         let layoutProps = extractLayoutProps(from: props)
@@ -132,10 +132,10 @@ class DCFViewManager {
                 componentType: viewType,
                 props: layoutProps
             )
-            print("✅ DCFViewManager: Applied layout props")
+          
         }
         
-        print("✅ Created view \(viewId) of type \(viewType)")
+       
         return true
     }
     
