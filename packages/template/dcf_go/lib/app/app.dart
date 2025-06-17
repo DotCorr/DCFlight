@@ -10,7 +10,6 @@ import 'package:dcf_go/app/examples/really_long_list.dart';
 import 'package:dcf_go/app/examples/validation_test.dart';
 import 'package:dcf_go/app/examples/list_state_perf.dart';
 import 'package:dcf_go/app/examples/modal_test.dart';
-import 'package:dcf_go/app/examples/portal_test.dart';
 import 'package:dcf_go/app/examples/swipeable_test.dart';
 import 'package:dcf_go/app/examples/component_showcase.dart';
 import 'package:dcflight/dcflight.dart';
@@ -73,10 +72,7 @@ class App extends StatefulComponent {
                 ? SwipeableTest()
                 : pagestateLocal.state == 6
                 ? ComponentShowcase()
-                : pagestateLocal.state == 7
-                
-                ? PortalTestNew()
-               
+             
                 : DCFView(),
           ],
         ),
