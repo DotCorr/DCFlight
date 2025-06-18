@@ -24,15 +24,19 @@ class App extends StatefulComponent {
     final pagestateLocal = useStore(pagestate);
 
     // Removed DCFPortalProvider wrapper to test modal rendering
-    return DCFSafeAreaView(
-      layout: LayoutProps(flex: 1, padding: 8),
+    return DCFView(
+      layout: LayoutProps(flex: 1),
       children: [
-        DCFDropdown(
-          layout: LayoutProps(height: 40, marginBottom: 8),
-          onValueChange: (v) {
-            pagestateLocal.setState(int.parse(v['value']));
-            print("Selected value: $v, Item: $v");
-          },
+        // Main App Content
+        DCFSafeAreaView(
+          layout: LayoutProps(flex: 1, padding: 8),
+          children: [
+            DCFDropdown(
+              layout: LayoutProps(height: 40, marginBottom: 8),
+              onValueChange: (v) {
+                pagestateLocal.setState(int.parse(v['value']));
+                print("Selected value: $v, Item: $v");
+              },
           onClose: (v) {
             print("closed");
           },
@@ -354,6 +358,10 @@ class App extends StatefulComponent {
           ], // Close DCFScrollView children
         ), // Close DCFScrollView
       ], // Close DCFSafeAreaView children
-    ); // Close DCFSafeAreaView (return statement)
+        ), // Close DCFSafeAreaView
+        
+      
+      ], // Close main DCFView children
+    ); // Close main DCFView (return statement)
   }
 }
