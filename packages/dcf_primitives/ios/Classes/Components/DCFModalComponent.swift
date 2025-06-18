@@ -142,12 +142,31 @@ class DCFModalComponent: NSObject, DCFComponent {
             }
         }
         
+        // ✅ FIX 2: Force view layout to get accurate bounds before sizing children
+        modalVC.view.setNeedsLayout()
+        modalVC.view.layoutIfNeeded()
+        
         // ✅ GIVE ABSTRACTION LAYER FULL CONTROL: No explicit margins/padding, full width/height
         let modalFrame = modalVC.view.bounds
         let availableWidth = modalFrame.width
         let availableHeight = modalFrame.height
         
+        print("📏 Modal FULL sizing - modal bounds: \(modalFrame)")
         print("📏 Modal FULL sizing - available: \(availableWidth)x\(availableHeight)")
+        
+        // ✅ For sheet presentations, we need to account for the actual content area
+        var contentFrame = modalFrame
+        if #available(iOS 15.0, *), let sheet = modalVC.sheetPresentationController {
+            // Use the modal view's safe area insets for sheet content
+            let safeArea = modalVC.view.safeAreaInsets
+            contentFrame = CGRect(
+                x: safeArea.left,
+                y: safeArea.top,
+                width: modalFrame.width - safeArea.left - safeArea.right,
+                height: modalFrame.height - safeArea.top - safeArea.bottom
+            )
+            print("📏 Sheet content area adjusted for safe area: \(contentFrame)")
+        }
         
         // ✅ AUTO-FILL: Single child fills the entire modal space, let abstraction layer handle layout
         if childViews.count == 1, let childView = childViews.first {
@@ -166,21 +185,20 @@ class DCFModalComponent: NSObject, DCFComponent {
             childView.isHidden = false
             childView.alpha = 1.0
             
-            // ✅ FULL FRAME: Give child the entire modal space (0 margins/padding)
-            childView.frame = CGRect(
-                x: 0,
-                y: 0, 
-                width: availableWidth,
-                height: availableHeight
-            )
+            // ✅ FULL FRAME: Give child the entire content area
+            childView.frame = contentFrame
             
             print("📐 Child given FULL modal frame: \(childView.frame)")
+            
+            // ✅ Force layout update to ensure Yoga gets the correct size
+            childView.setNeedsLayout()
+            childView.layoutIfNeeded()
             
         } else if childViews.count > 1 {
             // Multiple children: stack vertically but use full width
             print("📚 Multiple children: stacking with full width, letting abstraction layer control spacing")
             
-            var currentY: CGFloat = 0 // Start at top, no margins
+            var currentY: CGFloat = contentFrame.minY // Start at content area top
             
             for (index, childView) in childViews.enumerated() {
                 print("🔄 Adding child \(index) with full width: \(type(of: childView))")
@@ -207,14 +225,18 @@ class DCFModalComponent: NSObject, DCFComponent {
                 
                 // ✅ FULL WIDTH POSITIONING: Let abstraction layer handle internal spacing
                 let childFrame = CGRect(
-                    x: 0, // No left margin
+                    x: contentFrame.minX, // Respect content area
                     y: currentY,
-                    width: availableWidth, // Full width
+                    width: contentFrame.width, // Full content width
                     height: childHeight
                 )
                 
                 childView.frame = childFrame
                 print("📐 Child \(index) frame: \(childFrame)")
+                
+                // Force layout update for this child
+                childView.setNeedsLayout()
+                childView.layoutIfNeeded()
                 
                 // No extra spacing - let abstraction layer control it
                 currentY += childHeight
@@ -328,6 +350,30 @@ class DCFModalComponent: NSObject, DCFComponent {
     private func configureSheetDetents(sheet: UISheetPresentationController, modalVC: UIViewController, props: [String: Any]) {
         var detents: [UISheetPresentationController.Detent] = []
         
+        // ✅ FIX 1: Apply corner radius to sheet presentation controller
+        var cornerRadius: CGFloat = 16.0 // Default value
+        if let radius = props["cornerRadius"] as? CGFloat {
+            cornerRadius = radius
+            print("🔧 Sheet: Found cornerRadius as CGFloat: \(radius)")
+        } else if let radius = props["cornerRadius"] as? Double {
+            cornerRadius = CGFloat(radius)
+            print("🔧 Sheet: Found cornerRadius as Double: \(radius)")
+        } else if let radius = props["cornerRadius"] as? Int {
+            cornerRadius = CGFloat(radius)
+            print("🔧 Sheet: Found cornerRadius as Int: \(radius)")
+        } else if let radius = props["cornerRadius"] as? NSNumber {
+            cornerRadius = CGFloat(radius.doubleValue)
+            print("🔧 Sheet: Found cornerRadius as NSNumber: \(radius)")
+        } else {
+            print("🔧 Sheet: No cornerRadius found, using default: \(cornerRadius)")
+        }
+        
+        // Apply corner radius to the sheet
+        if #available(iOS 16.0, *) {
+            sheet.preferredCornerRadius = cornerRadius
+            print("✅ Sheet: Set preferredCornerRadius to: \(cornerRadius)")
+        }
+        
         // Parse detents from props
         if let detentArray = props["detents"] as? [String] {
             for detentString in detentArray {
@@ -365,7 +411,25 @@ class DCFModalComponent: NSObject, DCFComponent {
         
         // Configure other sheet properties
         sheet.prefersGrabberVisible = props["showDragIndicator"] as? Bool ?? true
-        sheet.preferredCornerRadius = props["cornerRadius"] as? CGFloat ?? 16.0
+
+        if let radius = props["cornerRadius"] as? CGFloat {
+            cornerRadius = radius
+            print("🔧 DCFModalComponent: Found cornerRadius as CGFloat: \(radius)")
+        } else if let radius = props["cornerRadius"] as? Double {
+            cornerRadius = CGFloat(radius)
+            print("🔧 DCFModalComponent: Found cornerRadius as Double: \(radius)")
+        } else if let radius = props["cornerRadius"] as? Int {
+            cornerRadius = CGFloat(radius)
+            print("🔧 DCFModalComponent: Found cornerRadius as Int: \(radius)")
+        } else if let radius = props["cornerRadius"] as? NSNumber {
+            cornerRadius = CGFloat(radius.doubleValue)
+            print("🔧 DCFModalComponent: Found cornerRadius as NSNumber: \(radius)")
+        } else {
+            print("🔧 DCFModalComponent: No cornerRadius found, using default: \(cornerRadius)")
+        }
+        
+        sheet.preferredCornerRadius = cornerRadius
+        print("✅ DCFModalComponent: Set sheet corner radius to: \(cornerRadius)")
         
         // Configure dismissal behavior - use the modal view controller, not the sheet
         if let isDismissible = props["isDismissible"] as? Bool {
@@ -497,6 +561,63 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
     override func viewDidLoad() {
         super.viewDidLoad()
         setupModalContent()
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // ✅ FIX 2: Ensure children are properly sized when modal bounds change
+        let contentChildren = view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+        
+        if !contentChildren.isEmpty {
+            print("📐 Modal bounds changed, updating \(contentChildren.count) children sizes")
+            
+            // Calculate the available content area
+            var contentFrame = view.bounds
+            if #available(iOS 15.0, *), let sheet = sheetPresentationController {
+                let safeArea = view.safeAreaInsets
+                contentFrame = CGRect(
+                    x: safeArea.left,
+                    y: safeArea.top,
+                    width: view.bounds.width - safeArea.left - safeArea.right,
+                    height: view.bounds.height - safeArea.top - safeArea.bottom
+                )
+            }
+            
+            // Update child frames to match new modal size
+            if contentChildren.count == 1, let childView = contentChildren.first {
+                // Single child fills entire content area
+                childView.frame = contentFrame
+                print("📐 Updated single child frame to: \(childView.frame)")
+                
+                // Force Yoga layout update
+                childView.setNeedsLayout()
+                childView.layoutIfNeeded()
+            } else {
+                // Multiple children: recalculate positions
+                var currentY: CGFloat = contentFrame.minY
+                
+                for (index, childView) in contentChildren.enumerated() {
+                    let childHeight = childView.frame.height
+                    
+                    let childFrame = CGRect(
+                        x: contentFrame.minX,
+                        y: currentY,
+                        width: contentFrame.width,
+                        height: childHeight
+                    )
+                    
+                    childView.frame = childFrame
+                    print("📐 Updated child \(index) frame to: \(childFrame)")
+                    
+                    // Force Yoga layout update
+                    childView.setNeedsLayout()
+                    childView.layoutIfNeeded()
+                    
+                    currentY += childHeight
+                }
+            }
+        }
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -689,6 +810,36 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
     
     private func setupModalContent() {
         view.backgroundColor = UIColor.systemBackground
+        
+        // Configure corner radius for the modal view
+        var cornerRadius: CGFloat = 16.0 // Default value
+        if let radius = modalProps["cornerRadius"] as? CGFloat {
+            cornerRadius = radius
+            print("🔧 DCFModalViewController: Found cornerRadius as CGFloat: \(radius)")
+        } else if let radius = modalProps["cornerRadius"] as? Double {
+            cornerRadius = CGFloat(radius)
+            print("🔧 DCFModalViewController: Found cornerRadius as Double: \(radius)")
+        } else if let radius = modalProps["cornerRadius"] as? Int {
+            cornerRadius = CGFloat(radius)
+            print("🔧 DCFModalViewController: Found cornerRadius as Int: \(radius)")
+        } else if let radius = modalProps["cornerRadius"] as? NSNumber {
+            cornerRadius = CGFloat(radius.doubleValue)
+            print("🔧 DCFModalViewController: Found cornerRadius as NSNumber: \(radius)")
+        } else {
+            print("🔧 DCFModalViewController: No cornerRadius found, using default: \(cornerRadius)")
+        }
+        
+        // ✅ FIX: Apply corner radius to both the view and sheet (if applicable)
+        view.layer.cornerRadius = cornerRadius
+        view.layer.masksToBounds = true
+        print("✅ DCFModalViewController: Set modal view corner radius to: \(cornerRadius)")
+        
+        // ✅ For sheet presentations on iOS 16+, the preferredCornerRadius should already be set
+        // in configureSheetDetents, but let's ensure it's applied here too as a fallback
+        if #available(iOS 16.0, *), let sheet = sheetPresentationController {
+            sheet.preferredCornerRadius = cornerRadius
+            print("✅ DCFModalViewController: Set sheet preferredCornerRadius to: \(cornerRadius)")
+        }
         
         // ✅ REMOVED: No automatic title rendering - let abstraction layer handle titles
         // The title prop is still available in modalProps for the abstraction layer to use
