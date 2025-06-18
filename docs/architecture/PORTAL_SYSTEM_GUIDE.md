@@ -541,7 +541,6 @@ DCFPortal(
 ```
 
 **Note**: Portal cleanup is now fully automated thanks to improved VDOM reconciliation.
-```
 
 ## 📋 **Portal Implementation Checklist**
 
@@ -573,3 +572,76 @@ Before implementing portals, ensure:
 ---
 
 **✨ The DCFlight portal system is production-ready and handles all edge cases automatically. Use conditional rendering, multiple portals, and complex hierarchies with confidence - the system will handle cleanup and reconciliation seamlessly.**
+
+## 🔧 **How DCFlight Portals Work Under the Hood**
+
+### **Portal Architecture Overview**
+
+DCFlight portals work through **efficient node transfer and direct native rendering**, not through state duplication or copying. Here's exactly how it works:
+
+#### **1. Portal Target Registration**
+```
+DCFPortalTarget creates a native view container
+     ↓
+EnhancedPortalManager.registerTarget() 
+     ↓
+Stores mapping: targetId -> nativeViewId
+```
+
+#### **2. Portal Content Addition (ExplicitPortalAPI.add)**
+```
+Content nodes (DCFComponentNode[]) passed to ExplicitPortalAPI.add()
+     ↓
+EnhancedPortalManager.createPortal() 
+     ↓
+Each content node rendered via VDomAPI.renderToNative()
+     ↓ 
+Native views created with unique viewIds
+     ↓
+Parent-child relationships established: targetViewId <- childViewIds
+     ↓
+Content appears in portal target (different location in UI tree)
+```
+
+#### **3. Key Technical Details**
+
+**Q: Are nodes copied or transferred?**
+A: **Transferred efficiently!** The VDOM nodes are rendered directly to the target location. No copying or state duplication.
+
+**Q: How is performance maintained?**
+A: **Direct native rendering!** Portal content goes straight from VDOM to native views, bypassing the main UI reconciliation tree.
+
+**Q: What happens during updates?**
+A: **Smart reconciliation!** Only the portal content is re-rendered, main UI tree is unaffected.
+
+```mermaid
+graph TD
+    A[Your Component] --> B[ExplicitPortalAPI.add]
+    B --> C[EnhancedPortalManager] 
+    C --> D[VDomAPI.renderToNative]
+    D --> E[Native Views Created]
+    E --> F[Portal Target Container]
+    F --> G[Content Appears in Target]
+    
+    H[Main UI Tree] -.-> I[Continues Normal Reconciliation]
+    G -.-> J[Completely Separate from Main UI]
+```
+
+#### **4. Performance Benefits**
+
+- **Zero Duplication**: Content exists only in the portal target, never in source component
+- **Efficient Updates**: Portal content updates independently of main UI reconciliation
+- **Memory Optimal**: Automatic cleanup when portals are removed
+- **Native Performance**: Direct native view manipulation, no Flutter widget overhead
+
+#### **5. Why ExplicitPortalAPI vs Component-Based Portals**
+
+| Aspect | ExplicitPortalAPI | DCFPortal Component |
+|--------|-------------------|---------------------|
+| **Node Transfer** | Direct native rendering | Goes through component reconciliation |
+| **Performance** | Optimal - bypasses reconciliation | Good - but reconciliation overhead |
+| **Predictability** | 100% explicit control | Subject to component lifecycle |
+| **Memory** | Automatic cleanup | Manual lifecycle management |
+| **Edge Cases** | Zero - explicit API | Possible during reconciliation |
+
+**Bottom Line**: ExplicitPortalAPI works like React Native's Modal - content is immediately transferred to the target location with maximum efficiency!
