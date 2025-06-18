@@ -18,108 +18,19 @@ class DCFModalComponent: NSObject, DCFComponent {
         super.init()
     }
     
-    // Strategy 1: Override ALL layout-related methods aggressively
     func createView(props: [String: Any]) -> UIView {
         print("🚀 DCFModalComponent.createView called with props: \(props.keys.sorted())")
         
-        // Create a custom view class that FORCES zero space
-        let view = ZeroSpaceView()
+        // Create a simple placeholder view
+        let view = UIView()
         
-        // Apply all zero-space configurations
-        configureZeroSpaceView(view)
+        // Set the view as hidden but don't override its geometry
+        view.isHidden = true
+        view.backgroundColor = UIColor.clear
+        view.isUserInteractionEnabled = false
         
         let _ = updateView(view, withProps: props)
         return view
-    }
-
-    // Custom UIView subclass that FORCES zero space
-    class ZeroSpaceView: UIView {
-        
-        override var intrinsicContentSize: CGSize {
-            return CGSize.zero
-        }
-        
-        override func sizeThatFits(_ size: CGSize) -> CGSize {
-            return CGSize.zero
-        }
-        
-        override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {
-            return CGSize.zero
-        }
-        
-        override func systemLayoutSizeFitting(_ targetSize: CGSize,
-                                            withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority,
-                                            verticalFittingPriority: UILayoutPriority) -> CGSize {
-            return CGSize.zero
-        }
-        
-        override var frame: CGRect {
-            get { return CGRect.zero }
-            set { super.frame = CGRect.zero }
-        }
-        
-        override var bounds: CGRect {
-            get { return CGRect.zero }
-            set { super.bounds = CGRect.zero }
-        }
-        
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            // Ensure frame stays zero even after layout
-            if super.frame != CGRect.zero {
-                super.frame = CGRect.zero
-                super.bounds = CGRect.zero
-            }
-            
-            // Hide all subviews aggressively
-            subviews.forEach { subview in
-                subview.isHidden = true
-                subview.alpha = 0.0
-                subview.frame = CGRect.zero
-                subview.bounds = CGRect.zero
-            }
-        }
-        
-        override func addSubview(_ view: UIView) {
-            super.addSubview(view)
-            // Immediately hide any added subview
-            view.isHidden = true
-            view.alpha = 0.0
-            view.frame = CGRect.zero
-            view.bounds = CGRect.zero
-        }
-    }
-
-    // Strategy 2: Comprehensive zero-space configuration
-    private func configureZeroSpaceView(_ view: UIView) {
-        // Core invisibility
-        view.isHidden = true
-        view.alpha = 0.0
-        view.backgroundColor = UIColor.clear
-        
-        // Zero geometry
-        view.frame = CGRect.zero
-        view.bounds = CGRect.zero
-        
-        // Prevent overflow and interaction
-        view.clipsToBounds = true
-        view.isUserInteractionEnabled = false
-        
-        // Layout system instructions
-        view.translatesAutoresizingMaskIntoConstraints = true
-        
-        // Content mode that doesn't scale
-        view.contentMode = .center
-        
-        // Accessibility - hide from VoiceOver too
-        view.isAccessibilityElement = false
-        view.accessibilityElementsHidden = true
-        
-        // If using Auto Layout constraints, set them to zero
-        if !view.translatesAutoresizingMaskIntoConstraints {
-            view.widthAnchor.constraint(equalToConstant: 0).isActive = true
-            view.heightAnchor.constraint(equalToConstant: 0).isActive = true
-        }
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
@@ -146,16 +57,18 @@ class DCFModalComponent: NSObject, DCFComponent {
         
         print("🔍 DCFModalComponent: Final visible value = \(isVisible)")
         
-        // ✅ CRITICAL FIX: Only dismiss if modal is actually presented AND visible becomes false
-        // Don't move children immediately - let the modal animate out first
+        // ✅ CRITICAL FIX: The display property should be handled by the framework
+        // via DCFViewManager.extractLayoutProps(), but we need to make sure it's 
+        // included in the props that get passed down. The display property should
+        // be set by the calling code based on the visible state.
+        
         if isVisible {
             print("🚀 DCFModalComponent: Attempting to present modal")
             presentModal(from: view, props: props, viewId: viewId)
         } else {
-            // ✅ CHANGE: Only programmatically dismiss if we have a modal to dismiss
-            // DON'T move children here - let dismissal completion handle it
+            // Only programmatically dismiss if we have a modal to dismiss
             if let modalVC = DCFModalComponent.presentedModals[viewId], !modalVC.isBeingDismissed {
-                print("🚀 DCFModalComponent: Programmatically dismissing modal (children stay until animation completes)")
+                print("🚀 DCFModalComponent: Programmatically dismissing modal")
                 dismissModalWithoutMovingChildren(from: view, viewId: viewId)
             } else {
                 print("🔄 DCFModalComponent: Modal not presented or already being dismissed, ignoring visible=false")
@@ -169,33 +82,22 @@ class DCFModalComponent: NSObject, DCFComponent {
     // MARK: - DCFComponent Protocol Methods
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // ✅ CRITICAL: Override layout calculation to force ZERO space
-        view.frame = CGRect(x: 0, y: 0, width: 0, height: 0)
-        view.bounds = CGRect.zero
-        view.isHidden = true
-        view.clipsToBounds = true
-        view.isUserInteractionEnabled = false
+        // Apply the layout calculated by Yoga
+        // When display="none", Yoga will calculate zero dimensions
+        view.frame = CGRect(
+            x: CGFloat(layout.left),
+            y: CGFloat(layout.top),
+            width: CGFloat(layout.width),
+            height: CGFloat(layout.height)
+        )
         
-        // ✅ Tell the layout system this view has no size
-        view.translatesAutoresizingMaskIntoConstraints = true
-        
-        // ✅ ALSO: Ensure all children in placeholder take no space
-        view.subviews.forEach { child in
-            child.isHidden = true
-            child.alpha = 0.0
-            child.frame = CGRect.zero
-            child.bounds = CGRect.zero
-            child.translatesAutoresizingMaskIntoConstraints = true
-        }
-        
-        print("📐 DCFModalComponent.applyLayout - Enforced ZERO-SPACE placeholder")
+        print("📐 DCFModalComponent.applyLayout - Applied Yoga layout: \(view.frame)")
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // ✅ CRITICAL: Modal placeholder must report ZERO intrinsic size
-        // This is crucial for layout engines to not allocate space
-        print("📏 DCFModalComponent.getIntrinsicSize - Returning CGSize.zero")
-        return CGSize.zero
+        // Return a minimal intrinsic size
+        // The actual space allocation will be controlled by the display property
+        return CGSize(width: 1, height: 1)
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
@@ -208,25 +110,16 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("🚀 DCFModalComponent.setChildren - view hash: \(view.hash)")
         print("🚀 DCFModalComponent.setChildren - children types: \(childViews.map { type(of: $0) })")
         
-        // ✅ ENSURE placeholder view stays invisible and takes NO SPACE in main UI
-        view.isHidden = true
-        view.frame = CGRect.zero
-        view.bounds = CGRect.zero
-        view.isUserInteractionEnabled = false
-        view.clipsToBounds = true
-        
-        // ✅ Store children in placeholder but make them invisible and take NO SPACE
-        print("💾 Storing \(childViews.count) children in placeholder view (hidden from main UI)")
+        // Store children in placeholder but keep them hidden from main UI
         view.subviews.forEach { $0.removeFromSuperview() }
         childViews.forEach { childView in
             view.addSubview(childView)
-            // ✅ CRITICAL: Hide children AND make them take no space in main UI
+            // Hide children in placeholder view (they'll be shown when moved to modal)
             childView.isHidden = true
             childView.alpha = 0.0
-            childView.frame = CGRect.zero
-            childView.bounds = CGRect.zero
-            childView.clipsToBounds = true
         }
+        
+        print("💾 Stored \(childViews.count) children in placeholder view (hidden from main UI)")
         
         // If modal is currently presented, move children to modal content and make them visible
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
