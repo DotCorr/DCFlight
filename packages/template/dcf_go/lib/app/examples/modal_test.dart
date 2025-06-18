@@ -188,6 +188,7 @@ class ModalTest extends StatefulComponent {
             DCFModalDetents.medium,
             DCFModalDetents.large,
           ],
+          cornerRadius: 50,
           showDragIndicator: true,
           onDismiss: (data) {
             print('🔥 Native Modal onDismiss called');

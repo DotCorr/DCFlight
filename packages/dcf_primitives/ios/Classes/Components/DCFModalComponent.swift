@@ -29,7 +29,7 @@ class DCFModalComponent: NSObject, DCFComponent {
         escapeView.translatesAutoresizingMaskIntoConstraints = true
         
         // ✅ Start in escaped mode (children won't be in main UI tree)
-        escapeView.escapeChildren()
+        escapeView.isEscaped = true
         
         // Apply initial properties
         let _ = updateView(escapeView, withProps: props)
@@ -61,6 +61,17 @@ class DCFModalComponent: NSObject, DCFComponent {
         
         print("🔍 DCFModalComponent: Final visible value = \(isVisible)")
         
+        guard let escapeView = view as? DCFEscapeView else {
+            print("❌ Error: View is not a DCFEscapeView!")
+            return false
+        }
+        
+        // ✅ CRITICAL: Force escape state when modal is not visible - DCFEscapeView handles Yoga internally
+        if !isVisible {
+            escapeView.isEscaped = true
+            print("🚁 EscapeView: Modal not visible, forcing escaped state (DCFEscapeView handles Yoga internally)")
+        }
+        
         // ✅ EscapeView: Handle modal visibility
         if isVisible {
             print("🚀 DCFModalComponent: Attempting to present modal")
@@ -82,59 +93,43 @@ class DCFModalComponent: NSObject, DCFComponent {
     // MARK: - DCFComponent Protocol Methods
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // ✅ EscapeView: Always force ZERO space for the escape view container
+        guard let escapeView = view as? DCFEscapeView else {
+            print("❌ Error: View is not a DCFEscapeView in applyLayout!")
+            return
+        }
+        
+        // ✅ CRITICAL: ALWAYS force ZERO space for the escape view container regardless of layout
+        // This ensures that even if Dart sends layout properties, they are completely ignored
         view.frame = CGRect(x: 0, y: 0, width: 0, height: 0)
         view.bounds = CGRect.zero
         view.isHidden = true
+        view.alpha = 0.0
         view.clipsToBounds = true
         view.isUserInteractionEnabled = false
         view.translatesAutoresizingMaskIntoConstraints = true
         
-        print("📐 DCFModalComponent.applyLayout - Enforced ZERO-SPACE EscapeView")
+        // ✅ CRITICAL: Force escape state to ensure zero dimensions - DCFEscapeView handles Yoga internally
+        escapeView.isEscaped = true
+        
+        print("📐 DCFModalComponent.applyLayout - Enforced ABSOLUTE ZERO-SPACE EscapeView")
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         // ✅ CRITICAL: Modal placeholder must report ZERO intrinsic size
-        print("📏 DCFModalComponent.getIntrinsicSize - Returning CGSize.zero")
+        print("� DCFModalComponent.getIntrinsicSize - Returning CGSize.zero")
         return CGSize.zero
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
         // Track node registration for debugging
         print("🌳 DCFModalComponent view registered with shadow tree: \(nodeId)")
-    }
-    
-    func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
-        print("🚀 DCFModalComponent.setChildren called with \(childViews.count) children for viewId: \(viewId)")
-        print("🚀 DCFModalComponent.setChildren - view hash: \(view.hash)")
-        print("🚀 DCFModalComponent.setChildren - children types: \(childViews.map { type(of: $0) })")
         
-        guard let escapeView = view as? DCFEscapeView else {
-            print("❌ Error: View is not a DCFEscapeView!")
-            return false
+        // ✅ CRITICAL: Immediately force escape state for modal placeholder - DCFEscapeView handles Yoga
+        if let escapeView = view as? DCFEscapeView {
+            escapeView.isEscaped = true
+            print("🧹 DCFModalComponent: FORCED escape state on node registration: \(nodeId)")
         }
-        
-        // ✅ Always add children to EscapeView first
-        escapeView.subviews.forEach { $0.removeFromSuperview() }
-        childViews.forEach { escapeView.addSubview($0) }
-        
-        // ✅ Check if modal should be showing and handle accordingly
-        if let modalVC = DCFModalComponent.presentedModals[viewId] {
-            // Modal is already presented - add children to modal content immediately
-            print("🚁 EscapeView: Modal is presented, moving children to modal content")
-            escapeView.restoreChildren() // Make sure children are available
-            addChildrenToModalContent(modalVC: modalVC, childViews: childViews)
-            escapeView.escapeChildren() // Then escape them from main UI
-        } else {
-            // Modal is not presented - escape children from main UI tree
-            print("🚁 EscapeView: Modal not presented, escaping children from main UI")
-            escapeView.escapeChildren()
-        }
-        
-        return true
     }
-    
-    // MARK: - Modal Presentation
     
     private func presentModal(from view: UIView, props: [String: Any], viewId: String) {
         // Check if modal is already presented
@@ -161,14 +156,14 @@ class DCFModalComponent: NSObject, DCFComponent {
         DCFModalComponent.presentedModals[viewId] = modalVC
         
         // ✅ EscapeView: Get ALL children (escaped or not) for modal presentation
-        escapeView.restoreChildren() // Temporarily restore to get all children
-        let childrenToMove = Array(escapeView.subviews) // Get all children
+        escapeView.isEscaped = false // Temporarily restore to get all children
+        let childrenToMove = escapeView.getStoredChildren() + Array(escapeView.subviews) // Get all children
         print("🚁 EscapeView: Found \(childrenToMove.count) children for modal presentation")
         
         if !childrenToMove.isEmpty {
             print("🚀 Moving \(childrenToMove.count) children from EscapeView to modal")
             addChildrenToModalContent(modalVC: modalVC, childViews: childrenToMove)
-            escapeView.escapeChildren() // Escape them again from main UI
+            escapeView.isEscaped = true // Escape them again from main UI
         } else {
             print("⚠️ No children found in EscapeView - modal will show empty")
         }
@@ -204,17 +199,6 @@ class DCFModalComponent: NSObject, DCFComponent {
             }
         }
         
-        // ✅ Apply corner radius from Dart props
-        if let cornerRadius = props["cornerRadius"] as? Double {
-            modalVC.view.layer.cornerRadius = CGFloat(cornerRadius)
-            modalVC.view.layer.masksToBounds = true
-            print("🎨 Applied corner radius: \(cornerRadius)")
-        } else if let cornerRadius = props["cornerRadius"] as? NSNumber {
-            modalVC.view.layer.cornerRadius = CGFloat(cornerRadius.doubleValue)
-            modalVC.view.layer.masksToBounds = true
-            print("🎨 Applied corner radius: \(cornerRadius)")
-        }
-        
         // Present the modal
         if let topViewController = getTopViewController() {
             topViewController.present(modalVC, animated: true) {
@@ -238,14 +222,16 @@ class DCFModalComponent: NSObject, DCFComponent {
             if !modalChildren.isEmpty {
                 print("🚁 EscapeView: Moving \(modalChildren.count) children back to EscapeView and escaping them")
                 
-                // Move children back to escape view
+                // Store children in escape view
+                escapeView.setStoredChildren(modalChildren)
+                
+                // Remove children from modal
                 modalChildren.forEach { child in
                     child.removeFromSuperview()
-                    escapeView.addSubview(child)
                 }
                 
                 // ✅ Escape the children (remove from main UI tree)
-                escapeView.escapeChildren()
+                escapeView.isEscaped = true
             }
             
             modalVC.dismiss(animated: true) {
@@ -347,12 +333,13 @@ class DCFModalViewController: UIViewController {
                 if !modalChildren.isEmpty {
                     print("🚁 EscapeView: Moving \(modalChildren.count) children back to EscapeView on dismiss")
                     
+                    // Store children in escape view and remove from modal
+                    escapeView.setStoredChildren(modalChildren)
                     modalChildren.forEach { child in
                         child.removeFromSuperview()
-                        escapeView.addSubview(child)
                     }
                     
-                    escapeView.escapeChildren()
+                    escapeView.isEscaped = true
                 }
                 
                 // Remove from tracking
@@ -365,15 +352,42 @@ class DCFModalViewController: UIViewController {
     private func setupModalContent() {
         view.backgroundColor = UIColor.systemBackground
         
-        // ✅ EXPOSE CORNER RADIUS API: Apply corner radius from Dart props
+        // ✅ CRITICAL: Apply corner radius from Dart props - handle all possible data types
+        var cornerRadiusApplied = false
+        
         if let cornerRadius = modalProps["cornerRadius"] as? Double {
             view.layer.cornerRadius = CGFloat(cornerRadius)
             view.layer.masksToBounds = true
-            print("🎨 Applied modal corner radius: \(cornerRadius)")
+            cornerRadiusApplied = true
+            print("🎨 Applied modal corner radius (Double): \(cornerRadius)")
         } else if let cornerRadius = modalProps["cornerRadius"] as? NSNumber {
             view.layer.cornerRadius = CGFloat(cornerRadius.doubleValue)
             view.layer.masksToBounds = true
-            print("🎨 Applied modal corner radius: \(cornerRadius)")
+            cornerRadiusApplied = true
+            print("🎨 Applied modal corner radius (NSNumber): \(cornerRadius)")
+        } else if let cornerRadius = modalProps["cornerRadius"] as? Float {
+            view.layer.cornerRadius = CGFloat(cornerRadius)
+            view.layer.masksToBounds = true
+            cornerRadiusApplied = true
+            print("🎨 Applied modal corner radius (Float): \(cornerRadius)")
+        } else if let cornerRadius = modalProps["cornerRadius"] as? Int {
+            view.layer.cornerRadius = CGFloat(cornerRadius)
+            view.layer.masksToBounds = true
+            cornerRadiusApplied = true
+            print("🎨 Applied modal corner radius (Int): \(cornerRadius)")
+        } else if let cornerRadiusString = modalProps["cornerRadius"] as? String,
+                  let cornerRadius = Double(cornerRadiusString) {
+            view.layer.cornerRadius = CGFloat(cornerRadius)
+            view.layer.masksToBounds = true
+            cornerRadiusApplied = true
+            print("🎨 Applied modal corner radius (String): \(cornerRadius)")
+        }
+        
+        if !cornerRadiusApplied {
+            print("⚠️ Corner radius not found or invalid type in modalProps: \(modalProps.keys.sorted())")
+            if let cornerRadiusValue = modalProps["cornerRadius"] {
+                print("⚠️ Corner radius value type: \(type(of: cornerRadiusValue)), value: \(cornerRadiusValue)")
+            }
         }
         
         // Propagate onOpen event
