@@ -260,6 +260,7 @@ class DCFPortalTarget extends StatefulComponent {
       props: {
         'isPortalTarget': true,
         'targetId': targetId,
+        'backgroundColor': 'transparent',
         'flex': 1,
         "width": "100%",
         "height": "100%",

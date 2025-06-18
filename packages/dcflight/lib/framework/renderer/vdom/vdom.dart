@@ -18,7 +18,6 @@ export 'package:dcflight/framework/renderer/vdom/component/store.dart';
 import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
-import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';
 
 /// Virtual DOM implementation with efficient reconciliation and state handling
 class VDom {
@@ -179,17 +178,17 @@ class VDom {
         // If that fails, try other common patterns
       }
       
-      // Try specific patterns for common event types
-      if (eventData.containsKey('text')) {
-        // Handle TextInput onChangeText events that expect a string parameter
-        try {
-          final text = eventData['text'] as String? ?? '';
-          Function.apply(handler, [text]);
-          return;
-        } catch (e) {
-          // Continue to next pattern
-        }
-      }
+      // // Try specific patterns for common event types
+      // if (eventData.containsKey('text')) {
+      //   // Handle TextInput onChangeText events that expect a string parameter
+      //   try {
+      //     final text = eventData['text'] as String? ?? '';
+      //     Function.apply(handler, [text]);
+      //     return;
+      //   } catch (e) {
+      //     // Continue to next pattern
+      //   }
+      // }
       
       if (eventData.containsKey('width') && eventData.containsKey('height')) {
         // Handle onContentSizeChange events that might expect (double, double)
@@ -994,13 +993,7 @@ class VDom {
       // Find changed props using proper diffing algorithm
       final changedProps = _diffProps(oldElement.props, newElement.props);
       
-      // Add debugging for text components specifically
-      if (oldElement.type == 'Text' && kDebugMode) {
-        // print('🔍 Text Component Prop Diff:');
-        // print('  Old props: ${oldElement.props}');
-        // print('  New props: ${newElement.props}');
-        // print('  Changed props being sent to native: $changedProps');
-      }
+   
       
       // Update props if there are changes
       if (changedProps.isNotEmpty) {

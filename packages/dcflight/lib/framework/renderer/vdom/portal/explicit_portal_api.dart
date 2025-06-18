@@ -143,7 +143,7 @@ class ExplicitPortalAPI {
   }
 }
 
-/// Portal Hook - provides React-like portal functionality within components
+/// Portal Hook - provides React-like portal functionality within components(experimental)
 /// 
 /// This hook manages portal lifecycle automatically within component lifecycle.
 /// Use this when you want portal content to be managed by component state,

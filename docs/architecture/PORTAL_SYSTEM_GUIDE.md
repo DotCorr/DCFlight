@@ -1,53 +1,132 @@
 # DCFlight Portal System Guide
 
-> **Complete guide to DCFlight's robust, production-ready React-like portal system**
+> **Complete guide to DCFlight's robust, production-ready portal system with ExplicitPortalAPI**
 
 ## 🚀 **Portal System Status: Production Ready**
 
-✅ **Fully Working Features:**
-- Conditional rendering with automatic cleanup
-- Multiple portals per target with priority support  
-- Zero ghost content or duplicates
-- Seamless VDOM reconciliation
-- Hook system integration (useEffect cleanup)
-- Automatic portal cleanup on component unmount
+✅ **Recommended: ExplicitPortalAPI (React Native Modal style)**
+- ✅ Explicit add/remove/update methods - no state reconciliation issues
+- ✅ Guaranteed portal content never rendered in main UI tree
+- ✅ Superior performance and predictability
+- ✅ Zero ghost content, duplicates, or orphaned content
+- ✅ Automatic cleanup and memory management
+- ✅ Battle-tested and production-ready
+
+⚠️ **Legacy: DCFPortal Component (use only if absolutely necessary)**
+- ⚠️ State-driven reconciliation can cause inconsistencies
+- ⚠️ Requires careful component lifecycle management
+- ⚠️ May experience rendering edge cases
+- ⚠️ Use ExplicitPortalAPI instead for new code
 
 ## 🎯 **What Are Portals?**
 
 Portals provide a way to render children into a DOM node that exists outside the parent component's hierarchy. This is essential for:
 
-- **Modals and Overlays**: Render above all other content
+- **Modals and Overlays**: Render above all other content without z-index conflicts
 - **Tooltips**: Position relative to different parts of the screen  
 - **Notifications**: Show at app level from deep components
 - **Floating Elements**: Break out of container constraints
+- **Context Menus**: Render outside overflow containers
 
-## 🏗️ **Portal Architecture**
+## 🏗️ **Recommended Portal Architecture - ExplicitPortalAPI**
 
-### Core Components
+### 🌟 **Method 1: ExplicitPortalAPI (Recommended)**
+
+This is the **ONLY recommended way** to use portals in new code:
 
 ```dart
-// 1. Portal Target - Where content will be rendered
+import 'package:dcflight/framework/renderer/vdom/portal/explicit_portal_api.dart';
+
+// 1. Create portal target (usually at app root)
 DCFPortalTarget(targetId: "unique-target-id")
 
-// 2. Portal - What content to render
+// 2. Use explicit API from anywhere in your app
+class MyComponent extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    return DCFGestureDetector(
+      onTap: (_) async {
+        // Show portal content explicitly
+        final portalId = await ExplicitPortalAPI.add(
+          targetId: 'unique-target-id',
+          content: [
+            DCFText(content: 'Hello Portal!'),
+            DCFButton(text: 'Close', onTap: () => hidePortal()),
+          ],
+        );
+        
+        // Store portal ID for later removal
+        setState(() => _activePortalId = portalId);
+      },
+      children: [DCFText(content: 'Show Portal')],
+    );
+  }
+  
+  void hidePortal() async {
+    if (_activePortalId != null) {
+      await ExplicitPortalAPI.remove(_activePortalId!);
+      setState(() => _activePortalId = null);
+    }
+  }
+}
+```
+
+### ⚠️ **Method 2: DCFPortal Component (Legacy - Avoid)**
+
+**Only use this if you absolutely cannot use ExplicitPortalAPI:**
+
+```dart
+// Portal Target - Where content will be rendered
+DCFPortalTarget(targetId: "unique-target-id")
+
+// Portal Component - What content to render (state-driven)
 DCFPortal(
   targetId: "unique-target-id", 
-  children: [/* your content */],
+  children: showContent ? [/* your content */] : [],
 )
 ```
 
-### How It Works Under the Hood
+### How ExplicitPortalAPI Works Under the Hood
 
 ```
-┌─ App Component Tree ─────────────────┐
-│  DCFSafeAreaView                     │
-│  ├── Navigation                      │
-│  ├── DCFPortalTarget(id: "modal")    │ ← Target at app level
-│  └── Page                            │
-│      └── DeepComponent               │
-│          └── DCFPortal(id: "modal")  │ ← Portal from deep component
-│              └── Modal Content       │   (renders at target ↑)
-└──────────────────────────────────────┘
+┌─ App Component Tree (ExplicitPortalAPI) ─────────────────┐
+│  DCFSafeAreaView                                         │
+│  ├── Navigation                                          │
+│  ├── DCFPortalTarget(id: "modal")    ← Target at app level
+│  └── Page                                                │
+│      └── DeepComponent                                   │
+│          └── [Calls ExplicitPortalAPI.add()]            │
+│              ↓                                           │
+│              Portal Content renders at target ↑          │
+│              (No component tree pollution!)               │
+└──────────────────────────────────────────────────────────┘
+
+Benefits of ExplicitPortalAPI:
+✅ Content never part of main component tree
+✅ No reconciliation issues or ghost content  
+✅ Better performance (no VDOM overhead for portal content)
+✅ Explicit lifecycle management
+✅ React Native Modal-style API
+```
+
+### How Legacy DCFPortal Works (Avoid)
+
+```
+┌─ App Component Tree (Legacy DCFPortal) ─────────────────┐
+│  DCFSafeAreaView                                        │
+│  ├── Navigation                                         │
+│  ├── DCFPortalTarget(id: "modal")    ← Target at app level
+│  └── Page                                               │
+│      └── DeepComponent                                  │
+│          └── DCFPortal(id: "modal")  ← State-driven portal
+│              └── Modal Content       │ (reconciliation issues)
+└─────────────────────────────────────────────────────────┘
+
+Issues with Legacy DCFPortal:
+⚠️ Content part of component tree (reconciliation overhead)
+⚠️ State-driven rendering can cause inconsistencies
+⚠️ Potential for ghost content or duplicates
+⚠️ Complex lifecycle management
 ```
 
 ## ✅ **Portal System Features**

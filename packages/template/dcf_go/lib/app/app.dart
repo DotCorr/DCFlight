@@ -12,6 +12,7 @@ import 'package:dcf_go/app/examples/list_state_perf.dart';
 import 'package:dcf_go/app/examples/modal_test.dart';
 import 'package:dcf_go/app/examples/swipeable_test.dart';
 import 'package:dcf_go/app/examples/component_showcase.dart';
+import 'package:dcf_go/app/examples/portal_test.dart';
 import 'package:dcflight/dcflight.dart';
 
 final pagestate = Store<int>(0);
@@ -53,8 +54,6 @@ class App extends StatefulComponent {
             selectedValue: pagestateLocal.state.toString(),
           ),
         ),
-        // This is the target where the portal will render its content
-        // DCFPortalTarget(targetId: "test"),
         DCFView(
           layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
           children: [
@@ -72,7 +71,8 @@ class App extends StatefulComponent {
                 ? SwipeableTest()
                 : pagestateLocal.state == 6
                 ? ComponentShowcase()
-             
+                : pagestateLocal.state == 7
+                ? PortalTest()
                 : DCFView(),
           ],
         ),
