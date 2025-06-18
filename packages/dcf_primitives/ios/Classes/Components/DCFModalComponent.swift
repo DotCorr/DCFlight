@@ -18,25 +18,108 @@ class DCFModalComponent: NSObject, DCFComponent {
         super.init()
     }
     
+    // Strategy 1: Override ALL layout-related methods aggressively
     func createView(props: [String: Any]) -> UIView {
         print("🚀 DCFModalComponent.createView called with props: \(props.keys.sorted())")
         
-        // ✅ FIX: Create a completely invisible placeholder that takes ZERO space
-        let view = UIView()
-        view.backgroundColor = UIColor.clear
-        view.isHidden = true // Completely hidden from main UI
-        view.frame = CGRect.zero // Zero size
-        view.bounds = CGRect.zero // Zero bounds too
-        view.clipsToBounds = true // Ensure no overflow
-        view.isUserInteractionEnabled = false // No interactions in main UI
+        // Create a custom view class that FORCES zero space
+        let view = ZeroSpaceView()
         
-        // ✅ CRITICAL: Tell layout engine this view should be ignored
+        // Apply all zero-space configurations
+        configureZeroSpaceView(view)
+        
+        let _ = updateView(view, withProps: props)
+        return view
+    }
+
+    // Custom UIView subclass that FORCES zero space
+    class ZeroSpaceView: UIView {
+        
+        override var intrinsicContentSize: CGSize {
+            return CGSize.zero
+        }
+        
+        override func sizeThatFits(_ size: CGSize) -> CGSize {
+            return CGSize.zero
+        }
+        
+        override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {
+            return CGSize.zero
+        }
+        
+        override func systemLayoutSizeFitting(_ targetSize: CGSize,
+                                            withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority,
+                                            verticalFittingPriority: UILayoutPriority) -> CGSize {
+            return CGSize.zero
+        }
+        
+        override var frame: CGRect {
+            get { return CGRect.zero }
+            set { super.frame = CGRect.zero }
+        }
+        
+        override var bounds: CGRect {
+            get { return CGRect.zero }
+            set { super.bounds = CGRect.zero }
+        }
+        
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            // Ensure frame stays zero even after layout
+            if super.frame != CGRect.zero {
+                super.frame = CGRect.zero
+                super.bounds = CGRect.zero
+            }
+            
+            // Hide all subviews aggressively
+            subviews.forEach { subview in
+                subview.isHidden = true
+                subview.alpha = 0.0
+                subview.frame = CGRect.zero
+                subview.bounds = CGRect.zero
+            }
+        }
+        
+        override func addSubview(_ view: UIView) {
+            super.addSubview(view)
+            // Immediately hide any added subview
+            view.isHidden = true
+            view.alpha = 0.0
+            view.frame = CGRect.zero
+            view.bounds = CGRect.zero
+        }
+    }
+
+    // Strategy 2: Comprehensive zero-space configuration
+    private func configureZeroSpaceView(_ view: UIView) {
+        // Core invisibility
+        view.isHidden = true
+        view.alpha = 0.0
+        view.backgroundColor = UIColor.clear
+        
+        // Zero geometry
+        view.frame = CGRect.zero
+        view.bounds = CGRect.zero
+        
+        // Prevent overflow and interaction
+        view.clipsToBounds = true
+        view.isUserInteractionEnabled = false
+        
+        // Layout system instructions
         view.translatesAutoresizingMaskIntoConstraints = true
         
-        // Apply initial properties
-        let _ = updateView(view, withProps: props)
+        // Content mode that doesn't scale
+        view.contentMode = .center
         
-        return view
+        // Accessibility - hide from VoiceOver too
+        view.isAccessibilityElement = false
+        view.accessibilityElementsHidden = true
+        
+        // If using Auto Layout constraints, set them to zero
+        if !view.translatesAutoresizingMaskIntoConstraints {
+            view.widthAnchor.constraint(equalToConstant: 0).isActive = true
+            view.heightAnchor.constraint(equalToConstant: 0).isActive = true
+        }
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
