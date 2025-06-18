@@ -179,7 +179,7 @@ class ModalTest extends StatefulComponent {
           },
         ),
 
-        // Native DCFModal - true native modal presentation
+        // Native DCFModal - always in tree but only visible when needed
         DCFModal(
           visible: modalVisible.state,
           title: "Native Modal",
@@ -209,7 +209,7 @@ class ModalTest extends StatefulComponent {
                   layout: LayoutProps(marginBottom: 16, height: 25),
                 ),
                 DCFText(
-                  content: "✅ Native iOS/Android modal presentation\n✅ Hardware-accelerated animations\n✅ System-level modal behavior\n✅ True modal stacking",
+                  content: "✅ Native iOS/Android modal presentation\n✅ Hardware-accelerated animations\n✅ System-level modal behavior\n✅ Proper modal timing",
                   textProps: DCFTextProps(
                     fontSize: 14,
                     color: Colors.green.shade700,
@@ -326,7 +326,6 @@ class ModalTest extends StatefulComponent {
           title: "Login Required",
           message: "Please enter your credentials:",
           style: DCFAlertStyle.alert,
-
           textFields: [
             DCFAlertTextField(
               placeholder: "Email",

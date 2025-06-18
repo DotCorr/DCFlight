@@ -133,7 +133,9 @@ class DCFModal extends StatelessComponent {
       eventMap['onOpen'] = onOpen;
     }
     
-    // ✅ SIMPLE FIX: Return modal directly with children - no wrapper needed!
+    // ✅ FRAMEWORK FIX: Always pass children to native side
+    // The native modal implementation must handle visibility without leaking content
+    // into the main UI tree. Conditional rendering prevents modal from opening.
     return DCFElement(
       type: 'Modal',
       props: {
@@ -154,8 +156,7 @@ class DCFModal extends StatelessComponent {
         ...style.toMap(),
         ...eventMap,
       },
-      children: children, // ✅ Direct children - simple and works!
-    );
+      children: children, );
   }
 }
 
