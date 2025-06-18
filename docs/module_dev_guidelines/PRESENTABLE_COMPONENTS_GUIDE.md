@@ -2,13 +2,325 @@
 
 ## Overview
 
-Presentable components are UI elements that appear outside the normal view hierarchy, such as modals, popovers, alerts, bottom sheets, and tooltips. This guide shows how to implement these components following the established patterns in DCFlight.
+Presentable components are UI elements that appear above or overlay the normal app content, such as modals, popovers, tooltips, and action sheets. This guide establishes patterns and best practices for implementing these components in the DCFlight framework.
 
-## Core Pattern for Presentable Components
+## Core Principles
 
-### 1. **Placeholder View Pattern**
+### 1. Full Abstraction Layer Control
+- **No Default Spacing**: Native components should NOT add automatic margins, padding, or safe area constraints
+- **Raw Canvas**: Provide the full available space to the abstraction layer (Dart) for layout control
+- **User Intent**: Only apply spacing/margins when explicitly requested via props
+
+### 2. Visibility State Management
+- **Complete Hiding**: When `visible: false`, the component and its children must be completely hidden
+- **Layout Removal**: Hidden components should not participate in layout calculations or event handling
+- **Display Property**: Use `'display': visible ? 'flex' : 'none'` in Dart to control visibility
+
+### 3. DRY (Don't Repeat Yourself) Implementation
+- **Reusable Patterns**: Common presentation logic should be abstracted into reusable components
+- **Consistent Behavior**: All presentable components should follow the same visibility and layout patterns
+
+## Implementation Patterns
+
+### Dart Side (Abstraction Layer)
+
+```dart
+// Example modal component structure
+class DCFModal extends DCFWidget {
+  const DCFModal({
+    Key? key,
+    required this.visible,
+    this.cornerRadius = 16.0,
+    this.children = const [],
+    // ... other props
+  }) : super(key: key);
+
+  @override
+  Map<String, dynamic> getProps() {
+    return {
+      // ✅ CRITICAL: Display property controls visibility
+      'display': visible ? 'flex' : 'none',
+      'visible': visible,
+      'cornerRadius': cornerRadius,
+      // ✅ No automatic margins/padding - user controls layout
+    };
+  }
+}
+```
+
+### Native Side (iOS Swift)
+
+#### Component Structure
+
+```swift
+class DCFPresentableComponent: NSObject, DCFComponent {
+    // Track presented instances
+    static var presentedInstances: [String: PresentableViewController] = [:]
+    
+    func createView(props: [String: Any]) -> UIView {
+        // Create hidden placeholder view
+        let view = UIView()
+        view.isHidden = true
+        view.backgroundColor = UIColor.clear
+        view.isUserInteractionEnabled = false
+        
+        updateView(view, withProps: props)
+        return view
+    }
+    
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        let viewId = String(view.hash)
+        let isVisible = extractVisibility(from: props)
+        
+        if isVisible {
+            presentOverlay(from: view, props: props, viewId: viewId)
+        } else {
+            dismissOverlay(from: view, viewId: viewId)
+        }
+        
+        return true
+    }
+}
+```
+
+#### Content Layout Rules
+
+```swift
+private func layoutContent(in overlayVC: UIViewController, children: [UIView]) {
+    // ✅ RULE 1: Give FULL modal space to abstraction layer
+    let contentFrame = overlayVC.view.bounds // NO safe area reduction
+    
+    if children.count == 1, let child = children.first {
+        // Single child fills entire space
+        child.frame = contentFrame
+        child.translatesAutoresizingMaskIntoConstraints = true
+        
+        // Make visible (opposite of placeholder state)
+        child.isHidden = false
+        child.alpha = 1.0
+    }
+    
+    // ✅ RULE 2: Force layout updates for Yoga
+    child.setNeedsLayout()
+    child.layoutIfNeeded()
+}
+```
+
+#### Visibility Management
+
+```swift
+func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
+    // Store children in placeholder (hidden from main UI)
+    view.subviews.forEach { $0.removeFromSuperview() }
+    childViews.forEach { childView in
+        view.addSubview(childView)
+        // ✅ Hide in placeholder view
+        childView.isHidden = true
+        childView.alpha = 0.0
+    }
+    
+    // If overlay is presented, move children and make visible
+    if let overlayVC = Self.presentedInstances[viewId] {
+        moveChildrenToOverlay(overlayVC: overlayVC, children: childViews)
+    }
+    
+    return true
+}
+```
+
+#### Property Handling
+
+```swift
+private func extractCornerRadius(from props: [String: Any]) -> CGFloat {
+    var cornerRadius: CGFloat = 16.0 // Default
+    
+    if let radius = props["cornerRadius"] as? CGFloat {
+        cornerRadius = radius
+    } else if let radius = props["cornerRadius"] as? Double {
+        cornerRadius = CGFloat(radius)
+    } else if let radius = props["cornerRadius"] as? Int {
+        cornerRadius = CGFloat(radius)
+    } else if let radius = props["cornerRadius"] as? NSNumber {
+        cornerRadius = CGFloat(radius.doubleValue)
+    }
+    
+    return cornerRadius
+}
+```
+
+## Specific Component Types
+
+### Modals
+
+**Key Requirements:**
+- Sheet presentations must respect `cornerRadius` prop via `preferredCornerRadius`
+- Full-screen presentations use layer corner radius
+- No automatic safe area margins - let abstraction layer control spacing
+
+**Example Implementation:**
+```swift
+// Sheet configuration
+if #available(iOS 16.0, *), let sheet = modalVC.sheetPresentationController {
+    let cornerRadius = extractCornerRadius(from: props)
+    sheet.preferredCornerRadius = cornerRadius
+}
+
+// Also apply to view layer for non-sheet presentations
+modalVC.view.layer.cornerRadius = cornerRadius
+modalVC.view.layer.masksToBounds = true
+```
+
+### Popovers
+
+**Key Requirements:**
+- Position relative to source view or coordinates
+- Respect arrow direction preferences
+- Handle dismissal on outside tap
+
+**Example Implementation:**
+```swift
+if let popoverController = alertController.popoverPresentationController {
+    popoverController.sourceView = sourceView
+    popoverController.sourceRect = sourceRect
+    popoverController.permittedArrowDirections = arrowDirections
+}
+```
+
+### Tooltips
+
+**Key Requirements:**
+- Lightweight presentation without dimming background
+- Auto-dismissal after timeout
+- Position calculation to stay within screen bounds
+
+### Action Sheets
+
+**Key Requirements:**
+- Bottom presentation on phones, popover on tablets
+- Support for custom actions and styling
+- Proper iPad adaptation
+
+## Common Patterns
+
+### State Synchronization
+
+```swift
+// Always sync children between placeholder and presented view
+private func syncChildrenState(from placeholder: UIView, to presented: UIViewController) {
+    let children = placeholder.subviews
+    
+    // Clear existing content
+    presented.view.subviews.forEach { $0.removeFromSuperview() }
+    
+    // Move and show children
+    children.forEach { child in
+        child.removeFromSuperview()
+        presented.view.addSubview(child)
+        child.isHidden = false
+        child.alpha = 1.0
+    }
+}
+```
+
+### Dismissal Handling
+
+```swift
+// Handle both programmatic and user-initiated dismissal
+func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+    moveChildrenBackToPlaceholder()
+    removeFromTracking()
+    propagateEvent(on: sourceView, eventName: "onDismiss", data: [:])
+}
+```
+
+## Testing Guidelines
+
+### Unit Tests
+- Test visibility state changes
+- Verify children movement between placeholder and presented views
+- Check property application (corner radius, dimensions, etc.)
+
+### Integration Tests
+- Test with various content types and sizes
+- Verify behavior on different device orientations
+- Test dismissal scenarios (user swipe, programmatic, etc.)
+
+### Manual Testing Checklist
+- [ ] Component completely hidden when `visible: false`
+- [ ] Children fill available space when using flex/100% sizing
+- [ ] Corner radius applied correctly for all presentation styles
+- [ ] No unwanted margins/padding unless explicitly set
+- [ ] Smooth animations during show/hide transitions
+- [ ] Proper cleanup when component is unmounted
+
+## Best Practices
+
+### Performance
+- Reuse view controllers when possible
+- Avoid creating heavy content until actually needed
+- Clean up references to prevent memory leaks
+
+### Accessibility
+- Ensure proper focus management when presentable appears
+- Support VoiceOver navigation within presented content
+- Handle dismiss gestures appropriately
+
+### Platform Consistency
+- Follow platform-specific presentation patterns
+- Adapt layouts for different screen sizes and orientations
+- Respect user accessibility settings
+
+## Common Pitfalls
+
+### ❌ Wrong: Automatic Safe Area Application
+```swift
+// Don't do this - forces unwanted margins
+let safeArea = view.safeAreaInsets
+contentFrame = view.bounds.inset(by: safeArea)
+```
+
+### ✅ Correct: Full Space to Abstraction Layer
+```swift
+// Do this - let Dart control spacing
+let contentFrame = view.bounds
+child.frame = contentFrame
+```
+
+### ❌ Wrong: Ignoring Display Property
+```swift
+// Don't do this - overrides visibility control
+view.isHidden = false // Hardcoded visibility
+```
+
+### ✅ Correct: Respecting Display Property
+```swift
+// Do this - honor abstraction layer visibility
+let isVisible = extractVisibility(from: props)
+if isVisible { present() } else { dismiss() }
+```
+
+### ❌ Wrong: Inconsistent Corner Radius
+```swift
+// Don't do this - only applies to one presentation style
+view.layer.cornerRadius = radius
+```
+
+### ✅ Correct: Comprehensive Corner Radius
+```swift
+// Do this - applies to all presentation styles
+view.layer.cornerRadius = radius
+if let sheet = sheetController {
+    sheet.preferredCornerRadius = radius
+}
+```
+
+## Legacy Pattern Reference
+
+### The Placeholder View Pattern (Original DCFlight Pattern)
 
 All presentable components use a "placeholder view" that acts as an anchor in the main UI while the actual content is presented elsewhere.
+
+### Original Placeholder View Implementation
 
 ```swift
 func createView(props: [String: Any]) -> UIView {
@@ -30,7 +342,7 @@ func createView(props: [String: Any]) -> UIView {
 - Clear background and no user interaction
 - Serves as container for children when not presented
 
-### 2. **Visibility Management Pattern**
+### Original Visibility Management Pattern
 
 Handle visibility state with proper type checking:
 
@@ -48,6 +360,17 @@ func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
     
     if isVisible {
         presentContent(from: view, props: props)
+    } else {
+        dismissContent(from: view)
+    }
+    
+    return true
+}
+```
+
+## Conclusion
+
+Following these guidelines ensures that presentable components provide maximum flexibility to the abstraction layer while maintaining consistent behavior across the framework. The key is to provide a "raw canvas" approach where the native layer handles presentation mechanics, but the abstraction layer retains full control over content layout and spacing.
     } else {
         dismissContent(from: view)
     }
