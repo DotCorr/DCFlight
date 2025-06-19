@@ -243,7 +243,7 @@ class ModalTest extends StatefulComponent {
                     borderRadius: 8,
                   ),
                   onPress: (v) {
-                    modalVisible2.setState(false);
+                    modalVisible2.setState(true);
                   },
                 ),
               ],
