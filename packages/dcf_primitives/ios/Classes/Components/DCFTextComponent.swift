@@ -190,14 +190,23 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
     // MARK: - Font Utility Functions
     
     private func fontWeightFromString(_ weight: String) -> UIFont.Weight {
-        switch weight {
-        case "bold", "700":    return .bold
-        case "600":            return .semibold
-        case "500":            return .medium
-        case "400", "normal", "regular": return .regular
-        case "300":            return .light
-        case "200":            return .thin
+        switch weight.lowercased() {
+        case "thin":           return .thin
+        case "ultralight":     return .ultraLight
+        case "light":          return .light
+        case "regular", "normal", "400": return .regular
+        case "medium":         return .medium
+        case "semibold":       return .semibold
+        case "bold":           return .bold
+        case "heavy":          return .heavy
+        case "black":          return .black
+        // Legacy numeric support
         case "100":            return .ultraLight
+        case "200":            return .thin
+        case "300":            return .light
+        case "500":            return .medium
+        case "600":            return .semibold
+        case "700":            return .bold
         case "800":            return .heavy
         case "900":            return .black
         default:               return .regular

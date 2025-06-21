@@ -16,16 +16,12 @@ class DCFModalHeaderAction {
   /// Optional icon asset for the action
   final String? iconAsset;
   
-  /// Whether this is a close/done action
-  final bool isCloseAction;
-  
-  /// Custom action handler
-  final Function()? onTap;
+  /// Custom action handler - follows DCFlight event conventions
+  final Function(Map<dynamic, dynamic>)? onTap;
   
   const DCFModalHeaderAction({
     required this.title,
     this.iconAsset,
-    this.isCloseAction = false,
     this.onTap,
   });
   
@@ -33,7 +29,6 @@ class DCFModalHeaderAction {
     return {
       'title': title,
       if (iconAsset != null) 'iconAsset': iconAsset,
-      'isCloseAction': isCloseAction,
     };
   }
 }
@@ -61,9 +56,6 @@ class DCFModalHeader {
   /// Suffix (right) actions
   final List<DCFModalHeaderAction>? suffixActions;
   
-  /// Whether to show the native close button
-  final bool showCloseButton;
-  
   /// Whether to use adaptive theming
   final bool adaptive;
   
@@ -75,7 +67,6 @@ class DCFModalHeader {
     this.titleColor,
     this.prefixActions,
     this.suffixActions,
-    this.showCloseButton = true,
     this.adaptive = true,
   });
   
@@ -88,7 +79,6 @@ class DCFModalHeader {
       if (titleColor != null) 'titleColor': '#${titleColor!.value.toRadixString(16).padLeft(8, '0')}',
       if (prefixActions != null) 'prefixActions': prefixActions!.map((action) => action.toMap()).toList(),
       if (suffixActions != null) 'suffixActions': suffixActions!.map((action) => action.toMap()).toList(),
-      'showCloseButton': showCloseButton,
       'adaptive': adaptive,
     };
   }
@@ -165,6 +155,9 @@ class DCFModal extends StatelessComponent {
   /// Called when modal is opened
   final Function(Map<dynamic, dynamic>)? onOpen;
   
+  /// Called when a header action is tapped
+  final Function(Map<dynamic, dynamic>)? onHeaderAction;
+  
   /// Child components to display inside the modal
   final List<DCFComponentNode> children;
 
@@ -194,6 +187,7 @@ class DCFModal extends StatelessComponent {
     this.onShow,
     this.onDismiss,
     this.onOpen,
+    this.onHeaderAction,
     this.children = const [],
     this.layout = const LayoutProps(),
     this.style = const StyleSheet(),
@@ -217,6 +211,19 @@ class DCFModal extends StatelessComponent {
     
     if (onOpen != null) {
       eventMap['onOpen'] = onOpen;
+    }
+    
+    if (onHeaderAction != null) {
+      eventMap['onHeaderAction'] = onHeaderAction;
+    }
+    
+    // Store header action callbacks for native side to use
+    if (header?.prefixActions != null) {
+      eventMap['prefixActionCallbacks'] = header!.prefixActions!.map((action) => action.onTap).toList();
+    }
+    
+    if (header?.suffixActions != null) {
+      eventMap['suffixActionCallbacks'] = header!.suffixActions!.map((action) => action.onTap).toList();
     }
     
     // ✅ SIMPLE FIX: Return modal directly with children - no wrapper needed!

@@ -958,7 +958,6 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
         // Parse header properties
         let title = headerData["title"] as? String ?? ""
         let adaptive = headerData["adaptive"] as? Bool ?? true
-        let showCloseButton = headerData["showCloseButton"] as? Bool ?? true
         
         // Create title label
         let titleLabel = UILabel()
@@ -1065,28 +1064,7 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
         var rightAnchor = headerContainer.trailingAnchor
         let rightPadding: CGFloat = 16.0
         
-        // Handle close button
-        if showCloseButton {
-            let closeButton = UIButton(type: .system)
-            closeButton.setTitle("Done", for: .normal)
-            closeButton.titleLabel?.font = UIFont.systemFont(ofSize: 16.0, weight: .medium)
-            closeButton.setTitleColor(adaptive ? UIColor.systemBlue : UIColor.blue, for: .normal)
-            closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
-            
-            headerContainer.addSubview(closeButton)
-            
-            closeButton.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                closeButton.trailingAnchor.constraint(equalTo: headerContainer.trailingAnchor, constant: -rightPadding),
-                closeButton.centerYAnchor.constraint(equalTo: headerContainer.centerYAnchor),
-                closeButton.heightAnchor.constraint(equalToConstant: 44.0)
-            ])
-            
-            rightAnchor = closeButton.leadingAnchor
-            titleConstraints.append(titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: rightAnchor, constant: -16.0))
-        }
-        
-        // Handle suffix actions (positioned before close button)
+        // Handle suffix actions
         if let suffixActions = headerData["suffixActions"] as? [[String: Any]], !suffixActions.isEmpty {
             var previousButton: UIButton?
             
@@ -1106,7 +1084,7 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
                     ])
                 } else {
                     NSLayoutConstraint.activate([
-                        button.trailingAnchor.constraint(equalTo: rightAnchor, constant: showCloseButton ? -8.0 : -rightPadding)
+                        button.trailingAnchor.constraint(equalTo: rightAnchor, constant: -rightPadding)
                     ])
                 }
                 
@@ -1163,7 +1141,6 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
         
         let title = actionData["title"] as? String ?? "Action"
         let iconAsset = actionData["iconAsset"] as? String
-        let isCloseAction = actionData["isCloseAction"] as? Bool ?? false
         
         if let iconAsset = iconAsset {
             // Create button with icon and title
@@ -1177,23 +1154,22 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
         button.titleLabel?.font = UIFont.systemFont(ofSize: 16.0, weight: .medium)
         button.setTitleColor(adaptive ? UIColor.systemBlue : UIColor.blue, for: .normal)
         
-        if isCloseAction {
-            button.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
-        } else {
-            // TODO: Handle custom action callbacks
-            button.addTarget(self, action: #selector(headerActionTapped(_:)), for: .touchUpInside)
-        }
+        // All header actions use the same handler
+        button.addTarget(self, action: #selector(headerActionTapped(_:)), for: .touchUpInside)
         
         return button
     }
     
-    @objc private func closeButtonTapped() {
-        print("🔘 Close button tapped")
-        dismiss(animated: true)
-    }
-    
     @objc private func headerActionTapped(_ sender: UIButton) {
         print("🔘 Header action tapped: \(sender.title(for: .normal) ?? "Unknown")")
-        // TODO: Propagate action event to Dart side
+        
+   
+        let buttonTitle = sender.title(for: .normal) ?? ""
+        
+        // Use propagateEvent like other DCFlight components
+        propagateEvent(on: sourceView ?? UIView(), eventName: "onHeaderAction", data: [
+            "title": buttonTitle,
+            "timestamp": Date().timeIntervalSince1970
+        ])
     }
 }

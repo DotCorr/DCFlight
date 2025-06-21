@@ -8,13 +8,50 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Font weight options for text components
+enum DCFFontWeight {
+  thin,
+  ultraLight,
+  light,
+  regular,
+  medium,
+  semibold,
+  bold,
+  heavy,
+  black;
+
+  /// Convert to string value for native side
+  String get value {
+    switch (this) {
+      case DCFFontWeight.thin:
+        return 'thin';
+      case DCFFontWeight.ultraLight:
+        return 'ultraLight';
+      case DCFFontWeight.light:
+        return 'light';
+      case DCFFontWeight.regular:
+        return 'regular';
+      case DCFFontWeight.medium:
+        return 'medium';
+      case DCFFontWeight.semibold:
+        return 'semibold';
+      case DCFFontWeight.bold:
+        return 'bold';
+      case DCFFontWeight.heavy:
+        return 'heavy';
+      case DCFFontWeight.black:
+        return 'black';
+    }
+  }
+}
+
 /// Text style properties
 class DCFTextProps {
   /// Font size
   final double? fontSize;
   
   /// Font weight
-  final String? fontWeight;
+  final DCFFontWeight? fontWeight;
   
   /// Font family
   final String? fontFamily;
@@ -50,7 +87,7 @@ class DCFTextProps {
   Map<String, dynamic> toMap() {
     return {
       if (fontSize != null) 'fontSize': fontSize,
-      if (fontWeight != null) 'fontWeight': fontWeight,
+      if (fontWeight != null) 'fontWeight': fontWeight!.value,
       if (fontFamily != null) 'fontFamily': fontFamily,
       if (isFontAsset) 'isFontAsset': isFontAsset,
       if (color != null) 'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
@@ -82,10 +119,7 @@ class DCFText extends StatelessComponent {
   DCFText({
     required this.content,
     this.textProps = const DCFTextProps(),
-       this.layout = const LayoutProps(
-        
-      height: 50,width: 200
-    ),
+    this.layout = const LayoutProps(),
     this.styleSheet = const StyleSheet(),
     this.events,
     super.key,

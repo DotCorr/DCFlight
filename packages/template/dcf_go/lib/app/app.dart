@@ -1,14 +1,6 @@
-/*
- * Copyright (c) Dotcorr Studio. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 import 'package:dcf_go/app/examples/gradient.dart';
 import 'package:dcf_go/app/examples/really_long_list.dart';
-import 'package:dcf_go/app/examples/validation_test.dart';
-import 'package:dcf_go/app/examples/list_state_perf.dart';
+import 'package:dcf_go/app/examples/home.dart';
 import 'package:dcf_go/app/examples/modal_test.dart';
 import 'package:dcf_go/app/examples/component_showcase.dart';
 import 'package:dcf_go/app/examples/portal_test.dart';
@@ -36,19 +28,18 @@ class App extends StatefulComponent {
           layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
           children: [
             pagestateLocal.state == 0
-                ? ValidationTestApp()
+                ? Home()
+              
                 : pagestateLocal.state == 1
-                ? ListStatePerf()
-                : pagestateLocal.state == 2
                 ? GradientTest()
-                : pagestateLocal.state == 3
+                : pagestateLocal.state == 2
                 ? ReallyLongList()
-                : pagestateLocal.state == 4
+                : pagestateLocal.state == 3
                 ? ModalTest()
               
-                : pagestateLocal.state == 5
+                : pagestateLocal.state == 4
                 ? ComponentShowcase()
-                : pagestateLocal.state == 6
+                : pagestateLocal.state == 5
                 ? PortalTest()
                 : DCFView(),
           ],
@@ -68,13 +59,13 @@ class App extends StatefulComponent {
           },
           dropdownProps: DCFDropdownProps(
             items: [
-              DCFDropdownMenuItem(title: "Validation Test", value: "0"),
-              DCFDropdownMenuItem(title: "List State Perf", value: "1"),
-              DCFDropdownMenuItem(title: "Gradient Test", value: "2"),
-              DCFDropdownMenuItem(title: "Really Long List", value: "3"),
-              DCFDropdownMenuItem(title: "Modal & Alert Test", value: "4"),
-              DCFDropdownMenuItem(title: "Component Showcase", value: "5"),
-              DCFDropdownMenuItem(title: "Portal Test", value: "6"),
+              DCFDropdownMenuItem(title: "Home", value: "0"),
+     
+              DCFDropdownMenuItem(title: "Gradient Test", value: "1"),
+              DCFDropdownMenuItem(title: "Really Long List", value: "2"),
+              DCFDropdownMenuItem(title: "Modal & Alert Test", value: "3"),
+              DCFDropdownMenuItem(title: "Component Showcase", value: "4"),
+              DCFDropdownMenuItem(title: "Portal Test", value: "5"),
              
             ],
             selectedValue: pagestateLocal.state.toString(),
