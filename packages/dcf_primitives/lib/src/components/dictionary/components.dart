@@ -48,3 +48,4 @@ export '../../commands/touchable_opacity_commands.dart';
 export '../../commands/gesture_detector_commands.dart';
 export '../../commands/text_commands.dart';
 export '../../commands/image_commands.dart';
+export '../../commands/text_input_commands.dart';

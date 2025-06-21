@@ -13,8 +13,18 @@ class ModalTest extends StatefulComponent {
     final toggleValue = useState<bool>(false);
     final checkboxValue = useState<bool>(false);
 
+    // Command states for demonstrating command pattern
+    final scrollCommand = useState<ScrollViewCommand?>(null);
+
     return DCFScrollView(
+      // ✅ Command pattern demonstration for ScrollView
+      command: scrollCommand.state,
       layout: LayoutProps(flex: 1, padding: 16.0),
+      onScroll: (v) {
+        if (scrollCommand.state != null) {
+          Future.microtask(() => scrollCommand.setState(null));
+        }
+      },
       children: [
         DCFText(
           content: "🚀 DCF Primitives Test",
@@ -40,7 +50,7 @@ class ModalTest extends StatefulComponent {
 
         DCFButton(
           buttonProps: DCFButtonProps(title: "Show Action Sheet"),
-          layout: LayoutProps(marginBottom: 20, height: 44),
+          layout: LayoutProps(marginBottom: 12, height: 44),
           styleSheet: StyleSheet(
             backgroundColor: Colors.purple,
             borderColor: Colors.purple,
@@ -49,6 +59,17 @@ class ModalTest extends StatefulComponent {
           ),
           onPress: (v) {
             actionSheetVisible.setState(true);
+          },
+        ),
+
+        // ✅ Command demonstration button
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Scroll to Bottom"),
+          layout: LayoutProps(marginBottom: 20, height: 44),
+          styleSheet: StyleSheet(backgroundColor: Colors.teal, borderRadius: 8),
+          onPress: (v) {
+            // ✅ Using scroll command pattern
+            scrollCommand.setState(ScrollViewCommand(scrollToBottom: const ScrollToBottomCommand(animated: true)));
           },
         ),
 

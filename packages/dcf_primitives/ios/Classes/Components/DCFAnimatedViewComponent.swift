@@ -153,8 +153,8 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
                 animatedView.animationDelay = delay
             }
             
-            if let repeat = commandData["repeat"] as? Bool {
-                animatedView.animationRepeat = repeat
+            if let repeatAnimation = commandData["repeat"] as? Bool {
+                animatedView.animationRepeat = repeatAnimation
             }
             
             if let toScale = commandData["toScale"] as? Double {

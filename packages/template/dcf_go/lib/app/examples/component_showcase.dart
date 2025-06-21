@@ -17,6 +17,11 @@ class ComponentShowcase extends StatefulComponent {
       'large': false,
     });
 
+    // Command states for demonstrating command pattern
+    final scrollCommand = useState<ScrollViewCommand?>(null);
+    final textInputCommand = useState<TextInputCommand?>(null);
+    final textInputValue = useState<String>("");
+
     void updateToggle(String key, bool value) {
       final newStates = Map<String, bool>.from(toggleStates.state);
       newStates[key] = value;
@@ -30,7 +35,15 @@ class ComponentShowcase extends StatefulComponent {
     }
 
     return DCFScrollView(
+      // ✅ Command pattern demonstration for ScrollView
+      command: scrollCommand.state,
       layout: LayoutProps(flex: 1, padding: 16),
+      onScroll: (v) {
+        // Clear command after execution to prevent re-execution
+        if (scrollCommand.state != null) {
+          Future.microtask(() => scrollCommand.setState(null));
+        }
+      },
       children: [
         DCFSlider(value: 0.5,layout: LayoutProps(height: 10, width: "100%",),onValueChange: (data) {
         },),
@@ -288,15 +301,46 @@ class ComponentShowcase extends StatefulComponent {
           ],
         ),
 
-        // Quick Actions
+        // Quick Actions - demonstrating scroll commands
         DCFText(
-          content: "Quick Actions",
+          content: "Quick Actions & Commands",
           textProps: DCFTextProps(
             fontSize: 18,
             fontWeight: DCFFontWeight.semibold,
             color: Colors.black87,
           ),
           layout: LayoutProps(marginBottom: 16, height: 25),
+        ),
+
+        // ✅ Command demonstration buttons
+        DCFView(
+          layout: LayoutProps(
+            flexDirection: YogaFlexDirection.row,
+            justifyContent: YogaJustifyContent.spaceEvenly,
+            marginBottom: 16,
+            height: 44,
+            gap: 8,
+          ),
+          children: [
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Scroll to Top"),
+              layout: LayoutProps(flex: 1),
+              styleSheet: StyleSheet(backgroundColor: Colors.purple, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Using command pattern to scroll to top
+                scrollCommand.setState(ScrollViewCommand(scrollToTop: const ScrollToTopCommand(animated: true)));
+              },
+            ),
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Scroll to Bottom"),
+              layout: LayoutProps(flex: 1),
+              styleSheet: StyleSheet(backgroundColor: Colors.teal, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Using command pattern to scroll to bottom
+                scrollCommand.setState(ScrollViewCommand(scrollToBottom: const ScrollToBottomCommand(animated: true)));
+              },
+            ),
+          ],
         ),
 
         DCFView(
@@ -341,6 +385,75 @@ class ComponentShowcase extends StatefulComponent {
                   'medium': !allChecked,
                   'large': !allChecked,
                 });
+              },
+            ),
+          ],
+        ),
+
+        // ✅ Text Input Commands Demonstration
+        DCFText(
+          content: "Text Input Commands",
+          textProps: DCFTextProps(
+            fontSize: 18,
+            fontWeight: DCFFontWeight.semibold,
+            color: Colors.black87,
+          ),
+          layout: LayoutProps(marginBottom: 16, height: 25),
+        ),
+
+        DCFTextInput(
+          command: textInputCommand.state,
+          value: textInputValue.state,
+          placeholder: "Type something here...",
+          layout: LayoutProps(height: 44, marginBottom: 12),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.white,
+            borderWidth: 1,
+            borderColor: Colors.grey.shade300,
+            borderRadius: 8,
+          ),
+          onChangeText: (text) {
+            textInputValue.setState(text);
+          },
+        ),
+
+        DCFView(
+          layout: LayoutProps(
+            flexDirection: YogaFlexDirection.row,
+            gap: 8,
+            marginBottom: 20,
+            height: 44,
+          ),
+          children: [
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Focus Input"),
+              layout: LayoutProps(flex: 1),
+              styleSheet: StyleSheet(backgroundColor: Colors.green, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Using TextInput command pattern to focus
+                textInputCommand.setState(const FocusTextInputCommand());
+                Future.microtask(() => textInputCommand.setState(null));
+              },
+            ),
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Clear Input"),
+              layout: LayoutProps(flex: 1),
+              styleSheet: StyleSheet(backgroundColor: Colors.red, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Using TextInput command pattern to clear
+                textInputCommand.setState(const ClearTextInputCommand());
+                textInputValue.setState('');
+                Future.microtask(() => textInputCommand.setState(null));
+              },
+            ),
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Select All"),
+              layout: LayoutProps(flex: 1),
+              styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Using TextInput command pattern to select all
+                textInputCommand.setState(const SelectAllTextCommand());
+                Future.microtask(() => textInputCommand.setState(null));
               },
             ),
           ],

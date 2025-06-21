@@ -42,7 +42,7 @@ class ReallyLongList extends StatefulComponent {
               layout: const LayoutProps(height: 44),
               styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 8),
               onPress: (v) {
-                currentCommand.setState(const ScrollToIndexCommand(index: 50, animated: true));
+                currentCommand.setState(const ScrollToIndexCommand(index: 49, animated: true));
               },
             ),
           ],

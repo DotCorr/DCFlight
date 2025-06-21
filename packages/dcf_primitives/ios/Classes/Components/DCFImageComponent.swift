@@ -353,6 +353,7 @@ class DCFImageComponent: NSObject, DCFComponent {
         }
         
         return UIImage(cgImage: cgImage)
+    }
     
     // Load image from URL or resource with improved error handling and thread safety
     private func loadImage(from source: String, into imageView: UIImageView, isLocal: Bool = false) {

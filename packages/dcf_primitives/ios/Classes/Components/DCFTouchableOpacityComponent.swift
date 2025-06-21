@@ -168,9 +168,9 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
             
         case "performPress":
             // Simulate a press event
-            component?.handleTouchDown(touchableView)
+            self.handleTouchDown(touchableView)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.component?.handleTouchUp(touchableView)
+                self?.handleTouchUp(touchableView, inside: true)
             }
             
         case "animateToState":

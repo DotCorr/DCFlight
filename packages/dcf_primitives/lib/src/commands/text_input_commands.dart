@@ -165,11 +165,11 @@ class SetSelectionCommand extends TextInputCommand {
 }
 
 /// Command to scroll to a specific position in the text input
-class ScrollToPositionCommand extends TextInputCommand {
+class TextInputScrollToPositionCommand extends TextInputCommand {
   final int position;
   final bool animated;
   
-  const ScrollToPositionCommand({
+  const TextInputScrollToPositionCommand({
     required this.position,
     this.animated = true,
   });
@@ -189,7 +189,7 @@ class ScrollToPositionCommand extends TextInputCommand {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is ScrollToPositionCommand && 
+    return other is TextInputScrollToPositionCommand && 
            other.position == position &&
            other.animated == animated;
   }
@@ -198,7 +198,7 @@ class ScrollToPositionCommand extends TextInputCommand {
   int get hashCode => Object.hash(position, animated);
   
   @override
-  String toString() => 'ScrollToPositionCommand(position: $position, animated: $animated)';
+  String toString() => 'TextInputScrollToPositionCommand(position: $position, animated: $animated)';
 }
 
 /// Command to insert text at the current cursor position
