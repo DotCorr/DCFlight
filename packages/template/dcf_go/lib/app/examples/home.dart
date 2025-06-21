@@ -27,6 +27,26 @@ class Home extends StatefulComponent {
           },
         ),
         DCFWebView(
+          onLoadStart: (v) {
+            print("WebView started loading: $v");
+          },
+          onLoadEnd: (v){
+            print("WebView finished loading: $v");
+          },
+
+          onLoadError: (v) {
+            print("WebView error: $v");
+          },
+
+          onLoadProgress: (v){
+            print("WebView loading progress: $v");
+          },
+          onMessage: (v){
+            print("WebView message received: $v");
+          },
+          onNavigationStateChange: (v) {
+            print("Navigation state changed: $v");
+          },
           webViewProps: DCFWebViewProps(
             source:
                 selectedIndexWeb.state == 0
