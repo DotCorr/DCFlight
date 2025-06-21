@@ -169,19 +169,10 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("📏 Modal FULL sizing - modal bounds: \(modalFrame)")
         print("📏 Modal FULL sizing - available: \(availableWidth)x\(availableHeight)")
         
-        // ✅ For sheet presentations, we need to account for the actual content area
-        var contentFrame = modalFrame
-        if #available(iOS 15.0, *), let sheet = modalVC.sheetPresentationController {
-            // Use the modal view's safe area insets for sheet content
-            let safeArea = modalVC.view.safeAreaInsets
-            contentFrame = CGRect(
-                x: safeArea.left,
-                y: safeArea.top,
-                width: modalFrame.width - safeArea.left - safeArea.right,
-                height: modalFrame.height - safeArea.top - safeArea.bottom
-            )
-            print("📏 Sheet content area adjusted for safe area: \(contentFrame)")
-        }
+        // ✅ ABSTRACTION LAYER CONTROL: Use the full modal bounds, no automatic safe area adjustments
+        // Let the Dart abstraction layer handle safe areas, padding, and margins as it sees fit
+        let contentFrame = modalFrame
+        print("📏 Content frame (FULL modal bounds): \(contentFrame)")
         
         // ✅ AUTO-FILL: Single child fills the entire modal space, let abstraction layer handle layout
         if childViews.count == 1, let childView = childViews.first {
@@ -618,17 +609,9 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
         if !contentChildren.isEmpty {
             print("📐 Modal bounds changed, updating \(contentChildren.count) children sizes")
             
-            // Calculate the available content area
-            var contentFrame = view.bounds
-            if #available(iOS 15.0, *), let sheet = sheetPresentationController {
-                let safeArea = view.safeAreaInsets
-                contentFrame = CGRect(
-                    x: safeArea.left,
-                    y: safeArea.top,
-                    width: view.bounds.width - safeArea.left - safeArea.right,
-                    height: view.bounds.height - safeArea.top - safeArea.bottom
-                )
-            }
+            // Calculate the available content area - give abstraction layer full control
+            let contentFrame = view.bounds
+            print("📐 Modal layout bounds: \(contentFrame) (no automatic safe area adjustments)")
             
             // Update child frames to match new modal size
             if contentChildren.count == 1, let childView = contentChildren.first {
