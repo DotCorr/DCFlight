@@ -115,6 +115,14 @@ class DCFModalComponent: NSObject, DCFComponent {
         print("🚀 DCFModalComponent.setChildren called with \(childViews.count) children for viewId: \(viewId)")
         print("🚀 DCFModalComponent.setChildren - view hash: \(view.hash)")
         print("🚀 DCFModalComponent.setChildren - children types: \(childViews.map { type(of: $0) })")
+        print("🚀 DCFModalComponent.setChildren - BEFORE: placeholder has \(view.subviews.count) existing children")
+        
+        // 🚨 CRITICAL DEBUG: Print stack trace to see WHO is calling setChildren
+        Thread.callStackSymbols.forEach { symbol in
+            if symbol.contains("DCF") || symbol.contains("Modal") {
+                print("📍 STACK: \(symbol)")
+            }
+        }
         
         // Store children in placeholder but keep them hidden from main UI
         view.subviews.forEach { $0.removeFromSuperview() }
@@ -126,6 +134,7 @@ class DCFModalComponent: NSObject, DCFComponent {
         }
         
         print("💾 Stored \(childViews.count) children in placeholder view (hidden from main UI)")
+        print("🚀 DCFModalComponent.setChildren - AFTER: placeholder has \(view.subviews.count) children")
         
         // If modal is currently presented, move children to modal content and make them visible
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
@@ -190,6 +199,7 @@ class DCFModalComponent: NSObject, DCFComponent {
             // ✅ MAKE VISIBLE: Child should be visible in modal (opposite of placeholder)
             childView.isHidden = false
             childView.alpha = 1.0
+            print("👁️ Made child visible: hidden=\(childView.isHidden), alpha=\(childView.alpha)")
             
             // ✅ FULL FRAME: Give child the entire content area
             childView.frame = contentFrame
@@ -425,6 +435,22 @@ class DCFModalComponent: NSObject, DCFComponent {
         // ✅ CRITICAL FIX: Look for children in placeholder view for reopen scenario
         let existingChildren = view.subviews
         print("🔍 Found \(existingChildren.count) children in placeholder view for modal presentation")
+        print("🔍 Placeholder view details: hash=\(view.hash), frame=\(view.frame), hidden=\(view.isHidden)")
+        print("🔍 Children details: \(existingChildren.map { "type: \(type(of: $0)), hidden: \($0.isHidden), alpha: \($0.alpha)" })")
+        
+        // 🚨 CRITICAL DEBUG: Let's check all known placeholders for this viewId
+        print("🔍 DEBUG: All known modals: \(DCFModalComponent.presentedModals.keys)")
+        
+        // Check if we have any stored children anywhere
+        var totalChildrenFound = 0
+        for (id, modal) in DCFModalComponent.presentedModals {
+            let modalChildren = modal.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+            if !modalChildren.isEmpty {
+                print("🔍 Found \(modalChildren.count) children in modal \(id)")
+                totalChildrenFound += modalChildren.count
+            }
+        }
+        print("🔍 Total children found across all modals: \(totalChildrenFound)")
         
         if !existingChildren.isEmpty {
             print("🚀 Moving \(existingChildren.count) children from placeholder to modal")
@@ -510,6 +536,23 @@ class DCFModalComponent: NSObject, DCFComponent {
     static func performModalDismissal(from view: UIView, viewId: String, completion: @escaping () -> Void) {
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
             print("🔄 DCFModalComponent: Programmatically dismissing tracked modal")
+            
+            // ✅ CRITICAL FIX: Move children back to placeholder BEFORE dismissing
+            // When dismissing programmatically, the sheet delegate methods won't be called
+            let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+            if !modalChildren.isEmpty {
+                print("💾 Programmatic dismissal: Moving \(modalChildren.count) children back to placeholder BEFORE dismiss")
+                modalChildren.forEach { child in
+                    print("🔄 Moving child back to placeholder: \(type(of: child))")
+                    child.removeFromSuperview()
+                    view.addSubview(child)
+                    // Hide children when moved back to placeholder (main UI)
+                    child.isHidden = true
+                    child.alpha = 0.0
+                    print("👁️ Hidden child in placeholder: hidden=\(child.isHidden), alpha=\(child.alpha)")
+                }
+                print("✅ Moved \(modalChildren.count) children back to placeholder for programmatic dismissal")
+            }
             
             modalVC.dismiss(animated: true) {
                 print("✅ DCFModalComponent: Modal dismissal completed")
@@ -660,28 +703,41 @@ class DCFModalViewController: UIViewController, UISheetPresentationControllerDel
         if let sourceView = sourceView {
             let modalChildren = view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
             
+            print("🔍 DISMISSAL DEBUG: sourceView hash=\(sourceView.hash), frame=\(sourceView.frame)")
+            print("🔍 DISMISSAL DEBUG: modal had \(modalChildren.count) children")
+            print("🔍 DISMISSAL DEBUG: sourceView BEFORE has \(sourceView.subviews.count) children")
+            
             if !modalChildren.isEmpty {
                 print("💾 Final dismissal: Moving \(modalChildren.count) children back to placeholder")
                 
-                // Clear existing children from placeholder
-                sourceView.subviews.forEach { $0.removeFromSuperview() }
-                
-                // Move children back to placeholder view and hide them from main UI
+                // ✅ CRITICAL FIX: Don't clear existing children from placeholder!
+                // Other modals might have their children stored there
+                // Just add back children from this dismissed modal
                 modalChildren.forEach { child in
+                    print("🔄 Moving child back to placeholder: \(type(of: child))")
                     child.removeFromSuperview()
                     sourceView.addSubview(child)
                     // ✅ CRITICAL: Hide children when moved back to placeholder (main UI)
                     child.isHidden = true
                     child.alpha = 0.0
+                    print("👁️ Hidden child in placeholder: hidden=\(child.isHidden), alpha=\(child.alpha)")
                 }
+                
+                print("🔍 DISMISSAL DEBUG: sourceView AFTER has \(sourceView.subviews.count) children")
+                print("✅ Moved \(modalChildren.count) children back to placeholder WITHOUT clearing existing ones")
+            } else {
+                print("⚠️ No modal children found to move back during dismissal")
             }
             
             propagateEvent(on: sourceView, eventName: "onDismiss", data: [:])
+        } else {
+            print("🚨 CRITICAL ERROR: sourceView is nil during dismissal!")
         }
         
         // Remove from tracking
         if let viewId = viewId {
             DCFModalComponent.presentedModals.removeValue(forKey: viewId)
+            print("🗑️ Removed modal \(viewId) from tracking")
         }
     }
     
