@@ -24,6 +24,7 @@ class App extends StatefulComponent {
 
     // Removed DCFPortalProvider wrapper to test modal rendering
     return DCFView(
+      adaptive: false,
       layout: LayoutProps(flex: 1),
       children: [
         // Main App Content

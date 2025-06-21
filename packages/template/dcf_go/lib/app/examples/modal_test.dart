@@ -17,6 +17,7 @@ class ModalTest extends StatefulComponent {
       layout: LayoutProps(flex: 1, padding: 16.0),
       children: [
         DCFText(
+          
           content: "🚀 DCF Primitives Test",
           textProps: DCFTextProps(fontSize: 24, fontWeight: "bold"),
           layout: LayoutProps(marginBottom: 20.0, height: 30.0),
@@ -119,6 +120,7 @@ class ModalTest extends StatefulComponent {
 
         // Alert Tests
         DCFText(
+        
           content: "Alert Components",
           textProps: DCFTextProps(
             fontSize: 18,
@@ -310,6 +312,7 @@ class ModalTest extends StatefulComponent {
 
         // Alert Component
         DCFAlert(
+          adaptive: false,
           visible: alertVisible.state,
           title: "Test Alert",
           message: "This is a test alert message with custom actions!",

@@ -2,7 +2,19 @@
 
 This document provides detailed API information for each primitive component in the DCFlight framework.
 
-## 🎛️ Input Components
+## � Adaptive Theming
+
+All DCFlight primitives support adaptive theming through the `adaptive` property. When set to `true` (default), components automatically adapt their appearance based on the current system theme (light/dark mode).
+
+```dart
+// Enable adaptive theming (default)
+DCFText("Hello", textProps: DCFTextProps(adaptive: true))
+
+// Disable adaptive theming
+DCFText("Hello", textProps: DCFTextProps(adaptive: false, color: Colors.red))
+```
+
+## �🎛️ Input Components
 
 ### DCFTextInput
 **Native Mapping**: UITextField / UITextView
@@ -11,17 +23,22 @@ This document provides detailed API information for each primitive component in 
 ```dart
 DCFTextInput({
   String? value,                    // Current text value
+  String? defaultValue,             // Default text value
   String? placeholder,              // Placeholder text
-  String? placeholderColor,         // Placeholder text color (hex)
+  Color? placeholderTextColor,      // Placeholder text color
+  DCFTextInputType inputType,       // Input type (text, email, etc.)
+  DCFKeyboardType keyboardType,     // Keyboard type
   bool multiline = false,           // Single vs multi-line input
-  int? maxLines,                    // Maximum lines for multiline
-  bool obscureText = false,         // Password field
-  String? textColor,                // Text color (hex)
-  String? selectionColor,           // Cursor/selection color (hex)
-  bool enabled = true,              // Input enabled state
-  TextInputType? keyboardType,      // Keyboard type
-  Function(String)? onChanged,      // Text change callback
-  Function(String)? onSubmitted,    // Submit callback
+  int? numberOfLines,               // Number of lines
+  bool secureTextEntry = false,     // Password field
+  Color? textColor,                 // Text color
+  Color? selectionColor,            // Cursor/selection color
+  bool editable = true,             // Input enabled state
+  bool adaptive = true,             // Use adaptive theming
+  Function(String)? onChangeText,   // Text change callback
+  Function(Map)? onSubmitEditing,   // Submit callback
+  Function(Map)? onFocus,           // Focus callback
+  Function(Map)? onBlur,            // Blur callback
 })
 ```
 
@@ -29,24 +46,11 @@ DCFTextInput({
 ```dart
 DCFTextInput(
   placeholder: "Enter your name",
-  placeholderColor: "#999999",
-  textColor: "#333333",
-  onChanged: (value) => print("Text: $value"),
+  placeholderTextColor: Colors.grey,
+  textColor: Colors.black,
+  adaptive: true,  // Automatically adapts to system theme
+  onChangeText: (value) => print("Text: $value"),
 )
-```
-
-### DCFButton
-**Native Mapping**: UIButton
-
-#### Properties
-```dart
-DCFButton({
-  String? title,                    // Button text
-  String? titleColor,               // Text color (hex)
-  String? backgroundColor,          // Background color (hex)
-  bool enabled = true,              // Button enabled state
-  Function()? onPressed,            // Press callback
-})
 ```
 
 ### DCFToggle
@@ -56,11 +60,13 @@ DCFButton({
 ```dart
 DCFToggle({
   bool value = false,               // Current switch state
-  String? activeTrackColor,         // Track color when ON (hex)
-  String? inactiveTrackColor,       // Track color when OFF (hex)
-  String? activeThumbColor,         // Thumb color when ON (hex)
+  Color? activeTrackColor,          // Track color when ON
+  Color? inactiveTrackColor,        // Track color when OFF
+  Color? activeThumbColor,          // Thumb color when ON
+  Color? inactiveThumbColor,        // Thumb color when OFF
   bool enabled = true,              // Switch enabled state
-  Function(bool)? onChanged,        // Value change callback
+  bool adaptive = true,             // Use adaptive theming
+  Function(bool)? onValueChanged,   // Value change callback
 })
 ```
 
@@ -71,10 +77,12 @@ DCFToggle({
 ```dart
 DCFCheckbox({
   bool checked = false,             // Current checked state
-  String? checkedColor,             // Color when checked (hex)
-  String? uncheckedColor,           // Color when unchecked (hex)
-  String? checkmarkColor,           // Checkmark color (hex)
+  Color? checkedColor,              // Color when checked
+  Color? uncheckedColor,            // Color when unchecked
+  Color? checkmarkColor,            // Checkmark color
   double size = 24.0,               // Checkbox size
+  bool enabled = true,              // Checkbox enabled state
+  bool adaptive = true,             // Use adaptive theming
   Function(bool)? onChanged,        // State change callback
 })
 ```
@@ -89,11 +97,12 @@ DCFSlider({
   double minimumValue = 0.0,        // Minimum value
   double maximumValue = 1.0,        // Maximum value
   double? step,                     // Step increment
-  String? minimumTrackTintColor,    // Left track color (hex)
-  String? maximumTrackTintColor,    // Right track color (hex)
-  String? thumbTintColor,           // Thumb color (hex)
+  Color? minimumTrackTintColor,     // Left track color
+  Color? maximumTrackTintColor,     // Right track color
+  Color? thumbTintColor,            // Thumb color
   bool disabled = false,            // Disabled state
-  Function(double)? onChanged,      // Value change callback
+  bool adaptive = true,             // Use adaptive theming
+  Function(double)? onValueChanged, // Value change callback
   Function(double)? onSlidingStart, // Slide start callback
   Function(double)? onSlidingComplete, // Slide end callback
 })
@@ -109,9 +118,10 @@ DCFSegmentedControl({
   List<String>? iconAssets,         // Optional icon assets for each segment
   int selectedIndex = 0,            // Currently selected index
   bool enabled = true,              // Control enabled state
-  String? backgroundColor,          // Background color (hex)
-  String? selectedTintColor,        // Selected segment color (hex, iOS 13+)
-  String? tintColor,               // Text color for selected segment (hex)
+  Color? backgroundColor,           // Background color
+  Color? selectedTintColor,         // Selected segment color (iOS 13+)
+  Color? tintColor,                 // Text color for selected segment
+  bool adaptive = true,             // Use adaptive theming
   Function(Map<dynamic, dynamic>)? onSelectionChange, // Selection callback
 })
 ```
@@ -122,8 +132,9 @@ DCFSegmentedControl(
   segments: ['Home', 'Search', 'Profile'],
   iconAssets: ['assets/icons/home.svg', 'assets/icons/search.svg', 'assets/icons/profile.svg'],
   selectedIndex: 0,
-  backgroundColor: "#F0F0F0",
-  selectedTintColor: "#007AFF",
+  backgroundColor: Color(0xFFF0F0F0),
+  selectedTintColor: Color(0xFF007AFF),
+  adaptive: true,  // Adapts to system theme
   onSelectionChange: (data) {
     print("Selected: ${data['selectedIndex']} - ${data['selectedTitle']}");
   },
@@ -153,26 +164,34 @@ DCFDropdown({
 #### Properties
 ```dart
 DCFText({
-  String text = '',                 // Text content
+  String content = '',              // Text content
+  DCFTextProps textProps,           // Text properties
+})
+
+// DCFTextProps
+DCFTextProps({
   String? fontFamily,               // Font family name
   bool isFontAsset = false,         // Load font from assets
   double? fontSize,                 // Font size
   String? fontWeight,               // Font weight (100-900, bold, normal)
-  String? color,                    // Text color (hex)
+  Color? color,                     // Text color
   int? numberOfLines,               // Max lines (0 = unlimited)
-  TextAlign? textAlign,             // Text alignment
+  String? textAlign,                // Text alignment
+  bool adaptive = true,             // Use adaptive theming
 })
 ```
 
-#### Example with Custom Font
+#### Example with Custom Font and Adaptive Theming
 ```dart
 DCFText(
-  text: "Custom Font Text",
-  fontFamily: "assets/fonts/custom-font.ttf",
-  isFontAsset: true,
-  fontSize: 18,
-  fontWeight: "600",
-  color: "#333333",
+  content: "Adaptive Text",
+  textProps: DCFTextProps(
+    fontFamily: "assets/fonts/custom-font.ttf",
+    isFontAsset: true,
+    fontSize: 18,
+    fontWeight: "600",
+    adaptive: true,  // Auto-adapts color to system theme
+  ),
 )
 ```
 
@@ -188,18 +207,36 @@ DCFImage({
 })
 ```
 
-### DCFSvg
+### DCFSVG
 **Native Mapping**: UIImageView
 
 #### Properties
 ```dart
-DCFSvg({
-  String? asset,                    // SVG asset path
-  String? tintColor,                // Tint color (hex)
-  String? backgroundColor,          // Background color (hex)
-  bool adaptive = true,             // Adaptive theming
-  bool isRelativePath = false,      // Relative path flag
+DCFSVG({
+  DCFSVGProps svgProps,             // SVG properties
 })
+
+// DCFSVGProps
+DCFSVGProps({
+  String source,                    // SVG asset path or URL
+  bool isAsset = false,             // Whether source is an asset
+  double? width,                    // SVG width
+  double? height,                   // SVG height
+  bool adaptive = true,             // Use adaptive theming for colors
+})
+```
+
+#### Example with Adaptive Theming
+```dart
+DCFSVG(
+  svgProps: DCFSVGProps(
+    source: "assets/icons/star.svg",
+    isAsset: true,
+    width: 24,
+    height: 24,
+    adaptive: true,  // SVG colors adapt to system theme
+  ),
+)
 ```
 
 ### DCFSpinner
@@ -209,8 +246,9 @@ DCFSvg({
 ```dart
 DCFSpinner({
   bool animating = true,            // Animation state
-  String? color,                    // Spinner color (hex)
+  Color? color,                     // Spinner color
   bool hidesWhenStopped = true,     // Hide when not animating
+  bool adaptive = true,             // Use adaptive theming
 })
 ```
 
@@ -317,11 +355,62 @@ DCFAnimatedView({
 #### Properties
 ```dart
 DCFAlert({
+  bool visible = false,             // Alert visibility
   String? title,                    // Alert title
   String? message,                  // Alert message
-  List<AlertAction> actions = const [], // Alert actions
-  bool visible = false,             // Alert visibility
+  DCFAlertStyle style = DCFAlertStyle.alert, // Alert vs action sheet style
+  List<DCFAlertTextField>? textFields, // Input fields
+  List<DCFAlertAction>? actions,    // Alert actions
+  bool dismissible = true,          // Can dismiss by tapping outside
+  bool adaptive = true,             // Use adaptive theming
+  Function(Map)? onShow,           // Alert shown callback
+  Function(Map)? onDismiss,        // Alert dismissed callback
+  Function(Map)? onActionPress,    // Action pressed callback
+  Function(Map)? onTextFieldChange, // Text field change callback
 })
+```
+
+#### Static Helper Methods
+```dart
+// Simple alert with OK button
+DCFAlert.simple(
+  title: "Success",
+  message: "Operation completed",
+  adaptive: true,
+)
+
+// Text input alert
+DCFAlert.textInput(
+  title: "Enter Name",
+  placeholder: "Your name",
+  confirmText: "Save",
+  adaptive: true,
+  onConfirm: (text) => print("Name: $text"),
+)
+
+// Login alert with username/password
+DCFAlert.login(
+  title: "Login Required",
+  adaptive: true,
+  onLogin: (username, password) => print("Login: $username"),
+)
+
+// Confirmation alert
+DCFAlert.confirmation(
+  title: "Confirm Action",
+  message: "Are you sure?",
+  adaptive: true,
+  onConfirm: (_) => print("Confirmed"),
+)
+
+// Destructive action alert
+DCFAlert.destructive(
+  title: "Delete Item",
+  message: "This cannot be undone",
+  destructiveText: "Delete",
+  adaptive: true,
+  onDestructive: (_) => print("Deleted"),
+)
 ```
 
 ## 🎯 Common Patterns

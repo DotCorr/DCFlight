@@ -31,6 +31,9 @@ class DCFTextProps {
   /// Number of lines (0 for unlimited)
   final int? numberOfLines;
   
+  /// Whether to use adaptive theming
+  final bool adaptive;
+  
   /// Create text props
   const DCFTextProps({
     this.fontSize,
@@ -40,6 +43,7 @@ class DCFTextProps {
     this.color,
     this.textAlign,
     this.numberOfLines,
+    this.adaptive = true,
   });
   
   /// Convert to props map
@@ -52,6 +56,7 @@ class DCFTextProps {
       if (color != null) 'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
       if (textAlign != null) 'textAlign': textAlign,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
+      'adaptive': adaptive,
     };
   }
 }

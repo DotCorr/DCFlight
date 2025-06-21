@@ -90,6 +90,67 @@ DCFSegmentedControl(
 )
 ```
 
+### Adaptive Theming Support ⭐ NEW
+
+All primitive components now support adaptive theming via the `adaptive` property. This allows components to automatically adapt their appearance based on the system theme (light/dark mode).
+
+#### Components with Adaptive Support
+- `DCFText` - Auto-adapts text color
+- `DCFSVG` - Auto-adapts SVG colors  
+- `DCFTextInput` - Auto-adapts text and placeholder colors
+- `DCFAlert` - Auto-adapts alert appearance
+- `DCFToggle` - Auto-adapts track and thumb colors
+- `DCFCheckbox` - Auto-adapts check colors
+- `DCFSlider` - Auto-adapts track and thumb colors
+- `DCFSpinner` - Auto-adapts spinner color
+- `DCFSegmentedControl` - Auto-adapts segment colors
+- `DCFView` - Auto-adapts background colors
+- `DCFButton` - Auto-adapts button appearance
+- `DCFIcon` - Auto-adapts icon colors
+- `DCFDropdown` - Auto-adapts dropdown appearance
+- `DCFTouchableOpacity` - Auto-adapts touch feedback
+- `DCFGestureDetector` - Auto-adapts gesture visual feedback
+- `DCFAnimatedView` - Auto-adapts animated backgrounds
+- `DCFImage` - Auto-adapts image background colors
+
+**All primitive components that support adaptive theming in iOS now expose the `adaptive` property in their Dart APIs.**
+
+#### Usage Example
+```dart
+// Enable adaptive theming (default behavior)
+DCFText(
+  content: "This text adapts to system theme",
+  textProps: DCFTextProps(
+    adaptive: true,  // Default value
+    fontSize: 16,
+  ),
+)
+
+// Disable adaptive theming for custom colors
+DCFText(
+  content: "This text uses custom color",
+  textProps: DCFTextProps(
+    adaptive: false,
+    color: Colors.red,  // Custom color
+    fontSize: 16,
+  ),
+)
+
+// Mixed approach - some properties adaptive, others custom
+DCFToggle(
+  value: isEnabled,
+  adaptive: true,  // Track/thumb colors adapt
+  activeThumbColor: Colors.green,  // But override thumb color
+  onValueChanged: (value) => setState(() => isEnabled = value),
+)
+```
+
+#### Migration Notes
+- **Backward compatible**: All existing code continues to work
+- **Default enabled**: Adaptive theming is enabled by default (`adaptive: true`)
+- **Override behavior**: Setting custom colors automatically disables adaptive behavior for those properties
+- **No action required**: Existing components will now automatically support dark mode
+
 ### Enhanced Modal System
 
 Modals now have improved behavior and child management:
@@ -167,9 +228,54 @@ Use this checklist to audit your codebase for v0.0.2 compatibility:
   - Replace custom tab implementations
   - Leverage icon support for better UX
 
+- [ ] **Leverage adaptive theming**:
+  - Review components that use custom colors
+  - Consider enabling adaptive theming for better dark mode support
+  - Test appearance in both light and dark system themes
+
 - [ ] **Audit color usage**:
   - Ensure consistent color format across components
   - Consider using adaptive theming where appropriate
+
+## 🎨 Adaptive Theming Migration Examples
+
+```dart
+// BEFORE: Manual color management
+DCFText(
+  content: "Hello World",
+  textProps: DCFTextProps(
+    color: Theme.of(context).brightness == Brightness.dark 
+      ? Colors.white 
+      : Colors.black,
+  ),
+)
+
+// AFTER: Automatic adaptive theming
+DCFText(
+  content: "Hello World",
+  textProps: DCFTextProps(
+    adaptive: true,  // Automatically handles light/dark
+  ),
+)
+
+// BEFORE: Complex theme-aware toggle
+DCFToggle(
+  value: isOn,
+  activeTrackColor: Theme.of(context).brightness == Brightness.dark
+    ? Colors.grey[700]
+    : Colors.grey[300],
+  activeThumbColor: Theme.of(context).brightness == Brightness.dark
+    ? Colors.white
+    : Colors.blue,
+)
+
+// AFTER: Simple adaptive toggle  
+DCFToggle(
+  value: isOn,
+  adaptive: true,  // Handles all theme variations
+  onValueChanged: (value) => setState(() => isOn = value),
+)
+```
 
 ## 🚀 Upgrade Steps
 
