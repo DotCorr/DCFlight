@@ -86,9 +86,7 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
             if let backgroundColor = props["backgroundColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
                 view.backgroundColor = uiColor
-                print("🎨 DCFAnimatedViewComponent: Set background color to: \(backgroundColor) -> \(uiColor)")
             } else {
-                print("⚠️ DCFAnimatedViewComponent: backgroundColor prop present but invalid value: \(props["backgroundColor"] ?? "nil")")
             }
         }
         

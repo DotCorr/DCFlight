@@ -92,7 +92,5 @@ class ProjectCreator {
   }
 
   void _printSuccessMessage(ProjectConfig config) {
-    print('📁 Location: ${path.absolute(config.projectDirectoryName)}');
-    print('🎯 Platforms: ${config.platforms.map((p) => p.displayName).join(', ')}\n');
   }
 }

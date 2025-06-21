@@ -101,14 +101,12 @@ class LayoutDebugging {
         let viewId = view.accessibilityIdentifier ?? "unknown"
         let frame = view.frame
         
-        print("\(indentation)📱 \(viewType)(id: \(viewId)): frame=\(frame), alpha=\(view.alpha)")
         
         // Check for explicit dimensions flag
         let hasExplicitDimensions = objc_getAssociatedObject(view, 
                                   UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!) as? Bool ?? false
         
         if hasExplicitDimensions {
-            print("\(indentation)   🔒 Has explicit dimensions!")
         }
         
         for subview in view.subviews {

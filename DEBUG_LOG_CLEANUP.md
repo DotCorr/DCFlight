@@ -1,3 +1,4 @@
+### Warning ---All automations written by ChatGPT-- (Logically )
 # DCFlight Debug Log Removal Scripts
 
 These scripts remove debug print statements from the DCFlight codebase for production release.

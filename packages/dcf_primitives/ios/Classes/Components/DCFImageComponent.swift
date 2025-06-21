@@ -85,7 +85,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             } else if let sourceNumber = sourceAny as? NSNumber {
                 source = sourceNumber.stringValue
             } else {
-                print("❌ Invalid source type: \(type(of: sourceAny))")
                 propagateEvent(on: imageView, eventName: "onError", data: ["error": "Invalid source type"])
                 return false
             }
@@ -132,9 +131,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             if let backgroundColor = props["backgroundColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
                 imageView.backgroundColor = uiColor
-                print("🎨 DCFImageComponent: Set background color to: \(backgroundColor) -> \(uiColor)")
             } else {
-                print("⚠️ DCFImageComponent: backgroundColor prop present but invalid value: \(props["backgroundColor"] ?? "nil")")
             }
         }
         
@@ -179,7 +176,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
         if !isLocal && (source.hasPrefix("http://") || source.hasPrefix("https://")) {
             // Load from URL
             guard let url = URL(string: source) else {
-                print("❌ Invalid URL: \(source)")
                 propagateEvent(on: imageView, eventName: "onError", data: ["error": "Invalid URL"])
                 return
             }
@@ -192,7 +188,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                     let data = try Data(contentsOf: url)
                     guard let image = UIImage(data: data) else {
                         DispatchQueue.main.async {
-                            print("❌ Failed to create image from data for URL: \(source)")
                             propagateEvent(on: imageView, eventName: "onError", data: ["error": "Failed to create image from data"])
                         }
                         return
@@ -213,7 +208,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                     }
                 } catch {
                     DispatchQueue.main.async {
-                        print("❌ Failed to load image from URL: \(source), error: \(error)")
                         propagateEvent(on: imageView, eventName: "onError", data: ["error": "Failed to load image from URL: \(error.localizedDescription)"])
                     }
                 }
@@ -244,7 +238,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                         propagateEvent(on: imageView, eventName: "onLoad", data: [:])
                     }
                 } else {
-                    print("❌ Failed to load local image: \(source)")
                     DispatchQueue.main.async {
                         propagateEvent(on: imageView, eventName: "onError", data: ["error": "Local image not found"])
                     }
@@ -268,7 +261,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 } else if let uriNumber = uriAny as? NSNumber {
                     uri = uriNumber.stringValue
                 } else {
-                    print("❌ Invalid URI type in setImage: \(type(of: uriAny))")
                     return false
                 }
                 

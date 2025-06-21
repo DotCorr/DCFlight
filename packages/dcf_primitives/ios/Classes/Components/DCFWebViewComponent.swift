@@ -102,7 +102,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         
         // Only reload if source changed
         if DCFWebViewComponent.sharedInstance.currentURL != source {
-            print("DCFWebView: updateView - Source changed from \(DCFWebViewComponent.sharedInstance.currentURL ?? "nil") to \(source)")
             DispatchQueue.main.async {
                 DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
             }
@@ -162,10 +161,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let loadMode = props["loadMode"] as? String ?? "url"
         let contentType = props["contentType"] as? String ?? "html"
         
-        print("DCFWebView: Loading content - source: \(source), loadMode: \(loadMode)")
-        print("DCFWebView: WebView frame: \(webView.frame)")
-        print("DCFWebView: WebView bounds: \(webView.bounds)")
-        print("DCFWebView: WebView superview: \(webView.superview?.description ?? "nil")")
         
         currentURL = source
         
@@ -180,7 +175,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             }
             
             guard let url = URL(string: source) else {
-                print("DCFWebView: Invalid URL: \(source)")
                 return
             }
             
@@ -191,15 +185,11 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             request.timeoutInterval = 30.0
             
-            print("DCFWebView: Loading URL request: \(url)")
-            print("DCFWebView: Request headers: \(request.allHTTPHeaderFields ?? [:])")
-            print("DCFWebView: Request timeout: \(request.timeoutInterval)")
             
             // Load the request
             webView.load(request)
             
         case "htmlString":
-            print("DCFWebView: Loading HTML string of length: \(source.count)")
             webView.loadHTMLString(source, baseURL: nil)
             
         case "localFile":
@@ -256,9 +246,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
 // MARK: - WKNavigationDelegate
 extension DCFWebViewComponent: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        print("DCFWebView: didStartProvisionalNavigation - URL: \(webView.url?.absoluteString ?? "nil")")
-        print("DCFWebView: WebView frame during load start: \(webView.frame)")
-        print("DCFWebView: WebView isHidden: \(webView.isHidden), alpha: \(webView.alpha)")
         
         // Propagate event directly on the webView
         propagateEvent(on: webView, eventName: "onLoadStart", data: [
@@ -268,10 +255,6 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     }
     
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        print("DCFWebView: didFinish navigation - URL: \(webView.url?.absoluteString ?? "nil")")
-        print("DCFWebView: Page title: \(webView.title ?? "nil")")
-        print("DCFWebView: WebView frame after load: \(webView.frame)")
-        print("DCFWebView: WebView isHidden: \(webView.isHidden), alpha: \(webView.alpha)")
         
         // Force a layout pass to ensure content is visible
         DispatchQueue.main.async {
@@ -287,10 +270,6 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     }
     
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        print("DCFWebView: Navigation failed - Error: \(error.localizedDescription)")
-        print("DCFWebView: Error code: \((error as NSError).code)")
-        print("DCFWebView: Error domain: \((error as NSError).domain)")
-        print("DCFWebView: Error userInfo: \((error as NSError).userInfo)")
         
         // Propagate event directly on the webView
         propagateEvent(on: webView, eventName: "onLoadError", data: [
@@ -301,10 +280,6 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     }
     
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        print("DCFWebView: Provisional navigation failed - Error: \(error.localizedDescription)")
-        print("DCFWebView: Error code: \((error as NSError).code)")
-        print("DCFWebView: Error domain: \((error as NSError).domain)")
-        print("DCFWebView: Error userInfo: \((error as NSError).userInfo)")
         
         // Propagate event directly on the webView
         propagateEvent(on: webView, eventName: "onLoadError", data: [

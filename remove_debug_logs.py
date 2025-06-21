@@ -20,23 +20,25 @@ class DebugLogCleaner:
         # Dart patterns to remove
         self.dart_patterns = [
             # Simple print statements
-            r'^\s*print\s*\([^)]*\)\s*;\s*$',
+            r'^\s*print\s*\(.*\)\s*;\s*$',
             # debugPrint statements
-            r'^\s*debugPrint\s*\([^)]*\)\s*;\s*$',
+            r'^\s*debugPrint\s*\(.*\)\s*;\s*$',
             # developer.log statements
-            r'^\s*developer\.log\s*\([^)]*\)\s*;\s*$',
+            r'^\s*developer\.log\s*\(.*\)\s*;\s*$',
             # Simple if kDebugMode single line
-            r'^\s*if\s*\(\s*kDebugMode\s*\)\s*print\s*\([^)]*\)\s*;\s*$',
+            r'^\s*if\s*\(\s*kDebugMode\s*\)\s*print\s*\(.*\)\s*;\s*$',
         ]
         
         # Swift patterns to remove
         self.swift_patterns = [
-            # Simple print statements
-            r'^\s*print\s*\([^)]*\)\s*$',
+            # Simple print statements (single and multi-line)
+            r'^\s*print\s*\(.*\)\s*$',
             # NSLog statements
-            r'^\s*NSLog\s*\([^)]*\)\s*$',
+            r'^\s*NSLog\s*\(.*\)\s*$',
             # os_log statements
-            r'^\s*os_log\s*\([^)]*\)\s*$',
+            r'^\s*os_log\s*\(.*\)\s*$',
+            # Commented out print statements
+            r'^\s*//\s*print\s*\(.*\)\s*$',
         ]
     
     def clean_dart_file(self, file_path: Path) -> int:
@@ -61,6 +63,20 @@ class DebugLogCleaner:
                         next_line = lines[i]
                         brace_count += next_line.count('{') - next_line.count('}')
                         i += 1
+                    continue
+                
+                # Check for multi-line print statements that span multiple lines
+                if re.match(r'^\s*print\s*\(', line) and not line.rstrip().endswith(');'):
+                    # This is a multi-line print statement, skip until we find the closing paren with semicolon
+                    paren_count = line.count('(') - line.count(')')
+                    i += 1
+                    while i < len(lines) and paren_count > 0:
+                        next_line = lines[i]
+                        paren_count += next_line.count('(') - next_line.count(')')
+                        i += 1
+                        # If we find the closing semicolon, break
+                        if paren_count == 0 and next_line.rstrip().endswith(');'):
+                            break
                     continue
                 
                 # Check against simple patterns
@@ -112,6 +128,17 @@ class DebugLogCleaner:
                         if re.match(r'^\s*#endif\s*$', next_line):
                             i += 1
                             break
+                        i += 1
+                    continue
+                
+                # Check for multi-line print statements that span multiple lines
+                if re.match(r'^\s*print\s*\(', line) and not line.rstrip().endswith(')'):
+                    # This is a multi-line print statement, skip until we find the closing paren
+                    paren_count = line.count('(') - line.count(')')
+                    i += 1
+                    while i < len(lines) and paren_count > 0:
+                        next_line = lines[i]
+                        paren_count += next_line.count('(') - next_line.count(')')
                         i += 1
                     continue
                 

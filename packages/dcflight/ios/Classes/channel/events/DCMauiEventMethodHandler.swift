@@ -68,7 +68,6 @@ class DCMauiEventMethodHandler: NSObject {
     
     // Send event to Dart
     func sendEvent(viewId: String, eventName: String, eventData: [String: Any]) {
-        print("📣 Sending event to Dart - viewId: \(viewId), eventName: \(eventName)")
         
         // Ensure event name follows "on" convention
         let normalizedEventName = normalizeEventName(eventName)
@@ -125,7 +124,6 @@ class DCMauiEventMethodHandler: NSObject {
             return
         }
         
-        print("🎯 Native: Received addEventListeners call for view \(viewId): \(eventTypes)")
         
         // Get view from the registry
         var view: UIView? = ViewRegistry.shared.getView(id: viewId)
@@ -136,7 +134,6 @@ class DCMauiEventMethodHandler: NSObject {
         }
         
         guard let foundView = view else {
-            print("❌ Cannot register events: View not found with ID \(viewId)")
             
             // Return success anyway to prevent Flutter errors - we'll handle missing views gracefully
             result(true)
@@ -162,7 +159,6 @@ class DCMauiEventMethodHandler: NSObject {
             return
         }
         
-        print("🎯 Native: Received removeEventListeners call for view \(viewId): \(eventTypes)")
         
         // Get view from the registry
         var view: UIView? = ViewRegistry.shared.getView(id: viewId)
@@ -173,7 +169,6 @@ class DCMauiEventMethodHandler: NSObject {
         }
         
         guard let foundView = view else {
-            print("❌ Cannot unregister events: View not found with ID \(viewId)")
             
             // Return success anyway to prevent Flutter errors - we'll handle missing views gracefully
             result(true)
@@ -199,7 +194,6 @@ class DCMauiEventMethodHandler: NSObject {
         var allEventTypes = Set(eventTypes)
         allEventTypes.formUnion(normalizedEventTypes)
         
-        print("🔄 Event types registration: original: \(eventTypes) -> normalized: \(normalizedEventTypes) -> combined: \(Array(allEventTypes))")
         
         // 🚀 NEW GLOBAL EVENT SYSTEM: No need for component-specific event registration!
         // The global propagateEvent() system handles all events automatically.
@@ -222,7 +216,6 @@ class DCMauiEventMethodHandler: NSObject {
         
         // Store the event callback for the global system to use
         let eventCallback: (String, String, [String: Any]) -> Void = { [weak self] (viewId, eventType, eventData) in
-            print("🔔 Event triggered: \(eventType) for view \(viewId)")
             self?.sendEvent(viewId: viewId, eventName: eventType, eventData: eventData)
         }
         
@@ -233,9 +226,6 @@ class DCMauiEventMethodHandler: NSObject {
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
-        print("✅ Successfully registered events for view \(viewId): \(Array(allEventTypes)) using global event system")
-        print("🔍 DEBUG: Stored event types: \(Array(allEventTypes))")
-        print("🔍 DEBUG: View type: \(String(describing: type(of: view)))")
         return true
     }
     
@@ -278,7 +268,6 @@ class DCMauiEventMethodHandler: NSObject {
             }
         }
         
-        print("✅ Successfully unregistered events for view \(viewId): \(eventTypes)")
         return true
     }
 }

@@ -33,11 +33,9 @@ class TerminalInputHandler {
         });
         
         if (verbose) {
-          print('   All commands forwarded to Flutter except "r" (hot reload)');
         }
       } else {
         if (verbose) {
-          print('⌨️  Terminal input forwarding skipped (not a terminal)');
         }
       }
       
@@ -103,11 +101,8 @@ class TerminalInputHandler {
   }
 
   void _showHelp() {
-    print('   R - Hot restart (full app restart)');
-    print('   r - Hot reload (disabled in DCFlight)');
   }
 
   void _showStatus() {
-    print('   🔄 Hot restart: Available (press R)');
   }
 }

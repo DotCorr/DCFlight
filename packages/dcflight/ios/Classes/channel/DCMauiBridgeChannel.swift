@@ -51,8 +51,6 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     /// Handle method calls from Flutter
     func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        print("🔔 NATIVE: Bridge received method call: \(call.method)")
-        print("🔍 NATIVE: Method arguments: \(call.arguments ?? "nil")")
         
         // Get the arguments
         let args = call.arguments as? [String: Any]
@@ -132,24 +130,20 @@ class DCMauiBridgeMethodChannel: NSObject {
         DispatchQueue.main.async {
             // Initialize components and systems
             let success = DCMauiBridgeImpl.shared.initialize()
-            print("🚀 Bridge initialization result: \(success)")
             result(success)
         }
     }
     
     // Create a view
     private func handleCreateView(_ args: [String: Any], result: @escaping FlutterResult) {
-        print("🔥 NATIVE: handleCreateView called with args: \(args)")
         
         guard let viewId = args["viewId"] as? String,
               let viewType = args["viewType"] as? String,
               let props = args["props"] as? [String: Any] else {
-            print("❌ NATIVE: handleCreateView - Invalid parameters: \(args)")
             result(FlutterError(code: "CREATE_ERROR", message: "Invalid view creation parameters", details: nil))
             return
         }
         
-        print("✅ NATIVE: handleCreateView - Parsed parameters: viewId=\(viewId), viewType=\(viewType), props=\(props)")
         
         // Convert props to JSON
         guard let propsData = try? JSONSerialization.data(withJSONObject: props),
@@ -162,7 +156,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Execute on main thread
         DispatchQueue.main.async {
             let success = DCMauiBridgeImpl.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
-            print("📊 NATIVE: handleCreateView - DCMauiBridgeImpl.createView result: \(success)")
             result(success)
         }
     }
@@ -213,7 +206,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Execute on main thread
         DispatchQueue.main.async {
             let success = DCMauiBridgeImpl.shared.detachView(childId: viewId)
-            print("🔄 Detached view \(viewId) from parent: \(success)")
             result(success)
         }
     }
@@ -292,7 +284,6 @@ class DCMauiBridgeMethodChannel: NSObject {
                             }
                         }
                     default:
-                        print("Unknown batch operation: \(operation)")
                     }
                 }
             }
@@ -311,7 +302,6 @@ class DCMauiBridgeMethodChannel: NSObject {
             return
         }
 
-        print("📞 Received callComponentMethod: viewId=\(viewId), method=\(methodName), args=\(methodArgs)")
 
         // Execute on main thread
         DispatchQueue.main.async {
@@ -325,13 +315,11 @@ class DCMauiBridgeMethodChannel: NSObject {
                 // If found, update our registry
                 if view != nil {
                     self.views[viewId] = view
-                    print("🔄 View \(viewId) found in DCMauiBridgeImpl but not in bridge channel - synced")
                 }
             }
             
             // Final check - view must exist
             guard let finalView = view else {
-                print("❌ callComponentMethod: View not found with ID: \(viewId)")
                 result(FlutterError(code: "VIEW_NOT_FOUND", message: "View not found", details: viewId))
                 return
             }
@@ -349,13 +337,11 @@ class DCMauiBridgeMethodChannel: NSObject {
                 if String(describing: type(of: tempView)) == viewClassName {
                     componentInstance = tempInstance
                     componentName = name
-                    print("✅ Found component \(name) for view class: \(viewClassName)")
                     break
                 }
             }
             
             guard let component = componentInstance else {
-                print("❌ No component found for view class: \(viewClassName)")
                 result(FlutterError(code: "COMPONENT_NOT_FOUND", message: "No component found for view type", details: viewClassName))
                 return
             }
@@ -365,14 +351,11 @@ class DCMauiBridgeMethodChannel: NSObject {
                 let success = methodHandler.handleMethod(methodName: methodName, args: methodArgs, view: finalView)
                 
                 if success {
-                    print("✅ Method \(methodName) successfully handled by \(componentName) component")
                     result(true)
                 } else {
-                    print("❌ Component \(componentName) failed to handle method \(methodName)")
                     result(FlutterError(code: "METHOD_FAILED", message: "Component failed to handle method", details: methodName))
                 }
             } else {
-                print("❌ Component \(componentName) does not implement ComponentMethodHandler protocol")
                 result(FlutterError(code: "METHOD_NOT_SUPPORTED", message: "Component does not support method handling", details: componentName))
             }
         }
@@ -381,7 +364,6 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     /// Handle hot restart detection method calls
     func handleHotRestartMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        print("🔥 Hot restart method call: \(call.method)")
         
         switch call.method {
         case "getSessionToken":
@@ -391,7 +373,6 @@ class DCMauiBridgeMethodChannel: NSObject {
             // Create a new session token with timestamp
             let token = "dcf_session_\(Date().timeIntervalSince1970)"
             DCMauiBridgeMethodChannel.sessionToken = token
-            print("🎫 DCFlight: Created session token \(token)")
             result(token)
             
         case "cleanupViews":
@@ -449,7 +430,6 @@ extension ViewRegistry {
         for (viewId, viewInfo) in registry {
             if viewId != "root" { // Don't remove root view from hierarchy
                 viewInfo.view.removeFromSuperview()
-                print("🗑️ Removed view: \(viewId)")
             } else {
                 // Clear only the children of the root view, not the root itself
                 let rootView = viewInfo.view
@@ -464,7 +444,6 @@ extension ViewRegistry {
         for (viewId, _) in nonRootViews {
             registry.removeValue(forKey: viewId)
         }
-        print("🧹 ViewRegistry cleared (except root)")
     }
 }
 
@@ -477,7 +456,6 @@ extension YogaShadowTree {
                 removeNode(nodeId: nodeId)
             }
         }
-        print("🧹 YogaShadowTree cleared (except root)")
     }
 }
 
@@ -490,7 +468,6 @@ extension DCFLayoutManager {
                 cleanUp(viewId: viewId)
             }
         }
-        print("🧹 DCFLayoutManager cleared (except root)")
     }
 }
 

@@ -87,7 +87,6 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHa
             } else {
                 virtualizedScrollView.showsVerticalScrollIndicator = showsScrollIndicator
             }
-            print("🗂️ VirtualizedFlatList showsScrollIndicator set to: \(showsScrollIndicator)")
         }
         
         // Set bounces if specified
@@ -110,7 +109,6 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHa
             if let backgroundColor = props["backgroundColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
                 virtualizedScrollView.backgroundColor = uiColor
-                print("🎨 VirtualizedFlatList: Set background color to: \(backgroundColor) -> \(uiColor)")
             }
         }
         
@@ -167,7 +165,6 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHa
         let newFrame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
         virtualizedScrollView.frame = newFrame
         
-        print("📏 VirtualizedFlatList: Frame set to \(newFrame)")
         
         // Step 2: Immediately update content size from Yoga layout
         // Don't use async here - do it synchronously after frame is set
@@ -279,7 +276,6 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHa
         
         virtualizedScrollView.setContentOffset(clampedOffset, animated: animated)
         
-        print("🗂️ VirtualizedFlatList: Scrolled to index \(index) at offset \(clampedOffset)")
     }
     
     // MARK: - UIScrollViewDelegate Methods (Clean Global Event System)

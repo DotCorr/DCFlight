@@ -45,7 +45,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, ComponentMethodHandle
         
         // Enable debug mode in development
         
-        print("🆕 Created gesture view with props: \(props)")
         return gestureView
     }
     

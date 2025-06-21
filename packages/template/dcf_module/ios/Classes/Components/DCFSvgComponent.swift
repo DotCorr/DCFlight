@@ -43,7 +43,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        print("🔍 DCFSvg updateView called with props: \(props)")
         
         guard let imageView = view as? UIImageView else { 
             return false 
@@ -64,7 +63,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
             
             // Handle asset loading (for initial creation) or prop updates
             if let asset = props["asset"] as? String {
-                print("🔍 DCFSvg updateView: Loading asset: \(asset)")
                 let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
                 let mainBundle = Bundle.main
                 let path = mainBundle.path(forResource: key, ofType: nil)
@@ -87,7 +85,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
             
             return true
         } catch {
-            print("❌ DCFSvg updateView: Exception occurred: \(error)")
             return false
         }
     }
@@ -148,19 +145,16 @@ class DCFSvgComponent: NSObject, DCFComponent {
     // MARK: - Helper Methods
     
     private func applyTintColor(to imageView: UIImageView, props: [String: Any]) {
-        print("🔍 DCFSvg applyTintColor called with props: \(props)")
         
         // Apply tint color if specified
         if let tintColorString = props["tintColor"] as? String,
            let tintColor = ColorUtilities.color(fromHexString: tintColorString) {
-            print("🎨 Applying explicit tint color: \(tintColorString)")
             imageView.tintColor = tintColor
             // Force the image to use template rendering mode
             if let image = imageView.image {
                 imageView.image = image.withRenderingMode(.alwaysTemplate)
             }
         } else {
-            print("🔍 DCFSvg: No valid tintColor found. tintColor value: \(props["tintColor"] ?? "nil")")
             // Only apply adaptive tint if no explicit tintColor was provided at all
             // Check if a tintColor key exists but with nil/empty value vs no key at all
             if props["tintColor"] == nil {

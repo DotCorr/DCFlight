@@ -14,11 +14,9 @@ import Foundation
     /// Convert a hex string to a UIColor
     /// Format: "#RRGGBB" or "#RRGGBBAA" or "#AARRGGBB" (Android format)
    public static func color(fromHexString hexString: String) -> UIColor? {
-        print("Color conversion request: \"\(hexString)\"")
         
         // Handle transparent color explicitly
         if hexString.lowercased() == "transparent" {
-            print("🔍 Using transparent color (explicit keyword)")
             return UIColor.clear
         }
         
@@ -28,18 +26,15 @@ import Foundation
         }
         
         // Print debug info for troubleshooting color issues
-        print("⚡️ ColorUtilities: Processing color string: \(hexString)")
         
         var cleanHexString = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
         
         // Special handling for Material colors from Flutter
         // These come in as positive integer values
         if let intValue = Int(cleanHexString), intValue >= 0 {
-            print("🎨 Converting Flutter color integer value: \(intValue)")
             
             // Check for transparent (0)
             if intValue == 0 {
-                print("🔍 Using transparent color (int zero)")
                 return UIColor.clear
             }
             
@@ -87,7 +82,6 @@ import Foundation
             
             // If explicitly has alpha 0, return clear regardless of RGB values
             if alpha == 0 {
-                print("🔍 Using transparent color (alpha=0)")
                 return UIColor.clear
             }
             
@@ -104,12 +98,10 @@ import Foundation
             }
             
         default:
-            print("⚠️ Invalid color format: \(cleanHexString) (length: \(cleanHexString.count))")
             return .magenta // Return a bright color to make issues obvious
         }
         
         let color = UIColor(red: red, green: green, blue: blue, alpha: alpha)
-        print("🎨 Color components: R=\(red), G=\(green), B=\(blue), A=\(alpha) -> UIColor: \(color)")
         return color
     }
     
@@ -128,7 +120,6 @@ import Foundation
     
     /// Parse Flutter Color object format: "Color(alpha: 1.0000, red: 0.0000, green: 0.0000, blue: 0.0000, colorSpace: ColorSpace.sRGB)"
     private static func parseFlutterColorObject(_ colorString: String) -> UIColor? {
-        print("🔍 Parsing Flutter Color object: \(colorString)")
         
         // Use regex to extract color components
         let pattern = #"alpha:\s*([\d.]+).*?red:\s*([\d.]+).*?green:\s*([\d.]+).*?blue:\s*([\d.]+)"#
@@ -152,7 +143,6 @@ import Foundation
         }
         
         let color = UIColor(red: CGFloat(red), green: CGFloat(green), blue: CGFloat(blue), alpha: CGFloat(alpha))
-        print("🎨 Parsed Flutter Color: R=\(red), G=\(green), B=\(blue), A=\(alpha) -> \(color)")
         
         return color
     }

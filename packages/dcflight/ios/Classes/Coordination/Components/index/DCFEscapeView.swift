@@ -73,7 +73,6 @@ public class DCFEscapeView: UIView {
         ]
         
         YogaShadowTree.shared.updateNodeLayoutProps(nodeId: nodeId, props: zeroProps)
-        print("🧹 DCFEscapeView: Applied AGGRESSIVE zero-space Yoga properties for nodeId: \(nodeId)")
     }
     
     /// Restore Yoga node to normal
@@ -90,7 +89,6 @@ public class DCFEscapeView: UIView {
         ]
         
         YogaShadowTree.shared.updateNodeLayoutProps(nodeId: nodeId, props: normalProps)
-        print("✅ DCFEscapeView: Restored normal Yoga properties for nodeId: \(nodeId)")
     }
     
     /// Get stored children

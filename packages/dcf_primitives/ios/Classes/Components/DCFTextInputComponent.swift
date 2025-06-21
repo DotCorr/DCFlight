@@ -83,18 +83,15 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
     }
     
     private func updateTextField(_ textField: UITextField, withProps props: [String: Any]) -> Bool {
-        print("🔄 DCFTextInputComponent: Updating text field with props: \(props.keys)")
         
         // Update text value
         if let value = props["value"] as? String {
             textField.text = value
-            print("📝 DCFTextInputComponent: Set text field value to: \(value)")
         }
         
         // Update placeholder
         if let placeholder = props["placeholder"] as? String {
             textField.placeholder = placeholder
-            print("💬 DCFTextInputComponent: Set placeholder to: \(placeholder)")
         }
         
         // Update placeholder color
@@ -103,7 +100,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 string: textField.placeholder ?? "",
                 attributes: [NSAttributedString.Key.foregroundColor: ColorUtilities.color(fromHexString: placeholderColor) ?? UIColor.placeholderText]
             )
-            print("🎨 DCFTextInputComponent: Set placeholder color to: \(placeholderColor)")
         }
         
         // Handle text color property - key fix for incremental updates
@@ -111,9 +107,7 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             if let textColor = props["textColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: textColor)
                 textField.textColor = uiColor
-                print("🎨 DCFTextInputComponent: Set text color to: \(textColor) -> \(uiColor)")
             } else {
-                print("⚠️ DCFTextInputComponent: textColor prop present but invalid value: \(props["textColor"] ?? "nil")")
             }
         }
         
@@ -132,50 +126,42 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
         // Update keyboard type
         if let keyboardType = props["keyboardType"] as? String {
             textField.keyboardType = mapKeyboardType(keyboardType)
-            print("⌨️ DCFTextInputComponent: Set keyboard type to: \(keyboardType)")
         }
         
         // Update return key type
         if let returnKeyType = props["returnKeyType"] as? String {
             textField.returnKeyType = mapReturnKeyType(returnKeyType)
-            print("↩️ DCFTextInputComponent: Set return key type to: \(returnKeyType)")
         }
         
         // Update auto-capitalization
         if let autoCapitalization = props["autoCapitalization"] as? String {
             textField.autocapitalizationType = mapAutoCapitalizationType(autoCapitalization)
-            print("🔤 DCFTextInputComponent: Set auto-capitalization to: \(autoCapitalization)")
         }
         
         // Update secure text entry
         if let secureTextEntry = props["secureTextEntry"] as? Bool {
             textField.isSecureTextEntry = secureTextEntry
-            print("🔒 DCFTextInputComponent: Set secure text entry to: \(secureTextEntry)")
         }
         
         // Update auto-correction
         if let autoCorrect = props["autoCorrect"] as? Bool {
             textField.autocorrectionType = autoCorrect ? .yes : .no
-            print("✏️ DCFTextInputComponent: Set auto-correction to: \(autoCorrect)")
         }
         
         // Update editable state
         if let editable = props["editable"] as? Bool {
             textField.isEnabled = editable
-            print("✍️ DCFTextInputComponent: Set editable to: \(editable)")
         }
         
         // Update selection color (tint color)
         if let selectionColor = props["selectionColor"] as? String {
             textField.tintColor = ColorUtilities.color(fromHexString: selectionColor)
-            print("🎯 DCFTextInputComponent: Set selection color to: \(selectionColor)")
         }
         
          // Update max length
         if let maxLength = props["maxLength"] as? Int {
             // Store max length for delegate validation
             objc_setAssociatedObject(textField, UnsafeRawPointer(bitPattern: "maxLength".hashValue)!, maxLength, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            print("📏 DCFTextInputComponent: Set max length to: \(maxLength)")
         }
         
         // Apply StyleSheet properties for TextField
@@ -185,48 +171,40 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
     }
     
     private func updateTextView(_ textView: UITextView, withProps props: [String: Any]) -> Bool {
-        print("🔄 DCFTextInputComponent: Updating text view with props: \(props.keys)")
         
         // Update text value
         if let value = props["value"] as? String {
             textView.text = value
-            print("📝 DCFTextInputComponent: Set text view value to: \(value)")
         }
         
         // Update keyboard type
         if let keyboardType = props["keyboardType"] as? String {
             textView.keyboardType = mapKeyboardType(keyboardType)
-            print("⌨️ DCFTextInputComponent: Set keyboard type to: \(keyboardType)")
         }
         
         // Update return key type
         if let returnKeyType = props["returnKeyType"] as? String {
             textView.returnKeyType = mapReturnKeyType(returnKeyType)
-            print("↩️ DCFTextInputComponent: Set return key type to: \(returnKeyType)")
         }
         
         // Update auto-capitalization
         if let autoCapitalization = props["autoCapitalization"] as? String {
             textView.autocapitalizationType = mapAutoCapitalizationType(autoCapitalization)
-            print("🔤 DCFTextInputComponent: Set auto-capitalization to: \(autoCapitalization)")
         }
         
         // Update auto-correction
         if let autoCorrect = props["autoCorrect"] as? Bool {
             textView.autocorrectionType = autoCorrect ? .yes : .no
-            print("✏️ DCFTextInputComponent: Set auto-correction to: \(autoCorrect)")
         }
         
         // Update editable state
         if let editable = props["editable"] as? Bool {
             textView.isEditable = editable
-            print("✍️ DCFTextInputComponent: Set editable to: \(editable)")
         }
         
         // Update selection color (tint color)
         if let selectionColor = props["selectionColor"] as? String {
             textView.tintColor = ColorUtilities.color(fromHexString: selectionColor)
-            print("🎯 DCFTextInputComponent: Set selection color to: \(selectionColor)")
         }
         
         // Handle text color property - key fix for incremental updates
@@ -234,9 +212,7 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             if let textColor = props["textColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: textColor)
                 textView.textColor = uiColor
-                print("🎨 DCFTextInputComponent: Set text view color to: \(textColor) -> \(uiColor)")
             } else {
-                print("⚠️ DCFTextInputComponent: textColor prop present but invalid value: \(props["textColor"] ?? "nil")")
             }
         }
         

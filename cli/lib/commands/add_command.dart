@@ -34,7 +34,6 @@ class AddCommand extends Command<void> {
 
     final isDev = argResults!['dev'] == true;
     
-    print('📦 Adding packages: ${packages.join(', ')}${isDev ? ' (dev dependencies)' : ''}');
     
     await _addPackages(packages, isDev);
   }
@@ -50,7 +49,6 @@ class AddCommand extends Command<void> {
       
       args.addAll(packages);
       
-      print('🔄 Running: flutter ${args.join(' ')}');
       
       final result = await Process.run('flutter', args);
       

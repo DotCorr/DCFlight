@@ -90,7 +90,6 @@ class DCFScreenUtilities {
                 "safeAreaRight": safeAreaInsets.right
             ])
             
-            print("📱 Notified Flutter of screen dimension change: \(bounds.width)x\(bounds.height)")
         }
     }
     

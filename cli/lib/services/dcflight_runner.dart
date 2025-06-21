@@ -31,7 +31,6 @@ class DCFlightRunner {
       ];
       
       if (verbose) {
-        print('🎯 Starting DCFlight app: ${args.join(' ')}');
       }
       
       // Start DCFlight runtime (powered by Flutter engine)
@@ -95,7 +94,6 @@ class DCFlightRunner {
         final isEmulator = device['emulator'] == true;
         final status = !isEmulator ? '📱 Physical' : '🖥️  Simulator';
         
-        print('  ${i + 1}. $name ($platform) - $status');
         if (verbose) {
         }
       }

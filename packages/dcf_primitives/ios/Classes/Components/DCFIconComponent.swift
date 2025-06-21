@@ -39,7 +39,6 @@ class DCFIconComponent: NSObject, DCFComponent {
     }
 
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        print("🔍 DCFIcon updateView called with props: \(props)")
         
         guard let imageView = view as? UIImageView else { 
             return false 
@@ -50,16 +49,13 @@ class DCFIconComponent: NSObject, DCFComponent {
         
         // Check if we have name and package to set up the asset path
         if let iconName = props["name"] as? String, let packageName = props["package"] as? String {
-            print("🔍 DCFIcon: Setting up asset for icon: \(iconName)")
             
             // Use Flutter lookupKey to resolve logical asset path
             guard let key = sharedFlutterViewController?.lookupKey(forAsset: "assets/icons/\(iconName).svg", fromPackage: packageName) else {
-                print("❌ Could not resolve asset key for \(iconName)")
                 return false
             }
             let mainBundle = Bundle.main
             let path = mainBundle.path(forResource: key, ofType: nil)
-            print("🔍 DCFIcon: Asset path: \(String(describing: path))")
             
             svgProps["asset"] = path
         } else {
@@ -70,12 +66,9 @@ class DCFIconComponent: NSObject, DCFComponent {
         // Convert "color" prop to "tintColor" for SVG component
         if let color = props["color"] as? String {
             svgProps["tintColor"] = color
-            print("🎨 DCFIcon: Mapping color '\(color)' to tintColor for SVG")
         }
         
-        print("🔍 DCFIcon: Calling SVG updateView with props: \(svgProps)")
         let result = svgComponent.updateView(imageView, withProps: svgProps)
-        print("🔍 DCFIcon: SVG updateView result: \(result)")
         
         // Apply StyleSheet properties
         imageView.applyStyles(props: props)

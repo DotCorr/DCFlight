@@ -50,12 +50,10 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
             return false 
         }
         
-        print("🔄 DCFTextComponent: Updating view with props: \(props.keys)")
         
         // Set content if specified
         if let content = props["content"] as? String {
             label.text = content
-            print("📝 DCFTextComponent: Set text content to: \(content)")
         }
         
         // Handle font properties only if they are provided (for incremental updates)
@@ -120,9 +118,7 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
             if let color = props["color"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: color)
                 label.textColor = uiColor
-                print("🎨 DCFTextComponent: Set text color to: \(color) -> \(uiColor)")
             } else {
-                print("⚠️ DCFTextComponent: Color prop present but invalid value: \(props["color"] ?? "nil")")
             }
         }
         
@@ -150,13 +146,11 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
             default:
                 label.textAlignment = .left
             }
-            print("📐 DCFTextComponent: Set text alignment to: \(textAlign)")
         }
         
         // Set number of lines if specified (preserve current numberOfLines if not in props)
         if let numberOfLines = props["numberOfLines"] as? Int {
             label.numberOfLines = numberOfLines
-            print("📄 DCFTextComponent: Set number of lines to: \(numberOfLines)")
         }
         
         // Apply StyleSheet properties
@@ -214,21 +208,18 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
         
         // Check cache first
         if let cachedFont = DCFTextComponent.fontCache[cacheKey] {
-            print("✅ Using cached font: \(fontAsset)")
             completion(cachedFont)
             return
         }
         
         // Ensure we have a valid path
         guard let fontPath = path, !fontPath.isEmpty else {
-            print("❌ Invalid font path for asset: \(fontAsset)")
             completion(nil)
             return
         }
         
         // Check if the file exists
         guard FileManager.default.fileExists(atPath: fontPath) else {
-            print("❌ Font file does not exist at path: \(fontPath)")
             completion(nil)
             return
         }
@@ -252,7 +243,6 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
                     // Cache the font
                     DCFTextComponent.fontCache[cacheKey] = finalFont
                     
-                    print("✅ Successfully loaded font: \(fontName) from \(fontAsset)")
                     completion(finalFont)
                     return
                 }
@@ -260,14 +250,12 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
         }
         
         // If we reach here, something went wrong
-        print("❌ Failed to load font from asset: \(fontAsset)")
         completion(nil)
     }
     
     // Register a font with the system
     private func registerFontFromPath(_ path: String) -> Bool {
         guard let fontData = NSData(contentsOfFile: path) else {
-            print("❌ Failed to read font data from path: \(path)")
             return false
         }
         
@@ -285,7 +273,6 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
         if !success {
             if let err = error?.takeRetainedValue() {
                 let description = CFErrorCopyDescription(err)
-                print("❌ Failed to register font: \(description ?? "unknown error" as CFString)")
             }
             return false
         }

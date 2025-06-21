@@ -25,14 +25,12 @@ import Foundation
     // Private initializer for singleton
     private override init() {
         super.init()
-        NSLog("DCMauiFFIBridge initialized (simplified version)")
     }
     
     // MARK: - Public Registration Methods
     
     /// Register a pre-existing view with the bridge
     @objc func registerView(_ view: UIView, withId viewId: String) {
-        NSLog("DCMauiFFIBridge: Registering view with ID: \(viewId)")
         views[viewId] = view
         ViewRegistry.shared.registerView(view, id: viewId, type: "View")
         DCFLayoutManager.shared.registerView(view, withId: viewId)
@@ -43,7 +41,6 @@ import Foundation
         
         // Check if root view exists already
         if let rootView = views["root"] {
-            NSLog("DCMauiFFIBridge: Found pre-registered root view: \(rootView)")
             
             // Ensure the root view is registered with the shadow tree
             if YogaShadowTree.shared.nodes["root"] == nil {
@@ -57,21 +54,16 @@ import Foundation
     
     /// Create a view with properties
     @objc func createView(viewId: String, viewType: String, propsJson: String) -> Bool {
-        print("🔥 DCMauiBridgeImpl: createView called for \(viewId) of type \(viewType)")
-        print("🔍 DCMauiBridgeImpl: Props JSON: \(propsJson)")
         
         // Parse props JSON
         guard let propsData = propsJson.data(using: .utf8),
               let props = try? JSONSerialization.jsonObject(with: propsData, options: []) as? [String: Any] else {
-            print("❌ DCMauiBridgeImpl: Failed to parse props JSON: \(propsJson)")
             return false
         }
         
-        print("✅ DCMauiBridgeImpl: Props parsed successfully: \(props)")
         
         // Use the unified view manager for creation
         let success = DCFViewManager.shared.createView(viewId: viewId, viewType: viewType, props: props)
-        print("📊 DCMauiBridgeImpl: DCFViewManager.createView result: \(success)")
         
         // Also store in our local registry for compatibility
         if success, let view = ViewRegistry.shared.getView(id: viewId) {
@@ -84,12 +76,10 @@ import Foundation
     
     /// Update a view's properties
     @objc func updateView(viewId: String, propsJson: String) -> Bool {
-        NSLog("DCMauiFFIBridge: updateView called for \(viewId)")
         
         // Parse props JSON
         guard let propsData = propsJson.data(using: .utf8),
               let props = try? JSONSerialization.jsonObject(with: propsData, options: []) as? [String: Any] else {
-            NSLog("Failed to parse props JSON: \(propsJson)")
             return false
         }
         
@@ -99,7 +89,6 @@ import Foundation
     
     /// Delete a view
     @objc func deleteView(viewId: String) -> Bool {
-        NSLog("DCMauiFFIBridge: deleteView called for \(viewId)")
         
         // Use the unified view manager for deletion
         let success = DCFViewManager.shared.deleteView(viewId: viewId)
@@ -129,7 +118,6 @@ import Foundation
             return
         }
         
-        NSLog("🧹 Cleaning up \(children.count) children of view \(parentId)")
         
         // Make a copy to avoid modification during iteration
         let childrenCopy = children
@@ -149,7 +137,6 @@ import Foundation
                 YogaShadowTree.shared.removeNode(nodeId: childId)
                 DCFLayoutManager.shared.unregisterView(withId: childId)
                 
-                NSLog("🗑️ Removed child view: \(childId)")
             }
             
             // Update tracking
@@ -167,7 +154,6 @@ import Foundation
             return
         }
         
-        NSLog("🧹 Cleaning up orphaned children of missing view \(parentId)")
         
         // Make a copy to avoid modification during iteration
         let childrenCopy = children
@@ -186,7 +172,6 @@ import Foundation
             YogaShadowTree.shared.removeNode(nodeId: childId)
             DCFLayoutManager.shared.unregisterView(withId: childId)
             
-            NSLog("🗑️ Removed orphaned child view: \(childId)")
             
             // Update tracking
             childToParent.removeValue(forKey: childId)
@@ -198,7 +183,6 @@ import Foundation
     
     /// Attach a child view to a parent view
     @objc func attachView(childId: String, parentId: String, index: Int) -> Bool {
-        NSLog("DCMauiFFIBridge: attachView called for child \(childId) to parent \(parentId) at index \(index)")
         
         // Use the unified view manager for attachment
         let success = DCFViewManager.shared.attachView(childId: childId, parentId: parentId, index: index)
@@ -227,18 +211,15 @@ import Foundation
     
     /// Set all children for a view
     @objc func setChildren(viewId: String, childrenJson: String) -> Bool {
-        NSLog("DCMauiFFIBridge: setChildren called for \(viewId)")
         
         // Parse children JSON
         guard let childrenData = childrenJson.data(using: .utf8),
               let childrenIds = try? JSONSerialization.jsonObject(with: childrenData, options: []) as? [String] else {
-            NSLog("Failed to parse children JSON: \(childrenJson)")
             return false
         }
         
         // Get the parent view
         guard let parentView = self.views[viewId] else {
-            NSLog("Parent view not found with ID: \(viewId)")
             return false
         }
         
@@ -287,10 +268,8 @@ import Foundation
     
     /// Detach a view from its parent
     @objc func detachView(childId: String) -> Bool {
-        NSLog("DCMauiFFIBridge: detachView called for \(childId)")
         
         guard let childView = self.views[childId] else {
-            NSLog("Child view not found with ID: \(childId)")
             return false
         }
         
@@ -343,7 +322,6 @@ import Foundation
     // Print hierarchy for debugging
     @objc func printHierarchy() {
         for (parentId, childrenIds) in viewHierarchy {
-            NSLog("Parent: \(parentId), Children: \(childrenIds)")
         }
     }
     
@@ -357,7 +335,6 @@ import Foundation
         for (viewId, view) in nonRootViews {
             view.removeFromSuperview()
             views.removeValue(forKey: viewId)
-            NSLog("🗑️ Removed view: \(viewId)")
         }
         
         // Clear root view's children but preserve root

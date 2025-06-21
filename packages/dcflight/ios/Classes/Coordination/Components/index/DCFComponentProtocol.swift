@@ -91,26 +91,21 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
     // Execute optional native-side action first (for any native processing needed)
     nativeAction?(view, eventData)
     
-    print("🔍 DEBUG: Attempting to propagate \(eventName) on view \(view)")
     
     // Get the stored event callback for this view (set up by the framework automatically)
     guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
             as? (String, String, [String: Any]) -> Void else {
-        print("🔇 No event callback found for view - event \(eventName) not propagated")
         return
     }
     
     guard let viewId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String else {
-        print("🔇 No viewId found for view - event \(eventName) not propagated")
         return
     }
     
     guard let eventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] else {
-        print("🔇 No event types found for view - event \(eventName) not propagated")
         return
     }
     
-    print("🔍 DEBUG: Found viewId: \(viewId), eventTypes: \(eventTypes)")
     
     // Check if this event type is registered - try both exact match and normalized versions
     let normalizedEventName = normalizeEventNameForPropagation(eventName)
@@ -120,11 +115,8 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
                          eventTypes.contains("on\(eventName.capitalized)")
     
     if eventRegistered {
-        print("🚀 Propagating \(eventName) event to Dart for view \(viewId)")
         callback(viewId, eventName, eventData)
     } else {
-        print("🔇 Event \(eventName) not registered for view \(viewId). Registered: \(eventTypes)")
-        print("🔍 DEBUG: Tried variations - exact: \(eventName), normalized: \(normalizedEventName)")
     }
 }
 

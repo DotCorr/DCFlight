@@ -370,9 +370,6 @@ class ModalTest extends StatefulComponent {
             textInputAlertVisible.setState(false);
           },
           onTextFieldChange: (data) {
-            print(
-              "Text field changed - Index: ${data['fieldIndex']}, Text: '${data['text']}'",
-            );
           },
         ),
 
@@ -413,9 +410,6 @@ class ModalTest extends StatefulComponent {
                 data['textFieldValues'] ?? [],
               );
               if (textValues.length >= 2) {
-                print(
-                  "Login attempt - Username: ${textValues[0]}, Password: [hidden]",
-                );
               }
             }
             loginAlertVisible.setState(false);
@@ -426,9 +420,6 @@ class ModalTest extends StatefulComponent {
             loginAlertVisible.setState(false);
           },
           onTextFieldChange: (data) {
-            print(
-              "Login field changed - Index: ${data['fieldIndex']}, Text: '${data['text']}'",
-            );
           },
         ),
 

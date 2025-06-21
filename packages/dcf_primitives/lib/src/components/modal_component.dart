@@ -116,7 +116,6 @@ class DCFModal extends StatelessComponent {
 
   @override
   DCFComponentNode render() {
-    print('🎭 DCFModal.render() called - visible: $visible, key: $key');
     
     // Create event map for callbacks
     Map<String, dynamic> eventMap = events ?? {};

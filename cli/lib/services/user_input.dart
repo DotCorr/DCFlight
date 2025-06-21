@@ -43,7 +43,6 @@ class UserInput {
       }
       
       if (!_isValidPackageName(input)) {
-        print('❌ Invalid package name. Use reverse domain notation (e.g., com.company.app)');
         continue;
       }
       
@@ -52,7 +51,6 @@ class UserInput {
   }
 
   static Future<List<Platform>> promptPlatforms() async {
-    print('? Select target platforms (enter numbers separated by commas):');
     
     stdout.write('Selected platforms (default: 1,2,3): ');
     final input = stdin.readLineSync()?.trim() ?? '';
