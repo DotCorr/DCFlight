@@ -9,8 +9,8 @@
 import UIKit
 import dcflight
 
-// 🚀 CLEAN VIRTUALIZED SCROLL VIEW COMPONENT - Uses only propagateEvent()
-class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UIScrollViewDelegate {
+// 🚀 CLEAN VIRTUALIZED SCROLL VIEW COMPONENT - Uses only propagateEvent() and prop-based commands
+class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     private static let sharedInstance = DCFVirtualizedScrollViewComponent()
     
     required override init() {
@@ -174,6 +174,9 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
             scrollView.virtualizedContentPaddingTop = contentPaddingTop
         }
         
+        // ✅ HANDLE COMMANDS - New prop-based command pattern
+        handleCommand(scrollView: scrollView, props: props)
+        
         // Apply StyleSheet properties
         scrollView.applyStyles(props: props)
         
@@ -222,46 +225,40 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
     // Note: VirtualizedScrollView uses global propagateEvent() system
     // No custom event methods needed - all handled by DCFComponentProtocol
     
-    // MARK: - Component Methods
+    // MARK: - Command Handling (New Prop-Based Pattern)
     
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let scrollView = view as? VirtualizedScrollView else { return false }
+    /// Handle commands passed as props - the new declarative command pattern
+    private func handleCommand(scrollView: VirtualizedScrollView, props: [String: Any]) {
+        guard let commandData = props["command"] as? [String: Any],
+              let commandType = commandData["type"] as? String else {
+            return
+        }
         
-        switch methodName {
+        switch commandType {
         case "scrollToPosition":
-            if let x = args["x"] as? CGFloat, let y = args["y"] as? CGFloat {
-                let animated = args["animated"] as? Bool ?? true
+            if let x = commandData["x"] as? CGFloat, let y = commandData["y"] as? CGFloat {
+                let animated = commandData["animated"] as? Bool ?? true
                 scrollView.setContentOffset(CGPoint(x: x, y: y), animated: animated)
-                return true
             }
         case "scrollToTop":
-            let animated = args["animated"] as? Bool ?? true
+            let animated = commandData["animated"] as? Bool ?? true
             scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: 0), animated: animated)
-            return true
         case "scrollToBottom":
-            let animated = args["animated"] as? Bool ?? true
+            let animated = commandData["animated"] as? Bool ?? true
             let bottomOffset = CGPoint(x: scrollView.contentOffset.x, 
                                      y: scrollView.contentSize.height - scrollView.bounds.height)
             scrollView.setContentOffset(bottomOffset, animated: animated)
-            return true
         case "flashScrollIndicators":
             scrollView.flashScrollIndicators()
-            return true
         case "updateContentSize":
-            // Explicit content size update through bridge communication
             scrollView.updateContentSizeFromYogaLayout()
-            return true
         case "setContentSize":
-            // Explicit content size setting from Dart side
-            if let width = args["width"] as? CGFloat, let height = args["height"] as? CGFloat {
+            if let width = commandData["width"] as? CGFloat, let height = commandData["height"] as? CGFloat {
                 scrollView.setExplicitContentSize(CGSize(width: width, height: height))
-                return true
             }
         default:
-            return false
+            break
         }
-        
-        return false
     }
     
     // MARK: - UIScrollViewDelegate Methods (Clean Global Event System)

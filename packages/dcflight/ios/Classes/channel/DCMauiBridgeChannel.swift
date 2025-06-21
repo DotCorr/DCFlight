@@ -109,14 +109,8 @@ class DCMauiBridgeMethodChannel: NSObject {
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
             
-        // --- START NEW METHOD FOR COMPONENT LEVEL METHODS ---    
-        case "callComponentMethod":
-            if let args = args {
-                handleCallComponentMethod(args, result: result)
-            } else {
-                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
-            }
-        // --- END NEW METHOD ---
+        // REMOVED: callComponentMethod - replaced with prop-based commands
+        // Components now handle imperative operations through command props
             
         default:
             result(FlutterMethodNotImplemented)
@@ -293,75 +287,8 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
     }
     
-    // --- START NEW HANDLER ---
-    // Handle calls to component-specific methods using protocol-based routing
-    private func handleCallComponentMethod(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let viewId = args["viewId"] as? String,
-              let methodName = args["methodName"] as? String,
-              let methodArgs = args["args"] as? [String: Any] else {
-            result(FlutterError(code: "ARGS_ERROR", message: "Invalid arguments for callComponentMethod. Required: viewId (String), methodName (String), args (Map)", details: args))
-            return
-        }
-
-
-        // Execute on main thread
-        DispatchQueue.main.async {
-            // Try to find the view from multiple sources
-            var view: UIView? = self.getViewById(viewId)
-            
-            // If view not found in main registry, try DCMauiBridgeImpl as backup
-            if view == nil {
-                view = DCMauiBridgeImpl.shared.views[viewId]
-                
-                // If found, update our registry
-                if view != nil {
-                    self.views[viewId] = view
-                }
-            }
-            
-            // Final check - view must exist
-            guard let finalView = view else {
-                result(FlutterError(code: "VIEW_NOT_FOUND", message: "View not found", details: viewId))
-                return
-            }
-
-            // Find the appropriate component for this view
-            let viewClassName = String(describing: type(of: finalView))
-            var componentInstance: DCFComponent? = nil
-            var componentName: String = "unknown"
-            
-            // Try to find component based on view class name
-            for (name, componentType) in DCFComponentRegistry.shared.componentTypes {
-                let tempInstance = componentType.init()
-                let tempView = tempInstance.createView(props: [:])
-                
-                if String(describing: type(of: tempView)) == viewClassName {
-                    componentInstance = tempInstance
-                    componentName = name
-                    break
-                }
-            }
-            
-            guard let component = componentInstance else {
-                result(FlutterError(code: "COMPONENT_NOT_FOUND", message: "No component found for view type", details: viewClassName))
-                return
-            }
-            
-            // Use component method handler protocol if available
-            if let methodHandler = component as? ComponentMethodHandler {
-                let success = methodHandler.handleMethod(methodName: methodName, args: methodArgs, view: finalView)
-                
-                if success {
-                    result(true)
-                } else {
-                    result(FlutterError(code: "METHOD_FAILED", message: "Component failed to handle method", details: methodName))
-                }
-            } else {
-                result(FlutterError(code: "METHOD_NOT_SUPPORTED", message: "Component does not support method handling", details: componentName))
-            }
-        }
-    }
-    // --- END NEW HANDLER ---
+    // REMOVED: handleCallComponentMethod - replaced with prop-based commands
+    // Components now handle imperative operations through command props
     
     /// Handle hot restart detection method calls
     func handleHotRestartMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

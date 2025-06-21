@@ -225,19 +225,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
   // REMOVED: updateViewLayout and calculateLayout methods
   // Layout is now calculated automatically when layout props change
 
-  @override
-  Future<dynamic> callComponentMethod(
-      String viewId, String methodName, Map<String, dynamic> args) async {
-    try {
-      return await bridgeChannel.invokeMethod('callComponentMethod', {
-        'viewId': viewId,
-        'methodName': methodName,
-        'args': args,
-      });
-    } catch (e) {
-      return null;
-    }
-  }
+  // REMOVED: callComponentMethod - replaced with prop-based commands
+  // Components now handle imperative operations through command props
 
   @override
   Future<bool> startBatchUpdate() async {

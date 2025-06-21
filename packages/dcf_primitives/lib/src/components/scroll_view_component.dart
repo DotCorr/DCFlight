@@ -108,6 +108,9 @@ class DCFScrollView extends StatelessComponent {
   /// Content insets
   final ContentInset? contentInset;
   
+  /// Command for imperative scroll operations
+  final ScrollViewCommand? command;
+  
   /// Create a scroll view component
   DCFScrollView({
     required this.children,
@@ -129,6 +132,7 @@ class DCFScrollView extends StatelessComponent {
     this.pagingEnabled = false,
     this.keyboardDismissMode = false,
     this.contentInset,
+    this.command,
     this.events,
     super.key,
   });
@@ -164,24 +168,32 @@ class DCFScrollView extends StatelessComponent {
       eventMap['onContentSizeChange'] = onContentSizeChange;
     }
 
+    // Build props map
+    Map<String, dynamic> props = {
+      'horizontal': horizontal,
+      'showsScrollIndicator': showsScrollIndicator,
+      'scrollEnabled': scrollEnabled,
+      'alwaysBounceVertical': alwaysBounceVertical,
+      'alwaysBounceHorizontal': alwaysBounceHorizontal,
+      'pagingEnabled': pagingEnabled,
+      'keyboardDismissMode': keyboardDismissMode,
+      if (contentInset != null) 'contentInset': contentInset!.toMap(),
+      if (scrollIndicatorColor != null) 'scrollIndicatorColor': '#${scrollIndicatorColor!.value.toRadixString(16).padLeft(8, '0')}',
+      'scrollIndicatorSize': scrollIndicatorSize,
+      'contentContainerStyle': contentContainerStyle.toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
+    
+    // Add command props if command is provided and has actions
+    if (command != null && command!.hasCommands) {
+      props['command'] = command!.toMap();
+    }
+
     return DCFElement(
       type: 'ScrollView',
-      props: {
-        'horizontal': horizontal,
-        'showsScrollIndicator': showsScrollIndicator,
-        'scrollEnabled': scrollEnabled,
-        'alwaysBounceVertical': alwaysBounceVertical,
-        'alwaysBounceHorizontal': alwaysBounceHorizontal,
-        'pagingEnabled': pagingEnabled,
-        'keyboardDismissMode': keyboardDismissMode,
-        if (contentInset != null) 'contentInset': contentInset!.toMap(),
-        if (scrollIndicatorColor != null) 'scrollIndicatorColor': '#${scrollIndicatorColor!.value.toRadixString(16).padLeft(8, '0')}',
-        'scrollIndicatorSize': scrollIndicatorSize,
-        'contentContainerStyle': contentContainerStyle.toMap(),
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: children,
     );
   }

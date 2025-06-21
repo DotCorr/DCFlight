@@ -9,8 +9,8 @@
 import UIKit
 import dcflight
 
-// 🚀 FIXED VIRTUALIZED FLAT LIST COMPONENT - Per-view delegates with clean propagateEvent()
-class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHandler, UIScrollViewDelegate {
+// 🚀 FIXED VIRTUALIZED FLAT LIST COMPONENT - Per-view delegates with clean propagateEvent() and prop-based commands
+class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     
     required override init() {
         super.init()
@@ -151,6 +151,9 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHa
             virtualizedScrollView.virtualizedContentPaddingTop = contentPaddingTop
         }
         
+        // ✅ HANDLE COMMANDS - New prop-based command pattern
+        handleCommand(virtualizedScrollView: virtualizedScrollView, props: props)
+        
         // Apply StyleSheet properties
         virtualizedScrollView.applyStyles(props: props)
         
@@ -190,58 +193,49 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHa
     }
     
     // MARK: - Event Handling
-    
-    // MARK: - Event Handling
     // Note: VirtualizedFlatList uses global propagateEvent() system
     // No custom event methods needed - all handled by DCFComponentProtocol
     
-    // MARK: - Component Methods
+    // MARK: - Command Handling (New Prop-Based Pattern)
     
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let virtualizedScrollView = view as? VirtualizedScrollView else { return false }
+    /// Handle commands passed as props - the new declarative command pattern
+    private func handleCommand(virtualizedScrollView: VirtualizedScrollView, props: [String: Any]) {
+        guard let commandData = props["command"] as? [String: Any],
+              let commandType = commandData["type"] as? String else {
+            return
+        }
         
-        switch methodName {
+        switch commandType {
         case "scrollToPosition":
-            if let x = args["x"] as? CGFloat, let y = args["y"] as? CGFloat {
-                let animated = args["animated"] as? Bool ?? true
+            if let x = commandData["x"] as? CGFloat, let y = commandData["y"] as? CGFloat {
+                let animated = commandData["animated"] as? Bool ?? true
                 virtualizedScrollView.setContentOffset(CGPoint(x: x, y: y), animated: animated)
-                return true
             }
         case "scrollToTop":
-            let animated = args["animated"] as? Bool ?? true
+            let animated = commandData["animated"] as? Bool ?? true
             virtualizedScrollView.setContentOffset(CGPoint(x: virtualizedScrollView.contentOffset.x, y: 0), animated: animated)
-            return true
         case "scrollToBottom":
-            let animated = args["animated"] as? Bool ?? true
+            let animated = commandData["animated"] as? Bool ?? true
             let bottomOffset = CGPoint(x: virtualizedScrollView.contentOffset.x, 
                                      y: virtualizedScrollView.contentSize.height - virtualizedScrollView.bounds.height)
             virtualizedScrollView.setContentOffset(bottomOffset, animated: animated)
-            return true
         case "scrollToIndex":
             // FlatList specific - scroll to a specific item index
-            if let index = args["index"] as? Int {
-                let animated = args["animated"] as? Bool ?? true
+            if let index = commandData["index"] as? Int {
+                let animated = commandData["animated"] as? Bool ?? true
                 scrollToIndex(virtualizedScrollView, index: index, animated: animated)
-                return true
             }
         case "flashScrollIndicators":
             virtualizedScrollView.flashScrollIndicators()
-            return true
         case "updateContentSize":
-            // Use VirtualizedScrollView content size management
             virtualizedScrollView.updateContentSizeFromYogaLayout()
-            return true
         case "setContentSize":
-            // Explicit content size setting from Dart side
-            if let width = args["width"] as? CGFloat, let height = args["height"] as? CGFloat {
+            if let width = commandData["width"] as? CGFloat, let height = commandData["height"] as? CGFloat {
                 virtualizedScrollView.setExplicitContentSize(CGSize(width: width, height: height))
-                return true
             }
         default:
-            return false
+            break
         }
-        
-        return false
     }
     
     // MARK: - FlatList Specific Methods
