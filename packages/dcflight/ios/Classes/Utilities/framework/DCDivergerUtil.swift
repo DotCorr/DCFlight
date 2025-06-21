@@ -27,7 +27,7 @@ import Flutter
         flutterEngine.viewController = flutterVC
         sharedFlutterViewController = flutterVC // ✅ Store globally
         
-        // Initialize method channels
+        // Initialize method channels just incase
         DCMauiBridgeMethodChannel.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
