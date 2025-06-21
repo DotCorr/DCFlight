@@ -183,28 +183,7 @@ class ModalTest extends StatefulComponent {
 
         // Native DCFModal - true native modal presentation
         DCFModal(
-          header: DCFModalHeader(
-            title: "Native Modal Example",
-           
-            prefixActions: [
-              DCFModalHeaderAction(
-                title: "close",
-                onTap: (v) {
-                  print("header action pressed: ${v['title']}");
-                },
-              ),
-            ],
-          ),
           visible: modalVisible.state,
-          
-          // Handle header action events at the modal level
-          // onHeaderAction: (data) {
-          //   print("Header action pressed: ${data['title']}");
-          //   if (data['title'] == 'close') {
-          //     modalVisible.setState(false);
-          //   }
-          // },
-
           detents: [DCFModalDetents.large],
           showDragIndicator: true,
           onDismiss: (data) {
