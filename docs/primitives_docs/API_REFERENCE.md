@@ -292,12 +292,12 @@ DCFModal({
 })
 ```
 
-### DCFVirtualizedFlatList
+### DCFFlatList
 **Native Mapping**: UITableView
 
 #### Properties
 ```dart
-DCFVirtualizedFlatList({
+DCFFlatList({
   List<dynamic> data = const [],    // Data source
   Widget Function(dynamic item, int index)? itemBuilder, // Item builder
   double? itemHeight,               // Fixed item height
@@ -368,6 +368,41 @@ DCFAlert({
   Function(Map)? onActionPress,    // Action pressed callback
   Function(Map)? onTextFieldChange, // Text field change callback
 })
+```
+
+### DCFWebView ⭐ NEW
+**Native Mapping**: WKWebView
+
+#### Properties
+```dart
+DCFWebView({
+  String? url,                      // URL to load
+  String? htmlString,               // HTML content to render
+  Map<String, String>? headers,     // HTTP headers
+  bool javaScriptEnabled = true,    // Enable JavaScript
+  bool domStorageEnabled = true,    // Enable DOM storage
+  bool allowsInlineMediaPlayback = true, // Allow inline media
+  bool mediaPlaybackRequiresUserAction = false, // Autoplay policy
+  String? userAgent,                // Custom user agent
+  Color? backgroundColor,           // Background color
+  bool adaptive = true,             // Use adaptive theming
+  Function(Map)? onLoadStart,       // Load started callback
+  Function(Map)? onLoadEnd,         // Load finished callback
+  Function(Map)? onLoadError,       // Load error callback
+  Function(Map)? onProgress,        // Loading progress callback
+  Function(Map)? onNavigationStateChange, // Navigation state callback
+})
+```
+
+#### Example Usage
+```dart
+DCFWebView(
+  url: "https://flutter.dev",
+  javaScriptEnabled: true,
+  headers: {"Authorization": "Bearer token"},
+  onLoadEnd: (data) => print("Loaded: ${data['url']}"),
+  onLoadError: (error) => print("Error: ${error['description']}"),
+)
 ```
 
 #### Static Helper Methods

@@ -31,7 +31,30 @@ class App extends StatefulComponent {
         DCFSafeAreaView(
           layout: LayoutProps(flex: 1, padding: 8),
           children: [
-            DCFDropdown(
+           
+        DCFView(
+          layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
+          children: [
+            pagestateLocal.state == 0
+                ? ValidationTestApp()
+                : pagestateLocal.state == 1
+                ? ListStatePerf()
+                : pagestateLocal.state == 2
+                ? GradientTest()
+                : pagestateLocal.state == 3
+                ? ReallyLongList()
+                : pagestateLocal.state == 4
+                ? ModalTest()
+              
+                : pagestateLocal.state == 5
+                ? ComponentShowcase()
+                : pagestateLocal.state == 6
+                ? PortalTest()
+                : DCFView(),
+          ],
+        ),
+
+         DCFDropdown(
               layout: LayoutProps(height: 40, marginBottom: 8),
               onValueChange: (v) {
                 pagestateLocal.setState(int.parse(v['value']));
@@ -56,27 +79,6 @@ class App extends StatefulComponent {
             ],
             selectedValue: pagestateLocal.state.toString(),
           ),
-        ),
-        DCFView(
-          layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
-          children: [
-            pagestateLocal.state == 0
-                ? ValidationTestApp()
-                : pagestateLocal.state == 1
-                ? ListStatePerf()
-                : pagestateLocal.state == 2
-                ? GradientTest()
-                : pagestateLocal.state == 3
-                ? ReallyLongList()
-                : pagestateLocal.state == 4
-                ? ModalTest()
-              
-                : pagestateLocal.state == 5
-                ? ComponentShowcase()
-                : pagestateLocal.state == 6
-                ? PortalTest()
-                : DCFView(),
-          ],
         ),
 
         DCFScrollView(

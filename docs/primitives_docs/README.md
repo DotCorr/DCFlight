@@ -27,14 +27,14 @@ DCFlight provides a comprehensive set of primitive components that map directly 
 - **Features**: Smooth animations, proper child management, backdrop handling
 - **Recent Improvements**: Enhanced stacking behavior, better child preservation
 
-#### DCFVirtualizedFlatList
+#### DCFFlatList
 **Purpose**: High-performance list rendering for large datasets
 - **Use Case**: Large lists, feeds, data tables
 - **Features**: Cell recycling, scroll performance optimization
 - **Native Mapping**: UITableView/UICollectionView
 
-#### DCFVirtualizedScrollView
-**Purpose**: Scrollable container with virtualization support
+#### DCFScrollView
+**Purpose**: Scrollable container with native scroll performance
 - **Use Case**: Scrollable content, custom scroll behaviors
 - **Features**: Native scroll performance, gesture handling
 
@@ -133,6 +133,16 @@ DCFlight provides a comprehensive set of primitive components that map directly 
   - Color customization via `ColorUtilities`
   - Hide when stopped option
   - Adaptive system colors
+
+#### DCFWebView (NEW in v0.0.2)
+**Purpose**: Native web content rendering
+- **Use Case**: Web pages, HTML content, embedded websites
+- **Features**: 
+  - WKWebView integration with full JavaScript support
+  - Loading state management and error handling
+  - Custom headers and user agent support
+  - Proper delegate lifecycle management
+- **Recent Fixes**: Resolved threading issues and blank screen problems
 
 ### Interaction Components
 
