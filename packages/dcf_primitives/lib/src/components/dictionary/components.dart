@@ -34,3 +34,7 @@ export '../segmented_control_component.dart';
 export '../slider_component.dart';
 export '../spinner_component.dart';
 export '../alert_component.dart';
+
+// 🚀 Export CRITICAL primitive components
+export '../webview_component.dart';
+export '../url_wrapper_view_component.dart';

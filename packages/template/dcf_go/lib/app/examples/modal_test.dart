@@ -186,7 +186,7 @@ class ModalTest extends StatefulComponent {
         // Native DCFModal - true native modal presentation
         DCFModal(
           visible: modalVisible.state,
-          title: "Native Modal",
+         
           detents: [
             DCFModalDetents.small,
             DCFModalDetents.medium,
@@ -255,7 +255,7 @@ class ModalTest extends StatefulComponent {
 
         DCFModal(
           visible: modalVisible2.state,
-          title: "Native Modal 2",
+         
           detents: [
             DCFModalDetents.small,
             DCFModalDetents.medium,

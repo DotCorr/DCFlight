@@ -8,6 +8,92 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Modal header action button configuration
+class DCFModalHeaderAction {
+  /// The title of the action button
+  final String title;
+  
+  /// Optional icon asset for the action
+  final String? iconAsset;
+  
+  /// Whether this is a close/done action
+  final bool isCloseAction;
+  
+  /// Custom action handler
+  final Function()? onTap;
+  
+  const DCFModalHeaderAction({
+    required this.title,
+    this.iconAsset,
+    this.isCloseAction = false,
+    this.onTap,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      if (iconAsset != null) 'iconAsset': iconAsset,
+      'isCloseAction': isCloseAction,
+    };
+  }
+}
+
+/// Modal header configuration
+class DCFModalHeader {
+  /// The title text
+  final String title;
+  
+  /// Font family for the title
+  final String? fontFamily;
+  
+  /// Font size for the title
+  final double? fontSize;
+  
+  /// Font weight for the title
+  final String? fontWeight;
+  
+  /// Title text color
+  final Color? titleColor;
+  
+  /// Prefix (left) actions
+  final List<DCFModalHeaderAction>? prefixActions;
+  
+  /// Suffix (right) actions
+  final List<DCFModalHeaderAction>? suffixActions;
+  
+  /// Whether to show the native close button
+  final bool showCloseButton;
+  
+  /// Whether to use adaptive theming
+  final bool adaptive;
+  
+  const DCFModalHeader({
+    required this.title,
+    this.fontFamily,
+    this.fontSize,
+    this.fontWeight,
+    this.titleColor,
+    this.prefixActions,
+    this.suffixActions,
+    this.showCloseButton = true,
+    this.adaptive = true,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      if (fontFamily != null) 'fontFamily': fontFamily,
+      if (fontSize != null) 'fontSize': fontSize,
+      if (fontWeight != null) 'fontWeight': fontWeight,
+      if (titleColor != null) 'titleColor': '#${titleColor!.value.toRadixString(16).padLeft(8, '0')}',
+      if (prefixActions != null) 'prefixActions': prefixActions!.map((action) => action.toMap()).toList(),
+      if (suffixActions != null) 'suffixActions': suffixActions!.map((action) => action.toMap()).toList(),
+      'showCloseButton': showCloseButton,
+      'adaptive': adaptive,
+    };
+  }
+}
+
 /// 🚀 DCF Modal Component - React Portal Style
 /// 
 /// A modal component that uses portals for rendering, just like React.
@@ -35,8 +121,8 @@ class DCFModal extends StatelessComponent {
   /// Whether the modal is visible
   final bool visible;
   
-  /// Title displayed in the modal
-  final String? title;
+  /// Modal header configuration (replaces simple title)
+  final DCFModalHeader? header;
   
   /// List of detent configurations
   /// Available options: ["small", "medium", "large", "compact", "half", "full"]
@@ -94,7 +180,7 @@ class DCFModal extends StatelessComponent {
   DCFModal({
     super.key,
     required this.visible,
-    this.title,
+    this.header,
     this.detents,
     this.selectedDetentIndex,
     this.showDragIndicator = true,
@@ -137,7 +223,7 @@ class DCFModal extends StatelessComponent {
     // 🔥 Build props map with proper display handling
     Map<String, dynamic> props = {
       'visible': visible,
-      'title': title,
+      if (header != null) 'header': header!.toMap(),
       'detents': detents,
       'selectedDetentIndex': selectedDetentIndex,
       'showDragIndicator': showDragIndicator,

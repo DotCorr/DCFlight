@@ -9,6 +9,8 @@ import UIKit
 import dcflight
 
 class DCFSegmentedControlComponent: NSObject, DCFComponent {
+    // Use shared instance like other working components (Toggle, Slider, etc.)
+    private static let sharedInstance = DCFSegmentedControlComponent()
     
     required override init() {
         super.init()
@@ -19,14 +21,37 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         
         // Extract segments from props
         var segments: [String] = []
-        if let segmentArray = props["segments"] as? [String] {
+        var iconAssets: [String] = []
+        
+        if let segmentArray = props["segments"] as? [[String: Any]] {
+            // Parse segment objects from Dart
+            for segmentData in segmentArray {
+                if let title = segmentData["title"] as? String {
+                    segments.append(title)
+                    if let iconAsset = segmentData["iconAsset"] as? String {
+                        iconAssets.append(iconAsset)
+                    } else {
+                        iconAssets.append("")
+                    }
+                }
+            }
+        } else if let segmentArray = props["segments"] as? [String] {
+            // Legacy string array support
             segments = segmentArray
         } else if let segmentArray = props["segments"] as? [Any] {
+            // Try to extract strings from mixed array
             segments = segmentArray.compactMap { $0 as? String }
         }
         
+        print("📊 Parsed segments: \(segments), icons: \(iconAssets)")
+        
         // Create segmented control with segments
         let segmentedControl = UISegmentedControl(items: segments.isEmpty ? ["Segment 1"] : segments)
+        
+        // Set up icons if available
+        if !iconAssets.isEmpty {
+            updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
+        }
         
         // Apply adaptive theming like other DCF components
         let isAdaptive = props["adaptive"] as? Bool ?? true
@@ -51,8 +76,8 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             segmentedControl.selectedSegmentIndex = 0
         }
         
-        // Configure target-action for value changes
-        segmentedControl.addTarget(self, action: #selector(segmentedControlValueChanged(_:)), for: .valueChanged)
+        // Configure target-action for value changes - use shared instance like other components
+        segmentedControl.addTarget(DCFSegmentedControlComponent.sharedInstance, action: #selector(segmentedControlValueChanged(_:)), for: .valueChanged)
         
         updateView(segmentedControl, withProps: props)
         return segmentedControl
@@ -67,13 +92,30 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         print("🔄 DCFSegmentedControlComponent updateView called with props: \(props)")
         
         // Update segments if changed
-        if let segments = props["segments"] as? [String] {
-            let iconAssets = props["iconAssets"] as? [String] ?? []
+        var segments: [String] = []
+        var iconAssets: [String] = []
+        
+        if let segmentArray = props["segments"] as? [[String: Any]] {
+            // Parse segment objects from Dart
+            for segmentData in segmentArray {
+                if let title = segmentData["title"] as? String {
+                    segments.append(title)
+                    if let iconAsset = segmentData["iconAsset"] as? String {
+                        iconAssets.append(iconAsset)
+                    } else {
+                        iconAssets.append("")
+                    }
+                }
+            }
             updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
-        } else if let segments = props["segments"] as? [Any] {
-            let stringSegments = segments.compactMap { $0 as? String }
-            let iconAssets = props["iconAssets"] as? [String] ?? []
-            updateSegments(segmentedControl, segments: stringSegments, iconAssets: iconAssets)
+        } else if let segmentArray = props["segments"] as? [String] {
+            // Legacy string array support
+            segments = segmentArray
+            updateSegments(segmentedControl, segments: segments, iconAssets: [])
+        } else if let segmentArray = props["segments"] as? [Any] {
+            // Try to extract strings from mixed array
+            segments = segmentArray.compactMap { $0 as? String }
+            updateSegments(segmentedControl, segments: segments, iconAssets: [])
         }
         
         // Update selected index
@@ -169,16 +211,22 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
     
     @objc private func segmentedControlValueChanged(_ sender: UISegmentedControl) {
         let selectedIndex = sender.selectedSegmentIndex
-        print("🎯 Segmented control value changed to index: \(selectedIndex)")
+        let selectedTitle = sender.titleForSegment(at: selectedIndex) ?? ""
         
-        // Create event data
+        print("🎯 Segmented control value changed to index: \(selectedIndex), title: '\(selectedTitle)'")
+        
+        // Create event data that matches what Dart expects
         let eventData: [String: Any] = [
             "selectedIndex": selectedIndex,
-            "selectedTitle": sender.titleForSegment(at: selectedIndex) ?? ""
+            "selectedTitle": selectedTitle
         ]
         
-        // Propagate event
-        propagateEvent(on: sender, eventName: "onSelectionChange", data: eventData)
+        print("🎯 Event data being sent: \(eventData)")
+        
+        // Propagate event to Dart
+        propagateEvent(on: sender, eventName: "onSelectionChange", data: eventData) { view, data in
+            print("🎯 Native-side processing for segmented control selection: \(data)")
+        }
     }
     
     // MARK: - Icon Loading
