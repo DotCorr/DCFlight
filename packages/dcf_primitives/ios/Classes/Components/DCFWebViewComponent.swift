@@ -11,7 +11,9 @@ import WebKit
 import dcflight
 
 class DCFWebViewComponent: NSObject, DCFComponent {
-    private var webView: WKWebView?
+    // Use shared instance pattern like other components
+    private static let sharedInstance = DCFWebViewComponent()
+    
     private var currentURL: String?
     private weak var sourceView: UIView?  // Track the source view for events
     
@@ -20,6 +22,14 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
+        // Ensure we're on the main thread for UI operations
+        guard Thread.isMainThread else {
+            print("DCFWebView: Creating view on background thread, dispatching to main")
+            return DispatchQueue.main.sync {
+                return createView(props: props)
+            }
+        }
+        
         let configuration = WKWebViewConfiguration()
         
         // Configure JavaScript
@@ -34,21 +44,16 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         configuration.mediaTypesRequiringUserActionForPlayback = mediaPlaybackRequiresUserAction ? .all : []
         
         // Create the web view
-        webView = WKWebView(frame: .zero, configuration: configuration)
-        
-        guard let webView = webView else {
-            print("DCFWebView: Failed to create WKWebView")
-            return UIView()
-        }
+        let webView = WKWebView(frame: .zero, configuration: configuration)
         
         print("DCFWebView: Successfully created WKWebView")
         
         // Store source view for event propagation
         sourceView = webView
         
-        // Set navigation delegate
-        webView.navigationDelegate = self
-        webView.uiDelegate = self
+        // Set navigation delegate to shared instance
+        webView.navigationDelegate = DCFWebViewComponent.sharedInstance
+        webView.uiDelegate = DCFWebViewComponent.sharedInstance
         
         // Ensure the webview is visible and properly sized
         webView.translatesAutoresizingMaskIntoConstraints = false
@@ -78,8 +83,10 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         
         print("DCFWebView: WebView configured, about to load content")
         
-        // Load content
-        loadContent(webView: webView, props: props)
+        // Load content on main thread
+        DispatchQueue.main.async {
+            DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
+        }
         
         return webView  // Return webview directly
     }
@@ -94,9 +101,11 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let source = props["source"] as? String ?? ""
         
         // Only reload if source changed
-        if currentURL != source {
-            print("DCFWebView: updateView - Source changed from \(currentURL ?? "nil") to \(source)")
-            loadContent(webView: webView, props: props)
+        if DCFWebViewComponent.sharedInstance.currentURL != source {
+            print("DCFWebView: updateView - Source changed from \(DCFWebViewComponent.sharedInstance.currentURL ?? "nil") to \(source)")
+            DispatchQueue.main.async {
+                DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
+            }
         }
         
         // Update other properties that can be changed without reload
@@ -141,6 +150,14 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
     
     private func loadContent(webView: WKWebView, props: [String: Any]) {
+        // Ensure we're on the main thread for all web view operations
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async {
+                self.loadContent(webView: webView, props: props)
+            }
+            return
+        }
+        
         let source = props["source"] as? String ?? ""
         let loadMode = props["loadMode"] as? String ?? "url"
         let contentType = props["contentType"] as? String ?? "html"
@@ -170,7 +187,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             
             var request = URLRequest(url: url)
             
-            // Add debugging headers
+            // Add debugging headers and proper configuration
             request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             request.timeoutInterval = 30.0
@@ -179,6 +196,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             print("DCFWebView: Request headers: \(request.allHTTPHeaderFields ?? [:])")
             print("DCFWebView: Request timeout: \(request.timeoutInterval)")
             
+            // Load the request
             webView.load(request)
             
         case "htmlString":
@@ -243,7 +261,7 @@ extension DCFWebViewComponent: WKNavigationDelegate {
         print("DCFWebView: WebView frame during load start: \(webView.frame)")
         print("DCFWebView: WebView isHidden: \(webView.isHidden), alpha: \(webView.alpha)")
         
-        guard let sourceView = sourceView else { return }
+        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
         propagateEvent(on: sourceView, eventName: "onLoadStart", data: [
             "url": webView.url?.absoluteString ?? "",
             "title": webView.title ?? ""
@@ -263,7 +281,7 @@ extension DCFWebViewComponent: WKNavigationDelegate {
             print("DCFWebView: Forced layout update after content load")
         }
         
-        guard let sourceView = sourceView else { return }
+        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
         propagateEvent(on: sourceView, eventName: "onLoadEnd", data: [
             "url": webView.url?.absoluteString ?? "",
             "title": webView.title ?? ""
@@ -276,7 +294,7 @@ extension DCFWebViewComponent: WKNavigationDelegate {
         print("DCFWebView: Error domain: \((error as NSError).domain)")
         print("DCFWebView: Error userInfo: \((error as NSError).userInfo)")
         
-        guard let sourceView = sourceView else { return }
+        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
         propagateEvent(on: sourceView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
             "code": (error as NSError).code,
@@ -290,7 +308,7 @@ extension DCFWebViewComponent: WKNavigationDelegate {
         print("DCFWebView: Error domain: \((error as NSError).domain)")
         print("DCFWebView: Error userInfo: \((error as NSError).userInfo)")
         
-        guard let sourceView = sourceView else { return }
+        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
         propagateEvent(on: sourceView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
             "code": (error as NSError).code,
@@ -301,7 +319,7 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         let url = navigationAction.request.url?.absoluteString ?? ""
         
-        guard let sourceView = sourceView else { 
+        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { 
             decisionHandler(.allow)
             return 
         }
