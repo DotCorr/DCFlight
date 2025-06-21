@@ -7,14 +7,36 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Segmented control item configuration
+class DCFSegmentItem {
+  /// The title text for the segment
+  final String title;
+  
+  /// Optional icon asset path
+  final String? iconAsset;
+  
+  /// Whether this segment is enabled
+  final bool enabled;
+  
+  const DCFSegmentItem({
+    required this.title,
+    this.iconAsset,
+    this.enabled = true,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      if (iconAsset != null) 'iconAsset': iconAsset,
+      'enabled': enabled,
+    };
+  }
+}
+
 /// Segmented control properties
 class DCFSegmentedControlProps {
-  /// The list of segment titles
-  final List<String> segments;
-  
-  /// The list of icon assets for each segment (optional)
-  /// If provided, icons will be displayed instead of or alongside text
-  final List<String>? iconAssets;
+  /// The list of segment items (type-safe)
+  final List<DCFSegmentItem> segments;
   
   /// The currently selected segment index
   final int selectedIndex;
@@ -36,8 +58,7 @@ class DCFSegmentedControlProps {
   
   /// Create segmented control props
   const DCFSegmentedControlProps({
-    this.segments = const ['Segment 1'],
-    this.iconAssets,
+    this.segments = const [DCFSegmentItem(title: 'Segment 1')],
     this.selectedIndex = 0,
     this.enabled = true,
     this.adaptive = true,
@@ -49,8 +70,7 @@ class DCFSegmentedControlProps {
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
-      'segments': segments,
-      if (iconAssets != null) 'iconAssets': iconAssets,
+      'segments': segments.map((item) => item.toMap()).toList(),
       'selectedIndex': selectedIndex,
       'enabled': enabled,
       'adaptive': adaptive,
