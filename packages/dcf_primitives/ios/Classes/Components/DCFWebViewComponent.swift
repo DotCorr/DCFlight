@@ -15,7 +15,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFWebViewComponent()
     
     private var currentURL: String?
-    private weak var sourceView: UIView?  // Track the source view for events
+    // Remove the sourceView tracking - we'll propagate events directly on the webView
     
     required override init() {
         super.init()
@@ -48,12 +48,16 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         
         print("DCFWebView: Successfully created WKWebView")
         
-        // Store source view for event propagation
-        sourceView = webView
-        
         // Set navigation delegate to shared instance
         webView.navigationDelegate = DCFWebViewComponent.sharedInstance
         webView.uiDelegate = DCFWebViewComponent.sharedInstance
+        
+        // Add progress observation for onLoadProgress events
+        webView.addObserver(DCFWebViewComponent.sharedInstance, forKeyPath: "estimatedProgress", options: .new, context: nil)
+        
+        // Add JavaScript message handler for onMessage events
+        let userContentController = webView.configuration.userContentController
+        userContentController.add(DCFWebViewComponent.sharedInstance, name: "dcfMessage")
         
         // Ensure the webview is visible and properly sized
         webView.translatesAutoresizingMaskIntoConstraints = false
@@ -261,8 +265,8 @@ extension DCFWebViewComponent: WKNavigationDelegate {
         print("DCFWebView: WebView frame during load start: \(webView.frame)")
         print("DCFWebView: WebView isHidden: \(webView.isHidden), alpha: \(webView.alpha)")
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
-        propagateEvent(on: sourceView, eventName: "onLoadStart", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onLoadStart", data: [
             "url": webView.url?.absoluteString ?? "",
             "title": webView.title ?? ""
         ])
@@ -281,8 +285,8 @@ extension DCFWebViewComponent: WKNavigationDelegate {
             print("DCFWebView: Forced layout update after content load")
         }
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
-        propagateEvent(on: sourceView, eventName: "onLoadEnd", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onLoadEnd", data: [
             "url": webView.url?.absoluteString ?? "",
             "title": webView.title ?? ""
         ])
@@ -294,8 +298,8 @@ extension DCFWebViewComponent: WKNavigationDelegate {
         print("DCFWebView: Error domain: \((error as NSError).domain)")
         print("DCFWebView: Error userInfo: \((error as NSError).userInfo)")
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
-        propagateEvent(on: sourceView, eventName: "onLoadError", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
             "code": (error as NSError).code,
             "url": webView.url?.absoluteString ?? ""
@@ -308,8 +312,8 @@ extension DCFWebViewComponent: WKNavigationDelegate {
         print("DCFWebView: Error domain: \((error as NSError).domain)")
         print("DCFWebView: Error userInfo: \((error as NSError).userInfo)")
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
-        propagateEvent(on: sourceView, eventName: "onLoadError", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
             "code": (error as NSError).code,
             "url": webView.url?.absoluteString ?? ""
@@ -319,12 +323,8 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         let url = navigationAction.request.url?.absoluteString ?? ""
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { 
-            decisionHandler(.allow)
-            return 
-        }
-        
-        propagateEvent(on: sourceView, eventName: "onNavigationStateChange", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onNavigationStateChange", data: [
             "url": url,
             "title": webView.title ?? "",
             "canGoBack": webView.canGoBack,
@@ -376,5 +376,34 @@ extension DCFWebViewComponent: WKUIDelegate {
             responder = responder?.next
         }
         return nil
+    }
+}
+
+// MARK: - KVO for progress tracking
+extension DCFWebViewComponent {
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "estimatedProgress" {
+            if let webView = object as? WKWebView {
+                let progress = webView.estimatedProgress
+                // Propagate progress event directly on the webView
+                propagateEvent(on: webView, eventName: "onLoadProgress", data: [
+                    "progress": progress
+                ])
+            }
+        }
+    }
+}
+
+// MARK: - WKScriptMessageHandler for JavaScript messages
+extension DCFWebViewComponent: WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "dcfMessage" {
+            if let webView = message.webView {
+                // Propagate message event directly on the webView
+                propagateEvent(on: webView, eventName: "onMessage", data: [
+                    "data": message.body
+                ])
+            }
+        }
     }
 }
