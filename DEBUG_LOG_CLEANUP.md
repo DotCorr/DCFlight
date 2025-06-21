@@ -1,4 +1,6 @@
-### Warning ---All automations written by ChatGPT-- (Logically it see)
+### Warning ---All automations written by ChatGPT-- (Logically after review it looks good but i am not comfortable with python so beware of this ☺️)
+
+
 ## Production Release Status ✅
 
 **COMPLETED:** All debug logs have been successfully removed from the DCFlight codebase for production release.

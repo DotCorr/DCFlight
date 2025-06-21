@@ -284,6 +284,7 @@ class DCMauiBridgeMethodChannel: NSObject {
                             }
                         }
                     default:
+                        break
                     }
                 }
             }
