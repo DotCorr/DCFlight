@@ -8,82 +8,6 @@
 
 import 'package:dcflight/dcflight.dart';
 
-/// Modal header action button configuration
-class DCFModalHeaderAction {
-  /// The title of the action button
-  final String title;
-  
-  /// Optional icon asset for the action
-  final String? iconAsset;
-  
-  /// Custom action handler - follows DCFlight event conventions
-  final Function(Map<dynamic, dynamic>)? onTap;
-  
-  const DCFModalHeaderAction({
-    required this.title,
-    this.iconAsset,
-    this.onTap,
-  });
-  
-  Map<String, dynamic> toMap() {
-    return {
-      'title': title,
-      if (iconAsset != null) 'iconAsset': iconAsset,
-    };
-  }
-}
-
-/// Modal header configuration
-class DCFModalHeader {
-  /// The title text
-  final String title;
-  
-  /// Font family for the title
-  final String? fontFamily;
-  
-  /// Font size for the title
-  final double? fontSize;
-  
-  /// Font weight for the title
-  final String? fontWeight;
-  
-  /// Title text color
-  final Color? titleColor;
-  
-  /// Prefix (left) actions
-  final List<DCFModalHeaderAction>? prefixActions;
-  
-  /// Suffix (right) actions
-  final List<DCFModalHeaderAction>? suffixActions;
-  
-  /// Whether to use adaptive theming
-  final bool adaptive;
-  
-  const DCFModalHeader({
-    required this.title,
-    this.fontFamily,
-    this.fontSize,
-    this.fontWeight,
-    this.titleColor,
-    this.prefixActions,
-    this.suffixActions,
-    this.adaptive = true,
-  });
-  
-  Map<String, dynamic> toMap() {
-    return {
-      'title': title,
-      if (fontFamily != null) 'fontFamily': fontFamily,
-      if (fontSize != null) 'fontSize': fontSize,
-      if (fontWeight != null) 'fontWeight': fontWeight,
-      if (titleColor != null) 'titleColor': '#${titleColor!.value.toRadixString(16).padLeft(8, '0')}',
-      if (prefixActions != null) 'prefixActions': prefixActions!.map((action) => action.toMap()).toList(),
-      if (suffixActions != null) 'suffixActions': suffixActions!.map((action) => action.toMap()).toList(),
-      'adaptive': adaptive,
-    };
-  }
-}
-
 /// 🚀 DCF Modal Component - React Portal Style
 /// 
 /// A modal component that uses portals for rendering, just like React.
@@ -111,8 +35,8 @@ class DCFModal extends StatelessComponent {
   /// Whether the modal is visible
   final bool visible;
   
-  /// Modal header configuration (replaces simple title)
-  final DCFModalHeader? header;
+  /// Title displayed in the modal
+  final String? title;
   
   /// List of detent configurations
   /// Available options: ["small", "medium", "large", "compact", "half", "full"]
@@ -155,9 +79,6 @@ class DCFModal extends StatelessComponent {
   /// Called when modal is opened
   final Function(Map<dynamic, dynamic>)? onOpen;
   
-  /// Called when a header action is tapped
-  final Function(Map<dynamic, dynamic>)? onHeaderAction;
-  
   /// Child components to display inside the modal
   final List<DCFComponentNode> children;
 
@@ -173,7 +94,7 @@ class DCFModal extends StatelessComponent {
   DCFModal({
     super.key,
     required this.visible,
-    this.header,
+    this.title,
     this.detents,
     this.selectedDetentIndex,
     this.showDragIndicator = true,
@@ -187,7 +108,6 @@ class DCFModal extends StatelessComponent {
     this.onShow,
     this.onDismiss,
     this.onOpen,
-    this.onHeaderAction,
     this.children = const [],
     this.layout = const LayoutProps(),
     this.style = const StyleSheet(),
@@ -213,24 +133,11 @@ class DCFModal extends StatelessComponent {
       eventMap['onOpen'] = onOpen;
     }
     
-    if (onHeaderAction != null) {
-      eventMap['onHeaderAction'] = onHeaderAction;
-    }
-    
-    // Store header action callbacks for native side to use
-    if (header?.prefixActions != null) {
-      eventMap['prefixActionCallbacks'] = header!.prefixActions!.map((action) => action.onTap).toList();
-    }
-    
-    if (header?.suffixActions != null) {
-      eventMap['suffixActionCallbacks'] = header!.suffixActions!.map((action) => action.onTap).toList();
-    }
-    
     // ✅ SIMPLE FIX: Return modal directly with children - no wrapper needed!
     // 🔥 Build props map with proper display handling
     Map<String, dynamic> props = {
       'visible': visible,
-      if (header != null) 'header': header!.toMap(),
+      'title': title,
       'detents': detents,
       'selectedDetentIndex': selectedDetentIndex,
       'showDragIndicator': showDragIndicator,
@@ -251,7 +158,6 @@ class DCFModal extends StatelessComponent {
     // This ensures style.toMap() cannot override the visibility-based display setting
     props['display'] = visible ? 'flex' : 'none';
     
-    print('🎭 DCFModal props being sent to native: visible=$visible, display=${props['display']}');
     
     return DCFElement(
       type: 'Modal',
