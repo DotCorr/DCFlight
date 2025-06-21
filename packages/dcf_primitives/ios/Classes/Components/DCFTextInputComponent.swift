@@ -126,7 +126,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 } else {
                     textField.textColor = UIColor.black
                 }
-                print("🎨 DCFTextInputComponent: Applied adaptive color to text field")
             }
         }
         
@@ -182,7 +181,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
         // Apply StyleSheet properties for TextField
         textField.applyStyles(props: props)
 
-        print("✅ DCFTextInputComponent: Successfully updated text field")
         return true
     }
     
@@ -251,14 +249,12 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 } else {
                     textView.textColor = UIColor.black
                 }
-                print("🎨 DCFTextInputComponent: Applied adaptive color to text view")
             }
         }
         
         // Apply StyleSheet properties for TextView
         textView.applyStyles(props: props)
 
-        print("✅ DCFTextInputComponent: Successfully updated text view")
         return true
     }
     

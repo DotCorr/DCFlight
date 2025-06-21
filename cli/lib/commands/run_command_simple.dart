@@ -28,8 +28,5 @@ class RunCommandSimple extends Command {
   @override
   Future<void> run() async {
     final port = argResults!['port'] as String;
-    print('🚀 DCFlight: Starting hydration server on port $port...');
-    print('📁 Current directory: ${Directory.current.path}');
-    print('✅ Simple run command works!');
   }
 }

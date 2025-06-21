@@ -57,7 +57,6 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHa
         // Apply StyleSheet properties
         virtualizedScrollView.applyStyles(props: props)
         
-        print("🗂️ VirtualizedFlatList: Created with VirtualizedScrollView architecture")
         
         return virtualizedScrollView
     }
@@ -124,7 +123,6 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, ComponentMethodHa
                 } else {
                     virtualizedScrollView.backgroundColor = UIColor.white
                 }
-                print("🎨 VirtualizedFlatList: Applied adaptive background color")
             }
         }
         

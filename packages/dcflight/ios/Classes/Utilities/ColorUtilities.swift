@@ -24,7 +24,6 @@ import Foundation
         
         // Handle Flutter Color object format: "Color(alpha: 1.0000, red: 0.0000, green: 0.0000, blue: 0.0000, colorSpace: ColorSpace.sRGB)"
         if hexString.contains("Color(") && hexString.contains("alpha:") {
-            print("🎨 Parsing Flutter Color object format")
             return parseFlutterColorObject(hexString)
         }
         
@@ -101,7 +100,6 @@ import Foundation
             // CRITICAL BUGFIX: Handle #000000 specially - check if it was meant to be transparent
             if red == 0 && green == 0 && blue == 0 && 
                (hexString.contains("transparent") || hexString.contains("00000")) {
-                print("🔍 Special case: treating #000000 as transparent based on context")
                 return UIColor.clear
             }
             
@@ -137,7 +135,6 @@ import Foundation
         
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
               let match = regex.firstMatch(in: colorString, options: [], range: NSRange(location: 0, length: colorString.count)) else {
-            print("⚠️ Failed to parse Flutter Color object format")
             return .magenta // Return obvious color for debugging
         }
         
@@ -151,7 +148,6 @@ import Foundation
               let red = Double(String(colorString[redRange])),
               let green = Double(String(colorString[greenRange])),
               let blue = Double(String(colorString[blueRange])) else {
-            print("⚠️ Failed to convert Flutter Color components to numbers")
             return .magenta
         }
         

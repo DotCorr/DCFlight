@@ -113,8 +113,5 @@ class VDomAPI {
   
   /// Log VDOM state for debugging
   void debugLog(String message) {
-    if (kDebugMode) {
-      print('VDOM: $message');
-    }
   }
 }

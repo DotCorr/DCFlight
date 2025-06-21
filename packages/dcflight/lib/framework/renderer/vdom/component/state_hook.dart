@@ -39,10 +39,6 @@ class StateHook<T> extends Hook {
     if (_value != newValue) {
       _value = newValue;
       
-      if (kDebugMode) {
-        final name = _name != null ? ' ($_name)' : '';
-        developer.log('State changed$name: $newValue', name: 'StateHook');
-      }
       
       // Schedule a component update
       _scheduleUpdate();
@@ -80,11 +76,6 @@ class EffectHook extends Hook {
   
   /// Update dependencies - called during reconciliation
   void updateDependencies(List<dynamic> newDependencies) {
-    if (kDebugMode) {
-      print('🔄 EffectHook: updateDependencies called');
-      print('🔄 EffectHook: Previous deps: $_dependencies');
-      print('🔄 EffectHook: New deps: $newDependencies');
-    }
     _dependencies = newDependencies;
   }
 
@@ -92,23 +83,12 @@ class EffectHook extends Hook {
   void runEffect() {
     // Run effect if first time or dependencies changed
     if (_prevDeps == null || !_areEqualDeps(_dependencies, _prevDeps!)) {
-      if (kDebugMode) {
-        print('🔥 EffectHook: Running effect - first time: ${_prevDeps == null}, deps changed: ${_prevDeps != null ? !_areEqualDeps(_dependencies, _prevDeps!) : false}');
-        print('🔥 EffectHook: Previous deps: $_prevDeps');
-        print('🔥 EffectHook: Current deps: $_dependencies');
-      }
       
       // Clean up previous effect if needed
       if (_cleanup != null) {
-        if (kDebugMode) {
-          print('🧹 EffectHook: Running cleanup function');
-        }
         try {
           _cleanup!();
         } catch (e) {
-          if (kDebugMode) {
-            print('❌ EffectHook: Error during cleanup: $e');
-          }
         }
         _cleanup = null;
       }
@@ -116,13 +96,7 @@ class EffectHook extends Hook {
       // Run the effect and store cleanup
       try {
         _cleanup = _effect();
-        if (kDebugMode) {
-          print('✅ EffectHook: Effect executed, cleanup function: ${_cleanup != null ? 'provided' : 'none'}');
-        }
       } catch (e) {
-        if (kDebugMode) {
-          print('❌ EffectHook: Error during effect execution: $e');
-        }
       }
       
       // Update previous dependencies
@@ -132,29 +106,14 @@ class EffectHook extends Hook {
 
   @override
   void dispose() {
-    if (kDebugMode) {
-      print('🧹 EffectHook: Disposing effect hook - cleanup function exists: ${_cleanup != null}');
-    }
     // Run cleanup if it exists
     if (_cleanup != null) {
-      if (kDebugMode) {
-        print('🧹 EffectHook: Running cleanup function during dispose');
-      }
       try {
         _cleanup!();
-        if (kDebugMode) {
-          print('✅ EffectHook: Cleanup function executed successfully');
-        }
       } catch (e) {
-        if (kDebugMode) {
-          print('❌ EffectHook: Error during dispose cleanup: $e');
-        }
       }
       _cleanup = null;
     } else {
-      if (kDebugMode) {
-        print('⚠️ EffectHook: No cleanup function to run during dispose');
-      }
     }
   }
 

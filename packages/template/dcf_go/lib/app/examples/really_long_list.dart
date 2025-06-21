@@ -4,7 +4,6 @@ class ReallyLongList extends StatefulComponent{
   @override
   DCFComponentNode render() {
     return DCFFlatList(  onScroll: (v) {
-        print("Scrolled to: v");
       },data: List<int>.generate(100, (i) => i + 1), renderItem: (v, i) {
       return DCFView(
         layout: LayoutProps(

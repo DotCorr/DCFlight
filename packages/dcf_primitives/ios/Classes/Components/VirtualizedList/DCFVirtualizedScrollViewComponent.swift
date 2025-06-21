@@ -148,7 +148,6 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
                 } else {
                     scrollView.backgroundColor = UIColor.white
                 }
-                print("🎨 VirtualizedScrollView: Applied adaptive background color")
             }
         }
         

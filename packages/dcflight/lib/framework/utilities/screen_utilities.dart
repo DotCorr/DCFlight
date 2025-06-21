@@ -102,7 +102,6 @@ class ScreenUtilities {
         _notifyDimensionChangeListeners();
       }
     } catch (e) {
-      developer.log('Error refreshing dimensions: $e', name: 'ScreenUtilities');
 
       // Fallback to reasonable defaults if needed
       if (_screenWidth == 0 || _screenHeight == 0) {

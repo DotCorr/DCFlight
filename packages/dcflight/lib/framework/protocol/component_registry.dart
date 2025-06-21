@@ -31,7 +31,6 @@ class ComponentRegistry {
     
     
     
-    debugPrint('Registered component: $type');
   }
 
   /// Get a component factory by type

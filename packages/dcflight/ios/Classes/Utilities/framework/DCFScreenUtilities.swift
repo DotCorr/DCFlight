@@ -69,7 +69,6 @@ class DCFScreenUtilities {
             }
         }
         
-        print("📱 Screen dimensions method channel set up successfully")
     }
     
     @objc private func orientationChanged() {

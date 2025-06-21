@@ -68,9 +68,7 @@ public class DCFLayoutManager {
             DispatchQueue.main.async {
                 self.needsLayoutCalculation = false
                 if success {
-                    print("✅ CRASH FIX: Automatic layout calculation completed successfully")
                 } else {
-                    print("⏸️ CRASH FIX: Layout calculation deferred due to reconciliation")
                     // Reschedule if deferred due to reconciliation
                     if !success {
                         self.needsLayoutCalculation = true
@@ -204,7 +202,6 @@ public class DCFLayoutManager {
         
         // Level 1: Check if view is nil or in invalid state
         guard !view.isEqual(nil) else {
-            print("⚠️ DCFLayoutManager: View is nil, skipping layout")
             return
         }
         
@@ -216,13 +213,11 @@ public class DCFLayoutManager {
         
         // Level 3: Check if view is in valid UIKit state
         guard view.layer != nil else {
-            print("⚠️ DCFLayoutManager: View layer is nil, view appears to be deallocated")
             return
         }
         
         // Level 4: Check if view responds to frame setter (defensive programming)
         guard view.responds(to: #selector(setter: UIView.frame)) else {
-            print("⚠️ DCFLayoutManager: View doesn't respond to frame setter")
             return
         }
         
@@ -252,7 +247,6 @@ public class DCFLayoutManager {
             autoreleasepool {
                 guard let strongView = view,
                       strongView.superview != nil || strongView.window != nil else {
-                    print("⚠️ DCFLayoutManager: View became invalid during async dispatch")
                     return
                 }
                 
@@ -304,7 +298,6 @@ public class DCFLayoutManager {
                 }
             }
         }
-        print("✅ Finished applying layout results.")
     }
 
     // New method to batch process layout updates
@@ -360,7 +353,6 @@ extension DCFLayoutManager {
         
         // ADDED: If this is a root view, trigger initial layout calculation
         if nodeId == "root" {
-            print("🌱 Root view registered, triggering initial layout calculation")
             triggerLayoutCalculation()
         }
     }
@@ -423,9 +415,7 @@ extension DCFLayoutManager {
             
             DispatchQueue.main.async {
                 if success {
-                    print("✅ CRASH FIX: Manual layout calculation completed successfully")
                 } else {
-                    print("⏸️ CRASH FIX: Manual layout calculation deferred due to reconciliation")
                 }
             }
         }

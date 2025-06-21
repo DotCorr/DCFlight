@@ -92,7 +92,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             
             // Validate source is not empty
             guard !source.isEmpty else {
-                print("❌ Empty source provided")
                 propagateEvent(on: imageView, eventName: "onError", data: ["error": "Empty source"])
                 return false
             }
@@ -102,7 +101,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             let path = mainBundle.path(forResource: key, ofType: nil)
             
             if !source.hasPrefix("https://") && !source.hasPrefix("http://") {
-                print("this image path is local")
                 if let validPath = path {
                     loadImage(from: validPath, into: imageView, isLocal: true)
                 } else {
@@ -149,7 +147,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 } else {
                     imageView.backgroundColor = UIColor.white
                 }
-                print("🎨 DCFImageComponent: Applied adaptive background color")
             }
         }
         
@@ -163,7 +160,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
     private func loadImage(from source: String, into imageView: UIImageView, isLocal: Bool = false) {
         // Validate source
         guard !source.isEmpty else {
-            print("❌ Empty source provided to loadImage")
             propagateEvent(on: imageView, eventName: "onError", data: ["error": "Empty source"])
             return
         }
@@ -277,7 +273,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 }
                 
                 guard !uri.isEmpty else {
-                    print("❌ Empty URI provided to setImage")
                     return false
                 }
                 

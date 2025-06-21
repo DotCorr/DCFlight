@@ -22,14 +22,12 @@ class ModuleCreator {
       _validateModuleName(moduleName);
       
       // 3. Copy module template
-      print('📁 Copying module template...');
       await _copyModuleTemplate(moduleName, moduleDescription);
       
       // 4. Success message
       _printSuccessMessage(moduleName);
       
     } catch (e) {
-      print('❌ Error creating module: $e');
       exit(1);
     }
   }
@@ -264,7 +262,6 @@ class ModuleCreator {
       }
     } catch (e) {
       // Skip files that can't be read as text
-      print('Warning: Could not process file ${file.path}: $e');
     }
   }
 
@@ -279,12 +276,5 @@ class ModuleCreator {
   static void _printSuccessMessage(String moduleName) {
     final className = _toPascalCase(moduleName);
     
-    print('\n✅ Module created successfully!');
-    print('📁 Location: lib/modules/$moduleName/');
-    print('🏗️  Module: $className');
-    print('\n📖 Next steps:');
-    print('   1. Import the module: import \'modules/$moduleName/${moduleName}.dart\';');
-    print('   2. Use the module in your app');
-    print('\n🎉 Happy coding with DCFlight!');
   }
 }

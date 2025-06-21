@@ -36,7 +36,6 @@ class RunCommand extends Command {
     try {
       await _runDCFlightApp();
     } catch (e) {
-      print('❌ Error running DCFlight app: $e');
       exit(1);
     }
   }
@@ -45,13 +44,11 @@ class RunCommand extends Command {
     final verbose = argResults!['verbose'];
     final dcfArgs = argResults!['dcf-args'] as List<String>;
 
-    print('🚀 Starting DCFlight app...');
     
     // Validate project structure
     await _validateProjectStructure();
     
     // Start DCFlight app
-    print('🎯 Launching DCFlight runtime...');
     final dcfRunner = DCFlightRunner(
       additionalArgs: dcfArgs,
       verbose: verbose,
@@ -59,8 +56,6 @@ class RunCommand extends Command {
     
     final dcfProcess = await dcfRunner.start();
     
-    print('✅ DCFlight app launched successfully!');
-    print('💡 Make changes to your code and restart to see updates');
     
     // Wait for the process to complete
     await dcfProcess.exitCode;
@@ -84,6 +79,5 @@ class RunCommand extends Command {
       throw Exception('No lib/main.dart found. Make sure you have a main.dart file.');
     }
     
-    print('✅ DCFlight project structure validated');
   }
 }

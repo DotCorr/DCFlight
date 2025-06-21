@@ -48,7 +48,6 @@ class YogaShadowTree {
             nodeTypes["root"] = "View"
         }
         
-        print("YogaShadowTree initialized with root node")
     }
     
     // CRASH FIX: Safe node creation with synchronization
@@ -78,7 +77,6 @@ class YogaShadowTree {
     func addChildNode(parentId: String, childId: String, index: Int? = nil) {
         syncQueue.sync {
             guard let parentNode = nodes[parentId], let childNode = nodes[childId] else {
-                print("Cannot add child: parent or child node not found")
                 return
             }
             
@@ -194,7 +192,6 @@ class YogaShadowTree {
             // Update count and check for infinite loop protection
             let newChildCount = YGNodeGetChildCount(node)
             if newChildCount >= childCount {
-                print("⚠️ CRASH FIX: Child count not decreasing, breaking to prevent infinite loop")
                 break
             }
             
@@ -223,11 +220,9 @@ class YogaShadowTree {
     // CRASH FIX: Layout calculation with synchronization
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
         return syncQueue.sync {
-            print("🧮 CRASH FIX: Layout calculation started with synchronization")
             
             // Check if reconciliation is in progress
             if isReconciling {
-                print("⏸️ CRASH FIX: Deferring layout calculation - reconciliation in progress")
                 return false
             }
             
@@ -239,7 +234,6 @@ class YogaShadowTree {
             
             // Make sure root node exists
             guard let root = nodes["root"] else {
-                print("Root node not found. Cannot calculate layout")
                 return false
             }
             
@@ -265,7 +259,6 @@ class YogaShadowTree {
                         applyLayoutToView(viewId: nodeId, frame: layout)
                     }
                 }
-                print("✅ CRASH FIX: Layout calculation completed successfully")
                 return true
             } catch {
                 print("❌ Layout calculation failed with error: \(error.localizedDescription)")
@@ -285,7 +278,6 @@ class YogaShadowTree {
                             applyLayoutToView(viewId: nodeId, frame: layout)
                         }
                     }
-                    print("✅ Layout recovered after fixing errors")
                     return true
                 } catch {
                     print("❌ Layout calculation failed even after recovery attempt: \(error)")
@@ -675,7 +667,6 @@ class YogaShadowTree {
     
     // Fix common layout errors that cause crashes
     private func fixLayoutErrors() {
-        print("🔧 Attempting to fix layout errors...")
         
         for (nodeId, node) in nodes {
             // Fix 1: Set auto height for nodes with children but undefined height
@@ -891,7 +882,6 @@ class YogaShadowTree {
             // 🔥 HOT RESTART SAFETY: Comprehensive view validation before applying layout
             guard let self = self,
                   let view = DCFLayoutManager.shared.getView(withId: viewId) else {
-                print("⚠️ YogaShadowTree: View or self became nil during async dispatch")
                 return
             }
             

@@ -47,7 +47,6 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let label = view as? UILabel else { 
-            print("❌ DCFTextComponent: Failed to cast view to UILabel")
             return false 
         }
         
@@ -64,7 +63,6 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
                             props["fontFamily"] != nil || props["isFontAsset"] != nil
         
         if hasAnyFontProp {
-            print("🎨 DCFTextComponent: Processing font properties")
             
             // Get current font as fallback
             let currentFont = label.font ?? UIFont.systemFont(ofSize: UIFont.systemFontSize)
@@ -115,7 +113,6 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 // Use system font with the specified size and weight
                 label.font = UIFont.systemFont(ofSize: finalFontSize, weight: finalFontWeight)
             }
-            print("🎨 DCFTextComponent: Updated font properties")
         }
         
         // Handle color property - this is the key fix for incremental updates
@@ -138,7 +135,6 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 } else {
                     label.textColor = UIColor.black
                 }
-                print("🎨 DCFTextComponent: Applied adaptive color")
             }
         }
         
@@ -166,7 +162,6 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
         // Apply StyleSheet properties
         label.applyStyles(props: props)
         
-        print("✅ DCFTextComponent: Successfully updated view")
         return true
     }
     
@@ -277,12 +272,10 @@ class DCFTextComponent: NSObject, DCFComponent, ComponentMethodHandler {
         }
         
         guard let dataProvider = CGDataProvider(data: fontData) else {
-            print("❌ Failed to create data provider for font")
             return false
         }
         
         guard let cgFont = CGFont(dataProvider) else {
-            print("❌ Failed to create CGFont")
             return false
         }
         

@@ -40,7 +40,6 @@ import Foundation
     
     /// Initialize the framework
     @objc func initialize() -> Bool {
-        NSLog("DCMauiFFIBridge: initialize called")
         
         // Check if root view exists already
         if let rootView = views["root"] {
@@ -49,10 +48,8 @@ import Foundation
             // Ensure the root view is registered with the shadow tree
             if YogaShadowTree.shared.nodes["root"] == nil {
                 YogaShadowTree.shared.createNode(id: "root", componentType: "View")
-                NSLog("DCMauiFFIBridge: Created root node in shadow tree")
             }
         } else {
-            NSLog("DCMauiFFIBridge: Warning - No root view registered yet")
         }
         
         return true
@@ -73,16 +70,13 @@ import Foundation
         print("✅ DCMauiBridgeImpl: Props parsed successfully: \(props)")
         
         // Use the unified view manager for creation
-        print("🚀 DCMauiBridgeImpl: Calling DCFViewManager.shared.createView...")
         let success = DCFViewManager.shared.createView(viewId: viewId, viewType: viewType, props: props)
         print("📊 DCMauiBridgeImpl: DCFViewManager.createView result: \(success)")
         
         // Also store in our local registry for compatibility
         if success, let view = ViewRegistry.shared.getView(id: viewId) {
             views[viewId] = view
-            print("✅ DCMauiBridgeImpl: View stored in local registry")
         } else if success {
-            print("⚠️ DCMauiBridgeImpl: View created but not found in ViewRegistry")
         }
         
         return success
@@ -348,18 +342,15 @@ import Foundation
     
     // Print hierarchy for debugging
     @objc func printHierarchy() {
-        NSLog("--- View Hierarchy ---")
         for (parentId, childrenIds) in viewHierarchy {
             NSLog("Parent: \(parentId), Children: \(childrenIds)")
         }
-        NSLog("---------------------")
     }
     
     // MARK: - Hot Restart Support
     
     /// Clean up all views except root view for hot restart
     @objc func cleanupForHotRestart() {
-        NSLog("🧹 DCMauiBridgeImpl: Starting hot restart cleanup...")
         
         // Remove all non-root views from registry
         let nonRootViews = views.filter { $0.key != "root" }
@@ -374,7 +365,6 @@ import Foundation
             for subview in rootView.subviews {
                 subview.removeFromSuperview()
             }
-            NSLog("🧹 Cleared children of root view but preserved root")
         }
         
         // Clear hierarchy tracking except for root
@@ -392,7 +382,6 @@ import Foundation
         // Reset root's children list but keep root entry
         viewHierarchy["root"] = []
         
-        NSLog("✅ DCMauiBridgeImpl: Hot restart cleanup completed")
     }
 }
 

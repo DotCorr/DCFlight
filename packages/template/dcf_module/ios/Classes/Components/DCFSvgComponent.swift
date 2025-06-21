@@ -46,11 +46,9 @@ class DCFSvgComponent: NSObject, DCFComponent {
         print("🔍 DCFSvg updateView called with props: \(props)")
         
         guard let imageView = view as? UIImageView else { 
-            print("❌ DCFSvg updateView: view is not UIImageView")
             return false 
         }
         
-        print("✅ DCFSvg updateView: imageView cast successful")
         
         do {
             // Apply background color from StyleSheet
@@ -78,19 +76,15 @@ class DCFSvgComponent: NSObject, DCFComponent {
                     isRel: (props["isRelativePath"] as? Bool ?? false),
                     path: path ?? "no path"
                 )
-                print("🔍 DCFSvg updateView: Asset loading completed")
             } else {
-                print("🔍 DCFSvg updateView: No asset property - applying tint color to existing image")
                 // No asset provided - this is likely a prop update (like color change)
                 // Apply tint color to the existing image
                 applyTintColor(to: imageView, props: props)
             }
             
             // Apply StyleSheet properties (handles borderRadius, opacity, backgroundColor, etc.)
-            print("🔍 DCFSvg updateView: Applying styles")
             imageView.applyStyles(props: props)
             
-            print("✅ DCFSvg updateView: Successfully completed")
             return true
         } catch {
             print("❌ DCFSvg updateView: Exception occurred: \(error)")
@@ -170,7 +164,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
             // Only apply adaptive tint if no explicit tintColor was provided at all
             // Check if a tintColor key exists but with nil/empty value vs no key at all
             if props["tintColor"] == nil {
-                print("🔍 DCFSvg: tintColor key is nil - applying adaptive")
                 // No tintColor specified - apply adaptive tint
                 let isAdaptive = props["adaptive"] as? Bool ?? true
                 if isAdaptive {
@@ -179,13 +172,11 @@ class DCFSvgComponent: NSObject, DCFComponent {
                     } else {
                         imageView.tintColor = UIColor.black
                     }
-                    print("🎨 Applying adaptive tint color")
                     // Force the image to use template rendering mode
                     if let image = imageView.image {
                         imageView.image = image.withRenderingMode(.alwaysTemplate)
                     }
                 } else {
-                    print("🎨 No tint color - using original rendering")
                     // Reset to original rendering mode if no tint specified
                     if let image = imageView.image {
                         imageView.image = image.withRenderingMode(.alwaysOriginal)
@@ -196,7 +187,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
             } else {
                 // tintColor key exists but couldn't be parsed - this means
                 // an explicit (but invalid) color was provided, keep current state
-                print("🎨 Invalid tint color provided, keeping current state")
             }
         }
     }

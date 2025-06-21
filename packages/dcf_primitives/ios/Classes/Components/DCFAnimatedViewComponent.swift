@@ -101,7 +101,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 } else {
                     view.backgroundColor = UIColor.white
                 }
-                print("🎨 DCFAnimatedViewComponent: Applied adaptive background color")
             }
         }
         

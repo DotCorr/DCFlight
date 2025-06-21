@@ -37,7 +37,6 @@ class VirtualizedScrollView: UIScrollView {
         // Configure for VirtualizedList behavior
         self.clipsToBounds = true
         
-        print("🔧 VirtualizedScrollView: Initialized with VirtualizedList architecture")
     }
     
     /// Update content size based on Yoga layout results - React Native VirtualizedList approach

@@ -49,13 +49,10 @@ class App extends StatefulComponent {
               layout: LayoutProps(height: 40, marginBottom: 8),
               onValueChange: (v) {
                 pagestateLocal.setState(int.parse(v['value']));
-                print("Selected value: $v, Item: $v");
               },
           onClose: (v) {
-            print("closed");
           },
           onOpen: (v) {
-            print("open");
           },
           dropdownProps: DCFDropdownProps(
             items: [

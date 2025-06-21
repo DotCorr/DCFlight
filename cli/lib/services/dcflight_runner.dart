@@ -42,7 +42,6 @@ class DCFlightRunner {
       );
       
       if (verbose) {
-        print('✅ DCFlight runtime started');
       }
       
       return process;
@@ -55,7 +54,6 @@ class DCFlightRunner {
   Future<String> _selectDevice() async {
     try {
       if (verbose) {
-        print('🔍 Getting available devices...');
       }
       
       // Get list of available devices
@@ -89,7 +87,6 @@ class DCFlightRunner {
       }
       
       // Display available devices
-      print('\n📱 Available devices:');
       for (int i = 0; i < devices.length; i++) {
         final device = devices[i];
         final name = device['name'] ?? 'Unknown';
@@ -100,7 +97,6 @@ class DCFlightRunner {
         
         print('  ${i + 1}. $name ($platform) - $status');
         if (verbose) {
-          print('     ID: $id');
         }
       }
       
@@ -121,7 +117,6 @@ class DCFlightRunner {
       final deviceId = selectedDevice['id'] as String;
       final deviceName = selectedDevice['name'] as String;
       
-      print('✅ Selected: $deviceName');
       return deviceId;
       
     } catch (e) {

@@ -58,7 +58,6 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
         updateView(spinner, withProps: props)
         spinner.applyStyles(props: props)
         
-        print("✅ DCFSpinnerComponent.createView completed successfully")
         return spinner
     }
     

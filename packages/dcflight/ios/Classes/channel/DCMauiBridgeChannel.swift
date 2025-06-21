@@ -27,7 +27,6 @@ class DCMauiBridgeMethodChannel: NSObject {
     var views = [String: UIView]()
     
     func initialize() {
-        print("🚀 Bridge channel initializing")
     }
     
     /// Initialize with Flutter binary messenger
@@ -48,8 +47,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         methodChannel?.setMethodCallHandler(handleMethodCall)
         hotRestartChannel?.setMethodCallHandler(handleHotRestartMethodCall)
         
-        print("🌉 Bridge method channel initialized")
-        print("🔥 Hot restart detection channel initialized")
     }
     
     /// Handle method calls from Flutter
@@ -63,20 +60,16 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Handle methods
         switch call.method {
         case "initialize":
-            print("🚀 NATIVE: Handling initialize method")
             handleInitialize(result: result)
             
         case "createView":
-            print("🎯 NATIVE: Handling createView method")
             if let args = args {
                 handleCreateView(args, result: result)
             } else {
-                print("❌ NATIVE: createView called with null arguments")
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
             
         case "updateView":
-            print("🔄 NATIVE: Handling updateView method")
             if let args = args {
                 handleUpdateView(args, result: result)
             } else {
@@ -134,7 +127,6 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     // Initialize the bridge
     private func handleInitialize(result: @escaping FlutterResult) {
-        print("🚀 Bridge initialize method called")
         
         // Execute on main thread
         DispatchQueue.main.async {
@@ -162,16 +154,13 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Convert props to JSON
         guard let propsData = try? JSONSerialization.data(withJSONObject: props),
               let propsJson = String(data: propsData, encoding: .utf8) else {
-            print("❌ NATIVE: handleCreateView - Failed to serialize props to JSON")
             result(FlutterError(code: "JSON_ERROR", message: "Failed to serialize props", details: nil))
             return
         }
         
-        print("✅ NATIVE: handleCreateView - Props serialized to JSON successfully")
         
         // Execute on main thread
         DispatchQueue.main.async {
-            print("🚀 NATIVE: handleCreateView - Calling DCMauiBridgeImpl.shared.createView...")
             let success = DCMauiBridgeImpl.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
             print("📊 NATIVE: handleCreateView - DCMauiBridgeImpl.createView result: \(success)")
             result(success)
@@ -411,7 +400,6 @@ class DCMauiBridgeMethodChannel: NSObject {
             
         case "clearSessionToken":
             DCMauiBridgeMethodChannel.sessionToken = nil
-            print("🗑️ DCFlight: Session token cleared")
             result(nil)
             
         default:
@@ -421,7 +409,6 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     /// Cleanup all DCFlight native views and resources
     private func cleanupNativeViews() {
-        print("🧹 DCFlight: Starting native view cleanup...")
         
         // Clean up DCMauiBridgeImpl views (preserves root)
         DCMauiBridgeImpl.shared.cleanupForHotRestart()
@@ -435,7 +422,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Reset layout manager (preserves root)
         DCFLayoutManager.shared.clearAll()
         
-        print("✅ DCFlight: Native cleanup completed")
     }
     
     
@@ -470,7 +456,6 @@ extension ViewRegistry {
                 for subview in rootView.subviews {
                     subview.removeFromSuperview()
                 }
-                print("🧹 Cleared children of root view but preserved root")
             }
         }
         

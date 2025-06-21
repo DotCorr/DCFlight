@@ -49,7 +49,6 @@ public class DCFEscapeView: UIView {
     /// Set Yoga node to zero dimensions - AGGRESSIVE approach for true zero space
     private func setYogaToZero() {
         guard let nodeId = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "nodeId".hashValue)!) as? String else { 
-            print("⚠️ DCFEscapeView: No nodeId found, cannot set Yoga to zero - will rely on frame/bounds override")
             return 
         }
         
@@ -80,7 +79,6 @@ public class DCFEscapeView: UIView {
     /// Restore Yoga node to normal
     private func restoreYoga() {
         guard let nodeId = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "nodeId".hashValue)!) as? String else { 
-            print("⚠️ DCFEscapeView: No nodeId found, cannot restore Yoga - will rely on frame/bounds restore")
             return 
         }
         

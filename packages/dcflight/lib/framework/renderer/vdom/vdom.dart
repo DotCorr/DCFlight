@@ -78,14 +78,8 @@ class VDom {
       // Mark as ready
       _readyCompleter.complete();
       
-      if (kDebugMode) {
-        developer.log('VDOM initialized successfully', name: 'VDOM');
-      }
     } catch (e) {
       _readyCompleter.completeError(e);
-      if (kDebugMode) {
-        developer.log('Failed to initialize VDom: $e', name: 'VDom', error: e);
-      }
     }
   }
 
@@ -117,15 +111,9 @@ class VDom {
       String viewId, String eventType, Map<dynamic, dynamic> eventData) {
     final node = _nodesByViewId[viewId];
     if (node == null) {
-      if (kDebugMode) {
-        developer.log('⚠️ No node found for viewId: $viewId. Available viewIds: ${_nodesByViewId.keys.toList()}', name: 'VDom');
-      }
       return;
     }
 
-    if (kDebugMode) {
-      developer.log('🎯 Handling event: $eventType for viewId: $viewId, node type: ${node.runtimeType}', name: 'VDom');
-    }
 
     if (node is DCFElement) {
       // Try multiple event handler formats to ensure compatibility
@@ -136,24 +124,14 @@ class VDom {
         'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}' // normalized
       ];
       
-      if (kDebugMode) {
-        developer.log('🔍 Trying event handler keys: $eventHandlerKeys', name: 'VDom');
-        developer.log('🔍 Available props: ${node.props.keys.toList()}', name: 'VDom');
-      }
       
       for (final key in eventHandlerKeys) {
         if (node.props.containsKey(key) && node.props[key] is Function) {
-          if (kDebugMode) {
-            developer.log('✅ Found event handler for key: $key', name: 'VDom');
-          }
           _executeEventHandler(node.props[key], eventData);
           return;
         }
       }
       
-      if (kDebugMode) {
-        developer.log('❌ No event handler found for event: $eventType', name: 'VDom');
-      }
     }
   }
 
@@ -214,32 +192,18 @@ class VDom {
       try {
         (handler as dynamic)(eventData);
       } catch (e) {
-        if (kDebugMode) {
-          developer.log('❌ Could not execute event handler with any signature: $e', 
-              name: 'VDom', error: e);
-        }
       }
       
     } catch (e, stack) {
-      if (kDebugMode) {
-        developer.log('❌ Error executing event handler: $e', 
-            name: 'VDom', error: e, stackTrace: stack);
-      }
     }
   }
 
   /// Schedule a component update when state changes
   /// This is a key method that triggers UI updates after state changes
   void _scheduleComponentUpdate(StatefulComponent component) {
-    if (kDebugMode) {
-      print('Scheduling update for component: ${component.instanceId} (${component.runtimeType})');
-    }
     
     // Verify component is still registered
     if (!_statefulComponents.containsKey(component.instanceId)) {
-      if (kDebugMode) {
-        print('Warning: Attempting to update unregistered component: ${component.instanceId}');
-      }
       // Re-register the component to ensure it's tracked
       registerComponent(component);
     }
@@ -275,9 +239,6 @@ class VDom {
         return;
       }
 
-      if (kDebugMode) {
-        print('Processing ${_pendingUpdates.length} pending updates');
-      }
 
       // Copy the pending updates to allow for new ones during processing
       final updates = Set<String>.from(_pendingUpdates);
@@ -306,18 +267,11 @@ class VDom {
       // Check if new updates were scheduled during processing
       if (_pendingUpdates.isNotEmpty) {
         // Process new updates in next microtask
-        if (kDebugMode) {
-          print('Scheduling another update batch for ${_pendingUpdates.length} components');
-        }
         Future.microtask(_processPendingUpdates);
       } else {
         _isUpdateScheduled = false;
       }
     } catch (e, stack) {
-      if (kDebugMode) {
-        developer.log('Error processing updates: $e', 
-            name: 'VDom', error: e, stackTrace: stack);
-      }
     } finally {
       _batchUpdateInProgress = false;
     }
@@ -327,16 +281,10 @@ class VDom {
   Future<void> _updateComponentById(String componentId) async {
     final component = _statefulComponents[componentId] ?? _statelessComponents[componentId];
     if (component == null) {
-      if (kDebugMode) {
-        print('⚠️ Cannot update component - not found: $componentId');
-      }
       return;
     }
 
     try {
-      if (kDebugMode) {
-        print('🔧 Updating component: $componentId (${component.runtimeType})');
-      }
       
       // Perform component-specific update preparation
       if (component is StatefulComponent) {
@@ -349,23 +297,14 @@ class VDom {
       // Store a reference to the old rendered node for proper reconciliation
       if (oldRenderedNode != null) {
         _previousRenderedNodes[componentId] = oldRenderedNode;
-        if (kDebugMode) {
-          print('📝 Stored previous rendered node: ${oldRenderedNode.runtimeType} (key: ${oldRenderedNode.key})');
-        }
       }
       
       // Force re-render by clearing cached rendered node
       component.renderedNode = null;
       final newRenderedNode = component.renderedNode;
       
-      if (kDebugMode) {
-        print('🆕 New rendered node: ${newRenderedNode?.runtimeType} (key: ${newRenderedNode?.key})');
-      }
       
       if (newRenderedNode == null) {
-        if (kDebugMode) {
-          developer.log('Component rendered null: $componentId', name: 'VDom');
-        }
         return;
       }
 
@@ -378,11 +317,6 @@ class VDom {
         // Find parent native view ID and index for replacement
         final parentViewId = _findParentViewId(component);
         
-        if (kDebugMode) {
-          print('🔄 Reconciling from old node (${previousRenderedNode.runtimeType}): ' +
-              '${previousRenderedNode.effectiveNativeViewId} to new node (${newRenderedNode.runtimeType})');
-          print('🔑 Key comparison: "${previousRenderedNode.key}" vs "${newRenderedNode.key}"');
-        }
         
         if (previousRenderedNode.effectiveNativeViewId == null || parentViewId == null) {
           // For problematic components or when we don't have required IDs, use standard reconciliation
@@ -406,15 +340,11 @@ class VDom {
         // No previous rendering, create from scratch
         final parentViewId = _findParentViewId(component);
         if (parentViewId != null) {
-          if (kDebugMode) {
-            print('Creating new rendered node for component with parent: $parentViewId');
-          }
           final newViewId = await renderToNative(newRenderedNode, parentViewId: parentViewId);
           if (newViewId != null) {
             component.contentViewId = newViewId;
           }
         } else if (kDebugMode) {
-          print('Cannot create new rendered node: parent viewId not found');
         }
       }
 
@@ -424,10 +354,6 @@ class VDom {
         component.runEffectsAfterRender();
       }
     } catch (e, stack) {
-      if (kDebugMode) {
-        developer.log('Error updating component: $e', 
-            name: 'VDom', error: e, stackTrace: stack);
-      }
     }
   }
 
@@ -458,9 +384,6 @@ class VDom {
             // Portal placeholder fragments don't render anything here
             // The enhanced portal manager handles all the portal logic
             
-            if (kDebugMode) {
-              print('🎯 VDom: Portal placeholder fragment for target: $targetId, portal: $portalId');
-            }
             
             return null; // Portal placeholders have no native view
           }
@@ -471,9 +394,6 @@ class VDom {
           final targetId = node.metadata!['targetId'] as String?;
           
           if (targetId != null) {
-            if (kDebugMode) {
-              print('🎯 VDom: Portal target fragment: $targetId');
-            }
             
             // For portal targets, we should render normally but also allow
             // the portal manager to inject content
@@ -560,10 +480,6 @@ class VDom {
 
       return null;
     } catch (e, stack) {
-      if (kDebugMode) {
-        developer.log('Error rendering node: $e', 
-            name: 'VDom', error: e, stackTrace: stack);
-      }
       return null;
     }
   }
@@ -581,10 +497,6 @@ class VDom {
     // Create the view
     final success = await _nativeBridge.createView(viewId, element.type, element.props);
     if (!success) {
-      if (kDebugMode) {
-        developer.log('Failed to create view: $viewId of type ${element.type}',
-            name: 'VDom');
-      }
       return null;
     }
 
@@ -622,16 +534,9 @@ class VDom {
     // Transfer important parent reference first
     newNode.parent = oldNode.parent;
     
-    if (kDebugMode) {
-      print('Reconciling ${oldNode.runtimeType} to ${newNode.runtimeType}');
-      print('Old key: ${oldNode.key}, New key: ${newNode.key}');
-    }
 
     // If the node types are completely different, replace the node entirely
     if (oldNode.runtimeType != newNode.runtimeType) {
-      if (kDebugMode) {
-        print('Different node types: ${oldNode.runtimeType} -> ${newNode.runtimeType}');
-      }
       await _replaceNode(oldNode, newNode);
       return;
     }
@@ -640,9 +545,6 @@ class VDom {
     // This ensures that when we change component keys (like 'app_1' to 'app_2'), 
     // a completely new component instance is created instead of trying to update the existing one
     if (oldNode.key != newNode.key) {
-      if (kDebugMode) {
-        print('Different keys detected: ${oldNode.key} -> ${newNode.key}, replacing component');
-      }
       await _replaceNode(oldNode, newNode);
       return;
     }
@@ -715,9 +617,6 @@ class VDom {
   
   /// Replace a node entirely
   Future<void> _replaceNode(DCFComponentNode oldNode, DCFComponentNode newNode) async {
-    if (kDebugMode) {
-      print('🔄 Replacing node: ${oldNode.runtimeType} (key: ${oldNode.key}) -> ${newNode.runtimeType} (key: ${newNode.key})');
-    }
     
     // CRITICAL HOT RELOAD FIX: Properly dispose of old component instances
     await _disposeOldComponent(oldNode);
@@ -730,9 +629,6 @@ class VDom {
     // Find parent info for placing the new node
     final parentViewId = _findParentViewId(oldNode);
     if (parentViewId == null) {
-      if (kDebugMode) {
-        developer.log('Failed to find parent ID for node replacement', name: 'VDom');
-      }
       return;
     }
 
@@ -758,9 +654,6 @@ class VDom {
       if (newNode is StatefulComponent || newNode is StatelessComponent) {
         final renderedNode = newNode.renderedNode;
         if (renderedNode is DCFFragment) {
-          if (kDebugMode) {
-            print('🎯 Component renders fragment - deleting old view ID: $oldViewId');
-          }
           
           // Delete the old view since the component renders a fragment
           await _nativeBridge.deleteView(oldViewId);
@@ -769,9 +662,6 @@ class VDom {
           // Render the component normally to parent
           await renderToNative(newNode, parentViewId: parentViewId, index: index);
           
-          if (kDebugMode) {
-            print('✅ Component-to-fragment replacement completed');
-          }
           return;
         }
       }
@@ -783,11 +673,6 @@ class VDom {
       // Update the mapping to point to the new node IMMEDIATELY
       _nodesByViewId[oldViewId] = newNode;
       
-      if (kDebugMode) {
-        print('🔄 Reusing view ID $oldViewId for node replacement');
-        print('🎯 Old events: $oldEventTypes');
-        print('🎯 New events: $newEventTypes');
-      }
       
       // Only update event listeners if they changed
       final oldEventSet = Set<String>.from(oldEventTypes);
@@ -797,18 +682,12 @@ class VDom {
         // Remove old event listeners that are no longer needed
         final eventsToRemove = oldEventSet.difference(newEventSet);
         if (eventsToRemove.isNotEmpty) {
-          if (kDebugMode) {
-            print('🗑️ Removing obsolete event listeners: $eventsToRemove');
-          }
           await _nativeBridge.removeEventListeners(oldViewId, eventsToRemove.toList());
         }
         
         // Add new event listeners
         final eventsToAdd = newEventSet.difference(oldEventSet);
         if (eventsToAdd.isNotEmpty) {
-          if (kDebugMode) {
-            print('➕ Adding new event listeners: $eventsToAdd');
-          }
           await _nativeBridge.addEventListeners(oldViewId, eventsToAdd.toList());
         }
       }
@@ -821,14 +700,7 @@ class VDom {
       
       // Verify the view creation was successful
       if (newViewId != null && newViewId.isNotEmpty) {
-        if (kDebugMode) {
-          print('✅ New view created with preserved ID: $newViewId');
-          print('🎯 _nodesByViewId mapping confirmed for: $newViewId -> ${_nodesByViewId[newViewId]?.runtimeType}');
-        }
       } else {
-        if (kDebugMode) {
-          print('❌ Failed to create new view for node replacement');
-        }
       }
     } finally {
       // Resume batch mode if we were previously in batch mode
@@ -838,23 +710,14 @@ class VDom {
       }
     }
     
-    if (kDebugMode) {
-      print('✅ Node replacement completed');
-    }
   }
 
   /// Dispose of old component instance and clean up its state
   Future<void> _disposeOldComponent(DCFComponentNode oldNode) async {
-    if (kDebugMode) {
-      print('🗑️ Disposing old component: ${oldNode.runtimeType} (${oldNode.key})');
-    }
     
     try {
       // Handle StatefulComponent disposal
       if (oldNode is StatefulComponent) {
-        if (kDebugMode) {
-          print('🗑️ Cleaning up StatefulComponent: ${oldNode.instanceId}');
-        }
         
         // Remove from component tracking FIRST to prevent further updates
         _statefulComponents.remove(oldNode.instanceId);
@@ -865,23 +728,14 @@ class VDom {
         try {
           oldNode.componentWillUnmount();
         } catch (e) {
-          if (kDebugMode) {
-            print('❌ Error during componentWillUnmount: $e');
-          }
         }
         
         // Recursively dispose rendered content
         await _disposeOldComponent(oldNode.renderedNode);
               
-        if (kDebugMode) {
-          print('✅ StatefulComponent disposed: ${oldNode.instanceId}');
-        }
       }
       // Handle StatelessComponent disposal  
       else if (oldNode is StatelessComponent) {
-        if (kDebugMode) {
-          print('🗑️ Cleaning up StatelessComponent: ${oldNode.instanceId}');
-        }
         
         // Remove from component tracking
         _statelessComponents.remove(oldNode.instanceId);
@@ -890,17 +744,11 @@ class VDom {
         try {
           oldNode.componentWillUnmount();
         } catch (e) {
-          if (kDebugMode) {
-            print('❌ Error during componentWillUnmount: $e');
-          }
         }
         
         // Recursively dispose rendered content
         await _disposeOldComponent(oldNode.renderedNode);
               
-        if (kDebugMode) {
-          print('✅ StatelessComponent disposed: ${oldNode.instanceId}');
-        }
       }
       // Handle DCFElement disposal
       else if (oldNode is DCFElement) {
@@ -916,9 +764,6 @@ class VDom {
       }
       
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error disposing component: $e');
-      }
     }
   }
 
@@ -971,11 +816,6 @@ class VDom {
       final newEventSet = Set<String>.from(newEventTypes);
       
       if (oldEventSet.length != newEventSet.length || !oldEventSet.containsAll(newEventSet)) {
-        if (kDebugMode) {
-          print('🎯 Event types changed for ${oldElement.type} (${oldElement.nativeViewId}):');
-          print('  Old events: $oldEventTypes');
-          print('  New events: $newEventTypes');
-        }
         
         // Remove old event listeners that are no longer needed
         final eventsToRemove = oldEventSet.difference(newEventSet);
@@ -997,9 +837,6 @@ class VDom {
       
       // Update props if there are changes
       if (changedProps.isNotEmpty) {
-        if (kDebugMode) {
-          print('Updating props for ${oldElement.type} (${oldElement.nativeViewId}): $changedProps');
-        }
         
         // Update the native view
         await _nativeBridge.updateView(oldElement.nativeViewId!, changedProps);
@@ -1162,13 +999,7 @@ class VDom {
         // CRITICAL FIX: Call componentWillUnmount on removed components
         try {
           oldChild.componentWillUnmount();
-          if (kDebugMode) {
-            print('🗑️ Called componentWillUnmount on removed keyed child: ${oldChild.runtimeType}');
-          }
         } catch (e) {
-          if (kDebugMode) {
-            print('❌ Error during componentWillUnmount on removed keyed child: $e');
-          }
         }
         
         final viewId = oldChild.effectiveNativeViewId;
@@ -1181,9 +1012,6 @@ class VDom {
     
     // Only call setChildren if there were structural changes (additions, removals, or reorders)
     if (hasStructuralChanges && updatedChildIds.isNotEmpty) {
-      if (kDebugMode) {
-        print('🔄 Calling setChildren due to structural changes in keyed reconciliation');
-      }
       await _nativeBridge.setChildren(parentViewId, updatedChildIds);
     }
   }
@@ -1234,13 +1062,7 @@ class VDom {
         // CRITICAL FIX: Call componentWillUnmount on removed components
         try {
           oldChild.componentWillUnmount();
-          if (kDebugMode) {
-            print('🗑️ Called componentWillUnmount on removed child: ${oldChild.runtimeType}');
-          }
         } catch (e) {
-          if (kDebugMode) {
-            print('❌ Error during componentWillUnmount on removed child: $e');
-          }
         }
         
         final viewId = oldChild.effectiveNativeViewId;
@@ -1253,9 +1075,6 @@ class VDom {
     
     // Only call setChildren if there were structural changes (additions or removals)
     if (hasStructuralChanges && updatedChildIds.isNotEmpty) {
-      if (kDebugMode) {
-        print('🔄 Calling setChildren due to structural changes in simple reconciliation');
-      }
       await _nativeBridge.setChildren(parentViewId, updatedChildIds);
     }
   }
@@ -1283,17 +1102,9 @@ class VDom {
 
   /// Create the root component for the application
   Future<void> createRoot(DCFComponentNode component) async {
-    if (kDebugMode) {
-      print('🌱 Creating root with component: ${component.runtimeType} (key: ${component.key})');
-    }
     
     // If there's already a root component, reconcile instead of just replacing
     if (rootComponent != null) {
-      if (kDebugMode) {
-        print('🔄 Existing root found, performing reconciliation...');
-        print('🔄 Old root: ${rootComponent!.runtimeType} (key: ${rootComponent!.key})');
-        print('🔄 New root: ${component.runtimeType} (key: ${component.key})');
-      }
       
       // Perform reconciliation between old and new root
       await _reconcile(rootComponent!, component);
@@ -1302,9 +1113,6 @@ class VDom {
       rootComponent = component;
     } else {
       // First time creating root
-      if (kDebugMode) {
-        print('🆕 First time creating root component');
-      }
       rootComponent = component;
       
       // Register the component with this VDOM
@@ -1314,9 +1122,6 @@ class VDom {
       await renderToNative(component, parentViewId: "root");
     }
     
-    if (kDebugMode) {
-      print('✅ Root creation/update completed');
-    }
   }
 
   /// Create a portal container with optimized properties for portaling
@@ -1327,9 +1132,6 @@ class VDom {
   }) async {
     await isReady;
     
-    if (kDebugMode) {
-      print('🚪 VDom: Creating portal container: $portalId');
-    }
     
     // Create portal-specific properties
     final portalProps = {
@@ -1348,15 +1150,9 @@ class VDom {
       // Attach to parent
       await _nativeBridge.attachView(portalId, parentViewId, index ?? 0);
       
-      if (kDebugMode) {
-        print('✅ VDom: Successfully created portal container: $portalId');
-      }
       
       return portalId;
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ VDom: Error creating portal container: $e');
-      }
       rethrow;
     }
   }

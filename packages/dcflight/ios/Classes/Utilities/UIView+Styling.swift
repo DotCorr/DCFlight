@@ -14,7 +14,6 @@ extension UIView {
     public func applyStyles(props: [String: Any]) {
         // Apply background gradient first - it should be behind everything else
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
-            print("🌈 Applying background gradient via applyStyles")
             applyGradientBackground(gradientData: gradientData)
         }
         
@@ -272,7 +271,6 @@ extension UIView {
         
         guard let type = gradientData["type"] as? String,
               let colorsArray = gradientData["colors"] as? [String] else {
-            print("⚠️ Warning: Invalid gradient data - missing type or colors")
             return
         }
         
@@ -396,6 +394,5 @@ extension UIView {
     // This will ensure the swizzling is performed once when the app starts
     public static func performSwizzling() {
         _ = swizzleLayoutSubviews
-        print("✅ UIView layout swizzling initialized for gradient support")
     }
 }

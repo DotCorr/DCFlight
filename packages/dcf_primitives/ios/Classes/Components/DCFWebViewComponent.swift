@@ -24,7 +24,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         // Ensure we're on the main thread for UI operations
         guard Thread.isMainThread else {
-            print("DCFWebView: Creating view on background thread, dispatching to main")
             return DispatchQueue.main.sync {
                 return createView(props: props)
             }
@@ -46,7 +45,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         // Create the web view
         let webView = WKWebView(frame: .zero, configuration: configuration)
         
-        print("DCFWebView: Successfully created WKWebView")
         
         // Set navigation delegate to shared instance
         webView.navigationDelegate = DCFWebViewComponent.sharedInstance
@@ -85,7 +83,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         webView.backgroundColor = UIColor.white
         webView.scrollView.backgroundColor = UIColor.white
         
-        print("DCFWebView: WebView configured, about to load content")
         
         // Load content on main thread
         DispatchQueue.main.async {
@@ -98,7 +95,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         // View should be the webview directly now
         guard let webView = view as? WKWebView else { 
-            print("DCFWebView: updateView - View is not a WKWebView")
             return false 
         }
         
@@ -180,7 +176,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         switch loadMode {
         case "url":
             if source.isEmpty {
-                print("DCFWebView: Empty source URL provided")
                 return
             }
             
@@ -282,7 +277,6 @@ extension DCFWebViewComponent: WKNavigationDelegate {
         DispatchQueue.main.async {
             webView.setNeedsLayout()
             webView.layoutIfNeeded()
-            print("DCFWebView: Forced layout update after content load")
         }
         
         // Propagate event directly on the webView

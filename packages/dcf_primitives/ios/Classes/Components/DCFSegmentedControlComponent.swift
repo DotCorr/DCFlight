@@ -85,7 +85,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let segmentedControl = view as? UISegmentedControl else {
-            print("❌ DCFSegmentedControlComponent: View is not a UISegmentedControl")
             return false
         }
         

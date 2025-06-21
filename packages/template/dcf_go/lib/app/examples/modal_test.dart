@@ -34,7 +34,6 @@ class ModalTest extends StatefulComponent {
           layout: LayoutProps(marginBottom: 12.0, height: 44.0),
           styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
           onPress: (v) {
-            print('🔥 Show Native Modal button pressed');
             modalVisible.setState(true);
           },
         ),
@@ -77,7 +76,6 @@ class ModalTest extends StatefulComponent {
               value: toggleValue.state,
               onValueChange: (data) {
                 toggleValue.setState(data['value'] as bool);
-                print("Toggle changed: ${data['value']}");
               },
               activeTrackColor: Colors.green,
               size: DCFToggleSize.medium,
@@ -103,7 +101,6 @@ class ModalTest extends StatefulComponent {
               checked: checkboxValue.state,
               onValueChange: (data) {
                 checkboxValue.setState(data['value'] as bool);
-                print("Checkbox changed: ${data['value']}");
               },
               activeColor: Colors.blue,
               size: DCFCheckboxSize.medium,
@@ -187,9 +184,7 @@ class ModalTest extends StatefulComponent {
           detents: [DCFModalDetents.large],
           showDragIndicator: true,
           onDismiss: (data) {
-            print('🔥 Native Modal onDismiss called');
             modalVisible.setState(false);
-            print("Native modal dismissed: $data");
           },
           children: [
             DCFView(
@@ -256,9 +251,7 @@ class ModalTest extends StatefulComponent {
           ],
           showDragIndicator: true,
           onDismiss: (data) {
-            print('🔥 Native Modal onDismiss called');
             modalVisible2.setState(false);
-            print("Native modal dismissed: $data");
           },
           children: [
             DCFView(
@@ -324,21 +317,16 @@ class ModalTest extends StatefulComponent {
           ],
           dismissible: true,
           onShow: (data) {
-            print("Alert shown: $data");
           },
           onActionPress: (data) {
-            print("Alert action pressed: ${data['handler']}");
             if (data['handler'] == 'cancel') {
               alertVisible.setState(false);
-              print("Alert cancelled");
             } else if (data['handler'] == 'confirm') {
               alertVisible.setState(false);
-              print("Alert confirmed");
             }
           },
           onDismiss: (data) {
             alertVisible.setState(false);
-            print("Alert dismissed: $data");
           },
         ),
 
@@ -367,23 +355,19 @@ class ModalTest extends StatefulComponent {
             ),
           ],
           onActionPress: (data) {
-            print("Text input action: ${data['handler']}");
             if (data['handler'] == 'confirm') {
               List<String> textValues = List<String>.from(
                 data['textFieldValues'] ?? [],
               );
               if (textValues.isNotEmpty) {
-                print("Name entered: ${textValues[0]}");
               }
             }
             textInputAlertVisible.setState(false);
           },
           onShow: (data) {
-            print("Text input alert shown: $data");
           },
           onDismiss: (data) {
             textInputAlertVisible.setState(false);
-            print("Text input alert dismissed: $data");
           },
           onTextFieldChange: (data) {
             print(
@@ -424,7 +408,6 @@ class ModalTest extends StatefulComponent {
             ),
           ],
           onActionPress: (data) {
-            print("Login action: ${data['handler']}");
             if (data['handler'] == 'login') {
               List<String> textValues = List<String>.from(
                 data['textFieldValues'] ?? [],
@@ -438,11 +421,9 @@ class ModalTest extends StatefulComponent {
             loginAlertVisible.setState(false);
           },
           onShow: (data) {
-            print("Login alert shown: $data");
           },
           onDismiss: (data) {
             loginAlertVisible.setState(false);
-            print("Login alert dismissed: $data");
           },
           onTextFieldChange: (data) {
             print(
@@ -482,30 +463,23 @@ class ModalTest extends StatefulComponent {
           ],
           dismissible: true,
           onShow: (data) {
-            print("Action sheet shown: $data");
           },
           onActionPress: (data) {
-            print("Action sheet action pressed: ${data['handler']}");
             actionSheetVisible.setState(false);
 
             switch (data['handler']) {
               case 'edit':
-                print("Edit action selected");
                 break;
               case 'share':
-                print("Share action selected");
                 break;
               case 'delete':
-                print("Delete action selected");
                 break;
               case 'cancel':
-                print("Action sheet cancelled");
                 break;
             }
           },
           onDismiss: (data) {
             actionSheetVisible.setState(false);
-            print("Action sheet dismissed: $data");
           },
         ),
       ],

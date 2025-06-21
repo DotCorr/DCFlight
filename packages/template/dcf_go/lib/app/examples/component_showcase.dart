@@ -33,7 +33,6 @@ class ComponentShowcase extends StatefulComponent {
       layout: LayoutProps(flex: 1, padding: 16),
       children: [
         DCFSlider(value: 0.5,layout: LayoutProps(height: 10, width: "100%",),onValueChange: (data) {
-          print("Slider value changed: ${data['value']}");
         },),
         DCFText(
           content: "🎨 Component Showcase",
@@ -495,7 +494,6 @@ class ComponentShowcase extends StatefulComponent {
                     size: DCFCheckboxSize.small,
                     activeColor: i % 2 == 0 ? Colors.purple : Colors.orange,
                     onValueChange: (data) {
-                      print("Checkbox ${i + 1} changed: ${data['value']}");
                     },
                   ),
                 ],

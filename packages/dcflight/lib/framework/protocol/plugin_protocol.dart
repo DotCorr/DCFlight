@@ -18,7 +18,6 @@ abstract class DCFPlugin {
   
   /// Initialize the plugin
   void initialize() {
-    debugPrint('Initializing plugin: $name');
     registerComponents();
   }
   
@@ -40,7 +39,6 @@ class PluginRegistry {
   /// Register a plugin
   void registerPlugin(DCFPlugin plugin) {
     _plugins[plugin.name] = plugin;
-    debugPrint('Registered plugin: ${plugin.name}');
     
     // Initialize plugin
     plugin.initialize();
@@ -82,6 +80,5 @@ class CorePlugin extends DCFPlugin {
   void registerComponents() {
     // In the modularized version, the core plugin doesn't register components
     // Each component should be registered by its own plugin
-    debugPrint('Core plugin initialized');
   }
 }

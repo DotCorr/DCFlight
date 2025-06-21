@@ -42,7 +42,6 @@ class DCFIconComponent: NSObject, DCFComponent {
         print("🔍 DCFIcon updateView called with props: \(props)")
         
         guard let imageView = view as? UIImageView else { 
-            print("❌ DCFIcon updateView: view is not UIImageView")
             return false 
         }
 
@@ -64,7 +63,6 @@ class DCFIconComponent: NSObject, DCFComponent {
             
             svgProps["asset"] = path
         } else {
-            print("🔍 DCFIcon: No name/package in props - this is likely a prop update")
             // For prop updates, we don't need to set the asset again
             // The SVG component should handle updates to existing assets
         }

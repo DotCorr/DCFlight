@@ -44,7 +44,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
         updateView(slider, withProps: props)
         slider.applyStyles(props: props)
         
-        print("✅ DCFSliderComponent.createView completed successfully")
         return slider
     }
     

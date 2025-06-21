@@ -48,9 +48,6 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent, ComponentMethodHandl
         touchableView.applyStyles(props: props)
         
         // Enable debug mode in development
-        #if DEBUG
-        touchableView._debugMode = true
-        #endif
         
         print("🆕 Created touchable view with props: \(props)")
         return touchableView
