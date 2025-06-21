@@ -28,6 +28,21 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         // Create segmented control with segments
         let segmentedControl = UISegmentedControl(items: segments.isEmpty ? ["Segment 1"] : segments)
         
+        // Apply adaptive theming like other DCF components
+        let isAdaptive = props["adaptive"] as? Bool ?? true
+        if isAdaptive {
+            if #available(iOS 13.0, *) {
+                // Use system colors for adaptive theming
+                segmentedControl.backgroundColor = UIColor.systemGray6
+                segmentedControl.selectedSegmentTintColor = UIColor.systemBlue
+                segmentedControl.tintColor = UIColor.label
+            } else {
+                // Fallback for older iOS versions
+                segmentedControl.backgroundColor = UIColor.lightGray
+                segmentedControl.tintColor = UIColor.blue
+            }
+        }
+        
         // Set initial selection
         if let selectedIndex = props["selectedIndex"] as? Int,
            selectedIndex >= 0 && selectedIndex < segmentedControl.numberOfSegments {
@@ -76,21 +91,41 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             segmentedControl.isEnabled = enabled
         }
         
+        // Check if adaptive theming is enabled
+        let isAdaptive = props["adaptive"] as? Bool ?? true
+        
         // Update selected segment tint color (iOS 13+)
         if #available(iOS 13.0, *) {
             if let selectedColor = props["selectedTintColor"] as? String {
                 segmentedControl.selectedSegmentTintColor = ColorUtilities.color(fromHexString: selectedColor)
+            } else if isAdaptive {
+                // Re-apply adaptive color if no explicit color provided
+                segmentedControl.selectedSegmentTintColor = UIColor.systemBlue
             }
         }
         
         // Update background color
         if let backgroundColor = props["backgroundColor"] as? String {
             segmentedControl.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
+        } else if isAdaptive {
+            // Re-apply adaptive background if no explicit color provided
+            if #available(iOS 13.0, *) {
+                segmentedControl.backgroundColor = UIColor.systemGray6
+            } else {
+                segmentedControl.backgroundColor = UIColor.lightGray
+            }
         }
         
         // Update tint color (affects text color of selected segment)
         if let tintColor = props["tintColor"] as? String {
             segmentedControl.tintColor = ColorUtilities.color(fromHexString: tintColor)
+        } else if isAdaptive {
+            // Re-apply adaptive tint color if no explicit color provided
+            if #available(iOS 13.0, *) {
+                segmentedControl.tintColor = UIColor.label
+            } else {
+                segmentedControl.tintColor = UIColor.blue
+            }
         }
         
         // Apply common styles

@@ -22,6 +22,9 @@ class DCFSegmentedControlProps {
   /// Whether the segmented control is enabled
   final bool enabled;
   
+  /// Whether to use adaptive theming (system colors)
+  final bool adaptive;
+  
   /// Background color of the segmented control
   final String? backgroundColor;
   
@@ -37,6 +40,7 @@ class DCFSegmentedControlProps {
     this.iconAssets,
     this.selectedIndex = 0,
     this.enabled = true,
+    this.adaptive = true,
     this.backgroundColor,
     this.selectedTintColor,
     this.tintColor,
@@ -49,6 +53,7 @@ class DCFSegmentedControlProps {
       if (iconAssets != null) 'iconAssets': iconAssets,
       'selectedIndex': selectedIndex,
       'enabled': enabled,
+      'adaptive': adaptive,
       if (backgroundColor != null) 'backgroundColor': backgroundColor,
       if (selectedTintColor != null) 'selectedTintColor': selectedTintColor,
       if (tintColor != null) 'tintColor': tintColor,
