@@ -7,8 +7,7 @@ class ValidationTestApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
     return DCFScrollView(
-      layout: LayoutProps(flex: 1),
-      // ADD EVENT HANDLERS SO EVENTS GET REGISTERED
+      layout: LayoutProps(flex: 1,gap: 10,alignContent: YogaAlign.spaceBetween,justifyContent: YogaJustifyContent.spaceBetween),
       onContentSizeChange: (v) {
         print("Content size changed: $v");
       },
@@ -52,20 +51,20 @@ class ValidationTestApp extends StatefulComponent {
               textProps: DCFTextProps(fontSize: 16, color: Colors.grey),
             ),
 
-            DCFUrlWrapperView(
+            DCFGestureDetector(
               children: [
                 DCFText(
-                  content: "🔗 Tap here to open Apple.com (native browser)",
+                  content: "🔗 Tap here to open Apple.com (using GestureDetector)",
                   textProps: DCFTextProps(
                     fontSize: 16, 
                     color: Colors.blue
                   ),
                 )
               ],
-              urlWrapperProps: DCFUrlWrapperProps(
-                url: "https://www.apple.com",
-                detectPress: true,
-              ),
+              onTap: (data) {
+                print("Opening Apple.com in external browser...");
+                // You can add url_launcher package or platform channel to open URLs
+              },
               layout: LayoutProps(height: 50, width: "100%", padding: 10),
             ),
           ],

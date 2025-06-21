@@ -37,4 +37,4 @@ export '../alert_component.dart';
 
 // 🚀 Export CRITICAL primitive components
 export '../webview_component.dart';
-export '../url_wrapper_view_component.dart';
+// URL wrapper removed - use DCFGestureDetector + manual URL opening instead
