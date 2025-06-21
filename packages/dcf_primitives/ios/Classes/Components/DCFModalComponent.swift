@@ -537,25 +537,30 @@ class DCFModalComponent: NSObject, DCFComponent {
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
             print("🔄 DCFModalComponent: Programmatically dismissing tracked modal")
             
-            // ✅ CRITICAL FIX: Move children back to placeholder BEFORE dismissing
-            // When dismissing programmatically, the sheet delegate methods won't be called
-            let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
-            if !modalChildren.isEmpty {
-                print("💾 Programmatic dismissal: Moving \(modalChildren.count) children back to placeholder BEFORE dismiss")
-                modalChildren.forEach { child in
-                    print("🔄 Moving child back to placeholder: \(type(of: child))")
-                    child.removeFromSuperview()
-                    view.addSubview(child)
-                    // Hide children when moved back to placeholder (main UI)
-                    child.isHidden = true
-                    child.alpha = 0.0
-                    print("👁️ Hidden child in placeholder: hidden=\(child.isHidden), alpha=\(child.alpha)")
-                }
-                print("✅ Moved \(modalChildren.count) children back to placeholder for programmatic dismissal")
-            }
+            // ✅ SMOOTH UX FIX: Keep children in modal during dismissal animation
+            // Don't move children here - let them stay visible during the close animation
+            // The children will be moved in the dismissal completion block
+            print("🎬 Keeping children visible in modal during dismissal animation for smooth UX")
             
             modalVC.dismiss(animated: true) {
-                print("✅ DCFModalComponent: Modal dismissal completed")
+                print("✅ DCFModalComponent: Modal dismissal animation completed - now moving children")
+                
+                // ✅ NOW move children back to placeholder AFTER modal is fully dismissed
+                let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
+                if !modalChildren.isEmpty {
+                    print("💾 Post-dismissal: Moving \(modalChildren.count) children back to placeholder AFTER animation")
+                    modalChildren.forEach { child in
+                        print("🔄 Moving child back to placeholder: \(type(of: child))")
+                        child.removeFromSuperview()
+                        view.addSubview(child)
+                        // Hide children when moved back to placeholder (main UI)
+                        child.isHidden = true
+                        child.alpha = 0.0
+                        print("👁️ Hidden child in placeholder: hidden=\(child.isHidden), alpha=\(child.alpha)")
+                    }
+                    print("✅ Moved \(modalChildren.count) children back to placeholder after dismissal animation")
+                }
+                
                 propagateEvent(on: view, eventName: "onDismiss", data: [:])
                 completion()
             }
