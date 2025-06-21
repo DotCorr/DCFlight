@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import '../commands/button_commands.dart';
 
 /// Button properties
 class DCFButtonProps {
@@ -53,6 +54,10 @@ class DCFButton extends StatelessComponent {
   /// Press event handler - receives Map<dynamic, dynamic> with press data
   final Function(Map<dynamic, dynamic>)? onPress;
   
+  /// Command to execute on the Button (replaces imperative method calls)
+  /// Commands are processed immediately by native code and don't trigger re-renders
+  final ButtonCommand? command;
+  
   /// Create a button component
   DCFButton({
     required this.buttonProps,
@@ -62,6 +67,7 @@ class DCFButton extends StatelessComponent {
     this.styleSheet = const StyleSheet(),
     this.onPress,
     this.events,
+    this.command,
     super.key,
   });
   
@@ -74,14 +80,22 @@ class DCFButton extends StatelessComponent {
       eventMap['onPress'] = onPress;
     }
     
+    // Serialize command if provided
+    Map<String, dynamic> props = {
+      ...buttonProps.toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
+    
+    // Add command to props if provided - this enables the new prop-based pattern
+    if (command != null) {
+      props['command'] = command!.toMap();
+    }
+
     return DCFElement(
       type: 'Button',
-      props: {
-        ...buttonProps.toMap(),
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: [],
     );
   }

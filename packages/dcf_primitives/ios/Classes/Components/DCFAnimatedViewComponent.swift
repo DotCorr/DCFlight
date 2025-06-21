@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 /// Component that implements animated view
-class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFAnimatedViewComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
@@ -81,6 +81,11 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
             animatedView.targetRotation = toRotate
         }
         
+        // Handle command prop - new declarative-imperative pattern
+        if let commandData = props["command"] as? [String: Any] {
+            handleCommand(commandData, on: animatedView)
+        }
+        
         // Handle background color property - key fix for incremental updates
         if props.keys.contains("backgroundColor") {
             if let backgroundColor = props["backgroundColor"] as? String {
@@ -128,52 +133,65 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
         }
     }
     
-    // MARK: - Method Handling
+    // MARK: - Command Handling (New Declarative-Imperative Pattern)
     
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let animatedView = view as? AnimatedView else { return false }
+    private func handleCommand(_ commandData: [String: Any], on animatedView: AnimatedView) {
+        guard let commandType = commandData["type"] as? String else { return }
         
-        switch methodName {
+        switch commandType {
         case "animate":
-            // Set animation properties from method args
-            if let duration = args["duration"] as? Int {
-                animatedView.animationDuration = TimeInterval(duration) / 1000.0
+            // Set animation properties from command data
+            if let duration = commandData["duration"] as? Double {
+                animatedView.animationDuration = duration
             }
             
-            if let curve = args["curve"] as? String {
+            if let curve = commandData["curve"] as? String {
                 animatedView.animationCurve = getCurve(from: curve)
             }
             
-            if let toScale = args["toScale"] as? CGFloat {
-                animatedView.targetScale = toScale
+            if let delay = commandData["delay"] as? Double {
+                animatedView.animationDelay = delay
             }
             
-            if let toOpacity = args["toOpacity"] as? CGFloat {
-                animatedView.targetOpacity = toOpacity
+            if let repeat = commandData["repeat"] as? Bool {
+                animatedView.animationRepeat = repeat
             }
             
-            if let toTranslateX = args["toTranslateX"] as? CGFloat {
-                animatedView.targetTranslationX = toTranslateX
+            if let toScale = commandData["toScale"] as? Double {
+                animatedView.targetScale = CGFloat(toScale)
             }
             
-            if let toTranslateY = args["toTranslateY"] as? CGFloat {
-                animatedView.targetTranslationY = toTranslateY
+            if let toOpacity = commandData["toOpacity"] as? Double {
+                animatedView.targetOpacity = CGFloat(toOpacity)
             }
             
-            if let toRotate = args["toRotate"] as? CGFloat {
-                animatedView.targetRotation = toRotate
+            if let toTranslateX = commandData["toTranslateX"] as? Double {
+                animatedView.targetTranslationX = CGFloat(toTranslateX)
             }
             
-            // Start animation
+            if let toTranslateY = commandData["toTranslateY"] as? Double {
+                animatedView.targetTranslationY = CGFloat(toTranslateY)
+            }
+            
+            if let toRotation = commandData["toRotation"] as? Double {
+                animatedView.targetRotation = CGFloat(toRotation)
+            }
+            
+            // Start animation immediately
             animatedView.animate()
-            return true
             
         case "reset":
             animatedView.reset()
-            return true
+            
+        case "pause":
+            animatedView.layer.removeAllAnimations()
+            
+        case "resume":
+            // Re-trigger animation with current properties
+            animatedView.animate()
             
         default:
-            return false
+            break
         }
     }
     

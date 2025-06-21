@@ -8,8 +8,9 @@
 
 import UIKit
 import dcflight
+import CoreImage
 
-class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFImageComponent: NSObject, DCFComponent {
     // Thread-safe image cache using concurrent queue with barrier writes
     private static let cacheQueue = DispatchQueue(label: "com.dcf.imageCache", attributes: .concurrent)
     private static var _imageCache = [String: UIImage]()
@@ -147,11 +148,211 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             }
         }
         
+        // Handle commands if provided
+        if let commandData = props["command"] as? [String: Any] {
+            handleCommand(commandData, on: imageView)
+        }
+        
         // Apply StyleSheet properties
         imageView.applyStyles(props: props)
         
         return true
     }
+    
+    // MARK: - Command Handling
+    
+    private func handleCommand(_ command: [String: Any], on imageView: UIImageView) {
+        guard let type = command["type"] as? String else { return }
+        
+        switch type {
+        case "setImage":
+            if let imageSource = command["imageSource"] as? String {
+                let sourceType = command["sourceType"] as? String
+                let animated = command["animated"] as? Bool ?? false
+                let duration = command["duration"] as? Double ?? 0.3
+                let transition = command["transition"] as? String ?? "fade"
+                
+                if animated {
+                    handleAnimatedImageChange(imageView, source: imageSource, duration: duration, transition: transition)
+                } else {
+                    loadImage(from: imageSource, into: imageView, isLocal: sourceType != "url")
+                }
+            }
+            
+        case "clearCache":
+            let clearAll = command["clearAll"] as? Bool ?? false
+            if clearAll {
+                DCFImageComponent.clearAllCache()
+            } else if let imageUrl = command["imageUrl"] as? String {
+                DCFImageComponent.removeCachedImage(for: imageUrl)
+            }
+            
+        case "preloadImage":
+            if let imageSource = command["imageSource"] as? String {
+                let sourceType = command["sourceType"] as? String
+                preloadImage(from: imageSource, isLocal: sourceType != "url")
+            }
+            
+        case "resizeImage":
+            if let width = command["width"] as? Double,
+               let height = command["height"] as? Double {
+                let maintainAspectRatio = command["maintainAspectRatio"] as? Bool ?? true
+                let animated = command["animated"] as? Bool ?? false
+                let duration = command["duration"] as? Double ?? 0.3
+                
+                let newSize = CGSize(width: width, height: height)
+                
+                if animated {
+                    UIView.animate(withDuration: duration) {
+                        imageView.frame.size = newSize
+                        if maintainAspectRatio {
+                            imageView.contentMode = .scaleAspectFit
+                        } else {
+                            imageView.contentMode = .scaleToFill
+                        }
+                    }
+                } else {
+                    imageView.frame.size = newSize
+                    if maintainAspectRatio {
+                        imageView.contentMode = .scaleAspectFit
+                    } else {
+                        imageView.contentMode = .scaleToFill
+                    }
+                }
+            }
+            
+        case "applyImageFilter":
+            if let filterType = command["filterType"] as? String {
+                let intensity = command["intensity"] as? Double ?? 1.0
+                let animated = command["animated"] as? Bool ?? false
+                let duration = command["duration"] as? Double ?? 0.3
+                
+                applyImageFilter(to: imageView, filterType: filterType, intensity: intensity, animated: animated, duration: duration)
+            }
+            
+        default:
+            break
+        }
+    }
+    
+    private func handleAnimatedImageChange(_ imageView: UIImageView, source: String, duration: Double, transition: String) {
+        switch transition {
+        case "fade":
+            UIView.transition(with: imageView, duration: duration, options: .transitionCrossDissolve, animations: {
+                self.loadImage(from: source, into: imageView)
+            }, completion: nil)
+        case "slide":
+            let oldFrame = imageView.frame
+            UIView.animate(withDuration: duration / 2, animations: {
+                imageView.frame.origin.x -= imageView.frame.width
+            }) { _ in
+                self.loadImage(from: source, into: imageView)
+                imageView.frame.origin.x += imageView.frame.width * 2
+                UIView.animate(withDuration: duration / 2) {
+                    imageView.frame = oldFrame
+                }
+            }
+        default:
+            UIView.transition(with: imageView, duration: duration, options: .transitionCrossDissolve, animations: {
+                self.loadImage(from: source, into: imageView)
+            }, completion: nil)
+        }
+    }
+    
+    private func preloadImage(from source: String, isLocal: Bool = false) {
+        let cacheKey = String(describing: source)
+        
+        // Check if already cached
+        if DCFImageComponent.getCachedImage(for: cacheKey) != nil {
+            return
+        }
+        
+        if !isLocal && (source.hasPrefix("http://") || source.hasPrefix("https://")) {
+            guard let url = URL(string: source) else { return }
+            
+            DispatchQueue.global(qos: .utility).async {
+                do {
+                    let data = try Data(contentsOf: url)
+                    if let image = UIImage(data: data) {
+                        DCFImageComponent.setCachedImage(image, for: cacheKey)
+                    }
+                } catch {
+                    // Silently fail for preloading
+                }
+            }
+        } else {
+            DispatchQueue.global(qos: .utility).async {
+                var image: UIImage?
+                
+                if FileManager.default.fileExists(atPath: source) {
+                    image = UIImage(contentsOfFile: source)
+                } else {
+                    image = UIImage(named: source)
+                }
+                
+                if let validImage = image {
+                    DCFImageComponent.setCachedImage(validImage, for: cacheKey)
+                }
+            }
+        }
+    }
+    
+    private func applyImageFilter(to imageView: UIImageView, filterType: String, intensity: Double, animated: Bool, duration: Double) {
+        guard let currentImage = imageView.image else { return }
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let filteredImage = self.createFilteredImage(currentImage, filterType: filterType, intensity: intensity)
+            
+            DispatchQueue.main.async {
+                if animated {
+                    UIView.transition(with: imageView, duration: duration, options: .transitionCrossDissolve, animations: {
+                        imageView.image = filteredImage
+                    }, completion: nil)
+                } else {
+                    imageView.image = filteredImage
+                }
+            }
+        }
+    }
+    
+    private func createFilteredImage(_ image: UIImage, filterType: String, intensity: Double) -> UIImage {
+        guard let ciImage = CIImage(image: image) else { return image }
+        
+        let context = CIContext()
+        var filter: CIFilter?
+        
+        switch filterType {
+        case "blur":
+            filter = CIFilter(name: "CIGaussianBlur")
+            filter?.setValue(ciImage, forKey: kCIInputImageKey)
+            filter?.setValue(intensity * 10, forKey: kCIInputRadiusKey)
+        case "sepia":
+            filter = CIFilter(name: "CISepiaTone")
+            filter?.setValue(ciImage, forKey: kCIInputImageKey)
+            filter?.setValue(intensity, forKey: kCIInputIntensityKey)
+        case "grayscale":
+            filter = CIFilter(name: "CIColorMonochrome")
+            filter?.setValue(ciImage, forKey: kCIInputImageKey)
+            filter?.setValue(CIColor.gray, forKey: kCIInputColorKey)
+            filter?.setValue(intensity, forKey: kCIInputIntensityKey)
+        case "brightness":
+            filter = CIFilter(name: "CIColorControls")
+            filter?.setValue(ciImage, forKey: kCIInputImageKey)
+            filter?.setValue(intensity - 0.5, forKey: kCIInputBrightnessKey)
+        case "contrast":
+            filter = CIFilter(name: "CIColorControls")
+            filter?.setValue(ciImage, forKey: kCIInputImageKey)
+            filter?.setValue(intensity, forKey: kCIInputContrastKey)
+        default:
+            return image
+        }
+        
+        guard let outputImage = filter?.outputImage,
+              let cgImage = context.createCGImage(outputImage, from: outputImage.extent) else {
+            return image
+        }
+        
+        return UIImage(cgImage: cgImage)
     
     // Load image from URL or resource with improved error handling and thread safety
     private func loadImage(from source: String, into imageView: UIImageView, isLocal: Bool = false) {
@@ -244,55 +445,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 }
             }
         }
-    }
-    
-    // Handle component methods
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let imageView = view as? UIImageView else { return false }
-        
-        switch methodName {
-        case "setImage":
-            if let uriAny = args["uri"] {
-                let uri: String
-                
-                // Handle different URI types safely
-                if let uriString = uriAny as? String {
-                    uri = uriString
-                } else if let uriNumber = uriAny as? NSNumber {
-                    uri = uriNumber.stringValue
-                } else {
-                    return false
-                }
-                
-                guard !uri.isEmpty else {
-                    return false
-                }
-                
-                loadImage(from: uri, into: imageView)
-                return true
-            }
-        case "reload":
-            // Force reload the current image
-            if imageView.image != nil {
-                propagateEvent(on: imageView, eventName: "onLoad", data: [:])
-                return true
-            }
-        case "clearCache":
-            // Clear the entire image cache - thread-safe
-            DCFImageComponent.clearAllCache()
-            return true
-        case "clearImageCache":
-            // Clear cache for specific image - thread-safe
-            if let sourceAny = args["source"] {
-                let source = String(describing: sourceAny)
-                DCFImageComponent.removeCachedImage(for: source)
-                return true
-            }
-        default:
-            return false
-        }
-        
-        return false
     }
     
     // MARK: - Event Handling

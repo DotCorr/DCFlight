@@ -287,9 +287,7 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
     }
     
-    // REMOVED: handleCallComponentMethod - replaced with prop-based commands
-    // Components now handle imperative operations through command props
-    
+
     /// Handle hot restart detection method calls
     func handleHotRestartMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         

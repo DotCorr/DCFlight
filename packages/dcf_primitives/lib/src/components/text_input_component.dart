@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import '../commands/text_input_commands.dart';
 
 /// DCFTextInput - Cross-platform text input component
 /// Provides native text input functionality with comprehensive type safety
@@ -52,6 +53,10 @@ class DCFTextInput extends StatelessComponent {
   final Function(Map<dynamic, dynamic>)? onEndEditing;
   final bool adaptive;
   
+  /// Command to execute on the TextInput (replaces imperative method calls)
+  /// Commands are processed immediately by native code and don't trigger re-renders
+  final TextInputCommand? command;
+  
   DCFTextInput({
     super.key,
     this.styleSheet,
@@ -94,6 +99,7 @@ class DCFTextInput extends StatelessComponent {
     this.onSelectionChange,
     this.onEndEditing,
     this.adaptive = true,
+    this.command,
   });
 
   @override

@@ -42,3 +42,9 @@ export '../webview_component.dart';
 // ✅ Export COMMAND CLASSES - Type-safe imperative control
 export '../../commands/scroll_view_commands.dart';
 export '../../commands/flat_list_commands.dart';
+export '../../commands/animated_view_commands.dart';
+export '../../commands/button_commands.dart';
+export '../../commands/touchable_opacity_commands.dart';
+export '../../commands/gesture_detector_commands.dart';
+export '../../commands/text_commands.dart';
+export '../../commands/image_commands.dart';

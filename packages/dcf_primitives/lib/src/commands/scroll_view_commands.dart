@@ -73,7 +73,26 @@ class SetContentSizeCommand {
   }
 }
 
-/// Main command class for ScrollView and VirtualizedScrollView
+/// Command to flash scroll indicators to indicate scrollable content
+class FlashScrollIndicatorsCommand {
+  const FlashScrollIndicatorsCommand();
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'type': 'flashScrollIndicators',
+    };
+  }
+  
+  @override
+  bool operator ==(Object other) {
+    return other is FlashScrollIndicatorsCommand;
+  }
+  
+  @override
+  int get hashCode => 'flashScrollIndicators'.hashCode;
+}
+
+/// Composite command class for multiple scroll actions
 class ScrollViewCommand {
   final ScrollToPositionCommand? scrollToPosition;
   final ScrollToTopCommand? scrollToTop;

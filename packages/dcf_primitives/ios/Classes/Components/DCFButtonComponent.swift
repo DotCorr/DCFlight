@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 // 🚀 CLEAN BUTTON COMPONENT - Uses only propagateEvent()
-class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFButtonComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFButtonComponent()
     
     required override init() {
@@ -56,6 +56,11 @@ class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
             button.alpha = disabled ? 0.5 : 1.0
         }
         
+        // Handle command prop - new declarative-imperative pattern
+        if let commandData = props["command"] as? [String: Any] {
+            handleCommand(commandData, on: button)
+        }
+        
         button.applyStyles(props: props)
         return true
     }
@@ -81,23 +86,33 @@ class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
         }
     }
     
-    // Handle component methods
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let button = view as? UIButton else { return false }
+    // MARK: - Command Handling (New Declarative-Imperative Pattern)
+    
+    private func handleCommand(_ commandData: [String: Any], on button: UIButton) {
+        guard let commandType = commandData["type"] as? String else { return }
         
-        switch methodName {
+        switch commandType {
         case "setHighlighted":
-            if let highlighted = args["highlighted"] as? Bool {
+            if let highlighted = commandData["highlighted"] as? Bool {
                 button.isHighlighted = highlighted
-                return true
             }
+            
         case "performClick":
             handleButtonPress(button)
-            return true
+            
+        case "setEnabled":
+            if let enabled = commandData["enabled"] as? Bool {
+                button.isEnabled = enabled
+                button.alpha = enabled ? 1.0 : 0.5
+            }
+            
+        case "setTitle":
+            if let title = commandData["title"] as? String {
+                button.setTitle(title, for: .normal)
+            }
+            
         default:
-            return false
+            break
         }
-        
-        return false
     }
 }

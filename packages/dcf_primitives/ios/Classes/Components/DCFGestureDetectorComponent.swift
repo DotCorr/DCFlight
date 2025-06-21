@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 /// Component that handles gesture recognition
-class DCFGestureDetectorComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFGestureDetectorComponent: NSObject, DCFComponent {
     // Keep singleton instance to prevent deallocation when gesture targets are registered
     private static let sharedInstance = DCFGestureDetectorComponent()
     
@@ -54,6 +54,11 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, ComponentMethodHandle
             view.isUserInteractionEnabled = enabled
         }
         
+        // Handle commands if provided
+        if let commandData = props["command"] as? [String: Any] {
+            handleCommand(commandData, on: view)
+        }
+        
         // Configure gestures based on events registered
         configureGestures(view)
         
@@ -61,6 +66,138 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, ComponentMethodHandle
         view.applyStyles(props: props)
         
         return true
+    }
+    
+    // MARK: - Command Handling
+    
+    private func handleCommand(_ command: [String: Any], on view: UIView) {
+        guard let type = command["type"] as? String else { return }
+        
+        switch type {
+        case "enableGestures":
+            if let gestureTypes = command["gestureTypes"] as? [String] {
+                // Enable specific gesture types
+                enableSpecificGestures(gestureTypes, on: view)
+            } else {
+                view.isUserInteractionEnabled = true
+            }
+            
+        case "disableGestures":
+            if let gestureTypes = command["gestureTypes"] as? [String] {
+                // Disable specific gesture types
+                disableSpecificGestures(gestureTypes, on: view)
+            } else {
+                view.isUserInteractionEnabled = false
+            }
+            
+        case "resetGestureState":
+            resetGestureState(on: view)
+            
+        case "setGestureSensitivity":
+            if let sensitivity = command["sensitivity"] as? Double {
+                setGestureSensitivity(sensitivity, on: view, gestureType: command["gestureType"] as? String)
+            }
+            
+        case "configureLongPress":
+            if let duration = command["minimumPressDuration"] as? Double {
+                let movement = command["allowableMovement"] as? Double ?? 10.0
+                configureLongPress(on: view, duration: duration, allowableMovement: movement)
+            }
+            
+        default:
+            break
+        }
+    }
+    
+    private func enableSpecificGestures(_ gestureTypes: [String], on view: UIView) {
+        guard let recognizers = DCFGestureDetectorComponent.gestureRecognizers[view] else { return }
+        
+        for recognizer in recognizers {
+            let shouldEnable = gestureTypes.contains { gestureType in
+                switch gestureType {
+                case "tap": return recognizer is UITapGestureRecognizer
+                case "longPress": return recognizer is UILongPressGestureRecognizer
+                case "swipe": return recognizer is UISwipeGestureRecognizer
+                case "pan": return recognizer is UIPanGestureRecognizer
+                default: return false
+                }
+            }
+            recognizer.isEnabled = shouldEnable
+        }
+    }
+    
+    private func disableSpecificGestures(_ gestureTypes: [String], on view: UIView) {
+        guard let recognizers = DCFGestureDetectorComponent.gestureRecognizers[view] else { return }
+        
+        for recognizer in recognizers {
+            let shouldDisable = gestureTypes.contains { gestureType in
+                switch gestureType {
+                case "tap": return recognizer is UITapGestureRecognizer
+                case "longPress": return recognizer is UILongPressGestureRecognizer
+                case "swipe": return recognizer is UISwipeGestureRecognizer
+                case "pan": return recognizer is UIPanGestureRecognizer
+                default: return false
+                }
+            }
+            if shouldDisable {
+                recognizer.isEnabled = false
+            }
+        }
+    }
+    
+    private func resetGestureState(on view: UIView) {
+        guard let recognizers = DCFGestureDetectorComponent.gestureRecognizers[view] else { return }
+        
+        for recognizer in recognizers {
+            recognizer.isEnabled = false
+            recognizer.isEnabled = true // Reset by toggling
+        }
+    }
+    
+    private func setGestureSensitivity(_ sensitivity: Double, on view: UIView, gestureType: String?) {
+        guard let recognizers = DCFGestureDetectorComponent.gestureRecognizers[view] else { return }
+        
+        for recognizer in recognizers {
+            if let gestureType = gestureType {
+                let matches = { () -> Bool in
+                    switch gestureType {
+                    case "tap": return recognizer is UITapGestureRecognizer
+                    case "longPress": return recognizer is UILongPressGestureRecognizer
+                    case "swipe": return recognizer is UISwipeGestureRecognizer
+                    case "pan": return recognizer is UIPanGestureRecognizer
+                    default: return false
+                    }
+                }()
+                
+                if matches {
+                    applySensitivity(sensitivity, to: recognizer)
+                }
+            } else {
+                applySensitivity(sensitivity, to: recognizer)
+            }
+        }
+    }
+    
+    private func applySensitivity(_ sensitivity: Double, to recognizer: UIGestureRecognizer) {
+        // Sensitivity is 0.0 to 1.0, where 1.0 is most sensitive
+        if let panRecognizer = recognizer as? UIPanGestureRecognizer {
+            // For pan gestures, sensitivity affects minimum distance
+            panRecognizer.maximumNumberOfTouches = sensitivity > 0.5 ? 10 : 1
+        } else if let longPressRecognizer = recognizer as? UILongPressGestureRecognizer {
+            // For long press, sensitivity affects allowable movement
+            longPressRecognizer.allowableMovement = CGFloat(20.0 * (1.0 - sensitivity))
+        }
+    }
+    
+    private func configureLongPress(on view: UIView, duration: Double, allowableMovement: Double) {
+        guard let recognizers = DCFGestureDetectorComponent.gestureRecognizers[view] else { return }
+        
+        for recognizer in recognizers {
+            if let longPressRecognizer = recognizer as? UILongPressGestureRecognizer {
+                longPressRecognizer.minimumPressDuration = duration
+                longPressRecognizer.allowableMovement = CGFloat(allowableMovement)
+            }
+        }
     }
     
     // Configure gesture recognizers
@@ -185,22 +322,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, ComponentMethodHandle
     // MARK: - Event Handling
     // Note: GestureDetector uses global propagateEvent() system
     // No custom event methods needed - all handled by DCFComponentProtocol
-    
-    // MARK: - Method Handling
-    
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        // Handle custom methods
-        switch methodName {
-        case "enableGestures":
-            view.isUserInteractionEnabled = true
-            return true
-        case "disableGestures":
-            view.isUserInteractionEnabled = false
-            return true
-        default:
-            return false
-        }
-    }
 }
 
 /// Custom view class for gesture detection with debug capabilities

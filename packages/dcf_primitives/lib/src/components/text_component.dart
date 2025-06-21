@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import '../commands/text_commands.dart';
 
 /// Font weight options for text components
 enum DCFFontWeight {
@@ -115,6 +116,10 @@ class DCFText extends StatelessComponent {
   /// Event handlers
   final Map<String, dynamic>? events;
   
+  /// Command to execute on the Text (replaces imperative method calls)
+  /// Commands are processed immediately by native code and don't trigger re-renders
+  final TextCommand? command;
+  
   /// Create a text component
   DCFText({
     required this.content,
@@ -122,20 +127,29 @@ class DCFText extends StatelessComponent {
     this.layout = const LayoutProps(),
     this.styleSheet = const StyleSheet(),
     this.events,
+    this.command,
     super.key,
   });
   
   @override
   DCFComponentNode render() {
+    // Serialize command if provided
+    Map<String, dynamic> props = {
+      'content': content,
+      ...textProps.toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...(events ?? {}),
+    };
+    
+    // Add command to props if provided - this enables the new prop-based pattern
+    if (command != null) {
+      props['command'] = command!.toMap();
+    }
+
     return DCFElement(
       type: 'Text',
-      props: {
-        'content': content,
-        ...textProps.toMap(),
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...(events ?? {}),
-      },
+      props: props,
       children: [],
     );
   }

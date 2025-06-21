@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import '../commands/gesture_detector_commands.dart';
 
 /// A gesture detector component implementation using StatelessComponent
 class DCFGestureDetector extends StatelessComponent {
@@ -52,6 +53,10 @@ class DCFGestureDetector extends StatelessComponent {
   /// Whether to use adaptive theming
   final bool adaptive;
   
+  /// Command to execute on the GestureDetector (replaces imperative method calls)
+  /// Commands are processed immediately by native code and don't trigger re-renders
+  final GestureDetectorCommand? command;
+  
   /// Create a gesture detector component
   DCFGestureDetector({
     required this.children,
@@ -68,6 +73,7 @@ class DCFGestureDetector extends StatelessComponent {
     this.onPanEnd,
     this.events,
     this.adaptive = true,
+    this.command,
     super.key,
   });
   
@@ -112,14 +118,22 @@ class DCFGestureDetector extends StatelessComponent {
       eventMap['onPanEnd'] = onPanEnd;
     }
     
+    // Serialize command if provided
+    Map<String, dynamic> props = {
+      'adaptive': adaptive,
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
+    
+    // Add command to props if provided - this enables the new prop-based pattern
+    if (command != null) {
+      props['command'] = command!.toMap();
+    }
+
     return DCFElement(
       type: 'GestureDetector',
-      props: {
-        'adaptive': adaptive,
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: children,
     );
   }

@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import '../commands/image_commands.dart';
 
 /// Image properties
 class DCFImageProps {
@@ -67,6 +68,10 @@ class DCFImage extends StatelessComponent {
   /// Error event handler - receives Map<dynamic, dynamic> with error data
   final Function(Map<dynamic, dynamic>)? onError;
   
+  /// Command to execute on the Image (replaces imperative method calls)
+  /// Commands are processed immediately by native code and don't trigger re-renders
+  final ImageCommand? command;
+  
   /// Create an image component
   DCFImage({
     required this.imageProps,
@@ -77,6 +82,7 @@ class DCFImage extends StatelessComponent {
     this.onLoad,
     this.onError,
     this.events,
+    this.command,
     super.key,
   });
   
@@ -92,15 +98,23 @@ class DCFImage extends StatelessComponent {
     if (onError != null) {
       eventMap['onError'] = onError;
     }
+
+    // Serialize command if provided
+    Map<String, dynamic> props = {
+      ...imageProps.toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
     
+    // Add command to props if provided - this enables the new prop-based pattern
+    if (command != null) {
+      props['command'] = command!.toMap();
+    }
+
     return DCFElement(
       type: 'Image',
-      props: {
-        ...imageProps.toMap(),
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: [],
     );
   }
