@@ -14,6 +14,16 @@ class DCFModalComponent: NSObject, DCFComponent {
     // Track presented modals
     static var presentedModals: [String: DCFModalViewController] = [:]
     
+    // FRAMEWORK FIX: Modal presentation queue to handle sequential operations
+    static var modalOperationQueue: DispatchQueue = DispatchQueue(label: "DCFModalOperationQueue", qos: .userInitiated)
+    static var pendingOperations: [(operation: ModalOperation, viewId: String, completion: (() -> Void)?)] = []
+    static var isProcessingOperations = false
+    
+    enum ModalOperation {
+        case present(view: UIView, props: [String: Any])
+        case dismiss(view: UIView)
+    }
+    
     required override init() {
         super.init()
     }
@@ -57,19 +67,15 @@ class DCFModalComponent: NSObject, DCFComponent {
         
         print("🔍 DCFModalComponent: Final visible value = \(isVisible)")
         
-        // ✅ CRITICAL FIX: The display property should be handled by the framework
-        // via DCFViewManager.extractLayoutProps(), but we need to make sure it's 
-        // included in the props that get passed down. The display property should
-        // be set by the calling code based on the visible state.
-        
+        // ✅ FRAMEWORK FIX: Queue modal operations to prevent conflicts
         if isVisible {
-            print("🚀 DCFModalComponent: Attempting to present modal")
-            presentModal(from: view, props: props, viewId: viewId)
+            print("🚀 DCFModalComponent: Queueing modal presentation")
+            DCFModalComponent.queueModalOperation(.present(view: view, props: props), viewId: viewId)
         } else {
             // Only programmatically dismiss if we have a modal to dismiss
             if let modalVC = DCFModalComponent.presentedModals[viewId], !modalVC.isBeingDismissed {
-                print("🚀 DCFModalComponent: Programmatically dismissing modal")
-                dismissModalWithoutMovingChildren(from: view, viewId: viewId)
+                print("🚀 DCFModalComponent: Queueing modal dismissal")
+                DCFModalComponent.queueModalOperation(.dismiss(view: view), viewId: viewId)
             } else {
                 print("🔄 DCFModalComponent: Modal not presented or already being dismissed, ignoring visible=false")
             }
@@ -123,7 +129,7 @@ class DCFModalComponent: NSObject, DCFComponent {
         
         // If modal is currently presented, move children to modal content and make them visible
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
-            print("✅ Modal is presented, moving children to modal content view and making them visible")
+            print("✅ Modal is presented, moving children to modal content and making them visible")
             addChildrenToModalContent(modalVC: modalVC, childViews: childViews)
         } else {
             print("📦 Modal not presented, children stored invisibly in placeholder view")
@@ -245,106 +251,7 @@ class DCFModalComponent: NSObject, DCFComponent {
         
         print("✅ Modal content positioned with FULL space control given to abstraction layer")
     }
-    
-    // MARK: - Modal Presentation
-    
-    private func presentModal(from view: UIView, props: [String: Any], viewId: String) {
-        // Check if modal is already presented
-        if DCFModalComponent.presentedModals[viewId] != nil {
-            print("ℹ️ DCFModalComponent: Modal already presented for viewId \(viewId)")
-            return
-        }
-        
-        // Create modal content view controller
-        let modalVC = DCFModalViewController()
-        modalVC.modalProps = props
-        modalVC.sourceView = view
-        modalVC.viewId = viewId
-        
-        // ✅ FIX 1: Load modal view and prepare content BEFORE presenting
-        modalVC.loadViewIfNeeded()
-        
-        // ✅ CRITICAL FIX: Look for children in placeholder view for reopen scenario
-        let existingChildren = view.subviews
-        print("🔍 Found \(existingChildren.count) children in placeholder view for modal presentation")
-        
-        if !existingChildren.isEmpty {
-            print("🚀 Moving \(existingChildren.count) children from placeholder to modal")
-            // Create a copy of the children array before modifying
-            let childrenCopy = Array(existingChildren)
-            self.addChildrenToModalContent(modalVC: modalVC, childViews: childrenCopy)
-        } else {
-            print("⚠️ No children found in placeholder view - modal will show empty")
-            print("🔍 Placeholder view subviews: \(view.subviews)")
-            print("🔍 Placeholder view frame: \(view.frame)")
-            print("🔍 Placeholder view hidden: \(view.isHidden)")
-        }
-        
-        // Store reference to presented modal BEFORE presentation
-        DCFModalComponent.presentedModals[viewId] = modalVC
-        
-        // Configure modal presentation style
-        if #available(iOS 15.0, *) {
-            modalVC.modalPresentationStyle = .pageSheet
-            
-            // Configure sheet presentation controller with detents
-            if let sheet = modalVC.sheetPresentationController {
-                configureSheetDetents(sheet: sheet, modalVC: modalVC, props: props)
-            }
-        } else {
-            // Fallback for older iOS versions
-            modalVC.modalPresentationStyle = .formSheet
-        }
-        
-        // Configure transition style
-        if let transitionStyle = props["transitionStyle"] as? String {
-            switch transitionStyle.lowercased() {
-            case "coververtical":
-                modalVC.modalTransitionStyle = .coverVertical
-            case "fliphorizontal":
-                modalVC.modalTransitionStyle = .flipHorizontal
-            case "crossdissolve":
-                modalVC.modalTransitionStyle = .crossDissolve
-            case "partialcurl":
-                if #available(iOS 3.2, *) {
-                    modalVC.modalTransitionStyle = .partialCurl
-                }
-            default:
-                modalVC.modalTransitionStyle = .coverVertical
-            }
-        }
-        
-        // Configure status bar appearance capture
-        if let capturesStatusBar = props["capturesStatusBarAppearance"] as? Bool {
-            modalVC.modalPresentationCapturesStatusBarAppearance = capturesStatusBar
-        }
-        
-        // Configure presentation context
-        if let definesPresentationContext = props["definesPresentationContext"] as? Bool {
-            modalVC.definesPresentationContext = definesPresentationContext
-        }
-        
-        // Configure transition context
-        if let providesTransitionContext = props["providesTransitionContext"] as? Bool {
-            modalVC.providesPresentationContextTransitionStyle = providesTransitionContext
-        }
-        
-        // Present the modal
-        if let topViewController = getTopViewController() {
-            print("🚀 DCFModalComponent: Presenting modal from \(String(describing: topViewController))")
-            
-            topViewController.present(modalVC, animated: true) {
-                print("✅ DCFModalComponent: Modal presented successfully")
-                
-                // Propagate onShow event
-                propagateEvent(on: view, eventName: "onShow", data: [:])
-            }
-        } else {
-            print("❌ DCFModalComponent: Could not find view controller to present from")
-            // Remove from tracking if presentation failed
-            DCFModalComponent.presentedModals.removeValue(forKey: viewId)
-        }
-    }
+    // MARK: - Modal Operation Queue System (replaces old presentModal method)
     
     @available(iOS 15.0, *)
     private func configureSheetDetents(sheet: UISheetPresentationController, modalVC: UIViewController, props: [String: Any]) {
@@ -447,80 +354,169 @@ class DCFModalComponent: NSObject, DCFComponent {
         }
     }
     
-    private func dismissModalWithoutMovingChildren(from view: UIView, viewId: String) {
-        if let modalVC = DCFModalComponent.presentedModals[viewId] {
-            print("🔄 DCFModalComponent: Programmatically dismissing modal (keeping children visible during animation)")
+    // NOTE: The old dismissModalWithoutMovingChildren and dismissModal methods have been
+    // removed as all modal operations now go through the queue system in processQueuedOperation
+    
+    // MARK: - Modal Operation Queue System
+    
+    /// Queue a modal operation to be processed sequentially
+    static func queueModalOperation(_ operation: ModalOperation, viewId: String, completion: (() -> Void)? = nil) {
+        modalOperationQueue.async {
+            pendingOperations.append((operation: operation, viewId: viewId, completion: completion))
             
-            // ✅ DON'T move children here - let the modal animate out with children visible
-            // Children will be moved back in the completion block when animation finishes
-            
-            modalVC.dismiss(animated: true) {
-                print("✅ Programmatic dismissal animation completed - NOW moving children back")
-                
-                // NOW move children back to placeholder after animation completes
-                let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
-                
-                if !modalChildren.isEmpty {
-                    print("💾 Post-animation: Moving \(modalChildren.count) children back to placeholder")
-                    
-                    // Clear existing children from placeholder
-                    view.subviews.forEach { $0.removeFromSuperview() }
-                    
-                    // Move children back to placeholder view and hide them from main UI
-                    modalChildren.forEach { child in
-                        child.removeFromSuperview()
-                        view.addSubview(child)
-                        // ✅ CRITICAL: Hide children when moved back to placeholder (main UI)
-                        child.isHidden = true
-                        child.alpha = 0.0
-                        child.frame = CGRect.zero
-                        child.bounds = CGRect.zero
-                        child.clipsToBounds = true
+            if !isProcessingOperations {
+                processNextModalOperation()
+            }
+        }
+    }
+    
+    /// Process the next modal operation in the queue
+    static func processNextModalOperation() {
+        guard !isProcessingOperations, !pendingOperations.isEmpty else { return }
+        
+        isProcessingOperations = true
+        let nextOperation = pendingOperations.removeFirst()
+        
+        DispatchQueue.main.async {
+            switch nextOperation.operation {
+            case .present(let view, let props):
+                print("🎭 Processing queued modal presentation for viewId: \(nextOperation.viewId)")
+                self.performModalPresentation(from: view, props: props, viewId: nextOperation.viewId) {
+                    nextOperation.completion?()
+                    self.isProcessingOperations = false
+                    // Process next operation after a brief delay to ensure proper sequencing
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.processNextModalOperation()
                     }
                 }
                 
-                propagateEvent(on: view, eventName: "onDismiss", data: [:])
+            case .dismiss(let view):
+                print("🎭 Processing queued modal dismissal for viewId: \(nextOperation.viewId)")
+                self.performModalDismissal(from: view, viewId: nextOperation.viewId) {
+                    nextOperation.completion?()
+                    self.isProcessingOperations = false
+                    // Process next operation after a brief delay to ensure proper sequencing
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.processNextModalOperation()
+                    }
+                }
             }
-            
-            // Remove from tracking
-            DCFModalComponent.presentedModals.removeValue(forKey: viewId)
-        } else if let topViewController = getTopViewController(),
-                  topViewController.presentedViewController != nil {
-            print("🔄 DCFModalComponent: Dismissing any presented modal")
-            topViewController.dismiss(animated: true) {
-                propagateEvent(on: view, eventName: "onDismiss", data: [:])
-            }
-        } else {
-            print("ℹ️ DCFModalComponent: No modal to dismiss")
         }
     }
     
-    private func dismissModal(from view: UIView, viewId: String) {
+    /// Perform the actual modal presentation (extracted from presentModal)
+    static func performModalPresentation(from view: UIView, props: [String: Any], viewId: String, completion: @escaping () -> Void) {
+        // Check if modal is already presented
+        if DCFModalComponent.presentedModals[viewId] != nil {
+            print("ℹ️ DCFModalComponent: Modal already presented for viewId \(viewId)")
+            completion()
+            return
+        }
+        
+        // Create modal content view controller
+        let modalVC = DCFModalViewController()
+        modalVC.modalProps = props
+        modalVC.sourceView = view
+        modalVC.viewId = viewId
+        
+        // ✅ FIX 1: Load modal view and prepare content BEFORE presenting
+        modalVC.loadViewIfNeeded()
+        
+        // ✅ CRITICAL FIX: Look for children in placeholder view for reopen scenario
+        let existingChildren = view.subviews
+        print("🔍 Found \(existingChildren.count) children in placeholder view for modal presentation")
+        
+        if !existingChildren.isEmpty {
+            print("🚀 Moving \(existingChildren.count) children from placeholder to modal")
+            // Create a copy of the children array before modifying
+            let childrenCopy = Array(existingChildren)
+            let component = DCFModalComponent()
+            component.addChildrenToModalContent(modalVC: modalVC, childViews: childrenCopy)
+        } else {
+            print("⚠️ No children found in placeholder view - modal will show empty")
+            print("🔍 Placeholder view subviews: \(view.subviews)")
+            print("🔍 Placeholder view frame: \(view.frame)")
+            print("🔍 Placeholder view hidden: \(view.isHidden)")
+        }
+        
+        // Store reference to presented modal BEFORE presentation
+        DCFModalComponent.presentedModals[viewId] = modalVC
+        
+        // Configure modal presentation style
+        if #available(iOS 15.0, *) {
+            modalVC.modalPresentationStyle = .pageSheet
+            
+            // Configure sheet presentation controller with detents
+            if let sheet = modalVC.sheetPresentationController {
+                let component = DCFModalComponent()
+                component.configureSheetDetents(sheet: sheet, modalVC: modalVC, props: props)
+            }
+        } else {
+            // Fallback for older iOS versions
+            modalVC.modalPresentationStyle = .formSheet
+        }
+        
+        // Configure transition style
+        if let transitionStyle = props["transitionStyle"] as? String {
+            switch transitionStyle.lowercased() {
+            case "coververtical":
+                modalVC.modalTransitionStyle = .coverVertical
+            case "fliphorizontal":
+                modalVC.modalTransitionStyle = .flipHorizontal
+            case "crossdissolve":
+                modalVC.modalTransitionStyle = .crossDissolve
+            case "partialcurl":
+                if #available(iOS 3.2, *) {
+                    modalVC.modalTransitionStyle = .partialCurl
+                }
+            default:
+                modalVC.modalTransitionStyle = .coverVertical
+            }
+        }
+        
+        // Configure status bar appearance capture
+        if let capturesStatusBar = props["capturesStatusBarAppearance"] as? Bool {
+            modalVC.modalPresentationCapturesStatusBarAppearance = capturesStatusBar
+        }
+        
+        // Configure presentation context
+        if let definesPresentationContext = props["definesPresentationContext"] as? Bool {
+            modalVC.definesPresentationContext = definesPresentationContext
+        }
+        
+        // Configure transition context
+        if let providesTransitionContext = props["providesTransitionContext"] as? Bool {
+            modalVC.providesPresentationContextTransitionStyle = providesTransitionContext
+        }
+        
+        // Present the modal
+        if let topViewController = getTopViewController() {
+            print("🚀 DCFModalComponent: Presenting modal from \(String(describing: topViewController))")
+            
+            topViewController.present(modalVC, animated: true) {
+                print("✅ DCFModalComponent: Modal presentation completed")
+                propagateEvent(on: view, eventName: "onShow", data: [:])
+                completion()
+            }
+        } else {
+            print("❌ DCFModalComponent: Could not find top view controller")
+            // Remove from tracking if presentation failed
+            DCFModalComponent.presentedModals.removeValue(forKey: viewId)
+            completion()
+        }
+    }
+    
+    /// Perform the actual modal dismissal (extracted from dismissModal)
+    static func performModalDismissal(from view: UIView, viewId: String, completion: @escaping () -> Void) {
         if let modalVC = DCFModalComponent.presentedModals[viewId] {
             print("🔄 DCFModalComponent: Programmatically dismissing tracked modal")
             
-            // ✅ FIX: Move children back to placeholder for programmatic dismissal too
-            let modalChildren = modalVC.view.subviews.filter { $0.tag != 999 && $0.tag != 998 }
-            
-            if !modalChildren.isEmpty {
-                print("💾 Programmatic dismissal: Moving \(modalChildren.count) children back to placeholder")
-                
-                // Clear existing children from placeholder
-                view.subviews.forEach { $0.removeFromSuperview() }
-                
-                // Move children back to placeholder view and hide them from main UI
-                modalChildren.forEach { child in
-                    child.removeFromSuperview()
-                    view.addSubview(child)
-                    // ✅ CRITICAL: Hide children when moved back to placeholder (main UI)
-                    child.isHidden = true
-                    child.alpha = 0.0
-                }
-            }
-            
             modalVC.dismiss(animated: true) {
+                print("✅ DCFModalComponent: Modal dismissal completed")
                 propagateEvent(on: view, eventName: "onDismiss", data: [:])
+                completion()
             }
+            
             // Remove from tracking
             DCFModalComponent.presentedModals.removeValue(forKey: viewId)
         } else if let topViewController = getTopViewController(),
@@ -528,13 +524,16 @@ class DCFModalComponent: NSObject, DCFComponent {
             print("🔄 DCFModalComponent: Dismissing any presented modal")
             topViewController.dismiss(animated: true) {
                 propagateEvent(on: view, eventName: "onDismiss", data: [:])
+                completion()
             }
         } else {
             print("ℹ️ DCFModalComponent: No modal to dismiss")
+            completion()
         }
     }
     
-    private func getTopViewController() -> UIViewController? {
+    /// Get the top view controller (made static for queue operations)
+    static func getTopViewController() -> UIViewController? {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else { 
             print("❌ DCFModalComponent: Could not find window scene")
@@ -546,7 +545,6 @@ class DCFModalComponent: NSObject, DCFComponent {
             topController = presentedController
         }
         
-        print("🎯 DCFModalComponent: Using top view controller: \(String(describing: topController))")
         return topController
     }
 }
