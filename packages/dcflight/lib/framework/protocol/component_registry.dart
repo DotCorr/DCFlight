@@ -9,7 +9,6 @@
 import 'package:dcflight/framework/protocol/component_protocol.dart';
 import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'package:flutter/foundation.dart';
 
 /// Registry for component factories
 /// This allows components to be registered with the framework

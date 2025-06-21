@@ -7,7 +7,6 @@
 
 
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -194,7 +193,7 @@ class VDom {
       } catch (e) {
       }
       
-    } catch (e, stack) {
+    } catch (e) {
     }
   }
 
@@ -271,7 +270,6 @@ class VDom {
       } else {
         _isUpdateScheduled = false;
       }
-    } catch (e, stack) {
     } finally {
       _batchUpdateInProgress = false;
     }
@@ -353,7 +351,7 @@ class VDom {
         component.componentDidUpdate({});
         component.runEffectsAfterRender();
       }
-    } catch (e, stack) {
+    } catch (e) {
     }
   }
 
@@ -479,7 +477,7 @@ class VDom {
       }
 
       return null;
-    } catch (e, stack) {
+    } catch (e) {
       return null;
     }
   }

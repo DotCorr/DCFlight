@@ -6,7 +6,6 @@
  */
 
 
-import 'dart:io';
 import 'package:args/command_runner.dart';
 
 class RunCommandSimple extends Command {

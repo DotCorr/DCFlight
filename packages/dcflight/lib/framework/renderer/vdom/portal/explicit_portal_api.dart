@@ -6,7 +6,6 @@
  */
 
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';

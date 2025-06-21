@@ -8,7 +8,7 @@
 
 
 // Main entry point for the DCFlight framework
-library dcflight;
+library;
 
 export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
     hide

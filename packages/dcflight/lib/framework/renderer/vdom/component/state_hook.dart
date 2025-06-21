@@ -6,8 +6,6 @@
  */
 
 
-import 'dart:developer' as developer;
-import 'package:flutter/foundation.dart';
 import 'store.dart';
 
 /// Base hook class for all hook types
