@@ -38,10 +38,11 @@ class ReallyLongList extends StatefulComponent {
               },
             ),
             DCFButton(
-              buttonProps: DCFButtonProps(title: "Scroll to Index 50"),
+              buttonProps: DCFButtonProps(title: "Scroll to Item 50"),
               layout: const LayoutProps(height: 44),
               styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 8),
               onPress: (v) {
+                // Item 50 is at index 49 (0-based indexing)
                 currentCommand.setState(const ScrollToIndexCommand(index: 49, animated: true));
               },
             ),
@@ -77,7 +78,7 @@ class ReallyLongList extends StatefulComponent {
                     justifyContent: YogaJustifyContent.center,
                   ),
                   styleSheet: StyleSheet(
-                    backgroundColor: i == 50 ? Colors.lightBlue : null, // Highlight item 50
+                    backgroundColor: i == 49 ? Colors.lightBlue : null, // Highlight item 50 (index 49)
                   ),
                   children: [
                     DCFText(
@@ -85,7 +86,7 @@ class ReallyLongList extends StatefulComponent {
                       textProps: DCFTextProps(
                         fontSize: 16, 
                         color: Colors.black,
-                        fontWeight: i == 50 ? DCFFontWeight.bold : DCFFontWeight.regular,
+                        fontWeight: i == 49 ? DCFFontWeight.bold : DCFFontWeight.regular, // Bold item 50
                       ),
                     ),
                   ],

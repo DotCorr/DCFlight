@@ -21,6 +21,7 @@ class ComponentShowcase extends StatefulComponent {
     final scrollCommand = useState<ScrollViewCommand?>(null);
     final textInputCommand = useState<TextInputCommand?>(null);
     final textInputValue = useState<String>("");
+    final touchableOpacityCommand = useState<TouchableOpacityCommand?>(null);
 
     void updateToggle(String key, bool value) {
       final newStates = Map<String, bool>.from(toggleStates.state);
@@ -386,6 +387,86 @@ class ComponentShowcase extends StatefulComponent {
                   'large': !allChecked,
                 });
               },
+            ),
+          ],
+        ),
+
+        // ✅ TouchableOpacity Commands Demonstration
+        DCFText(
+          content: "TouchableOpacity Commands",
+          textProps: DCFTextProps(
+            fontSize: 18,
+            fontWeight: DCFFontWeight.semibold,
+            color: Colors.black87,
+          ),
+          layout: LayoutProps(marginBottom: 16, height: 25),
+        ),
+
+        DCFView(
+          layout: LayoutProps(
+            flexDirection: YogaFlexDirection.row,
+            gap: 10,
+            marginBottom: 20,
+            height: 80,
+          ),
+          children: [
+            // TouchableOpacity with command pattern
+            DCFTouchableOpacity(
+              command: touchableOpacityCommand.state,
+              activeOpacity: 0.6,
+              layout: LayoutProps(flex: 1, height: 80, padding: 16),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.lightBlue.shade100,
+                borderRadius: 12,
+                borderWidth: 2,
+                borderColor: Colors.blue,
+              ),
+              onPress: (v) {
+                // Trigger a programmatic highlight
+                touchableOpacityCommand.setState(const SetTouchableHighlightedCommand(highlighted: true));
+                Future.delayed(const Duration(milliseconds: 200), () {
+                  touchableOpacityCommand.setState(const SetTouchableHighlightedCommand(highlighted: false));
+                  Future.microtask(() => touchableOpacityCommand.setState(null));
+                });
+              },
+              children: [
+                DCFText(
+                  content: "Tap me!\nI use commands",
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                    fontWeight: DCFFontWeight.bold,
+                    color: Colors.blue.shade800,
+                    textAlign: "center",
+                  ),
+                ),
+              ],
+            ),
+
+            // Control buttons for TouchableOpacity commands
+            DCFView(
+              layout: LayoutProps(flex: 1),
+              children: [
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Simulate Press"),
+                  layout: LayoutProps(height: 36, marginBottom: 8),
+                  styleSheet: StyleSheet(backgroundColor: Colors.green, borderRadius: 8),
+                  onPress: (v) {
+                    // ✅ Programmatically simulate a press
+                    touchableOpacityCommand.setState(const PerformPressCommand());
+                    Future.microtask(() => touchableOpacityCommand.setState(null));
+                  },
+                ),
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Set Opacity 30%"),
+                  layout: LayoutProps(height: 36),
+                  styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 8),
+                  onPress: (v) {
+                    // ✅ Set custom opacity with animation
+                    touchableOpacityCommand.setState(const SetOpacityCommand(opacity: 0.3, duration: 0.5));
+                    Future.microtask(() => touchableOpacityCommand.setState(null));
+                  },
+                ),
+              ],
             ),
           ],
         ),

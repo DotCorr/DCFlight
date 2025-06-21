@@ -29,31 +29,91 @@ class GradientTest extends StatefulComponent {
           ),
           children: [
             DCFButton(
-              buttonProps: DCFButtonProps(title: "Animate Circle"),
+              buttonProps: DCFButtonProps(title: "Spin Animation"),
               layout: LayoutProps(flex: 1, height: 44),
               styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
               onPress: (v) {
-                // ✅ Using AnimatedView command pattern
+                // ✅ Spin animation with rotation
                 animatedViewCommand.setState(const AnimateCommand(
                   duration: 2.0,
-                  toOpacity: 0.3,
-                  toScale: 1.2,
-                  toRotation: 3.14, // 180 degrees in radians
+                  toRotation: 6.28, // 360 degrees (2 * PI)
+                  curve: "linear",
                 ));
               },
             ),
             DCFButton(
-              buttonProps: DCFButtonProps(title: "Reset Animation"),
+              buttonProps: DCFButtonProps(title: "Bounce Scale"),
               layout: LayoutProps(flex: 1, height: 44),
+              styleSheet: StyleSheet(backgroundColor: Colors.green, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Bounce scale animation
+                animatedViewCommand.setState(const AnimateCommand(
+                  duration: 0.6,
+                  toScale: 1.3,
+                  curve: "easeOut",
+                ));
+              },
+            ),
+          ],
+        ),
+
+        // Second row of animation buttons
+        DCFView(
+          layout: LayoutProps(
+            flexDirection: YogaFlexDirection.row,
+            height: 60,
+            padding: 10,
+            gap: 10,
+          ),
+          children: [
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Fade Out"),
+              layout: LayoutProps(flex: 1, height: 44),
+              styleSheet: StyleSheet(backgroundColor: Colors.red, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Fade out animation
+                animatedViewCommand.setState(const AnimateCommand(
+                  duration: 1.5,
+                  toOpacity: 0.1,
+                  curve: "easeIn",
+                ));
+              },
+            ),
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Complex Move"),
+              layout: LayoutProps(flex: 1, height: 44),
+              styleSheet: StyleSheet(backgroundColor: Colors.purple, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Complex animation with multiple properties
+                animatedViewCommand.setState(const AnimateCommand(
+                  duration: 3.0,
+                  toScale: 0.8,
+                  toOpacity: 0.6,
+                  toTranslateX: 50,
+                  toTranslateY: -30,
+                  toRotation: 1.57, // 90 degrees
+                  curve: "easeInOut",
+                ));
+              },
+            ),
+          ],
+        ),
+
+        // Reset button
+        DCFView(
+          layout: LayoutProps(
+            height: 60,
+            padding: 10,
+            justifyContent: YogaJustifyContent.center,
+          ),
+          children: [
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Reset All Animations"),
+              layout: LayoutProps(height: 44),
               styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 8),
               onPress: (v) {
-                // ✅ Reset animation using command pattern
-                animatedViewCommand.setState(const AnimateCommand(
-                  duration: 1.0,
-                  toOpacity: 1.0,
-                  toScale: 1.0,
-                  toRotation: 0.0,
-                ));
+                // ✅ Reset all animation properties
+                animatedViewCommand.setState(const ResetAnimationCommand(animated: true));
               },
             ),
           ],
@@ -102,25 +162,99 @@ class GradientTest extends StatefulComponent {
           },
         ),
 
-        // Add a button to test scroll commands
+        // ScrollView command tests
         DCFView(
           layout: LayoutProps(
+            flexDirection: YogaFlexDirection.row,
             height: 60,
             padding: 10,
-            justifyContent: YogaJustifyContent.center,
+            gap: 10,
           ),
           children: [
             DCFButton(
               buttonProps: DCFButtonProps(title: "Scroll to Top"),
-              layout: LayoutProps(height: 44),
-              styleSheet: StyleSheet(backgroundColor: Colors.purple, borderRadius: 8),
+              layout: LayoutProps(flex: 1, height: 44),
+              styleSheet: StyleSheet(backgroundColor: Colors.indigo, borderRadius: 8),
               onPress: (v) {
-                // ✅ Scroll command demonstration
+                // ✅ Scroll to top command
                 scrollCommand.setState(ScrollViewCommand(scrollToTop: const ScrollToTopCommand(animated: true)));
+              },
+            ),
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Scroll to Bottom"),
+              layout: LayoutProps(flex: 1, height: 44),
+              styleSheet: StyleSheet(backgroundColor: Colors.cyan, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Scroll to bottom command
+                scrollCommand.setState(ScrollViewCommand(scrollToBottom: const ScrollToBottomCommand(animated: true)));
               },
             ),
           ],
         ),
+
+        // ScrollView position and flash commands
+        DCFView(
+          layout: LayoutProps(
+            flexDirection: YogaFlexDirection.row,
+            height: 60,
+            padding: 10,
+            gap: 10,
+          ),
+          children: [
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Flash Indicators"),
+              layout: LayoutProps(flex: 1, height: 44),
+              styleSheet: StyleSheet(backgroundColor: Colors.amber, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Flash scroll indicators
+                scrollCommand.setState(const ScrollViewCommand(flashScrollIndicators: true));
+              },
+            ),
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Scroll to Middle"),
+              layout: LayoutProps(flex: 1, height: 44),
+              styleSheet: StyleSheet(backgroundColor: Colors.teal, borderRadius: 8),
+              onPress: (v) {
+                // ✅ Scroll to specific position (middle of content)
+                scrollCommand.setState(ScrollViewCommand(
+                  scrollToPosition: const ScrollToPositionCommand(x: 0, y: 500, animated: true)
+                ));
+              },
+            ),
+          ],
+        ),
+
+        // Add some spacer content to test scrolling
+        ...List.generate(10, (index) => DCFView(
+          layout: LayoutProps(
+            height: 100,
+            margin: 10,
+            padding: 20,
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.grey.shade200,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: Colors.grey.shade400,
+          ),
+          children: [
+            DCFText(
+              content: "Test Content Block ${index + 1}",
+              textProps: DCFTextProps(
+                fontSize: 18,
+                fontWeight: DCFFontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            DCFText(
+              content: "This is additional content to make the scroll view scrollable and test the scroll commands.",
+              textProps: DCFTextProps(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        )),
       ],
     );
   }

@@ -229,35 +229,42 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDel
     
     /// Handle commands passed as props - the new declarative command pattern
     private func handleCommand(scrollView: VirtualizedScrollView, props: [String: Any]) {
-        guard let commandData = props["command"] as? [String: Any],
-              let commandType = commandData["type"] as? String else {
+        guard let commandData = props["command"] as? [String: Any] else {
             return
         }
         
-        switch commandType {
-        case "scrollToPosition":
-            if let x = commandData["x"] as? CGFloat, let y = commandData["y"] as? CGFloat {
-                let animated = commandData["animated"] as? Bool ?? true
-                scrollView.setContentOffset(CGPoint(x: x, y: y), animated: animated)
+        // Handle composite command structure from Dart ScrollViewCommand.toMap()
+        if let scrollToPositionData = commandData["scrollToPosition"] as? [String: Any] {
+            if let x = scrollToPositionData["x"] as? Double, let y = scrollToPositionData["y"] as? Double {
+                let animated = scrollToPositionData["animated"] as? Bool ?? true
+                scrollView.setContentOffset(CGPoint(x: CGFloat(x), y: CGFloat(y)), animated: animated)
             }
-        case "scrollToTop":
-            let animated = commandData["animated"] as? Bool ?? true
+        }
+        
+        if let scrollToTopData = commandData["scrollToTop"] as? [String: Any] {
+            let animated = scrollToTopData["animated"] as? Bool ?? true
             scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: 0), animated: animated)
-        case "scrollToBottom":
-            let animated = commandData["animated"] as? Bool ?? true
+        }
+        
+        if let scrollToBottomData = commandData["scrollToBottom"] as? [String: Any] {
+            let animated = scrollToBottomData["animated"] as? Bool ?? true
             let bottomOffset = CGPoint(x: scrollView.contentOffset.x, 
                                      y: scrollView.contentSize.height - scrollView.bounds.height)
             scrollView.setContentOffset(bottomOffset, animated: animated)
-        case "flashScrollIndicators":
+        }
+        
+        if let flashScrollIndicators = commandData["flashScrollIndicators"] as? Bool, flashScrollIndicators {
             scrollView.flashScrollIndicators()
-        case "updateContentSize":
+        }
+        
+        if let updateContentSize = commandData["updateContentSize"] as? Bool, updateContentSize {
             scrollView.updateContentSizeFromYogaLayout()
-        case "setContentSize":
-            if let width = commandData["width"] as? CGFloat, let height = commandData["height"] as? CGFloat {
-                scrollView.setExplicitContentSize(CGSize(width: width, height: height))
+        }
+        
+        if let setContentSizeData = commandData["setContentSize"] as? [String: Any] {
+            if let width = setContentSizeData["width"] as? Double, let height = setContentSizeData["height"] as? Double {
+                scrollView.setExplicitContentSize(CGSize(width: CGFloat(width), height: CGFloat(height)))
             }
-        default:
-            break
         }
     }
     
