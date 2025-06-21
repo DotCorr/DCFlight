@@ -4,6 +4,8 @@ class ModalTest extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final modalVisible = useState<bool>(false);
+    final modalVisible2 = useState<bool>(false);
+
     final actionSheetVisible = useState<bool>(false);
     final alertVisible = useState<bool>(false);
     final textInputAlertVisible = useState<bool>(false);
@@ -179,7 +181,7 @@ class ModalTest extends StatefulComponent {
           },
         ),
 
-        // Native DCFModal - always in tree but only visible when needed
+        // Native DCFModal - true native modal presentation
         DCFModal(
           visible: modalVisible.state,
           title: "Native Modal",
@@ -188,7 +190,6 @@ class ModalTest extends StatefulComponent {
             DCFModalDetents.medium,
             DCFModalDetents.large,
           ],
-          cornerRadius: 50,
           showDragIndicator: true,
           onDismiss: (data) {
             print('🔥 Native Modal onDismiss called');
@@ -197,20 +198,25 @@ class ModalTest extends StatefulComponent {
           },
           children: [
             DCFView(
+              styleSheet: StyleSheet(backgroundColor: Colors.red.shade100),
               layout: LayoutProps(
                 padding: 20,
                 flex: 1,
                 flexDirection: YogaFlexDirection.column,
-                height: 200,
               ),
               children: [
                 DCFText(
                   content: "🚀 This is a true native modal!",
-                  textProps: DCFTextProps(fontSize: 18, fontWeight: "bold", color: Colors.black87),
+                  textProps: DCFTextProps(
+                    fontSize: 18,
+                    fontWeight: "bold",
+                    color: Colors.black87,
+                  ),
                   layout: LayoutProps(marginBottom: 16, height: 25),
                 ),
                 DCFText(
-                  content: "✅ Native iOS/Android modal presentation\n✅ Hardware-accelerated animations\n✅ System-level modal behavior\n✅ Proper modal timing",
+                  content:
+                      "✅ Native iOS/Android modal presentation\n✅ Hardware-accelerated animations\n✅ System-level modal behavior\n✅ True modal stacking",
                   textProps: DCFTextProps(
                     fontSize: 14,
                     color: Colors.green.shade700,
@@ -226,6 +232,75 @@ class ModalTest extends StatefulComponent {
                   ),
                   onPress: (v) {
                     modalVisible.setState(false);
+                  },
+                ),
+
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Open Native Modal 2"),
+                  layout: LayoutProps(height: 44),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.blue,
+                    borderRadius: 8,
+                  ),
+                  onPress: (v) {
+                    modalVisible2.setState(true);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        DCFModal(
+          visible: modalVisible2.state,
+          title: "Native Modal 2",
+          detents: [
+            DCFModalDetents.small,
+            DCFModalDetents.medium,
+            DCFModalDetents.large,
+          ],
+          showDragIndicator: true,
+          onDismiss: (data) {
+            print('🔥 Native Modal onDismiss called');
+            modalVisible2.setState(false);
+            print("Native modal dismissed: $data");
+          },
+          children: [
+            DCFView(
+              styleSheet: StyleSheet(backgroundColor: Colors.yellow.shade100),
+              layout: LayoutProps(
+                padding: 20,
+                flex: 1,
+                flexDirection: YogaFlexDirection.column,
+              ),
+              children: [
+                DCFText(
+                  content: "🚀 This is a true native modal! 2",
+                  textProps: DCFTextProps(
+                    fontSize: 18,
+                    fontWeight: "bold",
+                    color: Colors.black87,
+                  ),
+                  layout: LayoutProps(marginBottom: 16, height: 25),
+                ),
+                DCFText(
+                  content:
+                      "✅ Native iOS/Android modal presentation\n✅ Hardware-accelerated animations\n✅ System-level modal behavior\n✅ True modal stacking",
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                    color: Colors.green.shade700,
+                  ),
+                  layout: LayoutProps(marginBottom: 20, height: 80),
+                ),
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Close Native Modal"),
+                  layout: LayoutProps(height: 44),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.blue,
+                    borderRadius: 8,
+                  ),
+                  onPress: (v) {
+                    modalVisible2.setState(false);
                   },
                 ),
               ],
@@ -327,6 +402,7 @@ class ModalTest extends StatefulComponent {
           title: "Login Required",
           message: "Please enter your credentials:",
           style: DCFAlertStyle.alert,
+
           textFields: [
             DCFAlertTextField(
               placeholder: "Email",
