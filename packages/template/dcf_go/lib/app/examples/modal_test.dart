@@ -236,7 +236,7 @@ class ModalTest extends StatefulComponent {
                 ),
                 DCFButton(
                   buttonProps: DCFButtonProps(title: "Close Native Modal"),
-                  layout: LayoutProps(height: 44),
+                  layout: LayoutProps(height: 44,width: 100),
                   styleSheet: StyleSheet(
                     backgroundColor: Colors.blue,
                     borderRadius: 8,
@@ -248,7 +248,7 @@ class ModalTest extends StatefulComponent {
 
                 DCFButton(
                   buttonProps: DCFButtonProps(title: "Open Native Modal 2"),
-                  layout: LayoutProps(height: 44),
+                  layout: LayoutProps(height: 44,width: 100),
                   styleSheet: StyleSheet(
                     backgroundColor: Colors.blue,
                     borderRadius: 8,
