@@ -54,11 +54,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
             view.isUserInteractionEnabled = enabled
         }
         
-        // Handle commands if provided
-        if let commandData = props["command"] as? [String: Any] {
-            handleCommand(commandData, on: view)
-        }
-        
         // Configure gestures based on events registered
         configureGestures(view)
         

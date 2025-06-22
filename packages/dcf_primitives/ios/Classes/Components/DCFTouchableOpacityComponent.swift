@@ -82,11 +82,6 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
             touchableView.longPressDelay = TimeInterval(longPressDelay) / 1000.0
         }
         
-        // Handle command prop - new declarative-imperative pattern
-        if let commandData = props["command"] as? [String: Any] {
-            handleCommand(commandData, on: touchableView)
-        }
-        
         // Apply StyleSheet properties
         touchableView.applyStyles(props: props)
         
@@ -138,75 +133,6 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
             "timestamp": Date().timeIntervalSince1970
         ])
     }
-    
-    // MARK: - Command Handling (New Declarative-Imperative Pattern)
-    
-    private func handleCommand(_ commandData: [String: Any], on touchableView: TouchableView) {
-        guard let commandType = commandData["type"] as? String else { return }
-        
-        switch commandType {
-        case "setOpacity":
-            if let opacity = commandData["opacity"] as? Double {
-                let opacityValue = CGFloat(opacity)
-                if let duration = commandData["duration"] as? Double {
-                    UIView.animate(withDuration: duration) {
-                        touchableView.alpha = opacityValue
-                    }
-                } else {
-                    touchableView.alpha = opacityValue
-                }
-            }
-            
-        case "setHighlighted":
-            if let highlighted = commandData["highlighted"] as? Bool {
-                if highlighted {
-                    touchableView.alpha = touchableView.activeOpacity
-                } else {
-                    touchableView.alpha = 1.0
-                }
-            }
-            
-        case "performPress":
-            // Simulate a press event
-            self.handleTouchDown(touchableView)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.handleTouchUp(touchableView, inside: true)
-            }
-            
-        case "animateToState":
-            if let opacity = commandData["opacity"] as? Double {
-                let duration = commandData["duration"] as? Double ?? 0.2
-                let curve = commandData["curve"] as? String ?? "easeInOut"
-                
-                let animationCurve = getCurve(from: curve)
-                UIView.animate(withDuration: duration, delay: 0, options: animationCurve, animations: {
-                    touchableView.alpha = CGFloat(opacity)
-                })
-            }
-            
-        default:
-            break
-        }
-    }
-    
-    private func getCurve(from name: String) -> UIView.AnimationOptions {
-        switch name.lowercased() {
-        case "linear":
-            return .curveLinear
-        case "easein":
-            return .curveEaseIn
-        case "easeout":
-            return .curveEaseOut
-        case "easeinout":
-            return .curveEaseInOut
-        default:
-            return .curveEaseInOut
-        }
-    }
-    
-    // MARK: - Event Handling
-    // Note: TouchableOpacity uses global propagateEvent() system
-    // No custom event methods needed - all handled by DCFComponentProtocol
 }
 
 /// Custom view class for touchable opacity

@@ -28,18 +28,24 @@ class Home extends StatefulComponent {
         ),
         DCFWebView(
           onLoadStart: (v) {
+            print("WebView Load Start: $v");
           },
           onLoadEnd: (v){
+            print("WebView Load End: $v");
           },
 
           onLoadError: (v) {
+            print("WebView Load Error: $v");
           },
 
           onLoadProgress: (v){
+            print("WebView Load Progress: $v");
           },
           onMessage: (v){
+            print("WebView Message: $v");
           },
           onNavigationStateChange: (v) {
+            print("WebView Navigation State Change: $v");
           },
           webViewProps: DCFWebViewProps(
             source:

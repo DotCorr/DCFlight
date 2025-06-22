@@ -2,7 +2,6 @@ import 'package:dcf_go/app/examples/gradient.dart';
 import 'package:dcf_go/app/examples/really_long_list.dart';
 import 'package:dcf_go/app/examples/home.dart';
 import 'package:dcf_go/app/examples/modal_test.dart';
-import 'package:dcf_go/app/examples/component_showcase.dart';
 import 'package:dcf_go/app/examples/portal_test.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -37,9 +36,8 @@ class App extends StatefulComponent {
                 : pagestateLocal.state == 3
                 ? ModalTest()
               
+     
                 : pagestateLocal.state == 4
-                ? ComponentShowcase()
-                : pagestateLocal.state == 5
                 ? PortalTest()
                 : DCFView(),
           ],
@@ -51,8 +49,10 @@ class App extends StatefulComponent {
                 pagestateLocal.setState(int.parse(v['value']));
               },
           onClose: (v) {
+            print("Dropdown closed with value: ${v['value']}");
           },
           onOpen: (v) {
+            print("Dropdown opened with value: ${v['value']}");
           },
           dropdownProps: DCFDropdownProps(
             items: [
@@ -61,8 +61,8 @@ class App extends StatefulComponent {
               DCFDropdownMenuItem(title: "Gradient Test", value: "1"),
               DCFDropdownMenuItem(title: "Really Long List", value: "2"),
               DCFDropdownMenuItem(title: "Modal & Alert Test", value: "3"),
-              DCFDropdownMenuItem(title: "Component Showcase", value: "4"),
-              DCFDropdownMenuItem(title: "Portal Test", value: "5"),
+       
+              DCFDropdownMenuItem(title: "Portal Test", value: "4"),
              
             ],
             selectedValue: pagestateLocal.state.toString(),
@@ -218,6 +218,10 @@ class App extends StatefulComponent {
                   ],
                 ),
 
+              
+
+              
+
                 DCFGestureDetector(
                   onTap: (v) {
                     pagestateLocal.setState(4);
@@ -237,42 +241,9 @@ class App extends StatefulComponent {
                       children: [
                         DCFIcon(
                           iconProps: DCFIconProps(
-                            name: DCFIcons.layoutGrid,
-                            color:
-                                pagestateLocal.state == 4
-                                    ? Colors.blue
-                                    : Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-              
-
-                DCFGestureDetector(
-                  onTap: (v) {
-                    pagestateLocal.setState(5);
-                  },
-                  layout: LayoutProps(
-                    height: 50,
-                    width: 50,
-                    marginHorizontal: 4,
-                  ),
-                  children: [
-                    DCFView(
-                      layout: LayoutProps(
-                        flex: 1,
-                        justifyContent: YogaJustifyContent.center,
-                        alignItems: YogaAlign.center,
-                      ),
-                      children: [
-                        DCFIcon(
-                          iconProps: DCFIconProps(
                             name: DCFIcons.grid3x3,
                             color:
-                                pagestateLocal.state == 5
+                                pagestateLocal.state == 4
                                     ? Colors.blue
                                     : Colors.grey,
                           ),

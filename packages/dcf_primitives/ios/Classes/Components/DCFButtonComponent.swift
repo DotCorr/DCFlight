@@ -56,11 +56,6 @@ class DCFButtonComponent: NSObject, DCFComponent {
             button.alpha = disabled ? 0.5 : 1.0
         }
         
-        // Handle command prop - new declarative-imperative pattern
-        if let commandData = props["command"] as? [String: Any] {
-            handleCommand(commandData, on: button)
-        }
-        
         button.applyStyles(props: props)
         return true
     }
@@ -83,36 +78,6 @@ class DCFButtonComponent: NSObject, DCFComponent {
     @objc func handleButtonTouchUp(_ sender: UIButton) {
         UIView.animate(withDuration: 0.15) {
             sender.alpha = 1.0
-        }
-    }
-    
-    // MARK: - Command Handling (New Declarative-Imperative Pattern)
-    
-    private func handleCommand(_ commandData: [String: Any], on button: UIButton) {
-        guard let commandType = commandData["type"] as? String else { return }
-        
-        switch commandType {
-        case "setHighlighted":
-            if let highlighted = commandData["highlighted"] as? Bool {
-                button.isHighlighted = highlighted
-            }
-            
-        case "performClick":
-            handleButtonPress(button)
-            
-        case "setEnabled":
-            if let enabled = commandData["enabled"] as? Bool {
-                button.isEnabled = enabled
-                button.alpha = enabled ? 1.0 : 0.5
-            }
-            
-        case "setTitle":
-            if let title = commandData["title"] as? String {
-                button.setTitle(title, for: .normal)
-            }
-            
-        default:
-            break
         }
     }
 }

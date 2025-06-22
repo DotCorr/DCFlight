@@ -75,11 +75,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // Handle commands first
-        if let commandDict = props["command"] as? [String: Any] {
-            handleCommand(view, commandDict)
-        }
-        
         if let textField = view as? UITextField {
             return updateTextField(textField, withProps: props)
         } else if let textView = view as? UITextView {
@@ -359,80 +354,5 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
     
     func textViewDidEndEditing(_ textView: UITextView) {
         propagateEvent(on: textView, eventName: "onBlur", data: [:])
-    }
-    
-    // MARK: - Command Handling
-    
-    private func handleCommand(_ view: UIView, _ command: [String: Any]) {
-        guard let type = command["type"] as? String else { return }
-        
-        switch type {
-        case "focus":
-            if let textField = view as? UITextField {
-                textField.becomeFirstResponder()
-            } else if let textView = view as? UITextView {
-                textView.becomeFirstResponder()
-            }
-            
-        case "blur":
-            if let textField = view as? UITextField {
-                textField.resignFirstResponder()
-            } else if let textView = view as? UITextView {
-                textView.resignFirstResponder()
-            }
-            
-        case "clear":
-            if let textField = view as? UITextField {
-                textField.text = ""
-                propagateEvent(on: textField, eventName: "onChangeText", data: ["text": ""])
-            } else if let textView = view as? UITextView {
-                textView.text = ""
-                propagateEvent(on: textView, eventName: "onChangeText", data: ["text": ""])
-            }
-            
-        case "hideKeyboard":
-            // Force hide keyboard by resigning all responders
-            view.endEditing(true)
-            
-        case "selectAll":
-            if let textField = view as? UITextField {
-                textField.selectAll(nil)
-            } else if let textView = view as? UITextView {
-                textView.selectAll(nil)
-            }
-            
-        case "setSelection":
-            guard let start = command["start"] as? Int,
-                  let end = command["end"] as? Int else { return }
-            
-            if let textField = view as? UITextField {
-                setSelection(textField, start: start, end: end)
-            } else if let textView = view as? UITextView {
-                setSelection(textView, start: start, end: end)
-            }
-            
-        default:
-            break
-        }
-    }
-    
-    private func setSelection(_ textField: UITextField, start: Int, end: Int) {
-        guard let text = textField.text,
-              start >= 0, end >= start, end <= text.count else { return }
-        
-        let startPosition = textField.position(from: textField.beginningOfDocument, offset: start)
-        let endPosition = textField.position(from: textField.beginningOfDocument, offset: end)
-        
-        if let startPos = startPosition, let endPos = endPosition {
-            textField.selectedTextRange = textField.textRange(from: startPos, to: endPos)
-        }
-    }
-    
-    private func setSelection(_ textView: UITextView, start: Int, end: Int) {
-        guard let text = textView.text,
-              start >= 0, end >= start, end <= text.count else { return }
-        
-        let range = NSRange(location: start, length: end - start)
-        textView.selectedRange = range
     }
 }
