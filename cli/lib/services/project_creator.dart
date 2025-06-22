@@ -23,23 +23,28 @@ class ProjectCreator {
       await _validateProject(config);
       
       // 3. Copy template
+      print('📁 Copying template...');
       await TemplateCopier.copyTemplate(config);
       
       // 4. Run package rename
+      print('🔧 Configuring project...');
       await PackageRenamer.renameProject(config);
       
       // 5. Run flutter pub get
+      print('📦 Installing dependencies...');
       await _runPubGet(config);
       
       // 6. Success message
       _printSuccessMessage(config);
       
     } catch (e) {
+      print('❌ Error creating project: $e');
       exit(1);
     }
   }
 
   Future<ProjectConfig> _collectUserInput() async {
+    print('Please provide the following information:\n');
     
     final projectName = await UserInput.promptProjectName();
     final appName = await UserInput.promptAppName();
@@ -81,9 +86,12 @@ class ProjectCreator {
       final result = await Process.run('flutter', ['pub', 'get']);
       
       if (result.exitCode != 0) {
+        print('Warning: Failed to install dependencies');
         if (result.stderr.toString().isNotEmpty) {
+          print('Error: ${result.stderr}');
         }
       } else {
+        print('✅ Dependencies installed successfully');
       }
     } finally {
       // Restore original directory
@@ -92,5 +100,14 @@ class ProjectCreator {
   }
 
   void _printSuccessMessage(ProjectConfig config) {
+    print('\n🎉 Project "${config.appName}" created successfully!\n');
+    print('📁 Location: ${path.absolute(config.projectDirectoryName)}');
+    print('📱 App Name: ${config.appName}');
+    print('📦 Package: ${config.packageName}');
+    print('🎯 Platforms: ${config.platforms.map((p) => p.displayName).join(', ')}\n');
+    print('🚀 Next steps:');
+    print('   cd ${config.projectDirectoryName}');
+    print('   dcf run');
+    print('\n✨ Happy coding with DCFlight!');
   }
 }

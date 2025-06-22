@@ -95,6 +95,7 @@ class PackageRenamer {
       }
     } catch (e) {
       // Skip files that can't be read as text
+      print('Warning: Could not process file ${file.path}: $e');
     }
   }
 
@@ -103,7 +104,9 @@ class PackageRenamer {
     try {
       // For now, we'll use simple file replacement instead of package_rename
       // This can be enhanced later with proper package_rename integration
+      print('✅ Package configuration completed via template replacement');
     } catch (e) {
+      print('Warning: Could not configure package: $e');
       // Continue anyway as this is not critical for basic functionality
     }
   }

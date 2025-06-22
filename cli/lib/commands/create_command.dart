@@ -34,23 +34,33 @@ class CreateCommand extends Command<void> {
         await _createModule();
         break;
       default:
+        print('❌ Invalid subcommand. Use: dcf create app or dcf create module');
         printUsage();
         exit(1);
     }
   }
 
   Future<void> _createApp() async {
+    print('🚀 Creating new DCFlight app...\n');
     
     final creator = ProjectCreator();
     await creator.createApp();
   }
 
   Future<void> _createModule() async {
+    print('📦 Creating new DCFlight module...\n');
     
     await ModuleCreator.createModule();
   }
 
   @override
   void printUsage() {
+    print('Create new DCFlight projects or modules\n');
+    print('Usage:');
+    print('  dcf create app      Create a new DCFlight app');
+    print('  dcf create module   Create a new DCFlight module');
+    print('\nExamples:');
+    print('  dcf create app');
+    print('  dcf create module');
   }
 }

@@ -16,10 +16,12 @@ class UserInput {
       final input = stdin.readLineSync()?.trim() ?? '';
       
       if (input.isEmpty) {
+        print('❌ Project name cannot be empty');
         continue;
       }
       
       if (!_isValidProjectName(input)) {
+        print('❌ Invalid project name. Use lowercase letters, numbers, and underscores only');
         continue;
       }
       
@@ -39,10 +41,12 @@ class UserInput {
       final input = stdin.readLineSync()?.trim() ?? '';
       
       if (input.isEmpty) {
+        print('❌ Package name cannot be empty');
         continue;
       }
       
       if (!_isValidPackageName(input)) {
+        print('❌ Invalid package name. Use reverse domain notation (e.g., com.company.app)');
         continue;
       }
       
@@ -51,6 +55,13 @@ class UserInput {
   }
 
   static Future<List<Platform>> promptPlatforms() async {
+    print('? Select target platforms (enter numbers separated by commas):');
+    print('  1. Android');
+    print('  2. iOS');
+    print('  3. Web');
+    print('  4. macOS');
+    print('  5. Windows');
+    print('  6. Linux');
     
     stdout.write('Selected platforms (default: 1,2,3): ');
     final input = stdin.readLineSync()?.trim() ?? '';
@@ -107,10 +118,12 @@ class UserInput {
       final input = stdin.readLineSync()?.trim() ?? '';
       
       if (input.isEmpty) {
+        print('❌ Module name cannot be empty');
         continue;
       }
       
       if (!_isValidModuleName(input)) {
+        print('❌ Invalid module name. Use lowercase letters, numbers, and underscores only');
         continue;
       }
       
@@ -131,6 +144,7 @@ class UserInput {
       final input = stdin.readLineSync()?.trim() ?? '';
       
       if (input.isEmpty) {
+        print('❌ Package name cannot be empty');
         continue;
       }
       
