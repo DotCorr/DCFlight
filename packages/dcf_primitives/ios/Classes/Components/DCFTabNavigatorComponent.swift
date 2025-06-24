@@ -163,16 +163,16 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         
         // Background color
         if let backgroundColorString = props["backgroundColor"] as? String {
-            tabBar.backgroundColor = UIColor(hexString: backgroundColorString)
+            tabBar.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorString)
         }
         
         // Tint colors
         if let selectedTintColorString = props["selectedTintColor"] as? String {
-            tabBar.tintColor = UIColor(hexString: selectedTintColorString)
+            tabBar.tintColor = ColorUtilities.color(fromHexString: selectedTintColorString)
         }
         
         if let unselectedTintColorString = props["unselectedTintColor"] as? String {
-            tabBar.unselectedItemTintColor = UIColor(hexString: unselectedTintColorString)
+            tabBar.unselectedItemTintColor = ColorUtilities.color(fromHexString: unselectedTintColorString)
         }
         
         // Translucency
@@ -342,30 +342,4 @@ class TabBarControllerDelegate: NSObject, UITabBarControllerDelegate {
     }
 }
 
-// MARK: - Extensions
 
-extension UIColor {
-    convenience init?(hexString: String) {
-        let hex = hexString.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            return nil
-        }
-        
-        self.init(
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            alpha: Double(a) / 255
-        )
-    }
-}
