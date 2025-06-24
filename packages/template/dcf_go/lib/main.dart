@@ -1,6 +1,5 @@
 
 
-import 'package:dcf_go/app/app.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main (){
@@ -18,7 +17,6 @@ class ScreenAPITest extends StatefulComponent {
     return DCFView(
       layout: LayoutProps(flex: 1),
       children: [
-        
         // Define individual screens for tabs
         DCFScreen(
           name: "test_home",
@@ -67,6 +65,7 @@ class ScreenAPITest extends StatefulComponent {
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
           children: [
             DCFView(
+              styleSheet: StyleSheet(backgroundColor: Colors.amber),
               layout: LayoutProps(
                 flex: 1,
                 justifyContent: YogaJustifyContent.center,
