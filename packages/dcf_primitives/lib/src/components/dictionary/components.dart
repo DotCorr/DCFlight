@@ -38,10 +38,6 @@ export '../alert_component.dart';
 // 🚀 Export CRITICAL primitive components
 export '../webview_component.dart';
 
-// 🧭 Export NAVIGATION components - Screen-based navigation system
-export '../navigation/screen_component.dart';
-export '../navigation/tab_navigator_component.dart';
-
 // ✅ Export COMMAND CLASSES - Type-safe imperative control
 export '../../commands/scroll_view_commands.dart';
 export '../../commands/flat_list_commands.dart';

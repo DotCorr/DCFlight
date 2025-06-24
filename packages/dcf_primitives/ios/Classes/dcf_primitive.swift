@@ -54,10 +54,5 @@ import dcflight
         
         // 🚀 Register CRITICAL primitive components
         DCFComponentRegistry.shared.registerComponent("WebView", componentClass: DCFWebViewComponent.self)
-        // UrlWrapperView removed - use DCFGestureDetector + manual URL opening instead
-        
-        // 🧭 Register NAVIGATION components - Screen-based navigation system
-        DCFComponentRegistry.shared.registerComponent("Screen", componentClass: DCFScreenComponent.self)
-        DCFComponentRegistry.shared.registerComponent("TabNavigator", componentClass: DCFTabNavigatorComponent.self)
     }
 }

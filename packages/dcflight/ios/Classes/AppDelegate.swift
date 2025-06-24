@@ -26,7 +26,7 @@ import UIKit
         
         // Set up method channels directly through the registrar
         let messenger = registrar.messenger()
-        
+        SysComponentsReg.registerComponents()
         // Initialize method channels for bridge and events
         DCMauiBridgeMethodChannel.shared.initialize(with: messenger)
         DCMauiEventMethodHandler.shared.initialize(with: messenger)

@@ -72,6 +72,10 @@ export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 
+// Navigation and Screen Management
+export 'package:dcflight/framework/navigation/screen_component.dart';
+export 'package:dcflight/framework/navigation/tab_navigator_component.dart';
+
 import 'framework/renderer/vdom/vdom_api.dart';
 import 'framework/renderer/interface/interface.dart';
 import 'framework/utilities/screen_utilities.dart';

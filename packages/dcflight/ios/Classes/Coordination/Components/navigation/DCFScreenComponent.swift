@@ -6,8 +6,9 @@
  */
 
 import UIKit
-import dcflight
 
+let screenWidth = UIScreen.main.bounds.width
+let screenHeight = UIScreen.main.bounds.height
 /// Container for screen content and metadata
 class ScreenContainer {
     let name: String
@@ -24,6 +25,7 @@ class ScreenContainer {
         switch presentationStyle {
         case "tab":
             self.viewController = UIViewController()
+            
         case "push":
             self.viewController = UIViewController()
         case "modal":

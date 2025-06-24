@@ -6,7 +6,6 @@
  */
 
 import UIKit
-import dcflight
 
 /// Tab navigator component that creates and manages UITabBarController
 class DCFTabNavigatorComponent: NSObject, DCFComponent {
@@ -40,7 +39,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         configureTabBarController(tabBarController, props: props, navigatorId: navigatorId)
         
         // Install as root view controller or present
-        installTabBarController(tabBarController)
+         replaceRoot(controller: tabBarController)
         
         // Create placeholder view for DCFlight to track
         let placeholderView = UIView()
@@ -234,24 +233,6 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     
     private func updateTabBarStyle(_ tabBarController: UITabBarController, props: [String: Any]) {
         configureTabBarAppearance(tabBarController, props: props)
-    }
-    
-    // MARK: - Installation
-    
-    private func installTabBarController(_ tabBarController: UITabBarController) {
-        // Get the current root view controller
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first else {
-            print("❌ DCFTabNavigatorComponent: Could not find window to install tab bar controller")
-            return
-        }
-        
-        // Replace root view controller
-        DispatchQueue.main.async {
-            window.rootViewController = tabBarController
-            window.makeKeyAndVisible()
-            print("✅ DCFTabNavigatorComponent: Installed tab bar controller as root")
-        }
     }
     
     // MARK: - DCFComponent Protocol Methods
