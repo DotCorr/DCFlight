@@ -16,6 +16,9 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     // Track navigator state
     static var navigatorState: [String: TabNavigatorState] = [:]
     
+    // NEW: Registry to map navigatorId to placeholder view
+    static var placeholderRegistry: [String: UIView] = [:]
+    
     required override init() {
         super.init()
     }
@@ -60,6 +63,9 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             navigatorId,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
+        
+        // NEW: Store placeholder view in registry
+        DCFTabNavigatorComponent.placeholderRegistry[navigatorId] = placeholderView
         
         return placeholderView
     }
@@ -317,9 +323,8 @@ class TabBarControllerDelegate: NSObject, UITabBarControllerDelegate {
     }
     
     private func findPlaceholderView(for navigatorId: String) -> UIView? {
-        // This is a simplified approach - in a real implementation,
-        // we'd need to maintain a mapping of navigatorId to placeholder view
-        return nil
+        // FIX: Use the static registry to find the placeholder view
+        return DCFTabNavigatorComponent.placeholderRegistry[navigatorId]
     }
 }
 
