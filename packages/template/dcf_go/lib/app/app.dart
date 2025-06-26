@@ -16,27 +16,22 @@ class App extends StatefulComponent {
     // Removed DCFPortalProvider wrapper to test modal rendering
     return DCFScrollView(
       styleSheet: StyleSheet(backgroundColor: Colors.red),
-      layout: LayoutProps(flex: 1, marginBottom: 2),
+      layout: LayoutProps(flex: 1),
       children: [
-        DCFView(
-          layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
-          children: [
-            pagestateLocal.state == 0
-                ? Home()
-                : pagestateLocal.state == 1
-                ? GradientTest()
-                : pagestateLocal.state == 2
-                ? ReallyLongList()
-                : pagestateLocal.state == 3
-                ? ModalTest()
-                : pagestateLocal.state == 4
-                ? PortalTest()
-                : DCFView(),
-          ],
-        ),
+        pagestateLocal.state == 0
+            ? Home()
+            : pagestateLocal.state == 1
+            ? GradientTest()
+            : pagestateLocal.state == 2
+            ? ReallyLongList()
+            : pagestateLocal.state == 3
+            ? ModalTest()
+            : pagestateLocal.state == 4
+            ? PortalTest()
+            : DCFView(),
 
         DCFDropdown(
-          layout: LayoutProps(height: 40, marginBottom: 8),
+          layout: LayoutProps(height: 20),
           onValueChange: (v) {
             pagestateLocal.setState(int.parse(v['value']));
           },
