@@ -251,8 +251,6 @@ class DCFScreen extends StatelessComponent {
     
     // Enforce display property based on visibility
     props['display'] = visible ? 'flex' : 'none';
-
-    print(" map props scren : $props");
     
     return DCFElement(
       type: 'Screen',
