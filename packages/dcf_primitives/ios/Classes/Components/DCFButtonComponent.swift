@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 // 🚀 CLEAN BUTTON COMPONENT - Uses only propagateEvent()
-class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFButtonComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFButtonComponent()
     
     required override init() {
@@ -79,25 +79,5 @@ class DCFButtonComponent: NSObject, DCFComponent, ComponentMethodHandler {
         UIView.animate(withDuration: 0.15) {
             sender.alpha = 1.0
         }
-    }
-    
-    // Handle component methods
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let button = view as? UIButton else { return false }
-        
-        switch methodName {
-        case "setHighlighted":
-            if let highlighted = args["highlighted"] as? Bool {
-                button.isHighlighted = highlighted
-                return true
-            }
-        case "performClick":
-            handleButtonPress(button)
-            return true
-        default:
-            return false
-        }
-        
-        return false
     }
 }

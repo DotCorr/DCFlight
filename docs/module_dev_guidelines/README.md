@@ -1,86 +1,88 @@
 # DCFlight Module Development Guidelines
 
-## 📋 **Overview**
+**FACT**: DCFlight components use StatelessComponent and DCFElement patterns, NOT Flutter widgets. This guide shows the correct way to build DCFlight modules.
 
-This folder contains comprehensive guidelines for developing custom components and modules for the DCFlight framework. These guidelines ensure consistency, performance, and seamless integration with the DCFlight ecosystem.
+## Core Component Pattern
 
-## 📚 **Documentation**
+### Dart Component Structure
+```dart
+/*
+ * Copyright (c) Dotcorr Studio. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
 
-### **🚀 [Component Development Roadmap](./COMPONENT_DEVELOPMENT_ROADMAP.md)**
-Your complete journey from concept to production-ready component:
-- Quick start express setup (5 minutes)
-- Phase-by-phase development guide
-- Success milestones and checklists
-- Common pitfalls and solutions
-- Pro tips and best practices
-- Community resources and support
+import 'package:dcflight/dcflight.dart';
 
-### **🏗️ [Component Development Guidelines](./COMPONENT_DEVELOPMENT_GUIDELINES.md)**
-Complete guide for building DCFlight-compatible components and modules:
+/// A custom component following DCFlight patterns
+class DCFCustomComponent extends StatelessComponent {
+  /// Custom properties
+  final String customProperty;
+  final int? optionalProperty;
+  final bool adaptive;
+  
+  /// Layout and styling
+  final LayoutProps layout;
+  final StyleSheet styleSheet;
+  final List<DCFComponentNode> children;
+  final Map<String, dynamic>? events;
 
-#### **Protocol Implementation**
-- Required `DCFComponent` protocol implementation
-- Optional `ComponentMethodHandler` protocol
-- Component registration process with `DCFComponentRegistry`
-- Naming conventions and best practices
+  /// Constructor
+  DCFCustomComponent({
+    super.key,
+    required this.customProperty,
+    this.optionalProperty,
+    this.adaptive = true,
+    this.layout = const LayoutProps(),
+    this.styleSheet = const StyleSheet(),
+    this.children = const [],
+    this.events,
+  });
 
-#### **Event Handling**
-- Universal `propagateEvent()` system usage
-- Event normalization requirements ("on" prefix convention)
-- Event data structure standards
-- Performance optimization techniques
+  @override
+  DCFComponentNode render() {
+    // Build event map
+    Map<String, dynamic> eventMap = events ?? {};
+    
+    // Return DCFElement - NOT a widget!
+    return DCFElement(
+      type: 'CustomComponent', // Must match native registration
+      props: {
+        'customProperty': customProperty,
+        'optionalProperty': optionalProperty,
+        'adaptive': adaptive,
+        ...layout.toMap(),
+        ...styleSheet.toMap(),
+        ...eventMap,
+      },
+      children: children,
+    );
+  }
+}
+```
 
-#### **Adaptive Theming**
-- Mandatory `adaptive` flag implementation
-- System color usage for light/dark mode compatibility
-- StyleSheet integration patterns
-- Compliance requirements and testing
-
-#### **Props and Performance**
-- Component-specific props handling
-- StyleSheet application order
-- Memory management and cleanup
-- Error handling and validation
-
-### **🎭 [Presentable Components Guide](./PRESENTABLE_COMPONENTS_GUIDE.md)**
-Specialized guide for implementing components that present outside the normal view hierarchy:
-
-#### **Core Patterns**
-- Placeholder view pattern for anchoring
-- Visibility management with proper display handling
-- Child management between placeholder and presented states
-- Content layout with full abstraction layer control
-
-#### **Implementation Examples**
-- Modal components (sheets, full-screen)
-- Popover components (tooltips, dropdowns)
-- Alert components (system alerts, custom dialogs)
-- Bottom sheet components
-- Custom overlay components
-
-#### **DRY Compliance**
-- Consistent patterns across all presentable types
-- Proper event propagation (onShow, onDismiss)
-- Memory management and tracking
-- Platform-specific optimizations
-
-## 🎯 **Quick Start for Module Developers**
-
-### **1. Component Implementation Template**
-
+### Native iOS Implementation Protocol
 ```swift
+/*
+ * Copyright (c) Dotcorr Studio. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import UIKit
 import dcflight
 
-class YourCustomComponent: NSObject, DCFComponent {
+class DCFCustomComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
     
     func createView(props: [String: Any]) -> UIView {
-        let view = YourCustomView()
+        let view = UIView()
         
-        // ✅ REQUIRED: Implement adaptive theming
+        // Apply adaptive theming by default
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
@@ -92,147 +94,477 @@ class YourCustomComponent: NSObject, DCFComponent {
             view.backgroundColor = UIColor.clear
         }
         
+        // Apply StyleSheet properties
+        view.applyStyles(props: props)
+        
+        // Apply initial props
+        updateView(view, withProps: props)
+        
+        return view
+    }
+    
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        // Handle custom properties
+        if let customProperty = props["customProperty"] as? String {
+            // Handle the custom property
+            handleCustomProperty(view, customProperty)
+        }
+        
+        if let optionalProperty = props["optionalProperty"] as? Int {
+            // Handle optional property
+            handleOptionalProperty(view, optionalProperty)
+        }
+        
+        // Apply StyleSheet properties
+        view.applyStyles(props: props)
+        
+        return true
+    }
+    
+    private func handleCustomProperty(_ view: UIView, _ value: String) {
+        // Implement custom property handling
+        // Propagate events when needed
+        propagateEvent(on: view, eventName: "onCustomPropertyChange", data: [
+            "value": value,
+            "timestamp": Date().timeIntervalSince1970
+        ])
+    }
+    
+    private func handleOptionalProperty(_ view: UIView, _ value: Int) {
+        // Handle optional property
+    }
+}
+```
+
+## Event Handling
+
+### Using propagateEvent() for All Events
+```swift
+// Text change event
+func textFieldDidChange(_ textField: UITextField) {
+    propagateEvent(on: textField, eventName: "onChangeText", data: [
+        "text": textField.text ?? ""
+    ])
+}
+
+// Touch events
+func buttonPressed(_ button: UIButton) {
+    propagateEvent(on: button, eventName: "onPress", data: [
+        "buttonTitle": button.titleLabel?.text ?? ""
+    ])
+}
+
+// Complex gesture events
+func gestureRecognized(_ gesture: UIGestureRecognizer) {
+    let location = gesture.location(in: gesture.view)
+    propagateEvent(on: gesture.view!, eventName: "onGesture", data: [
+        "gestureType": getGestureType(gesture),
+        "location": ["x": location.x, "y": location.y],
+        "state": gesture.state.rawValue
+    ])
+}
+```
+
+### Dart Event Handling
+```dart
+DCFCustomComponent(
+  customProperty: "value",
+  events: {
+    'onCustomPropertyChange': (data) {
+      print('Property changed: ${data['value']}');
+    },
+    'onPress': (data) {
+      print('Button pressed: ${data['buttonTitle']}');
+    },
+    'onGesture': (data) {
+      final location = data['location'];
+      print('Gesture at: ${location['x']}, ${location['y']}');
+    },
+  },
+)
+```
+
+## Adaptive Theming Protocol
+
+### Required adaptive Property
+Every component MUST have an `adaptive` property:
+
+```dart
+class DCFCustomComponent extends StatelessComponent {
+  final bool adaptive;
+  
+  DCFCustomComponent({
+    this.adaptive = true, // Default to adaptive
+    // ... other properties
+  });
+
+  @override
+  DCFComponentNode render() {
+    return DCFElement(
+      type: 'CustomComponent',
+      props: {
+        'adaptive': adaptive, // REQUIRED
+        // ... other props
+      },
+      children: children,
+    );
+  }
+}
+```
+
+### Native Adaptive Implementation
+```swift
+func createView(props: [String: Any]) -> UIView {
+    let view = UIView()
+    
+    // REQUIRED: Handle adaptive theming
+    let isAdaptive = props["adaptive"] as? Bool ?? true
+    if isAdaptive {
+        // Use system colors for automatic light/dark mode
+        if #available(iOS 13.0, *) {
+            view.backgroundColor = UIColor.systemBackground
+            // Apply other system colors as needed
+        } else {
+            // Fallback for older iOS
+            view.backgroundColor = UIColor.white
+        }
+    } else {
+        // Non-adaptive uses explicit colors
+        view.backgroundColor = UIColor.clear
+    }
+    
+    // Apply StyleSheet after adaptive theming
+    view.applyStyles(props: props)
+    
+    return view
+}
+```
+
+## Presentable Components (Modals, Sheets, Popups)
+
+### Pattern for Presentable Components
+Presentable components hide their children in the main UI and present them elsewhere:
+
+```dart
+class DCFCustomModal extends StatelessComponent {
+  final bool visible;
+  final List<DCFComponentNode> children;
+  // ... other props
+  
+  @override
+  DCFComponentNode render() {
+    Map<String, dynamic> props = {
+      'visible': visible,
+      // ... other props
+    };
+    
+    // CRITICAL: Control display based on visibility
+    props['display'] = visible ? 'flex' : 'none';
+    
+    return DCFElement(
+      type: 'CustomModal',
+      props: props,
+      children: children, // Children are hidden in main UI, shown in modal
+    );
+  }
+}
+```
+
+### Native Presentable Implementation
+```swift
+class DCFCustomModalComponent: NSObject, DCFComponent {
+    static var presentedModals: [String: UIViewController] = [:]
+    
+    func createView(props: [String: Any]) -> UIView {
+        // Create placeholder view (hidden)
+        let view = UIView()
+        view.isHidden = true
+        view.backgroundColor = UIColor.clear
+        view.isUserInteractionEnabled = false
+        
         updateView(view, withProps: props)
         return view
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // Handle component-specific props
+        let viewId = String(view.hash)
         
-        // ✅ REQUIRED: Apply StyleSheet properties last
-        view.applyStyles(props: props)
+        // Check visibility
+        let isVisible = props["visible"] as? Bool ?? false
+        
+        if isVisible {
+            presentModal(from: view, props: props, viewId: viewId)
+        } else {
+            dismissModal(viewId: viewId)
+        }
+        
         return true
+    }
+    
+    // REQUIRED: Handle children for presentable components
+    func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
+        // Hide children in placeholder view
+        view.subviews.forEach { $0.removeFromSuperview() }
+        childViews.forEach { childView in
+            view.addSubview(childView)
+            childView.isHidden = true // Hidden in main UI
+            childView.alpha = 0.0
+        }
+        
+        // Move children to presented modal if active
+        if let modalVC = DCFCustomModalComponent.presentedModals[viewId] {
+            moveChildrenToModal(modalVC: modalVC, childViews: childViews)
+        }
+        
+        return true
+    }
+    
+    private func presentModal(from view: UIView, props: [String: Any], viewId: String) {
+        guard DCFCustomModalComponent.presentedModals[viewId] == nil else { return }
+        
+        let modalVC = UIViewController()
+        
+        // Move children to modal and make them visible
+        let existingChildren = view.subviews
+        moveChildrenToModal(modalVC: modalVC, childViews: existingChildren)
+        
+        // Store reference
+        DCFCustomModalComponent.presentedModals[viewId] = modalVC
+        
+        // Present modal
+        if let topVC = getTopViewController() {
+            topVC.present(modalVC, animated: true) {
+                propagateEvent(on: view, eventName: "onShow", data: [:])
+            }
+        }
+    }
+    
+    private func dismissModal(viewId: String) {
+        guard let modalVC = DCFCustomModalComponent.presentedModals[viewId] else { return }
+        
+        modalVC.dismiss(animated: true) {
+            // Clean up
+            DCFCustomModalComponent.presentedModals.removeValue(forKey: viewId)
+        }
+    }
+    
+    private func moveChildrenToModal(modalVC: UIViewController, childViews: [UIView]) {
+        childViews.forEach { child in
+            child.removeFromSuperview()
+            modalVC.view.addSubview(child)
+            child.isHidden = false // Visible in modal
+            child.alpha = 1.0
+            
+            // Position child in modal
+            child.frame = modalVC.view.bounds
+        }
+    }
+    
+    private func getTopViewController() -> UIViewController? {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else { return nil }
+        
+        var topController = window.rootViewController
+        while let presentedController = topController?.presentedViewController {
+            topController = presentedController
+        }
+        return topController
     }
 }
 ```
 
-### **2. Event Handling Template**
+## Component Registration
 
+### Dart Export
+```dart
+// In your module's main library file
+library dcf_custom_module;
+
+export 'src/components/dcf_custom_component.dart';
+
+// Module initialization
+class DCFCustomModule {
+  static void initialize() {
+    // Register components with framework
+    DCFComponentRegistry.register('CustomComponent');
+    DCFComponentRegistry.register('CustomModal');
+  }
+}
+```
+
+### iOS Registration
 ```swift
-@objc func handleCustomAction(_ sender: UIView) {
-    // ✅ REQUIRED: Use propagateEvent() with "on" prefix
-    propagateEvent(on: sender, eventName: "onCustomAction", data: [
-        "timestamp": Date().timeIntervalSince1970,
-        "customData": "your_data_here"
+// In your iOS plugin
+@objc(DCFCustomPlugin)
+class DCFCustomPlugin: NSObject, FlutterPlugin {
+    public static func register(with registrar: FlutterPluginRegistrar) {
+        // Register native components
+        DCFComponentRegistry.shared.registerComponent(
+            "CustomComponent", 
+            componentClass: DCFCustomComponent.self
+        )
+        DCFComponentRegistry.shared.registerComponent(
+            "CustomModal", 
+            componentClass: DCFCustomModalComponent.self
+        )
+    }
+}
+```
+
+## Component Method Calls (Commands)
+
+### Command Pattern Implementation
+Instead of calling methods directly, use the command pattern:
+
+#### Dart Command Definition
+```dart
+abstract class CustomCommand {
+  Map<String, dynamic> toMap();
+}
+
+class ExecuteActionCommand implements CustomCommand {
+  final String actionType;
+  final Map<String, dynamic> parameters;
+  
+  const ExecuteActionCommand({
+    required this.actionType,
+    this.parameters = const {},
+  });
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      'type': 'executeAction',
+      'actionType': actionType,
+      'parameters': parameters,
+    };
+  }
+}
+```
+
+#### Component with Commands
+```dart
+class DCFCustomComponent extends StatelessComponent {
+  final CustomCommand? command;
+  // ... other properties
+  
+  @override
+  DCFComponentNode render() {
+    return DCFElement(
+      type: 'CustomComponent',
+      props: {
+        'command': command?.toMap(),
+        // ... other props
+      },
+      children: children,
+    );
+  }
+}
+```
+
+#### Native Command Handling
+```swift
+func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+    // Handle commands FIRST
+    if let commandDict = props["command"] as? [String: Any] {
+        handleCommand(view, commandDict)
+    }
+    
+    // ... handle other props
+    
+    return true
+}
+
+private func handleCommand(_ view: UIView, _ command: [String: Any]) {
+    guard let type = command["type"] as? String else { return }
+    
+    switch type {
+    case "executeAction":
+        handleExecuteActionCommand(view, command)
+    default:
+        break
+    }
+}
+
+private func handleExecuteActionCommand(_ view: UIView, _ command: [String: Any]) {
+    guard let actionType = command["actionType"] as? String else { return }
+    let parameters = command["parameters"] as? [String: Any] ?? [:]
+    
+    switch actionType {
+    case "animate":
+        // Execute animation
+        UIView.animate(withDuration: 0.3) {
+            // Animation code
+        }
+    case "reset":
+        // Reset view state
+        view.transform = CGAffineTransform.identity
+    default:
+        break
+    }
+    
+    // Propagate command completion event
+    propagateEvent(on: view, eventName: "onCommandComplete", data: [
+        "command": type,
+        "actionType": actionType
     ])
 }
 ```
 
-### **3. Module Registration Template**
-
-```swift
-@objc public class YourModule: NSObject {
-    @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
-        registerComponents()
-    }
+#### Usage Example
+```dart
+// In your app
+class MyApp extends StatelessComponent {
+  String _text = "";
+  CustomCommand? _command;
+  
+  void _executeAction() {
+    setState(() {
+      _command = ExecuteActionCommand(
+        actionType: 'animate',
+        parameters: {'duration': 0.5}
+      );
+    });
     
-    @objc public static func registerComponents() {
-        DCFComponentRegistry.shared.registerComponent("YourComponent", componentClass: YourCustomComponent.self)
-        NSLog("✅ YourModule: Components registered successfully")
-    }
+    // Reset command after frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() => _command = null);
+    });
+  }
+  
+  @override
+  DCFComponentNode render() {
+    return DCFCustomComponent(
+      customProperty: _text,
+      command: _command,
+      events: {
+        'onCommandComplete': (data) {
+          print('Command completed: ${data['command']}');
+        },
+      },
+    );
+  }
 }
 ```
 
-## ✅ **Compliance Checklist**
+## Best Practices
 
-Before submitting your module, ensure:
+### DO ✅
+- Use `StatelessComponent` and `DCFElement` patterns
+- Always include `adaptive` property with default `true`
+- Use `propagateEvent()` for all native-to-Dart communication
+- Follow the command pattern for imperative actions
+- Hide children in presentable components' placeholder views
+- Apply `view.applyStyles(props: props)` in native components
 
-### **Component Protocol Compliance**
-- [ ] Implements `DCFComponent` protocol correctly
-- [ ] Uses proper component registration
-- [ ] Follows naming conventions
+### DON'T ❌
+- Use Flutter widgets or StatefulWidget
+- Call native methods directly - use commands instead
+- Ignore the `adaptive` property
+- Skip event propagation for user interactions
+- Show children in main UI for presentable components
+- Forget to register components properly
 
-### **Event System Compliance**
-- [ ] Uses `propagateEvent()` for all events
-- [ ] All event names start with "on" prefix
-- [ ] Includes proper event data structure
+---
 
-### **Adaptive Theming Compliance**
-- [ ] Implements `adaptive` flag support
-- [ ] Uses system colors for adaptive components
-- [ ] Provides iOS < 13.0 fallbacks
-
-### **Integration Compliance**
-- [ ] Calls `view.applyStyles(props: props)` for StyleSheet integration
-- [ ] Handles component-specific props before StyleSheet application
-- [ ] Includes proper error handling and validation
-
-## 🚀 **Development Workflow**
-
-### **1. Setup**
-1. Create your component class implementing `DCFComponent`
-2. Set up module registration file
-3. Configure build system integration
-
-### **2. Implementation**
-1. Implement `createView()` with adaptive theming
-2. Implement `updateView()` with props handling
-3. Add event handlers using `propagateEvent()`
-4. Test component functionality
-
-### **3. Testing**
-1. Test adaptive theming in light/dark modes
-2. Verify event handling works correctly
-3. Test props integration and StyleSheet application
-4. Validate component registration
-
-### **4. Documentation**
-1. Document component props and events
-2. Provide usage examples
-3. Include testing instructions
-4. Create migration guide if applicable
-
-## 🛡️ **Non-Compliance Consequences**
-
-Failure to follow these guidelines results in:
-- ❌ Module merge request rejection
-- ❌ Framework inconsistencies
-- ❌ Poor user experience
-- ❌ Performance issues
-- ❌ Ecosystem fragmentation
-
-## 🎯 **Success Benefits**
-
-Following these guidelines ensures:
-- ✅ Seamless framework integration
-- ✅ Consistent theming and events
-- ✅ High performance components
-- ✅ Easy maintenance and updates
-- ✅ Community adoption and support
-
-## 🔗 **Related Documentation**
-
-### **Architecture**
-- [`/docs/architecture/`](../architecture/) - Core framework architecture
-- Event lifecycle and normalization systems
-- Adaptive theming system requirements
-
-### **Component Guidelines**
-- [`/docs/components/`](../components/) - Component-specific guidelines
-- Props handling patterns and performance tips
-- StyleSheet integration best practices
-
-### **Styling System**
-- [`/docs/styling/`](../styling/) - Complete styling documentation
-- Color system and theming guidelines
-- Adaptive design principles
-
-### **Testing**
-- [`/docs/testing/`](../testing/) - Testing guidelines and tools
-- Component testing patterns
-- Performance testing requirements
-
-## 📞 **Support**
-
-### **Development Questions**
-1. Check the component development guidelines
-2. Review architecture documentation
-3. Examine existing component examples
-4. Consult styling system documentation
-
-### **Implementation Examples**
-- See `/packages/dcf_primitives/ios/Classes/Components/` for reference implementations
-- Review primitive components for best practices
-- Check event handling patterns in existing components
-
-This module development documentation ensures that all DCFlight modules maintain the framework's high standards of quality, consistency, and performance.
+**All patterns shown are from actual DCFlight v0.0.2 implementation following the established framework architecture.**

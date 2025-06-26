@@ -87,7 +87,6 @@ class DCFViewManager {
     
     /// Create a view with automatic layout handling
     func createView(viewId: String, viewType: String, props: [String: Any]) -> Bool {
-        print("🔍 DCFViewManager.createView called - viewId: \(viewId), viewType: \(viewType)")
         
         // Get component type
         guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
@@ -140,7 +139,6 @@ class DCFViewManager {
     /// Update a view with automatic layout handling
     func updateView(viewId: String, props: [String: Any]) -> Bool {
         guard let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
-            print("❌ View not found: \(viewId)")
             return false
         }
         
@@ -163,7 +161,6 @@ class DCFViewManager {
         // Update non-layout props
         if !nonLayoutProps.isEmpty {
             guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
-                print("❌ Component type not found for: \(viewType)")
                 return false
             }
             
@@ -171,12 +168,10 @@ class DCFViewManager {
             let success = componentInstance.updateView(view, withProps: nonLayoutProps)
             
             if !success {
-                print("❌ Failed to update view \(viewId)")
                 return false
             }
         }
         
-        print("✅ Updated view \(viewId)")
         return true
     }
     
@@ -186,7 +181,6 @@ class DCFViewManager {
         ViewRegistry.shared.removeView(id: viewId)
         DCFLayoutManager.shared.removeNode(nodeId: viewId)
         
-        print("✅ Deleted view \(viewId)")
         return true
     }
     
@@ -194,7 +188,6 @@ class DCFViewManager {
     func attachView(childId: String, parentId: String, index: Int) -> Bool {
         guard let childView = ViewRegistry.shared.getView(id: childId),
               let parentView = ViewRegistry.shared.getView(id: parentId) else {
-            print("❌ Views not found for attachment: child=\(childId), parent=\(parentId)")
             return false
         }
         
@@ -208,7 +201,6 @@ class DCFViewManager {
         // Update layout tree
         DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
         
-        print("✅ Attached view \(childId) to \(parentId) at index \(index)")
         return true
     }
     

@@ -22,7 +22,6 @@ public class DCFComponentRegistry {
     /// Register a component type handler
     public func registerComponent(_ type: String, componentClass: DCFComponent.Type) {
         componentTypes[type] = componentClass
-        print("Registered component type: \(type)")
     }
     
     /// Get the component handler for a specific type

@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 /// Component that handles touchable opacity functionality
-class DCFTouchableOpacityComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFTouchableOpacityComponent: NSObject, DCFComponent {
     // Keep singleton instance to prevent deallocation when touch targets are registered
     private static let sharedInstance = DCFTouchableOpacityComponent()
     
@@ -48,11 +48,7 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent, ComponentMethodHandl
         touchableView.applyStyles(props: props)
         
         // Enable debug mode in development
-        #if DEBUG
-        touchableView._debugMode = true
-        #endif
         
-        print("🆕 Created touchable view with props: \(props)")
         return touchableView
     }
     
@@ -137,36 +133,6 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent, ComponentMethodHandl
             "timestamp": Date().timeIntervalSince1970
         ])
     }
-    
-    // MARK: - Method Handling
-    
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        switch methodName {
-        case "setOpacity":
-            if let opacity = args["opacity"] as? CGFloat {
-                view.alpha = opacity
-                return true
-            }
-        case "setHighlighted":
-            if let highlighted = args["highlighted"] as? Bool,
-               let touchableView = view as? TouchableView {
-                if highlighted {
-                    touchableView.alpha = touchableView.activeOpacity
-                } else {
-                    touchableView.alpha = 1.0
-                }
-                return true
-            }
-        default:
-            break
-        }
-        
-        return false
-    }
-    
-    // MARK: - Event Handling
-    // Note: TouchableOpacity uses global propagateEvent() system
-    // No custom event methods needed - all handled by DCFComponentProtocol
 }
 
 /// Custom view class for touchable opacity

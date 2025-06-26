@@ -29,7 +29,6 @@ public class DCMauiLayoutMethodHandler: NSObject {
         // Set up method handler
         methodChannel?.setMethodCallHandler(handleMethodCall)
         
-        print("📐 Layout method channel initialized")
     }
     
     /// Handle method calls from Flutter

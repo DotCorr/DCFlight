@@ -6,7 +6,6 @@
  */
 
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/vdom_api.dart';
 
@@ -49,9 +48,6 @@ class EnhancedPortalManager {
     Map<String, dynamic>? metadata,
     int priority = 0,
   }) {
-    if (kDebugMode) {
-      print('🎯 EnhancedPortalManager: Registering target: $targetId (viewId: $nativeViewId)');
-    }
     
     _portalTargets[targetId] = PortalTarget(
       targetId: targetId,
@@ -67,9 +63,6 @@ class EnhancedPortalManager {
   /// Unregister a portal target
   Future<void> unregisterTarget(String targetId) async {
     await _executeWithLock(() async {
-      if (kDebugMode) {
-        print('🗑️ EnhancedPortalManager: Unregistering target: $targetId');
-      }
       
       // Clean up all portals for this target
       final portalsToCleanup = _activePortals.values
@@ -125,15 +118,9 @@ class EnhancedPortalManager {
     await _executeWithLock(() async {
       final portal = _activePortals[portalId];
       if (portal == null) {
-        if (kDebugMode) {
-          print('⚠️ EnhancedPortalManager: Portal not found for update: $portalId');
-        }
         return;
       }
       
-      if (kDebugMode) {
-        print('🔄 EnhancedPortalManager: Updating portal: $portalId');
-      }
       
       // Clean up existing content
       await _cleanupPortalContent(portal);
@@ -158,9 +145,6 @@ class EnhancedPortalManager {
       final portal = _activePortals[portalId];
       if (portal == null) return;
       
-      if (kDebugMode) {
-        print('🗑️ EnhancedPortalManager: Removing portal: $portalId');
-      }
       
       await _cleanupPortalInstance(portal);
     });
@@ -237,9 +221,6 @@ class EnhancedPortalManager {
 
   /// Register a portal instance
   Future<void> _registerPortalInstance(PortalInstance portal) async {
-    if (kDebugMode) {
-      print('🚀 EnhancedPortalManager: Registering portal ${portal.portalId} for target: ${portal.targetId}');
-    }
     
     // CRITICAL FIX: Before registering a new portal, check if there are any orphaned
     // portals for the same target that should be cleaned up. This handles the case
@@ -267,16 +248,10 @@ class EnhancedPortalManager {
   Future<void> _renderPortalContent(PortalInstance portal) async {
     final target = _portalTargets[portal.targetId];
     if (target == null) {
-      if (kDebugMode) {
-        print('⚠️ EnhancedPortalManager: Target not found for portal: ${portal.portalId}');
-      }
       return;
     }
     
     try {
-      if (kDebugMode) {
-        print('🎯 EnhancedPortalManager: Rendering ${portal.children.length} children to target: ${portal.targetId}');
-      }
       
       // Render each child as a separate tree
       final renderedViewIds = <String>[];
@@ -293,14 +268,8 @@ class EnhancedPortalManager {
           
           if (childViewId != null && childViewId.isNotEmpty) {
             renderedViewIds.add(childViewId);
-            if (kDebugMode) {
-              print('✅ EnhancedPortalManager: Rendered portal child $i with viewId: $childViewId');
-            }
           }
         } catch (e) {
-          if (kDebugMode) {
-            print('❌ EnhancedPortalManager: Error rendering portal child $i: $e');
-          }
         }
       }
       
@@ -312,9 +281,6 @@ class EnhancedPortalManager {
         await _updateTargetWithPortalContent(target);
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ EnhancedPortalManager: Error rendering portal content: $e');
-      }
     }
   }
 
@@ -341,18 +307,10 @@ class EnhancedPortalManager {
       // Combine existing + portal content
       final newChildren = [...existingChildren, ...allPortalViewIds];
       
-      if (kDebugMode) {
-        print('🔄 EnhancedPortalManager: Updating target ${target.targetId} with ${newChildren.length} children');
-        print('  - Existing: ${existingChildren.length}');
-        print('  - Portal: ${allPortalViewIds.length}');
-      }
       
       // Update target container
       await _vdomApi.updateTargetChildren(target.nativeViewId, newChildren);
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ EnhancedPortalManager: Error updating target with portal content: $e');
-      }
     }
   }
 
@@ -365,9 +323,6 @@ class EnhancedPortalManager {
   /// Create a missing target
   Future<void> _createMissingTarget(String targetId) async {
     try {
-      if (kDebugMode) {
-        print('🆕 EnhancedPortalManager: Creating missing target: $targetId');
-      }
       
       final nativeViewId = await _vdomApi.createPortal(
         targetId,
@@ -385,9 +340,6 @@ class EnhancedPortalManager {
         metadata: {'autoCreated': true},
       );
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ EnhancedPortalManager: Error creating missing target: $e');
-      }
     }
   }
 
@@ -398,9 +350,6 @@ class EnhancedPortalManager {
     }
     _queuedPortals[portal.targetId]!.add(portal);
     
-    if (kDebugMode) {
-      print('⏳ EnhancedPortalManager: Queued portal ${portal.portalId} for target: ${portal.targetId}');
-    }
   }
 
   /// Process queued portals for a target
@@ -408,9 +357,6 @@ class EnhancedPortalManager {
     final queuedPortals = _queuedPortals[targetId];
     if (queuedPortals == null || queuedPortals.isEmpty) return;
     
-    if (kDebugMode) {
-      print('🔄 EnhancedPortalManager: Processing ${queuedPortals.length} queued portals for target: $targetId');
-    }
     
     for (final portal in queuedPortals) {
       await _renderPortalContent(portal);
@@ -432,9 +378,6 @@ class EnhancedPortalManager {
     if (portal.renderedViewIds.isEmpty) return;
     
     try {
-      if (kDebugMode) {
-        print('🧹 EnhancedPortalManager: Cleaning up ${portal.renderedViewIds.length} view IDs for portal: ${portal.portalId}');
-      }
       
       // Store view IDs to delete
       final viewIdsToDelete = List<String>.from(portal.renderedViewIds);
@@ -450,37 +393,22 @@ class EnhancedPortalManager {
         // Explicitly delete the orphaned views
         try {
           await _vdomApi.deleteViews(viewIdsToDelete);
-          if (kDebugMode) {
-            print('✅ EnhancedPortalManager: Deleted ${viewIdsToDelete.length} orphaned views');
-          }
         } catch (e) {
-          if (kDebugMode) {
-            print('⚠️ EnhancedPortalManager: Error deleting views (may be normal): $e');
-          }
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ EnhancedPortalManager: Error cleaning up portal content: $e');
-      }
     }
   }
 
   /// Clean up orphaned portals for a specific target
   /// This prevents portal accumulation when components are conditionally rendered
   Future<void> _cleanupOrphanedPortalsForTarget(String targetId) async {
-    if (kDebugMode) {
-      print('🧹 EnhancedPortalManager: Checking for orphaned portals on target: $targetId');
-    }
     
     final portalsForTarget = _activePortals.values
         .where((portal) => portal.targetId == targetId)
         .toList();
     
     if (portalsForTarget.length > 2) { // Allow some reasonable number
-      if (kDebugMode) {
-        print('⚠️ EnhancedPortalManager: Found ${portalsForTarget.length} portals for target $targetId, cleaning up oldest ones');
-      }
       
       // Sort by creation time (older portal IDs have smaller timestamps)
       portalsForTarget.sort((a, b) => a.portalId.compareTo(b.portalId));
@@ -489,9 +417,6 @@ class EnhancedPortalManager {
       final portalsToCleanup = portalsForTarget.take(portalsForTarget.length - 2).toList();
       
       for (final portal in portalsToCleanup) {
-        if (kDebugMode) {
-          print('🗑️ EnhancedPortalManager: Cleaning up orphaned portal: ${portal.portalId}');
-        }
         await _cleanupPortalInstance(portal);
       }
     }

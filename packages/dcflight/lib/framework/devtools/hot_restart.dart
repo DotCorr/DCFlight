@@ -27,16 +27,13 @@ class HotRestartDetector {
       
       if (sessionToken != null) {
         // Hot restart detected - native memory persisted while Dart was wiped
-        debugPrint('🔥 Hot Restart detected! Session token found: $sessionToken');
         
         // Trigger native cleanup
         await _cleanupNativeViews();
         
-        debugPrint('🧹 Native views cleaned up successfully');
         return true;
       } else {
         // Fresh cold start - no session token found
-        debugPrint('❄️ Cold start detected - no session token found');
         
         // Create new session token for future hot restart detection
         await _createSessionToken();
@@ -44,7 +41,6 @@ class HotRestartDetector {
       }
     } catch (e) {
       // Platform channel not available or other error
-      debugPrint('⚠️ Hot restart detection failed: $e');
       return false;
     }
   }
@@ -53,9 +49,7 @@ class HotRestartDetector {
   static Future<void> _createSessionToken() async {
     try {
       await _channel.invokeMethod('createSessionToken');
-      debugPrint('🎫 Session token created for hot restart detection');
     } catch (e) {
-      debugPrint('⚠️ Failed to create session token: $e');
     }
   }
   
@@ -63,9 +57,7 @@ class HotRestartDetector {
   static Future<void> _cleanupNativeViews() async {
     try {
       await _channel.invokeMethod('cleanupViews');
-      debugPrint('🧹 Native cleanup command sent');
     } catch (e) {
-      debugPrint('⚠️ Native cleanup failed: $e');
     }
   }
   
@@ -75,9 +67,7 @@ class HotRestartDetector {
     
     try {
       await _channel.invokeMethod('clearSessionToken');
-      debugPrint('🗑️ Session token cleared');
     } catch (e) {
-      debugPrint('⚠️ Failed to clear session token: $e');
     }
   }
 }

@@ -62,6 +62,9 @@ class DCFFlatList<T> extends StatelessComponent {
   final Function(Map<dynamic, dynamic>)? onMomentumScrollEnd;
   final Function(Map<dynamic, dynamic>)? onContentSizeChange;
 
+  // ✅ IMPERATIVE COMMANDS - Type-safe command prop for imperative control
+  final FlatListCommand? command;
+
   DCFFlatList({
     super.key,
     required this.data,
@@ -106,6 +109,7 @@ class DCFFlatList<T> extends StatelessComponent {
     this.onMomentumScrollBegin,
     this.onMomentumScrollEnd,
     this.onContentSizeChange,
+    this.command,
   });
 
   @override
@@ -141,6 +145,9 @@ class DCFFlatList<T> extends StatelessComponent {
         if (onMomentumScrollBegin != null) 'onMomentumScrollBegin': onMomentumScrollBegin,
         if (onMomentumScrollEnd != null) 'onMomentumScrollEnd': onMomentumScrollEnd,
         if (onContentSizeChange != null) 'onContentSizeChange': onContentSizeChange,
+        
+        // ✅ IMPERATIVE COMMANDS - Type-safe command prop serialization
+        if (command != null) 'command': command!.toMap(),
         
         // 🚫 DART ONLY PROPS - These are used for virtualization logic in Dart
         // They don't get sent to native side:

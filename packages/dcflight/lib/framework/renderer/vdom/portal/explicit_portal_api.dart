@@ -6,7 +6,6 @@
  */
 
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';
@@ -44,9 +43,6 @@ class ExplicitPortalAPI {
     Function(String portalId)? onMount,
     Function(String portalId)? onUnmount,
   }) async {
-    if (kDebugMode) {
-      print('🎯 ExplicitPortalAPI: Adding content to target: $targetId');
-    }
     
     return await _portalManager.createPortal(
       targetId: targetId,
@@ -66,9 +62,6 @@ class ExplicitPortalAPI {
     Map<String, dynamic>? metadata,
     int? priority,
   }) async {
-    if (kDebugMode) {
-      print('🔄 ExplicitPortalAPI: Updating portal: $portalId');
-    }
     
     return await _portalManager.updatePortal(
       portalId: portalId,
@@ -80,18 +73,12 @@ class ExplicitPortalAPI {
   
   /// Remove portal content
   static Future<void> remove(String portalId) async {
-    if (kDebugMode) {
-      print('🗑️ ExplicitPortalAPI: Removing portal: $portalId');
-    }
     
     return await _portalManager.removePortal(portalId);
   }
   
   /// Remove all portals from a target
   static Future<void> clearTarget(String targetId) async {
-    if (kDebugMode) {
-      print('🧹 ExplicitPortalAPI: Clearing all portals from target: $targetId');
-    }
     
     final portalIds = _portalManager.getPortalIdsForTarget(targetId);
     for (final portalId in portalIds) {

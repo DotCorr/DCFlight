@@ -27,7 +27,6 @@ class DCMauiBridgeMethodChannel: NSObject {
     var views = [String: UIView]()
     
     func initialize() {
-        print("🚀 Bridge channel initializing")
     }
     
     /// Initialize with Flutter binary messenger
@@ -48,14 +47,10 @@ class DCMauiBridgeMethodChannel: NSObject {
         methodChannel?.setMethodCallHandler(handleMethodCall)
         hotRestartChannel?.setMethodCallHandler(handleHotRestartMethodCall)
         
-        print("🌉 Bridge method channel initialized")
-        print("🔥 Hot restart detection channel initialized")
     }
     
     /// Handle method calls from Flutter
     func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        print("🔔 NATIVE: Bridge received method call: \(call.method)")
-        print("🔍 NATIVE: Method arguments: \(call.arguments ?? "nil")")
         
         // Get the arguments
         let args = call.arguments as? [String: Any]
@@ -63,20 +58,16 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Handle methods
         switch call.method {
         case "initialize":
-            print("🚀 NATIVE: Handling initialize method")
             handleInitialize(result: result)
             
         case "createView":
-            print("🎯 NATIVE: Handling createView method")
             if let args = args {
                 handleCreateView(args, result: result)
             } else {
-                print("❌ NATIVE: createView called with null arguments")
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
             
         case "updateView":
-            print("🔄 NATIVE: Handling updateView method")
             if let args = args {
                 handleUpdateView(args, result: result)
             } else {
@@ -118,14 +109,8 @@ class DCMauiBridgeMethodChannel: NSObject {
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
             
-        // --- START NEW METHOD FOR COMPONENT LEVEL METHODS ---    
-        case "callComponentMethod":
-            if let args = args {
-                handleCallComponentMethod(args, result: result)
-            } else {
-                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
-            }
-        // --- END NEW METHOD ---
+        // REMOVED: callComponentMethod - replaced with prop-based commands
+        // Components now handle imperative operations through command props
             
         default:
             result(FlutterMethodNotImplemented)
@@ -134,46 +119,37 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     // Initialize the bridge
     private func handleInitialize(result: @escaping FlutterResult) {
-        print("🚀 Bridge initialize method called")
         
         // Execute on main thread
         DispatchQueue.main.async {
             // Initialize components and systems
             let success = DCMauiBridgeImpl.shared.initialize()
-            print("🚀 Bridge initialization result: \(success)")
             result(success)
         }
     }
     
     // Create a view
     private func handleCreateView(_ args: [String: Any], result: @escaping FlutterResult) {
-        print("🔥 NATIVE: handleCreateView called with args: \(args)")
         
         guard let viewId = args["viewId"] as? String,
               let viewType = args["viewType"] as? String,
               let props = args["props"] as? [String: Any] else {
-            print("❌ NATIVE: handleCreateView - Invalid parameters: \(args)")
             result(FlutterError(code: "CREATE_ERROR", message: "Invalid view creation parameters", details: nil))
             return
         }
         
-        print("✅ NATIVE: handleCreateView - Parsed parameters: viewId=\(viewId), viewType=\(viewType), props=\(props)")
         
         // Convert props to JSON
         guard let propsData = try? JSONSerialization.data(withJSONObject: props),
               let propsJson = String(data: propsData, encoding: .utf8) else {
-            print("❌ NATIVE: handleCreateView - Failed to serialize props to JSON")
             result(FlutterError(code: "JSON_ERROR", message: "Failed to serialize props", details: nil))
             return
         }
         
-        print("✅ NATIVE: handleCreateView - Props serialized to JSON successfully")
         
         // Execute on main thread
         DispatchQueue.main.async {
-            print("🚀 NATIVE: handleCreateView - Calling DCMauiBridgeImpl.shared.createView...")
             let success = DCMauiBridgeImpl.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
-            print("📊 NATIVE: handleCreateView - DCMauiBridgeImpl.createView result: \(success)")
             result(success)
         }
     }
@@ -224,7 +200,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Execute on main thread
         DispatchQueue.main.async {
             let success = DCMauiBridgeImpl.shared.detachView(childId: viewId)
-            print("🔄 Detached view \(viewId) from parent: \(success)")
             result(success)
         }
     }
@@ -303,7 +278,7 @@ class DCMauiBridgeMethodChannel: NSObject {
                             }
                         }
                     default:
-                        print("Unknown batch operation: \(operation)")
+                        break
                     }
                 }
             }
@@ -312,87 +287,9 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
     }
     
-    // --- START NEW HANDLER ---
-    // Handle calls to component-specific methods using protocol-based routing
-    private func handleCallComponentMethod(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let viewId = args["viewId"] as? String,
-              let methodName = args["methodName"] as? String,
-              let methodArgs = args["args"] as? [String: Any] else {
-            result(FlutterError(code: "ARGS_ERROR", message: "Invalid arguments for callComponentMethod. Required: viewId (String), methodName (String), args (Map)", details: args))
-            return
-        }
 
-        print("📞 Received callComponentMethod: viewId=\(viewId), method=\(methodName), args=\(methodArgs)")
-
-        // Execute on main thread
-        DispatchQueue.main.async {
-            // Try to find the view from multiple sources
-            var view: UIView? = self.getViewById(viewId)
-            
-            // If view not found in main registry, try DCMauiBridgeImpl as backup
-            if view == nil {
-                view = DCMauiBridgeImpl.shared.views[viewId]
-                
-                // If found, update our registry
-                if view != nil {
-                    self.views[viewId] = view
-                    print("🔄 View \(viewId) found in DCMauiBridgeImpl but not in bridge channel - synced")
-                }
-            }
-            
-            // Final check - view must exist
-            guard let finalView = view else {
-                print("❌ callComponentMethod: View not found with ID: \(viewId)")
-                result(FlutterError(code: "VIEW_NOT_FOUND", message: "View not found", details: viewId))
-                return
-            }
-
-            // Find the appropriate component for this view
-            let viewClassName = String(describing: type(of: finalView))
-            var componentInstance: DCFComponent? = nil
-            var componentName: String = "unknown"
-            
-            // Try to find component based on view class name
-            for (name, componentType) in DCFComponentRegistry.shared.componentTypes {
-                let tempInstance = componentType.init()
-                let tempView = tempInstance.createView(props: [:])
-                
-                if String(describing: type(of: tempView)) == viewClassName {
-                    componentInstance = tempInstance
-                    componentName = name
-                    print("✅ Found component \(name) for view class: \(viewClassName)")
-                    break
-                }
-            }
-            
-            guard let component = componentInstance else {
-                print("❌ No component found for view class: \(viewClassName)")
-                result(FlutterError(code: "COMPONENT_NOT_FOUND", message: "No component found for view type", details: viewClassName))
-                return
-            }
-            
-            // Use component method handler protocol if available
-            if let methodHandler = component as? ComponentMethodHandler {
-                let success = methodHandler.handleMethod(methodName: methodName, args: methodArgs, view: finalView)
-                
-                if success {
-                    print("✅ Method \(methodName) successfully handled by \(componentName) component")
-                    result(true)
-                } else {
-                    print("❌ Component \(componentName) failed to handle method \(methodName)")
-                    result(FlutterError(code: "METHOD_FAILED", message: "Component failed to handle method", details: methodName))
-                }
-            } else {
-                print("❌ Component \(componentName) does not implement ComponentMethodHandler protocol")
-                result(FlutterError(code: "METHOD_NOT_SUPPORTED", message: "Component does not support method handling", details: componentName))
-            }
-        }
-    }
-    // --- END NEW HANDLER ---
-    
     /// Handle hot restart detection method calls
     func handleHotRestartMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        print("🔥 Hot restart method call: \(call.method)")
         
         switch call.method {
         case "getSessionToken":
@@ -402,7 +299,6 @@ class DCMauiBridgeMethodChannel: NSObject {
             // Create a new session token with timestamp
             let token = "dcf_session_\(Date().timeIntervalSince1970)"
             DCMauiBridgeMethodChannel.sessionToken = token
-            print("🎫 DCFlight: Created session token \(token)")
             result(token)
             
         case "cleanupViews":
@@ -411,7 +307,6 @@ class DCMauiBridgeMethodChannel: NSObject {
             
         case "clearSessionToken":
             DCMauiBridgeMethodChannel.sessionToken = nil
-            print("🗑️ DCFlight: Session token cleared")
             result(nil)
             
         default:
@@ -421,7 +316,6 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     /// Cleanup all DCFlight native views and resources
     private func cleanupNativeViews() {
-        print("🧹 DCFlight: Starting native view cleanup...")
         
         // Clean up DCMauiBridgeImpl views (preserves root)
         DCMauiBridgeImpl.shared.cleanupForHotRestart()
@@ -435,7 +329,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         // Reset layout manager (preserves root)
         DCFLayoutManager.shared.clearAll()
         
-        print("✅ DCFlight: Native cleanup completed")
     }
     
     
@@ -463,14 +356,12 @@ extension ViewRegistry {
         for (viewId, viewInfo) in registry {
             if viewId != "root" { // Don't remove root view from hierarchy
                 viewInfo.view.removeFromSuperview()
-                print("🗑️ Removed view: \(viewId)")
             } else {
                 // Clear only the children of the root view, not the root itself
                 let rootView = viewInfo.view
                 for subview in rootView.subviews {
                     subview.removeFromSuperview()
                 }
-                print("🧹 Cleared children of root view but preserved root")
             }
         }
         
@@ -479,7 +370,6 @@ extension ViewRegistry {
         for (viewId, _) in nonRootViews {
             registry.removeValue(forKey: viewId)
         }
-        print("🧹 ViewRegistry cleared (except root)")
     }
 }
 
@@ -492,7 +382,6 @@ extension YogaShadowTree {
                 removeNode(nodeId: nodeId)
             }
         }
-        print("🧹 YogaShadowTree cleared (except root)")
     }
 }
 
@@ -505,7 +394,6 @@ extension DCFLayoutManager {
                 cleanUp(viewId: viewId)
             }
         }
-        print("🧹 DCFLayoutManager cleared (except root)")
     }
 }
 

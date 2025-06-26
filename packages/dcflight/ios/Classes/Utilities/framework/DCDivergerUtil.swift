@@ -47,23 +47,25 @@ import Flutter
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         _ = YogaShadowTree.shared
         _ = DCFLayoutManager.shared
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(orientationChanged),
-            name: UIDevice.orientationDidChangeNotification,
-            object: nil
-        )
-
     }
 
-    @objc private func orientationChanged() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            let screenWidth = UIScreen.main.bounds.width
-            let screenHeight = UIScreen.main.bounds.height
-            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
-        }
-    }
+    
 }
 
-
+    public func replaceRoot(controller: UIViewController) {
+        // Get the current root view controller
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            print("❌ DCFTabNavigatorComponent: Could not find window to install tab bar controller")
+            return
+        }
+        
+        controller.title = "Root Replacement"
+        
+        // Replace root view controller
+        DispatchQueue.main.async {
+            window.rootViewController = controller
+            window.makeKeyAndVisible()
+            print("✅ DCFTabNavigatorComponent: Installed tab bar controller as root")
+        }
+}

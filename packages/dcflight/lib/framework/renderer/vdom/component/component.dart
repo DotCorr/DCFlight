@@ -66,9 +66,6 @@ abstract class StatefulComponent extends DCFComponentNode {
 
   /// Default no-op schedule update function (replaced by VDOM)
   void _defaultScheduleUpdate() {
-    if (kDebugMode) {
-      print('Warning: scheduleUpdate called before component was registered with VDOM');
-    }
   }
 
   /// Render the component - must be implemented by subclasses
@@ -118,14 +115,8 @@ abstract class StatefulComponent extends DCFComponentNode {
     // Clean up any remaining store subscriptions via StoreManager
     // This is a safety net in case hooks didn't clean up properly
     try {
-      if (kDebugMode) {
-        print('Cleaning up store subscriptions for component $instanceId');
-      }
       // Note: StoreManager cleanup will be handled by individual hooks
     } catch (e) {
-      if (kDebugMode) {
-        print('Error during store cleanup: $e');
-      }
     }
     
     _isMounted = false;
@@ -210,9 +201,6 @@ abstract class StatefulComponent extends DCFComponentNode {
     
     // Verify this hook is for the same store to prevent mismatches
     if (hook.store != store) {
-      if (kDebugMode) {
-        print('Warning: Store hook mismatch detected, disposing old hook and creating new one');
-      }
       // Dispose the old hook and create a new one
       hook.dispose();
       final newHook = StoreHook<T>(store, () {
@@ -236,14 +224,12 @@ abstract class StatefulComponent extends DCFComponentNode {
   /// Run effects after render - called by VDOM
   void runEffectsAfterRender() {
     if (kDebugMode && runtimeType.toString().contains('Portal')) {
-      print('🎯 runEffectsAfterRender called for $runtimeType - ${_hooks.length} hooks');
     }
     
     for (var i = 0; i < _hooks.length; i++) {
       final hook = _hooks[i];
       if (hook is EffectHook) {
         if (kDebugMode && runtimeType.toString().contains('Portal')) {
-          print('🎯 Running effect hook $i for $runtimeType');
         }
         hook.runEffect();
       }

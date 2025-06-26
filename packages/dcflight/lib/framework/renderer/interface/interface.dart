@@ -57,8 +57,8 @@ abstract class PlatformInterface {
   // REMOVED: updateViewLayout and calculateLayout methods
   // Layout is now calculated automatically when layout props change
 
-  /// Call a method on a specific component instance
-  Future<dynamic> callComponentMethod(String viewId, String methodName, Map<String, dynamic> args);
+  // REMOVED: callComponentMethod - replaced with prop-based commands
+  // Components now handle imperative operations through command props
 
   /// Start a batch update (multiple operations that will be applied atomically)
   Future<bool> startBatchUpdate();

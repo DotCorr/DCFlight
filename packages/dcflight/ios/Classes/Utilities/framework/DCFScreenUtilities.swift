@@ -69,7 +69,6 @@ class DCFScreenUtilities {
             }
         }
         
-        print("📱 Screen dimensions method channel set up successfully")
     }
     
     @objc private func orientationChanged() {
@@ -91,7 +90,6 @@ class DCFScreenUtilities {
                 "safeAreaRight": safeAreaInsets.right
             ])
             
-            print("📱 Notified Flutter of screen dimension change: \(bounds.width)x\(bounds.height)")
         }
     }
     

@@ -23,11 +23,10 @@ import UIKit
     
     @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
         // Register the plugin with the Flutter engine
-        print("✅ DCFlight plugin registered with Flutter")
         
         // Set up method channels directly through the registrar
         let messenger = registrar.messenger()
-        
+        SysComponentsReg.registerComponents()
         // Initialize method channels for bridge and events
         DCMauiBridgeMethodChannel.shared.initialize(with: messenger)
         DCMauiEventMethodHandler.shared.initialize(with: messenger)
@@ -46,7 +45,6 @@ import UIKit
       
       // Now diverge to DCFlight setup
       divergeToFlight()
-      print("divergence complete")
       
       return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }

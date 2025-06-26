@@ -9,8 +9,8 @@
 import UIKit
 import dcflight
 
-// 🚀 CLEAN VIRTUALIZED SCROLL VIEW COMPONENT - Uses only propagateEvent()
-class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethodHandler, UIScrollViewDelegate {
+// 🚀 CLEAN VIRTUALIZED SCROLL VIEW COMPONENT - Uses only propagateEvent() and prop-based commands
+class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     private static let sharedInstance = DCFVirtualizedScrollViewComponent()
     
     required override init() {
@@ -57,7 +57,6 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
         if let showsScrollIndicator = props["showsScrollIndicator"] as? Bool {
             scrollView.showsVerticalScrollIndicator = showsScrollIndicator
             scrollView.showsHorizontalScrollIndicator = showsScrollIndicator
-            print("📜 VirtualizedScrollView showsScrollIndicator set to: \(showsScrollIndicator)")
         }
         
         // Set scroll indicator color if specified
@@ -80,7 +79,6 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
                                            UnsafeRawPointer(bitPattern: "scrollIndicatorColor".hashValue)!, 
                                            color, 
                                            .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                    print("📜 VirtualizedScrollView indicator color stored: \(color)")
                 }
             }
         }
@@ -91,7 +89,6 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
                                    UnsafeRawPointer(bitPattern: "scrollIndicatorSize".hashValue)!, 
                                    scrollIndicatorSize, 
                                    .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            print("📜 VirtualizedScrollView indicator size stored: \(scrollIndicatorSize)")
         }
         
         // Set bounces if specified
@@ -135,7 +132,6 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
             if let backgroundColor = props["backgroundColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
                 scrollView.backgroundColor = uiColor
-                print("🎨 VirtualizedScrollView: Set background color to: \(backgroundColor) -> \(uiColor)")
             }
         }
         
@@ -148,7 +144,6 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
                 } else {
                     scrollView.backgroundColor = UIColor.white
                 }
-                print("🎨 VirtualizedScrollView: Applied adaptive background color")
             }
         }
         
@@ -179,6 +174,9 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
             scrollView.virtualizedContentPaddingTop = contentPaddingTop
         }
         
+        // ✅ HANDLE COMMANDS - New prop-based command pattern
+        handleCommand(scrollView: scrollView, props: props)
+        
         // Apply StyleSheet properties
         scrollView.applyStyles(props: props)
         
@@ -193,7 +191,6 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
         let newFrame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
         scrollView.frame = newFrame
         
-        print("📏 VirtualizedScrollView: Frame set to \(newFrame)")
         
         // Force layout of subviews first to get Yoga layout results
         scrollView.layoutIfNeeded()
@@ -228,46 +225,47 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, ComponentMethod
     // Note: VirtualizedScrollView uses global propagateEvent() system
     // No custom event methods needed - all handled by DCFComponentProtocol
     
-    // MARK: - Component Methods
+    // MARK: - Command Handling (New Prop-Based Pattern)
     
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let scrollView = view as? VirtualizedScrollView else { return false }
+    /// Handle commands passed as props - the new declarative command pattern
+    private func handleCommand(scrollView: VirtualizedScrollView, props: [String: Any]) {
+        guard let commandData = props["command"] as? [String: Any] else {
+            return
+        }
         
-        switch methodName {
-        case "scrollToPosition":
-            if let x = args["x"] as? CGFloat, let y = args["y"] as? CGFloat {
-                let animated = args["animated"] as? Bool ?? true
-                scrollView.setContentOffset(CGPoint(x: x, y: y), animated: animated)
-                return true
+        // Handle composite command structure from Dart ScrollViewCommand.toMap()
+        if let scrollToPositionData = commandData["scrollToPosition"] as? [String: Any] {
+            if let x = scrollToPositionData["x"] as? Double, let y = scrollToPositionData["y"] as? Double {
+                let animated = scrollToPositionData["animated"] as? Bool ?? true
+                scrollView.setContentOffset(CGPoint(x: CGFloat(x), y: CGFloat(y)), animated: animated)
             }
-        case "scrollToTop":
-            let animated = args["animated"] as? Bool ?? true
+        }
+        
+        if let scrollToTopData = commandData["scrollToTop"] as? [String: Any] {
+            let animated = scrollToTopData["animated"] as? Bool ?? true
             scrollView.setContentOffset(CGPoint(x: scrollView.contentOffset.x, y: 0), animated: animated)
-            return true
-        case "scrollToBottom":
-            let animated = args["animated"] as? Bool ?? true
+        }
+        
+        if let scrollToBottomData = commandData["scrollToBottom"] as? [String: Any] {
+            let animated = scrollToBottomData["animated"] as? Bool ?? true
             let bottomOffset = CGPoint(x: scrollView.contentOffset.x, 
                                      y: scrollView.contentSize.height - scrollView.bounds.height)
             scrollView.setContentOffset(bottomOffset, animated: animated)
-            return true
-        case "flashScrollIndicators":
-            scrollView.flashScrollIndicators()
-            return true
-        case "updateContentSize":
-            // Explicit content size update through bridge communication
-            scrollView.updateContentSizeFromYogaLayout()
-            return true
-        case "setContentSize":
-            // Explicit content size setting from Dart side
-            if let width = args["width"] as? CGFloat, let height = args["height"] as? CGFloat {
-                scrollView.setExplicitContentSize(CGSize(width: width, height: height))
-                return true
-            }
-        default:
-            return false
         }
         
-        return false
+        if let flashScrollIndicators = commandData["flashScrollIndicators"] as? Bool, flashScrollIndicators {
+            scrollView.flashScrollIndicators()
+        }
+        
+        if let updateContentSize = commandData["updateContentSize"] as? Bool, updateContentSize {
+            scrollView.updateContentSizeFromYogaLayout()
+        }
+        
+        if let setContentSizeData = commandData["setContentSize"] as? [String: Any] {
+            if let width = setContentSizeData["width"] as? Double, let height = setContentSizeData["height"] as? Double {
+                scrollView.setExplicitContentSize(CGSize(width: CGFloat(width), height: CGFloat(height)))
+            }
+        }
     }
     
     // MARK: - UIScrollViewDelegate Methods (Clean Global Event System)

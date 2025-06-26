@@ -67,6 +67,7 @@ class DCFImage extends StatelessComponent {
   /// Error event handler - receives Map<dynamic, dynamic> with error data
   final Function(Map<dynamic, dynamic>)? onError;
   
+
   /// Create an image component
   DCFImage({
     required this.imageProps,
@@ -92,15 +93,20 @@ class DCFImage extends StatelessComponent {
     if (onError != null) {
       eventMap['onError'] = onError;
     }
+
+    // Serialize command if provided
+    Map<String, dynamic> props = {
+      ...imageProps.toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
     
+
+
     return DCFElement(
       type: 'Image',
-      props: {
-        ...imageProps.toMap(),
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: [],
     );
   }
