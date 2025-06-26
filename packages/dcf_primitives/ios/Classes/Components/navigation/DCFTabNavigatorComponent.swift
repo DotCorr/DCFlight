@@ -126,10 +126,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                 configureTabBarItem(navController, screenContainer: screenContainer, index: index)
                 
                 viewControllers.append(navController)
-                print("  ✅ Added screen '\(screenName)' to tab \(index)")
             } else {
-                print("  ❌ Screen container not found for '\(screenName)'")
-                
                 // Create placeholder view controller for missing screen
                 let placeholderVC = UIViewController()
                 placeholderVC.view.backgroundColor = UIColor.systemBackground
@@ -190,7 +187,6 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                         eventName: "onActivate",
                         data: ["screenName": initialScreenName]
                     )
-                    print("✅ Initially activated screen: \(initialScreenName)")
                 }
             }
         }

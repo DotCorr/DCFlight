@@ -158,7 +158,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func configureTabScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
         let viewController = screenContainer.viewController
         
-        // REMOVE automatic content inset adjustments
         if #available(iOS 11.0, *) {
             viewController.extendedLayoutIncludesOpaqueBars = true
             viewController.edgesForExtendedLayout = .all
@@ -349,8 +348,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
         }
         return nil
     }
-    
-    // MARK: - Static Registry Methods
     
     /// Get a screen container by name
     static func getScreenContainer(name: String) -> ScreenContainer? {
