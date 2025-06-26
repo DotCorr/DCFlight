@@ -6,6 +6,7 @@
  */
 
 import UIKit
+import dcflight
 
 /// Tab navigator component that creates and manages UITabBarController
 class DCFTabNavigatorComponent: NSObject, DCFComponent {
@@ -15,6 +16,9 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     
     // Track navigator state
     static var navigatorState: [String: TabNavigatorState] = [:]
+    
+    // CRITICAL FIX: Map navigatorId to placeholder view for event propagation
+    static var placeholderViewRegistry: [String: UIView] = [:]
     
     required override init() {
         super.init()
@@ -61,7 +65,67 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
+        // CRITICAL FIX: Store placeholder view in registry for event propagation
+        DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] = placeholderView
+        
+        // CRITICAL FIX: Manually set up event system like VDOM does
+        setupEventSystemForView(placeholderView, props: props, viewId: navigatorId)
+        
         return placeholderView
+    }
+    
+    /// Manually set up the event system for a view (like VDOM does)
+    private func setupEventSystemForView(_ view: UIView, props: [String: Any], viewId: String) {
+        // CRITICAL FIX: Extract event types from _eventType_ prefixed props (DCFlight format)
+        let eventTypes = props.keys.compactMap { key -> String? in
+            if key.hasPrefix("_eventType_") {
+                // Convert "_eventType_onTabChange" to "onTabChange"
+                return String(key.dropFirst("_eventType_".count))
+            }
+            return nil
+        }
+        
+        print("🔧 DCFTabNavigatorComponent: Found props keys: \(Array(props.keys))")
+        print("🔧 DCFTabNavigatorComponent: Extracted event types for '\(viewId)': \(eventTypes)")
+        
+        if !eventTypes.isEmpty {
+            print("🔧 DCFTabNavigatorComponent: Setting up event system for '\(viewId)' with events: \(eventTypes)")
+            
+            // Store viewId on the view (required for propagateEvent)
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+                viewId,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // Store event types on the view (required for propagateEvent)
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+                eventTypes,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // FIXED: Use the global propagateEvent system instead of DCMauiEventMethodHandler
+            // Store the event callback for the global system to use (same pattern as other components)
+            let eventCallback: (String, String, [String: Any]) -> Void = { (viewId, eventType, eventData) in
+                // The propagateEvent function will handle sending to Dart automatically
+                // No need to manually call DCMauiEventMethodHandler here
+                print("✅ DCFTabNavigatorComponent: Event '\(eventType)' fired on view '\(viewId)' with data: \(eventData)")
+            }
+            
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+                eventCallback,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            print("✅ DCFTabNavigatorComponent: Event system set up for '\(viewId)' with viewId and \(eventTypes.count) event types")
+        } else {
+            print("⚠️ DCFTabNavigatorComponent: No event types found for '\(viewId)' in props: \(Array(props.keys))")
+        }
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
@@ -70,6 +134,9 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             print("❌ DCFTabNavigatorComponent: Tab bar controller not found for update")
             return false
         }
+        
+        // CRITICAL FIX: Re-setup event system on every update in case events changed
+        setupEventSystemForView(view, props: props, viewId: navigatorId)
         
         // Update selected tab
         if let selectedIndex = props["selectedIndex"] as? Int {
@@ -139,8 +206,51 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             tabBarController.selectedIndex = selectedIndex
         }
         
-        // Set delegate for tab change events
-        tabBarController.delegate = TabBarControllerDelegate(navigatorId: navigatorId)
+        // CRITICAL FIX: Set delegate with proper reference to navigatorId
+        let delegate = TabBarControllerDelegate(navigatorId: navigatorId)
+        tabBarController.delegate = delegate
+        
+        // CRITICAL FIX: Store delegate to prevent deallocation
+        objc_setAssociatedObject(
+            tabBarController,
+            UnsafeRawPointer(bitPattern: "tabBarDelegate".hashValue)!,
+            delegate,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        // CRITICAL FIX: Fire initial onAppear event
+        DispatchQueue.main.async {
+            if let placeholderView = DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] {
+                propagateEvent(
+                    on: placeholderView,
+                    eventName: "onAppear",
+                    data: [
+                        "navigatorId": navigatorId,
+                        "selectedIndex": selectedIndex
+                    ]
+                )
+            }
+            
+            // CRITICAL FIX: Trigger initial screen activation for the selected tab
+            if let screens = DCFTabNavigatorComponent.navigatorState[navigatorId]?.screens,
+               selectedIndex < screens.count {
+                let initialScreenName = screens[selectedIndex]
+                if let screenContainer = DCFScreenComponent.getScreenContainer(name: initialScreenName) {
+                    screenContainer.isActive = true
+                    propagateEvent(
+                        on: screenContainer.contentView,
+                        eventName: "onAppear",
+                        data: ["screenName": initialScreenName]
+                    )
+                    propagateEvent(
+                        on: screenContainer.contentView,
+                        eventName: "onActivate",
+                        data: ["screenName": initialScreenName]
+                    )
+                    print("✅ Initially activated screen: \(initialScreenName)")
+                }
+            }
+        }
     }
     
     private func configureTabBarItem(_ viewController: UIViewController, screenContainer: ScreenContainer, index: Int) {
@@ -219,13 +329,14 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             // Update navigator state
             DCFTabNavigatorComponent.navigatorState[navigatorId]?.selectedIndex = selectedIndex
             
-            // Fire tab change event
+            // CRITICAL FIX: Fire tab change event on the correct view using propagateEvent
             propagateEvent(
                 on: view,
                 eventName: "onTabChange",
                 data: [
                     "selectedIndex": selectedIndex,
-                    "previousIndex": previousIndex
+                    "previousIndex": previousIndex,
+                    "programmatic": true
                 ]
             )
         }
@@ -234,7 +345,6 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     private func updateTabBarStyle(_ tabBarController: UITabBarController, props: [String: Any]) {
         configureTabBarAppearance(tabBarController, props: props)
     }
-    
     
     // MARK: - Helper Classes
     
@@ -266,8 +376,46 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             // Update navigator state
             DCFTabNavigatorComponent.navigatorState[navigatorId]?.selectedIndex = selectedIndex
             
-            // Find the placeholder view to fire event
-            if let placeholderView = findPlaceholderView(for: navigatorId) {
+            // CRITICAL FIX: Trigger screen lifecycle events when tabs change
+            if let screens = DCFTabNavigatorComponent.navigatorState[navigatorId]?.screens {
+                // Fire onDisappear/onDeactivate for all other screens
+                for (index, screenName) in screens.enumerated() {
+                    if let screenContainer = DCFScreenComponent.getScreenContainer(name: screenName) {
+                        if index == selectedIndex {
+                            // Activate the selected screen
+                            screenContainer.isActive = true
+                            propagateEvent(
+                                on: screenContainer.contentView,
+                                eventName: "onAppear",
+                                data: ["screenName": screenName]
+                            )
+                            propagateEvent(
+                                on: screenContainer.contentView,
+                                eventName: "onActivate",
+                                data: ["screenName": screenName]
+                            )
+                            print("✅ Activated screen: \(screenName)")
+                        } else {
+                            // Deactivate other screens
+                            screenContainer.isActive = false
+                            propagateEvent(
+                                on: screenContainer.contentView,
+                                eventName: "onDisappear",
+                                data: ["screenName": screenName]
+                            )
+                            propagateEvent(
+                                on: screenContainer.contentView,
+                                eventName: "onDeactivate",
+                                data: ["screenName": screenName]
+                            )
+                            print("✅ Deactivated screen: \(screenName)")
+                        }
+                    }
+                }
+            }
+            
+            // Fire tab navigator events using propagateEvent (FIXED)
+            if let placeholderView = DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] {
                 propagateEvent(
                     on: placeholderView,
                     eventName: "onTabChange",
@@ -276,14 +424,17 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                         "userInitiated": true
                     ]
                 )
+                print("✅ TabBarControllerDelegate: Fired onTabChange event for tab \(selectedIndex)")
             }
         }
         
         func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
             let selectedIndex = tabBarController.viewControllers?.firstIndex(of: viewController) ?? 0
             
-            // Fire tab press event
-            if let placeholderView = findPlaceholderView(for: navigatorId) {
+            print("👆 TabBarControllerDelegate: Tab pressed at index \(selectedIndex)")
+            
+            // Fire tab press event using propagateEvent (FIXED)
+            if let placeholderView = DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] {
                 propagateEvent(
                     on: placeholderView,
                     eventName: "onTabPress",
@@ -291,16 +442,19 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                         "selectedIndex": selectedIndex
                     ]
                 )
+                print("✅ TabBarControllerDelegate: Fired onTabPress event for tab \(selectedIndex)")
             }
             
             return true
         }
-        
-        private func findPlaceholderView(for navigatorId: String) -> UIView? {
-            // This is a simplified approach - in a real implementation,
-            // we'd need to maintain a mapping of navigatorId to placeholder view
-            return nil
-        }
     }
     
+    // MARK: - Cleanup
+    
+    /// Clean up resources for a navigator
+    static func cleanup(navigatorId: String) {
+        tabNavigatorRegistry.removeValue(forKey: navigatorId)
+        navigatorState.removeValue(forKey: navigatorId)
+        placeholderViewRegistry.removeValue(forKey: navigatorId)
+    }
 }

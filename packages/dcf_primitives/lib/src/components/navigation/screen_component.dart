@@ -216,6 +216,7 @@ class DCFScreen extends StatelessComponent {
     // Build event map
     Map<String, dynamic> eventMap = events ?? {};
     
+    
     if (onAppear != null) {
       eventMap['onAppear'] = onAppear;
     }
@@ -250,6 +251,8 @@ class DCFScreen extends StatelessComponent {
     
     // Enforce display property based on visibility
     props['display'] = visible ? 'flex' : 'none';
+
+    print(" map props scren : $props");
     
     return DCFElement(
       type: 'Screen',

@@ -51,7 +51,8 @@ import dcflight
         // 🚀 Register ADVANCED primitive components
         DCFComponentRegistry.shared.registerComponent("Slider", componentClass: DCFSliderComponent.self)
         DCFComponentRegistry.shared.registerComponent("Spinner", componentClass: DCFSpinnerComponent.self)
-        
+          DCFComponentRegistry.shared.registerComponent("Screen", componentClass: DCFScreenComponent.self)
+        DCFComponentRegistry.shared.registerComponent("TabNavigator", componentClass: DCFTabNavigatorComponent.self)
         // 🚀 Register CRITICAL primitive components
         DCFComponentRegistry.shared.registerComponent("WebView", componentClass: DCFWebViewComponent.self)
     }

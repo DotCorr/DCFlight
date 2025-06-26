@@ -6,6 +6,7 @@
  */
 
 import UIKit
+import dcflight
 
 /// Container for screen content and metadata
 class ScreenContainer {
@@ -45,7 +46,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
     // Registry of all screen containers by screen name
     static var screenRegistry: [String: ScreenContainer] = [:]
     
-    
     required override init() {
         super.init()
     }
@@ -73,10 +73,65 @@ class DCFScreenComponent: NSObject, DCFComponent {
         // Configure screen based on presentation style and props
         configureScreen(screenContainer, props: props)
         
-        // Update view with current props
+        // Update view with current props FIRST
         let _ = updateView(screenContainer.contentView, withProps: props)
         
+        // CRITICAL FIX: Manually set up event system like VDOM does AFTER props are processed
+        setupEventSystemForView(screenContainer.contentView, props: props, viewId: screenName)
+        
+        // CRITICAL FIX: Fire initial onAppear event when screen is created
+        DispatchQueue.main.async {
+            self.activateScreen(screenContainer, props: props)
+        }
+        
         return screenContainer.contentView
+    }
+    
+    /// Manually set up the event system for a view (like VDOM does)
+    private func setupEventSystemForView(_ view: UIView, props: [String: Any], viewId: String) {
+        // Extract event types from _eventType_ prefixed props (DCFlight preprocessed format)
+        let eventTypes = props.keys.compactMap { key -> String? in
+            if key.hasPrefix("_eventType_") {
+                // Convert "_eventType_onAppear" to "onAppear"
+                return String(key.dropFirst("_eventType_".count))
+            }
+            return nil
+        }
+        
+        if !eventTypes.isEmpty {
+            print("🔧 DCFScreenComponent: Setting up event system for '\(viewId)' with events: \(eventTypes)")
+            
+            // Store viewId on the view (required for propagateEvent)
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+                viewId,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // Store event types on the view (required for propagateEvent)
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+                eventTypes,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            // Store the event callback for the global system to use
+            let eventCallback: (String, String, [String: Any]) -> Void = { (callbackViewId, eventType, eventData) in
+                // This callback will be called by propagateEvent() - no need to do anything here
+                // The framework handles routing to Dart automatically
+            }
+            
+            objc_setAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+                eventCallback,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            
+            print("✅ DCFScreenComponent: Event system set up for '\(viewId)' with viewId and \(eventTypes.count) event types")
+        }
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
@@ -85,6 +140,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
             print("❌ DCFScreenComponent: Screen not found for update")
             return false
         }
+        
+        // CRITICAL FIX: Re-setup event system on every update in case events changed
+        setupEventSystemForView(view, props: props, viewId: screenName)
         
         // Handle visibility changes
         let isVisible = props["visible"] as? Bool ?? true
@@ -102,6 +160,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         return true
     }
     
+    // CRITICAL FIX: Implement setChildren for DCFScreen component properly
     func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
         // Find the screen container for this view
         guard let screenContainer = findScreenContainer(for: view) else {
@@ -159,9 +218,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
             viewController.automaticallyAdjustsScrollViewInsets = false
         }
         
-        // Configure tab bar item (existing code)
+        // Configure tab bar item
         if let title = props["title"] as? String {
             viewController.title = title
+            viewController.tabBarItem.title = title
         }
         
         if let iconName = props["icon"] as? String {
@@ -174,6 +234,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
         
         let enabled = props["enabled"] as? Bool ?? true
         viewController.tabBarItem.isEnabled = enabled
+        
+        // CRITICAL FIX: Set tab bar item tag for identification
+        if let index = props["index"] as? Int {
+            viewController.tabBarItem.tag = index
+        }
     }
     
     private func configurePushScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
@@ -275,38 +340,54 @@ class DCFScreenComponent: NSObject, DCFComponent {
         print("🟢 DCFScreenComponent: Activating screen '\(screenContainer.name)'")
         screenContainer.isActive = true
         
-        // Fire onAppear event
-        propagateEvent(
-            on: screenContainer.contentView,
-            eventName: "onAppear",
-            data: ["screenName": screenContainer.name]
-        )
-        
-        // Fire onActivate event
-        propagateEvent(
-            on: screenContainer.contentView,
-            eventName: "onActivate",
-            data: ["screenName": screenContainer.name]
-        )
+        // CRITICAL FIX: Fire events on the actual content view that DCFlight tracks
+        DispatchQueue.main.async {
+            // Fire onAppear event
+            print("🚀 DCFScreenComponent: About to propagate onAppear event for '\(screenContainer.name)'")
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onAppear",
+                data: ["screenName": screenContainer.name]
+            )
+            
+            print("✅ DCFScreenComponent: Fired onAppear for '\(screenContainer.name)'")
+            
+            // Fire onActivate event
+            print("🚀 DCFScreenComponent: About to propagate onActivate event for '\(screenContainer.name)'")
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onActivate",
+                data: ["screenName": screenContainer.name]
+            )
+            
+            print("✅ DCFScreenComponent: Fired onActivate for '\(screenContainer.name)'")
+        }
     }
     
     private func deactivateScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
         print("🔴 DCFScreenComponent: Deactivating screen '\(screenContainer.name)'")
         screenContainer.isActive = false
         
-        // Fire onDisappear event
-        propagateEvent(
-            on: screenContainer.contentView,
-            eventName: "onDisappear",
-            data: ["screenName": screenContainer.name]
-        )
-        
-        // Fire onDeactivate event
-        propagateEvent(
-            on: screenContainer.contentView,
-            eventName: "onDeactivate",
-            data: ["screenName": screenContainer.name]
-        )
+        // CRITICAL FIX: Fire events on the actual content view that DCFlight tracks
+        DispatchQueue.main.async {
+            // Fire onDisappear event
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onDisappear",
+                data: ["screenName": screenContainer.name]
+            )
+            
+            print("✅ DCFScreenComponent: Fired onDisappear for '\(screenContainer.name)'")
+            
+            // Fire onDeactivate event
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onDeactivate",
+                data: ["screenName": screenContainer.name]
+            )
+            
+            print("✅ DCFScreenComponent: Fired onDeactivate for '\(screenContainer.name)'")
+        }
     }
     
     // MARK: - Helper Methods
