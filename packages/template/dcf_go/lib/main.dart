@@ -102,7 +102,7 @@ class ScreenAPITest extends StatefulComponent {
             // backgroundColor: Colors.white,
             selectedTintColor: Colors.blue,
             unselectedTintColor: Colors.grey,
-            translucent: false,
+            translucent: true,
           ),
           onTabChange: (data) {
             final newIndex = data["selectedIndex"] as int;

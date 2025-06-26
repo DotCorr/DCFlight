@@ -172,6 +172,7 @@ class DCFScreen extends StatelessComponent {
 
   /// Screen content
   final List<DCFComponentNode> children;
+  final bool? shouldHideSafeArea;
 
   /// Layout properties
   // final LayoutProps layout;
@@ -195,6 +196,7 @@ class DCFScreen extends StatelessComponent {
   final Function(Map<dynamic, dynamic>)? onDeactivate;
 
   DCFScreen({
+    this.shouldHideSafeArea,
     super.key,
     required this.name,
     required this.presentationStyle,
@@ -259,7 +261,19 @@ class DCFScreen extends StatelessComponent {
     return DCFElement(
       type: 'Screen',
       props: props,
-      children: children,
+      children: [
+        // Enforce resposive layout from dart side abstraction by forcing full rerender by wrapping in a safe area view
+        DCFSafeAreaView(
+          bottom: shouldHideSafeArea == true ? false : true,
+          top: shouldHideSafeArea == true ? false : true,
+          layout: LayoutProps(
+            flex: 1,
+            padding: 0,
+            margin: 0,
+          ),
+          children: children,
+        ),
+      ],
     );
   }
 }
