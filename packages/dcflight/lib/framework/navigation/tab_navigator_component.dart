@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/navigation/screen_component.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Tab bar style configuration

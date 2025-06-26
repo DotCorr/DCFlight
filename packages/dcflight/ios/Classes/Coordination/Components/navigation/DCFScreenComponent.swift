@@ -150,7 +150,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func configureTabScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
         let viewController = screenContainer.viewController
         
-        // Configure tab bar item
+        // REMOVE automatic content inset adjustments
+        if #available(iOS 11.0, *) {
+            viewController.extendedLayoutIncludesOpaqueBars = true
+            viewController.edgesForExtendedLayout = .all
+            viewController.automaticallyAdjustsScrollViewInsets = false
+        } else {
+            viewController.automaticallyAdjustsScrollViewInsets = false
+        }
+        
+        // Configure tab bar item (existing code)
         if let title = props["title"] as? String {
             viewController.title = title
         }

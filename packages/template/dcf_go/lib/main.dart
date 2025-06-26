@@ -31,7 +31,7 @@ class ScreenAPITest extends StatefulComponent {
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
           children: [
             DCFView(
-              styleSheet: StyleSheet(backgroundColor: Colors.amber),
+          
               layout: LayoutProps(
                 flex: 1,
                 justifyContent: YogaJustifyContent.center,
