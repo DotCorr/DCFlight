@@ -10,10 +10,10 @@ class ScreenAPITest extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final currentTab = useState<int>(0);
-
     return DCFFragment(
       children: [
         DCFScreen(
+          visible: currentTab.state == 0,
           name: "test_home",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(title: "Home", icon: "house", index: 0),
@@ -23,6 +23,7 @@ class ScreenAPITest extends StatefulComponent {
         ),
 
         DCFScreen(
+          visible: currentTab.state == 1,
           name: "test_profile",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(title: "Profile", icon: "person", index: 1),
@@ -54,6 +55,7 @@ class ScreenAPITest extends StatefulComponent {
         ),
 
         DCFScreen(
+          visible: currentTab.state == 2,
           name: "test_settings",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(title: "Settings", icon: "gear", index: 2),
@@ -61,6 +63,9 @@ class ScreenAPITest extends StatefulComponent {
           onActivate: (data) => print("🟢 Settings screen activated: $data"),
           children: [
             DCFView(
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.red,
+              ),
               layout: LayoutProps(
                 flex: 1,
                 justifyContent: YogaJustifyContent.center,
@@ -86,10 +91,15 @@ class ScreenAPITest extends StatefulComponent {
 
         // Tab navigator that coordinates the screens
         DCFTabNavigator(
+          lazyLoad: true,
+          onTabLongPress: (v){
+            print("🔍 Tab long pressed: ${v["selectedIndex"]}");
+          },
+     
           screens: ["test_home", "test_profile", "test_settings"],
           selectedIndex: currentTab.state,
           tabBarStyle: DCFTabBarStyle(
-            backgroundColor: Colors.white,
+            // backgroundColor: Colors.white,
             selectedTintColor: Colors.blue,
             unselectedTintColor: Colors.grey,
             translucent: false,

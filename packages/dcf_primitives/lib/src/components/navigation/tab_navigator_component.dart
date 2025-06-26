@@ -110,7 +110,7 @@ class DCFTabNavigator extends StatelessComponent {
     this.isHidden = false,
     this.lazyLoad = false,
     this.animationDuration,
-    this.layout = const LayoutProps(),
+    this.layout = const LayoutProps(padding: 0, margin: 0, flex: 1),
     this.styleSheet = const StyleSheet(),
     this.events,
     this.onTabChange,

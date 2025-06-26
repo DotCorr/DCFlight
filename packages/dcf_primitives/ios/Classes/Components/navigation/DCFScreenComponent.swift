@@ -57,7 +57,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return UIView()
         }
         
-        print("🔧 DCFScreenComponent: Creating screen '\(screenName)' with style '\(presentationStyle)'")
         
         // Create or get existing screen container
         let screenContainer: ScreenContainer
@@ -76,6 +75,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         // Update view with current props FIRST
         let _ = updateView(screenContainer.contentView, withProps: props)
         
+        
        
         
         // CRITICAL FIX: Fire initial onAppear event when screen is created
@@ -89,7 +89,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let screenName = props["name"] as? String,
               let screenContainer = DCFScreenComponent.screenRegistry[screenName] else {
-            print("❌ DCFScreenComponent: Screen not found for update")
+            print(" DCFScreenComponent: Screen not found for update. Please ignore: This is suppose to fail silently cause we dont want to render all the screens")
             return false
         }
         
@@ -103,7 +103,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
             }
         }
         
-        // Apply layout and style properties
+
         view.applyStyles(props: props)
         
         return true
