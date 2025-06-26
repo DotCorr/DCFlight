@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
 
 /// Edge insets configuration for scroll views
@@ -50,67 +49,67 @@ class ContentInset {
 class DCFScrollView extends StatelessComponent {
   /// Child nodes
   final List<DCFComponentNode> children;
-  
+
   /// Whether to scroll horizontally
   final bool horizontal;
-  
+
   /// The layout properties
   final LayoutProps layout;
-  
+
   /// The style properties
   final StyleSheet styleSheet;
-  
+
   /// Whether to show scrollbar
   final bool showsScrollIndicator;
-  
+
   /// Content container style
   final StyleSheet contentContainerStyle;
-  
+
   /// Event handlers - using Map<dynamic, dynamic> for maximum type safety
   final Map<String, dynamic>? events;
-  
+
   /// Scroll event handler - receives Map<dynamic, dynamic> with contentOffset, contentSize data
   final Function(Map<dynamic, dynamic>)? onScroll;
-  
+
   /// Scroll begin drag event handler - receives Map<dynamic, dynamic> with contentOffset
   final Function(Map<dynamic, dynamic>)? onScrollBeginDrag;
-  
+
   /// Scroll end drag event handler - receives Map<dynamic, dynamic> with contentOffset, willDecelerate
   final Function(Map<dynamic, dynamic>)? onScrollEndDrag;
-  
+
   /// Scroll end event handler - receives Map<dynamic, dynamic> with contentOffset
   final Function(Map<dynamic, dynamic>)? onScrollEnd;
-  
+
   /// Content size change event handler - receives Map<dynamic, dynamic> with width, height
   final Function(Map<dynamic, dynamic>)? onContentSizeChange;
-  
+
   /// Scroll indicator color
   final Color? scrollIndicatorColor;
-  
+
   /// Scroll indicator size/thickness
   final double? scrollIndicatorSize;
-  
+
   /// Whether scrolling is enabled
   final bool scrollEnabled;
-  
+
   /// Whether to always bounce vertically
   final bool alwaysBounceVertical;
-  
-  /// Whether to always bounce horizontally  
+
+  /// Whether to always bounce horizontally
   final bool alwaysBounceHorizontal;
-  
+
   /// Whether to enable paging
   final bool pagingEnabled;
-  
+
   /// Whether to dismiss keyboard on drag
   final bool keyboardDismissMode;
-  
+
   /// Content insets
   final ContentInset? contentInset;
-  
+
   /// Command for imperative scroll operations
   final ScrollViewCommand? command;
-  
+
   /// Create a scroll view component
   DCFScrollView({
     required this.children,
@@ -136,34 +135,34 @@ class DCFScrollView extends StatelessComponent {
     this.events,
     super.key,
   });
-  
+
   @override
   DCFComponentNode render() {
     // Create a comprehensive events map for all callbacks
     Map<String, dynamic> eventMap = <String, dynamic>{};
-    
+
     // Add base events if provided
     if (events != null) {
       eventMap.addAll(events!);
     }
-    
+
     // Add specific event handlers with consistent Map<String, dynamic> signature
     if (onScroll != null) {
       eventMap['onScroll'] = onScroll;
     }
-    
+
     if (onScrollBeginDrag != null) {
       eventMap['onScrollBeginDrag'] = onScrollBeginDrag;
     }
-    
+
     if (onScrollEndDrag != null) {
       eventMap['onScrollEndDrag'] = onScrollEndDrag;
     }
-    
+
     if (onScrollEnd != null) {
       eventMap['onScrollEnd'] = onScrollEnd;
     }
-    
+
     if (onContentSizeChange != null) {
       eventMap['onContentSizeChange'] = onContentSizeChange;
     }
@@ -178,23 +177,33 @@ class DCFScrollView extends StatelessComponent {
       'pagingEnabled': pagingEnabled,
       'keyboardDismissMode': keyboardDismissMode,
       if (contentInset != null) 'contentInset': contentInset!.toMap(),
-      if (scrollIndicatorColor != null) 'scrollIndicatorColor': '#${scrollIndicatorColor!.value.toRadixString(16).padLeft(8, '0')}',
+      if (scrollIndicatorColor != null)
+        'scrollIndicatorColor':
+            '#${scrollIndicatorColor!.value.toRadixString(16).padLeft(8, '0')}',
       'scrollIndicatorSize': scrollIndicatorSize,
       'contentContainerStyle': contentContainerStyle.toMap(),
       ...layout.toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
     };
-    
+
     // Add command props if command is provided and has actions
     if (command != null && command!.hasCommands) {
       props['command'] = command!.toMap();
     }
 
-    return DCFElement(
-      type: 'ScrollView',
-      props: props,
-      children: children,
+    return DCFView(
+      layout: LayoutProps(
+        width: "100%",
+        height: "100%",
+      ),
+      children: [
+        DCFElement(
+          type: 'ScrollView',
+          props: props,
+          children: children,
+        )
+      ],
     );
   }
 }

@@ -89,7 +89,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let screenName = props["name"] as? String,
               let screenContainer = DCFScreenComponent.screenRegistry[screenName] else {
-            print(" DCFScreenComponent: Screen not found for update. Please ignore: This is suppose to fail silently cause we dont want to render all the screens")
+            print(" DCFScreenComponent: Screen not found for update.")
             return false
         }
         

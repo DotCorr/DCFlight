@@ -91,7 +91,6 @@ class ScreenAPITest extends StatefulComponent {
 
         // Tab navigator that coordinates the screens
         DCFTabNavigator(
-          lazyLoad: true,
           onTabLongPress: (v){
             print("🔍 Tab long pressed: ${v["selectedIndex"]}");
           },

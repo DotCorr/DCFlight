@@ -254,12 +254,16 @@ class DCFScreen extends StatelessComponent {
     };
 
     // Enforce display property based on visibility
-    props['display'] = visible ? 'flex' : 'none';
+    // props['display'] = visible ? 'flex' : 'none';
 
     return DCFElement(
       type: 'Screen',
       props: props,
-      children: children,
+      children: [
+        DCFFragment(
+          children: children,
+        ),
+      ],
     );
   }
 }
