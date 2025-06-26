@@ -202,7 +202,7 @@ class DCFScreen extends StatelessComponent {
     this.modalConfig,
     this.pushConfig,
     this.children = const [],
-    this.layout = const LayoutProps(),
+    this.layout = const LayoutProps(height: "100%", width: "100%"),
     this.styleSheet = const StyleSheet(),
     this.events,
     this.onAppear,

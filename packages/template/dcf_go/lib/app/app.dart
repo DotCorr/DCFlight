@@ -14,14 +14,14 @@ class App extends StatefulComponent {
     final pagestateLocal = useStore(pagestate);
 
     // Removed DCFPortalProvider wrapper to test modal rendering
-    return DCFView(
-      adaptive: false,
+    return DCFScrollView(
+     
       layout: LayoutProps(flex: 1),
       children: [
         // Main App Content
-        DCFSafeAreaView(
-          layout: LayoutProps(flex: 1, padding: 8),
-          children: [
+        // DCFSafeAreaView(
+        //   layout: LayoutProps(flex: 1, padding: 8),
+        //   children: [
             DCFView(
               layout: LayoutProps(
                 flex: 1,
@@ -66,8 +66,8 @@ class App extends StatefulComponent {
                 selectedValue: pagestateLocal.state.toString(),
               ),
             ),
-          ],
-        ),
+        //   ],
+        // ),
       ],
     );
   }
