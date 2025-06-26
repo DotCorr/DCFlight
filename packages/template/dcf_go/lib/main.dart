@@ -1,12 +1,14 @@
 import 'package:dcf_go/app/app.dart';
+import 'package:dcf_go/app/examples/modal_test.dart';
+import 'package:dcf_go/app/examples/really_long_list.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() {
-  DCFlight.start(app: ScreenAPITest());
+  DCFlight.start(app: MyApp());
 }
 
-// Temporary test for Screen API
-class ScreenAPITest extends StatefulComponent {
+
+class MyApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final currentTab = useState<int>(0);
@@ -30,27 +32,7 @@ class ScreenAPITest extends StatefulComponent {
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
           children: [
-            DCFView(
-              layout: LayoutProps(
-                flex: 1,
-                justifyContent: YogaJustifyContent.center,
-                alignItems: YogaAlign.center,
-                padding: 20,
-              ),
-              children: [
-                DCFText(
-                  content: "Profile Screen",
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                ),
-                DCFText(
-                  content: "Screen API Test - Tab 2",
-                  textProps: DCFTextProps(fontSize: 16),
-                ),
-              ],
-            ),
+           ModalTest()
           ],
         ),
 
@@ -73,17 +55,7 @@ class ScreenAPITest extends StatefulComponent {
                 padding: 20,
               ),
               children: [
-                DCFText(
-                  content: "Settings Screen",
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                ),
-                DCFText(
-                  content: "Screen API Test - Tab 3",
-                  textProps: DCFTextProps(fontSize: 16),
-                ),
+                ReallyLongList()
               ],
             ),
           ],
@@ -91,6 +63,7 @@ class ScreenAPITest extends StatefulComponent {
 
         // Tab navigator that coordinates the screens
         DCFTabNavigator(
+        
           onTabLongPress: (v){
             print("🔍 Tab long pressed: ${v["selectedIndex"]}");
           },
@@ -101,7 +74,7 @@ class ScreenAPITest extends StatefulComponent {
             // backgroundColor: Colors.white,
             selectedTintColor: Colors.blue,
             unselectedTintColor: Colors.grey,
-            translucent: false,
+            translucent: true,
           ),
           onTabChange: (data) {
             final newIndex = data["selectedIndex"] as int;
