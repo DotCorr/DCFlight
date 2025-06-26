@@ -76,8 +76,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         // Update view with current props FIRST
         let _ = updateView(screenContainer.contentView, withProps: props)
         
-        // CRITICAL FIX: Manually set up event system like VDOM does AFTER props are processed
-        setupEventSystemForView(screenContainer.contentView, props: props, viewId: screenName)
+       
         
         // CRITICAL FIX: Fire initial onAppear event when screen is created
         DispatchQueue.main.async {
@@ -87,62 +86,12 @@ class DCFScreenComponent: NSObject, DCFComponent {
         return screenContainer.contentView
     }
     
-    /// Manually set up the event system for a view (like VDOM does)
-    private func setupEventSystemForView(_ view: UIView, props: [String: Any], viewId: String) {
-        // Extract event types from _eventType_ prefixed props (DCFlight preprocessed format)
-        let eventTypes = props.keys.compactMap { key -> String? in
-            if key.hasPrefix("_eventType_") {
-                // Convert "_eventType_onAppear" to "onAppear"
-                return String(key.dropFirst("_eventType_".count))
-            }
-            return nil
-        }
-        
-        if !eventTypes.isEmpty {
-            print("🔧 DCFScreenComponent: Setting up event system for '\(viewId)' with events: \(eventTypes)")
-            
-            // Store viewId on the view (required for propagateEvent)
-            objc_setAssociatedObject(
-                view,
-                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
-                viewId,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-            
-            // Store event types on the view (required for propagateEvent)
-            objc_setAssociatedObject(
-                view,
-                UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
-                eventTypes,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-            
-            // Store the event callback for the global system to use
-            let eventCallback: (String, String, [String: Any]) -> Void = { (callbackViewId, eventType, eventData) in
-                // This callback will be called by propagateEvent() - no need to do anything here
-                // The framework handles routing to Dart automatically
-            }
-            
-            objc_setAssociatedObject(
-                view,
-                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
-                eventCallback,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-            
-            print("✅ DCFScreenComponent: Event system set up for '\(viewId)' with viewId and \(eventTypes.count) event types")
-        }
-    }
-    
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let screenName = props["name"] as? String,
               let screenContainer = DCFScreenComponent.screenRegistry[screenName] else {
             print("❌ DCFScreenComponent: Screen not found for update")
             return false
         }
-        
-        // CRITICAL FIX: Re-setup event system on every update in case events changed
-        setupEventSystemForView(view, props: props, viewId: screenName)
         
         // Handle visibility changes
         let isVisible = props["visible"] as? Bool ?? true
