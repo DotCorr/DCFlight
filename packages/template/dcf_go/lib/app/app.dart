@@ -16,12 +16,12 @@ class App extends StatefulComponent {
     // Removed DCFPortalProvider wrapper to test modal rendering
     return DCFScrollView(
      
-      layout: LayoutProps(flex: 1),
+      layout: LayoutProps(flex: 1,marginBottom: 10),
       children: [
         // Main App Content
-        // DCFSafeAreaView(
-        //   layout: LayoutProps(flex: 1, padding: 8),
-        //   children: [
+        DCFSafeAreaView(
+          layout: LayoutProps(flex: 1, padding: 8),
+          children: [
             DCFView(
               layout: LayoutProps(
                 flex: 1,
@@ -66,8 +66,8 @@ class App extends StatefulComponent {
                 selectedValue: pagestateLocal.state.toString(),
               ),
             ),
-        //   ],
-        // ),
+          ],
+        ),
       ],
     );
   }

@@ -140,8 +140,8 @@ class DCFModalComponent: NSObject, DCFComponent {
         
         // ✅ GIVE ABSTRACTION LAYER FULL CONTROL: No explicit margins/padding, full width/height
         let modalFrame = modalVC.view.bounds
-        let availableWidth = modalFrame.width
-        let availableHeight = modalFrame.height
+        _ = modalFrame.width
+        _ = modalFrame.height
         
         
         // ✅ ABSTRACTION LAYER CONTROL: Use the full modal bounds, no automatic safe area adjustments

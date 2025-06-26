@@ -45,8 +45,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
     // Registry of all screen containers by screen name
     static var screenRegistry: [String: ScreenContainer] = [:]
     
-    // Track screen lifecycle state
-    static var screenLifecycleCallbacks: [String: [(String) -> Void]] = [:]
     
     required override init() {
         super.init()

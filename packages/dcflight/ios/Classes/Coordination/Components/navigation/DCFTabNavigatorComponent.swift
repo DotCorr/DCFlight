@@ -39,7 +39,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         configureTabBarController(tabBarController, props: props, navigatorId: navigatorId)
         
         // Install as root view controller or present
-         replaceRoot(controller: tabBarController)
+        replaceRoot(controller: tabBarController)
         
         // Create placeholder view for DCFlight to track
         let placeholderView = UIView()
@@ -235,91 +235,72 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         configureTabBarAppearance(tabBarController, props: props)
     }
     
-    // MARK: - DCFComponent Protocol Methods
     
-    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // Tab navigator placeholder doesn't need layout
-        view.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
-    }
+    // MARK: - Helper Classes
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize(width: 1, height: 1)
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        objc_setAssociatedObject(
-            view,
-            UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
-            nodeId,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
-    }
-}
-
-// MARK: - Helper Classes
-
-/// State tracking for tab navigator
-class TabNavigatorState {
-    var screens: [String]
-    var selectedIndex: Int
-    
-    init(screens: [String], selectedIndex: Int) {
-        self.screens = screens
-        self.selectedIndex = selectedIndex
-    }
-}
-
-/// Delegate to handle tab bar controller events
-class TabBarControllerDelegate: NSObject, UITabBarControllerDelegate {
-    let navigatorId: String
-    
-    init(navigatorId: String) {
-        self.navigatorId = navigatorId
-        super.init()
-    }
-    
-    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
-        let selectedIndex = tabBarController.selectedIndex
+    /// State tracking for tab navigator
+    class TabNavigatorState {
+        var screens: [String]
+        var selectedIndex: Int
         
-        print("📱 TabBarControllerDelegate: User selected tab \(selectedIndex)")
-        
-        // Update navigator state
-        DCFTabNavigatorComponent.navigatorState[navigatorId]?.selectedIndex = selectedIndex
-        
-        // Find the placeholder view to fire event
-        if let placeholderView = findPlaceholderView(for: navigatorId) {
-            propagateEvent(
-                on: placeholderView,
-                eventName: "onTabChange",
-                data: [
-                    "selectedIndex": selectedIndex,
-                    "userInitiated": true
-                ]
-            )
+        init(screens: [String], selectedIndex: Int) {
+            self.screens = screens
+            self.selectedIndex = selectedIndex
         }
     }
     
-    func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
-        let selectedIndex = tabBarController.viewControllers?.firstIndex(of: viewController) ?? 0
+    /// Delegate to handle tab bar controller events
+    class TabBarControllerDelegate: NSObject, UITabBarControllerDelegate {
+        let navigatorId: String
         
-        // Fire tab press event
-        if let placeholderView = findPlaceholderView(for: navigatorId) {
-            propagateEvent(
-                on: placeholderView,
-                eventName: "onTabPress",
-                data: [
-                    "selectedIndex": selectedIndex
-                ]
-            )
+        init(navigatorId: String) {
+            self.navigatorId = navigatorId
+            super.init()
         }
         
-        return true
+        func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+            let selectedIndex = tabBarController.selectedIndex
+            
+            print("📱 TabBarControllerDelegate: User selected tab \(selectedIndex)")
+            
+            // Update navigator state
+            DCFTabNavigatorComponent.navigatorState[navigatorId]?.selectedIndex = selectedIndex
+            
+            // Find the placeholder view to fire event
+            if let placeholderView = findPlaceholderView(for: navigatorId) {
+                propagateEvent(
+                    on: placeholderView,
+                    eventName: "onTabChange",
+                    data: [
+                        "selectedIndex": selectedIndex,
+                        "userInitiated": true
+                    ]
+                )
+            }
+        }
+        
+        func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
+            let selectedIndex = tabBarController.viewControllers?.firstIndex(of: viewController) ?? 0
+            
+            // Fire tab press event
+            if let placeholderView = findPlaceholderView(for: navigatorId) {
+                propagateEvent(
+                    on: placeholderView,
+                    eventName: "onTabPress",
+                    data: [
+                        "selectedIndex": selectedIndex
+                    ]
+                )
+            }
+            
+            return true
+        }
+        
+        private func findPlaceholderView(for navigatorId: String) -> UIView? {
+            // This is a simplified approach - in a real implementation,
+            // we'd need to maintain a mapping of navigatorId to placeholder view
+            return nil
+        }
     }
     
-    private func findPlaceholderView(for navigatorId: String) -> UIView? {
-        // This is a simplified approach - in a real implementation,
-        // we'd need to maintain a mapping of navigatorId to placeholder view
-        return nil
-    }
 }
-
