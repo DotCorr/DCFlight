@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 /// Component that implements animated view
-class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFAnimatedViewComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
@@ -81,14 +81,17 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
             animatedView.targetRotation = toRotate
         }
         
+        // Handle command prop - new declarative-imperative pattern
+        if let commandData = props["command"] as? [String: Any] {
+            handleCommand(commandData, on: animatedView)
+        }
+        
         // Handle background color property - key fix for incremental updates
         if props.keys.contains("backgroundColor") {
             if let backgroundColor = props["backgroundColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
                 view.backgroundColor = uiColor
-                print("🎨 DCFAnimatedViewComponent: Set background color to: \(backgroundColor) -> \(uiColor)")
             } else {
-                print("⚠️ DCFAnimatedViewComponent: backgroundColor prop present but invalid value: \(props["backgroundColor"] ?? "nil")")
             }
         }
         
@@ -101,7 +104,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 } else {
                     view.backgroundColor = UIColor.white
                 }
-                print("🎨 DCFAnimatedViewComponent: Applied adaptive background color")
             }
         }
         
@@ -131,52 +133,88 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent, ComponentMethodHandler {
         }
     }
     
-    // MARK: - Method Handling
+    // MARK: - Command Handling (New Declarative-Imperative Pattern)
     
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let animatedView = view as? AnimatedView else { return false }
+    private func handleCommand(_ commandData: [String: Any], on animatedView: AnimatedView) {
+        guard let commandType = commandData["type"] as? String else { return }
         
-        switch methodName {
+        switch commandType {
         case "animate":
-            // Set animation properties from method args
-            if let duration = args["duration"] as? Int {
-                animatedView.animationDuration = TimeInterval(duration) / 1000.0
+            // ✅ FIX: Clear previous targets to avoid accumulation
+            animatedView.targetScale = nil
+            animatedView.targetOpacity = nil
+            animatedView.targetTranslationX = nil
+            animatedView.targetTranslationY = nil
+            animatedView.targetRotation = nil
+            
+            // ✅ FIX: Handle duration properly - Dart sends as Int (milliseconds) 
+            if let duration = commandData["duration"] as? Int {
+                animatedView.animationDuration = TimeInterval(duration) / 1000.0 // Convert ms to seconds
+            } else if let duration = commandData["duration"] as? Double {
+                animatedView.animationDuration = duration / 1000.0 // Convert ms to seconds
             }
             
-            if let curve = args["curve"] as? String {
+            if let curve = commandData["curve"] as? String {
                 animatedView.animationCurve = getCurve(from: curve)
             }
             
-            if let toScale = args["toScale"] as? CGFloat {
-                animatedView.targetScale = toScale
+            // ✅ FIX: Handle delay properly - Dart sends as Int (milliseconds)
+            if let delay = commandData["delay"] as? Int {
+                animatedView.animationDelay = TimeInterval(delay) / 1000.0 // Convert ms to seconds
+            } else if let delay = commandData["delay"] as? Double {
+                animatedView.animationDelay = delay / 1000.0 // Convert ms to seconds
             }
             
-            if let toOpacity = args["toOpacity"] as? CGFloat {
-                animatedView.targetOpacity = toOpacity
+            if let repeatAnimation = commandData["repeat"] as? Bool {
+                animatedView.animationRepeat = repeatAnimation
             }
             
-            if let toTranslateX = args["toTranslateX"] as? CGFloat {
-                animatedView.targetTranslationX = toTranslateX
+            if let toScale = commandData["toScale"] as? Double {
+                animatedView.targetScale = CGFloat(toScale)
+            } else if let toScale = commandData["toScale"] as? NSNumber {
+                animatedView.targetScale = CGFloat(toScale.doubleValue)
             }
             
-            if let toTranslateY = args["toTranslateY"] as? CGFloat {
-                animatedView.targetTranslationY = toTranslateY
+            if let toOpacity = commandData["toOpacity"] as? Double {
+                animatedView.targetOpacity = CGFloat(toOpacity)
+            } else if let toOpacity = commandData["toOpacity"] as? NSNumber {
+                animatedView.targetOpacity = CGFloat(toOpacity.doubleValue)
             }
             
-            if let toRotate = args["toRotate"] as? CGFloat {
-                animatedView.targetRotation = toRotate
+            if let toTranslateX = commandData["toTranslateX"] as? Double {
+                animatedView.targetTranslationX = CGFloat(toTranslateX)
+            } else if let toTranslateX = commandData["toTranslateX"] as? NSNumber {
+                animatedView.targetTranslationX = CGFloat(toTranslateX.doubleValue)
             }
             
-            // Start animation
+            if let toTranslateY = commandData["toTranslateY"] as? Double {
+                animatedView.targetTranslationY = CGFloat(toTranslateY)
+            } else if let toTranslateY = commandData["toTranslateY"] as? NSNumber {
+                animatedView.targetTranslationY = CGFloat(toTranslateY.doubleValue)
+            }
+            
+            // ✅ FIX: Rotation is already in radians from Dart, don't convert again
+            if let toRotation = commandData["toRotation"] as? Double {
+                animatedView.targetRotation = CGFloat(toRotation) // Keep as radians
+            } else if let toRotation = commandData["toRotation"] as? NSNumber {
+                animatedView.targetRotation = CGFloat(toRotation.doubleValue) // Keep as radians
+            }
+            
+            // Start animation immediately
             animatedView.animate()
-            return true
             
         case "reset":
             animatedView.reset()
-            return true
+            
+        case "pause":
+            animatedView.layer.removeAllAnimations()
+            
+        case "resume":
+            // Re-trigger animation with current properties
+            animatedView.animate()
             
         default:
-            return false
+            break
         }
     }
     
@@ -260,30 +298,30 @@ class AnimatedView: UIView {
         UIView.animate(withDuration: animationDuration, delay: animationDelay, options: animationCurve, animations: { [weak self] in
             guard let self = self else { return }
             
+            // ✅ FIX: Reset to identity and build fresh transform (no accumulation)
+            var combinedTransform = CGAffineTransform.identity
+            
             // Apply scale transform
             if let scale = self.targetScale {
-                let scaleTransform = CGAffineTransform(scaleX: scale, y: scale)
-                self.transform = self.transform.concatenating(scaleTransform)
+                combinedTransform = combinedTransform.scaledBy(x: scale, y: scale)
             }
             
             // Apply translation transform
             if let translateX = self.targetTranslationX, let translateY = self.targetTranslationY {
-                let translationTransform = CGAffineTransform(translationX: translateX, y: translateY)
-                self.transform = self.transform.concatenating(translationTransform)
+                combinedTransform = combinedTransform.translatedBy(x: translateX, y: translateY)
             } else if let translateX = self.targetTranslationX {
-                let translationTransform = CGAffineTransform(translationX: translateX, y: 0)
-                self.transform = self.transform.concatenating(translationTransform)
+                combinedTransform = combinedTransform.translatedBy(x: translateX, y: 0)
             } else if let translateY = self.targetTranslationY {
-                let translationTransform = CGAffineTransform(translationX: 0, y: translateY)
-                self.transform = self.transform.concatenating(translationTransform)
+                combinedTransform = combinedTransform.translatedBy(x: 0, y: translateY)
             }
             
-            // Apply rotation transform
+            // ✅ FIX: Apply rotation properly - value is already in radians
             if let rotation = self.targetRotation {
-                let rotationInRadians = rotation * .pi / 180
-                let rotationTransform = CGAffineTransform(rotationAngle: rotationInRadians)
-                self.transform = self.transform.concatenating(rotationTransform)
+                combinedTransform = combinedTransform.rotated(by: rotation)
             }
+            
+            // Apply the combined transform
+            self.transform = combinedTransform
             
             // Apply opacity
             if let opacity = self.targetOpacity {
@@ -312,5 +350,12 @@ class AnimatedView: UIView {
         layer.removeAllAnimations()
         transform = initialTransform
         alpha = initialAlpha
+        
+        // ✅ FIX: Clear target values to prevent accumulation
+        targetScale = nil
+        targetOpacity = nil
+        targetTranslationX = nil
+        targetTranslationY = nil
+        targetRotation = nil
     }
 }

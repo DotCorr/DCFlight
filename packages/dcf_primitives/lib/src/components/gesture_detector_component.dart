@@ -112,14 +112,16 @@ class DCFGestureDetector extends StatelessComponent {
       eventMap['onPanEnd'] = onPanEnd;
     }
     
+    Map<String, dynamic> props = {
+      'adaptive': adaptive,
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
+
     return DCFElement(
       type: 'GestureDetector',
-      props: {
-        'adaptive': adaptive,
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: children,
     );
   }

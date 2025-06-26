@@ -8,7 +8,7 @@
 
 
 // Main entry point for the DCFlight framework
-library dcflight;
+library;
 
 export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
     hide
@@ -72,6 +72,10 @@ export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 
+// Navigation and Screen Management
+export 'package:dcflight/framework/navigation/screen_component.dart';
+export 'package:dcflight/framework/navigation/tab_navigator_component.dart';
+
 import 'framework/renderer/vdom/vdom_api.dart';
 import 'framework/renderer/interface/interface.dart';
 import 'framework/utilities/screen_utilities.dart';
@@ -120,12 +124,10 @@ class DCFlight {
     await vdom.createRoot(mainApp);
     
     if (wasHotRestart) {
-      debugPrint('🔥 Hot restart detected - UI rebuilt successfully');
     }
 
     // Wait for the VDom to be ready
     vdom.isReady.whenComplete(() async {
-      debugPrint('VDOM is ready - layout will be calculated automatically');
       // Previously, we had to call `calculateLayout` manually.
       // Now, layout is automatically calculated when layout props change at the native side 🤯.
     });

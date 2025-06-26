@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import '../commands/animated_view_commands.dart';
 
 /// An animated view component implementation using StatelessComponent
 class DCFAnimatedView extends StatelessComponent {
@@ -31,6 +32,10 @@ class DCFAnimatedView extends StatelessComponent {
   /// Whether to use adaptive theming
   final bool adaptive;
   
+  /// Command to execute on the AnimatedView (replaces imperative method calls)
+  /// Commands are processed immediately by native code and don't trigger re-renders
+  final AnimatedViewCommand? command;
+  
   /// Create an animated view component
   DCFAnimatedView({
     required this.children,
@@ -40,6 +45,7 @@ class DCFAnimatedView extends StatelessComponent {
     this.onAnimationEnd,
     this.events,
     this.adaptive = true,
+    this.command,
     super.key,
   });
   
@@ -52,15 +58,23 @@ class DCFAnimatedView extends StatelessComponent {
       eventMap['onAnimationEnd'] = onAnimationEnd;
     }
     
+    // Serialize command if provided
+    Map<String, dynamic> props = {
+      'animation': animation,
+      'adaptive': adaptive,
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
+    
+    // Add command to props if provided - this enables the new prop-based pattern
+    if (command != null) {
+      props['command'] = command!.toMap();
+    }
+
     return DCFElement(
       type: 'AnimatedView',
-      props: {
-        'animation': animation,
-        'adaptive': adaptive,
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: children,
     );
   }

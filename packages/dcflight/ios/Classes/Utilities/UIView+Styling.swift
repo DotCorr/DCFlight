@@ -14,12 +14,10 @@ extension UIView {
     public func applyStyles(props: [String: Any]) {
         // Apply background gradient first - it should be behind everything else
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
-            print("🌈 Applying background gradient via applyStyles")
             applyGradientBackground(gradientData: gradientData)
         }
         
         // Debug log for applied props
-        // print("🎨 Applying generic styles to \(type(of: self)) [ID: \(self.accessibilityIdentifier ?? "nil")] : \(props.keys.joined(separator: ", "))")
 
         // Border Radius (Global)
         if let borderRadius = props["borderRadius"] as? CGFloat {
@@ -76,7 +74,6 @@ extension UIView {
         // Background color - Apply only if specified
         if let backgroundColorStr = props["backgroundColor"] as? String {
             self.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
-            // print("   - Applied backgroundColor: \(backgroundColorStr)")
         }
         
         // Background gradient - Apply only if specified
@@ -89,7 +86,6 @@ extension UIView {
         // Opacity (Alpha) - Apply only if specified
         if let opacity = props["opacity"] as? CGFloat {
             self.alpha = opacity
-            // print("   - Applied opacity: \(opacity)")
         }
         // No default reset for alpha
 
@@ -210,20 +206,16 @@ extension UIView {
             switch pointerEvents {
             case "none":
                 self.isUserInteractionEnabled = false
-                // print("   - Applied pointerEvents: none")
             case "box-none":
                 // View itself doesn't receive events, but children can.
                 self.isUserInteractionEnabled = false // Correct for the view itself
-                // print("   - Applied pointerEvents: box-none (view interaction disabled)")
             case "box-only":
                 // View receives events, children do not (UIKit default handles this if children are disabled).
                 self.isUserInteractionEnabled = true
-                // print("   - Applied pointerEvents: box-only (view interaction enabled)")
             case "auto", "all":
                 fallthrough
             default:
                 self.isUserInteractionEnabled = true
-                // print("   - Applied pointerEvents: auto/all (view interaction enabled)")
             }
         }
         // No default setting for isUserInteractionEnabled - rely on UIKit defaults.
@@ -262,7 +254,6 @@ extension UIView {
     /// Apply gradient background to the view
     private func applyGradientBackground(gradientData: [String: Any]) {
         // Debug log to trace gradient application
-        print("🎨 Applying gradient background with data: \(gradientData)")
         
         // Remove any existing gradient layer
         let existingGradientLayers = layer.sublayers?.filter { $0 is CAGradientLayer } ?? []
@@ -272,7 +263,6 @@ extension UIView {
         
         guard let type = gradientData["type"] as? String,
               let colorsArray = gradientData["colors"] as? [String] else {
-            print("⚠️ Warning: Invalid gradient data - missing type or colors")
             return
         }
         
@@ -280,17 +270,14 @@ extension UIView {
         let cgColors: [CGColor] = colorsArray.compactMap { colorString in
             let color = ColorUtilities.color(fromHexString: colorString)?.cgColor
             if color == nil {
-                print("⚠️ Warning: Failed to parse color: \(colorString)")
             }
             return color
         }
         
         guard cgColors.count >= 2 else {
-            print("⚠️ Warning: Gradient needs at least 2 valid colors, got \(cgColors.count)")
             return
         }
         
-        print("✅ Creating gradient with \(cgColors.count) colors")
         
         let gradientLayer = CAGradientLayer()
         gradientLayer.colors = cgColors
@@ -314,7 +301,6 @@ extension UIView {
             gradientLayer.endPoint = CGPoint(x: endX, y: endY)
             gradientLayer.type = .axial
             
-            print("📐 Linear gradient: start(\(startX), \(startY)) to end(\(endX), \(endY))")
             
         case "radial":
             // Radial gradient configuration
@@ -329,10 +315,8 @@ extension UIView {
             let radiusY = centerY + radius
             gradientLayer.endPoint = CGPoint(x: min(radiusX, 1.0), y: min(radiusY, 1.0))
             
-            print("📐 Radial gradient: center(\(centerX), \(centerY)), radius: \(radius)")
             
         default:
-            print("⚠️ Warning: Unsupported gradient type: \(type)")
             return
         }
         
@@ -345,7 +329,6 @@ extension UIView {
         // Insert at index 0 to be behind all other content
         layer.insertSublayer(gradientLayer, at: 0)
         
-        print("✅ Gradient layer added with frame: \(gradientLayer.frame)")
         
         // Store gradient layer for later updates
         objc_setAssociatedObject(self, UnsafeRawPointer(bitPattern: "gradientLayer".hashValue)!, 
@@ -367,7 +350,6 @@ extension UIView {
                 gradientLayer.frame = bounds
                 CATransaction.commit()
                 
-                print("🔄 Updated gradient layer frame to \(bounds)")
             }
         }
     }
@@ -396,6 +378,5 @@ extension UIView {
     // This will ensure the swizzling is performed once when the app starts
     public static func performSwizzling() {
         _ = swizzleLayoutSubviews
-        print("✅ UIView layout swizzling initialized for gradient support")
     }
 }

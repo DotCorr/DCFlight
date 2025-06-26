@@ -37,4 +37,8 @@ export '../alert_component.dart';
 
 // 🚀 Export CRITICAL primitive components
 export '../webview_component.dart';
-// URL wrapper removed - use DCFGestureDetector + manual URL opening instead
+
+// ✅ Export COMMAND CLASSES - Type-safe imperative control
+export '../../commands/scroll_view_commands.dart';
+export '../../commands/flat_list_commands.dart';
+export '../../commands/animated_view_commands.dart';

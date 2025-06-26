@@ -7,9 +7,17 @@ class PortalTest extends StatefulComponent {
   DCFComponentNode render() {
     final activePortalId = useState<String?>(null);
     final counter = useState<int>(0);
+    final scrollCommand = useState<ScrollViewCommand?>(null);
 
     return DCFScrollView(
+      // ✅ Command pattern demonstration for ScrollView
+      command: scrollCommand.state,
       layout: LayoutProps(flex: 1, padding: 20.0),
+      onScroll: (v) {
+        if (scrollCommand.state != null) {
+          Future.microtask(() => scrollCommand.setState(null));
+        }
+      },
       children: [
         // Title
         DCFText(
@@ -219,6 +227,41 @@ class PortalTest extends StatefulComponent {
               children: [
                 DCFText(
                   content: '🧹 Clear All Portals',
+                  textProps: DCFTextProps(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: DCFFontWeight.bold,
+                  ),
+                  layout: LayoutProps(height: 25.0),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // ✅ Command demonstration button
+        DCFGestureDetector(
+          layout: LayoutProps(marginBottom: 20.0, height: 60.0),
+          onTap: (_) {
+            // ✅ Using scroll command pattern
+            scrollCommand.setState(ScrollViewCommand(scrollToTop: const ScrollToTopCommand(animated: true)));
+          },
+          children: [
+            DCFView(
+              layout: LayoutProps(
+                padding: 16.0,
+                height: 60.0,
+                width: "100%",
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.indigo,
+                borderRadius: 8,
+              ),
+              children: [
+                DCFText(
+                  content: '⬆️ Scroll to Top (Command Pattern)',
                   textProps: DCFTextProps(
                     color: Colors.white,
                     fontSize: 16,

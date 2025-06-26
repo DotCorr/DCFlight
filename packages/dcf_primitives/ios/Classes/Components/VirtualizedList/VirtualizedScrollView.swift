@@ -37,7 +37,6 @@ class VirtualizedScrollView: UIScrollView {
         // Configure for VirtualizedList behavior
         self.clipsToBounds = true
         
-        print("🔧 VirtualizedScrollView: Initialized with VirtualizedList architecture")
     }
     
     /// Update content size based on Yoga layout results - React Native VirtualizedList approach
@@ -45,7 +44,6 @@ class VirtualizedScrollView: UIScrollView {
         // If content size was explicitly set, use that
         if let explicitSize = explicitContentSize {
             self.contentSize = explicitSize
-            print("📏 VirtualizedScrollView: Using explicit content size: \(explicitSize)")
             return
         }
         
@@ -69,7 +67,6 @@ class VirtualizedScrollView: UIScrollView {
                 maxWidth = max(maxWidth, right)
                 maxHeight = max(maxHeight, bottom)
                 
-                print("📐 VirtualizedScrollView: Found view at absolute bounds: \(absoluteFrame) -> maxWidth: \(maxWidth), maxHeight: \(maxHeight)")
                 
                 // Recursively check subviews
                 calculateMaxBounds(from: subview, offset: CGPoint(x: offset.x + subview.frame.origin.x, y: offset.y + subview.frame.origin.y))
@@ -126,10 +123,6 @@ class VirtualizedScrollView: UIScrollView {
         // This is the key: explicit content size management separate from Yoga layout
         self.contentSize = finalContentSize
         
-        print("📏 VirtualizedScrollView: Updated content size to \(finalContentSize)")
-        print("📏 VirtualizedScrollView: Available space (frame): \(availableWidth)x\(availableHeight)")
-        print("📏 VirtualizedScrollView: Natural content dimensions: (\(maxWidth), \(maxHeight))")
-        print("📏 VirtualizedScrollView: Direction: \(isHorizontal ? "horizontal" : "vertical")")
         
         // Communicate content size update to Dart side if needed
         notifyContentSizeUpdate(finalContentSize)
@@ -140,7 +133,6 @@ class VirtualizedScrollView: UIScrollView {
         explicitContentSize = size
         self.contentSize = size
         
-        print("📏 VirtualizedScrollView: Set explicit content size: \(size)")
         
         // Communicate content size update to Dart side
         notifyContentSizeUpdate(size)

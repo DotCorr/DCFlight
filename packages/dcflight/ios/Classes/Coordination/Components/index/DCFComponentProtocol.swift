@@ -9,6 +9,8 @@
 import UIKit
 import yoga
 
+//Hey, if u are seing this.
+//Each individual componet extends this protocol and might seem to have dead code but they are not dead(currently is). These components implementing this protocol  are obliged to override these functions even if it seems like dead code or not to be doing anything. That is cause the framework is currently experimental and if all componets have this overriden although not used(you might as well remove it but be prepared to update your codebase when the need arises), it ensures your components are future proof. But meh, just yapping, you would figure it out.
 /// Protocol that all DCMAUI components must implement
 public protocol DCFComponent {
     /// Initialize the component
@@ -30,17 +32,6 @@ public protocol DCFComponent {
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)
 }
 
-
-/// Protocol for handling component-specific methods
-public protocol ComponentMethodHandler {
-    /// Handle a method call on a specific view instance
-    /// - Parameters:
-    ///   - methodName: The name of the method to call
-    ///   - args: The arguments to pass to the method
-    ///   - view: The view instance to operate on
-    /// - Returns: Whether the method was successfully handled
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool
-}
 
 /// Layout information from a Yoga node
 public struct YGNodeLayout {
@@ -91,26 +82,21 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
     // Execute optional native-side action first (for any native processing needed)
     nativeAction?(view, eventData)
     
-    print("🔍 DEBUG: Attempting to propagate \(eventName) on view \(view)")
     
     // Get the stored event callback for this view (set up by the framework automatically)
     guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
             as? (String, String, [String: Any]) -> Void else {
-        print("🔇 No event callback found for view - event \(eventName) not propagated")
         return
     }
     
     guard let viewId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String else {
-        print("🔇 No viewId found for view - event \(eventName) not propagated")
         return
     }
     
     guard let eventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] else {
-        print("🔇 No event types found for view - event \(eventName) not propagated")
         return
     }
     
-    print("🔍 DEBUG: Found viewId: \(viewId), eventTypes: \(eventTypes)")
     
     // Check if this event type is registered - try both exact match and normalized versions
     let normalizedEventName = normalizeEventNameForPropagation(eventName)
@@ -120,11 +106,8 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
                          eventTypes.contains("on\(eventName.capitalized)")
     
     if eventRegistered {
-        print("🚀 Propagating \(eventName) event to Dart for view \(viewId)")
         callback(viewId, eventName, eventData)
     } else {
-        print("🔇 Event \(eventName) not registered for view \(viewId). Registered: \(eventTypes)")
-        print("🔍 DEBUG: Tried variations - exact: \(eventName), normalized: \(normalizedEventName)")
     }
 }
 

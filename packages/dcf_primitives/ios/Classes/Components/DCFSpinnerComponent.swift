@@ -18,7 +18,6 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        print("🚀 DCFSpinnerComponent.createView called with props: \(props.keys.sorted())")
         
         let spinner: UIActivityIndicatorView
         
@@ -58,7 +57,6 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
         updateView(spinner, withProps: props)
         spinner.applyStyles(props: props)
         
-        print("✅ DCFSpinnerComponent.createView completed successfully")
         return spinner
     }
     

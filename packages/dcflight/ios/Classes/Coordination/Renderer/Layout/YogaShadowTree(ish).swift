@@ -48,13 +48,11 @@ class YogaShadowTree {
             nodeTypes["root"] = "View"
         }
         
-        print("YogaShadowTree initialized with root node")
     }
     
     // CRASH FIX: Safe node creation with synchronization
     func createNode(id: String, componentType: String) {
         syncQueue.sync {
-            print("🏗️ CRASH FIX: Creating shadow node: \(id) of type \(componentType)")
             
             // Create new node
             let node = YGNodeNew()
@@ -67,9 +65,7 @@ class YogaShadowTree {
                 // Store node
                 nodes[id] = node
                 nodeTypes[id] = componentType
-                print("✅ CRASH FIX: Node \(id) created successfully")
             } else {
-                print("❌ CRASH FIX: Failed to create Yoga node for \(id)")
             }
         }
     }
@@ -78,11 +74,9 @@ class YogaShadowTree {
     func addChildNode(parentId: String, childId: String, index: Int? = nil) {
         syncQueue.sync {
             guard let parentNode = nodes[parentId], let childNode = nodes[childId] else {
-                print("Cannot add child: parent or child node not found")
                 return
             }
             
-            print("🔗 CRASH FIX: Safely adding child \(childId) to parent \(parentId)")
             
             // First, remove child from any existing parent
             if let oldParentId = nodeParents[childId], let oldParentNode = nodes[oldParentId] {
@@ -95,18 +89,15 @@ class YogaShadowTree {
                 let childCount = Int(YGNodeGetChildCount(parentNode))
                 let safeIndex = min(max(0, index), childCount) // Clamp index to valid range
                 YGNodeInsertChild(parentNode, childNode, Int(Int32(safeIndex)))
-                print("🔧 CRASH FIX: Child \(childId) added at index \(safeIndex)")
             } else {
                 // Add at the end
                 let childCount = Int(YGNodeGetChildCount(parentNode))
                 YGNodeInsertChild(parentNode, childNode, Int(Int32(childCount)))
-                print("🔧 CRASH FIX: Child \(childId) added at end position \(childCount)")
             }
             
             // Update parent reference
             nodeParents[childId] = parentId
             
-            print("✅ CRASH FIX: Child \(childId) safely added to parent \(parentId)")
         }
     }
     
@@ -126,7 +117,6 @@ class YogaShadowTree {
                 return
             }
             
-            print("🗑️ CRASH FIX: Safely removing node \(nodeId)")
             
             // CRITICAL: Remove from parent with bounds checking
             if let parentId = nodeParents[nodeId], let parentNode = nodes[parentId] {
@@ -147,7 +137,6 @@ class YogaShadowTree {
             // Signal reconciliation complete
             isReconciling = false
             
-            print("✅ CRASH FIX: Node \(nodeId) safely removed")
         }
     }
     
@@ -157,14 +146,12 @@ class YogaShadowTree {
         
         // Bounds check to prevent vector access issues
         guard childCount > 0 else {
-            print("⚠️ CRASH FIX: Parent has no children, skipping removal for \(childId)")
             return
         }
         
         // Find and remove the child safely
         for i in 0..<childCount {
             if let child = YGNodeGetChild(parentNode, i), child == childNode {
-                print("🔧 CRASH FIX: Removing child \(childId) at index \(i) from parent")
                 YGNodeRemoveChild(parentNode, childNode)
                 break
             }
@@ -175,7 +162,6 @@ class YogaShadowTree {
     private func safeRemoveAllChildren(from node: YGNodeRef, nodeId: String) {
         var childCount = YGNodeGetChildCount(node)
         
-        print("🔧 CRASH FIX: Removing \(childCount) children from node \(nodeId)")
         
         // Reverse iteration to avoid index shifting issues during removal
         while childCount > 0 {
@@ -184,7 +170,6 @@ class YogaShadowTree {
             
             // Bounds check before accessing
             guard let childNode = YGNodeGetChild(node, lastIndex) else {
-                print("⚠️ CRASH FIX: Child at index \(lastIndex) is null, breaking removal loop")
                 break
             }
             
@@ -194,20 +179,17 @@ class YogaShadowTree {
             // Update count and check for infinite loop protection
             let newChildCount = YGNodeGetChildCount(node)
             if newChildCount >= childCount {
-                print("⚠️ CRASH FIX: Child count not decreasing, breaking to prevent infinite loop")
                 break
             }
             
             childCount = newChildCount
         }
         
-        print("✅ CRASH FIX: All children removed from node \(nodeId)")
     }
     
     // Update a node's layout properties
     func updateNodeLayoutProps(nodeId: String, props: [String: Any]) {
         guard let node = nodes[nodeId] else {
-            print("Cannot update layout: node not found for ID \(nodeId)")
             return
         }
         
@@ -223,11 +205,9 @@ class YogaShadowTree {
     // CRASH FIX: Layout calculation with synchronization
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
         return syncQueue.sync {
-            print("🧮 CRASH FIX: Layout calculation started with synchronization")
             
             // Check if reconciliation is in progress
             if isReconciling {
-                print("⏸️ CRASH FIX: Deferring layout calculation - reconciliation in progress")
                 return false
             }
             
@@ -235,11 +215,9 @@ class YogaShadowTree {
             isLayoutCalculating = true
             defer { isLayoutCalculating = false }
             
-            print("Layout calculation started with dimensions: \(width)×\(height)")
             
             // Make sure root node exists
             guard let root = nodes["root"] else {
-                print("Root node not found. Cannot calculate layout")
                 return false
             }
             
@@ -265,10 +243,8 @@ class YogaShadowTree {
                         applyLayoutToView(viewId: nodeId, frame: layout)
                     }
                 }
-                print("✅ CRASH FIX: Layout calculation completed successfully")
                 return true
             } catch {
-                print("❌ Layout calculation failed with error: \(error.localizedDescription)")
                 
                 // Emergency fallback - try to fix most common issues and retry once
                 fixLayoutErrors()
@@ -285,10 +261,8 @@ class YogaShadowTree {
                             applyLayoutToView(viewId: nodeId, frame: layout)
                         }
                     }
-                    print("✅ Layout recovered after fixing errors")
                     return true
                 } catch {
-                    print("❌ Layout calculation failed even after recovery attempt: \(error)")
                     return false
                 }
             }
@@ -320,7 +294,6 @@ class YogaShadowTree {
             // to YGMeasureModeAtMost when necessary
             YGNodeStyleSetHeightAuto(node)
             
-            print("⚠️ Layout Warning: Node \(nodeId) has children but undefined height, defaulting to height:auto")
         }
     }
     
@@ -675,12 +648,10 @@ class YogaShadowTree {
     
     // Fix common layout errors that cause crashes
     private func fixLayoutErrors() {
-        print("🔧 Attempting to fix layout errors...")
         
         for (nodeId, node) in nodes {
             // Fix 1: Set auto height for nodes with children but undefined height
             if YGNodeGetChildCount(node) > 0 && YGNodeStyleGetHeight(node).unit == YGUnit.undefined {
-                print("🔧 Setting auto height for node \(nodeId) to prevent availableHeight crash")
                 YGNodeStyleSetHeightAuto(node)
             }
             
@@ -688,7 +659,6 @@ class YogaShadowTree {
             if YGNodeGetChildCount(node) == 0 && 
                YGNodeStyleGetHeight(node).unit == YGUnit.undefined &&
                YGNodeStyleGetWidth(node).unit == YGUnit.undefined {
-                print("🔧 Setting minimum dimensions for leaf node \(nodeId)")
                 YGNodeStyleSetMinHeight(node, 1)
                 YGNodeStyleSetMinWidth(node, 1)
             }
@@ -697,14 +667,12 @@ class YogaShadowTree {
             if YGNodeStyleGetFlex(node) != 0 && 
                YGNodeStyleGetHeight(node).unit == YGUnit.undefined &&
                YGNodeStyleGetWidth(node).unit == YGUnit.undefined {
-                print("🔧 Setting flexBasis:auto for flex node \(nodeId)")
                 YGNodeStyleSetFlexBasisAuto(node)
             }
             
             // Fix 4: For rows with undefined height, set height:auto
             if YGNodeStyleGetFlexDirection(node) == YGFlexDirection.row &&
                YGNodeStyleGetHeight(node).unit == YGUnit.undefined {
-                print("🔧 Setting height:auto for row container \(nodeId)")
                 YGNodeStyleSetHeightAuto(node)
             }
         }
@@ -878,7 +846,6 @@ class YogaShadowTree {
                     // 🔥 HOT RESTART SAFETY: Check if view is still valid before applying transform
                     guard let view = DCFLayoutManager.shared.getView(withId: viewId),
                           view.superview != nil || view.window != nil else {
-                        print("⚠️ YogaShadowTree: Skipping transform for detached view \(viewId) (likely from hot restart cleanup)")
                         return
                     }
                     view.transform = transform
@@ -891,7 +858,6 @@ class YogaShadowTree {
             // 🔥 HOT RESTART SAFETY: Comprehensive view validation before applying layout
             guard let self = self,
                   let view = DCFLayoutManager.shared.getView(withId: viewId) else {
-                print("⚠️ YogaShadowTree: View or self became nil during async dispatch")
                 return
             }
             
@@ -899,14 +865,12 @@ class YogaShadowTree {
             guard view.superview != nil || view.window != nil,
                   view.layer != nil,
                   !view.isEqual(nil) else {
-                print("⚠️ YogaShadowTree: Skipping layout for invalid/detached view \(viewId) (likely from hot restart cleanup)")
                 return
             }
             
             // Additional frame validation
             guard finalFrame.width.isFinite && finalFrame.height.isFinite &&
                   finalFrame.origin.x.isFinite && finalFrame.origin.y.isFinite else {
-                print("⚠️ YogaShadowTree: Invalid frame values for view \(viewId): \(finalFrame)")
                 return
             }
             

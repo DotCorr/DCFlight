@@ -18,7 +18,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        print("🚀 DCFSliderComponent.createView called with props: \(props.keys.sorted())")
         
         let slider = UISlider()
         
@@ -44,7 +43,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
         updateView(slider, withProps: props)
         slider.applyStyles(props: props)
         
-        print("✅ DCFSliderComponent.createView completed successfully")
         return slider
     }
     

@@ -6,7 +6,7 @@
  */
 
 
-library dcf_module;
+library;
 
 // Export component-based primitives
 export 'src/components/dictionary/components.dart';

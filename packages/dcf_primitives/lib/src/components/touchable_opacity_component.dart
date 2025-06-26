@@ -84,17 +84,20 @@ class DCFTouchableOpacity extends StatelessComponent {
       eventMap['onLongPress'] = onLongPress;
     }
     
+    // Serialize command if provided
+    Map<String, dynamic> props = {
+      'activeOpacity': activeOpacity,
+      'disabled': disabled,
+      'longPressDelay': longPressDelay,
+      'adaptive': adaptive,
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
+    
     return DCFElement(
       type: 'TouchableOpacity',
-      props: {
-        'activeOpacity': activeOpacity,
-        'disabled': disabled,
-        'longPressDelay': longPressDelay,
-        'adaptive': adaptive,
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: children,
     );
   }

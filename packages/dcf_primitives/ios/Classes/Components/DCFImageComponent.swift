@@ -8,8 +8,9 @@
 
 import UIKit
 import dcflight
+import CoreImage
 
-class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFImageComponent: NSObject, DCFComponent {
     // Thread-safe image cache using concurrent queue with barrier writes
     private static let cacheQueue = DispatchQueue(label: "com.dcf.imageCache", attributes: .concurrent)
     private static var _imageCache = [String: UIImage]()
@@ -85,14 +86,12 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             } else if let sourceNumber = sourceAny as? NSNumber {
                 source = sourceNumber.stringValue
             } else {
-                print("❌ Invalid source type: \(type(of: sourceAny))")
                 propagateEvent(on: imageView, eventName: "onError", data: ["error": "Invalid source type"])
                 return false
             }
             
             // Validate source is not empty
             guard !source.isEmpty else {
-                print("❌ Empty source provided")
                 propagateEvent(on: imageView, eventName: "onError", data: ["error": "Empty source"])
                 return false
             }
@@ -102,7 +101,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             let path = mainBundle.path(forResource: key, ofType: nil)
             
             if !source.hasPrefix("https://") && !source.hasPrefix("http://") {
-                print("this image path is local")
                 if let validPath = path {
                     loadImage(from: validPath, into: imageView, isLocal: true)
                 } else {
@@ -134,9 +132,7 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
             if let backgroundColor = props["backgroundColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
                 imageView.backgroundColor = uiColor
-                print("🎨 DCFImageComponent: Set background color to: \(backgroundColor) -> \(uiColor)")
             } else {
-                print("⚠️ DCFImageComponent: backgroundColor prop present but invalid value: \(props["backgroundColor"] ?? "nil")")
             }
         }
         
@@ -149,7 +145,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                 } else {
                     imageView.backgroundColor = UIColor.white
                 }
-                print("🎨 DCFImageComponent: Applied adaptive background color")
             }
         }
         
@@ -163,7 +158,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
     private func loadImage(from source: String, into imageView: UIImageView, isLocal: Bool = false) {
         // Validate source
         guard !source.isEmpty else {
-            print("❌ Empty source provided to loadImage")
             propagateEvent(on: imageView, eventName: "onError", data: ["error": "Empty source"])
             return
         }
@@ -183,7 +177,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
         if !isLocal && (source.hasPrefix("http://") || source.hasPrefix("https://")) {
             // Load from URL
             guard let url = URL(string: source) else {
-                print("❌ Invalid URL: \(source)")
                 propagateEvent(on: imageView, eventName: "onError", data: ["error": "Invalid URL"])
                 return
             }
@@ -196,7 +189,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                     let data = try Data(contentsOf: url)
                     guard let image = UIImage(data: data) else {
                         DispatchQueue.main.async {
-                            print("❌ Failed to create image from data for URL: \(source)")
                             propagateEvent(on: imageView, eventName: "onError", data: ["error": "Failed to create image from data"])
                         }
                         return
@@ -217,7 +209,6 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                     }
                 } catch {
                     DispatchQueue.main.async {
-                        print("❌ Failed to load image from URL: \(source), error: \(error)")
                         propagateEvent(on: imageView, eventName: "onError", data: ["error": "Failed to load image from URL: \(error.localizedDescription)"])
                     }
                 }
@@ -248,64 +239,12 @@ class DCFImageComponent: NSObject, DCFComponent, ComponentMethodHandler {
                         propagateEvent(on: imageView, eventName: "onLoad", data: [:])
                     }
                 } else {
-                    print("❌ Failed to load local image: \(source)")
                     DispatchQueue.main.async {
                         propagateEvent(on: imageView, eventName: "onError", data: ["error": "Local image not found"])
                     }
                 }
             }
         }
-    }
-    
-    // Handle component methods
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        guard let imageView = view as? UIImageView else { return false }
-        
-        switch methodName {
-        case "setImage":
-            if let uriAny = args["uri"] {
-                let uri: String
-                
-                // Handle different URI types safely
-                if let uriString = uriAny as? String {
-                    uri = uriString
-                } else if let uriNumber = uriAny as? NSNumber {
-                    uri = uriNumber.stringValue
-                } else {
-                    print("❌ Invalid URI type in setImage: \(type(of: uriAny))")
-                    return false
-                }
-                
-                guard !uri.isEmpty else {
-                    print("❌ Empty URI provided to setImage")
-                    return false
-                }
-                
-                loadImage(from: uri, into: imageView)
-                return true
-            }
-        case "reload":
-            // Force reload the current image
-            if imageView.image != nil {
-                propagateEvent(on: imageView, eventName: "onLoad", data: [:])
-                return true
-            }
-        case "clearCache":
-            // Clear the entire image cache - thread-safe
-            DCFImageComponent.clearAllCache()
-            return true
-        case "clearImageCache":
-            // Clear cache for specific image - thread-safe
-            if let sourceAny = args["source"] {
-                let source = String(describing: sourceAny)
-                DCFImageComponent.removeCachedImage(for: source)
-                return true
-            }
-        default:
-            return false
-        }
-        
-        return false
     }
     
     // MARK: - Event Handling

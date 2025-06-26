@@ -19,11 +19,9 @@ class DCFViewComponent: NSObject, DCFComponent {
         let view = UIView()
         
         // Print all props for debugging
-        print("📋 DCFViewComponent createView props: \(props.keys.sorted().joined(separator: ", "))")
         
         // Check for gradient first
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
-            print("🌈 DCFViewComponent found gradient in createView: \(gradientData)")
         }
         
         // Apply adaptive default styling - let OS handle light/dark mode
@@ -53,7 +51,6 @@ class DCFViewComponent: NSObject, DCFComponent {
         
         // If a background gradient is specified, ensure it's applied
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
-            print("🌈 DCFViewComponent explicitly applying gradient: \(gradientData)")
             view.applyStyles(props: ["backgroundGradient": gradientData])
         }
         

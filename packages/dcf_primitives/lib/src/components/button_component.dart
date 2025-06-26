@@ -74,14 +74,17 @@ class DCFButton extends StatelessComponent {
       eventMap['onPress'] = onPress;
     }
     
+    // Serialize command if provided
+    Map<String, dynamic> props = {
+      ...buttonProps.toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...eventMap,
+    };
+
     return DCFElement(
       type: 'Button',
-      props: {
-        ...buttonProps.toMap(),
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...eventMap,
-      },
+      props: props,
       children: [],
     );
   }

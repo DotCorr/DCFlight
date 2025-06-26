@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 /// Component that handles gesture recognition
-class DCFGestureDetectorComponent: NSObject, DCFComponent, ComponentMethodHandler {
+class DCFGestureDetectorComponent: NSObject, DCFComponent {
     // Keep singleton instance to prevent deallocation when gesture targets are registered
     private static let sharedInstance = DCFGestureDetectorComponent()
     
@@ -44,11 +44,7 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, ComponentMethodHandle
         gestureView.applyStyles(props: props)
         
         // Enable debug mode in development
-        #if DEBUG
-        gestureView._debugMode = true
-        #endif
         
-        print("🆕 Created gesture view with props: \(props)")
         return gestureView
     }
     
@@ -189,22 +185,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, ComponentMethodHandle
     // MARK: - Event Handling
     // Note: GestureDetector uses global propagateEvent() system
     // No custom event methods needed - all handled by DCFComponentProtocol
-    
-    // MARK: - Method Handling
-    
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool {
-        // Handle custom methods
-        switch methodName {
-        case "enableGestures":
-            view.isUserInteractionEnabled = true
-            return true
-        case "disableGestures":
-            view.isUserInteractionEnabled = false
-            return true
-        default:
-            return false
-        }
-    }
 }
 
 /// Custom view class for gesture detection with debug capabilities

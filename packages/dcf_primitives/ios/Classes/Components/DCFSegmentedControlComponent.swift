@@ -17,7 +17,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        print("🚀 DCFSegmentedControlComponent.createView called with props: \(props)")
         
         // Extract segments from props
         var segments: [String] = []
@@ -43,7 +42,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             segments = segmentArray.compactMap { $0 as? String }
         }
         
-        print("📊 Parsed segments: \(segments), icons: \(iconAssets)")
         
         // Create segmented control with segments
         let segmentedControl = UISegmentedControl(items: segments.isEmpty ? ["Segment 1"] : segments)
@@ -85,11 +83,9 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let segmentedControl = view as? UISegmentedControl else {
-            print("❌ DCFSegmentedControlComponent: View is not a UISegmentedControl")
             return false
         }
         
-        print("🔄 DCFSegmentedControlComponent updateView called with props: \(props)")
         
         // Update segments if changed
         var segments: [String] = []
@@ -122,9 +118,7 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         if let selectedIndex = props["selectedIndex"] as? Int {
             if selectedIndex >= 0 && selectedIndex < segmentedControl.numberOfSegments {
                 segmentedControl.selectedSegmentIndex = selectedIndex
-                print("✅ Updated selectedIndex to: \(selectedIndex)")
             } else {
-                print("⚠️ Invalid selectedIndex: \(selectedIndex), segments count: \(segmentedControl.numberOfSegments)")
             }
         }
         
@@ -206,14 +200,12 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             segmentedControl.selectedSegmentIndex = 0
         }
         
-        print("✅ Updated segments: \(segments) with icons: \(iconAssets)")
     }
     
     @objc private func segmentedControlValueChanged(_ sender: UISegmentedControl) {
         let selectedIndex = sender.selectedSegmentIndex
         let selectedTitle = sender.titleForSegment(at: selectedIndex) ?? ""
         
-        print("🎯 Segmented control value changed to index: \(selectedIndex), title: '\(selectedTitle)'")
         
         // Create event data that matches what Dart expects
         let eventData: [String: Any] = [
@@ -221,18 +213,15 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             "selectedTitle": selectedTitle
         ]
         
-        print("🎯 Event data being sent: \(eventData)")
         
         // Propagate event to Dart
         propagateEvent(on: sender, eventName: "onSelectionChange", data: eventData) { view, data in
-            print("🎯 Native-side processing for segmented control selection: \(data)")
         }
     }
     
     // MARK: - Icon Loading
     
     private func loadIconImage(_ asset: String) -> UIImage? {
-        print("🔍 DCFSegmentedControl: Loading icon asset: \(asset)")
         
         // Use the Flutter asset lookup pattern from DCFSvgComponent
         let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
@@ -242,17 +231,14 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         if let assetKey = key,
            let path = mainBundle.path(forResource: assetKey, ofType: nil),
            let image = UIImage(contentsOfFile: path) {
-            print("✅ DCFSegmentedControl: Successfully loaded icon from: \(path)")
             return image
         }
         
         // Fallback: try loading directly by asset name
         if let image = UIImage(named: asset) {
-            print("✅ DCFSegmentedControl: Successfully loaded icon by name: \(asset)")
             return image
         }
         
-        print("❌ DCFSegmentedControl: Failed to load icon asset: \(asset)")
         return nil
     }
 
@@ -266,7 +252,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             height: CGFloat(layout.height)
         )
         
-        print("📐 DCFSegmentedControlComponent.applyLayout - Applied layout: \(view.frame)")
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
@@ -285,6 +270,5 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        print("🌳 DCFSegmentedControlComponent view registered with shadow tree: \(nodeId)")
     }
 }

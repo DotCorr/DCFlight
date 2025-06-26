@@ -127,15 +127,17 @@ class DCFText extends StatelessComponent {
   
   @override
   DCFComponentNode render() {
+    Map<String, dynamic> props = {
+      'content': content,
+      ...textProps.toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      ...(events ?? {}),
+    };
+
     return DCFElement(
       type: 'Text',
-      props: {
-        'content': content,
-        ...textProps.toMap(),
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...(events ?? {}),
-      },
+      props: props,
       children: [],
     );
   }

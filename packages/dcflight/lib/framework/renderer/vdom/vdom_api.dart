@@ -7,7 +7,6 @@
 
 
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 
 import 'package:dcflight/framework/renderer/interface/interface.dart' show PlatformInterface;
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
@@ -113,8 +112,5 @@ class VDomAPI {
   
   /// Log VDOM state for debugging
   void debugLog(String message) {
-    if (kDebugMode) {
-      print('VDOM: $message');
-    }
   }
 }

@@ -69,7 +69,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
     
     
     private func presentAlert(from view: UIView, props: [String: Any]) {
-        print("🚀 DCFAlertComponent.presentAlert called with props: \(props)")
         debugProps(props)
         
         // Extract title and message from alertContent object (like actions)
@@ -84,13 +83,11 @@ class DCFAlertComponent: NSObject, DCFComponent {
         let alertStyle = parseAlertStyle(props["style"] as? String)
         let dismissible = props["dismissible"] as? Bool ?? true
         
-        print("📋 Alert props - title: '\(title ?? "nil")', message: '\(message ?? "nil")', style: \(alertStyle)")
         
         let alertController = UIAlertController(title: title, message: message, preferredStyle: alertStyle)
         
         // Add text fields if specified
         if let textFields = props["textFields"] as? [[String: Any]] {
-            print("📝 Adding \(textFields.count) text fields")
             for (index, textFieldProps) in textFields.enumerated() {
                 alertController.addTextField { textField in
                     self.configureTextField(textField, with: textFieldProps, sourceView: view, fieldIndex: index)
@@ -508,7 +505,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
     private func getTopViewController() -> UIViewController? {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else { 
-            print("❌ DCFAlertComponent: Could not find window scene")
             return nil 
         }
         
@@ -733,13 +729,10 @@ extension DCFAlertComponent {
         
         // Present the custom alert
         if let topViewController = getTopViewController() {
-            print("🚀 DCFAlertComponent: Presenting custom alert with children")
             topViewController.present(customAlertVC, animated: true) {
-                print("✅ DCFAlertComponent: Custom alert presented successfully")
                 propagateEvent(on: view, eventName: "onShow", data: [:])
             }
         } else {
-            print("❌ DCFAlertComponent: Could not find view controller to present custom alert from")
         }
     }
     
@@ -838,15 +831,12 @@ extension DCFAlertComponent {
         )
         alertController.view.addConstraint(heightConstraint)
         
-        print("📏 Resized alert for \(textFieldCount) text fields - height: \(desiredHeight)")
     }
     
     // MARK: - Prop Debugging Helper
     
     private func debugProps(_ props: [String: Any]) {
-        print("🔍 All received props:")
         for (key, value) in props.sorted(by: { $0.key < $1.key }) {
-            print("   \(key): \(value)")
         }
     }
 }

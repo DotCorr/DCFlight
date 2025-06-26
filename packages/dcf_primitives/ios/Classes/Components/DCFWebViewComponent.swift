@@ -15,7 +15,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFWebViewComponent()
     
     private var currentURL: String?
-    private weak var sourceView: UIView?  // Track the source view for events
+    // Remove the sourceView tracking - we'll propagate events directly on the webView
     
     required override init() {
         super.init()
@@ -24,7 +24,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         // Ensure we're on the main thread for UI operations
         guard Thread.isMainThread else {
-            print("DCFWebView: Creating view on background thread, dispatching to main")
             return DispatchQueue.main.sync {
                 return createView(props: props)
             }
@@ -46,14 +45,17 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         // Create the web view
         let webView = WKWebView(frame: .zero, configuration: configuration)
         
-        print("DCFWebView: Successfully created WKWebView")
-        
-        // Store source view for event propagation
-        sourceView = webView
         
         // Set navigation delegate to shared instance
         webView.navigationDelegate = DCFWebViewComponent.sharedInstance
         webView.uiDelegate = DCFWebViewComponent.sharedInstance
+        
+        // Add progress observation for onLoadProgress events
+        webView.addObserver(DCFWebViewComponent.sharedInstance, forKeyPath: "estimatedProgress", options: .new, context: nil)
+        
+        // Add JavaScript message handler for onMessage events
+        let userContentController = webView.configuration.userContentController
+        userContentController.add(DCFWebViewComponent.sharedInstance, name: "dcfMessage")
         
         // Ensure the webview is visible and properly sized
         webView.translatesAutoresizingMaskIntoConstraints = false
@@ -81,7 +83,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         webView.backgroundColor = UIColor.white
         webView.scrollView.backgroundColor = UIColor.white
         
-        print("DCFWebView: WebView configured, about to load content")
         
         // Load content on main thread
         DispatchQueue.main.async {
@@ -94,7 +95,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         // View should be the webview directly now
         guard let webView = view as? WKWebView else { 
-            print("DCFWebView: updateView - View is not a WKWebView")
             return false 
         }
         
@@ -102,7 +102,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         
         // Only reload if source changed
         if DCFWebViewComponent.sharedInstance.currentURL != source {
-            print("DCFWebView: updateView - Source changed from \(DCFWebViewComponent.sharedInstance.currentURL ?? "nil") to \(source)")
             DispatchQueue.main.async {
                 DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
             }
@@ -162,10 +161,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         let loadMode = props["loadMode"] as? String ?? "url"
         let contentType = props["contentType"] as? String ?? "html"
         
-        print("DCFWebView: Loading content - source: \(source), loadMode: \(loadMode)")
-        print("DCFWebView: WebView frame: \(webView.frame)")
-        print("DCFWebView: WebView bounds: \(webView.bounds)")
-        print("DCFWebView: WebView superview: \(webView.superview?.description ?? "nil")")
         
         currentURL = source
         
@@ -176,12 +171,10 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         switch loadMode {
         case "url":
             if source.isEmpty {
-                print("DCFWebView: Empty source URL provided")
                 return
             }
             
             guard let url = URL(string: source) else {
-                print("DCFWebView: Invalid URL: \(source)")
                 return
             }
             
@@ -192,15 +185,11 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             request.timeoutInterval = 30.0
             
-            print("DCFWebView: Loading URL request: \(url)")
-            print("DCFWebView: Request headers: \(request.allHTTPHeaderFields ?? [:])")
-            print("DCFWebView: Request timeout: \(request.timeoutInterval)")
             
             // Load the request
             webView.load(request)
             
         case "htmlString":
-            print("DCFWebView: Loading HTML string of length: \(source.count)")
             webView.loadHTMLString(source, baseURL: nil)
             
         case "localFile":
@@ -257,45 +246,33 @@ class DCFWebViewComponent: NSObject, DCFComponent {
 // MARK: - WKNavigationDelegate
 extension DCFWebViewComponent: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        print("DCFWebView: didStartProvisionalNavigation - URL: \(webView.url?.absoluteString ?? "nil")")
-        print("DCFWebView: WebView frame during load start: \(webView.frame)")
-        print("DCFWebView: WebView isHidden: \(webView.isHidden), alpha: \(webView.alpha)")
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
-        propagateEvent(on: sourceView, eventName: "onLoadStart", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onLoadStart", data: [
             "url": webView.url?.absoluteString ?? "",
             "title": webView.title ?? ""
         ])
     }
     
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        print("DCFWebView: didFinish navigation - URL: \(webView.url?.absoluteString ?? "nil")")
-        print("DCFWebView: Page title: \(webView.title ?? "nil")")
-        print("DCFWebView: WebView frame after load: \(webView.frame)")
-        print("DCFWebView: WebView isHidden: \(webView.isHidden), alpha: \(webView.alpha)")
         
         // Force a layout pass to ensure content is visible
         DispatchQueue.main.async {
             webView.setNeedsLayout()
             webView.layoutIfNeeded()
-            print("DCFWebView: Forced layout update after content load")
         }
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
-        propagateEvent(on: sourceView, eventName: "onLoadEnd", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onLoadEnd", data: [
             "url": webView.url?.absoluteString ?? "",
             "title": webView.title ?? ""
         ])
     }
     
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        print("DCFWebView: Navigation failed - Error: \(error.localizedDescription)")
-        print("DCFWebView: Error code: \((error as NSError).code)")
-        print("DCFWebView: Error domain: \((error as NSError).domain)")
-        print("DCFWebView: Error userInfo: \((error as NSError).userInfo)")
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
-        propagateEvent(on: sourceView, eventName: "onLoadError", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
             "code": (error as NSError).code,
             "url": webView.url?.absoluteString ?? ""
@@ -303,13 +280,9 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     }
     
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        print("DCFWebView: Provisional navigation failed - Error: \(error.localizedDescription)")
-        print("DCFWebView: Error code: \((error as NSError).code)")
-        print("DCFWebView: Error domain: \((error as NSError).domain)")
-        print("DCFWebView: Error userInfo: \((error as NSError).userInfo)")
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { return }
-        propagateEvent(on: sourceView, eventName: "onLoadError", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
             "code": (error as NSError).code,
             "url": webView.url?.absoluteString ?? ""
@@ -319,12 +292,8 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         let url = navigationAction.request.url?.absoluteString ?? ""
         
-        guard let sourceView = DCFWebViewComponent.sharedInstance.sourceView else { 
-            decisionHandler(.allow)
-            return 
-        }
-        
-        propagateEvent(on: sourceView, eventName: "onNavigationStateChange", data: [
+        // Propagate event directly on the webView
+        propagateEvent(on: webView, eventName: "onNavigationStateChange", data: [
             "url": url,
             "title": webView.title ?? "",
             "canGoBack": webView.canGoBack,
@@ -376,5 +345,34 @@ extension DCFWebViewComponent: WKUIDelegate {
             responder = responder?.next
         }
         return nil
+    }
+}
+
+// MARK: - KVO for progress tracking
+extension DCFWebViewComponent {
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "estimatedProgress" {
+            if let webView = object as? WKWebView {
+                let progress = webView.estimatedProgress
+                // Propagate progress event directly on the webView
+                propagateEvent(on: webView, eventName: "onLoadProgress", data: [
+                    "progress": progress
+                ])
+            }
+        }
+    }
+}
+
+// MARK: - WKScriptMessageHandler for JavaScript messages
+extension DCFWebViewComponent: WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "dcfMessage" {
+            if let webView = message.webView {
+                // Propagate message event directly on the webView
+                propagateEvent(on: webView, eventName: "onMessage", data: [
+                    "data": message.body
+                ])
+            }
+        }
     }
 }

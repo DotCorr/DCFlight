@@ -68,9 +68,7 @@ public class DCFLayoutManager {
             DispatchQueue.main.async {
                 self.needsLayoutCalculation = false
                 if success {
-                    print("✅ CRASH FIX: Automatic layout calculation completed successfully")
                 } else {
-                    print("⏸️ CRASH FIX: Layout calculation deferred due to reconciliation")
                     // Reschedule if deferred due to reconciliation
                     if !success {
                         self.needsLayoutCalculation = true
@@ -132,7 +130,6 @@ public class DCFLayoutManager {
     /// Queue layout update to happen off the main thread
     func queueLayoutUpdate(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
         guard viewRegistry[viewId] != nil else {
-            print("❌ Layout Error: View not found for ID \(viewId)")
             return false
         }
         
@@ -161,7 +158,6 @@ public class DCFLayoutManager {
     func applyLayout(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat,
                      animationDuration: TimeInterval = 0.0) -> Bool {
         guard let view = getView(withId: viewId) else {
-            print("❌ Layout Error: View not found for ID \(viewId)")
             return false
         }
         
@@ -204,25 +200,21 @@ public class DCFLayoutManager {
         
         // Level 1: Check if view is nil or in invalid state
         guard !view.isEqual(nil) else {
-            print("⚠️ DCFLayoutManager: View is nil, skipping layout")
             return
         }
         
         // Level 2: Check view hierarchy state
         guard view.superview != nil || view.window != nil else {
-            print("⚠️ DCFLayoutManager: Skipping layout for detached view (likely from hot restart cleanup)")
             return
         }
         
         // Level 3: Check if view is in valid UIKit state
         guard view.layer != nil else {
-            print("⚠️ DCFLayoutManager: View layer is nil, view appears to be deallocated")
             return
         }
         
         // Level 4: Check if view responds to frame setter (defensive programming)
         guard view.responds(to: #selector(setter: UIView.frame)) else {
-            print("⚠️ DCFLayoutManager: View doesn't respond to frame setter")
             return
         }
         
@@ -231,14 +223,12 @@ public class DCFLayoutManager {
               frame.origin.x.isFinite && frame.origin.y.isFinite &&
               !frame.width.isNaN && !frame.height.isNaN &&
               !frame.origin.x.isNaN && !frame.origin.y.isNaN else {
-            print("⚠️ DCFLayoutManager: Invalid frame values, skipping layout: \(frame)")
             return
         }
         
         // Level 6: Check for reasonable bounds
         guard frame.width <= 10000 && frame.height <= 10000 &&
               frame.width >= 0 && frame.height >= 0 else {
-            print("⚠️ DCFLayoutManager: Frame values out of reasonable bounds: \(frame)")
             return
         }
         
@@ -252,7 +242,6 @@ public class DCFLayoutManager {
             autoreleasepool {
                 guard let strongView = view,
                       strongView.superview != nil || strongView.window != nil else {
-                    print("⚠️ DCFLayoutManager: View became invalid during async dispatch")
                     return
                 }
                 
@@ -269,7 +258,6 @@ public class DCFLayoutManager {
                 
                 CATransaction.commit()
                 
-                print("✅ DCFLayoutManager: Successfully applied frame \(safeFrame) to view")
             }
         }
         
@@ -283,7 +271,6 @@ public class DCFLayoutManager {
         // Must be called on main thread
         assert(Thread.isMainThread, "applyLayoutResults must be called on the main thread")
         
-        print("✅ Applying \(results.count) layout results.")
         
         if animationDuration > 0 {
             UIView.animate(withDuration: animationDuration) {
@@ -291,7 +278,6 @@ public class DCFLayoutManager {
                     if let view = self.getView(withId: viewId) {
                         self.applyLayoutDirectly(to: view, frame: frame)
                     } else {
-                        print("⚠️ Layout Warning: View not found for ID \(viewId) during batch apply.")
                     }
                 }
             }
@@ -300,11 +286,9 @@ public class DCFLayoutManager {
                 if let view = self.getView(withId: viewId) {
                     self.applyLayoutDirectly(to: view, frame: frame)
                 } else {
-                    print("⚠️ Layout Warning: View not found for ID \(viewId) during batch apply.")
                 }
             }
         }
-        print("✅ Finished applying layout results.")
     }
 
     // New method to batch process layout updates
@@ -352,7 +336,6 @@ extension DCFLayoutManager {
         registerView(view, withId: nodeId)
         
         // Associate the view with its Yoga node
-        print("Associated view with node \(nodeId) of type \(componentType)")
         
         // Let the component know it's registered - this allows each component
         // to handle its own specialized registration logic
@@ -360,14 +343,12 @@ extension DCFLayoutManager {
         
         // ADDED: If this is a root view, trigger initial layout calculation
         if nodeId == "root" {
-            print("🌱 Root view registered, triggering initial layout calculation")
             triggerLayoutCalculation()
         }
     }
     
     // CRASH FIX: Add a child node to a parent in the layout tree with safe coordination
     func addChildNode(parentId: String, childId: String, index: Int) {
-        print("🔗 CRASH FIX: DCFLayoutManager adding child \(childId) to parent \(parentId)")
         
         // Call the synchronized YogaShadowTree addition
         YogaShadowTree.shared.addChildNode(parentId: parentId, childId: childId, index: index)
@@ -376,12 +357,10 @@ extension DCFLayoutManager {
         needsLayoutCalculation = true
         scheduleLayoutCalculation()
         
-        print("📐 CRASH FIX: Child node \(childId) added to \(parentId), automatic layout calculation scheduled")
     }
     
     // CRASH FIX: Remove a node from the layout tree with safe coordination
     func removeNode(nodeId: String) {
-        print("🗑️ CRASH FIX: DCFLayoutManager removing node \(nodeId)")
         
         // Call the synchronized YogaShadowTree removal
         YogaShadowTree.shared.removeNode(nodeId: nodeId)
@@ -390,7 +369,6 @@ extension DCFLayoutManager {
         needsLayoutCalculation = true
         scheduleLayoutCalculation()
         
-        print("📐 CRASH FIX: Node \(nodeId) removed, automatic layout calculation scheduled")
     }
     
     // Update a node's layout properties
@@ -401,7 +379,6 @@ extension DCFLayoutManager {
         needsLayoutCalculation = true
         scheduleLayoutCalculation()
         
-        print("📐 Layout props updated for \(nodeId), automatic layout calculation scheduled")
     }
     
     // Manually trigger layout calculation (useful for initial layout or when needed)
@@ -423,9 +400,7 @@ extension DCFLayoutManager {
             
             DispatchQueue.main.async {
                 if success {
-                    print("✅ CRASH FIX: Manual layout calculation completed successfully")
                 } else {
-                    print("⏸️ CRASH FIX: Manual layout calculation deferred due to reconciliation")
                 }
             }
         }

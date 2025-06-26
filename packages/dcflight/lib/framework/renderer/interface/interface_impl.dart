@@ -33,7 +33,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
   PlatformInterfaceImpl() {
     // Set up method channels for events
     _setupMethodChannelEventHandling();
-    debugPrint('Method channel bridge initialized');
   }
 
   // Set up method channel for event handling
@@ -63,7 +62,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
       final result = await bridgeChannel.invokeMethod<bool>('initialize');
       return result ?? false;
     } catch (e) {
-      debugPrint('Failed to initialize bridge: $e');
       return false;
     }
   }
@@ -94,7 +92,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
       return result ?? false;
     } catch (e) {
-      debugPrint('Method channel createView error: $e');
       return false;
     }
   }
@@ -103,7 +100,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
   Future<bool> updateView(
       String viewId, Map<String, dynamic> propPatches) async {
     // Track operation for batch updates if needed
-    print("FINAL UPDATE GET CALLED");
     if (_batchUpdateInProgress) {
       _pendingBatchUpdates.add({
         'operation': 'updateView',
@@ -119,9 +115,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
       // Special case for text content updates to ensure they're always propagated
       if (propPatches.containsKey('content')) {
-        if (kDebugMode) {
-          print('Updating content for view $viewId: ${propPatches['content']}');
-        }
       }
       
       // Make sure prop updates are properly queued even if many updates happen quickly
@@ -131,12 +124,10 @@ class PlatformInterfaceImpl implements PlatformInterface {
       });
 
       if (result != true && kDebugMode) {
-        print('Native updateView returned false for viewId: $viewId');
       }
 
       return result ?? false;
     } catch (e) {
-      debugPrint('Method channel updateView error: $e');
       return false;
     }
   }
@@ -149,7 +140,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
       });
       return result ?? false;
     } catch (e) {
-      debugPrint('Method channel deleteView error: $e');
       return false;
     }
   }
@@ -162,7 +152,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
       });
       return result ?? false;
     } catch (e) {
-      debugPrint('Error detaching view: $e');
       return false;
     }
   }
@@ -177,7 +166,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
       });
       return result ?? false;
     } catch (e) {
-      debugPrint('Method channel attachView error: $e');
       return false;
     }
   }
@@ -186,17 +174,14 @@ class PlatformInterfaceImpl implements PlatformInterface {
   Future<bool> setChildren(String viewId, List<String> childrenIds) async {
     try {
       // Add debug for Modal specifically
-      print('🔍 DART: PlatformInterfaceImpl.setChildren called - viewId: $viewId, childrenIds: $childrenIds');
       
       final result = await bridgeChannel.invokeMethod<bool>('setChildren', {
         'viewId': viewId,
         'childrenIds': childrenIds,
       });
       
-      print('✅ DART: setChildren result for $viewId: $result');
       return result ?? false;
     } catch (e) {
-      debugPrint('Method channel setChildren error: $e');
       return false;
     }
   }
@@ -210,7 +195,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
       });
       return true;
     } catch (e) {
-      debugPrint('Error registering events: $e');
       return false;
     }
   }
@@ -227,7 +211,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
       return result ?? false;
     } catch (e) {
-      debugPrint('Method channel event unregistration error: $e');
       return false;
     }
   }
@@ -242,20 +225,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
   // REMOVED: updateViewLayout and calculateLayout methods
   // Layout is now calculated automatically when layout props change
 
-  @override
-  Future<dynamic> callComponentMethod(
-      String viewId, String methodName, Map<String, dynamic> args) async {
-    try {
-      return await bridgeChannel.invokeMethod('callComponentMethod', {
-        'viewId': viewId,
-        'methodName': methodName,
-        'args': args,
-      });
-    } catch (e) {
-      debugPrint('Error calling component method $methodName on $viewId: $e');
-      return null;
-    }
-  }
+  // REMOVED: callComponentMethod - replaced with prop-based commands
+  // Components now handle imperative operations through command props
 
   @override
   Future<bool> startBatchUpdate() async {
@@ -326,7 +297,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
         }
         return;
       } catch (e) {
-        debugPrint('Error executing callback: $e');
       }
     }
     
@@ -335,7 +305,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
       try {
         _eventHandler!(viewId, eventType, eventData);
       } catch (e) {
-        debugPrint('Error executing global event handler: $e');
       }
     }
   }
