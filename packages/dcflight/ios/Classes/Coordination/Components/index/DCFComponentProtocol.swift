@@ -9,6 +9,8 @@
 import UIKit
 import yoga
 
+//Hey, if u are seing this.
+//Each individual componet extends this protocol and might seem to have dead code but they are not dead(currently is). These components implementing this protocol  are obliged to override these functions even if it seems like dead code or not to be doing anything. That is cause the framework is currently experimental and if all componets have this overriden although not used(you might as well remove it but be prepared to update your codebase when the need arises), it ensures your components are future proof. But meh, just yapping, you would figure it out.
 /// Protocol that all DCMAUI components must implement
 public protocol DCFComponent {
     /// Initialize the component
@@ -30,17 +32,6 @@ public protocol DCFComponent {
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)
 }
 
-
-/// Protocol for handling component-specific methods
-public protocol ComponentMethodHandler {
-    /// Handle a method call on a specific view instance
-    /// - Parameters:
-    ///   - methodName: The name of the method to call
-    ///   - args: The arguments to pass to the method
-    ///   - view: The view instance to operate on
-    /// - Returns: Whether the method was successfully handled
-    func handleMethod(methodName: String, args: [String: Any], view: UIView) -> Bool
-}
 
 /// Layout information from a Yoga node
 public struct YGNodeLayout {

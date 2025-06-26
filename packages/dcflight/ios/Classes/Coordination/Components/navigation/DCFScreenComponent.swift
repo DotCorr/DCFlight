@@ -341,29 +341,4 @@ class DCFScreenComponent: NSObject, DCFComponent {
     static func getScreenContainers(byPresentationStyle style: String) -> [ScreenContainer] {
         return screenRegistry.values.filter { $0.presentationStyle == style }
     }
-    
-    // MARK: - DCFComponent Protocol Methods
-    
-    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(
-            x: CGFloat(layout.left),
-            y: CGFloat(layout.top),
-            width: CGFloat(layout.width),
-            height: CGFloat(layout.height)
-        )
-    }
-    
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize(width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height)
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Associate the view with its node ID
-        objc_setAssociatedObject(
-            view,
-            UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
-            nodeId,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
-    }
 }

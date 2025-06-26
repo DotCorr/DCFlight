@@ -1,7 +1,6 @@
 import 'package:dcf_go/app/app.dart';
 import 'package:dcflight/dcflight.dart';
 
-
 void main() {
   DCFlight.start(app: ScreenAPITest());
 }
@@ -31,7 +30,6 @@ class ScreenAPITest extends StatefulComponent {
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
           children: [
             DCFView(
-          
               layout: LayoutProps(
                 flex: 1,
                 justifyContent: YogaJustifyContent.center,
