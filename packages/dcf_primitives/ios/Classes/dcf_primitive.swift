@@ -24,8 +24,8 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("Button", componentClass: DCFButtonComponent.self)
         DCFComponentRegistry.shared.registerComponent("Text", componentClass: DCFTextComponent.self)
         DCFComponentRegistry.shared.registerComponent("Image", componentClass: DCFImageComponent.self)
-        DCFComponentRegistry.shared.registerComponent("ScrollView", componentClass: DCFVirtualizedScrollViewComponent.self)
-        DCFComponentRegistry.shared.registerComponent("FlatList", componentClass: DCFVirtualizedFlatListComponent.self)
+        DCFComponentRegistry.shared.registerComponent("ScrollView", componentClass: DCFScrollViewComponent.self)
+        DCFComponentRegistry.shared.registerComponent("FlatList", componentClass: DCFFlatListComponent.self)
                
         // Register new primitives
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)

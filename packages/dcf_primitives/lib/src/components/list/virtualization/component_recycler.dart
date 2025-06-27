@@ -75,7 +75,7 @@ class ComponentRecycler<T> {
       _activeComponents[index] = recycled;
       _totalRecycled++;
       
-      if (_config.debugMode) {
+      if (VirtualizationConfig.debugMode.debug) {
         print('$_logPrefix Recycled component for index $index, type: $itemType');
       }
       
@@ -94,7 +94,7 @@ class ComponentRecycler<T> {
       _activeComponents[index] = recyclable;
       _totalCreated++;
       
-      if (_config.debugMode) {
+      if (VirtualizationConfig.debugMode.debug) {
         print('$_logPrefix Created new component for index $index, type: $itemType');
       }
       
@@ -214,7 +214,7 @@ class ComponentRecycler<T> {
       
       // Analyze usage patterns
       final currentSize = pool.length;
-      final maxSize = _poolSizes[itemType] ?? _config.maxPoolSize;
+      final maxSize = _poolSizes[itemType] ?? config.maxPoolSize;
       
       // If pool is consistently empty, reduce max size
       if (currentSize == 0 && maxSize > 5) {

@@ -17,98 +17,98 @@ class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create a VirtualizedScrollView instead of a regular UIScrollView
-        let virtualizedScrollView = VirtualizedScrollView()
+        // Create a DCFScrollableView instead of a regular UIScrollView
+        let DCFScrollableView = DCFScrollableView()
         
         // 🔧 FIXED: Create a new delegate instance for each scroll view
         let delegateInstance = DCFFlatListComponent()
-        virtualizedScrollView.delegate = delegateInstance
+        DCFScrollableView.delegate = delegateInstance
         
         // 🔧 CRITICAL: Store the delegate instance on the scroll view to prevent deallocation
-        objc_setAssociatedObject(virtualizedScrollView, 
+        objc_setAssociatedObject(DCFScrollableView, 
                                UnsafeRawPointer(bitPattern: "delegateInstance".hashValue)!, 
                                delegateInstance, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
         // Configure as a flat list
-        virtualizedScrollView.isHorizontal = props["horizontal"] as? Bool ?? false
+        DCFScrollableView.isHorizontal = props["horizontal"] as? Bool ?? false
         
         // Apply basic flat list properties
-        virtualizedScrollView.showsVerticalScrollIndicator = true
-        virtualizedScrollView.showsHorizontalScrollIndicator = false
-        virtualizedScrollView.bounces = true
-        virtualizedScrollView.clipsToBounds = true
+        DCFScrollableView.showsVerticalScrollIndicator = true
+        DCFScrollableView.showsHorizontalScrollIndicator = false
+        DCFScrollableView.bounces = true
+        DCFScrollableView.clipsToBounds = true
         
         // Apply adaptive styling
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
-                virtualizedScrollView.backgroundColor = UIColor.systemBackground
+                DCFScrollableView.backgroundColor = UIColor.systemBackground
             } else {
-                virtualizedScrollView.backgroundColor = UIColor.white
+                DCFScrollableView.backgroundColor = UIColor.white
             }
         } else {
-            virtualizedScrollView.backgroundColor = UIColor.clear
+            DCFScrollableView.backgroundColor = UIColor.clear
         }
         
         // Apply props
-        updateView(virtualizedScrollView, withProps: props)
+        updateView(DCFScrollableView, withProps: props)
         
         // Apply StyleSheet properties
-        virtualizedScrollView.applyStyles(props: props)
+        DCFScrollableView.applyStyles(props: props)
         
         
-        return virtualizedScrollView
+        return DCFScrollableView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let virtualizedScrollView = view as? VirtualizedScrollView else { return false }
+        guard let DCFScrollableView = view as? DCFScrollableView else { return false }
         
         // Update horizontal property
         if let horizontal = props["horizontal"] as? Bool {
-            virtualizedScrollView.isHorizontal = horizontal
+            DCFScrollableView.isHorizontal = horizontal
             if horizontal {
-                virtualizedScrollView.alwaysBounceHorizontal = true
-                virtualizedScrollView.alwaysBounceVertical = false
-                virtualizedScrollView.showsHorizontalScrollIndicator = true
-                virtualizedScrollView.showsVerticalScrollIndicator = false
+                DCFScrollableView.alwaysBounceHorizontal = true
+                DCFScrollableView.alwaysBounceVertical = false
+                DCFScrollableView.showsHorizontalScrollIndicator = true
+                DCFScrollableView.showsVerticalScrollIndicator = false
             } else {
-                virtualizedScrollView.alwaysBounceHorizontal = false
-                virtualizedScrollView.alwaysBounceVertical = true
-                virtualizedScrollView.showsHorizontalScrollIndicator = false
-                virtualizedScrollView.showsVerticalScrollIndicator = true
+                DCFScrollableView.alwaysBounceHorizontal = false
+                DCFScrollableView.alwaysBounceVertical = true
+                DCFScrollableView.showsHorizontalScrollIndicator = false
+                DCFScrollableView.showsVerticalScrollIndicator = true
             }
         }
         
         // Set shows indicator if specified
         if let showsScrollIndicator = props["showsScrollIndicator"] as? Bool {
-            if virtualizedScrollView.isHorizontal {
-                virtualizedScrollView.showsHorizontalScrollIndicator = showsScrollIndicator
+            if DCFScrollableView.isHorizontal {
+                DCFScrollableView.showsHorizontalScrollIndicator = showsScrollIndicator
             } else {
-                virtualizedScrollView.showsVerticalScrollIndicator = showsScrollIndicator
+                DCFScrollableView.showsVerticalScrollIndicator = showsScrollIndicator
             }
         }
         
         // Set bounces if specified
         if let bounces = props["bounces"] as? Bool {
-            virtualizedScrollView.bounces = bounces
+            DCFScrollableView.bounces = bounces
         }
         
         // Set paging enabled if specified
         if let pagingEnabled = props["pagingEnabled"] as? Bool {
-            virtualizedScrollView.isPagingEnabled = pagingEnabled
+            DCFScrollableView.isPagingEnabled = pagingEnabled
         }
         
         // Set scroll enabled if specified
         if let scrollEnabled = props["scrollEnabled"] as? Bool {
-            virtualizedScrollView.isScrollEnabled = scrollEnabled
+            DCFScrollableView.isScrollEnabled = scrollEnabled
         }
         
         // Handle background color property
         if props.keys.contains("backgroundColor") {
             if let backgroundColor = props["backgroundColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
-                virtualizedScrollView.backgroundColor = uiColor
+                DCFScrollableView.backgroundColor = uiColor
             }
         }
         
@@ -117,61 +117,61 @@ class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             let isAdaptive = props["adaptive"] as? Bool ?? true
             if isAdaptive {
                 if #available(iOS 13.0, *) {
-                    virtualizedScrollView.backgroundColor = UIColor.systemBackground
+                    DCFScrollableView.backgroundColor = UIColor.systemBackground
                 } else {
-                    virtualizedScrollView.backgroundColor = UIColor.white
+                    DCFScrollableView.backgroundColor = UIColor.white
                 }
             }
         }
         
         // Apply styling properties
         if let borderRadius = props["borderRadius"] as? CGFloat {
-            virtualizedScrollView.layer.cornerRadius = borderRadius
-            virtualizedScrollView.clipsToBounds = true  
+            DCFScrollableView.layer.cornerRadius = borderRadius
+            DCFScrollableView.clipsToBounds = true  
         }
         
         if let borderWidth = props["borderWidth"] as? CGFloat {
-            virtualizedScrollView.layer.borderWidth = borderWidth
+            DCFScrollableView.layer.borderWidth = borderWidth
         }
         
         if let borderColor = props["borderColor"] as? String {
-            virtualizedScrollView.layer.borderColor = ColorUtilities.color(fromHexString: borderColor)?.cgColor
+            DCFScrollableView.layer.borderColor = ColorUtilities.color(fromHexString: borderColor)?.cgColor
         }
         
         if let opacity = props["opacity"] as? CGFloat {
-            virtualizedScrollView.alpha = opacity
+            DCFScrollableView.alpha = opacity
         }
         
         // Store flat list specific properties
         if let contentOffsetStart = props["contentOffsetStart"] as? CGFloat, contentOffsetStart > 0 {
-            virtualizedScrollView.virtualizedContentOffsetStart = contentOffsetStart
+            DCFScrollableView.virtualizedContentOffsetStart = contentOffsetStart
         }
         
         if let contentPaddingTop = props["contentPaddingTop"] as? CGFloat, contentPaddingTop > 0 {
-            virtualizedScrollView.virtualizedContentPaddingTop = contentPaddingTop
+            DCFScrollableView.virtualizedContentPaddingTop = contentPaddingTop
         }
         
         // ✅ HANDLE COMMANDS - New prop-based command pattern
-        handleCommand(virtualizedScrollView: virtualizedScrollView, props: props)
+        handleCommand(DCFScrollableView: DCFScrollableView, props: props)
         
         // Apply StyleSheet properties
-        virtualizedScrollView.applyStyles(props: props)
+        DCFScrollableView.applyStyles(props: props)
         
         return true
     }
     
-    // Custom layout for VirtualizedFlatList - uses VirtualizedScrollView approach
+    // Custom layout for VirtualizedFlatList - uses DCFScrollableView approach
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        guard let virtualizedScrollView = view as? VirtualizedScrollView else { return }
+        guard let DCFScrollableView = view as? DCFScrollableView else { return }
         
         // Step 1: Let Yoga handle the scroll view frame layout
         let newFrame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
-        virtualizedScrollView.frame = newFrame
+        DCFScrollableView.frame = newFrame
         
         
         // Step 2: Immediately update content size from Yoga layout
         // Don't use async here - do it synchronously after frame is set
-        virtualizedScrollView.updateContentSizeFromYogaLayout()
+        DCFScrollableView.updateContentSizeFromYogaLayout()
     }
     
     // Add a view registration hook for content size updates
@@ -182,12 +182,12 @@ class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
                                nodeId, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // For VirtualizedFlatList, use VirtualizedScrollView content size management
-        if let virtualizedScrollView = view as? VirtualizedScrollView {
-            virtualizedScrollView.nodeId = nodeId
+        // For VirtualizedFlatList, use DCFScrollableView content size management
+        if let DCFScrollableView = view as? DCFScrollableView {
+            DCFScrollableView.nodeId = nodeId
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                virtualizedScrollView.updateContentSizeFromYogaLayout()
+                DCFScrollableView.updateContentSizeFromYogaLayout()
             }
         }
     }
@@ -199,7 +199,7 @@ class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     // MARK: - Command Handling (New Prop-Based Pattern)
     
     /// Handle commands passed as props - the new declarative command pattern
-    private func handleCommand(virtualizedScrollView: VirtualizedScrollView, props: [String: Any]) {
+    private func handleCommand(DCFScrollableView: DCFScrollableView, props: [String: Any]) {
         guard let commandData = props["command"] as? [String: Any],
               let commandType = commandData["type"] as? String else {
             return
@@ -209,29 +209,29 @@ class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         case "scrollToPosition":
             if let x = commandData["x"] as? CGFloat, let y = commandData["y"] as? CGFloat {
                 let animated = commandData["animated"] as? Bool ?? true
-                virtualizedScrollView.setContentOffset(CGPoint(x: x, y: y), animated: animated)
+                DCFScrollableView.setContentOffset(CGPoint(x: x, y: y), animated: animated)
             }
         case "scrollToTop":
             let animated = commandData["animated"] as? Bool ?? true
-            virtualizedScrollView.setContentOffset(CGPoint(x: virtualizedScrollView.contentOffset.x, y: 0), animated: animated)
+            DCFScrollableView.setContentOffset(CGPoint(x: DCFScrollableView.contentOffset.x, y: 0), animated: animated)
         case "scrollToBottom":
             let animated = commandData["animated"] as? Bool ?? true
-            let bottomOffset = CGPoint(x: virtualizedScrollView.contentOffset.x, 
-                                     y: virtualizedScrollView.contentSize.height - virtualizedScrollView.bounds.height)
-            virtualizedScrollView.setContentOffset(bottomOffset, animated: animated)
+            let bottomOffset = CGPoint(x: DCFScrollableView.contentOffset.x, 
+                                     y: DCFScrollableView.contentSize.height - DCFScrollableView.bounds.height)
+            DCFScrollableView.setContentOffset(bottomOffset, animated: animated)
         case "scrollToIndex":
             // FlatList specific - scroll to a specific item index
             if let index = commandData["index"] as? Int {
                 let animated = commandData["animated"] as? Bool ?? true
-                scrollToIndex(virtualizedScrollView, index: index, animated: animated)
+                scrollToIndex(DCFScrollableView, index: index, animated: animated)
             }
         case "flashScrollIndicators":
-            virtualizedScrollView.flashScrollIndicators()
+            DCFScrollableView.flashScrollIndicators()
         case "updateContentSize":
-            virtualizedScrollView.updateContentSizeFromYogaLayout()
+            DCFScrollableView.updateContentSizeFromYogaLayout()
         case "setContentSize":
             if let width = commandData["width"] as? CGFloat, let height = commandData["height"] as? CGFloat {
-                virtualizedScrollView.setExplicitContentSize(CGSize(width: width, height: height))
+                DCFScrollableView.setExplicitContentSize(CGSize(width: width, height: height))
             }
         default:
             break
@@ -240,7 +240,7 @@ class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     
     // MARK: - FlatList Specific Methods
     
-    private func scrollToIndex(_ virtualizedScrollView: VirtualizedScrollView, index: Int, animated: Bool) {
+    private func scrollToIndex(_ DCFScrollableView: DCFScrollableView, index: Int, animated: Bool) {
         // Calculate position based on estimated item size and index
         // This is a simplified implementation - in React Native VirtualizedList, 
         // this would use more sophisticated calculations
@@ -249,18 +249,18 @@ class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         let estimatedItemWidth: CGFloat = 100 // Default estimated width
         
         let targetOffset: CGPoint
-        if virtualizedScrollView.isHorizontal {
+        if DCFScrollableView.isHorizontal {
             let targetX = CGFloat(index) * estimatedItemWidth
-            targetOffset = CGPoint(x: targetX, y: virtualizedScrollView.contentOffset.y)
+            targetOffset = CGPoint(x: targetX, y: DCFScrollableView.contentOffset.y)
         } else {
             let targetY = CGFloat(index) * estimatedItemHeight
-            targetOffset = CGPoint(x: virtualizedScrollView.contentOffset.x, y: targetY)
+            targetOffset = CGPoint(x: DCFScrollableView.contentOffset.x, y: targetY)
         }
         
         // Ensure the target offset is within bounds
         let maxOffset = CGPoint(
-            x: max(0, virtualizedScrollView.contentSize.width - virtualizedScrollView.bounds.width),
-            y: max(0, virtualizedScrollView.contentSize.height - virtualizedScrollView.bounds.height)
+            x: max(0, DCFScrollableView.contentSize.width - DCFScrollableView.bounds.width),
+            y: max(0, DCFScrollableView.contentSize.height - DCFScrollableView.bounds.height)
         )
         
         let clampedOffset = CGPoint(
@@ -268,7 +268,7 @@ class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             y: min(max(0, targetOffset.y), maxOffset.y)
         )
         
-        virtualizedScrollView.setContentOffset(clampedOffset, animated: animated)
+        DCFScrollableView.setContentOffset(clampedOffset, animated: animated)
         
     }
     
