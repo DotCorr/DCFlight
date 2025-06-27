@@ -63,6 +63,12 @@ class LayoutEstimator {
     return _globalEstimatedSize;
   }
   
+  /// Get all item sizes for virtualization calculations
+  List<double> getAllItemSizes([int? itemCount]) {
+    final int count = itemCount ?? _measuredSizes.keys.fold(0, (max, index) => math.max(max, index + 1));
+    return List.generate(count, (index) => getItemSize(index));
+  }
+  
   /// Record actual measurement for learning
   void recordMeasurement(int index, double size, {String? itemType}) {
     if (hasFixedSize) return; // Don't learn if using fixed sizes

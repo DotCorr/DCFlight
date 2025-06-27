@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 // 🚀 FIXED VIRTUALIZED FLAT LIST COMPONENT - Per-view delegates with clean propagateEvent() and prop-based commands
-class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
+class DCFFlatListComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     
     required override init() {
         super.init()
@@ -21,7 +21,7 @@ class DCFVirtualizedFlatListComponent: NSObject, DCFComponent, UIScrollViewDeleg
         let virtualizedScrollView = VirtualizedScrollView()
         
         // 🔧 FIXED: Create a new delegate instance for each scroll view
-        let delegateInstance = DCFVirtualizedFlatListComponent()
+        let delegateInstance = DCFFlatListComponent()
         virtualizedScrollView.delegate = delegateInstance
         
         // 🔧 CRITICAL: Store the delegate instance on the scroll view to prevent deallocation

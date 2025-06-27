@@ -7,8 +7,9 @@
 
 import 'dart:async';
 import 'dart:collection';
+import 'package:dcf_primitives/src/components/list/virtualization/virtualization_engine.dart';
 import 'package:flutter/scheduler.dart';
-import 'virtualization_engine.dart';
+import 'types.dart';
 
 /// ⚡ RENDER SCHEDULER - Frame-budget aware rendering system
 /// 
@@ -20,14 +21,13 @@ import 'virtualization_engine.dart';
 class RenderScheduler {
   static const String _logPrefix = '[RenderScheduler]';
   
-  final VirtualizationConfig _config;
+  final VirtualizationConfig config;
   
   // Render queues with different priorities
   final Queue<RenderTask> _highPriorityQueue = Queue();
   final Queue<RenderTask> _lowPriorityQueue = Queue();
   
   // Timing and performance tracking
-  DateTime? _lastFrameStart;
   Duration _averageFrameTime = Duration.zero;
   final List<Duration> _recentFrameTimes = [];
   static const int _maxFrameTimeHistory = 30;
@@ -41,7 +41,7 @@ class RenderScheduler {
   late final Duration _frameBudget;
   static const Duration _targetFrameTime = Duration(milliseconds: 16); // 60 FPS
   
-  RenderScheduler({required VirtualizationConfig config}) : _config = config {
+  RenderScheduler({required this.config}) {
     _frameBudget = config.frameBudget;
     _currentBatchSize = config.maxRenderBatchSize;
     _adaptiveBatchSize = config.maxRenderBatchSize;
@@ -91,7 +91,7 @@ class RenderScheduler {
       _scheduleNextBatch();
     }
     
-    if (_config.debugMode) {
+    if (config.debug) {
       print('$_logPrefix Scheduled update - High: ${_highPriorityQueue.length}, Low: ${_lowPriorityQueue.length}');
     }
   }
@@ -124,8 +124,6 @@ class RenderScheduler {
     if (_isProcessingBatch) return;
     
     _isProcessingBatch = true;
-    final batchStartTime = DateTime.now();
-    _lastFrameStart = batchStartTime;
     
     int processedCount = 0;
     final stopwatch = Stopwatch()..start();
@@ -158,7 +156,7 @@ class RenderScheduler {
       _recordFrameTime(frameTime);
       _adaptBatchSize(frameTime, processedCount);
       
-      if (_config.debugMode) {
+      if (config.debug) {
         print('$_logPrefix Processed batch - Tasks: $processedCount, Time: ${frameTime.inMicroseconds}μs');
       }
       
@@ -182,7 +180,7 @@ class RenderScheduler {
       task.processingTime = task.completedAt!.difference(taskStartTime);
       
     } catch (e) {
-      if (_config.debugMode) {
+      if (config.debug) {
         print('$_logPrefix Task failed - Index: ${task.index}, Error: $e');
       }
     }
@@ -209,17 +207,15 @@ class RenderScheduler {
   
   /// Adapt batch size based on performance
   void _adaptBatchSize(Duration frameTime, int processedCount) {
-    const adaptationRate = 0.1;
-    
     if (frameTime > _frameBudget) {
       // Frame took too long - reduce batch size
-      _adaptiveBatchSize = (_adaptiveBatchSize * 0.9).round().clamp(1, _config.maxRenderBatchSize);
+      _adaptiveBatchSize = (_adaptiveBatchSize * 0.9).round().clamp(1, config.maxRenderBatchSize);
     } else if (frameTime < _frameBudget * 0.7 && processedCount == _adaptiveBatchSize) {
       // Frame finished early and processed full batch - increase batch size
-      _adaptiveBatchSize = (_adaptiveBatchSize * 1.1).round().clamp(1, _config.maxRenderBatchSize * 2);
+      _adaptiveBatchSize = (_adaptiveBatchSize * 1.1).round().clamp(1, config.maxRenderBatchSize * 2);
     }
     
-    if (_config.debugMode && _adaptiveBatchSize != _currentBatchSize) {
+    if (config.debug && _adaptiveBatchSize != _currentBatchSize) {
       print('$_logPrefix Adapted batch size: $_currentBatchSize -> $_adaptiveBatchSize');
       _currentBatchSize = _adaptiveBatchSize;
     }

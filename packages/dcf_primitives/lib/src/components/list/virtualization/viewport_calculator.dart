@@ -6,7 +6,9 @@
  */
 
 import 'dart:math' as math;
-import 'virtualization_engine.dart';
+import 'package:dcf_primitives/src/components/list/virtualization/virtualization_engine.dart';
+
+import 'types.dart' hide IndexRange;
 
 /// 🎯 VIEWPORT CALCULATOR - Intelligent windowing and buffering system
 /// 
@@ -18,7 +20,7 @@ import 'virtualization_engine.dart';
 class ViewportCalculator {
   static const String _logPrefix = '[ViewportCalculator]';
   
-  final VirtualizationConfig _config;
+  final VirtualizationConfig config;
   
   // Scroll velocity tracking for predictive rendering
   double _lastScrollOffset = 0;
@@ -29,7 +31,7 @@ class ViewportCalculator {
   final Map<int, double> _itemPositionCache = {};
   bool _cacheValid = false;
   
-  ViewportCalculator({required VirtualizationConfig config}) : _config = config;
+  ViewportCalculator({required this.config});
   
   /// Calculate which items are currently visible in the viewport
   IndexRange calculateVisibleRange({
@@ -62,7 +64,7 @@ class ViewportCalculator {
       math.min(itemSizes.length, endIndex + 1),
     );
     
-    if (_config.debugMode) {
+    if (config.debug) {
       print('$_logPrefix Visible range: $visibleRange (scroll: $scrollOffset, viewport: $viewportSize)');
     }
     
@@ -88,7 +90,7 @@ class ViewportCalculator {
     
     final renderRange = IndexRange(startIndex, endIndex);
     
-    if (_config.debugMode) {
+    if (config.debug) {
       print('$_logPrefix Render range: $renderRange (buffer: $totalBufferSize, velocity: $_scrollVelocity)');
     }
     
@@ -285,7 +287,7 @@ class ViewportCalculator {
     _itemPositionCache.clear();
     _cacheValid = false;
     
-    if (_config.debugMode) {
+    if (config.debug) {
       print('$_logPrefix Position cache invalidated');
     }
   }

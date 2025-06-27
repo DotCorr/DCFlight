@@ -7,7 +7,7 @@
 
 import 'dart:collection';
 import 'package:dcflight/dcflight.dart';
-import 'virtualization_engine.dart';
+import 'types.dart';
 
 /// 🔄 COMPONENT RECYCLER - FlashList-style component reuse system
 /// 
@@ -19,7 +19,7 @@ import 'virtualization_engine.dart';
 class ComponentRecycler<T> {
   static const String _logPrefix = '[ComponentRecycler]';
   
-  final VirtualizationConfig _config;
+  final VirtualizationConfig config;
   
   // Component pools organized by type
   final Map<String, Queue<RecyclableComponent<T>>> _componentPools = {};
@@ -28,15 +28,12 @@ class ComponentRecycler<T> {
   // Active components currently being used
   final Map<int, RecyclableComponent<T>> _activeComponents = {};
   
-  // Type mapping for items
-  final Map<Type, String> _typeMapping = {};
-  
   // Statistics
   int _totalCreated = 0;
   int _totalRecycled = 0;
   int _totalDisposed = 0;
   
-  ComponentRecycler({required VirtualizationConfig config}) : _config = config;
+  ComponentRecycler({required this.config});
   
   /// Configure item types for heterogeneous lists
   void configureItemTypes<TItem>(
@@ -56,7 +53,8 @@ class ComponentRecycler<T> {
       _initializePool(itemType);
     }
     
-    if (_config.debugMode) {
+    final isDebugMode = config.debug;
+    if (isDebugMode) {
       print('$_logPrefix Configured ${typeSet.length} item types: $typeSet');
     }
   }
@@ -115,14 +113,15 @@ class ComponentRecycler<T> {
     }
     
     final currentPoolSize = _componentPools[component.itemType]!.length;
-    final maxPoolSize = _poolSizes[component.itemType] ?? _config.maxComponentPoolSize;
+          final maxPoolSize = _poolSizes[component.itemType] ?? config.maxPoolSize;
     
     if (currentPoolSize < maxPoolSize) {
       // Prepare component for recycling
       component.prepareForRecycling();
       _componentPools[component.itemType]!.add(component);
       
-      if (_config.debugMode) {
+      final isDebugMode = config.debug;
+      if (isDebugMode) {
         print('$_logPrefix Released component index $index to pool (${component.itemType})');
       }
     } else {
@@ -130,7 +129,8 @@ class ComponentRecycler<T> {
       component.dispose();
       _totalDisposed++;
       
-      if (_config.debugMode) {
+      final isDebugMode2 = config.debug;
+      if (isDebugMode2) {
         print('$_logPrefix Disposed component index $index - pool full (${component.itemType})');
       }
     }
@@ -150,7 +150,8 @@ class ComponentRecycler<T> {
       releaseComponent(index);
     }
     
-    if (_config.debugMode && indicesToRelease.isNotEmpty) {
+    final isDebugMode = config.debug;
+    if (isDebugMode && indicesToRelease.isNotEmpty) {
       print('$_logPrefix Released ${indicesToRelease.length} components outside range $renderRange');
     }
   }
@@ -170,9 +171,10 @@ class ComponentRecycler<T> {
     if (_componentPools.containsKey(itemType)) return;
     
     _componentPools[itemType] = Queue<RecyclableComponent<T>>();
-    _poolSizes[itemType] = _config.maxComponentPoolSize;
+    _poolSizes[itemType] = config.maxPoolSize;
     
-    if (_config.debugMode) {
+    final isDebugMode = config.debug;
+    if (isDebugMode) {
       print('$_logPrefix Initialized pool for type: $itemType');
     }
   }
@@ -198,7 +200,8 @@ class ComponentRecycler<T> {
     
     _totalDisposed += cleanedCount;
     
-    if (_config.debugMode) {
+    final isDebugMode = config.debug;
+    if (isDebugMode) {
       print('$_logPrefix Cleaned up $cleanedCount components');
     }
   }
@@ -211,19 +214,20 @@ class ComponentRecycler<T> {
       
       // Analyze usage patterns
       final currentSize = pool.length;
-      final maxSize = _poolSizes[itemType] ?? _config.maxComponentPoolSize;
+      final maxSize = _poolSizes[itemType] ?? _config.maxPoolSize;
       
       // If pool is consistently empty, reduce max size
       if (currentSize == 0 && maxSize > 5) {
         _poolSizes[itemType] = (maxSize * 0.8).round();
       }
       // If pool is consistently full, increase max size (within limits)
-      else if (currentSize == maxSize && maxSize < _config.maxComponentPoolSize * 2) {
+      else if (currentSize == maxSize && maxSize < config.maxPoolSize * 2) {
         _poolSizes[itemType] = (maxSize * 1.2).round();
       }
     }
     
-    if (_config.debugMode) {
+    final isDebugMode = config.debug;
+    if (isDebugMode) {
       print('$_logPrefix Optimized pools - sizes: $_poolSizes');
     }
   }
@@ -270,7 +274,8 @@ class ComponentRecycler<T> {
     _componentPools.clear();
     _poolSizes.clear();
     
-    if (_config.debugMode) {
+    final isDebugMode = config.debug;
+    if (isDebugMode) {
       print('$_logPrefix Disposed all components - Stats: ${getStats()}');
     }
   }

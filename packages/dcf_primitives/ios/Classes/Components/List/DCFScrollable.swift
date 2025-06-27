@@ -10,7 +10,7 @@ import dcflight
 
 /// Custom UIScrollView that implements VirtualizedList content size management
 /// Key insight: Yoga handles layout, but contentSize must be explicitly managed
-class VirtualizedScrollView: UIScrollView {
+class DCFScrollableView: UIScrollView {
     
     // VirtualizedList properties
     var isHorizontal: Bool = false
@@ -25,15 +25,15 @@ class VirtualizedScrollView: UIScrollView {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setupVirtualizedScrollView()
+        setupDCFScrollableView()
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        setupVirtualizedScrollView()
+        setupDCFScrollableView()
     }
     
-    private func setupVirtualizedScrollView() {
+    private func setupDCFScrollableView() {
         // Configure for VirtualizedList behavior
         self.clipsToBounds = true
     }

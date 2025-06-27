@@ -18,7 +18,6 @@ import 'dart:math' as math;
 /// - Scroll performance metrics
 /// - System resource utilization
 class PerformanceMonitor {
-  static const String _logPrefix = '[PerformanceMonitor]';
   
   final bool _enabled;
   
@@ -48,7 +47,6 @@ class PerformanceMonitor {
   // Scroll performance
   final Queue<ScrollMetric> _scrollMetrics = Queue();
   DateTime? _lastScrollUpdate;
-  double _lastScrollPosition = 0;
   static const int _maxScrollHistory = 100;
   
   // Performance alerts
@@ -134,7 +132,6 @@ class PerformanceMonitor {
     }
     
     _lastScrollUpdate = now;
-    _lastScrollPosition = position;
     
     _checkScrollPerformance(velocity, timeSinceLastUpdate);
   }

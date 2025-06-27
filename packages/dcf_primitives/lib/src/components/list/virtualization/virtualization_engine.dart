@@ -11,6 +11,7 @@ import 'component_recycler.dart';
 import 'layout_estimator.dart';
 import 'render_scheduler.dart';
 import 'performance_monitor.dart';
+import 'types.dart';
 
 /// 🚀 CORE VIRTUALIZATION ENGINE - The brain of high-performance list rendering
 /// 
@@ -44,19 +45,22 @@ class VirtualizationEngine<T> {
   final VirtualizationConfig _config;
   
   VirtualizationEngine({VirtualizationConfig? config}) 
-    : _config = config ?? VirtualizationConfig.defaultConfig() {
+    : _config = config ??  VirtualizationConfig() {
     _initializeSubsystems();
   }
   
   void _initializeSubsystems() {
     _viewportCalculator = ViewportCalculator(config: _config);
     _componentRecycler = ComponentRecycler<T>(config: _config);
-    _layoutEstimator = LayoutEstimator(config: _config);
+    _layoutEstimator = LayoutEstimator(
+      config: _config,
+      estimatedItemSize: _config.defaultEstimatedItemSize,
+    );
     _renderScheduler = RenderScheduler(config: _config);
     _performanceMonitor = PerformanceMonitor(enabled: _config.enablePerformanceMonitoring);
     
-    if (_config.debugMode) {
-      print('$_logPrefix Initialized with config: ${_config.toString()}');
+    if (_config.debug) {
+      print('$_logPrefix Initialized with config: $_config');
     }
   }
   
@@ -76,13 +80,6 @@ class VirtualizationEngine<T> {
     _viewportWidth = viewportWidth;
     _isHorizontal = isHorizontal;
     
-    // Initialize layout estimator with data
-    _layoutEstimator.initialize(
-      itemCount: data.length,
-      estimatedItemSize: estimatedItemSize ?? _config.defaultEstimatedItemSize,
-      isHorizontal: isHorizontal,
-    );
-    
     // Configure component recycler for item types
     if (getItemType != null) {
       _componentRecycler.configureItemTypes(data, getItemType);
@@ -90,7 +87,7 @@ class VirtualizationEngine<T> {
     
     _isInitialized = true;
     
-    if (_config.debugMode) {
+    if (_config.debug) {
       print('$_logPrefix Initialized - Data: ${data.length}, Viewport: ${viewportWidth}x${viewportHeight}');
     }
     
@@ -114,7 +111,7 @@ class VirtualizationEngine<T> {
       // Schedule render updates
       _renderScheduler.scheduleUpdate(newState);
       
-      if (_config.debugMode) {
+      if (_config.debug) {
         print('$_logPrefix Scroll update - Offset: $scrollOffset, Visible: ${newState.visibleRange}');
       }
     }
@@ -159,7 +156,7 @@ class VirtualizationEngine<T> {
           index: index,
           itemType: itemType,
           builder: () => renderItem(item, index),
-          data: item,
+          data: item as T, // Safe cast since TItem extends T in this context
         );
         
         children.add(_wrapWithVirtualization(component, index, itemType));
@@ -180,7 +177,7 @@ class VirtualizationEngine<T> {
     _performanceMonitor.recordRenderCount(children.length);
     _performanceMonitor.endFrame();
     
-    if (_config.debugMode) {
+    if (_config.debug) {
       print('$_logPrefix Built ${children.length} children (${state.renderRange.end - state.renderRange.start} items)');
     }
     
@@ -189,10 +186,14 @@ class VirtualizationEngine<T> {
   
   /// Calculate current virtualization state
   VirtualizationState<T> _calculateVirtualizationState() {
+    final itemSizes = List.generate(_data.length, (index) => 
+      _layoutEstimator.getItemSize(index)
+    );
+    
     final visibleRange = _viewportCalculator.calculateVisibleRange(
       scrollOffset: _currentScrollOffset,
       viewportSize: _isHorizontal ? _viewportWidth : _viewportHeight,
-      itemSizes: _layoutEstimator.getAllItemSizes(),
+      itemSizes: itemSizes,
       isHorizontal: _isHorizontal,
     );
     
@@ -230,26 +231,29 @@ class VirtualizationEngine<T> {
            (newRange.end - currentRange.end).abs() > _config.renderThreshold;
   }
   
-  /// Wrap component with virtualization metadata
+  /// Wrap component with virtualization metadata (invisible to native)
   DCFComponentNode _wrapWithVirtualization(
     DCFComponentNode component, 
     dynamic index, 
     String itemType
   ) {
-    // Add virtualization metadata for debugging and optimization
-    return DCFElement(
-      type: 'VirtualizedItem',
-      props: {
-        'virtualIndex': index,
-        'itemType': itemType,
-        'recycled': _componentRecycler.isRecycled(index),
-        if (_config.debugMode) 'debugInfo': {
+    // Store virtualization metadata directly on the component
+    // This is purely for Dart-side tracking and debugging
+    if (component is DCFElement) {
+      component.props['_virtualIndex'] = index;
+      component.props['_itemType'] = itemType;
+      component.props['_recycled'] = _componentRecycler.isRecycled(index);
+      
+      if (_config.debug) {
+        component.props['_debugInfo'] = {
           'renderTime': DateTime.now().millisecondsSinceEpoch,
           'scrollOffset': _currentScrollOffset,
-        },
-      },
-      children: [component],
-    );
+        };
+      }
+    }
+    
+    // Return the component directly - no wrapper needed
+    return component;
   }
   
   /// Build empty state
@@ -261,10 +265,10 @@ class VirtualizationEngine<T> {
   }
   
   /// Record item measurement for layout estimation
-  void recordItemMeasurement(int index, double size, String? itemType) {
-    _layoutEstimator.recordMeasurement(index, size, itemType);
+  void recordItemMeasurement(int index, double size, [String? itemType]) {
+    _layoutEstimator.recordMeasurement(index, size, itemType: itemType);
     
-    if (_config.debugMode) {
+    if (_config.debug) {
       print('$_logPrefix Recorded measurement - Index: $index, Size: $size, Type: $itemType');
     }
   }
@@ -281,53 +285,9 @@ class VirtualizationEngine<T> {
     _currentState = null;
     _isInitialized = false;
     
-    if (_config.debugMode) {
+    if (_config.debug) {
       print('$_logPrefix Disposed');
     }
-  }
-}
-
-/// Configuration for virtualization behavior
-class VirtualizationConfig {
-  final double windowSize;
-  final int renderThreshold;
-  final double defaultEstimatedItemSize;
-  final int maxComponentPoolSize;
-  final bool enablePerformanceMonitoring;
-  final bool debugMode;
-  final Duration frameBudget;
-  final int maxRenderBatchSize;
-  
-  const VirtualizationConfig({
-    this.windowSize = 21.0,
-    this.renderThreshold = 2,
-    this.defaultEstimatedItemSize = 50.0,
-    this.maxComponentPoolSize = 20,
-    this.enablePerformanceMonitoring = false,
-    this.debugMode = false,
-    this.frameBudget = const Duration(milliseconds: 8),
-    this.maxRenderBatchSize = 10,
-  });
-  
-  factory VirtualizationConfig.defaultConfig() => const VirtualizationConfig();
-  
-  factory VirtualizationConfig.highPerformance() => const VirtualizationConfig(
-    windowSize: 15.0,
-    renderThreshold: 1,
-    maxComponentPoolSize: 30,
-    frameBudget: Duration(milliseconds: 6),
-    maxRenderBatchSize: 15,
-  );
-  
-  factory VirtualizationConfig.debug() => const VirtualizationConfig(
-    enablePerformanceMonitoring: true,
-    debugMode: true,
-  );
-  
-  @override
-  String toString() {
-    return 'VirtualizationConfig(windowSize: $windowSize, renderThreshold: $renderThreshold, '
-           'estimatedItemSize: $defaultEstimatedItemSize, debugMode: $debugMode)';
   }
 }
 

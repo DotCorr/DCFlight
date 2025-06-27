@@ -10,8 +10,8 @@ import UIKit
 import dcflight
 
 // 🚀 CLEAN VIRTUALIZED SCROLL VIEW COMPONENT - Uses only propagateEvent() and prop-based commands
-class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
-    private static let sharedInstance = DCFVirtualizedScrollViewComponent()
+class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
+    private static let sharedInstance = DCFScrollViewComponent()
     
     required override init() {
         super.init()
@@ -22,7 +22,7 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDel
         let scrollView = VirtualizedScrollView()
         
         // 🚀 CLEAN: Set shared instance as delegate to prevent deallocation
-        scrollView.delegate = DCFVirtualizedScrollViewComponent.sharedInstance
+        scrollView.delegate = DCFScrollViewComponent.sharedInstance
         
         // Apply basic configuration
         scrollView.showsVerticalScrollIndicator = true

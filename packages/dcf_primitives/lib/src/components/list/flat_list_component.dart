@@ -5,26 +5,23 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
+import 'virtualization/virtualization_engine.dart';
+import 'virtualization/types.dart';
 
-/// DCFFlatList - High-performance list component inspired by FlashList
-/// Provides ultra-fast scrolling with component recycling and smart rendering
-class DCFFlatList<T> extends StatelessComponent {
+/// DCFFlatList - High-performance virtualized list component
+/// Uses intelligent virtualization for 60+ FPS scrolling with thousands of items
+class DCFFlatList<T> extends StatefulComponent {
   final List<T> data;
   final LayoutProps? layout;
   final DCFComponentNode Function(T item, int index) renderItem;
   
-  // 🚫 DART ONLY - Not sent to native (virtualization handled in Dart)
+  // Virtualization settings
   final String Function(T item, int index)? getItemType;
   final double? estimatedItemSize;
-  final ListItemConfig Function(T item, int index)? getItemLayout;
-  final int? initialNumToRender;
-  final double? maxToRenderPerBatch;
-  final double? windowSize;
-  final bool removeClippedSubviews;
+  final VirtualizationConfig? virtualizationConfig;
   
-  // ✅ NATIVE PROPS - Sent to native UIScrollView
+  // Native scroll view props
   final DCFListOrientation orientation;
   final bool inverted;
   final bool showsVerticalScrollIndicator;
@@ -41,7 +38,15 @@ class DCFFlatList<T> extends StatelessComponent {
   final bool keyboardDismissMode;
   final bool keyboardShouldPersistTaps;
   
-  // 🚫 DART ONLY - List management handled in Dart  
+  // Event handlers
+  final Function(Map<dynamic, dynamic>)? onScroll;
+  final Function(Map<dynamic, dynamic>)? onScrollBeginDrag;
+  final Function(Map<dynamic, dynamic>)? onScrollEndDrag;
+  final Function(Map<dynamic, dynamic>)? onMomentumScrollBegin;
+  final Function(Map<dynamic, dynamic>)? onMomentumScrollEnd;
+  final Function(Map<dynamic, dynamic>)? onContentSizeChange;
+  
+  // List-specific features
   final void Function(int index)? onViewableItemsChanged;
   final void Function()? onEndReached;
   final double? onEndReachedThreshold;
@@ -52,17 +57,8 @@ class DCFFlatList<T> extends StatelessComponent {
   final DCFComponentNode? footer;
   final DCFComponentNode? empty;
   final DCFComponentNode? separator;
-  final DCFComponentNode Function(int index)? stickyHeaderIndices;
   
-  // ✅ NATIVE EVENTS - Sent to native UIScrollView
-  final Function(Map<dynamic, dynamic>)? onScroll;
-  final Function(Map<dynamic, dynamic>)? onScrollBeginDrag;
-  final Function(Map<dynamic, dynamic>)? onScrollEndDrag;
-  final Function(Map<dynamic, dynamic>)? onMomentumScrollBegin;
-  final Function(Map<dynamic, dynamic>)? onMomentumScrollEnd;
-  final Function(Map<dynamic, dynamic>)? onContentSizeChange;
-
-  // ✅ IMPERATIVE COMMANDS - Type-safe command prop for imperative control
+  // Commands
   final FlatListCommand? command;
 
   DCFFlatList({
@@ -72,13 +68,9 @@ class DCFFlatList<T> extends StatelessComponent {
     required this.renderItem,
     this.getItemType,
     this.estimatedItemSize,
-    this.getItemLayout,
+    this.virtualizationConfig,
     this.orientation = DCFListOrientation.vertical,
     this.inverted = false,
-    this.initialNumToRender = 10,
-    this.maxToRenderPerBatch = 10,
-    this.windowSize = 21,
-    this.removeClippedSubviews = true,
     this.showsVerticalScrollIndicator = true,
     this.showsHorizontalScrollIndicator = true,
     this.contentInset,
@@ -92,6 +84,12 @@ class DCFFlatList<T> extends StatelessComponent {
     this.decelerationRate,
     this.keyboardDismissMode = false,
     this.keyboardShouldPersistTaps = false,
+    this.onScroll,
+    this.onScrollBeginDrag,
+    this.onScrollEndDrag,
+    this.onMomentumScrollBegin,
+    this.onMomentumScrollEnd,
+    this.onContentSizeChange,
     this.onViewableItemsChanged,
     this.onEndReached,
     this.onEndReachedThreshold = 0.1,
@@ -102,23 +100,70 @@ class DCFFlatList<T> extends StatelessComponent {
     this.footer,
     this.empty,
     this.separator,
-    this.stickyHeaderIndices,
-    this.onScroll,
-    this.onScrollBeginDrag,
-    this.onScrollEndDrag,
-    this.onMomentumScrollBegin,
-    this.onMomentumScrollEnd,
-    this.onContentSizeChange,
     this.command,
   });
 
   @override
   DCFComponentNode render() {
+    // Initialize virtualization engine
+    final engine = useState<VirtualizationEngine<T>?>(null);
+    final scrollOffset = useState(0.0);
+    
+    // Initialize engine on first render
+    useEffect(() {
+      if (engine.state == null) {
+        final newEngine = VirtualizationEngine<T>(
+          config: virtualizationConfig ??  VirtualizationConfig(),
+        );
+        
+        // Initialize with current data
+        newEngine.initialize(
+          data: data,
+          viewportHeight: 600.0, // Will be updated from scroll events
+          viewportWidth: 400.0,   // Will be updated from scroll events
+          isHorizontal: orientation == DCFListOrientation.horizontal,
+          estimatedItemSize: estimatedItemSize,
+          getItemType: getItemType,
+        );
+        
+        engine.setState(newEngine);
+      }
+      
+      return null;
+    }, dependencies:[data.length]);
+    
+    // Handle scroll events and update virtualization
+    void handleScroll(Map<dynamic, dynamic> event) {
+      final contentOffset = event['contentOffset'] as Map<String, dynamic>?;
+      if (contentOffset != null && engine.state != null) {
+        final offset = orientation == DCFListOrientation.horizontal
+            ? (contentOffset['x'] as double? ?? 0.0)
+            : (contentOffset['y'] as double? ?? 0.0);
+        
+        scrollOffset.setState(offset);
+        engine.state!.updateScrollPosition(offset);
+      }
+      
+      // Call user's onScroll handler
+      onScroll?.call(event);
+    }
+    
+    // Build virtualized children
+    final children = engine.state?.buildVirtualizedChildren<T>(
+      data: data,
+      renderItem: renderItem,
+      getItemType: getItemType,
+      header: header,
+      footer: footer,
+      separator: separator,
+      empty: empty,
+    ) ?? _buildFallbackChildren();
+
     return DCFElement(
-      type: 'FlatList',
+      type: 'FlatList', // Use the correct registered component name
       key: key,
       props: {
-        // ✅ NATIVE PROPS - Only these go to native UIScrollView
+        // Native scroll view props
         'horizontal': orientation == DCFListOrientation.horizontal,
         'inverted': inverted,
         'showsVerticalScrollIndicator': showsVerticalScrollIndicator,
@@ -136,90 +181,104 @@ class DCFFlatList<T> extends StatelessComponent {
         if (contentInset != null) 'contentInset': contentInset!.toMap(),
         
         // Layout props
-        ...layout?.toMap() ?? {},
+        ...?layout?.toMap(),
         
-        // Event handlers
-        if (onScroll != null) 'onScroll': onScroll,
+        // Event handlers - onScroll is wrapped to handle virtualization
+        'onScroll': handleScroll,
         if (onScrollBeginDrag != null) 'onScrollBeginDrag': onScrollBeginDrag,
         if (onScrollEndDrag != null) 'onScrollEndDrag': onScrollEndDrag,
         if (onMomentumScrollBegin != null) 'onMomentumScrollBegin': onMomentumScrollBegin,
         if (onMomentumScrollEnd != null) 'onMomentumScrollEnd': onMomentumScrollEnd,
         if (onContentSizeChange != null) 'onContentSizeChange': onContentSizeChange,
         
-        // ✅ IMPERATIVE COMMANDS - Type-safe command prop serialization
+        // Commands
         if (command != null) 'command': command!.toMap(),
         
-        // 🚫 DART ONLY PROPS - These are used for virtualization logic in Dart
-        // They don't get sent to native side:
-        // - data.length (used for child generation)
-        // - estimatedItemSize (used for Dart-side calculations)
-        // - initialNumToRender, maxToRenderPerBatch, windowSize (virtualization)
-        // - removeClippedSubviews (Dart-side optimization)
-        // - onViewableItemsChanged, onEndReached (Dart-side callbacks)
-        // - refreshing, header, footer, empty, separator (Dart-side UI)
+        // Performance optimization hints for native side
+        'isVirtualized': true,
+        'estimatedItemSize': estimatedItemSize ?? 50.0,
+        'itemCount': data.length,
       },
-      children: _buildListChildren(),
+      children: children,
     );
   }
-
-  List<DCFComponentNode> _buildListChildren() {
+  
+  /// Fallback children when virtualization engine isn't ready
+  List<DCFComponentNode> _buildFallbackChildren() {
     final children = <DCFComponentNode>[];
     
-    // Add header if provided
+    // Add header
     if (header != null) {
       children.add(header!);
     }
-
-    // Generate list items
-    for (int i = 0; i < data.length; i++) {
-      final item = data[i];
-      final itemElement = renderItem(item, i);
-      children.add(itemElement);
+    
+    // Add first 10 items as fallback
+    final itemsToShow = data.take(10);
+    for (int i = 0; i < itemsToShow.length; i++) {
+      final item = itemsToShow.elementAt(i);
+      children.add(renderItem(item, i));
       
-      // Add separator after each item (except last one)
-      if (separator != null && i < data.length - 1) {
+      // Add separator
+      if (separator != null && i < itemsToShow.length - 1) {
         children.add(separator!);
       }
     }
-
-    // Add footer if provided
+    
+    // Add footer
     if (footer != null) {
       children.add(footer!);
     }
-
-    // If no data and empty component provided
+    
+    // Show empty state if no data
     if (data.isEmpty && empty != null) {
       children.clear();
       children.add(empty!);
     }
-
+    
     return children;
   }
 }
 
-/// FlatList layout orientations
+/// FlatList orientation enum
 enum DCFListOrientation {
   vertical,
   horizontal,
 }
 
-/// List item render configuration for FlashList-style performance
-class ListItemConfig {
-  final String itemType;
-  final double? estimatedHeight;
-  final double? estimatedWidth;
+/// Content insets for scroll views
+class ContentInset {
+  final double top;
+  final double left;
+  final double bottom;
+  final double right;
 
-  const ListItemConfig({
-    required this.itemType,
-    this.estimatedHeight,
-    this.estimatedWidth,
+  const ContentInset.all(double value)
+      : top = value,
+        left = value,
+        bottom = value,
+        right = value;
+
+  const ContentInset.symmetric({
+    double vertical = 0,
+    double horizontal = 0,
+  })  : top = vertical,
+        bottom = vertical,
+        left = horizontal,
+        right = horizontal;
+
+  const ContentInset.only({
+    this.top = 0,
+    this.left = 0,
+    this.bottom = 0,
+    this.right = 0,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'itemType': itemType,
-      'estimatedHeight': estimatedHeight,
-      'estimatedWidth': estimatedWidth,
+      'top': top,
+      'left': left,
+      'bottom': bottom,
+      'right': right,
     };
   }
 }

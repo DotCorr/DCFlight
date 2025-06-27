@@ -179,7 +179,19 @@ class VirtualizationConfig {
   /// Whether to enable debug mode (shows performance overlay)
   final bool debug;
   
-  const VirtualizationConfig({
+  /// Default estimated item size
+  final double defaultEstimatedItemSize;
+  
+  /// Render threshold for updates
+  final int renderThreshold;
+  
+  /// Frame budget for rendering
+  final Duration frameBudget;
+  
+  /// Maximum render batch size
+  final int maxRenderBatchSize;
+  
+   VirtualizationConfig({
     this.windowSize = 10.5, // 21 total window size (10.5 above + visible + 10.5 below)
     this.initialNumToRender = 10,
     this.maxToRenderPerBatch = 10,
@@ -190,26 +202,32 @@ class VirtualizationConfig {
     this.removeClippedSubviews = true,
     this.onEndReachedThreshold = 0.1,
     this.debug = false,
+    this.defaultEstimatedItemSize = 50.0,
+    this.renderThreshold = 2,
+    this.frameBudget = const Duration(milliseconds: 8),
+    this.maxRenderBatchSize = 10,
   });
   
   /// High performance config (more aggressive)
-  static const VirtualizationConfig highPerformance = VirtualizationConfig(
+  static  VirtualizationConfig highPerformance = VirtualizationConfig(
     windowSize: 5.0,  // Smaller window for memory efficiency
     maxToRenderPerBatch: 15,
     updateBatchingPeriod: 33, // ~30fps updates
     maxPoolSize: 20,
+    maxRenderBatchSize: 15,
   );
   
   /// Memory optimized config
-  static const VirtualizationConfig memoryOptimized = VirtualizationConfig(
+  static  VirtualizationConfig memoryOptimized = VirtualizationConfig(
     windowSize: 3.0,  // Very small window
     maxToRenderPerBatch: 5,
     maxPoolSize: 10,
     removeClippedSubviews: true,
+    maxRenderBatchSize: 5,
   );
   
   /// Debug config (shows performance metrics)
-  static const VirtualizationConfig debugMode = VirtualizationConfig(
+   static VirtualizationConfig debugMode = VirtualizationConfig(
     enablePerformanceMonitoring: true,
     debug: true,
     windowSize: 10.5,
@@ -334,4 +352,28 @@ class ItemSizeEstimate {
   @override
   String toString() => 'ItemSizeEstimate(h: ${height.toStringAsFixed(1)}, '
       'w: ${width.toStringAsFixed(1)}, conf: ${(confidence * 100).toStringAsFixed(0)}%)';
+}
+
+/// Range of indices (SINGLE DEFINITION)
+class IndexRange {
+  final int start;
+  final int end;
+  
+  const IndexRange(this.start, this.end);
+  
+  int get length => end - start;
+  bool get isEmpty => start >= end;
+  
+  bool contains(int index) => index >= start && index < end;
+  
+  @override
+  String toString() => '[$start..$end]';
+  
+  @override
+  bool operator ==(Object other) {
+    return other is IndexRange && other.start == start && other.end == end;
+  }
+  
+  @override
+  int get hashCode => Object.hash(start, end);
 }
