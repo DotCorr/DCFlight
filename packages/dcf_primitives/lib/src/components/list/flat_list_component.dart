@@ -9,6 +9,12 @@ import 'package:dcflight/dcflight.dart';
 import 'virtualization/virtualization_engine.dart';
 import 'virtualization/types.dart';
 
+/// FlatList orientation enum
+enum DCFListOrientation {
+  vertical,
+  horizontal,
+}
+
 /// DCFFlatList - High-performance virtualized list component
 /// Uses intelligent virtualization for 60+ FPS scrolling with thousands of items
 class DCFFlatList<T> extends StatefulComponent {
@@ -108,59 +114,151 @@ class DCFFlatList<T> extends StatefulComponent {
     // Initialize virtualization engine
     final engine = useState<VirtualizationEngine<T>?>(null);
     final scrollOffset = useState(0.0);
+    final isInitialized = useState(false);
+    final lastCommand = useState<FlatListCommand?>(null);
     
-    // Initialize engine on first render
+    // Create virtualization config
+    final config = virtualizationConfig ?? VirtualizationConfig(
+      windowSize: 10.5, // Larger window for smooth scrolling
+      initialNumToRender: 15, // Start with more items
+      maxToRenderPerBatch: 20,
+      debug: true, // Enable debug for now
+      defaultEstimatedItemSize: estimatedItemSize ?? 50.0,
+    );
+    
+    // Initialize engine on first render or data change
     useEffect(() {
-      if (engine.state == null) {
-        final newEngine = VirtualizationEngine<T>(
-          config: virtualizationConfig ??  VirtualizationConfig(),
-        );
-        
-        // Initialize with current data
-        newEngine.initialize(
-          data: data,
-          viewportHeight: 600.0, // Will be updated from scroll events
-          viewportWidth: 400.0,   // Will be updated from scroll events
-          isHorizontal: orientation == DCFListOrientation.horizontal,
-          estimatedItemSize: estimatedItemSize,
-          getItemType: getItemType,
-        );
-        
-        engine.setState(newEngine);
-      }
+      print('[DCFFlatList] Initializing engine with ${data.length} items');
+      
+      final newEngine = VirtualizationEngine<T>(config: config);
+      
+      // Initialize with realistic viewport dimensions
+      newEngine.initialize(
+        data: data,
+        viewportHeight: 600.0, // Default - will be updated from scroll events
+        viewportWidth: 400.0,   // Default - will be updated from scroll events
+        isHorizontal: orientation == DCFListOrientation.horizontal,
+        estimatedItemSize: estimatedItemSize ?? 50.0,
+        getItemType: getItemType,
+      );
+      
+      engine.setState(newEngine);
+      isInitialized.setState(true);
+      
+      print('[DCFFlatList] Engine initialized successfully');
       
       return null;
-    }, dependencies:[data.length]);
+    }, dependencies: [data.length, data.hashCode]);
     
     // Handle scroll events and update virtualization
     void handleScroll(Map<dynamic, dynamic> event) {
-      final contentOffset = event['contentOffset'] as Map<String, dynamic>?;
-      if (contentOffset != null && engine.state != null) {
-        final offset = orientation == DCFListOrientation.horizontal
-            ? (contentOffset['x'] as double? ?? 0.0)
-            : (contentOffset['y'] as double? ?? 0.0);
+      try {
+        if (engine.state == null) return;
         
-        scrollOffset.setState(offset);
-        engine.state!.updateScrollPosition(offset);
+        // Extract scroll data
+        final contentOffset = event['contentOffset'] as Map<String, dynamic>?;
+        final layoutMeasurement = event['layoutMeasurement'] as Map<String, dynamic>?;
+        final contentSize = event['contentSize'] as Map<String, dynamic>?;
+        
+        if (contentOffset != null) {
+          final rawOffset = orientation == DCFListOrientation.horizontal
+              ? (contentOffset['x'] as double? ?? 0.0)
+              : (contentOffset['y'] as double? ?? 0.0);
+          
+          // Sanitize the offset
+          final offset = _sanitizeDouble(rawOffset);
+          
+          // Update viewport dimensions if available
+          if (layoutMeasurement != null) {
+            final viewportHeight = _sanitizeDouble(layoutMeasurement['height'] as double? ?? 600.0);
+            final viewportWidth = _sanitizeDouble(layoutMeasurement['width'] as double? ?? 400.0);
+            
+            // Re-initialize engine with correct dimensions if they changed significantly
+            final currentEngine = engine.state!;
+            if ((viewportHeight - 600.0).abs() > 50 || (viewportWidth - 400.0).abs() > 50) {
+              currentEngine.initialize(
+                data: data,
+                viewportHeight: viewportHeight,
+                viewportWidth: viewportWidth,
+                isHorizontal: orientation == DCFListOrientation.horizontal,
+                estimatedItemSize: estimatedItemSize ?? 50.0,
+                getItemType: getItemType,
+              );
+            }
+          }
+          
+          // Update scroll position - this triggers virtualization
+          scrollOffset.setState(offset);
+          engine.state!.updateScrollPosition(offset);
+          
+          print('[DCFFlatList] Scroll update - Offset: $offset');
+        }
+        
+        // Handle end reached
+        if (onEndReached != null && contentOffset != null && contentSize != null && layoutMeasurement != null) {
+          final totalHeight = _sanitizeDouble(contentSize['height'] as double? ?? 0.0);
+          final viewportHeight = _sanitizeDouble(layoutMeasurement['height'] as double? ?? 600.0);
+          final currentOffset = _sanitizeDouble(contentOffset['y'] as double? ?? 0.0);
+          
+          final threshold = onEndReachedThreshold ?? 0.1;
+          final endThreshold = totalHeight - (viewportHeight * (1 + threshold));
+          
+          if (currentOffset >= endThreshold) {
+            onEndReached!();
+          }
+        }
+        
+        // Call user's onScroll handler
+        onScroll?.call(event);
+        
+      } catch (e) {
+        print('[DCFFlatList] Error in handleScroll: $e');
       }
-      
-      // Call user's onScroll handler
-      onScroll?.call(event);
     }
     
-    // Build virtualized children
-    final children = engine.state?.buildVirtualizedChildren<T>(
-      data: data,
-      renderItem: renderItem,
-      getItemType: getItemType,
-      header: header,
-      footer: footer,
-      separator: separator,
-      empty: empty,
-    ) ?? _buildFallbackChildren();
+    // Handle commands for scrolling
+    useEffect(() {
+      if (command != null && command != lastCommand.state) {
+        lastCommand.setState(command);
+        
+        // Process command after a short delay to ensure engine is ready
+        Future.delayed(Duration(milliseconds: 100), () {
+          _handleCommand(command!, engine.state);
+        });
+      }
+      return null;
+    }, dependencies: [command]);
+    
+    // Build virtualized children - this is the key fix
+    List<DCFComponentNode> buildChildren() {
+      if (!isInitialized.state || engine.state == null || data.isEmpty) {
+        print('[DCFFlatList] Using fallback rendering - initialized: ${isInitialized.state}, engine: ${engine.state != null}, data: ${data.length}');
+        return _buildFallbackChildren();
+      }
+      
+      try {
+        // Build virtualized children using the engine
+        final children = engine.state!.buildVirtualizedChildren<T>(
+          data: data,
+          renderItem: renderItem,
+          getItemType: getItemType,
+          header: header,
+          footer: footer,
+          separator: separator,
+          empty: empty,
+        );
+        
+        print('[DCFFlatList] Built ${children.length} virtualized children');
+        return children;
+        
+      } catch (e) {
+        print('[DCFFlatList] Error building virtualized children: $e');
+        return _buildFallbackChildren();
+      }
+    }
 
     return DCFElement(
-      type: 'FlatList', // Use the correct registered component name
+      type: 'FlatList', 
       key: key,
       props: {
         // Native scroll view props
@@ -196,14 +294,56 @@ class DCFFlatList<T> extends StatefulComponent {
         
         // Performance optimization hints for native side
         'isVirtualized': true,
-        'estimatedItemSize': estimatedItemSize ?? 50.0,
+        'estimatedItemSize': _sanitizeDouble(estimatedItemSize ?? 50.0),
         'itemCount': data.length,
+        'totalContentHeight': _calculateTotalContentHeight(),
       },
-      children: children,
+      children: buildChildren(),
     );
   }
   
-  /// Fallback children when virtualization engine isn't ready
+  /// Handle scroll commands
+  void _handleCommand(FlatListCommand command, VirtualizationEngine<T>? engine) {
+    if (engine == null) {
+      print('[DCFFlatList] Cannot execute command - engine not ready');
+      return;
+    }
+    
+    print('[DCFFlatList] Executing command: ${command.runtimeType}');
+    
+    if (command is ScrollToIndexCommand) {
+      final index = command.index;
+      if (index >= 0 && index < data.length) {
+        // Calculate approximate offset for the index
+        final estimatedSize = estimatedItemSize ?? 50.0;
+        final approximateOffset = index * estimatedSize;
+        
+        print('[DCFFlatList] Scrolling to index $index (approximate offset: $approximateOffset)');
+        
+        // First, update the virtualization to ensure the item will be rendered
+        engine.updateScrollPosition(approximateOffset);
+        
+        // Note: The actual scrolling is handled by the native side through the command prop
+      }
+    }
+    // Other commands (ScrollToTop, ScrollToBottom) are handled by native side
+  }
+  
+  /// Calculate total content height for native side
+  double _calculateTotalContentHeight() {
+    if (data.isEmpty) return 0.0;
+    
+    final itemSize = estimatedItemSize ?? 50.0;
+    var totalHeight = data.length * itemSize;
+    
+    // Add header/footer heights if present
+    if (header != null) totalHeight += itemSize;
+    if (footer != null) totalHeight += itemSize;
+    
+    return _sanitizeDouble(totalHeight);
+  }
+  
+  /// Fallback children when virtualization engine isn't ready - show more items initially
   List<DCFComponentNode> _buildFallbackChildren() {
     final children = <DCFComponentNode>[];
     
@@ -212,15 +352,19 @@ class DCFFlatList<T> extends StatefulComponent {
       children.add(header!);
     }
     
-    // Add first 10 items as fallback
-    final itemsToShow = data.take(10);
+    // Show more items in fallback (30 instead of 10)
+    final itemsToShow = data.take(30);
     for (int i = 0; i < itemsToShow.length; i++) {
       final item = itemsToShow.elementAt(i);
-      children.add(renderItem(item, i));
-      
-      // Add separator
-      if (separator != null && i < itemsToShow.length - 1) {
-        children.add(separator!);
+      try {
+        children.add(renderItem(item, i));
+        
+        // Add separator
+        if (separator != null && i < itemsToShow.length - 1) {
+          children.add(separator!);
+        }
+      } catch (e) {
+        print('[DCFFlatList] Error rendering fallback item $i: $e');
       }
     }
     
@@ -235,15 +379,20 @@ class DCFFlatList<T> extends StatefulComponent {
       children.add(empty!);
     }
     
+    print('[DCFFlatList] Built ${children.length} fallback children');
     return children;
+  }
+  
+  /// Sanitize double values to prevent JSON serialization errors
+  double _sanitizeDouble(double value) {
+    if (value.isInfinite || value.isNaN) {
+      return 0.0;
+    }
+    // Clamp very large values
+    return value.clamp(-1e6, 1e6);
   }
 }
 
-/// FlatList orientation enum
-enum DCFListOrientation {
-  vertical,
-  horizontal,
-}
 
 /// Content insets for scroll views
 class ContentInset {

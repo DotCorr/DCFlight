@@ -7,7 +7,6 @@
 
 import 'dart:async';
 import 'dart:collection';
-import 'package:dcf_primitives/src/components/list/virtualization/virtualization_engine.dart';
 import 'package:flutter/scheduler.dart';
 import 'types.dart';
 
@@ -47,13 +46,17 @@ class RenderScheduler {
     _adaptiveBatchSize = config.maxRenderBatchSize;
   }
   
-  /// Schedule an update with the current virtualization state
-  void scheduleUpdate(VirtualizationState state) {
+  /// Schedule an update with ranges
+  void scheduleUpdate({
+    required IndexRange visibleRange,
+    required IndexRange renderRange,
+    required IndexRange bufferRange,
+  }) {
     // Clear existing tasks
     _clearQueues();
     
     // Queue high-priority tasks for visible items
-    for (int i = state.visibleRange.start; i < state.visibleRange.end; i++) {
+    for (int i = visibleRange.start; i < visibleRange.end; i++) {
       _queueRenderTask(RenderTask(
         index: i,
         priority: RenderPriority.high,
@@ -63,8 +66,8 @@ class RenderScheduler {
     }
     
     // Queue medium-priority tasks for render buffer
-    for (int i = state.renderRange.start; i < state.renderRange.end; i++) {
-      if (!state.visibleRange.contains(i)) {
+    for (int i = renderRange.start; i < renderRange.end; i++) {
+      if (!visibleRange.contains(i)) {
         _queueRenderTask(RenderTask(
           index: i,
           priority: RenderPriority.medium,
@@ -75,8 +78,8 @@ class RenderScheduler {
     }
     
     // Queue low-priority tasks for extended buffer
-    for (int i = state.bufferRange.start; i < state.bufferRange.end; i++) {
-      if (!state.renderRange.contains(i)) {
+    for (int i = bufferRange.start; i < bufferRange.end; i++) {
+      if (!renderRange.contains(i)) {
         _queueRenderTask(RenderTask(
           index: i,
           priority: RenderPriority.low,

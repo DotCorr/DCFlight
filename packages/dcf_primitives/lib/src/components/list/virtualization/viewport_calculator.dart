@@ -6,17 +6,9 @@
  */
 
 import 'dart:math' as math;
-import 'package:dcf_primitives/src/components/list/virtualization/virtualization_engine.dart';
+import 'types.dart';
 
-import 'types.dart' hide IndexRange;
-
-/// 🎯 VIEWPORT CALCULATOR - Intelligent windowing and buffering system
-/// 
-/// Calculates optimal render windows based on:
-/// - Current scroll position and velocity
-/// - Item sizes and positions
-/// - Buffer requirements for smooth scrolling
-/// - Performance constraints
+/// 🎯 VIEWPORT CALCULATOR - Fixed for proper incremental rendering
 class ViewportCalculator {
   static const String _logPrefix = '[ViewportCalculator]';
   
@@ -33,7 +25,7 @@ class ViewportCalculator {
   
   ViewportCalculator({required this.config});
   
-  /// Calculate which items are currently visible in the viewport
+  /// Calculate which items are currently visible in the viewport - FIXED VERSION
   IndexRange calculateVisibleRange({
     required double scrollOffset,
     required double viewportSize,
@@ -47,17 +39,11 @@ class ViewportCalculator {
     _updateScrollVelocity(scrollOffset);
     _ensurePositionCache(itemSizes);
     
-    // Binary search for first visible item
-    final startIndex = _findFirstVisibleIndex(
-      scrollOffset, 
-      itemSizes,
-    );
+    // Find first visible item using binary search
+    final startIndex = _findFirstVisibleIndex(scrollOffset, itemSizes);
     
     // Find last visible item
-    final endIndex = _findLastVisibleIndex(
-      scrollOffset + viewportSize,
-      itemSizes,
-    );
+    final endIndex = _findLastVisibleIndex(scrollOffset + viewportSize, itemSizes);
     
     final visibleRange = IndexRange(
       math.max(0, startIndex),
@@ -65,13 +51,13 @@ class ViewportCalculator {
     );
     
     if (config.debug) {
-      print('$_logPrefix Visible range: $visibleRange (scroll: $scrollOffset, viewport: $viewportSize)');
+      print('$_logPrefix Visible range: $visibleRange (scroll: ${scrollOffset.toStringAsFixed(1)}, viewport: ${viewportSize.toStringAsFixed(1)})');
     }
     
     return visibleRange;
   }
   
-  /// Calculate render range with intelligent buffering
+  /// Calculate render range with intelligent buffering - IMPROVED VERSION
   IndexRange calculateRenderRange({
     required IndexRange visibleRange,
     required int itemCount,
@@ -80,24 +66,37 @@ class ViewportCalculator {
     if (itemCount == 0) return const IndexRange(0, 0);
     
     // Calculate buffer size based on window size and scroll velocity
-    final baseBufferSize = ((windowSize - 1) / 2).round();
+    final baseBufferSize = math.max(5, (windowSize / 2).round()); // Minimum 5 items buffer
     final velocityBufferSize = _calculateVelocityBuffer();
     final totalBufferSize = baseBufferSize + velocityBufferSize;
     
-    // Expand range with buffer
+    // Expand range with buffer, ensuring we don't go negative or exceed bounds
     final startIndex = math.max(0, visibleRange.start - totalBufferSize);
     final endIndex = math.min(itemCount, visibleRange.end + totalBufferSize);
     
-    final renderRange = IndexRange(startIndex, endIndex);
+    // Ensure minimum render count for smooth scrolling
+    final minRenderCount = math.max(config.initialNumToRender, 10);
+    final currentRenderCount = endIndex - startIndex;
+    
+    IndexRange renderRange;
+    if (currentRenderCount < minRenderCount) {
+      // Expand range to meet minimum render count
+      final additionalItems = minRenderCount - currentRenderCount;
+      final expandStart = math.max(0, startIndex - (additionalItems ~/ 2));
+      final expandEnd = math.min(itemCount, endIndex + (additionalItems ~/ 2));
+      renderRange = IndexRange(expandStart, expandEnd);
+    } else {
+      renderRange = IndexRange(startIndex, endIndex);
+    }
     
     if (config.debug) {
-      print('$_logPrefix Render range: $renderRange (buffer: $totalBufferSize, velocity: $_scrollVelocity)');
+      print('$_logPrefix Render range: $renderRange (buffer: $totalBufferSize, velocity: ${_scrollVelocity.toStringAsFixed(1)})');
     }
     
     return renderRange;
   }
   
-  /// Calculate buffer range for pre-rendering
+  /// Calculate buffer range for pre-rendering - IMPROVED VERSION
   IndexRange calculateBufferRange({
     required IndexRange renderRange,
     required int itemCount,
@@ -106,30 +105,33 @@ class ViewportCalculator {
     if (itemCount == 0) return const IndexRange(0, 0);
     
     // Extended buffer for pre-rendering based on scroll direction
-    final additionalBuffer = (windowSize * 0.5).round();
+    final additionalBuffer = math.max(3, (windowSize * 0.3).round());
     
     int startIndex, endIndex;
     
-    if (_scrollVelocity > 50) {
-      // Scrolling down/right - extend buffer ahead
+    if (_scrollVelocity > 100) {
+      // Scrolling down/right - extend buffer ahead more aggressively
       startIndex = renderRange.start;
-      endIndex = math.min(itemCount, renderRange.end + additionalBuffer);
-    } else if (_scrollVelocity < -50) {
-      // Scrolling up/left - extend buffer behind
-      startIndex = math.max(0, renderRange.start - additionalBuffer);
+      endIndex = math.min(itemCount, renderRange.end + (additionalBuffer * 2));
+    } else if (_scrollVelocity < -100) {
+      // Scrolling up/left - extend buffer behind more aggressively
+      startIndex = math.max(0, renderRange.start - (additionalBuffer * 2));
       endIndex = renderRange.end;
     } else {
-      // Slow scrolling - balanced buffer
-      startIndex = math.max(0, renderRange.start - (additionalBuffer ~/ 2));
-      endIndex = math.min(itemCount, renderRange.end + (additionalBuffer ~/ 2));
+      // Slow scrolling or stationary - balanced buffer
+      startIndex = math.max(0, renderRange.start - additionalBuffer);
+      endIndex = math.min(itemCount, renderRange.end + additionalBuffer);
     }
     
     return IndexRange(startIndex, endIndex);
   }
   
-  /// Find first visible item using binary search for performance
+  /// Find first visible item using optimized binary search
   int _findFirstVisibleIndex(double scrollOffset, List<double> itemSizes) {
     if (itemSizes.isEmpty) return 0;
+    
+    // Handle edge case where we're at the very beginning
+    if (scrollOffset <= 0) return 0;
     
     int left = 0;
     int right = itemSizes.length - 1;
@@ -137,20 +139,25 @@ class ViewportCalculator {
     while (left < right) {
       final mid = (left + right) ~/ 2;
       final position = _getItemPosition(mid);
+      final itemEnd = position + itemSizes[mid];
       
-      if (position < scrollOffset) {
+      if (itemEnd <= scrollOffset) {
         left = mid + 1;
       } else {
         right = mid;
       }
     }
     
-    return left;
+    return math.max(0, left);
   }
   
-  /// Find last visible item
+  /// Find last visible item using optimized search
   int _findLastVisibleIndex(double maxOffset, List<double> itemSizes) {
     if (itemSizes.isEmpty) return 0;
+    
+    // Handle edge case where we can see beyond the end
+    final totalHeight = _getItemPosition(itemSizes.length - 1) + itemSizes.last;
+    if (maxOffset >= totalHeight) return itemSizes.length - 1;
     
     int left = 0;
     int right = itemSizes.length - 1;
@@ -166,11 +173,13 @@ class ViewportCalculator {
       }
     }
     
-    return left;
+    return math.max(0, left);
   }
   
   /// Get cached item position
   double _getItemPosition(int index) {
+    if (index < 0) return 0.0;
+    if (index >= _itemPositionCache.length) return _itemPositionCache[_itemPositionCache.length - 1] ?? 0.0;
     return _itemPositionCache[index] ?? 0.0;
   }
   
@@ -185,10 +194,14 @@ class ViewportCalculator {
     
     for (int i = 0; i < itemSizes.length; i++) {
       _itemPositionCache[i] = position;
-      position += itemSizes[i];
+      position += math.max(1.0, itemSizes[i]); // Ensure minimum item size of 1
     }
     
     _cacheValid = true;
+    
+    if (config.debug && itemSizes.length <= 10) {
+      print('$_logPrefix Position cache: $_itemPositionCache');
+    }
   }
   
   /// Update scroll velocity for predictive rendering
@@ -196,12 +209,12 @@ class ViewportCalculator {
     final now = DateTime.now();
     final deltaTime = now.difference(_lastScrollTime).inMilliseconds;
     
-    if (deltaTime > 0) {
+    if (deltaTime > 0 && deltaTime < 1000) { // Ignore very large time gaps
       final deltaOffset = scrollOffset - _lastScrollOffset;
-      _scrollVelocity = (deltaOffset / deltaTime) * 1000; // pixels per second
+      final instantVelocity = (deltaOffset / deltaTime) * 1000; // pixels per second
       
       // Apply smoothing to reduce jitter
-      _scrollVelocity = _scrollVelocity * 0.3 + _scrollVelocity * 0.7;
+      _scrollVelocity = (_scrollVelocity * 0.7) + (instantVelocity * 0.3);
     }
     
     _lastScrollOffset = scrollOffset;
@@ -212,14 +225,16 @@ class ViewportCalculator {
   int _calculateVelocityBuffer() {
     final absVelocity = _scrollVelocity.abs();
     
-    if (absVelocity < 100) {
-      return 0; // Slow scrolling - no additional buffer
+    if (absVelocity < 50) {
+      return 0; // Very slow scrolling - no additional buffer
+    } else if (absVelocity < 200) {
+      return 2; // Slow scrolling - small buffer
     } else if (absVelocity < 500) {
-      return 1; // Medium scrolling - small buffer
+      return 5; // Medium scrolling - medium buffer
     } else if (absVelocity < 1000) {
-      return 2; // Fast scrolling - medium buffer
+      return 8; // Fast scrolling - large buffer
     } else {
-      return 3; // Very fast scrolling - large buffer
+      return 12; // Very fast scrolling - extra large buffer
     }
   }
   
@@ -232,7 +247,9 @@ class ViewportCalculator {
   /// Get total content size
   double calculateTotalContentSize(List<double> itemSizes) {
     if (itemSizes.isEmpty) return 0;
-    return itemSizes.reduce((a, b) => a + b);
+    _ensurePositionCache(itemSizes);
+    final lastIndex = itemSizes.length - 1;
+    return _getItemPosition(lastIndex) + itemSizes[lastIndex];
   }
   
   /// Check if index is in visible viewport
@@ -279,7 +296,7 @@ class ViewportCalculator {
     final intersectionEnd = math.min(itemEnd, viewportEnd);
     final intersectionSize = intersectionEnd - intersectionStart;
     
-    return intersectionSize / itemSize;
+    return intersectionSize / math.max(1.0, itemSize);
   }
   
   /// Reset cache when item sizes change
@@ -301,6 +318,7 @@ class ViewportCalculator {
       'scrollVelocity': _scrollVelocity,
       'cacheSize': _itemPositionCache.length,
       'cacheValid': _cacheValid,
+      'lastScrollOffset': _lastScrollOffset,
     };
   }
 }
