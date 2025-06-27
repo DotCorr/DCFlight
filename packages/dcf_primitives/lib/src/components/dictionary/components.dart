@@ -16,7 +16,6 @@ export '../gesture_detector_component.dart';
 export '../animated_view_component.dart';
 export '../svg_component.dart';
 export '../icon_component.dart';
-export '../safe_area_view_component.dart';
 export '../text_input_component.dart';
 export '../dropdown_component.dart';
 export '../list/flat_list_component.dart';

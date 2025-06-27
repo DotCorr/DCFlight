@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'package:dcf_primitives/src/components/navigation/screen_safe_area.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Presentation styles for screens
@@ -262,8 +263,9 @@ class DCFScreen extends StatelessComponent {
       type: 'Screen',
       props: props,
       children: [
-        // Enforce resposive layout from dart side abstraction by forcing full rerender by wrapping in a safe area view
-        DCFSafeAreaView(
+      // work around for the screen content disappearing on orientation change
+      // ToFix: ...
+        ScreenForceSafeAreaChildrenDirtier(
           bottom: shouldHideSafeArea == true ? false : true,
           top: shouldHideSafeArea == true ? false : true,
           layout: LayoutProps(
