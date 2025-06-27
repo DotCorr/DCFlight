@@ -8,7 +8,7 @@
 
 //
 //  DCDivergerUtil.swift
-//  
+//
 //
 //  Created by Tahiru Agbanwa on 4/15/25.
 //
@@ -47,10 +47,26 @@ import Flutter
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         _ = YogaShadowTree.shared
         _ = DCFLayoutManager.shared
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(orientationChanged),
+            name: UIDevice.orientationDidChangeNotification,
+            object: nil
+        )
+
     }
 
-    
+    @objc private func orientationChanged() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            let screenWidth = UIScreen.main.bounds.width
+            let screenHeight = UIScreen.main.bounds.height
+            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+        }
+    }
 }
+
+
 
     public func replaceRoot(controller: UIViewController) {
         // Get the current root view controller
