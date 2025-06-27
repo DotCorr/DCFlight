@@ -7,7 +7,6 @@ void main() {
   DCFlight.start(app: MyApp());
 }
 
-
 class MyApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
@@ -31,9 +30,7 @@ class MyApp extends StatefulComponent {
           tabConfig: DCFTabConfig(title: "Profile", icon: "person", index: 1),
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
-          children: [
-           ModalTest()
-          ],
+          children: [ModalTest()],
         ),
 
         DCFScreen(
@@ -45,29 +42,20 @@ class MyApp extends StatefulComponent {
           onActivate: (data) => print("🟢 Settings screen activated: $data"),
           children: [
             DCFView(
-              styleSheet: StyleSheet(
-                backgroundColor: Colors.red,
-              ),
+              styleSheet: StyleSheet(backgroundColor: Colors.red),
               layout: LayoutProps(
                 flex: 1,
                 justifyContent: YogaJustifyContent.center,
                 alignItems: YogaAlign.center,
                 padding: 20,
               ),
-              children: [
-                ReallyLongList()
-              ],
+              children: [ReallyLongList()],
             ),
           ],
         ),
 
         // Tab navigator that coordinates the screens
         DCFTabNavigator(
-        
-          onTabLongPress: (v){
-            print("🔍 Tab long pressed: ${v["selectedIndex"]}");
-          },
-     
           screens: ["test_home", "test_profile", "test_settings"],
           selectedIndex: currentTab.state,
           tabBarStyle: DCFTabBarStyle(
