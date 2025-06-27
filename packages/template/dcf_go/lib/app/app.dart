@@ -14,14 +14,20 @@ class App extends StatefulComponent {
     final pagestateLocal = useStore(pagestate);
 
     // Removed DCFPortalProvider wrapper to test modal rendering
-    return DCFScrollView(
-     
-      layout: LayoutProps(flex: 1,marginBottom: 10),
+    return DCFView(
+      layout: LayoutProps(
+        flex: 1,
+        flexDirection: YogaFlexDirection.column,
+        padding: 8,
+      ),
       children: [
-        // Main App Content
-        // DCFSafeAreaView(
-        //   layout: LayoutProps(flex: 1, padding: 8),
-          // children: [
+        DCFScrollView(
+          layout: LayoutProps(height: "100%"),
+          children: [
+            // Main App Content
+            // DCFSafeAreaView(
+            //   layout: LayoutProps(flex: 1, padding: 8),
+            // children: [
             DCFView(
               layout: LayoutProps(
                 flex: 1,
@@ -67,8 +73,10 @@ class App extends StatefulComponent {
               ),
             ),
           ],
-      //   ),
-      // ],
+          //   ),
+          // ],
+        ),
+      ],
     );
   }
 }
