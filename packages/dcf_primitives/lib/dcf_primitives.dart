@@ -10,6 +10,7 @@ library;
 
 // Export component-based primitives
 export 'src/components/dictionary/components.dart';
+export 'src/components/list/virtualization.dart';
 
 // Export the plugin class
 export 'src/dcf_primitives_plugin.dart';

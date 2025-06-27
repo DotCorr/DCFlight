@@ -74,6 +74,7 @@ class ReallyLongList extends StatefulComponent {
           layout: const LayoutProps(flex: 1),
           children: [
             DCFFlatList(
+              
               // ✅ NEW: Type-safe command prop for imperative control
               command: currentCommand.state,
               
@@ -88,6 +89,7 @@ class ReallyLongList extends StatefulComponent {
               ),
               
               onScroll: (v) {
+                print('📜 MAnually Scrolled to: ${v['contentOffset']}');
                 // Clear command after it's been processed to avoid re-execution
                 if (currentCommand.state != null) {
                   Future.microtask(() {
@@ -112,7 +114,7 @@ class ReallyLongList extends StatefulComponent {
                     gap: 5,
                     flexDirection: YogaFlexDirection.row,
                     flexWrap: YogaWrap.wrap,
-                    height: 60, // Fixed height for consistent virtualization
+                    height: 100, // Fixed height for consistent virtualization
                     // ❌ REMOVED: width: double.infinity - this was causing crashes
                     // ✅ FIXED: Use flex: 1 for full width
                     flex: 1,

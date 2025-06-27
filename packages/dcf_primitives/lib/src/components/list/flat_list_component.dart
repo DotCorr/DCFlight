@@ -151,70 +151,89 @@ class DCFFlatList<T> extends StatefulComponent {
     }, dependencies: [data.length, data.hashCode]);
     
     // Handle scroll events and update virtualization
-    void handleScroll(Map<dynamic, dynamic> event) {
-      try {
-        if (engine.state == null) return;
-        
-        // Extract scroll data
-        final contentOffset = event['contentOffset'] as Map<String, dynamic>?;
-        final layoutMeasurement = event['layoutMeasurement'] as Map<String, dynamic>?;
-        final contentSize = event['contentSize'] as Map<String, dynamic>?;
-        
-        if (contentOffset != null) {
-          final rawOffset = orientation == DCFListOrientation.horizontal
-              ? (contentOffset['x'] as double? ?? 0.0)
-              : (contentOffset['y'] as double? ?? 0.0);
-          
-          // Sanitize the offset
-          final offset = _sanitizeDouble(rawOffset);
-          
-          // Update viewport dimensions if available
-          if (layoutMeasurement != null) {
-            final viewportHeight = _sanitizeDouble(layoutMeasurement['height'] as double? ?? 600.0);
-            final viewportWidth = _sanitizeDouble(layoutMeasurement['width'] as double? ?? 400.0);
-            
-            // Re-initialize engine with correct dimensions if they changed significantly
-            final currentEngine = engine.state!;
-            if ((viewportHeight - 600.0).abs() > 50 || (viewportWidth - 400.0).abs() > 50) {
-              currentEngine.initialize(
-                data: data,
-                viewportHeight: viewportHeight,
-                viewportWidth: viewportWidth,
-                isHorizontal: orientation == DCFListOrientation.horizontal,
-                estimatedItemSize: estimatedItemSize ?? 50.0,
-                getItemType: getItemType,
-              );
-            }
-          }
-          
-          // Update scroll position - this triggers virtualization
-          scrollOffset.setState(offset);
-          engine.state!.updateScrollPosition(offset);
-          
-          print('[DCFFlatList] Scroll update - Offset: $offset');
-        }
-        
-        // Handle end reached
-        if (onEndReached != null && contentOffset != null && contentSize != null && layoutMeasurement != null) {
-          final totalHeight = _sanitizeDouble(contentSize['height'] as double? ?? 0.0);
-          final viewportHeight = _sanitizeDouble(layoutMeasurement['height'] as double? ?? 600.0);
-          final currentOffset = _sanitizeDouble(contentOffset['y'] as double? ?? 0.0);
-          
-          final threshold = onEndReachedThreshold ?? 0.1;
-          final endThreshold = totalHeight - (viewportHeight * (1 + threshold));
-          
-          if (currentOffset >= endThreshold) {
-            onEndReached!();
-          }
-        }
-        
-        // Call user's onScroll handler
-        onScroll?.call(event);
-        
-      } catch (e) {
-        print('[DCFFlatList] Error in handleScroll: $e');
+void handleScroll(Map<dynamic, dynamic> event) {
+  try {
+    if (engine.state == null) return;
+    
+    // 🔧 FIX: Handle Map<Object?, Object?> properly
+    final contentOffset = event['contentOffset'];
+    
+    if (contentOffset != null) {
+      double rawOffset = 0.0;
+      
+      // Handle the Map<Object?, Object?> type safely
+      if (contentOffset is Map) {
+        // Convert to Map<String, dynamic> safely
+        final offsetMap = Map<String, dynamic>.from(contentOffset);
+        rawOffset = orientation == DCFListOrientation.horizontal
+            ? (offsetMap['x'] as double? ?? 0.0)
+            : (offsetMap['y'] as double? ?? 0.0);
+      }
+      
+      // Sanitize the offset
+      final offset = _sanitizeDouble(rawOffset);
+      
+      print('[DCFFlatList] 📍 Scroll offset: $offset');
+      
+      // Update scroll position - this triggers virtualization
+      scrollOffset.setState(offset);
+      engine.state!.updateScrollPosition(offset);
+      
+      print('[DCFFlatList] ✅ Updated engine with scroll offset: $offset');
+    }
+    
+    // Handle viewport size updates
+    final layoutMeasurement = event['layoutMeasurement'];
+    if (layoutMeasurement != null && layoutMeasurement is Map) {
+      final measurementMap = Map<String, dynamic>.from(layoutMeasurement);
+      final viewportHeight = _sanitizeDouble(measurementMap['height'] as double? ?? 600.0);
+      final viewportWidth = _sanitizeDouble(measurementMap['width'] as double? ?? 400.0);
+      
+      // Re-initialize engine with correct dimensions if they changed significantly
+      final currentEngine = engine.state!;
+      if ((viewportHeight - 600.0).abs() > 50 || (viewportWidth - 400.0).abs() > 50) {
+        currentEngine.initialize(
+          data: data,
+          viewportHeight: viewportHeight,
+          viewportWidth: viewportWidth,
+          isHorizontal: orientation == DCFListOrientation.horizontal,
+          estimatedItemSize: estimatedItemSize ?? 50.0,
+          getItemType: getItemType,
+        );
+        print('[DCFFlatList] 🔄 Re-initialized engine with new viewport: ${viewportWidth}x${viewportHeight}');
       }
     }
+    
+    // Handle end reached
+    final contentSize = event['contentSize'];
+    if (onEndReached != null && contentOffset != null && contentSize != null && layoutMeasurement != null) {
+      try {
+        final contentSizeMap = Map<String, dynamic>.from(contentSize as Map);
+        final layoutMap = Map<String, dynamic>.from(layoutMeasurement as Map);
+        final offsetMap = Map<String, dynamic>.from(contentOffset as Map);
+        
+        final totalHeight = _sanitizeDouble(contentSizeMap['height'] as double? ?? 0.0);
+        final viewportHeight = _sanitizeDouble(layoutMap['height'] as double? ?? 600.0);
+        final currentOffset = _sanitizeDouble(offsetMap['y'] as double? ?? 0.0);
+        
+        final threshold = onEndReachedThreshold ?? 0.1;
+        final endThreshold = totalHeight - (viewportHeight * (1 + threshold));
+        
+        if (currentOffset >= endThreshold) {
+          onEndReached!();
+        }
+      } catch (e) {
+        // Ignore end reached calculation errors
+      }
+    }
+    
+    // Call user's onScroll handler
+    onScroll?.call(event);
+    
+  } catch (e) {
+    print('[DCFFlatList] ❌ Error in handleScroll: $e');
+  }
+}
     
     // Handle commands for scrolling
     useEffect(() {

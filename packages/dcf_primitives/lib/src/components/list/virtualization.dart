@@ -21,6 +21,6 @@ export 'virtualization/performance_monitor.dart';
 // Core components (for advanced usage)
 export 'virtualization/viewport_calculator.dart';
 export 'virtualization/component_recycler.dart';
-export 'virtualization/types.dart';
+export 'virtualization/types.dart' show VirtualizationConfig;
 export 'virtualization/layout_estimator.dart';
 export 'virtualization/render_scheduler.dart' hide RenderTask;
