@@ -7,10 +7,13 @@
 
 
 import 'package:dcflight/dcflight.dart';
-
+//Todo?
 /// SafeAreaView component that handles device safe areas using ScreenUtilities
 /// This is a pure Dart component that wraps DCFView and applies safe area insets as padding
-class DCFSafeAreaView extends StatefulComponent {
+/// Dont use this component, it is made purposely to dirty the screen api content forcing rerender on children preventing screen from disappearing on orientaion change
+/// This issue is very unclear as i am in the validation phase not have not given time to fix this issue (its time consuming). It's definately as a result of using the a wrong method of setting children of the screen content into the tab when orientaion change. So in short this component is a work around.
+/// I have not benchmarked but its gonna have a bad impact (not visible) but theoretically it should have a bad impact on performance as it forces the screen to re-render on every orientation change (But its important to make it force setChildren else the screen would hide its content).
+class ScreenForceSafeAreaChildrenDirtier extends StatefulComponent {
   final bool top;
   final bool bottom;
   final bool left;
@@ -20,7 +23,7 @@ class DCFSafeAreaView extends StatefulComponent {
   final List<DCFComponentNode> children;
   final Map<String, dynamic>? events;
 
-  DCFSafeAreaView({
+  ScreenForceSafeAreaChildrenDirtier({
     this.top = true,
     this.bottom = true,
     this.left = true,

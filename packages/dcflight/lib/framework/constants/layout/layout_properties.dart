@@ -83,7 +83,7 @@ class LayoutProps {
   const LayoutProps({
     // these defauts are just for visibiity reasons. 
     this.width = '100%', // Default to 100% width for proper nesting
-    this.height = "50%", // Default to 50% height for visibility
+    this.height = 50, // Default to 50 height for visibility
     this.minWidth,
     this.maxWidth,
     this.minHeight,

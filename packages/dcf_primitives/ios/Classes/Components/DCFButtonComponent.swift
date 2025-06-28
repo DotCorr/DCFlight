@@ -18,6 +18,13 @@ class DCFButtonComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
+    // 🔍 DEBUG: Log what props Button actually receives (same as Screen/Tab logging)
+    print("🔧 DCFButtonComponent: Found props keys: \(Array(props.keys))")
+    
+    // Extract event types to compare with Screen/TabNavigator
+    let eventTypes = props.keys.filter { $0.hasPrefix("on") }
+    print("🔧 DCFButtonComponent: Extracted event types: \(eventTypes)")
+    
         let button = UIButton(type: .system)
         
         button.isUserInteractionEnabled = true

@@ -22,6 +22,13 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
+    // 🔍 DEBUG: Log what props WebView actually receives (same as Screen/Tab logging)
+    print("🔧 DCFWebViewComponent: Found props keys: \(Array(props.keys))")
+    
+    // Extract event types to compare with Screen/TabNavigator
+    let eventTypes = props.keys.filter { $0.hasPrefix("on") }
+    print("🔧 DCFWebViewComponent: Extracted event types: \(eventTypes)")
+    
         // Ensure we're on the main thread for UI operations
         guard Thread.isMainThread else {
             return DispatchQueue.main.sync {

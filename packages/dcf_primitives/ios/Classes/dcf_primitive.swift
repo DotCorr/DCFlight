@@ -24,8 +24,7 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("Button", componentClass: DCFButtonComponent.self)
         DCFComponentRegistry.shared.registerComponent("Text", componentClass: DCFTextComponent.self)
         DCFComponentRegistry.shared.registerComponent("Image", componentClass: DCFImageComponent.self)
-        DCFComponentRegistry.shared.registerComponent("ScrollView", componentClass: DCFVirtualizedScrollViewComponent.self)
-        DCFComponentRegistry.shared.registerComponent("FlatList", componentClass: DCFVirtualizedFlatListComponent.self)
+        DCFComponentRegistry.shared.registerComponent("ScrollView", componentClass: DCFScrollViewComponent.self)
                
         // Register new primitives
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
@@ -51,7 +50,8 @@ import dcflight
         // 🚀 Register ADVANCED primitive components
         DCFComponentRegistry.shared.registerComponent("Slider", componentClass: DCFSliderComponent.self)
         DCFComponentRegistry.shared.registerComponent("Spinner", componentClass: DCFSpinnerComponent.self)
-        
+          DCFComponentRegistry.shared.registerComponent("Screen", componentClass: DCFScreenComponent.self)
+        DCFComponentRegistry.shared.registerComponent("TabNavigator", componentClass: DCFTabNavigatorComponent.self)
         // 🚀 Register CRITICAL primitive components
         DCFComponentRegistry.shared.registerComponent("WebView", componentClass: DCFWebViewComponent.self)
     }

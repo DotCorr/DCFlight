@@ -10,19 +10,19 @@ import UIKit
 import dcflight
 
 // 🚀 CLEAN VIRTUALIZED SCROLL VIEW COMPONENT - Uses only propagateEvent() and prop-based commands
-class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
-    private static let sharedInstance = DCFVirtualizedScrollViewComponent()
+class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
+    private static let sharedInstance = DCFScrollViewComponent()
     
     required override init() {
         super.init()
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create a VirtualizedScrollView that separates layout from content size management
-        let scrollView = VirtualizedScrollView()
+        // Create a DCFScrollableView that separates layout from content size management
+        let scrollView = DCFScrollableView()
         
         // 🚀 CLEAN: Set shared instance as delegate to prevent deallocation
-        scrollView.delegate = DCFVirtualizedScrollViewComponent.sharedInstance
+        scrollView.delegate = DCFScrollViewComponent.sharedInstance
         
         // Apply basic configuration
         scrollView.showsVerticalScrollIndicator = true
@@ -51,7 +51,7 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDel
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let scrollView = view as? VirtualizedScrollView else { return false }
+        guard let scrollView = view as? DCFScrollableView else { return false }
         
         // Set shows indicator if specified
         if let showsScrollIndicator = props["showsScrollIndicator"] as? Bool {
@@ -183,9 +183,9 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDel
         return true
     }
     
-    // Custom layout for VirtualizedScrollView - uses React Native's two-step approach
+    // Custom layout for DCFScrollableView - uses React Native's two-step approach
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        guard let scrollView = view as? VirtualizedScrollView else { return }
+        guard let scrollView = view as? DCFScrollableView else { return }
         
         // Step 1: Let Yoga handle the scroll view frame layout
         let newFrame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
@@ -210,8 +210,8 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDel
                                nodeId, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // For VirtualizedScrollView, schedule content size update after Yoga layout
-        if let scrollView = view as? VirtualizedScrollView {
+        // For DCFScrollableView, schedule content size update after Yoga layout
+        if let scrollView = view as? DCFScrollableView {
             // Store the nodeId on the scroll view for bridge communication
             scrollView.nodeId = nodeId
             
@@ -222,13 +222,13 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDel
     }
     
     // MARK: - Event Handling
-    // Note: VirtualizedScrollView uses global propagateEvent() system
+    // Note: DCFScrollableView uses global propagateEvent() system
     // No custom event methods needed - all handled by DCFComponentProtocol
     
     // MARK: - Command Handling (New Prop-Based Pattern)
     
     /// Handle commands passed as props - the new declarative command pattern
-    private func handleCommand(scrollView: VirtualizedScrollView, props: [String: Any]) {
+    private func handleCommand(scrollView: DCFScrollableView, props: [String: Any]) {
         guard let commandData = props["command"] as? [String: Any] else {
             return
         }
@@ -326,8 +326,8 @@ class DCFVirtualizedScrollViewComponent: NSObject, DCFComponent, UIScrollViewDel
     
     // MARK: - Content Size Change Handler (Simplified)
     
-    /// Handle content size change notifications from VirtualizedScrollView
-    func notifyContentSizeChange(_ scrollView: VirtualizedScrollView, size: CGSize) {
+    /// Handle content size change notifications from DCFScrollableView
+    func notifyContentSizeChange(_ scrollView: DCFScrollableView, size: CGSize) {
         propagateEvent(on: scrollView, eventName: "onContentSizeChange", data: [
             "contentSize": [
                 "width": size.width,

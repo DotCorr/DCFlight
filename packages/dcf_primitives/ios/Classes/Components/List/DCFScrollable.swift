@@ -5,13 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import UIKit
 import dcflight
 
 /// Custom UIScrollView that implements VirtualizedList content size management
 /// Key insight: Yoga handles layout, but contentSize must be explicitly managed
-class VirtualizedScrollView: UIScrollView {
+class DCFScrollableView: UIScrollView {
     
     // VirtualizedList properties
     var isHorizontal: Bool = false
@@ -22,59 +21,53 @@ class VirtualizedScrollView: UIScrollView {
     // Track whether content size was explicitly set
     private var explicitContentSize: CGSize?
     private var lastFrameSize: CGSize = .zero
+    private var isUpdatingContentSize: Bool = false // Prevent redundant calculations
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setupVirtualizedScrollView()
+        setupDCFScrollableView()
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        setupVirtualizedScrollView()
+        setupDCFScrollableView()
     }
     
-    private func setupVirtualizedScrollView() {
+    private func setupDCFScrollableView() {
         // Configure for VirtualizedList behavior
         self.clipsToBounds = true
-        
     }
     
     /// Update content size based on Yoga layout results - React Native VirtualizedList approach
     func updateContentSizeFromYogaLayout() {
+        // Prevent redundant calculations during orientation changes
+        guard !isUpdatingContentSize else { return }
+        isUpdatingContentSize = true
+        defer { isUpdatingContentSize = false }
+        
         // If content size was explicitly set, use that
         if let explicitSize = explicitContentSize {
             self.contentSize = explicitSize
             return
         }
         
-        // Calculate content size from Yoga layout results
+        // 🚀 FIXED: Calculate content size from DIRECT CHILDREN ONLY - no deep recursion
         var maxWidth: CGFloat = 0
         var maxHeight: CGFloat = 0
         
-        // Recursively get the natural content size from ALL descendant views after Yoga layout
-        // This is crucial because content might be nested deep in the view hierarchy
-        func calculateMaxBounds(from view: UIView, offset: CGPoint = CGPoint.zero) {
-            for subview in view.subviews {
-                // Skip system scroll indicator views
-                let className = NSStringFromClass(type(of: subview))
-                guard !className.contains("UIScrollView") && !className.contains("_UIScrollViewScrollIndicator") else { continue }
-                
-                // Calculate absolute position relative to scroll view
-                let absoluteFrame = subview.convert(subview.bounds, to: self)
-                let right = absoluteFrame.origin.x + absoluteFrame.size.width
-                let bottom = absoluteFrame.origin.y + absoluteFrame.size.height
-                
-                maxWidth = max(maxWidth, right)
-                maxHeight = max(maxHeight, bottom)
-                
-                
-                // Recursively check subviews
-                calculateMaxBounds(from: subview, offset: CGPoint(x: offset.x + subview.frame.origin.x, y: offset.y + subview.frame.origin.y))
-            }
+        // Only look at immediate children of the scroll view - this is the correct approach
+        for subview in self.subviews {
+            // Skip system scroll indicator views
+            let className = NSStringFromClass(type(of: subview))
+            guard !className.contains("UIScrollView") && !className.contains("_UIScrollViewScrollIndicator") else { continue }
+            
+            // Use the subview's actual frame (already positioned by Yoga)
+            let right = subview.frame.origin.x + subview.frame.size.width
+            let bottom = subview.frame.origin.y + subview.frame.size.height
+            
+            maxWidth = max(maxWidth, right)
+            maxHeight = max(maxHeight, bottom)
         }
-        
-        // Start recursive calculation from scroll view's direct children
-        calculateMaxBounds(from: self)
         
         // Apply virtualized content padding/offset
         if virtualizedContentOffsetStart > 0 || virtualizedContentPaddingTop > 0 {
@@ -107,35 +100,40 @@ class VirtualizedScrollView: UIScrollView {
             }
         }
         
-        // Set content size based on layout direction
+        // 🚀 FIXED: Set content size based purely on content, not viewport
+        // Don't force content size to be at least as large as viewport - this was causing the rotation issue
         let availableWidth = self.frame.width
         let availableHeight = self.frame.height
         
         let finalContentSize: CGSize
         if isHorizontal {
-            // For horizontal scrolling, content width should be at least as wide as the found max width
-            finalContentSize = CGSize(width: max(maxWidth, availableWidth), height: availableHeight)
+            // For horizontal scrolling: content width = actual content width, height = viewport height
+            finalContentSize = CGSize(width: maxWidth, height: availableHeight)
         } else {
-            // For vertical scrolling, content height should be at least as tall as the found max height
-            finalContentSize = CGSize(width: availableWidth, height: max(maxHeight, availableHeight))
+            // For vertical scrolling: width = viewport width, height = actual content height
+            finalContentSize = CGSize(width: availableWidth, height: maxHeight)
         }
         
-        // This is the key: explicit content size management separate from Yoga layout
-        self.contentSize = finalContentSize
-        
-        
-        // Communicate content size update to Dart side if needed
-        notifyContentSizeUpdate(finalContentSize)
+        // Only update if the content size actually changed to prevent unnecessary updates
+        if self.contentSize != finalContentSize {
+            self.contentSize = finalContentSize
+            
+            // Communicate content size update to Dart side
+            notifyContentSizeUpdate(finalContentSize)
+        }
     }
     
     /// Set explicit content size from Dart side - VirtualizedList approach
     func setExplicitContentSize(_ size: CGSize) {
         explicitContentSize = size
-        self.contentSize = size
         
-        
-        // Communicate content size update to Dart side
-        notifyContentSizeUpdate(size)
+        // Only update if different to prevent unnecessary updates
+        if self.contentSize != size {
+            self.contentSize = size
+            
+            // Communicate content size update to Dart side
+            notifyContentSizeUpdate(size)
+        }
     }
     
     /// Notify Dart side of content size updates through simple propagateEvent
@@ -153,19 +151,33 @@ class VirtualizedScrollView: UIScrollView {
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        // Update content size after layout if frame size has changed
-        // This ensures content size is recalculated when the scroll view is resized
+        // 🚀 IMPROVED: Only update content size when frame size changes AND we have valid bounds
         let currentFrameSize = self.frame.size
         
-        if lastFrameSize != currentFrameSize {
+        if lastFrameSize != currentFrameSize && !isUpdatingContentSize {
             lastFrameSize = currentFrameSize
             
-            // Only update content size if we have a valid frame
-            if currentFrameSize.width > 0 && currentFrameSize.height > 0 {
-                DispatchQueue.main.async {
+            // Only update content size if we have a valid frame and actual content
+            if currentFrameSize.width > 0 && currentFrameSize.height > 0 && self.subviews.count > 0 {
+                // 🚀 CRITICAL: Delay to ensure Yoga layout is complete after orientation change
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Double-check we're not in the middle of another update
+                    guard !self.isUpdatingContentSize else { return }
                     self.updateContentSizeFromYogaLayout()
                 }
             }
+        }
+    }
+    
+    // 🚀 IMPROVED: Handle trait collection changes (including orientation)
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        
+        // Clear explicit content size during orientation changes to allow proper recalculation
+        if let previous = previousTraitCollection,
+           previous.verticalSizeClass != self.traitCollection.verticalSizeClass ||
+           previous.horizontalSizeClass != self.traitCollection.horizontalSizeClass {
+            explicitContentSize = nil
         }
     }
 }
