@@ -1,19 +1,19 @@
 import 'package:dcf_go/app/app.dart';
+import 'package:dcf_go/app/examples/modal_test.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() {
-  DCFlight.start(app: ScreenAPITest());
+  DCFlight.start(app: MyApp());
 }
 
-// Temporary test for Screen API
-class ScreenAPITest extends StatefulComponent {
+class MyApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final currentTab = useState<int>(0);
-
     return DCFFragment(
       children: [
         DCFScreen(
+          visible: currentTab.state == 0,
           name: "test_home",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(title: "Home", icon: "house", index: 0),
@@ -23,61 +23,57 @@ class ScreenAPITest extends StatefulComponent {
         ),
 
         DCFScreen(
+          visible: currentTab.state == 1,
           name: "test_profile",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(title: "Profile", icon: "person", index: 1),
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
-          children: [
-            DCFView(
-              layout: LayoutProps(
-                flex: 1,
-                justifyContent: YogaJustifyContent.center,
-                alignItems: YogaAlign.center,
-                padding: 20,
-              ),
-              children: [
-                DCFText(
-                  content: "Profile Screen",
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                ),
-                DCFText(
-                  content: "Screen API Test - Tab 2",
-                  textProps: DCFTextProps(fontSize: 16),
-                ),
-              ],
-            ),
-          ],
+          children: [ModalTest()],
         ),
 
         DCFScreen(
-          name: "test_settings",
+          visible: currentTab.state == 2,
+          name: "test_gh",
           presentationStyle: DCFPresentationStyle.tab,
-          tabConfig: DCFTabConfig(title: "Settings", icon: "gear", index: 2),
+          tabConfig: DCFTabConfig(title: "Github", icon: "lightbulb", index: 2),
           onAppear: (data) => print("✅ Settings screen appeared: $data"),
           onActivate: (data) => print("🟢 Settings screen activated: $data"),
           children: [
             DCFView(
               layout: LayoutProps(
                 flex: 1,
-                justifyContent: YogaJustifyContent.center,
-                alignItems: YogaAlign.center,
-                padding: 20,
               ),
               children: [
-                DCFText(
-                  content: "Settings Screen",
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
+                DCFWebView(
+                  layout: LayoutProps(
+                    flex: 1,
                   ),
-                ),
-                DCFText(
-                  content: "Screen API Test - Tab 3",
-                  textProps: DCFTextProps(fontSize: 16),
+                  onLoadStart: (v) {
+                    print("WebView Load Start: $v");
+                  },
+                  onLoadEnd: (v) {
+                    print("WebView Load End: $v");
+                  },
+
+                  onLoadError: (v) {
+                    print("WebView Load Error: $v");
+                  },
+
+                  onLoadProgress: (v) {
+                    print("WebView Load Progress: $v");
+                  },
+                  onMessage: (v) {
+                    print("WebView Message: $v");
+                  },
+                  onNavigationStateChange: (v) {
+                    print("WebView Navigation State Change: $v");
+                  },
+                  webViewProps: DCFWebViewProps(
+                    source: "https://www.github.com/dotcorr/dcflight",
+                    loadMode: DCFWebViewLoadMode.url,
+                  ),
+                
                 ),
               ],
             ),
@@ -86,13 +82,13 @@ class ScreenAPITest extends StatefulComponent {
 
         // Tab navigator that coordinates the screens
         DCFTabNavigator(
-          screens: ["test_home", "test_profile", "test_settings"],
+          screens: ["test_home", "test_profile", "test_gh"],
           selectedIndex: currentTab.state,
           tabBarStyle: DCFTabBarStyle(
-            backgroundColor: Colors.white,
+            // backgroundColor: Colors.white,
             selectedTintColor: Colors.blue,
             unselectedTintColor: Colors.grey,
-            translucent: false,
+            translucent: true,
           ),
           onTabChange: (data) {
             final newIndex = data["selectedIndex"] as int;

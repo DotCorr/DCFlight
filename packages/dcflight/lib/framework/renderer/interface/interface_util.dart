@@ -16,6 +16,7 @@ Map<String, dynamic> preprocessProps(Map<String, dynamic> props) {
 
     props.forEach((key, value) {
       if (value is Function) {
+        
         // Handle event handlers - DO NOT send functions to native, only registration flags
         if (key.startsWith('on')) {
           // DON'T include the function itself - just add handler flag for native bridge detection
@@ -47,8 +48,37 @@ Map<String, dynamic> preprocessProps(Map<String, dynamic> props) {
         }
       } else if (value != null) {
         processedProps[key] = value;
+      }else if (value is List) {
+        // Process lists recursively
+        processedProps[key] = _processList(value);
+      } else if (value is Map<String, dynamic>) {
+        // Process nested maps recursively
+        processedProps[key] = preprocessProps(value);
+      } else {
+        // For all other types, just pass through
+        processedProps[key] = value;
       }
     });
 
     return processedProps;
   }
+
+
+
+List<dynamic> _processList(List<dynamic> list) {
+  return list.map((item) {
+    if (item is double) {
+      if (item.isInfinite || item.isNaN) {
+        return 0.0;
+      } else if (item.abs() > 1e6) {
+        return item.clamp(-1e6, 1e6);
+      }
+      return item;
+    } else if (item is Map<String, dynamic>) {
+      return preprocessProps(item);
+    } else if (item is List) {
+      return _processList(item);
+    }
+    return item;
+  }).toList();
+}

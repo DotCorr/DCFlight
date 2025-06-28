@@ -14,7 +14,7 @@ import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.
 import 'package:flutter/foundation.dart';
 
 /// DCFPortal component for rendering children into a different DOM tree location
-/// Similar to React's createPortal, this allows rendering components outside 
+/// Similar to React's createPortal, this allows rendering components outside
 /// their normal parent-child hierarchy
 class DCFPortal extends StatefulComponent {
   final String targetId;
@@ -41,13 +41,10 @@ class DCFPortal extends StatefulComponent {
     final portalIdState = useState<String?>(null, 'portalId');
     final portalManager = EnhancedPortalManager.instance;
 
-
     // Effect to create portal on mount and handle updates
     useEffect(() {
-
       Future<void> createPortal() async {
         try {
-          
           final portalId = await portalManager.createPortal(
             targetId: targetId,
             children: children,
@@ -57,39 +54,29 @@ class DCFPortal extends StatefulComponent {
             onMount: onMount,
             onUnmount: onUnmount,
           );
-          
-          
+
           portalIdState.setState(portalId);
-        } catch (e) {
-        }
+        } catch (e) {}
       }
 
       createPortal();
 
       // Cleanup function
       return () {
-        
         if (portalIdState.state != null) {
-          
-          portalManager.removePortal(portalIdState.state!).catchError((e) {
-          });
-        } else {
-        }
+          portalManager.removePortal(portalIdState.state!).catchError((e) {});
+        } else {}
       };
     }, dependencies: []); // Only run once on mount/unmount
 
     // Separate effect to update portal when properties change
     useEffect(() {
       // Calculate dependencies fresh each time
-      final childrenLength = children.length;
-      final childrenHash = childrenLength == 0 ? 'empty' : children.map((c) => c.hashCode).join(',');
-      
-      
+
       if (portalIdState.state != null) {
         // Use a microtask to ensure the update happens after the current render cycle
         Future.microtask(() {
           try {
-            
             portalManager.updatePortal(
               portalId: portalIdState.state!,
               children: children,
@@ -97,15 +84,16 @@ class DCFPortal extends StatefulComponent {
               priority: priority,
             );
           } catch (e) {
+            throw Exception('Failed to update portal: $e');
           }
         });
-      } else {
-      }
-      
+      } else {}
+
       // Return cleanup function for this effect
-      return () {
-      };
-    }, dependencies: ['${children.length}-${children.map((c) => c.runtimeType).join(',')}']); // Use string-based dependency that changes with content
+      return () {};
+    }, dependencies: [
+      '${children.length}-${children.map((c) => c.runtimeType).join(',')}'
+    ]); // Use string-based dependency that changes with content
 
     // Return a placeholder fragment that doesn't render anything
     // The actual content is rendered through the portal system
@@ -146,18 +134,17 @@ class DCFPortalTarget extends StatefulComponent {
       void attemptRegistration() {
         final isRegistered = isRegisteredRef.current ?? false;
         final element = elementRef.current;
-        
+
         if (!isRegistered && element?.nativeViewId != null) {
           final actualViewId = element!.nativeViewId!;
-          
-          
+
           portalManager.registerTarget(
             targetId: targetId,
             nativeViewId: actualViewId,
             metadata: metadata,
             priority: priority,
           );
-          
+
           isRegisteredRef.current = true;
         }
       }
@@ -177,13 +164,12 @@ class DCFPortalTarget extends StatefulComponent {
             timer.cancel();
           }
         });
-        
+
         // Cancel polling after 1 second to avoid infinite polling
         Timer(Duration(seconds: 1), () {
           pollTimer?.cancel();
           final finalRegistered = isRegisteredRef.current ?? false;
-          if (!finalRegistered && kDebugMode) {
-          }
+          if (!finalRegistered && kDebugMode) {}
         });
       }
 
@@ -199,11 +185,16 @@ class DCFPortalTarget extends StatefulComponent {
           isRegisteredRef.current = false;
         }
       };
-    }, dependencies: [targetId, nativeViewId, priority]); // Re-run when these change
+    }, dependencies: [
+      targetId,
+      nativeViewId,
+      priority
+    ]); // Re-run when these change
 
     // Create the element that will be our portal target
     final element = DCFElement(
-      type: 'View', // Use View component to create a native container(why not fragment or any conceptual/virtual element? Cause portal is porting nodes that already exits into actual native componets so we need a real view to port to)
+      type:
+          'View', // Use View component to create a native container(why not fragment or any conceptual/virtual element? Cause portal is porting nodes that already exits into actual native componets so we need a real view to port to)
       props: {
         'isPortalTarget': true,
         'targetId': targetId,
@@ -214,10 +205,10 @@ class DCFPortalTarget extends StatefulComponent {
       },
       children: children,
     );
-    
+
     // Store reference to the element so we can access its view ID later
     elementRef.current = element;
-    
+
     return element;
   }
 }

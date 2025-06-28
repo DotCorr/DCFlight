@@ -1,5 +1,4 @@
 import 'package:dcf_go/app/examples/gradient.dart';
-import 'package:dcf_go/app/examples/really_long_list.dart';
 import 'package:dcf_go/app/examples/home.dart';
 import 'package:dcf_go/app/examples/modal_test.dart';
 import 'package:dcf_go/app/examples/portal_test.dart';
@@ -14,14 +13,20 @@ class App extends StatefulComponent {
     final pagestateLocal = useStore(pagestate);
 
     // Removed DCFPortalProvider wrapper to test modal rendering
-    return DCFScrollView(
-     
-      layout: LayoutProps(flex: 1,marginBottom: 10),
+    return DCFView(
+      layout: LayoutProps(
+        flex: 1,
+        flexDirection: YogaFlexDirection.column,
+        padding: 8,
+      ),
       children: [
-        // Main App Content
-        DCFSafeAreaView(
-          layout: LayoutProps(flex: 1, padding: 8),
+        DCFScrollView(
+          layout: LayoutProps(height: "100%"),
           children: [
+            // Main App Content
+            // DCFSafeAreaView(
+            //   layout: LayoutProps(flex: 1, padding: 8),
+            // children: [
             DCFView(
               layout: LayoutProps(
                 flex: 1,
@@ -33,7 +38,7 @@ class App extends StatefulComponent {
                     : pagestateLocal.state == 1
                     ? GradientTest()
                     : pagestateLocal.state == 2
-                    ? ReallyLongList()
+                    ? DCFView(children: [DCFText(content: "Test")])
                     : pagestateLocal.state == 3
                     ? ModalTest()
                     : pagestateLocal.state == 4
@@ -67,6 +72,8 @@ class App extends StatefulComponent {
               ),
             ),
           ],
+          //   ),
+          // ],
         ),
       ],
     );
