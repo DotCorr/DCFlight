@@ -1,6 +1,5 @@
 import 'package:dcf_go/app/app.dart';
 import 'package:dcf_go/app/examples/modal_test.dart';
-import 'package:dcf_go/app/examples/really_long_list.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() {
@@ -35,28 +34,55 @@ class MyApp extends StatefulComponent {
 
         DCFScreen(
           visible: currentTab.state == 2,
-          name: "test_settings",
+          name: "test_gh",
           presentationStyle: DCFPresentationStyle.tab,
-          tabConfig: DCFTabConfig(title: "Settings", icon: "gear", index: 2),
+          tabConfig: DCFTabConfig(title: "Github", icon: "lightbulb", index: 2),
           onAppear: (data) => print("✅ Settings screen appeared: $data"),
           onActivate: (data) => print("🟢 Settings screen activated: $data"),
           children: [
             DCFView(
-              styleSheet: StyleSheet(backgroundColor: Colors.red),
               layout: LayoutProps(
                 flex: 1,
-                justifyContent: YogaJustifyContent.center,
-                alignItems: YogaAlign.center,
-                padding: 20,
               ),
-              children: [ReallyLongList()],
+              children: [
+                DCFWebView(
+                  layout: LayoutProps(
+                    flex: 1,
+                  ),
+                  onLoadStart: (v) {
+                    print("WebView Load Start: $v");
+                  },
+                  onLoadEnd: (v) {
+                    print("WebView Load End: $v");
+                  },
+
+                  onLoadError: (v) {
+                    print("WebView Load Error: $v");
+                  },
+
+                  onLoadProgress: (v) {
+                    print("WebView Load Progress: $v");
+                  },
+                  onMessage: (v) {
+                    print("WebView Message: $v");
+                  },
+                  onNavigationStateChange: (v) {
+                    print("WebView Navigation State Change: $v");
+                  },
+                  webViewProps: DCFWebViewProps(
+                    source: "https://www.github.com/dotcorr/dcflight",
+                    loadMode: DCFWebViewLoadMode.url,
+                  ),
+                
+                ),
+              ],
             ),
           ],
         ),
 
         // Tab navigator that coordinates the screens
         DCFTabNavigator(
-          screens: ["test_home", "test_profile", "test_settings"],
+          screens: ["test_home", "test_profile", "test_gh"],
           selectedIndex: currentTab.state,
           tabBarStyle: DCFTabBarStyle(
             // backgroundColor: Colors.white,

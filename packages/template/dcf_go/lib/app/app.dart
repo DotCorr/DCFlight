@@ -1,5 +1,4 @@
 import 'package:dcf_go/app/examples/gradient.dart';
-import 'package:dcf_go/app/examples/really_long_list.dart';
 import 'package:dcf_go/app/examples/home.dart';
 import 'package:dcf_go/app/examples/modal_test.dart';
 import 'package:dcf_go/app/examples/portal_test.dart';
@@ -39,7 +38,7 @@ class App extends StatefulComponent {
                     : pagestateLocal.state == 1
                     ? GradientTest()
                     : pagestateLocal.state == 2
-                    ? ReallyLongList()
+                    ? DCFView(children: [DCFText(content: "Test")])
                     : pagestateLocal.state == 3
                     ? ModalTest()
                     : pagestateLocal.state == 4
