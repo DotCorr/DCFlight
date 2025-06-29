@@ -5,13 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+//
+// DCDivergerUtil.swift
+//
+//
+// Created by Tahiru Agbanwa on 4/15/25.
+//
 
-//
-//  DCDivergerUtil.swift
-//
-//
-//  Created by Tahiru Agbanwa on 4/15/25.
-//
 import Flutter
 
 @objc public extension FlutterAppDelegate {
@@ -48,40 +48,225 @@ import Flutter
         _ = YogaShadowTree.shared
         _ = DCFLayoutManager.shared
 
+        // CRITICAL FIX: Set up comprehensive size change detection
+        setupSizeChangeDetection()
+    }
+
+    // CRITICAL FIX: Enhanced size change detection for all scenarios
+    private func setupSizeChangeDetection() {
+        // 1. Device orientation changes (iPhone/iPad rotation)
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(orientationChanged),
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
-
-    }
-
-    @objc private func orientationChanged() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            let screenWidth = UIScreen.main.bounds.width
-            let screenHeight = UIScreen.main.bounds.height
-            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+        
+        // 2. Window size changes (iPad multitasking, Split View, Slide Over)
+        if #available(iOS 13.0, *) {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowSizeChanged),
+                name: UIScene.didActivateNotification,
+                object: nil
+            )
+            
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowSizeChanged),
+                name: UIScene.willDeactivateNotification,
+                object: nil
+            )
         }
+        
+        // 3. Application frame changes (covers various edge cases)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationFrameChanged),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        
+        // 4. CRITICAL: Set up KVO for window bounds changes (most reliable for iPad window resizing)
+        setupWindowBoundsObserver()
+        
+        // 5. Set up cleanup for app lifecycle events
+        setupAppLifecycleObservers()
+        
+        print("✅ DCFlight: Comprehensive size change detection initialized")
     }
-}
-
-
-
-    public func replaceRoot(controller: UIViewController) {
-        // Get the current root view controller
+    
+    // CRITICAL FIX: KVO-based window bounds observer for real-time window resizing
+    private func setupWindowBoundsObserver() {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else {
-            print("❌ DCFTabNavigatorComponent: Could not find window to install tab bar controller")
+            print("⚠️ DCFlight: Could not find window for bounds observation")
             return
         }
         
-        controller.title = "Root Replacement"
+        // Store reference to window for observation
+        objc_setAssociatedObject(
+            self,
+            UnsafeRawPointer(bitPattern: "observedWindow".hashValue)!,
+            window,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
         
-        // Replace root view controller
-        DispatchQueue.main.async {
-            window.rootViewController = controller
-            window.makeKeyAndVisible()
-            print("✅ DCFTabNavigatorComponent: Installed tab bar controller as root")
+        // Add KVO observer for bounds changes
+        window.addObserver(
+            self,
+            forKeyPath: "bounds",
+            options: [.new, .old],
+            context: nil
+        )
+        
+        // Also observe frame changes as backup
+        window.addObserver(
+            self,
+            forKeyPath: "frame",
+            options: [.new, .old],
+            context: nil
+        )
+        
+        print("✅ DCFlight: Window bounds observer added for real-time resize detection")
+    }
+    
+    // CRITICAL FIX: Set up app lifecycle observers for cleanup
+    private func setupAppLifecycleObservers() {
+        // Clean up when app goes to background
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cleanup),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        
+        // Clean up when app terminates
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cleanup),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+    
+    // CRITICAL FIX: KVO callback for window bounds/frame changes
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "bounds" || keyPath == "frame" {
+            if let window = object as? UIWindow {
+                // Get old and new values to check if size actually changed
+                let oldValue = change?[.oldKey] as? NSValue
+                let newValue = change?[.newKey] as? NSValue
+                
+                let oldRect = oldValue?.cgRectValue ?? .zero
+                let newRect = newValue?.cgRectValue ?? .zero
+                
+                // Only trigger layout if size actually changed (not just position)
+                if oldRect.size != newRect.size {
+                    print("🔄 DCFlight: Window size changed from \(oldRect.size) to \(newRect.size)")
+                    windowSizeChangedInternal(newSize: newRect.size)
+                }
+            }
+        } else {
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
         }
+    }
+
+    @objc private func orientationChanged() {
+        print("🔄 DCFlight: Device orientation changed")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.recalculateLayout(reason: "orientation change")
+        }
+    }
+    
+    @objc private func windowSizeChanged() {
+        print("🔄 DCFlight: Window scene state changed")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.recalculateLayout(reason: "window scene change")
+        }
+    }
+    
+    @objc private func applicationFrameChanged() {
+        print("🔄 DCFlight: Application frame changed")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.recalculateLayout(reason: "application frame change")
+        }
+    }
+    
+    // Internal method for immediate window size changes (from KVO)
+    private func windowSizeChangedInternal(newSize: CGSize) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.recalculateLayoutWithSize(newSize, reason: "window resize")
+        }
+    }
+    
+    // CRITICAL FIX: Centralized layout recalculation with size detection
+    private func recalculateLayout(reason: String) {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            print("❌ DCFlight: Could not find window for layout recalculation")
+            return
+        }
+        
+        let screenWidth = window.bounds.width
+        let screenHeight = window.bounds.height
+        
+        print("🎯 DCFlight: Recalculating layout due to \(reason) - Size: \(screenWidth)x\(screenHeight)")
+        
+        // Update screen utilities first
+        DCFScreenUtilities.shared.updateScreenDimensions(width: screenWidth, height: screenHeight)
+        
+        // Then recalculate Yoga layout
+        YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
+    }
+    
+    // Overloaded method for when we already know the new size
+    private func recalculateLayoutWithSize(_ size: CGSize, reason: String) {
+        print("🎯 DCFlight: Recalculating layout due to \(reason) - Size: \(size.width)x\(size.height)")
+        
+        // Update screen utilities first
+        DCFScreenUtilities.shared.updateScreenDimensions(width: size.width, height: size.height)
+        
+        // Then recalculate Yoga layout
+        YogaShadowTree.shared.calculateAndApplyLayout(width: size.width, height: size.height)
+    }
+    
+    // CRITICAL FIX: Cleanup method (called when app goes to background or terminates)
+    @objc private func cleanup() {
+        NotificationCenter.default.removeObserver(self)
+        
+        // Remove KVO observers
+        if let window = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "observedWindow".hashValue)!) as? UIWindow {
+            window.removeObserver(self, forKeyPath: "bounds")
+            window.removeObserver(self, forKeyPath: "frame")
+            
+            // Clear the associated object
+            objc_setAssociatedObject(
+                self,
+                UnsafeRawPointer(bitPattern: "observedWindow".hashValue)!,
+                nil,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
+        
+        print("✅ DCFlight: Window size detection cleanup completed")
+    }
+}
+
+public func replaceRoot(controller: UIViewController) {
+    // Get the current root view controller
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let window = windowScene.windows.first else {
+        print("❌ DCFTabNavigatorComponent: Could not find window to install tab bar controller")
+        return
+    }
+    
+    controller.title = "Root Replacement"
+    
+    // Replace root view controller
+    DispatchQueue.main.async {
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        print("✅ DCFTabNavigatorComponent: Installed tab bar controller as root")
+    }
 }
