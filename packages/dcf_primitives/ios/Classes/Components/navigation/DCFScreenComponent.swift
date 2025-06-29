@@ -265,6 +265,15 @@ class DCFScreenComponent: NSObject, DCFComponent {
         // Configure the target screen for push
         configureScreenForPush(targetContainer)
         
+        // CRITICAL FIX: Ensure content view is properly configured for presentation
+        targetContainer.contentView.isHidden = false
+        targetContainer.contentView.alpha = 1.0
+        targetContainer.contentView.backgroundColor = UIColor.systemBackground
+        
+        // Trigger layout update
+        targetContainer.contentView.setNeedsLayout()
+        targetContainer.contentView.layoutIfNeeded()
+        
         // Pass parameters if provided
         if let params = params {
             propagateEvent(
@@ -446,6 +455,15 @@ class DCFScreenComponent: NSObject, DCFComponent {
         }
         
         print("🚀 DCFScreenComponent: Presenting modal '\(screenName)'")
+        
+        // CRITICAL FIX: Ensure modal content is properly configured
+        targetContainer.contentView.isHidden = false
+        targetContainer.contentView.alpha = 1.0
+        targetContainer.contentView.backgroundColor = UIColor.systemBackground
+        
+        // Trigger layout update for modal content
+        targetContainer.contentView.setNeedsLayout()
+        targetContainer.contentView.layoutIfNeeded()
         
         // Configure modal presentation style
         if let style = presentationStyle {
@@ -865,6 +883,14 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func activateScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
         print("🟢 DCFScreenComponent: Activating screen '\(screenContainer.name)'")
         screenContainer.isActive = true
+        
+        // CRITICAL FIX: Ensure content view is visible when screen is activated
+        screenContainer.contentView.isHidden = false
+        screenContainer.contentView.alpha = 1.0
+        
+        // Force layout update
+        screenContainer.contentView.setNeedsLayout()
+        screenContainer.contentView.layoutIfNeeded()
         
         // Fire events on the actual content view that DCFlight tracks
         DispatchQueue.main.async {
