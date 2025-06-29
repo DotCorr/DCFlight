@@ -30,5 +30,4 @@ export 'package:dcf_primitives/src/components/navigation/screen_component.dart';
 export 'package:dcf_primitives/src/components/navigation/tab_navigator_component.dart';
 
 export '../../commands/scroll_view_commands.dart';
-export '../../commands/flat_list_commands.dart';
 export '../../commands/animated_view_commands.dart';
