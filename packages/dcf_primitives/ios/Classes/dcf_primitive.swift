@@ -18,6 +18,8 @@ import dcflight
     @objc public static func registerComponents() {
         // Initialize method swizzling for gradient support
         UIView.performSwizzling()
+        // CRITICAL FIX: Initialize SVGKit early to prevent timing issues with tab icons
+        DCFSvgComponent.initializeSVGKit()
         
         // Register all primitive components with the DCFlight component registry
         DCFComponentRegistry.shared.registerComponent("View", componentClass: DCFViewComponent.self)

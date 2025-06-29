@@ -21,12 +21,26 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     // CRITICAL FIX: Map navigatorId to placeholder view for event propagation
     static var placeholderViewRegistry: [String: UIView] = [:]
     
+    // CRITICAL FIX: Initialize SVGKit early to prevent timing issues
+    static let svgKitInitialized: Bool = {
+        // Force SVGKit initialization by creating a dummy SVG
+        let dummySVG = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <svg width="1" height="1" xmlns="http://www.w3.org/2000/svg">
+        <rect width="1" height="1" fill="transparent"/>
+        </svg>
+        """
+        if let data = dummySVG.data(using: .utf8) {
+            _ = SVGKImage(data: data)
+        }
+        return true
+    }()
+    
     required override init() {
         super.init()
+        // Ensure SVGKit is initialized
+        _ = DCFTabNavigatorComponent.svgKitInitialized
     }
-    
-    
-    
     
     func createView(props: [String: Any]) -> UIView {
         let navigatorId = String(Date().timeIntervalSince1970)
@@ -43,11 +57,16 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             selectedIndex: props["selectedIndex"] as? Int ?? 0
         )
         
-        // Configure tab bar controller with screen containers
-        configureTabBarController(tabBarController, props: props, navigatorId: navigatorId)
-        
-        // Install as root view controller or present
-        replaceRoot(controller: tabBarController)
+        // CRITICAL FIX: Configure tab bar controller asynchronously to allow icon loading
+        DispatchQueue.main.async {
+            self.configureTabBarController(tabBarController, props: props, navigatorId: navigatorId)
+            
+            // Install as root view controller after configuration
+            replaceRoot(controller: tabBarController)
+            
+            // Fire initial events after everything is set up
+            self.fireInitialEvents(navigatorId: navigatorId, props: props)
+        }
         
         // Create placeholder view for DCFlight to track
         let placeholderView = UIView()
@@ -72,12 +91,9 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         // CRITICAL FIX: Store placeholder view in registry for event propagation
         DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] = placeholderView
       
-        
         return placeholderView
     }
 
-  
-    
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let navigatorId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "navigatorId".hashValue)!) as? String,
               let tabBarController = DCFTabNavigatorComponent.tabNavigatorRegistry[navigatorId] else {
@@ -126,8 +142,8 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                 // Wrap screen view controller in navigation controller for consistency
                 let navController = UINavigationController(rootViewController: screenContainer.viewController)
                 
-                // Configure tab bar item from screen properties
-                configureTabBarItem(navController, screenContainer: screenContainer, index: index)
+                // CRITICAL FIX: Configure tab bar item with proper icon loading
+                configureTabBarItemWithRetry(navController, screenContainer: screenContainer, index: index)
                 
                 viewControllers.append(navController)
             } else {
@@ -161,137 +177,141 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             delegate,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
+    }
+    
+    // CRITICAL FIX: New method to handle icon configuration with retry logic
+    private func configureTabBarItemWithRetry(_ viewController: UIViewController, screenContainer: ScreenContainer, index: Int, retryCount: Int = 0) {
+        // Get stored tab config from screen container
+        guard let tabConfig = objc_getAssociatedObject(
+            screenContainer.viewController,
+            UnsafeRawPointer(bitPattern: "tabConfig".hashValue)!
+        ) as? [String: Any] else {
+            // Fallback configuration
+            setFallbackTabItem(viewController, index: index)
+            return
+        }
         
-        // CRITICAL FIX: Fire initial onAppear event
-        DispatchQueue.main.async {
-            if let placeholderView = DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] {
-                propagateEvent(
-                    on: placeholderView,
-                    eventName: "onAppear",
-                    data: [
-                        "navigatorId": navigatorId,
-                        "selectedIndex": selectedIndex
-                    ]
-                )
-            }
+        // Configure basic properties first
+        if let title = tabConfig["title"] as? String {
+            viewController.tabBarItem.title = title
+        }
+        if let badge = tabConfig["badge"] as? String {
+            viewController.tabBarItem.badgeValue = badge
+        }
+        let enabled = tabConfig["enabled"] as? Bool ?? true
+        viewController.tabBarItem.isEnabled = enabled
+        viewController.tabBarItem.tag = index
+        
+        // Handle icon configuration with retry logic
+        if let iconConfig = tabConfig["icon"] as? [String: Any] {
+            let success = configureTabIconSVG(for: viewController, iconConfig: iconConfig)
             
-            // CRITICAL FIX: Trigger initial screen activation for the selected tab
-            if let screens = DCFTabNavigatorComponent.navigatorState[navigatorId]?.screens,
-               selectedIndex < screens.count {
-                let initialScreenName = screens[selectedIndex]
-                if let screenContainer = DCFScreenComponent.getScreenContainer(name: initialScreenName) {
-                    screenContainer.isActive = true
-                    propagateEvent(
-                        on: screenContainer.contentView,
-                        eventName: "onAppear",
-                        data: ["screenName": initialScreenName]
-                    )
-                    propagateEvent(
-                        on: screenContainer.contentView,
-                        eventName: "onActivate",
-                        data: ["screenName": initialScreenName]
-                    )
+            // CRITICAL FIX: If SVG loading failed and we haven't retried too many times, retry after a delay
+            if !success && retryCount < 3 {
+                print("⚠️ DCFTabNavigatorComponent: SVG icon loading failed for tab \(index), retrying in 0.1s (attempt \(retryCount + 1))")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.configureTabBarItemWithRetry(viewController, screenContainer: screenContainer, index: index, retryCount: retryCount + 1)
                 }
+            } else if !success {
+                print("❌ DCFTabNavigatorComponent: Failed to load SVG icon for tab \(index) after \(retryCount) retries, using fallback")
+                setFallbackTabItem(viewController, index: index)
             }
+        } else if let iconString = tabConfig["icon"] as? String {
+            // Backward compatibility - SF Symbol string
+            viewController.tabBarItem.image = UIImage(systemName: iconString) ?? UIImage(systemName: "circle")
+        } else {
+            setFallbackTabItem(viewController, index: index)
         }
     }
     
-    private func configureTabBarItem(_ viewController: UIViewController, screenContainer: ScreenContainer, index: Int) {
-        // Tab bar item should already be configured by DCFScreenComponent
-        // This is a fallback configuration with SVG support
+    private func setFallbackTabItem(_ viewController: UIViewController, index: Int) {
         if viewController.tabBarItem.title == nil {
             viewController.tabBarItem.title = "Tab \(index)"
         }
-        
-        // Get stored tab config from screen container
-        if let tabConfig = objc_getAssociatedObject(
-            screenContainer.viewController,
-            UnsafeRawPointer(bitPattern: "tabConfig".hashValue)!
-        ) as? [String: Any] {
-            
-            // Configure icon with SVG support
-            if let iconConfig = tabConfig["icon"] as? [String: Any] {
-                configureTabIconSVG(for: viewController, iconConfig: iconConfig)
-            } else if let iconString = tabConfig["icon"] as? String {
-                // Backward compatibility - SF Symbol string
-                viewController.tabBarItem.image = UIImage(systemName: iconString)
-            }
-            
-            // Configure other tab properties
-            if let title = tabConfig["title"] as? String {
-                viewController.tabBarItem.title = title
-            }
-            if let badge = tabConfig["badge"] as? String {
-                viewController.tabBarItem.badgeValue = badge
-            }
-            let enabled = tabConfig["enabled"] as? Bool ?? true
-            viewController.tabBarItem.isEnabled = enabled
-        }
-        
         if viewController.tabBarItem.image == nil {
             viewController.tabBarItem.image = UIImage(systemName: "circle")
         }
-        
-        viewController.tabBarItem.tag = index
     }
 
-    // Add this new method to your DCFTabNavigatorComponent class
-    private func configureTabIconSVG(for viewController: UIViewController, iconConfig: [String: Any]) {
+    // CRITICAL FIX: Enhanced SVG configuration with better error handling
+    private func configureTabIconSVG(for viewController: UIViewController, iconConfig: [String: Any]) -> Bool {
         let iconType = iconConfig["type"] as? String ?? "sf"
         
         switch iconType {
         case "sf":
             // SF Symbol
             guard let symbolName = iconConfig["name"] as? String else {
-                return
+                return false
             }
-            viewController.tabBarItem.image = UIImage(systemName: symbolName)
+            viewController.tabBarItem.image = UIImage(systemName: symbolName) ?? UIImage(systemName: "circle")
+            return true
             
         case "svg":
-            // SVG from app bundle - use your exact DCFSvgComponent pattern
+            // SVG from app bundle
             guard let assetPath = iconConfig["assetPath"] as? String else {
-                return
+                return false
             }
             
             let key = sharedFlutterViewController?.lookupKey(forAsset: assetPath)
             let mainBundle = Bundle.main
             let path = mainBundle.path(forResource: key, ofType: nil)
             
-            loadSVGForTab(from: path ?? "", for: viewController, iconConfig: iconConfig)
+            return loadSVGForTab(from: path ?? "", for: viewController, iconConfig: iconConfig)
             
         case "package":
-            // SVG from package - use your exact DCFIconComponent pattern
+            // SVG from package
             guard let iconName = iconConfig["name"] as? String,
                   let packageName = iconConfig["package"] as? String else {
-                return
+                return false
             }
             
             guard let key = sharedFlutterViewController?.lookupKey(
                 forAsset: "assets/icons/\(iconName).svg",
                 fromPackage: packageName
             ) else {
-                return
+                print("❌ DCFTabNavigatorComponent: Could not find asset key for \(iconName) in package \(packageName)")
+                return false
             }
             
             let mainBundle = Bundle.main
             let path = mainBundle.path(forResource: key, ofType: nil)
             
-            loadSVGForTab(from: path ?? "", for: viewController, iconConfig: iconConfig)
+            if path == nil || path!.isEmpty {
+                print("❌ DCFTabNavigatorComponent: Could not find file path for \(iconName) in package \(packageName)")
+                return false
+            }
+            
+            return loadSVGForTab(from: path!, for: viewController, iconConfig: iconConfig)
             
         default:
             viewController.tabBarItem.image = UIImage(systemName: "circle")
+            return false
         }
     }
 
-    // Add this new method to your DCFTabNavigatorComponent class
-    private func loadSVGForTab(from path: String, for viewController: UIViewController, iconConfig: [String: Any]) {
+    // CRITICAL FIX: Enhanced SVG loading with better error handling and caching
+    private func loadSVGForTab(from path: String, for viewController: UIViewController, iconConfig: [String: Any]) -> Bool {
         guard !path.isEmpty else {
-            return
+            print("❌ DCFTabNavigatorComponent: Empty path provided for SVG loading")
+            return false
         }
         
-        // Load SVG using SVGKit exactly like your DCFSvgComponent
+        guard FileManager.default.fileExists(atPath: path) else {
+            print("❌ DCFTabNavigatorComponent: SVG file does not exist at path: \(path)")
+            return false
+        }
+        
+        // CRITICAL FIX: Add caching to prevent reloading the same SVG multiple times
+        let cacheKey = path + "_tab_icon"
+        if let cachedImage = DCFSvgComponent.getCachedImage(for: cacheKey) {
+            applyCachedImageToTab(cachedImage, for: viewController, iconConfig: iconConfig)
+            return true
+        }
+        
+        // Load SVG using SVGKit with error handling
         guard let svgImage = SVGKImage(contentsOfFile: path) else {
-            return
+            print("❌ DCFTabNavigatorComponent: Failed to load SVG from path: \(path)")
+            return false
         }
         
         // Tab bar icons should be 25x25 points
@@ -301,10 +321,24 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         svgImage.size = targetSize
         
         guard let uiImage = svgImage.uiImage else {
-            return
+            print("❌ DCFTabNavigatorComponent: Failed to convert SVG to UIImage")
+            return false
         }
         
-        // Apply tint color if specified using your ColorUtilities
+        // Cache the image for future use
+        DCFSvgComponent.setCachedImage(svgImage, for: cacheKey)
+        
+        // Apply the image to the tab
+        applyCachedImageToTab(svgImage, for: viewController, iconConfig: iconConfig)
+        
+        print("✅ DCFTabNavigatorComponent: Successfully loaded SVG icon from: \(path)")
+        return true
+    }
+    
+    private func applyCachedImageToTab(_ svgImage: SVGKImage, for viewController: UIViewController, iconConfig: [String: Any]) {
+        guard let uiImage = svgImage.uiImage else { return }
+        
+        // Apply tint color if specified
         if let tintColor = iconConfig["tintColor"] as? String,
            let _ = ColorUtilities.color(fromHexString: tintColor) {
             viewController.tabBarItem.image = uiImage.withRenderingMode(.alwaysTemplate)
@@ -320,7 +354,6 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         }
     }
 
-    // Add this helper method to your DCFTabNavigatorComponent class
     private func createTintedTabImage(from image: UIImage, color: UIColor) -> UIImage? {
         UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
         defer { UIGraphicsEndImageContext() }
@@ -338,6 +371,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         
         return UIGraphicsGetImageFromCurrentImageContext()
     }
+    
     private func configureTabBarAppearance(_ tabBarController: UITabBarController, props: [String: Any]) {
         let tabBar = tabBarController.tabBar
         
@@ -383,6 +417,41 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         }
     }
     
+    // CRITICAL FIX: Separate method for firing initial events
+    private func fireInitialEvents(navigatorId: String, props: [String: Any]) {
+        let selectedIndex = props["selectedIndex"] as? Int ?? 0
+        
+        if let placeholderView = DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] {
+            propagateEvent(
+                on: placeholderView,
+                eventName: "onAppear",
+                data: [
+                    "navigatorId": navigatorId,
+                    "selectedIndex": selectedIndex
+                ]
+            )
+        }
+        
+        // Trigger initial screen activation for the selected tab
+        if let screens = DCFTabNavigatorComponent.navigatorState[navigatorId]?.screens,
+           selectedIndex < screens.count {
+            let initialScreenName = screens[selectedIndex]
+            if let screenContainer = DCFScreenComponent.getScreenContainer(name: initialScreenName) {
+                screenContainer.isActive = true
+                propagateEvent(
+                    on: screenContainer.contentView,
+                    eventName: "onAppear",
+                    data: ["screenName": initialScreenName]
+                )
+                propagateEvent(
+                    on: screenContainer.contentView,
+                    eventName: "onActivate",
+                    data: ["screenName": initialScreenName]
+                )
+            }
+        }
+    }
+    
     // MARK: - Tab Updates
     
     private func updateSelectedTab(_ tabBarController: UITabBarController, selectedIndex: Int, navigatorId: String, view: UIView) {
@@ -400,7 +469,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             // Update navigator state
             DCFTabNavigatorComponent.navigatorState[navigatorId]?.selectedIndex = selectedIndex
             
-            // CRITICAL FIX: Fire tab change event on the correct view using propagateEvent
+            // Fire tab change event on the correct view using propagateEvent
             propagateEvent(
                 on: view,
                 eventName: "onTabChange",
@@ -445,7 +514,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             // Update navigator state
             DCFTabNavigatorComponent.navigatorState[navigatorId]?.selectedIndex = selectedIndex
             
-            // CRITICAL FIX: Trigger screen lifecycle events when tabs change
+            // Trigger screen lifecycle events when tabs change
             if let screens = DCFTabNavigatorComponent.navigatorState[navigatorId]?.screens {
                 // Fire onDisappear/onDeactivate for all other screens
                 for (index, screenName) in screens.enumerated() {
@@ -476,13 +545,12 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                                 eventName: "onDeactivate",
                                 data: ["screenName": screenName]
                             )
-                            print("✅ Deactivated screen: \(screenName)")
                         }
                     }
                 }
             }
             
-            // Fire tab navigator events using propagateEvent (FIXED)
+            // Fire tab navigator events using propagateEvent
             if let placeholderView = DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] {
                 propagateEvent(
                     on: placeholderView,
@@ -498,7 +566,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
             let selectedIndex = tabBarController.viewControllers?.firstIndex(of: viewController) ?? 0
             
-            // Fire tab press event using propagateEvent (FIXED)
+            // Fire tab press event using propagateEvent
             if let placeholderView = DCFTabNavigatorComponent.placeholderViewRegistry[navigatorId] {
                 propagateEvent(
                     on: placeholderView,
@@ -520,5 +588,22 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         tabNavigatorRegistry.removeValue(forKey: navigatorId)
         navigatorState.removeValue(forKey: navigatorId)
         placeholderViewRegistry.removeValue(forKey: navigatorId)
+    }
+}
+
+// MARK: - DCFSvgComponent Extension for Caching
+extension DCFSvgComponent {
+    private static var tabIconCache = [String: SVGKImage]()
+    
+    static func getCachedImage(for key: String) -> SVGKImage? {
+        return tabIconCache[key]
+    }
+    
+    static func setCachedImage(_ image: SVGKImage, for key: String) {
+        tabIconCache[key] = image
+    }
+    
+    static func clearTabIconCache() {
+        tabIconCache.removeAll()
     }
 }

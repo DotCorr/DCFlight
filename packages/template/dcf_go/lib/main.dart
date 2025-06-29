@@ -2,7 +2,6 @@ import 'package:dcf_go/app/app.dart';
 import 'package:dcf_go/app/examples/modal_test.dart';
 import 'package:dcflight/dcflight.dart';
 
-
 void main() {
   DCFlight.start(app: MyApp());
 }
@@ -20,9 +19,9 @@ class MyApp extends StatefulComponent {
           presentationStyle: DCFPresentationStyle.tab,
           // Use SVG from app bundle
           tabConfig: DCFTabConfigSVG.withSVGPackage(
-            title: "Home", 
-            package: "dcf_primitives", 
-            iconName: DCFIcons.house, 
+            title: "Home",
+            package: "dcf_primitives",
+            iconName: DCFIcons.house,
             index: 0,
             size: 24.0,
             tintColor: Colors.blue,
@@ -31,16 +30,16 @@ class MyApp extends StatefulComponent {
           onActivate: (data) => print("🟢 Home screen activated: $data"),
           children: [App()],
         ),
-        
+
         DCFScreen(
           visible: currentTab.state == 1,
           name: "test_profile",
           presentationStyle: DCFPresentationStyle.tab,
           // Use SVG from package
           tabConfig: DCFTabConfigSVG.withSVGPackage(
-            title: "Profile", 
-            package: "dcf_primitives", 
-            iconName: DCFIcons.personStanding, 
+            title: "Profile",
+            package: "dcf_primitives",
+            iconName: DCFIcons.accessibility,
             index: 1,
             size: 24.0,
           ),
@@ -48,7 +47,7 @@ class MyApp extends StatefulComponent {
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
           children: [ModalTest()],
         ),
-        
+
         DCFScreen(
           visible: currentTab.state == 2,
           name: "test_gh",
@@ -68,7 +67,8 @@ class MyApp extends StatefulComponent {
                   onLoadError: (v) => print("WebView Load Error: $v"),
                   onLoadProgress: (v) => print("WebView Load Progress: $v"),
                   onMessage: (v) => print("WebView Message: $v"),
-                  onNavigationStateChange: (v) => print("WebView Navigation State Change: $v"),
+                  onNavigationStateChange:
+                      (v) => print("WebView Navigation State Change: $v"),
                   webViewProps: DCFWebViewProps(
                     source: "https://www.github.com/dotcorr/dcflight",
                     loadMode: DCFWebViewLoadMode.url,
@@ -78,7 +78,7 @@ class MyApp extends StatefulComponent {
             ),
           ],
         ),
-        
+
         // Your existing tab navigator works the same
         DCFTabNavigator(
           screens: ["test_home", "test_profile", "test_gh"],
