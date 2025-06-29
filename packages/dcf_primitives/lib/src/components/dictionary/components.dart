@@ -27,5 +27,6 @@ export '../spinner_component.dart';
 export '../alert_component.dart';
 export '../webview_component.dart';
 export '../navigation/navigation.dart';
-export '../../commands/scroll_view_commands.dart';
-export '../../commands/animated_view_commands.dart';
+
+// commands
+export '../../commands/commands.dart';
