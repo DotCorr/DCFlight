@@ -46,13 +46,576 @@ class DCFScreenComponent: NSObject, DCFComponent {
     // Registry of all screen containers by screen name
     static var screenRegistry: [String: ScreenContainer] = [:]
     
+    // Global navigation state tracking
+    static var currentNavigationController: UINavigationController? = nil
+    
     required override init() {
         super.init()
     }
     
+    func createView(props: [String: Any]) -> UIView {
+        guard let screenName = props["name"] as? String,
+              let presentationStyle = props["presentationStyle"] as? String else {
+            print("❌ DCFScreenComponent: Missing required props 'name' or 'presentationStyle'")
+            return UIView()
+        }
+        
+        // Create or get existing screen container
+        let screenContainer: ScreenContainer
+        if let existing = DCFScreenComponent.screenRegistry[screenName] {
+            screenContainer = existing
+            print("♻️ DCFScreenComponent: Reusing existing screen container for '\(screenName)'")
+        } else {
+            screenContainer = ScreenContainer(name: screenName, presentationStyle: presentationStyle)
+            DCFScreenComponent.screenRegistry[screenName] = screenContainer
+            print("✅ DCFScreenComponent: Created new screen container for '\(screenName)'")
+        }
+        
+        // Configure screen based on presentation style and props
+        configureScreen(screenContainer, props: props)
+        
+        // Store tab configuration for tab navigator to access
+        storeTabConfiguration(screenContainer, props: props)
+        
+        // Store push configuration for push navigation
+        storePushConfiguration(screenContainer, props: props)
+        
+        // Update view with current props FIRST
+        let _ = updateView(screenContainer.contentView, withProps: props)
+        
+        // Only fire initial onAppear event for visible screens
+        let isVisible = props["visible"] as? Bool ?? true
+        if isVisible {
+            DispatchQueue.main.async {
+                self.activateScreen(screenContainer, props: props)
+            }
+        }
+        
+        return screenContainer.contentView
+    }
+
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        // CRITICAL FIX: Always check for screen name first, but handle gracefully if missing
+        guard let screenName = props["name"] as? String else {
+            // If no screen name in props, try to find it from existing registry
+            if let container = findScreenContainer(for: view) {
+                print("⚠️ DCFScreenComponent: Using existing screen name '\(container.name)' for update")
+                return updateExistingScreen(container, view: view, props: props)
+            } else {
+                print("❌ DCFScreenComponent: Missing screen name in props and no existing container found")
+                // Apply basic styles even if we can't identify the screen
+                view.applyStyles(props: props)
+                return false
+            }
+        }
+        
+        // Get or create screen container
+        let screenContainer: ScreenContainer
+        if let existing = DCFScreenComponent.screenRegistry[screenName] {
+            screenContainer = existing
+        } else {
+            // Create the screen container if it doesn't exist yet
+            guard let presentationStyle = props["presentationStyle"] as? String else {
+                print("❌ DCFScreenComponent: Missing presentationStyle for new screen '\(screenName)'")
+                return false
+            }
+            
+            screenContainer = ScreenContainer(name: screenName, presentationStyle: presentationStyle)
+            DCFScreenComponent.screenRegistry[screenName] = screenContainer
+            print("✅ DCFScreenComponent: Created new screen container for '\(screenName)' during update")
+            
+            // Configure the newly created screen
+            configureScreen(screenContainer, props: props)
+        }
+        
+        return updateExistingScreen(screenContainer, view: view, props: props)
+    }
+    
+    // CRITICAL FIX: Separate method to update existing screen
+    private func updateExistingScreen(_ screenContainer: ScreenContainer, view: UIView, props: [String: Any]) -> Bool {
+        // Update tab configuration whenever screen props change
+        storeTabConfiguration(screenContainer, props: props)
+        
+        // Update push configuration whenever screen props change
+        storePushConfiguration(screenContainer, props: props)
+        
+        // Handle navigation commands
+        handleNavigationCommand(screenContainer: screenContainer, props: props)
+        
+        // Handle visibility changes
+        let isVisible = props["visible"] as? Bool ?? true
+        if isVisible != screenContainer.isActive {
+            if isVisible {
+                activateScreen(screenContainer, props: props)
+            } else {
+                deactivateScreen(screenContainer, props: props)
+            }
+        }
+
+        view.applyStyles(props: props)
+        
+        return true
+    }
+    
+    // MARK: - Navigation Command Handling
+    
+    private func handleNavigationCommand(screenContainer: ScreenContainer, props: [String: Any]) {
+        guard let commandData = props["navigationCommand"] as? [String: Any] else {
+            return
+        }
+        
+        // CRITICAL FIX: Generate a unique command ID and track processed commands
+        let commandId = generateCommandId(from: commandData)
+        
+        // Check if this command has already been processed
+        if hasCommandBeenProcessed(commandId) {
+            print("⚠️ DCFScreenComponent: Command '\(commandId)' already processed, skipping for '\(screenContainer.name)'")
+            return
+        }
+        
+        // Mark command as processed IMMEDIATELY
+        markCommandAsProcessed(commandId)
+        
+        print("🚀 DCFScreenComponent: Processing navigation command for '\(screenContainer.name)': \(commandData)")
+        
+        // Handle pushTo command
+        if let pushToData = commandData["pushTo"] as? [String: Any] {
+            if let targetScreenName = pushToData["screenName"] as? String {
+                let animated = pushToData["animated"] as? Bool ?? true
+                let params = pushToData["params"] as? [String: Any]
+                pushToScreen(targetScreenName, animated: animated, params: params, from: screenContainer)
+            }
+        }
+        
+        // Handle pop command
+        if let popData = commandData["pop"] as? [String: Any] {
+            let animated = popData["animated"] as? Bool ?? true
+            let result = popData["result"] as? [String: Any]
+            popCurrentScreen(animated: animated, result: result, from: screenContainer)
+        }
+        
+        // Handle popTo command
+        if let popToData = commandData["popTo"] as? [String: Any] {
+            if let targetScreenName = popToData["screenName"] as? String {
+                let animated = popToData["animated"] as? Bool ?? true
+                popToScreen(targetScreenName, animated: animated, from: screenContainer)
+            }
+        }
+        
+        // Handle popToRoot command
+        if let popToRootData = commandData["popToRoot"] as? [String: Any] {
+            let animated = popToRootData["animated"] as? Bool ?? true
+            popToRootScreen(animated: animated, from: screenContainer)
+        }
+        
+        // Handle replaceWith command
+        if let replaceData = commandData["replaceWith"] as? [String: Any] {
+            if let targetScreenName = replaceData["screenName"] as? String {
+                let animated = replaceData["animated"] as? Bool ?? true
+                let params = replaceData["params"] as? [String: Any]
+                replaceCurrentScreen(with: targetScreenName, animated: animated, params: params, from: screenContainer)
+            }
+        }
+        
+        // Handle presentModal command
+        if let modalData = commandData["presentModal"] as? [String: Any] {
+            if let targetScreenName = modalData["screenName"] as? String {
+                let animated = modalData["animated"] as? Bool ?? true
+                let params = modalData["params"] as? [String: Any]
+                let presentationStyle = modalData["presentationStyle"] as? String
+                presentModalScreen(targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, from: screenContainer)
+            }
+        }
+        
+        // Handle dismissModal command
+        if let dismissData = commandData["dismissModal"] as? [String: Any] {
+            let animated = dismissData["animated"] as? Bool ?? true
+            let result = dismissData["result"] as? [String: Any]
+            dismissModalScreen(animated: animated, result: result, from: screenContainer)
+        }
+    }
+    
+    // MARK: - Navigation Operations
+    
+    private func pushToScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
+        // CRITICAL FIX: Ensure target screen exists and is configured properly
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: Target screen '\(screenName)' not found for push navigation")
+            print("   Available screens: \(Array(DCFScreenComponent.screenRegistry.keys))")
+            return
+        }
+        
+        print("🚀 DCFScreenComponent: Pushing to screen '\(screenName)'")
+        
+        // Ensure we have a navigation controller
+        let navigationController = getOrCreateNavigationController()
+        
+        // CRITICAL SAFETY CHECK: Don't push if the target screen is already in the stack
+        if navigationController.viewControllers.contains(targetContainer.viewController) {
+            print("⚠️ DCFScreenComponent: Screen '\(screenName)' is already in navigation stack, skipping push")
+            return
+        }
+        
+        // CRITICAL SAFETY CHECK: Don't push if the target screen is already the top view controller
+        if navigationController.topViewController == targetContainer.viewController {
+            print("⚠️ DCFScreenComponent: Screen '\(screenName)' is already the top view controller, skipping push")
+            return
+        }
+        
+        // Configure the target screen for push
+        configureScreenForPush(targetContainer)
+        
+        // Pass parameters if provided
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "source": sourceContainer.name]
+            )
+        }
+        
+        // Push the screen
+        navigationController.pushViewController(targetContainer.viewController, animated: animated)
+        
+        // Fire navigation event
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onNavigationEvent",
+            data: [
+                "action": "pushTo",
+                "targetScreen": screenName,
+                "animated": animated
+            ]
+        )
+        
+        print("✅ DCFScreenComponent: Successfully pushed screen '\(screenName)' from '\(sourceContainer.name)'")
+    }
+    
+    private func popCurrentScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
+        guard let navigationController = DCFScreenComponent.currentNavigationController else {
+            print("❌ DCFScreenComponent: No navigation controller found for pop")
+            return
+        }
+        
+        guard navigationController.viewControllers.count > 1 else {
+            print("❌ DCFScreenComponent: Cannot pop root view controller")
+            return
+        }
+        
+        // Get the target screen (the one we're popping back to)
+        let targetViewController = navigationController.viewControllers[navigationController.viewControllers.count - 2]
+        
+        // Find target screen name
+        var targetScreenName: String? = nil
+        for (name, container) in DCFScreenComponent.screenRegistry {
+            if container.viewController == targetViewController {
+                targetScreenName = name
+                break
+            }
+        }
+        
+        // Pass result if provided
+        if let result = result, let targetName = targetScreenName, let targetContainer = DCFScreenComponent.screenRegistry[targetName] {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["result": result, "source": sourceContainer.name]
+            )
+        }
+        
+        // Pop the screen
+        navigationController.popViewController(animated: animated)
+        
+        // Fire navigation event
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onNavigationEvent",
+            data: [
+                "action": "pop",
+                "targetScreen": targetScreenName as Any,
+                "animated": animated
+            ]
+        )
+        
+        print("✅ DCFScreenComponent: Popped screen '\(sourceContainer.name)'")
+    }
+    
+    private func popToScreen(_ screenName: String, animated: Bool, from sourceContainer: ScreenContainer) {
+        guard let navigationController = DCFScreenComponent.currentNavigationController else {
+            print("❌ DCFScreenComponent: No navigation controller found for popTo")
+            return
+        }
+        
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: Target screen '\(screenName)' not found for popTo")
+            return
+        }
+        
+        // Find the target view controller in the stack
+        guard let targetViewController = navigationController.viewControllers.first(where: { $0 == targetContainer.viewController }) else {
+            print("❌ DCFScreenComponent: Target screen '\(screenName)' not found in navigation stack")
+            return
+        }
+        
+        // Pop to the target screen
+        navigationController.popToViewController(targetViewController, animated: animated)
+        
+        // Fire navigation event
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onNavigationEvent",
+            data: [
+                "action": "popTo",
+                "targetScreen": screenName,
+                "animated": animated
+            ]
+        )
+        
+        print("✅ DCFScreenComponent: Popped to screen '\(screenName)' from '\(sourceContainer.name)'")
+    }
+    
+    private func popToRootScreen(animated: Bool, from sourceContainer: ScreenContainer) {
+        guard let navigationController = DCFScreenComponent.currentNavigationController else {
+            print("❌ DCFScreenComponent: No navigation controller found for popToRoot")
+            return
+        }
+        
+        // Pop to root
+        navigationController.popToRootViewController(animated: animated)
+        
+        // Fire navigation event
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onNavigationEvent",
+            data: [
+                "action": "popToRoot",
+                "animated": animated
+            ]
+        )
+        
+        print("✅ DCFScreenComponent: Popped to root from '\(sourceContainer.name)'")
+    }
+    
+    private func replaceCurrentScreen(with screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
+        guard let navigationController = DCFScreenComponent.currentNavigationController else {
+            print("❌ DCFScreenComponent: No navigation controller found for replace")
+            return
+        }
+        
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: Target screen '\(screenName)' not found for replace")
+            return
+        }
+        
+        // Configure the target screen for push
+        configureScreenForPush(targetContainer)
+        
+        // Pass parameters if provided
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "source": sourceContainer.name]
+            )
+        }
+        
+        // Replace current screen
+        var viewControllers = navigationController.viewControllers
+        viewControllers[viewControllers.count - 1] = targetContainer.viewController
+        navigationController.setViewControllers(viewControllers, animated: animated)
+        
+        // Fire navigation event
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onNavigationEvent",
+            data: [
+                "action": "replaceWith",
+                "targetScreen": screenName,
+                "animated": animated
+            ]
+        )
+        
+        print("✅ DCFScreenComponent: Replaced '\(sourceContainer.name)' with '\(screenName)'")
+    }
+    
+    private func presentModalScreen(_ screenName: String, animated: Bool, params: [String: Any]?, presentationStyle: String?, from sourceContainer: ScreenContainer) {
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: Target screen '\(screenName)' not found for modal presentation")
+            print("   Available screens: \(Array(DCFScreenComponent.screenRegistry.keys))")
+            return
+        }
+        
+        print("🚀 DCFScreenComponent: Presenting modal '\(screenName)'")
+        
+        // Configure modal presentation style
+        if let style = presentationStyle {
+            switch style.lowercased() {
+            case "fullscreen":
+                targetContainer.viewController.modalPresentationStyle = .fullScreen
+            case "pagesheet":
+                if #available(iOS 13.0, *) {
+                    targetContainer.viewController.modalPresentationStyle = .pageSheet
+                }
+            case "formsheet":
+                targetContainer.viewController.modalPresentationStyle = .formSheet
+            default:
+                if #available(iOS 13.0, *) {
+                    targetContainer.viewController.modalPresentationStyle = .pageSheet
+                }
+            }
+        }
+        
+        // Pass parameters if provided
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "source": sourceContainer.name]
+            )
+        }
+        
+        // Present modal
+        sourceContainer.viewController.present(targetContainer.viewController, animated: animated) {
+            // Fire navigation event after presentation
+            propagateEvent(
+                on: sourceContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "presentModal",
+                    "targetScreen": screenName,
+                    "animated": animated
+                ]
+            )
+        }
+        
+        print("✅ DCFScreenComponent: Presented modal '\(screenName)' from '\(sourceContainer.name)'")
+    }
+    
+    private func dismissModalScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
+        // Pass result to presenting screen if provided
+        if let result = result, let presentingViewController = sourceContainer.viewController.presentingViewController {
+            // Find presenting screen
+            for (name, container) in DCFScreenComponent.screenRegistry {
+                if container.viewController == presentingViewController {
+                    propagateEvent(
+                        on: container.contentView,
+                        eventName: "onReceiveParams",
+                        data: ["result": result, "source": sourceContainer.name]
+                    )
+                    break
+                }
+            }
+        }
+        
+        // Dismiss modal
+        sourceContainer.viewController.dismiss(animated: animated) {
+            // Fire navigation event after dismissal
+            propagateEvent(
+                on: sourceContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "dismissModal",
+                    "animated": animated
+                ]
+            )
+        }
+        
+        print("✅ DCFScreenComponent: Dismissed modal '\(sourceContainer.name)'")
+    }
+    
+    // MARK: - Command Deduplication
+    
+    // Static storage for processed commands
+    private static var processedCommands = Set<String>()
+    private static let commandQueue = DispatchQueue(label: "com.dcf.navigation.commands", qos: .userInitiated)
+    
+    private func generateCommandId(from commandData: [String: Any]) -> String {
+        // Create a unique ID based on command content and timestamp
+        let commandString = String(describing: commandData)
+        return "\(commandString.hashValue)"
+    }
+    
+    private func hasCommandBeenProcessed(_ commandId: String) -> Bool {
+        return DCFScreenComponent.commandQueue.sync {
+            return DCFScreenComponent.processedCommands.contains(commandId)
+        }
+    }
+    
+    private func markCommandAsProcessed(_ commandId: String) {
+        DCFScreenComponent.commandQueue.sync {
+            DCFScreenComponent.processedCommands.insert(commandId)
+            
+            // Clean up old commands (keep only last 50)
+            if DCFScreenComponent.processedCommands.count > 50 {
+                let commandsArray = Array(DCFScreenComponent.processedCommands)
+                let toRemove = commandsArray.prefix(commandsArray.count - 25)
+                for command in toRemove {
+                    DCFScreenComponent.processedCommands.remove(command)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Navigation Controller Management
+    
+    private func getOrCreateNavigationController() -> UINavigationController {
+        if let existing = DCFScreenComponent.currentNavigationController {
+            return existing
+        }
+        
+        // CRITICAL FIX: Check if there's already a navigation controller in the view hierarchy
+        if let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController,
+           let selectedNavController = tabBarController.selectedViewController as? UINavigationController {
+            DCFScreenComponent.currentNavigationController = selectedNavController
+            print("✅ DCFScreenComponent: Found existing navigation controller from tab bar")
+            return selectedNavController
+        }
+        
+        // Create new navigation controller only if none exists
+        let navigationController = UINavigationController()
+        DCFScreenComponent.currentNavigationController = navigationController
+        
+        // Configure navigation bar
+        navigationController.navigationBar.prefersLargeTitles = true
+        
+        print("✅ DCFScreenComponent: Created new navigation controller")
+        
+        return navigationController
+    }
+    
+    private func configureScreenForPush(_ screenContainer: ScreenContainer) {
+        // Get stored push configuration
+        guard let pushConfig = objc_getAssociatedObject(
+            screenContainer.viewController,
+            UnsafeRawPointer(bitPattern: "pushConfig".hashValue)!
+        ) as? [String: Any] else {
+            return
+        }
+        
+        let viewController = screenContainer.viewController
+        
+        // Configure navigation item
+        if let title = pushConfig["title"] as? String {
+            viewController.navigationItem.title = title
+        }
+        
+        let hideBackButton = pushConfig["hideBackButton"] as? Bool ?? false
+        viewController.navigationItem.hidesBackButton = hideBackButton
+        
+        if let backButtonTitle = pushConfig["backButtonTitle"] as? String {
+            let backItem = UIBarButtonItem(title: backButtonTitle, style: .plain, target: nil, action: nil)
+            viewController.navigationItem.backBarButtonItem = backItem
+        }
+        
+        let largeTitleDisplayMode = pushConfig["largeTitleDisplayMode"] as? Bool ?? false
+        if #available(iOS 11.0, *) {
+            viewController.navigationItem.largeTitleDisplayMode = largeTitleDisplayMode ? .always : .never
+        }
+    }
+    
+    // MARK: - Screen Configuration (Existing Methods)
     
     /// Store tab configuration from screen props on the view controller
-//    critical for tabs
     private func storeTabConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
         var tabConfig: [String: Any] = [:]
         
@@ -85,68 +648,43 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 tabConfig,
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
-            print("✅ DCFScreenComponent: Stored tab config for '\(screenContainer.name)': \(tabConfig)")
         }
     }
     
-    func createView(props: [String: Any]) -> UIView {
-        guard let screenName = props["name"] as? String,
-              let presentationStyle = props["presentationStyle"] as? String else {
-            print("❌ DCFScreenComponent: Missing required props 'name' or 'presentationStyle'")
-            return UIView()
+    /// Store push configuration from screen props on the view controller
+    private func storePushConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
+        var pushConfig: [String: Any] = [:]
+        
+        // Extract all push-related properties from props
+        if let title = props["title"] as? String {
+            pushConfig["title"] = title
         }
         
-        // Create or get existing screen container
-        let screenContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[screenName] {
-            screenContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing screen container for '\(screenName)'")
-        } else {
-            screenContainer = ScreenContainer(name: screenName, presentationStyle: presentationStyle)
-            DCFScreenComponent.screenRegistry[screenName] = screenContainer
-            print("✅ DCFScreenComponent: Created new screen container for '\(screenName)'")
+        if let hideNavigationBar = props["hideNavigationBar"] as? Bool {
+            pushConfig["hideNavigationBar"] = hideNavigationBar
         }
         
-        // Configure screen based on presentation style and props
-        configureScreen(screenContainer, props: props)
-        
-        // CRITICAL: Store tab configuration for tab navigator to access
-        storeTabConfiguration(screenContainer, props: props)
-        
-        // Update view with current props FIRST
-        let _ = updateView(screenContainer.contentView, withProps: props)
-        
-        // Fire initial onAppear event when screen is created
-        DispatchQueue.main.async {
-            self.activateScreen(screenContainer, props: props)
+        if let hideBackButton = props["hideBackButton"] as? Bool {
+            pushConfig["hideBackButton"] = hideBackButton
         }
         
-        return screenContainer.contentView
-    }
-
-    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let screenName = props["name"] as? String,
-              let screenContainer = DCFScreenComponent.screenRegistry[screenName] else {
-            print(" DCFScreenComponent: Screen not found for update.")
-            return false
+        if let backButtonTitle = props["backButtonTitle"] as? String {
+            pushConfig["backButtonTitle"] = backButtonTitle
         }
         
-        // CRITICAL: Update tab configuration whenever screen props change
-        storeTabConfiguration(screenContainer, props: props)
-        
-        // Handle visibility changes
-        let isVisible = props["visible"] as? Bool ?? true
-        if isVisible != screenContainer.isActive {
-            if isVisible {
-                activateScreen(screenContainer, props: props)
-            } else {
-                deactivateScreen(screenContainer, props: props)
-            }
+        if let largeTitleDisplayMode = props["largeTitleDisplayMode"] as? Bool {
+            pushConfig["largeTitleDisplayMode"] = largeTitleDisplayMode
         }
-
-        view.applyStyles(props: props)
         
-        return true
+        // Store push config on the view controller for navigation to use
+        if !pushConfig.isEmpty {
+            objc_setAssociatedObject(
+                screenContainer.viewController,
+                UnsafeRawPointer(bitPattern: "pushConfig".hashValue)!,
+                pushConfig,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+        }
     }
     
     // CRITICAL FIX: Implement setChildren for DCFScreen component properly
@@ -223,7 +761,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         let enabled = props["enabled"] as? Bool ?? true
         viewController.tabBarItem.isEnabled = enabled
         
-        // CRITICAL FIX: Set tab bar item tag for identification
+        // Set tab bar item tag for identification
         if let index = props["index"] as? Int {
             viewController.tabBarItem.tag = index
         }
@@ -328,27 +866,21 @@ class DCFScreenComponent: NSObject, DCFComponent {
         print("🟢 DCFScreenComponent: Activating screen '\(screenContainer.name)'")
         screenContainer.isActive = true
         
-        // CRITICAL FIX: Fire events on the actual content view that DCFlight tracks
+        // Fire events on the actual content view that DCFlight tracks
         DispatchQueue.main.async {
             // Fire onAppear event
-            print("🚀 DCFScreenComponent: About to propagate onAppear event for '\(screenContainer.name)'")
             propagateEvent(
                 on: screenContainer.contentView,
                 eventName: "onAppear",
                 data: ["screenName": screenContainer.name]
             )
             
-            print("✅ DCFScreenComponent: Fired onAppear for '\(screenContainer.name)'")
-            
             // Fire onActivate event
-            print("🚀 DCFScreenComponent: About to propagate onActivate event for '\(screenContainer.name)'")
             propagateEvent(
                 on: screenContainer.contentView,
                 eventName: "onActivate",
                 data: ["screenName": screenContainer.name]
             )
-            
-            print("✅ DCFScreenComponent: Fired onActivate for '\(screenContainer.name)'")
         }
     }
     
@@ -356,7 +888,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         print("🔴 DCFScreenComponent: Deactivating screen '\(screenContainer.name)'")
         screenContainer.isActive = false
         
-        // CRITICAL FIX: Fire events on the actual content view that DCFlight tracks
+        // Fire events on the actual content view that DCFlight tracks
         DispatchQueue.main.async {
             // Fire onDisappear event
             propagateEvent(
@@ -365,16 +897,12 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 data: ["screenName": screenContainer.name]
             )
             
-            print("✅ DCFScreenComponent: Fired onDisappear for '\(screenContainer.name)'")
-            
             // Fire onDeactivate event
             propagateEvent(
                 on: screenContainer.contentView,
                 eventName: "onDeactivate",
                 data: ["screenName": screenContainer.name]
             )
-            
-            print("✅ DCFScreenComponent: Fired onDeactivate for '\(screenContainer.name)'")
         }
     }
     

@@ -8,6 +8,7 @@
 import 'package:dcf_primitives/src/components/navigation/screen_safe_area.dart';
 import 'package:dcflight/dcflight.dart';
 
+
 /// Presentation styles for screens
 enum DCFPresentationStyle {
   /// Tab presentation - screen appears as a tab in tab bar
@@ -38,7 +39,7 @@ class DCFTabConfig {
   final String title;
 
   /// Tab icon - can be String (SF Symbol) or Map (SVG config)
-  final dynamic icon; // CHANGED: was String, now dynamic
+  final dynamic icon;
 
   /// Tab index in tab bar
   final int index;
@@ -66,9 +67,7 @@ class DCFTabConfig {
       'enabled': enabled,
     };
   }
-  
-  
-  }
+}
 
 /// Configuration for modal presentation
 class DCFModalConfig {
@@ -177,11 +176,11 @@ class DCFScreen extends StatelessComponent {
   final List<DCFComponentNode> children;
   final bool? shouldHideSafeArea;
 
-  /// Layout properties
-  // final LayoutProps layout;
-
   /// Style properties
   final StyleSheet styleSheet;
+
+  /// Command for screen navigation operations
+  final ScreenNavigationCommand? navigationCommand;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -198,6 +197,12 @@ class DCFScreen extends StatelessComponent {
   /// Called when screen is deactivated (no longer current)
   final Function(Map<dynamic, dynamic>)? onDeactivate;
 
+  /// Called when navigation occurs from this screen
+  final Function(Map<dynamic, dynamic>)? onNavigationEvent;
+
+  /// Called when this screen receives parameters from navigation
+  final Function(Map<dynamic, dynamic>)? onReceiveParams;
+
   DCFScreen({
     this.shouldHideSafeArea,
     super.key,
@@ -209,11 +214,14 @@ class DCFScreen extends StatelessComponent {
     this.pushConfig,
     this.children = const [],
     this.styleSheet = const StyleSheet(),
+    this.navigationCommand,
     this.events,
     this.onAppear,
     this.onDisappear,
     this.onActivate,
     this.onDeactivate,
+    this.onNavigationEvent,
+    this.onReceiveParams,
   });
 
   @override
@@ -237,8 +245,17 @@ class DCFScreen extends StatelessComponent {
       eventMap['onDeactivate'] = onDeactivate;
     }
 
+    if (onNavigationEvent != null) {
+      eventMap['onNavigationEvent'] = onNavigationEvent;
+    }
+
+    if (onReceiveParams != null) {
+      eventMap['onReceiveParams'] = onReceiveParams;
+    }
+
     // Build props map
     Map<String, dynamic> props = {
+      // CRITICAL FIX: Always include name and presentationStyle as the first props
       'name': name,
       'presentationStyle': presentationStyle.name,
       'visible': visible,
@@ -258,15 +275,36 @@ class DCFScreen extends StatelessComponent {
       ...eventMap,
     };
 
-    // Enforce display property based on visibility
-    props['display'] = visible ? 'flex' : 'none';
+    // Add navigation command props if command has actions
+    if (navigationCommand != null && navigationCommand!.hasCommands) {
+      props['navigationCommand'] = navigationCommand!.toMap();
+    }
+
+    // Handle visibility - but always render children for tab screens
+    if (!visible) {
+      // For non-tab screens (push/modal), we can safely hide them
+      if (presentationStyle != DCFPresentationStyle.tab) {
+        props['display'] = 'none';
+        props['opacity'] = 0.0;
+        props['userInteractionEnabled'] = false;
+      } else {
+        // For tab screens, use visibility but keep them rendered
+        props['opacity'] = 0.0;
+        props['userInteractionEnabled'] = false;
+      }
+    } else {
+      props['display'] = 'flex';
+      props['opacity'] = 1.0;
+      props['userInteractionEnabled'] = true;
+    }
+
+    // Always render children for tab screens, conditionally for others
+    final shouldRenderChildren = visible || presentationStyle == DCFPresentationStyle.tab;
 
     return DCFElement(
       type: 'Screen',
       props: props,
-      children: [
-      // work around for the screen content disappearing on orientation change
-      // ToFix: ...
+      children: shouldRenderChildren ? [
         ScreenForceSafeAreaChildrenDirtier(
           bottom: shouldHideSafeArea == true ? false : true,
           top: shouldHideSafeArea == true ? false : true,
@@ -277,7 +315,7 @@ class DCFScreen extends StatelessComponent {
           ),
           children: children,
         ),
-      ],
+      ] : [], // Empty children only for non-tab invisible screens
     );
   }
 }
