@@ -81,12 +81,14 @@ class MyApp extends StatefulComponent {
 
         // Your existing tab navigator works the same
         DCFTabNavigator(
+          isHidden: true,
           screens: ["test_home", "test_profile", "test_gh"],
           selectedIndex: currentTab.state,
           tabBarStyle: DCFTabBarStyle(
             selectedTintColor: Colors.blue,
             unselectedTintColor: Colors.grey,
             translucent: true,
+
           ),
           onTabChange: (data) {
             final newIndex = data["selectedIndex"] as int;
