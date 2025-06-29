@@ -37,8 +37,8 @@ class DCFTabConfig {
   /// Tab title
   final String title;
 
-  /// Tab icon name
-  final String icon;
+  /// Tab icon - can be String (SF Symbol) or Map (SVG config)
+  final dynamic icon; // CHANGED: was String, now dynamic
 
   /// Tab index in tab bar
   final int index;
@@ -66,7 +66,9 @@ class DCFTabConfig {
       'enabled': enabled,
     };
   }
-}
+  
+  
+  }
 
 /// Configuration for modal presentation
 class DCFModalConfig {

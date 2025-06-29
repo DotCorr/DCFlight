@@ -7,6 +7,7 @@
 
 import UIKit
 import dcflight
+import SVGKit
 
 /// Tab navigator component that creates and manages UITabBarController
 class DCFTabNavigatorComponent: NSObject, DCFComponent {
@@ -23,6 +24,9 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
+    
+    
+    
     
     func createView(props: [String: Any]) -> UIView {
         let navigatorId = String(Date().timeIntervalSince1970)
@@ -194,9 +198,34 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     
     private func configureTabBarItem(_ viewController: UIViewController, screenContainer: ScreenContainer, index: Int) {
         // Tab bar item should already be configured by DCFScreenComponent
-        // This is a fallback configuration
+        // This is a fallback configuration with SVG support
         if viewController.tabBarItem.title == nil {
             viewController.tabBarItem.title = "Tab \(index)"
+        }
+        
+        // Get stored tab config from screen container
+        if let tabConfig = objc_getAssociatedObject(
+            screenContainer.viewController,
+            UnsafeRawPointer(bitPattern: "tabConfig".hashValue)!
+        ) as? [String: Any] {
+            
+            // Configure icon with SVG support
+            if let iconConfig = tabConfig["icon"] as? [String: Any] {
+                configureTabIconSVG(for: viewController, iconConfig: iconConfig)
+            } else if let iconString = tabConfig["icon"] as? String {
+                // Backward compatibility - SF Symbol string
+                viewController.tabBarItem.image = UIImage(systemName: iconString)
+            }
+            
+            // Configure other tab properties
+            if let title = tabConfig["title"] as? String {
+                viewController.tabBarItem.title = title
+            }
+            if let badge = tabConfig["badge"] as? String {
+                viewController.tabBarItem.badgeValue = badge
+            }
+            let enabled = tabConfig["enabled"] as? Bool ?? true
+            viewController.tabBarItem.isEnabled = enabled
         }
         
         if viewController.tabBarItem.image == nil {
@@ -205,7 +234,110 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         
         viewController.tabBarItem.tag = index
     }
-    
+
+    // Add this new method to your DCFTabNavigatorComponent class
+    private func configureTabIconSVG(for viewController: UIViewController, iconConfig: [String: Any]) {
+        let iconType = iconConfig["type"] as? String ?? "sf"
+        
+        switch iconType {
+        case "sf":
+            // SF Symbol
+            guard let symbolName = iconConfig["name"] as? String else {
+                return
+            }
+            viewController.tabBarItem.image = UIImage(systemName: symbolName)
+            
+        case "svg":
+            // SVG from app bundle - use your exact DCFSvgComponent pattern
+            guard let assetPath = iconConfig["assetPath"] as? String else {
+                return
+            }
+            
+            let key = sharedFlutterViewController?.lookupKey(forAsset: assetPath)
+            let mainBundle = Bundle.main
+            let path = mainBundle.path(forResource: key, ofType: nil)
+            
+            loadSVGForTab(from: path ?? "", for: viewController, iconConfig: iconConfig)
+            
+        case "package":
+            // SVG from package - use your exact DCFIconComponent pattern
+            guard let iconName = iconConfig["name"] as? String,
+                  let packageName = iconConfig["package"] as? String else {
+                return
+            }
+            
+            guard let key = sharedFlutterViewController?.lookupKey(
+                forAsset: "assets/icons/\(iconName).svg",
+                fromPackage: packageName
+            ) else {
+                return
+            }
+            
+            let mainBundle = Bundle.main
+            let path = mainBundle.path(forResource: key, ofType: nil)
+            
+            loadSVGForTab(from: path ?? "", for: viewController, iconConfig: iconConfig)
+            
+        default:
+            viewController.tabBarItem.image = UIImage(systemName: "circle")
+        }
+    }
+
+    // Add this new method to your DCFTabNavigatorComponent class
+    private func loadSVGForTab(from path: String, for viewController: UIViewController, iconConfig: [String: Any]) {
+        guard !path.isEmpty else {
+            return
+        }
+        
+        // Load SVG using SVGKit exactly like your DCFSvgComponent
+        guard let svgImage = SVGKImage(contentsOfFile: path) else {
+            return
+        }
+        
+        // Tab bar icons should be 25x25 points
+        let iconSize = iconConfig["size"] as? CGFloat ?? 25.0
+        let targetSize = CGSize(width: iconSize, height: iconSize)
+        
+        svgImage.size = targetSize
+        
+        guard let uiImage = svgImage.uiImage else {
+            return
+        }
+        
+        // Apply tint color if specified using your ColorUtilities
+        if let tintColor = iconConfig["tintColor"] as? String,
+           let _ = ColorUtilities.color(fromHexString: tintColor) {
+            viewController.tabBarItem.image = uiImage.withRenderingMode(.alwaysTemplate)
+        } else {
+            viewController.tabBarItem.image = uiImage.withRenderingMode(.alwaysOriginal)
+        }
+        
+        // Handle selected image if different color specified
+        if let selectedTintColor = iconConfig["selectedTintColor"] as? String,
+           let selectedColor = ColorUtilities.color(fromHexString: selectedTintColor) {
+            let selectedImage = createTintedTabImage(from: uiImage, color: selectedColor)
+            viewController.tabBarItem.selectedImage = selectedImage?.withRenderingMode(.alwaysOriginal)
+        }
+    }
+
+    // Add this helper method to your DCFTabNavigatorComponent class
+    private func createTintedTabImage(from image: UIImage, color: UIColor) -> UIImage? {
+        UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale)
+        defer { UIGraphicsEndImageContext() }
+        
+        guard let context = UIGraphicsGetCurrentContext() else { return nil }
+        
+        context.translateBy(x: 0, y: image.size.height)
+        context.scaleBy(x: 1.0, y: -1.0)
+        
+        let rect = CGRect(origin: .zero, size: image.size)
+        context.clip(to: rect, mask: image.cgImage!)
+        
+        color.setFill()
+        context.fill(rect)
+        
+        return UIGraphicsGetImageFromCurrentImageContext()
+    }
     private func configureTabBarAppearance(_ tabBarController: UITabBarController, props: [String: Any]) {
         let tabBar = tabBarController.tabBar
         

@@ -50,13 +50,51 @@ class DCFScreenComponent: NSObject, DCFComponent {
         super.init()
     }
     
+    
+    /// Store tab configuration from screen props on the view controller
+//    critical for tabs
+    private func storeTabConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
+        var tabConfig: [String: Any] = [:]
+        
+        // Extract all tab-related properties from props
+        if let title = props["title"] as? String {
+            tabConfig["title"] = title
+        }
+        
+        if let icon = props["icon"] {
+            tabConfig["icon"] = icon
+        }
+        
+        if let badge = props["badge"] as? String {
+            tabConfig["badge"] = badge
+        }
+        
+        if let enabled = props["enabled"] as? Bool {
+            tabConfig["enabled"] = enabled
+        }
+        
+        if let index = props["index"] as? Int {
+            tabConfig["index"] = index
+        }
+        
+        // Store tab config on the view controller for tab navigator to use
+        if !tabConfig.isEmpty {
+            objc_setAssociatedObject(
+                screenContainer.viewController,
+                UnsafeRawPointer(bitPattern: "tabConfig".hashValue)!,
+                tabConfig,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            print("✅ DCFScreenComponent: Stored tab config for '\(screenContainer.name)': \(tabConfig)")
+        }
+    }
+    
     func createView(props: [String: Any]) -> UIView {
         guard let screenName = props["name"] as? String,
               let presentationStyle = props["presentationStyle"] as? String else {
             print("❌ DCFScreenComponent: Missing required props 'name' or 'presentationStyle'")
             return UIView()
         }
-        
         
         // Create or get existing screen container
         let screenContainer: ScreenContainer
@@ -72,26 +110,29 @@ class DCFScreenComponent: NSObject, DCFComponent {
         // Configure screen based on presentation style and props
         configureScreen(screenContainer, props: props)
         
+        // CRITICAL: Store tab configuration for tab navigator to access
+        storeTabConfiguration(screenContainer, props: props)
+        
         // Update view with current props FIRST
         let _ = updateView(screenContainer.contentView, withProps: props)
         
-        
-       
-        
-        // CRITICAL FIX: Fire initial onAppear event when screen is created
+        // Fire initial onAppear event when screen is created
         DispatchQueue.main.async {
             self.activateScreen(screenContainer, props: props)
         }
         
         return screenContainer.contentView
     }
-    
+
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let screenName = props["name"] as? String,
               let screenContainer = DCFScreenComponent.screenRegistry[screenName] else {
-            print(" DCFScreenComponent: Screen not found for update. Please ignore: This is suppose to fail silently cause we dont want to render all the screens")
+            print(" DCFScreenComponent: Screen not found for update.")
             return false
         }
+        
+        // CRITICAL: Update tab configuration whenever screen props change
+        storeTabConfiguration(screenContainer, props: props)
         
         // Handle visibility changes
         let isVisible = props["visible"] as? Bool ?? true
@@ -102,7 +143,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 deactivateScreen(screenContainer, props: props)
             }
         }
-        
 
         view.applyStyles(props: props)
         
