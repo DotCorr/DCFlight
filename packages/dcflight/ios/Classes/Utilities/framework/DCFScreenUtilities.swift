@@ -27,9 +27,7 @@ class DCFScreenUtilities {
     private var dimensionChangeListeners: [() -> Void] = []
     
     private init() {
-        // Initialize with current dimensions
-        updateScreenDimensions()
-        
+        // Don't initialize with current dimensions immediately - wait for proper window setup
         // Method channel will be set up later when binary messenger is available
         NotificationCenter.default.addObserver(
             self,
@@ -50,6 +48,12 @@ class DCFScreenUtilities {
         )
         
         setupMethodChannel()
+        
+        // CRITICAL FIX: Initialize with correct window dimensions after method channel setup
+        DispatchQueue.main.async {
+            self.updateScreenDimensions()
+        }
+        
         print("✅ DCFScreenUtilities: Initialized with method channel")
     }
     
