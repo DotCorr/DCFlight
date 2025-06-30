@@ -31,7 +31,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         
         return screenContainer.contentView
     }
-
+    
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let screenName = props["name"] as? String else {
             if let container = findScreenContainer(for: view) {
@@ -147,7 +147,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
         
         print("🚀 DCFScreenComponent: Pushing to screen '\(screenName)'")
         
-        let navigationController = getOrCreateNavigationController()
+        // CRITICAL FIX: Get the current navigation controller from the active tab
+        guard let navigationController = getCurrentActiveNavigationController() else {
+            print("❌ DCFScreenComponent: No active navigation controller found for push")
+            return
+        }
         
         if navigationController.viewControllers.contains(targetContainer.viewController) {
             print("⚠️ DCFScreenComponent: Screen '\(screenName)' is already in navigation stack, skipping push")
@@ -192,7 +196,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     }
     
     private func popCurrentScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
-        guard let navigationController = DCFScreenComponent.currentNavigationController else {
+        guard let navigationController = getCurrentActiveNavigationController() else {
             print("❌ DCFScreenComponent: No navigation controller found for pop")
             return
         }
@@ -236,7 +240,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     }
     
     private func popToScreen(_ screenName: String, animated: Bool, from sourceContainer: ScreenContainer) {
-        guard let navigationController = DCFScreenComponent.currentNavigationController else {
+        guard let navigationController = getCurrentActiveNavigationController() else {
             print("❌ DCFScreenComponent: No navigation controller found for popTo")
             return
         }
@@ -267,7 +271,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     }
     
     private func popToRootScreen(animated: Bool, from sourceContainer: ScreenContainer) {
-        guard let navigationController = DCFScreenComponent.currentNavigationController else {
+        guard let navigationController = getCurrentActiveNavigationController() else {
             print("❌ DCFScreenComponent: No navigation controller found for popToRoot")
             return
         }
@@ -287,7 +291,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     }
     
     private func replaceCurrentScreen(with screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
-        guard let navigationController = DCFScreenComponent.currentNavigationController else {
+        guard let navigationController = getCurrentActiveNavigationController() else {
             print("❌ DCFScreenComponent: No navigation controller found for replace")
             return
         }
@@ -333,6 +337,12 @@ class DCFScreenComponent: NSObject, DCFComponent {
         
         print("🚀 DCFScreenComponent: Presenting modal '\(screenName)'")
         
+        // CRITICAL FIX: Get the proper presenting view controller
+        guard let presentingViewController = getCurrentPresentingViewController() else {
+            print("❌ DCFScreenComponent: No suitable presenting view controller found")
+            return
+        }
+        
         targetContainer.contentView.isHidden = false
         targetContainer.contentView.alpha = 1.0
         targetContainer.contentView.backgroundColor = UIColor.systemBackground
@@ -365,7 +375,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
             )
         }
         
-        sourceContainer.viewController.present(targetContainer.viewController, animated: animated) {
+        presentingViewController.present(targetContainer.viewController, animated: animated) {
             propagateEvent(
                 on: sourceContainer.contentView,
                 eventName: "onNavigationEvent",
@@ -408,6 +418,65 @@ class DCFScreenComponent: NSObject, DCFComponent {
         print("✅ DCFScreenComponent: Dismissed modal '\(sourceContainer.name)'")
     }
     
+    // CRITICAL FIX: Helper to get the current active navigation controller
+    private func getCurrentActiveNavigationController() -> UINavigationController? {
+        // First try to get from the current tab bar's selected navigation controller
+        if let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController,
+           let selectedNavController = tabBarController.selectedViewController as? UINavigationController {
+            return selectedNavController
+        }
+        
+        // Fallback: look for any navigation controller in the hierarchy
+        if let rootViewController = UIApplication.shared.windows.first?.rootViewController {
+            return findNavigationController(in: rootViewController)
+        }
+        
+        return nil
+    }
+    
+    // CRITICAL FIX: Helper to get the proper presenting view controller
+    private func getCurrentPresentingViewController() -> UIViewController? {
+        // Get the topmost view controller that can present modals
+        guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
+            return nil
+        }
+        
+        return getTopmostViewController(from: rootViewController)
+    }
+    
+    private func getTopmostViewController(from viewController: UIViewController) -> UIViewController {
+        if let presentedViewController = viewController.presentedViewController {
+            return getTopmostViewController(from: presentedViewController)
+        } else if let tabBarController = viewController as? UITabBarController,
+                  let selectedViewController = tabBarController.selectedViewController {
+            return getTopmostViewController(from: selectedViewController)
+        } else if let navigationController = viewController as? UINavigationController,
+                  let topViewController = navigationController.topViewController {
+            return getTopmostViewController(from: topViewController)
+        } else {
+            return viewController
+        }
+    }
+    
+    private func findNavigationController(in viewController: UIViewController) -> UINavigationController? {
+        if let navController = viewController as? UINavigationController {
+            return navController
+        }
+        
+        if let tabBarController = viewController as? UITabBarController,
+           let selectedViewController = tabBarController.selectedViewController {
+            return findNavigationController(in: selectedViewController)
+        }
+        
+        for child in viewController.children {
+            if let navController = findNavigationController(in: child) {
+                return navController
+            }
+        }
+        
+        return nil
+    }
+    
     private static var processedCommands = Set<String>()
     private static let commandQueue = DispatchQueue(label: "com.dcf.navigation.commands", qos: .userInitiated)
     
@@ -434,28 +503,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 }
             }
         }
-    }
-    
-    private func getOrCreateNavigationController() -> UINavigationController {
-        if let existing = DCFScreenComponent.currentNavigationController {
-            return existing
-        }
-        
-        if let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController,
-           let selectedNavController = tabBarController.selectedViewController as? UINavigationController {
-            DCFScreenComponent.currentNavigationController = selectedNavController
-            print("✅ DCFScreenComponent: Found existing navigation controller from tab bar")
-            return selectedNavController
-        }
-        
-        let navigationController = UINavigationController()
-        DCFScreenComponent.currentNavigationController = navigationController
-        
-        navigationController.navigationBar.prefersLargeTitles = true
-        
-        print("✅ DCFScreenComponent: Created new navigation controller")
-        
-        return navigationController
     }
     
     private func configureScreenForPush(_ screenContainer: ScreenContainer) {
@@ -564,14 +611,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
         
         print("📱 DCFScreenComponent: Setting \(childViews.count) children for screen '\(screenContainer.name)'")
         
-        // CRITICAL FIX: Clear existing children
         screenContainer.contentView.subviews.forEach { $0.removeFromSuperview() }
         
-        // CRITICAL FIX: Add children with proper bounds and auto-resizing
         for (index, childView) in childViews.enumerated() {
             screenContainer.contentView.addSubview(childView)
             
-            // IMPORTANT: Set proper frame and auto-resizing
             childView.frame = screenContainer.contentView.bounds
             childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             childView.isHidden = false
@@ -580,11 +624,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
             print("  👶 Added child \(index) to screen '\(screenContainer.name)' with frame: \(childView.frame)")
         }
         
-        // CRITICAL FIX: Ensure proper layout after adding children
         screenContainer.contentView.setNeedsLayout()
         screenContainer.contentView.layoutIfNeeded()
         
-        // CRITICAL FIX: Force children to layout properly
         for childView in childViews {
             childView.setNeedsLayout()
             childView.layoutIfNeeded()
@@ -747,12 +789,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     
     static func removeScreenContainer(name: String) {
         screenRegistry.removeValue(forKey: name)
-    }
-    
-    static func getScreenContainers(byPresentationStyle style: String) -> [ScreenContainer] {
-        return screenRegistry.values.filter { $0.presentationStyle == style }
-    }
-}
+    }}
 
 class ScreenContainer {
     let name: String
