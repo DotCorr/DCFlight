@@ -361,29 +361,28 @@ import Flutter
     }
 }
 
-public func replaceRoot(controller: UIViewController) {
-    // Get the current root view controller
+// CRITICAL FIX: Add tab bar to existing root instead of replacing it
+public func addTabBarToRoot(controller: UITabBarController) {
     guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-          let window = windowScene.windows.first else {
-        print("❌ DCFTabNavigatorComponent: Could not find window to install tab bar controller")
+          let window = windowScene.windows.first,
+          let rootViewController = window.rootViewController else {
+        print("❌ No existing root view controller found")
         return
     }
     
-    controller.title = "Root Replacement"
+    print("✅ Adding tab bar controller to existing root instead of replacing it")
     
-    // Replace root view controller
-    DispatchQueue.main.async {
-        window.rootViewController = controller
-        window.makeKeyAndVisible()
-        print("✅ DCFTabNavigatorComponent: Installed tab bar controller as root")
-        
-        // CRITICAL FIX: Update window size after root controller is installed
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            let actualBounds = window.bounds
-            print("🎯 DCFlight: Final window size after root installation: \(actualBounds.width)x\(actualBounds.height)")
-            
-//            DCFScreenUtilities.shared.updateScreenDimensions(width: actualBounds.width, height: actualBounds.height)
-//            YogaShadowTree.shared.calculateAndApplyLayout(width: actualBounds.width, height: actualBounds.height)
-        }
-    }
+    // Add tab bar controller as a child instead of replacing root
+    rootViewController.addChild(controller)
+    rootViewController.view.addSubview(controller.view)
+    
+    // Make tab bar fill the entire root view
+    controller.view.frame = rootViewController.view.bounds
+    controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    
+    // Complete the child view controller setup
+    controller.didMove(toParent: rootViewController)
+    
+    print("✅ Tab bar controller added to existing root - natural iOS behavior preserved")
 }
+
