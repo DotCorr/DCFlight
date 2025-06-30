@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 
@@ -15,7 +14,7 @@ class _ComponentAccess {
   final String componentType;
   final bool usedViaHook;
   final DateTime accessTime;
-  
+
   _ComponentAccess({
     required this.componentId,
     required this.componentType,
@@ -25,16 +24,17 @@ class _ComponentAccess {
 }
 
 /// A store for global state management with usage pattern validation
+
 class Store<T> {
   /// The current state
   T _state;
 
   /// List of listeners to notify on state change
   final List<void Function(T)> _listeners = [];
-  
+
   /// Track component access patterns for validation
   final Map<String, _ComponentAccess> _componentAccess = {};
-  
+
   /// Track if store has been accessed inconsistently
   bool _hasInconsistentUsage = false;
 
@@ -50,12 +50,11 @@ class Store<T> {
   /// Update the state
   void setState(T newState) {
     _trackDirectAccess();
-    
+
     // Skip update if state is identical (for references) or equal (for values)
     if (identical(_state, newState) || _state == newState) {
       return;
     }
-
 
     // Update state
     _state = newState;
@@ -75,8 +74,7 @@ class Store<T> {
     // Prevent duplicate listeners for the same function
     if (!_listeners.contains(listener)) {
       _listeners.add(listener);
-    } else {
-    }
+    } else {}
   }
 
   /// Track hook-based access (called from StoreHook)
@@ -87,40 +85,42 @@ class Store<T> {
       usedViaHook: true,
       accessTime: DateTime.now(),
     );
-    
+
     final existingAccess = _componentAccess[componentId];
     if (existingAccess != null && !existingAccess.usedViaHook) {
-      _warnInconsistentUsage(componentId, componentType, 'switched from direct access to hook');
+      _warnInconsistentUsage(
+          componentId, componentType, 'switched from direct access to hook');
     }
-    
+
     _componentAccess[componentId] = access;
   }
 
   /// Track direct access (when .state or .setState is called directly)
   void _trackDirectAccess() {
     if (!kDebugMode) return;
-    
+
     // Get current component from stack trace
     final stackTrace = StackTrace.current;
     final componentInfo = _extractComponentFromStackTrace(stackTrace);
-    
+
     if (componentInfo != null) {
       final (componentId, componentType) = componentInfo;
-      
+
       final access = _ComponentAccess(
         componentId: componentId,
         componentType: componentType,
         usedViaHook: false,
         accessTime: DateTime.now(),
       );
-      
+
       final existingAccess = _componentAccess[componentId];
       if (existingAccess != null && existingAccess.usedViaHook) {
-        _warnInconsistentUsage(componentId, componentType, 'switched from hook to direct access');
+        _warnInconsistentUsage(
+            componentId, componentType, 'switched from hook to direct access');
       }
-      
+
       _componentAccess[componentId] = access;
-      
+
       // Check for mixed usage patterns across components
       _validateUsagePatterns();
     }
@@ -129,22 +129,21 @@ class Store<T> {
   /// Extract component information from stack trace
   (String, String)? _extractComponentFromStackTrace(StackTrace stackTrace) {
     final lines = stackTrace.toString().split('\n');
-    
+
     for (final line in lines) {
       // Look for component render methods, build methods, or component class patterns
-      if (line.contains('.render') || 
-          line.contains('.build') || 
+      if (line.contains('.render') ||
+          line.contains('.build') ||
           line.contains('Component.') ||
           line.contains('.setState') ||
           line.contains('.state')) {
-        
         // Extract component type from various patterns
         final patterns = [
-          RegExp(r'(\w+Component)\.'),  // SomeComponent.method
-          RegExp(r'(\w+Component)\s'),  // SomeComponent space
-          RegExp(r'/(\w+Component)'),   // /SomeComponent in path
+          RegExp(r'(\w+Component)\.'), // SomeComponent.method
+          RegExp(r'(\w+Component)\s'), // SomeComponent space
+          RegExp(r'/(\w+Component)'), // /SomeComponent in path
         ];
-        
+
         for (final pattern in patterns) {
           final match = pattern.firstMatch(line);
           if (match != null) {
@@ -158,18 +157,18 @@ class Store<T> {
     }
     return null;
   }
-  
+
   /// Counter for generating unique component IDs
   static int _componentIdCounter = 0;
 
   /// Warn about inconsistent usage patterns
-  void _warnInconsistentUsage(String componentId, String componentType, String reason) {
+  void _warnInconsistentUsage(
+      String componentId, String componentType, String reason) {
     if (_hasInconsistentUsage) return; // Only warn once
-    
+
     _hasInconsistentUsage = true;
-    
-    developer.log(
-      '''
+
+    developer.log('''
 ⚠️  STORE USAGE INCONSISTENCY DETECTED ⚠️
 Component: $componentType ($componentId)
 Issue: $reason
@@ -187,16 +186,14 @@ Choose ONE consistent pattern for ALL stores in your component:
   myStoreInstance.setState()   // Update value
 
 Mixed patterns can cause confusing bugs where some UI updates work and others don't.
-      ''',
-      name: 'StoreUsageValidator'
-    );
+      ''', name: 'StoreUsageValidator');
   }
 
   /// Validate usage patterns across all components
   void _validateUsagePatterns() {
     final hookComponents = <String>[];
     final directComponents = <String>[];
-    
+
     for (final entry in _componentAccess.entries) {
       if (entry.value.usedViaHook) {
         hookComponents.add(entry.value.componentType);
@@ -204,12 +201,13 @@ Mixed patterns can cause confusing bugs where some UI updates work and others do
         directComponents.add(entry.value.componentType);
       }
     }
-    
-    if (hookComponents.isNotEmpty && directComponents.isNotEmpty && !_hasInconsistentUsage) {
+
+    if (hookComponents.isNotEmpty &&
+        directComponents.isNotEmpty &&
+        !_hasInconsistentUsage) {
       _hasInconsistentUsage = true;
-      
-      developer.log(
-        '''
+
+      developer.log('''
 ⚠️  MIXED STORE USAGE PATTERNS DETECTED ⚠️
 
 Components using hooks: ${hookComponents.join(', ')}
@@ -217,17 +215,14 @@ Components using direct access: ${directComponents.join(', ')}
 
 RECOMMENDATION:
 Use hooks (useStore) in ALL components for consistent reactive behavior.
-        ''',
-        name: 'StoreUsageValidator'
-      );
+        ''', name: 'StoreUsageValidator');
     }
   }
 
   /// Unregister a listener
   void unsubscribe(void Function(T) listener) {
     final removed = _listeners.remove(listener);
-    if (removed) {
-    }
+    if (removed) {}
   }
 
   /// Notify all listeners of state change
@@ -251,8 +246,7 @@ class StoreRegistry {
 
   /// Register a store with a unique ID
   void registerStore<T>(String id, Store<T> store) {
-    if (_stores.containsKey(id)) {
-    }
+    if (_stores.containsKey(id)) {}
     _stores[id] = store;
   }
 
@@ -262,7 +256,7 @@ class StoreRegistry {
     if (store == null) {
       return null;
     }
-    
+
     if (store is Store<T>) {
       return store;
     } else {
@@ -289,12 +283,12 @@ class StoreHelpers {
   static Store<T> createStore<T>(T initialState) {
     return Store<T>(initialState);
   }
-  
+
   /// Create and register a global store
   static Store<T> createGlobalStore<T>(String id, T initialState) {
     return StoreRegistry.instance.createStore(id, initialState);
   }
-  
+
   /// Get a global store by ID
   static Store<T>? getGlobalStore<T>(String id) {
     return StoreRegistry.instance.getStore<T>(id);
