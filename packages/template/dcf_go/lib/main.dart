@@ -12,11 +12,11 @@ class MyApp extends StatefulComponent {
     final currentTab = useState<int>(0);
 
     return DCFNestedNavigationRoot(
-        onTabChange: (data) {
-            final newIndex = data["selectedIndex"] as int;
-          
-            print("🔄 Tab Comfirm changed to index: $newIndex");
-          },
+      onTabChange: (data) {
+        final newIndex = data["selectedIndex"] as int;
+
+        print("🔄 Tab Comfirm changed to index: $newIndex");
+      },
       tabRoutes: ["test_home", "test_profile", "navigation_demo", "test_gh"],
       tabState: currentTab,
 
