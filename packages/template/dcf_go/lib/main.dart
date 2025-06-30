@@ -17,7 +17,8 @@ class MyApp extends StatefulComponent {
 
     return DCFFragment(
       children: [
-        // Tab Screens - NO MORE VISIBILITY PROPS!
+        // ✅ FIXED: Create all tab screen containers (for tab bar configuration)
+        // But only add children to the active tab
         DCFScreen(
           name: "test_home",
           presentationStyle: DCFPresentationStyle.tab,
@@ -31,7 +32,8 @@ class MyApp extends StatefulComponent {
           ),
           onAppear: (data) => print("✅ Home screen appeared: $data"),
           onActivate: (data) => print("🟢 Home screen activated: $data"),
-          children: [App()],
+          // Only add children if this is the active tab
+          children: currentTab.state == 0 ? [App()] : [],
         ),
 
         DCFScreen(
@@ -46,7 +48,8 @@ class MyApp extends StatefulComponent {
           ),
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
-          children: [ModalTest()],
+          // Only add children if this is the active tab
+          children: currentTab.state == 1 ? [ModalTest()] : [],
         ),
 
         DCFScreen(
@@ -61,7 +64,8 @@ class MyApp extends StatefulComponent {
             navigationDemoCommand.setState(null);
           },
           onReceiveParams: (data) => print("📨 Navigation demo received params: $data"),
-          children: [
+          // Only add children if this is the active tab
+          children: currentTab.state == 2 ? [
             DCFView(
               layout: LayoutProps(
                 flex: 1,
@@ -123,7 +127,7 @@ class MyApp extends StatefulComponent {
                 ),
               ],
             ),
-          ],
+          ] : [],
         ),
 
         DCFScreen(
@@ -132,7 +136,8 @@ class MyApp extends StatefulComponent {
           tabConfig: DCFTabConfig(title: "Github", icon: "lightbulb", index: 3),
           onAppear: (data) => print("✅ Github screen appeared: $data"),
           onActivate: (data) => print("🟢 Github screen activated: $data"),
-          children: [
+          // Only add children if this is the active tab
+          children: currentTab.state == 3 ? [
             DCFView(
               layout: LayoutProps(flex: 1),
               children: [
@@ -152,10 +157,10 @@ class MyApp extends StatefulComponent {
                 ),
               ],
             ),
-          ],
+          ] : [],
         ),
 
-        // Push Screens - NO VISIBILITY PROPS NEEDED!
+        // Push Screens - These are always available for navigation
         DCFScreen(
           name: "detail_screen",
           presentationStyle: DCFPresentationStyle.push,
@@ -306,7 +311,7 @@ class MyApp extends StatefulComponent {
           ],
         ),
 
-        // Modal Screen - NO VISIBILITY PROPS NEEDED!
+        // Modal Screen
         DCFScreen(
           name: "modal_screen",
           presentationStyle: DCFPresentationStyle.modal,
@@ -368,7 +373,7 @@ class MyApp extends StatefulComponent {
           ],
         ),
 
-        // Tab Navigator
+        // Tab Navigator - This coordinates the screens above
         DCFTabNavigator(
           lazyLoad: true,
           screens: ["test_home", "test_profile", "navigation_demo", "test_gh"],
