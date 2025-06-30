@@ -163,10 +163,8 @@ class MyApp extends StatefulComponent {
             ),
           ],
         ),
-
-        // Push Screens (not in tab navigator)
         DCFScreen(
-          visible: false,
+          visible: true,
           name: "detail_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -247,7 +245,7 @@ class MyApp extends StatefulComponent {
         ),
 
         DCFScreen(
-          visible: false,
+          visible: true,
           name: "deep_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -323,7 +321,7 @@ class MyApp extends StatefulComponent {
 
         // Modal Screen
         DCFScreen(
-          visible: false,
+          visible: true,
           name: "modal_screen",
           presentationStyle: DCFPresentationStyle.modal,
           modalConfig: DCFModalConfig(
@@ -388,6 +386,7 @@ class MyApp extends StatefulComponent {
 
         // Tab Navigator
         DCFTabNavigator(
+          lazyLoad: true,
           screens: ["test_home", "test_profile", "navigation_demo", "test_gh"],
           selectedIndex: currentTab.state,
           tabBarStyle: DCFTabBarStyle(

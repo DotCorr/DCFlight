@@ -42,8 +42,6 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("TextInput", componentClass: DCFTextInputComponent.self)
         DCFComponentRegistry.shared.registerComponent("Dropdown", componentClass: DCFDropdownComponent.self)
         
-        // 🚀 Register NEW primitive components
-        DCFComponentRegistry.shared.registerComponent("Modal", componentClass: DCFModalComponent.self)
         DCFComponentRegistry.shared.registerComponent("Toggle", componentClass: DCFToggleComponent.self)
         DCFComponentRegistry.shared.registerComponent("Checkbox", componentClass: DCFCheckboxComponent.self)
         DCFComponentRegistry.shared.registerComponent("Alert", componentClass: DCFAlertComponent.self)
