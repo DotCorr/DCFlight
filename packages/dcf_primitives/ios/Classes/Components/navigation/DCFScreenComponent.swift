@@ -73,70 +73,61 @@ class DCFScreenComponent: NSObject, DCFComponent {
     }
     
     private func handleNavigationCommand(screenContainer: ScreenContainer, props: [String: Any]) {
-        guard let commandData = props["navigationCommand"] as? [String: Any] else {
-            return
-        }
-        
-        let commandId = generateCommandId(from: commandData)
-        
-        if hasCommandBeenProcessed(commandId) {
-            print("⚠️ DCFScreenComponent: Command '\(commandId)' already processed, skipping for '\(screenContainer.name)'")
-            return
-        }
-        
-        markCommandAsProcessed(commandId)
-        
-        print("🚀 DCFScreenComponent: Processing navigation command for '\(screenContainer.name)': \(commandData)")
-        
-        if let pushToData = commandData["pushTo"] as? [String: Any] {
-            if let targetScreenName = pushToData["screenName"] as? String {
-                let animated = pushToData["animated"] as? Bool ?? true
-                let params = pushToData["params"] as? [String: Any]
-                pushToScreen(targetScreenName, animated: animated, params: params, from: screenContainer)
+            guard let commandData = props["navigationCommand"] as? [String: Any] else {
+                return
+            }
+            
+            print("🚀 DCFScreenComponent: Processing navigation command for '\(screenContainer.name)': \(commandData)")
+            
+            if let pushToData = commandData["pushTo"] as? [String: Any] {
+                if let targetScreenName = pushToData["screenName"] as? String {
+                    let animated = pushToData["animated"] as? Bool ?? true
+                    let params = pushToData["params"] as? [String: Any]
+                    pushToScreen(targetScreenName, animated: animated, params: params, from: screenContainer)
+                }
+            }
+            
+            if let popData = commandData["pop"] as? [String: Any] {
+                let animated = popData["animated"] as? Bool ?? true
+                let result = popData["result"] as? [String: Any]
+                popCurrentScreen(animated: animated, result: result, from: screenContainer)
+            }
+            
+            if let popToData = commandData["popTo"] as? [String: Any] {
+                if let targetScreenName = popToData["screenName"] as? String {
+                    let animated = popToData["animated"] as? Bool ?? true
+                    popToScreen(targetScreenName, animated: animated, from: screenContainer)
+                }
+            }
+            
+            if let popToRootData = commandData["popToRoot"] as? [String: Any] {
+                let animated = popToRootData["animated"] as? Bool ?? true
+                popToRootScreen(animated: animated, from: screenContainer)
+            }
+            
+            if let replaceData = commandData["replaceWith"] as? [String: Any] {
+                if let targetScreenName = replaceData["screenName"] as? String {
+                    let animated = replaceData["animated"] as? Bool ?? true
+                    let params = replaceData["params"] as? [String: Any]
+                    replaceCurrentScreen(with: targetScreenName, animated: animated, params: params, from: screenContainer)
+                }
+            }
+            
+            if let modalData = commandData["presentModal"] as? [String: Any] {
+                if let targetScreenName = modalData["screenName"] as? String {
+                    let animated = modalData["animated"] as? Bool ?? true
+                    let params = modalData["params"] as? [String: Any]
+                    let presentationStyle = modalData["presentationStyle"] as? String
+                    presentModalScreen(targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, from: screenContainer)
+                }
+            }
+            
+            if let dismissData = commandData["dismissModal"] as? [String: Any] {
+                let animated = dismissData["animated"] as? Bool ?? true
+                let result = dismissData["result"] as? [String: Any]
+                dismissModalScreen(animated: animated, result: result, from: screenContainer)
             }
         }
-        
-        if let popData = commandData["pop"] as? [String: Any] {
-            let animated = popData["animated"] as? Bool ?? true
-            let result = popData["result"] as? [String: Any]
-            popCurrentScreen(animated: animated, result: result, from: screenContainer)
-        }
-        
-        if let popToData = commandData["popTo"] as? [String: Any] {
-            if let targetScreenName = popToData["screenName"] as? String {
-                let animated = popToData["animated"] as? Bool ?? true
-                popToScreen(targetScreenName, animated: animated, from: screenContainer)
-            }
-        }
-        
-        if let popToRootData = commandData["popToRoot"] as? [String: Any] {
-            let animated = popToRootData["animated"] as? Bool ?? true
-            popToRootScreen(animated: animated, from: screenContainer)
-        }
-        
-        if let replaceData = commandData["replaceWith"] as? [String: Any] {
-            if let targetScreenName = replaceData["screenName"] as? String {
-                let animated = replaceData["animated"] as? Bool ?? true
-                let params = replaceData["params"] as? [String: Any]
-                replaceCurrentScreen(with: targetScreenName, animated: animated, params: params, from: screenContainer)
-            }
-        }
-        
-        if let modalData = commandData["presentModal"] as? [String: Any] {
-            if let targetScreenName = modalData["screenName"] as? String {
-                let animated = modalData["animated"] as? Bool ?? true
-                let params = modalData["params"] as? [String: Any]
-                let presentationStyle = modalData["presentationStyle"] as? String
-                presentModalScreen(targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, from: screenContainer)
-            }
-        }
-        
-        if let dismissData = commandData["dismissModal"] as? [String: Any] {
-            let animated = dismissData["animated"] as? Bool ?? true
-            let result = dismissData["result"] as? [String: Any]
-            dismissModalScreen(animated: animated, result: result, from: screenContainer)
-        }
-    }
     
     private func pushToScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
@@ -477,33 +468,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
         return nil
     }
     
-    private static var processedCommands = Set<String>()
-    private static let commandQueue = DispatchQueue(label: "com.dcf.navigation.commands", qos: .userInitiated)
+
     
-    private func generateCommandId(from commandData: [String: Any]) -> String {
-        let commandString = String(describing: commandData)
-        return "\(commandString.hashValue)"
-    }
     
-    private func hasCommandBeenProcessed(_ commandId: String) -> Bool {
-        return DCFScreenComponent.commandQueue.sync {
-            return DCFScreenComponent.processedCommands.contains(commandId)
-        }
-    }
-    
-    private func markCommandAsProcessed(_ commandId: String) {
-        DCFScreenComponent.commandQueue.sync {
-            DCFScreenComponent.processedCommands.insert(commandId)
-            
-            if DCFScreenComponent.processedCommands.count > 50 {
-                let commandsArray = Array(DCFScreenComponent.processedCommands)
-                let toRemove = commandsArray.prefix(commandsArray.count - 25)
-                for command in toRemove {
-                    DCFScreenComponent.processedCommands.remove(command)
-                }
-            }
-        }
-    }
+
     
     private func configureScreenForPush(_ screenContainer: ScreenContainer) {
         guard let pushConfig = objc_getAssociatedObject(
