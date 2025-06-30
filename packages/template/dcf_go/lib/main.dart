@@ -10,7 +10,6 @@ class MyApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final currentTab = useState<int>(0);
-    // CRITICAL FIX: Create separate navigation command states for different contexts
     final navigationDemoCommand = useState<ScreenNavigationCommand?>(null);
     final detailScreenCommand = useState<ScreenNavigationCommand?>(null);
     final deepScreenCommand = useState<ScreenNavigationCommand?>(null);
@@ -18,9 +17,8 @@ class MyApp extends StatefulComponent {
 
     return DCFFragment(
       children: [
-        // Tab Screens
+        // Tab Screens - NO MORE VISIBILITY PROPS!
         DCFScreen(
-          visible: currentTab.state == 0,
           name: "test_home",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfigSVG.withSVGPackage(
@@ -31,14 +29,12 @@ class MyApp extends StatefulComponent {
             size: 24.0,
             tintColor: Colors.blue,
           ),
-          // No navigation command - home screen doesn't initiate navigation
           onAppear: (data) => print("✅ Home screen appeared: $data"),
           onActivate: (data) => print("🟢 Home screen activated: $data"),
           children: [App()],
         ),
 
         DCFScreen(
-          visible: currentTab.state == 1,
           name: "test_profile",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfigSVG.withSVGPackage(
@@ -48,24 +44,20 @@ class MyApp extends StatefulComponent {
             index: 1,
             size: 24.0,
           ),
-          // No navigation command - profile screen doesn't initiate navigation
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
           children: [ModalTest()],
         ),
 
         DCFScreen(
-          visible: currentTab.state == 2,
           name: "navigation_demo",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(title: "Navigation", icon: "square.stack", index: 2),
-          // CRITICAL FIX: Only this screen gets navigation commands
           navigationCommand: navigationDemoCommand.state,
           onAppear: (data) => print("✅ Navigation demo screen appeared: $data"),
           onActivate: (data) => print("🟢 Navigation demo screen activated: $data"),
           onNavigationEvent: (data) {
             print("🚀 Navigation demo navigation event: $data");
-            // Clear the command after processing
             navigationDemoCommand.setState(null);
           },
           onReceiveParams: (data) => print("📨 Navigation demo received params: $data"),
@@ -135,7 +127,6 @@ class MyApp extends StatefulComponent {
         ),
 
         DCFScreen(
-          visible: currentTab.state == 3,
           name: "test_gh",
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(title: "Github", icon: "lightbulb", index: 3),
@@ -163,8 +154,9 @@ class MyApp extends StatefulComponent {
             ),
           ],
         ),
+
+        // Push Screens - NO VISIBILITY PROPS NEEDED!
         DCFScreen(
-          visible: true,
           name: "detail_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -172,12 +164,10 @@ class MyApp extends StatefulComponent {
             backButtonTitle: "Back",
             largeTitleDisplayMode: true,
           ),
-          // CRITICAL FIX: Only this screen gets its own commands
           navigationCommand: detailScreenCommand.state,
           onAppear: (data) => print("✅ Detail screen appeared: $data"),
           onNavigationEvent: (data) {
             print("🚀 Detail navigation event: $data");
-            // Clear the command after processing
             detailScreenCommand.setState(null);
           },
           onReceiveParams: (data) => print("📨 Detail received params: $data"),
@@ -245,19 +235,16 @@ class MyApp extends StatefulComponent {
         ),
 
         DCFScreen(
-          visible: true,
           name: "deep_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Deep Screen",
             backButtonTitle: "Detail",
           ),
-          // CRITICAL FIX: Only this screen gets its own commands
           navigationCommand: deepScreenCommand.state,
           onAppear: (data) => print("✅ Deep screen appeared: $data"),
           onNavigationEvent: (data) {
             print("🚀 Deep navigation event: $data");
-            // Clear the command after processing
             deepScreenCommand.setState(null);
           },
           onReceiveParams: (data) => print("📨 Deep received params: $data"),
@@ -319,9 +306,8 @@ class MyApp extends StatefulComponent {
           ],
         ),
 
-        // Modal Screen
+        // Modal Screen - NO VISIBILITY PROPS NEEDED!
         DCFScreen(
-          visible: true,
           name: "modal_screen",
           presentationStyle: DCFPresentationStyle.modal,
           modalConfig: DCFModalConfig(
@@ -329,12 +315,10 @@ class MyApp extends StatefulComponent {
             showDragIndicator: true,
             isDismissible: true,
           ),
-          // CRITICAL FIX: Only this screen gets its own commands
           navigationCommand: modalScreenCommand.state,
           onAppear: (data) => print("✅ Modal screen appeared: $data"),
           onNavigationEvent: (data) {
             print("🚀 Modal navigation event: $data");
-            // Clear the command after processing
             modalScreenCommand.setState(null);
           },
           onReceiveParams: (data) => print("📨 Modal received params: $data"),
