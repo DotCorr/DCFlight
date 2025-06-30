@@ -558,20 +558,37 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return false
         }
         
+        print("🔍 SCREEN DEBUG: setChildren called for '\(screenContainer.name)' with \(childViews.count) children")
+        print("🔍 SCREEN DEBUG: Container frame: \(screenContainer.contentView.frame)")
+        print("🔍 SCREEN DEBUG: Container superview: \(screenContainer.contentView.superview != nil)")
+        
         print("📱 DCFScreenComponent: Setting \(childViews.count) children for screen '\(screenContainer.name)'")
         
+        // CRITICAL FIX: Clear existing children
         screenContainer.contentView.subviews.forEach { $0.removeFromSuperview() }
         
+        // CRITICAL FIX: Add children with proper bounds and auto-resizing
         for (index, childView) in childViews.enumerated() {
             screenContainer.contentView.addSubview(childView)
+            
+            // IMPORTANT: Set proper frame and auto-resizing
+            childView.frame = screenContainer.contentView.bounds
+            childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             childView.isHidden = false
             childView.alpha = 1.0
             
-            print("  👶 Added child \(index) to screen '\(screenContainer.name)'")
+            print("  👶 Added child \(index) to screen '\(screenContainer.name)' with frame: \(childView.frame)")
         }
         
+        // CRITICAL FIX: Ensure proper layout after adding children
         screenContainer.contentView.setNeedsLayout()
         screenContainer.contentView.layoutIfNeeded()
+        
+        // CRITICAL FIX: Force children to layout properly
+        for childView in childViews {
+            childView.setNeedsLayout()
+            childView.layoutIfNeeded()
+        }
         
         return true
     }
@@ -759,9 +776,54 @@ class ScreenContainer {
             self.viewController = UIViewController()
         }
         
+        // CRITICAL FIX: Create content view with proper auto-resizing
         self.contentView = UIView()
         self.contentView.backgroundColor = UIColor.clear
+        self.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        // CRITICAL FIX: Set view controller's view to content view and configure auto-resizing
         self.viewController.view = contentView
+        
+        // CRITICAL FIX: Add orientation change handling
+        if presentationStyle == "tab" {
+            setupOrientationChangeHandling()
+        }
+    }
+    
+    private func setupOrientationChangeHandling() {
+        NotificationCenter.default.addObserver(
+            forName: UIDevice.orientationDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleOrientationChange()
+        }
+    }
+    
+    private func handleOrientationChange() {
+        print("🔄 ScreenContainer: Handling orientation change for '\(name)'")
+        
+        // CRITICAL FIX: Ensure content view maintains proper bounds
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Force layout update
+            self.contentView.setNeedsLayout()
+            self.contentView.layoutIfNeeded()
+            
+            // Update all child views
+            for subview in self.contentView.subviews {
+                subview.frame = self.contentView.bounds
+                subview.setNeedsLayout()
+                subview.layoutIfNeeded()
+            }
+            
+            print("🎯 ScreenContainer: Updated '\(self.name)' frame to: \(self.contentView.frame)")
+        }
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self, name: UIDevice.orientationDidChangeNotification, object: nil)
     }
 }
 

@@ -108,10 +108,18 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             if let screenContainer = DCFScreenComponent.getScreenContainer(name: screenName) {
                 let navController = UINavigationController(rootViewController: screenContainer.viewController)
                 
+                // CRITICAL FIX: Ensure proper view controller containment
+                screenContainer.viewController.view = screenContainer.contentView
+                screenContainer.contentView.frame = UIScreen.main.bounds
+                screenContainer.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                
                 configureTabBarItemWithRetry(navController, screenContainer: screenContainer, index: index)
                 
                 viewControllers.append(navController)
+                
+                print("✅ DCFTabNavigatorComponent: Added screen '\(screenName)' at index \(index)")
             } else {
+                print("⚠️ DCFTabNavigatorComponent: Screen '\(screenName)' not found, creating placeholder")
                 let placeholderVC = UIViewController()
                 placeholderVC.view.backgroundColor = UIColor.systemBackground
                 placeholderVC.title = "Screen \(index)"
@@ -138,6 +146,8 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             delegate,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
+        
+        print("🎯 DCFTabNavigatorComponent: Tab bar configuration complete")
     }
     
     private func configureTabBarItemWithRetry(_ viewController: UIViewController, screenContainer: ScreenContainer, index: Int, retryCount: Int = 0) {
@@ -265,7 +275,6 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         let targetSize = CGSize(width: iconSize, height: iconSize)
         
         svgImage.size = targetSize
-        
         
         DCFSvgComponent.setCachedImage(svgImage, for: cacheKey)
         
@@ -437,6 +446,10 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             if let screens = DCFTabNavigatorComponent.navigatorState[navigatorId]?.screens {
                 for (index, screenName) in screens.enumerated() {
                     if let screenContainer = DCFScreenComponent.getScreenContainer(name: screenName) {
+                        let contentFrame = screenContainer.contentView.frame
+                        let childCount = screenContainer.contentView.subviews.count
+                        print("🔍 TAB DEBUG: Screen '\(screenName)' at index \(index) - frame: \(contentFrame), children: \(childCount)")
+                        
                         if index == selectedIndex {
                             propagateEvent(
                                 on: screenContainer.contentView,
