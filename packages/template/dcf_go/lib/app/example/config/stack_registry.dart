@@ -49,14 +49,17 @@ class StackRegistry extends StatefulComponent {
         children: [DeepScreen()],
       ),
 
-      // Modal Screen - NO VISIBILITY PROPS NEEDED!
+    
       DCFScreen(
         name: "modal_screen",
         presentationStyle: DCFPresentationStyle.modal,
         modalConfig: DCFModalConfig(
           detents: ["medium", "large"],
           showDragIndicator: true,
-          isDismissible: true,
+          isDismissible: false,
+          cornerRadius: 50,
+          allowsBackgroundDismiss: false,
+          
         ),
         navigationCommand: modalScreenCommand.state,
         onAppear: (data) => print("✅ Modal screen appeared: $data"),

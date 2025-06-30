@@ -4,7 +4,8 @@ import 'package:dcflight/dcflight.dart';
 class NavigationDemo extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final publicDetailsCommand = useStore(publicDetailScreenCommand);
+    final detailsCommand = useStore(publicDetailScreenCommand);
+    final modalCommand = useStore(publicModalScreenCommand);
     return DCFView(
       layout: LayoutProps(
         flex: 1,
@@ -32,7 +33,7 @@ class NavigationDemo extends StatefulComponent {
           layout: LayoutProps(height: 50, width: 250),
           styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
           onPress: (v) {
-            publicDetailsCommand.setState(
+            detailsCommand.setState(
               ScreenNavigationCommand(
                 pushTo: PushToScreenCommand(
                   screenName: "detail_screen",
@@ -54,7 +55,7 @@ class NavigationDemo extends StatefulComponent {
             borderRadius: 8,
           ),
           onPress: (v) {
-            publicDetailsCommand.setState(
+            modalCommand.setState(
               ScreenNavigationCommand(
                 presentModal: PresentModalCommand(
                   screenName: "modal_screen",

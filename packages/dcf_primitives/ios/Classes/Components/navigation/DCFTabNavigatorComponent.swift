@@ -267,10 +267,6 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         
         svgImage.size = targetSize
         
-        guard let uiImage = svgImage.uiImage else {
-            print("❌ DCFTabNavigatorComponent: Failed to convert SVG to UIImage")
-            return false
-        }
         
         DCFSvgComponent.setCachedImage(svgImage, for: cacheKey)
         

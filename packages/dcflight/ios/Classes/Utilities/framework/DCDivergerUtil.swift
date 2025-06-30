@@ -382,8 +382,8 @@ public func replaceRoot(controller: UIViewController) {
             let actualBounds = window.bounds
             print("🎯 DCFlight: Final window size after root installation: \(actualBounds.width)x\(actualBounds.height)")
             
-            DCFScreenUtilities.shared.updateScreenDimensions(width: actualBounds.width, height: actualBounds.height)
-            YogaShadowTree.shared.calculateAndApplyLayout(width: actualBounds.width, height: actualBounds.height)
+//            DCFScreenUtilities.shared.updateScreenDimensions(width: actualBounds.width, height: actualBounds.height)
+//            YogaShadowTree.shared.calculateAndApplyLayout(width: actualBounds.width, height: actualBounds.height)
         }
     }
 }
