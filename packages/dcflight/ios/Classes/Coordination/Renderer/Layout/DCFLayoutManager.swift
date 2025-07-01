@@ -196,6 +196,12 @@ public class DCFLayoutManager {
     
     // Direct layout application helper
     private func applyLayoutDirectly(to view: UIView, frame: CGRect) {
+        
+        if frame.origin.y > 1000 {
+            print("🚨 BLOCKING off-screen layout: viewId=\(viewRegistry.first(where: { $0.value == view })?.key ?? "unknown"), frame=\(frame)")
+            return
+        }
+        
         // 🔥 HOT RESTART COMPREHENSIVE SAFETY: Multiple validation layers
         
         // Level 1: Check if view is nil or in invalid state

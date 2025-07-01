@@ -7,13 +7,9 @@
 
 
 import 'package:dcflight/dcflight.dart';
-//Todo?
-/// SafeAreaView component that handles device safe areas using ScreenUtilities
-/// This is a pure Dart component that wraps DCFView and applies safe area insets as padding
-/// Dont use this component, it is made purposely to dirty the screen api content forcing rerender on children preventing screen from disappearing on orientaion change
-/// This issue is very unclear as i am in the validation phase not have not given time to fix this issue (its time consuming). It's definately as a result of using the a wrong method of setting children of the screen content into the tab when orientaion change. So in short this component is a work around.
-/// I have not benchmarked but its gonna have a bad impact (not visible) but theoretically it should have a bad impact on performance as it forces the screen to re-render on every orientation change (But its important to make it force setChildren else the screen would hide its content).
-class ScreenForceSafeAreaChildrenDirtier extends StatefulComponent {
+
+/// Improved SafeAreaView component that properly handles orientation changes
+class DCFSafeArea extends StatefulComponent {
   final bool top;
   final bool bottom;
   final bool left;
@@ -23,7 +19,8 @@ class ScreenForceSafeAreaChildrenDirtier extends StatefulComponent {
   final List<DCFComponentNode> children;
   final Map<String, dynamic>? events;
 
-  ScreenForceSafeAreaChildrenDirtier({
+@Deprecated("This View would be removed in the major release. A native primitve would be made as a replacement.")
+  DCFSafeArea({
     this.top = true,
     this.bottom = true,
     this.left = true,
@@ -38,13 +35,18 @@ class ScreenForceSafeAreaChildrenDirtier extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final screenUtils = ScreenUtilities.instance;
+    final orientationFlag = useState<int>(0);
     
-    // Force re-render when screen dimensions change (including orientation changes)
-    // Using empty dependencies array - effect runs only once on mount
+    // CRITICAL FIX: Use a more reliable orientation change detection
     useEffect(() {
       void onDimensionChange() {
-        // This will trigger a re-render with updated safe area values
-        scheduleUpdate();
+        // Force re-render with a flag increment to ensure proper layout recalculation
+        orientationFlag.setState(orientationFlag.state + 1);
+        
+        // Additional delay to ensure native layout completion
+        Future.delayed(Duration(milliseconds: 100), () {
+          scheduleUpdate();
+        });
       }
       
       // Add listener for dimension changes
@@ -56,17 +58,17 @@ class ScreenForceSafeAreaChildrenDirtier extends StatefulComponent {
       };
     }, dependencies: []); // Empty dependencies = run once on mount
     
-    // Calculate safe area padding (these values will be fresh after orientation change)
+    // CRITICAL FIX: Calculate safe area with orientation consideration
     final double topPadding = top ? screenUtils.safeAreaTop : 0.0;
     final double bottomPadding = bottom ? screenUtils.safeAreaBottom : 0.0;
     final double leftPadding = left ? screenUtils.safeAreaLeft : 0.0;
     final double rightPadding = right ? screenUtils.safeAreaRight : 0.0;
     
-    // Create enhanced layout with safe area padding
+    // CRITICAL FIX: Create layout that forces proper bounds
     final enhancedLayout = LayoutProps(
-      flex: layout.flex??1,
-      width: layout.width,
-      height: layout.height,
+      flex: layout.flex ?? 1,
+      width: layout.width ?? "100%",
+      height: layout.height ?? "100%",
       margin: layout.margin,
       marginTop: layout.marginTop,
       marginBottom: layout.marginBottom,
@@ -75,10 +77,10 @@ class ScreenForceSafeAreaChildrenDirtier extends StatefulComponent {
       marginHorizontal: layout.marginHorizontal,
       marginVertical: layout.marginVertical,
       padding: layout.padding,
-      paddingTop: (layout.padding)+(layout.paddingTop ?? 0.0) + (topPadding),
-      paddingBottom:(layout.padding)+(layout.paddingBottom ?? 0.0) + (bottomPadding),
-      paddingLeft: (layout.padding)+(layout.paddingLeft ?? 0.0) + (leftPadding)??0.0,
-      paddingRight: (layout.padding)+(layout.paddingRight ?? 0.0) + (rightPadding),
+      paddingTop: (layout.padding ?? 0) + (layout.paddingTop ?? 0.0) + topPadding,
+      paddingBottom: (layout.padding ?? 0) + (layout.paddingBottom ?? 0.0) + bottomPadding,
+      paddingLeft: (layout.padding ?? 0) + (layout.paddingLeft ?? 0.0) + leftPadding,
+      paddingRight: (layout.padding ?? 0) + (layout.paddingRight ?? 0.0) + rightPadding,
       paddingHorizontal: layout.paddingHorizontal,
       paddingVertical: layout.paddingVertical,
       flexDirection: layout.flexDirection,
@@ -88,14 +90,15 @@ class ScreenForceSafeAreaChildrenDirtier extends StatefulComponent {
       position: layout.position,
       absoluteLayout: AbsoluteLayout(
         top: layout.absoluteLayout?.top,
-      bottom: layout.absoluteLayout?.bottom,
-      left: layout.absoluteLayout?.left,
-      right: layout.absoluteLayout?.right,
+        bottom: layout.absoluteLayout?.bottom,
+        left: layout.absoluteLayout?.left,
+        right: layout.absoluteLayout?.right,
       )
     );
 
     return DCFElement(
       type: 'View',
+      key: "safe_area_${orientationFlag.state}", // Force recreation on orientation change
       props: {
         ...enhancedLayout.toMap(),
         ...styleSheet.toMap(),

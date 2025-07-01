@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcf_primitives/src/components/navigation/screen_safe_area.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Presentation styles for screens
@@ -37,8 +36,8 @@ class DCFTabConfig {
   /// Tab title
   final String title;
 
-  /// Tab icon name
-  final String icon;
+  /// Tab icon - can be String (SF Symbol) or Map (SVG config)
+  final dynamic icon;
 
   /// Tab index in tab bar
   final int index;
@@ -159,9 +158,6 @@ class DCFScreen extends StatelessComponent {
   /// How this screen should be presented
   final DCFPresentationStyle presentationStyle;
 
-  /// Whether the screen is currently visible
-  final bool visible;
-
   /// Configuration for tab presentation
   final DCFTabConfig? tabConfig;
 
@@ -173,13 +169,12 @@ class DCFScreen extends StatelessComponent {
 
   /// Screen content
   final List<DCFComponentNode> children;
-  final bool? shouldHideSafeArea;
-
-  /// Layout properties
-  // final LayoutProps layout;
 
   /// Style properties
   final StyleSheet styleSheet;
+
+  /// Command for screen navigation operations
+  final ScreenNavigationCommand? navigationCommand;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -196,22 +191,29 @@ class DCFScreen extends StatelessComponent {
   /// Called when screen is deactivated (no longer current)
   final Function(Map<dynamic, dynamic>)? onDeactivate;
 
+  /// Called when navigation occurs from this screen
+  final Function(Map<dynamic, dynamic>)? onNavigationEvent;
+
+  /// Called when this screen receives parameters from navigation
+  final Function(Map<dynamic, dynamic>)? onReceiveParams;
+
   DCFScreen({
-    this.shouldHideSafeArea,
     super.key,
     required this.name,
     required this.presentationStyle,
-    required this.visible,
     this.tabConfig,
     this.modalConfig,
     this.pushConfig,
     this.children = const [],
     this.styleSheet = const StyleSheet(),
+    this.navigationCommand,
     this.events,
     this.onAppear,
     this.onDisappear,
     this.onActivate,
     this.onDeactivate,
+    this.onNavigationEvent,
+    this.onReceiveParams,
   });
 
   @override
@@ -235,11 +237,19 @@ class DCFScreen extends StatelessComponent {
       eventMap['onDeactivate'] = onDeactivate;
     }
 
+    if (onNavigationEvent != null) {
+      eventMap['onNavigationEvent'] = onNavigationEvent;
+    }
+
+    if (onReceiveParams != null) {
+      eventMap['onReceiveParams'] = onReceiveParams;
+    }
+
     // Build props map
     Map<String, dynamic> props = {
+      // CRITICAL FIX: Always include name and presentationStyle as the first props
       'name': name,
       'presentationStyle': presentationStyle.name,
-      'visible': visible,
 
       // Add configuration based on presentation style
       if (tabConfig != null) ...tabConfig!.toMap(),
@@ -256,26 +266,15 @@ class DCFScreen extends StatelessComponent {
       ...eventMap,
     };
 
-    // Enforce display property based on visibility
-    props['display'] = visible ? 'flex' : 'none';
+    // Add navigation command props if command has actions
+    if (navigationCommand != null && navigationCommand!.hasCommands) {
+      props['navigationCommand'] = navigationCommand!.toMap();
+    }
 
     return DCFElement(
       type: 'Screen',
       props: props,
-      children: [
-      // work around for the screen content disappearing on orientation change
-      // ToFix: ...
-        ScreenForceSafeAreaChildrenDirtier(
-          bottom: shouldHideSafeArea == true ? false : true,
-          top: shouldHideSafeArea == true ? false : true,
-          layout: LayoutProps(
-            flex: 1,
-            padding: 0,
-            margin: 0,
-          ),
-          children: children,
-        ),
-      ],
+      children: children, // Empty children only for non-tab invisible screens
     );
   }
 }
@@ -334,5 +333,53 @@ class DCFScreenManager {
         .where((entry) => entry.value)
         .map((entry) => entry.key)
         .toList();
+  }
+}
+
+class DCFNestedNavigationRoot extends StatelessComponent {
+  final StateHook tabState;
+  final double? animationDuration;
+  final DCFTabBarStyle? tabBarStyle;
+  final Function(dynamic)? onTabChange;
+  final Function(dynamic)? onTabPress;
+  // List of tab routes (screen names)
+  final List<String> tabRoutes;
+  // Registry of tab routes as DCFScreen objects
+  // Assign a route to a corresponding tab Component
+  final DCFComponentNode tabRoutesRegistryComponents;
+  final DCFComponentNode subRoutesRegistryComponents;
+
+  DCFNestedNavigationRoot(
+      {super.key,
+      required this.tabState,
+      this.animationDuration,
+      this.tabBarStyle =
+          const DCFTabBarStyle(selectedTintColor: Colors.blueAccent),
+      this.onTabChange,
+      this.onTabPress,
+      required this.tabRoutes,
+      required this.tabRoutesRegistryComponents,
+      required this.subRoutesRegistryComponents});
+
+  @override
+  DCFComponentNode render() {
+    return DCFFragment(children: [
+      tabRoutesRegistryComponents,
+      subRoutesRegistryComponents,
+      DCFTabNavigator(
+        animationDuration: animationDuration,
+        lazyLoad: true,
+        screens: tabRoutes,
+        selectedIndex: tabState.state,
+        tabBarStyle: tabBarStyle,
+        onTabChange:  (data) {
+            final newIndex = data["selectedIndex"] as int;
+            tabState.setState(newIndex);
+            print("🔄 Tab changed to index: $newIndex");
+            onTabChange?.call(data);
+          },
+        onTabPress: onTabPress,
+      ),
+    ]);
   }
 }

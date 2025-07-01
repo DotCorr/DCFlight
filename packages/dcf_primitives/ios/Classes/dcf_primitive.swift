@@ -18,6 +18,7 @@ import dcflight
     @objc public static func registerComponents() {
         // Initialize method swizzling for gradient support
         UIView.performSwizzling()
+        DCFSvgComponent.initializeSVGKit()
         
         // Register all primitive components with the DCFlight component registry
         DCFComponentRegistry.shared.registerComponent("View", componentClass: DCFViewComponent.self)
@@ -40,8 +41,6 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent("TextInput", componentClass: DCFTextInputComponent.self)
         DCFComponentRegistry.shared.registerComponent("Dropdown", componentClass: DCFDropdownComponent.self)
         
-        // 🚀 Register NEW primitive components
-        DCFComponentRegistry.shared.registerComponent("Modal", componentClass: DCFModalComponent.self)
         DCFComponentRegistry.shared.registerComponent("Toggle", componentClass: DCFToggleComponent.self)
         DCFComponentRegistry.shared.registerComponent("Checkbox", componentClass: DCFCheckboxComponent.self)
         DCFComponentRegistry.shared.registerComponent("Alert", componentClass: DCFAlertComponent.self)
@@ -50,6 +49,7 @@ import dcflight
         // 🚀 Register ADVANCED primitive components
         DCFComponentRegistry.shared.registerComponent("Slider", componentClass: DCFSliderComponent.self)
         DCFComponentRegistry.shared.registerComponent("Spinner", componentClass: DCFSpinnerComponent.self)
+        //
           DCFComponentRegistry.shared.registerComponent("Screen", componentClass: DCFScreenComponent.self)
         DCFComponentRegistry.shared.registerComponent("TabNavigator", componentClass: DCFTabNavigatorComponent.self)
         // 🚀 Register CRITICAL primitive components
