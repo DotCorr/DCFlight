@@ -57,7 +57,7 @@ import Flutter
         }
     }
 
-    // CRITICAL FIX: Enhanced size change detection with throttling and deduplication
+    // CRITICAL FIX: Enhanced size change detection for all scenarios
     private func setupSizeChangeDetection() {
         // 1. Device orientation changes (iPhone/iPad rotation)
         NotificationCenter.default.addObserver(
@@ -68,18 +68,29 @@ import Flutter
         )
         
         // 2. Window size changes (iPad multitasking, Split View, Slide Over)
-        // REDUCED: Only use scene activation/deactivation for significant changes
         if #available(iOS 13.0, *) {
             NotificationCenter.default.addObserver(
                 self,
-                selector: #selector(sceneDidActivate),
+                selector: #selector(windowSizeChanged),
                 name: UIScene.didActivateNotification,
+                object: nil
+            )
+            
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(windowSizeChanged),
+                name: UIScene.willDeactivateNotification,
                 object: nil
             )
         }
         
-        // 3. REMOVED: Application frame changes observer (too noisy)
-        // The KVO observer handles real size changes more accurately
+        // 3. Application frame changes (covers various edge cases)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationFrameChanged),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
         
         // 4. CRITICAL: Set up KVO for window bounds changes (most reliable for iPad window resizing)
         // Delay this to ensure window is properly set up
@@ -90,7 +101,7 @@ import Flutter
         // 5. Set up cleanup for app lifecycle events (but not too aggressive)
         setupAppLifecycleObservers()
         
-        print("✅ DCFlight: Optimized size change detection initialized")
+        print("✅ DCFlight: Comprehensive size change detection initialized")
     }
     
     // CRITICAL FIX: KVO-based window bounds observer for real-time window resizing
@@ -197,27 +208,28 @@ import Flutter
         }
     }
     
-    @objc private func sceneDidActivate() {
-        // Only recalculate layout for significant scene changes
-        // This happens much less frequently than the old observers
-        print("🔄 DCFlight: Scene activated, checking for size changes")
+    @objc private func windowSizeChanged() {
+        print("🔄 DCFlight: Window scene state changed")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.recalculateLayoutIfNeeded(reason: "scene activation")
+            self.recalculateLayout(reason: "window scene change")
         }
     }
     
-    // Internal method for immediate window size changes (from KVO) with throttling
+    @objc private func applicationFrameChanged() {
+        print("🔄 DCFlight: Application frame changed")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.recalculateLayout(reason: "application frame change")
+        }
+    }
+    
+    // Internal method for immediate window size changes (from KVO)
     private func windowSizeChangedInternal(newSize: CGSize) {
-        // Only process if size actually changed from what we know
-        let lastKnownSize = getLastKnownSize()
-        if lastKnownSize != newSize {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                self.recalculateLayoutWithSize(newSize, reason: "window resize")
-            }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.recalculateLayoutWithSize(newSize, reason: "window resize")
         }
     }
     
-    // CRITICAL FIX: Centralized layout recalculation with size detection and throttling
+    // CRITICAL FIX: Centralized layout recalculation with size detection
     private func recalculateLayout(reason: String) {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first else {
@@ -227,82 +239,19 @@ import Flutter
         
         let screenWidth = window.bounds.width
         let screenHeight = window.bounds.height
-        let currentSize = CGSize(width: screenWidth, height: screenHeight)
         
-        // Get last known values from associated objects
-        let lastKnownSize = getLastKnownSize()
+        print("🎯 DCFlight: Recalculating layout due to \(reason) - Size: \(screenWidth)x\(screenHeight)")
         
-        // Only recalculate if size actually changed
-        if lastKnownSize != currentSize {
-            print("🎯 DCFlight: Recalculating layout due to \(reason) - Size: \(screenWidth)x\(screenHeight)")
-            
-            setLastKnownSize(currentSize)
-            setLastRecalculationTime(Date().timeIntervalSince1970)
-            
-            // Update screen utilities first
-            DCFScreenUtilities.shared.updateScreenDimensions(width: screenWidth, height: screenHeight)
-            
-            // Then recalculate Yoga layout
-            YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
-        } else {
-            print("🔍 DCFLight: Skipping layout recalculation for \(reason) - size unchanged")
-        }
-    }
-    
-    // New method that only recalculates if needed and not too recently
-    private func recalculateLayoutIfNeeded(reason: String) {
-        let currentTime = Date().timeIntervalSince1970
-        let lastRecalculationTime = getLastRecalculationTime()
-        let timeSinceLastRecalculation = currentTime - lastRecalculationTime
+        // Update screen utilities first
+        DCFScreenUtilities.shared.updateScreenDimensions(width: screenWidth, height: screenHeight)
         
-        // Throttle recalculations to at most once every 0.5 seconds
-        guard timeSinceLastRecalculation > 0.5 else {
-            print("🔍 DCFLight: Throttling layout recalculation for \(reason) - too recent")
-            return
-        }
-        
-        recalculateLayout(reason: reason)
-    }
-    
-    // MARK: - Associated Object Helpers for State Storage
-    
-    private func getLastKnownSize() -> CGSize {
-        let sizeValue = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "lastKnownSize".hashValue)!) as? NSValue
-        return sizeValue?.cgSizeValue ?? .zero
-    }
-    
-    private func setLastKnownSize(_ size: CGSize) {
-        let sizeValue = NSValue(cgSize: size)
-        objc_setAssociatedObject(
-            self,
-            UnsafeRawPointer(bitPattern: "lastKnownSize".hashValue)!,
-            sizeValue,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
-    }
-    
-    private func getLastRecalculationTime() -> TimeInterval {
-        let timeValue = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "lastRecalculationTime".hashValue)!) as? NSNumber
-        return timeValue?.doubleValue ?? 0
-    }
-    
-    private func setLastRecalculationTime(_ time: TimeInterval) {
-        let timeValue = NSNumber(value: time)
-        objc_setAssociatedObject(
-            self,
-            UnsafeRawPointer(bitPattern: "lastRecalculationTime".hashValue)!,
-            timeValue,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
+        // Then recalculate Yoga layout
+        YogaShadowTree.shared.calculateAndApplyLayout(width: screenWidth, height: screenHeight)
     }
     
     // Overloaded method for when we already know the new size
     private func recalculateLayoutWithSize(_ size: CGSize, reason: String) {
         print("🎯 DCFlight: Recalculating layout due to \(reason) - Size: \(size.width)x\(size.height)")
-        
-        // Update stored values
-        setLastKnownSize(size)
-        setLastRecalculationTime(Date().timeIntervalSince1970)
         
         // Update screen utilities first
         DCFScreenUtilities.shared.updateScreenDimensions(width: size.width, height: size.height)
@@ -361,7 +310,6 @@ import Flutter
     }
 }
 
-// CRITICAL FIX: Add tab bar to existing root instead of replacing it
 public func addTabBarToRoot(controller: UITabBarController) {
     guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
           let window = windowScene.windows.first,
@@ -385,4 +333,3 @@ public func addTabBarToRoot(controller: UITabBarController) {
     
     print("✅ Tab bar controller added to existing root - natural iOS behavior preserved")
 }
-
