@@ -50,11 +50,6 @@ import Flutter
 
         // CRITICAL FIX: Set up comprehensive size change detection
         setupSizeChangeDetection()
-        
-        // CRITICAL FIX: Ensure correct initial window size after view hierarchy is set up
-        DispatchQueue.main.async {
-            self.updateInitialWindowSize()
-        }
     }
 
     // CRITICAL FIX: Enhanced size change detection for all scenarios
@@ -93,12 +88,9 @@ import Flutter
         )
         
         // 4. CRITICAL: Set up KVO for window bounds changes (most reliable for iPad window resizing)
-        // Delay this to ensure window is properly set up
-        DispatchQueue.main.async {
-            self.setupWindowBoundsObserver()
-        }
+        setupWindowBoundsObserver()
         
-        // 5. Set up cleanup for app lifecycle events (but not too aggressive)
+        // 5. Set up cleanup for app lifecycle events
         setupAppLifecycleObservers()
         
         print("✅ DCFlight: Comprehensive size change detection initialized")
@@ -112,19 +104,6 @@ import Flutter
             return
         }
         
-        // Check if we already have an observer set up
-        if let existingWindow = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "observedWindow".hashValue)!) as? UIWindow {
-            if existingWindow == window {
-                print("✅ DCFlight: Window bounds observer already set up for this window")
-                return
-            } else {
-                // Different window, remove old observer
-                print("🔄 DCFlight: Removing observer from old window")
-                existingWindow.removeObserver(self, forKeyPath: "bounds")
-                existingWindow.removeObserver(self, forKeyPath: "frame")
-            }
-        }
-        
         // Store reference to window for observation
         objc_setAssociatedObject(
             self,
@@ -134,45 +113,39 @@ import Flutter
         )
         
         // Add KVO observer for bounds changes
-        do {
-            window.addObserver(
-                self,
-                forKeyPath: "bounds",
-                options: [.new, .old],
-                context: nil
-            )
-            
-            // Also observe frame changes as backup
-            window.addObserver(
-                self,
-                forKeyPath: "frame",
-                options: [.new, .old],
-                context: nil
-            )
-            
-            print("✅ DCFlight: Window bounds observer added for real-time resize detection")
-        } catch {
-            print("❌ DCFlight: Failed to add window bounds observer: \(error)")
-        }
+        window.addObserver(
+            self,
+            forKeyPath: "bounds",
+            options: [.new, .old],
+            context: nil
+        )
+        
+        // Also observe frame changes as backup
+        window.addObserver(
+            self,
+            forKeyPath: "frame",
+            options: [.new, .old],
+            context: nil
+        )
+        
+        print("✅ DCFlight: Window bounds observer added for real-time resize detection")
     }
     
     // CRITICAL FIX: Set up app lifecycle observers for cleanup
     private func setupAppLifecycleObservers() {
-        // Only clean up when app actually terminates, not when it goes to background
-        // Background cleanup was too aggressive and removed observers during normal use
+        // Clean up when app goes to background
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cleanup),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
         
+        // Clean up when app terminates
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(cleanup),
             name: UIApplication.willTerminateNotification,
-            object: nil
-        )
-        
-        // Also set up re-initialization when app becomes active (in case observers were lost)
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(reinitializeIfNeeded),
-            name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
     }
@@ -192,8 +165,6 @@ import Flutter
                 if oldRect.size != newRect.size {
                     print("🔄 DCFlight: Window size changed from \(oldRect.size) to \(newRect.size)")
                     windowSizeChangedInternal(newSize: newRect.size)
-                } else {
-                    print("🔍 DCFlight: Window position changed but size remained the same")
                 }
             }
         } else {
@@ -280,56 +251,22 @@ import Flutter
         
         print("✅ DCFlight: Window size detection cleanup completed")
     }
-    
-    // CRITICAL FIX: Re-initialize window observers if they were lost
-    @objc private func reinitializeIfNeeded() {
-        // Check if we still have a window observer
-        let hasWindowObserver = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "observedWindow".hashValue)!) != nil
-        
-        if !hasWindowObserver {
-            print("⚠️ DCFlight: Window observer lost, re-initializing...")
-            setupWindowBoundsObserver()
-        }
-    }
-    
-    // CRITICAL FIX: Update initial window size after everything is set up
-    private func updateInitialWindowSize() {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first else {
-            print("⚠️ DCFlight: Could not find window for initial size update")
-            return
-        }
-        
-        // Get the actual window bounds (not screen bounds)
-        let windowBounds = window.bounds
-        print("🎯 DCFlight: Initial window size detected: \(windowBounds.width)x\(windowBounds.height)")
-        
-        // Force update screen utilities and layout with correct window size
-        DCFScreenUtilities.shared.updateScreenDimensions(width: windowBounds.width, height: windowBounds.height)
-        YogaShadowTree.shared.calculateAndApplyLayout(width: windowBounds.width, height: windowBounds.height)
-    }
 }
 
-public func addTabBarToRoot(controller: UITabBarController) {
+public func replaceRoot(controller: UIViewController) {
+    // Get the current root view controller
     guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-          let window = windowScene.windows.first,
-          let rootViewController = window.rootViewController else {
-        print("❌ No existing root view controller found")
+          let window = windowScene.windows.first else {
+        print("❌ DCFTabNavigatorComponent: Could not find window to install tab bar controller")
         return
     }
     
-    print("✅ Adding tab bar controller to existing root instead of replacing it")
+    controller.title = "Root Replacement"
     
-    // Add tab bar controller as a child instead of replacing root
-    rootViewController.addChild(controller)
-    rootViewController.view.addSubview(controller.view)
-    
-    // Make tab bar fill the entire root view
-    controller.view.frame = rootViewController.view.bounds
-    controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    
-    // Complete the child view controller setup
-    controller.didMove(toParent: rootViewController)
-    
-    print("✅ Tab bar controller added to existing root - natural iOS behavior preserved")
+    // Replace root view controller
+    DispatchQueue.main.async {
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        print("✅ DCFTabNavigatorComponent: Installed tab bar controller as root")
+    }
 }
