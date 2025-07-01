@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:dcflight/framework/renderer/vdom/mutator/vdom_mutator_extension_reg.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dcflight/framework/renderer/interface/interface.dart'
     show PlatformInterface;
@@ -17,6 +18,8 @@ export 'package:dcflight/framework/renderer/vdom/component/store.dart';
 import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
+
+
 
 /// Virtual DOM implementation with efficient reconciliation and state handling
 class VDom {
@@ -150,18 +153,6 @@ class VDom {
         // If that fails, try other common patterns
       }
 
-      // // Try specific patterns for common event types
-      // if (eventData.containsKey('text')) {
-      //   // Handle TextInput onChangeText events that expect a string parameter
-      //   try {
-      //     final text = eventData['text'] as String? ?? '';
-      //     Function.apply(handler, [text]);
-      //     return;
-      //   } catch (e) {
-      //     // Continue to next pattern
-      //   }
-      // }
-
       if (eventData.containsKey('width') && eventData.containsKey('height')) {
         // Handle onContentSizeChange events that might expect (double, double)
         try {
@@ -200,6 +191,28 @@ class VDom {
   /// Schedule a component update when state changes
   /// This is a key method that triggers UI updates after state changes
   void _scheduleComponentUpdate(StatefulComponent component) {
+    // NEW: Check for custom state change handler
+    final customHandler = VDomExtensionRegistry.instance.getStateChangeHandler(component.runtimeType);
+    if (customHandler != null) {
+      final context = VDomStateChangeContext(
+        scheduleUpdate: () => _scheduleComponentUpdateInternal(component),
+        skipUpdate: () {}, // Skip this update
+        partialUpdate: (node) => _partialUpdateNode(node),
+      );
+      
+      // Let the custom handler decide what to do
+      if (customHandler.shouldHandle(component, null)) {
+        customHandler.handleStateChange(component, null, null, context);
+        return;
+      }
+    }
+
+    // Original logic continues
+    _scheduleComponentUpdateInternal(component);
+  }
+
+  /// Internal method for scheduling component updates (separated for extension use)
+  void _scheduleComponentUpdateInternal(StatefulComponent component) {
     // Verify component is still registered
     if (!_statefulComponents.containsKey(component.instanceId)) {
       // Re-register the component to ensure it's tracked
@@ -218,6 +231,16 @@ class VDom {
       // Use a very short delay to allow multiple state changes to be batched together
       // but maintain responsiveness
       Future.microtask(_processPendingUpdates);
+    }
+  }
+
+  /// NEW: Partial update for specific node (used by extensions)
+  void _partialUpdateNode(DCFComponentNode node) {
+    // Custom logic for partial updates without full reconciliation
+    // This could be used by optimized state management extensions
+    if (node.effectiveNativeViewId != null) {
+      // Trigger a targeted update for just this node
+      print('Performing partial update for node: ${node.runtimeType}');
     }
   }
 
@@ -282,6 +305,17 @@ class VDom {
     }
 
     try {
+      // NEW: Call lifecycle interceptor before update
+      final lifecycleInterceptor = VDomExtensionRegistry.instance.getLifecycleInterceptor(component.runtimeType);
+      if (lifecycleInterceptor != null) {
+        final context = VDomLifecycleContext(
+          scheduleUpdate: () => _scheduleComponentUpdateInternal(component as StatefulComponent),
+          forceUpdate: (node) => _partialUpdateNode(node),
+          vdomState: {'isUpdating': true},
+        );
+        lifecycleInterceptor.beforeUpdate(component, context);
+      }
+
       // Perform component-specific update preparation
       if (component is StatefulComponent) {
         component.prepareForRender();
@@ -349,11 +383,18 @@ class VDom {
         component.componentDidUpdate({});
         component.runEffectsAfterRender();
       }
+
+      // NEW: Call lifecycle interceptor after update
+      if (lifecycleInterceptor != null) {
+        final context = VDomLifecycleContext(
+          scheduleUpdate: () => _scheduleComponentUpdateInternal(component as StatefulComponent),
+          forceUpdate: (node) => _partialUpdateNode(node),
+          vdomState: {'isUpdating': false},
+        );
+        lifecycleInterceptor.afterUpdate(component, context);
+      }
     } catch (e) {}
   }
-
-  // REMOVED: calculateAndApplyLayout method
-  // Layout is now calculated automatically when layout props change
 
   /// Render a node to native UI
   Future<String?> renderToNative(DCFComponentNode node,
@@ -363,6 +404,17 @@ class VDom {
     try {
       // Handle Fragment nodes
       if (node is DCFFragment) {
+        // NEW: Call lifecycle interceptor before mount
+        final lifecycleInterceptor = VDomExtensionRegistry.instance.getLifecycleInterceptor(node.runtimeType);
+        if (lifecycleInterceptor != null) {
+          final context = VDomLifecycleContext(
+            scheduleUpdate: () {},
+            forceUpdate: (node) => _partialUpdateNode(node),
+            vdomState: {'isMounting': true},
+          );
+          lifecycleInterceptor.beforeMount(node, context);
+        }
+
         // Mount the fragment
         if (!node.isMounted) {
           node.mount(node.parent);
@@ -414,12 +466,33 @@ class VDom {
         // Store child IDs for cleanup later
         node.childViewIds = childIds;
 
+        // NEW: Call lifecycle interceptor after mount
+        if (lifecycleInterceptor != null) {
+          final context = VDomLifecycleContext(
+            scheduleUpdate: () {},
+            forceUpdate: (node) => _partialUpdateNode(node),
+            vdomState: {'isMounting': false},
+          );
+          lifecycleInterceptor.afterMount(node, context);
+        }
+
         return null; // Fragments don't have their own native view ID
       }
 
       // Handle Component nodes
       if (node is StatefulComponent || node is StatelessComponent) {
         try {
+          // NEW: Call lifecycle interceptor before mount
+          final lifecycleInterceptor = VDomExtensionRegistry.instance.getLifecycleInterceptor(node.runtimeType);
+          if (lifecycleInterceptor != null) {
+            final context = VDomLifecycleContext(
+              scheduleUpdate: () => _scheduleComponentUpdateInternal(node as StatefulComponent),
+              forceUpdate: (node) => _partialUpdateNode(node),
+              vdomState: {'isMounting': true},
+            );
+            lifecycleInterceptor.beforeMount(node, context);
+          }
+
           // Register the component
           registerComponent(node);
 
@@ -449,6 +522,16 @@ class VDom {
           // Run effects for stateful components
           if (node is StatefulComponent) {
             node.runEffectsAfterRender();
+          }
+
+          // NEW: Call lifecycle interceptor after mount
+          if (lifecycleInterceptor != null) {
+            final context = VDomLifecycleContext(
+              scheduleUpdate: () => _scheduleComponentUpdateInternal(node as StatefulComponent),
+              forceUpdate: (node) => _partialUpdateNode(node),
+              vdomState: {'isMounting': false},
+            );
+            lifecycleInterceptor.afterMount(node, context);
           }
 
           return viewId;
@@ -528,8 +611,24 @@ class VDom {
   }
 
   /// Reconcile two nodes by efficiently updating only what changed
+  /// NOW WITH EXTENSION SUPPORT
   Future<void> _reconcile(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
+    
+    // NEW: Check for custom reconciliation handler first
+    final customHandler = VDomExtensionRegistry.instance.getReconciliationHandler(newNode.runtimeType);
+    if (customHandler != null && customHandler.shouldHandle(oldNode, newNode)) {
+      final context = VDomReconciliationContext(
+        defaultReconcile: (old, new_) => _reconcile(old, new_),
+        replaceNode: (old, new_) => _replaceNode(old, new_),
+        mountNode: (node) => node.mount(node.parent),
+        unmountNode: (node) => node.unmount(),
+      );
+      
+      await customHandler.reconcile(oldNode, newNode, context);
+      return;
+    }
+
     // Transfer important parent reference first
     newNode.parent = oldNode.parent;
 
@@ -612,11 +711,20 @@ class VDom {
     }
   }
 
-  // No special handling for specific component types - all components are treated equally
-
   /// Replace a node entirely
   Future<void> _replaceNode(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
+    // NEW: Call lifecycle interceptor before unmount
+    final lifecycleInterceptor = VDomExtensionRegistry.instance.getLifecycleInterceptor(oldNode.runtimeType);
+    if (lifecycleInterceptor != null) {
+      final context = VDomLifecycleContext(
+        scheduleUpdate: () {},
+        forceUpdate: (node) => _partialUpdateNode(node),
+        vdomState: {'isUnmounting': true},
+      );
+      lifecycleInterceptor.beforeUnmount(oldNode, context);
+    }
+
     // CRITICAL HOT RELOAD FIX: Properly dispose of old component instances
     await _disposeOldComponent(oldNode);
 
@@ -712,11 +820,32 @@ class VDom {
         _batchUpdateInProgress = true;
       }
     }
+
+    // NEW: Call lifecycle interceptor after unmount
+    if (lifecycleInterceptor != null) {
+      final context = VDomLifecycleContext(
+        scheduleUpdate: () {},
+        forceUpdate: (node) => _partialUpdateNode(node),
+        vdomState: {'isUnmounting': false},
+      );
+      lifecycleInterceptor.afterUnmount(oldNode, context);
+    }
   }
 
   /// Dispose of old component instance and clean up its state
   Future<void> _disposeOldComponent(DCFComponentNode oldNode) async {
     try {
+      // NEW: Call lifecycle interceptor before unmount
+      final lifecycleInterceptor = VDomExtensionRegistry.instance.getLifecycleInterceptor(oldNode.runtimeType);
+      if (lifecycleInterceptor != null) {
+        final context = VDomLifecycleContext(
+          scheduleUpdate: () {},
+          forceUpdate: (node) => _partialUpdateNode(node),
+          vdomState: {'isDisposing': true},
+        );
+        lifecycleInterceptor.beforeUnmount(oldNode, context);
+      }
+
       // Handle StatefulComponent disposal
       if (oldNode is StatefulComponent) {
         // Remove from component tracking FIRST to prevent further updates
@@ -756,6 +885,16 @@ class VDom {
       // Remove from view tracking
       if (oldNode.effectiveNativeViewId != null) {
         _nodesByViewId.remove(oldNode.effectiveNativeViewId);
+      }
+
+      // NEW: Call lifecycle interceptor after unmount
+      if (lifecycleInterceptor != null) {
+        final context = VDomLifecycleContext(
+          scheduleUpdate: () {},
+          forceUpdate: (node) => _partialUpdateNode(node),
+          vdomState: {'isDisposing': false},
+        );
+        lifecycleInterceptor.afterUnmount(oldNode, context);
       }
     } catch (e) {}
   }
