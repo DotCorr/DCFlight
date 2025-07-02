@@ -6,7 +6,8 @@
  */
 
 
-import 'store.dart';
+
+import 'package:dcflight/framework/renderer/vdom/component/hooks/store.dart';
 
 /// Base hook class for all hook types
 abstract class Hook {

@@ -6,22 +6,26 @@ void main() {
   DCFlight.start(app: MyApp());
 }
 
-class MyApp extends StatefulComponent {
+class MyApp extends StatelessComponent {
+  // keep outside of the render method to avoid re-instantiation(to be safe)
+  // if this was inside the render method if the main component was stateful, useMemo could have been used in the render method
+  final tabReg = TabRegistry();
+  final subRoutesReg = StackRegistry();
   @override
   DCFComponentNode render() {
-    final currentTab = useState<int>(0);
-
     return DCFNestedNavigationRoot(
       onTabChange: (data) {
-        final newIndex = data["selectedIndex"] as int;
-
-        print("🔄 Tab Comfirm changed to index: $newIndex");
+        print("🔄 Tab changed to index: ${data["selectedIndex"]}");
       },
-      tabRoutes: ["test_home", "test_profile", "navigation_demo", "test_gh"],
-      tabState: currentTab,
-
-      tabRoutesRegistryComponents: TabRegistry(),
-      subRoutesRegistryComponents: StackRegistry(),
+      tabRoutes: const [
+        "test_home",
+        "test_profile",
+        "navigation_demo",
+        "test_gh",
+      ],
+      selectedIndex: 0,
+      tabRoutesRegistryComponents: tabReg,
+      subRoutesRegistryComponents: subRoutesReg,
     );
   }
 }

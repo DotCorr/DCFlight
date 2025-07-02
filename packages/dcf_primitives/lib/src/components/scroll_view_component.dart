@@ -5,11 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// DCFScrollView - Optimized scroll view component
 /// Uses your native VirtualizedScrollView for best performance
-class DCFScrollView extends StatelessComponent {
+class DCFScrollView extends StatelessComponent with EquatableMixin {
   /// Child nodes
   final List<DCFComponentNode> children;
   
@@ -144,10 +145,36 @@ class DCFScrollView extends StatelessComponent {
       children: children,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        children,
+        horizontal,
+        layout,
+        styleSheet,
+        showsScrollIndicator,
+        contentContainerStyle,
+        onScroll,
+        onScrollBeginDrag,
+        onScrollEndDrag,
+        onScrollEnd,
+        onContentSizeChange,
+        scrollIndicatorColor,
+        scrollIndicatorSize,
+        scrollEnabled,
+        alwaysBounceVertical,
+        alwaysBounceHorizontal,
+        pagingEnabled,
+        keyboardDismissMode,
+        contentInset,
+        command,
+        events,
+        key,
+      ];
 }
 
 /// Content insets for scroll views
-class ContentInset {
+class ContentInset extends Equatable {
   final double top;
   final double left;
   final double bottom;
@@ -182,4 +209,7 @@ class ContentInset {
       'right': right,
     };
   }
+
+  @override
+  List<Object?> get props => [top, left, bottom, right];
 }

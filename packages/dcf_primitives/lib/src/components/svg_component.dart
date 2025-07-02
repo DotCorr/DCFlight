@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// SVG properties
-class DCFSVGProps {
+class DCFSVGProps extends Equatable {
   /// The SVG source (asset or URL)
   final String source;
   
@@ -44,10 +44,19 @@ class DCFSVGProps {
       'adaptive': adaptive,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        source,
+        isAsset,
+        width,
+        height,
+        adaptive,
+      ];
 }
 
 /// An SVG component implementation using StatelessComponent
-class DCFSVG extends StatelessComponent {
+class DCFSVG extends StatelessComponent with EquatableMixin {
   /// The SVG properties
   final DCFSVGProps svgProps;
   
@@ -84,4 +93,13 @@ class DCFSVG extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        svgProps,
+        layout,
+        styleSheet,
+        events,
+        key,
+      ];
 }

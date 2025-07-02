@@ -7,11 +7,12 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 import 'gradient.dart';
 import 'hit_slop.dart';
 
 /// StyleSheet for visual styling properties
-class StyleSheet {
+class StyleSheet extends Equatable {
   // Border styles
   final dynamic borderRadius;
   final dynamic borderTopLeftRadius;
@@ -267,4 +268,29 @@ class StyleSheet {
   static bool isStyleProperty(String propName) {
     return all.contains(propName);
   }
+
+  @override
+  List<Object?> get props => [
+        borderRadius,
+        borderTopLeftRadius,
+        borderTopRightRadius,
+        borderBottomLeftRadius,
+        borderBottomRightRadius,
+        borderColor,
+        borderWidth,
+        backgroundColor,
+        backgroundGradient,
+        opacity,
+        shadowColor,
+        shadowOpacity,
+        shadowRadius,
+        shadowOffsetX,
+        shadowOffsetY,
+        elevation,
+        hitSlop,
+        accessible,
+        accessibilityLabel,
+        testID,
+        pointerEvents,
+      ];
 }

@@ -1,5 +1,7 @@
 import 'package:dcflight/dcflight.dart';
 
+// no useMemo here as this is a stateless component
+// This should give you a hang over things(stateful->useMemo(not compulsory but safe), stateless->no useMemo)
 class GHRepo extends StatelessComponent {
   @override
   DCFComponentNode render() {

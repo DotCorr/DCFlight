@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 /// WebView loading mode
 enum DCFWebViewLoadMode {
@@ -30,7 +31,7 @@ enum DCFWebViewNavigationPolicy {
 }
 
 /// WebView properties
-class DCFWebViewProps {
+class DCFWebViewProps extends Equatable {
   /// The URL to load or HTML string content
   final String source;
   
@@ -105,10 +106,27 @@ class DCFWebViewProps {
       'adaptive': adaptive,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        source,
+        loadMode,
+        contentType,
+        javaScriptEnabled,
+        allowsInlineMediaPlayback,
+        mediaPlaybackRequiresUserAction,
+        allowsZoom,
+        showsScrollIndicators,
+        bounces,
+        scrollEnabled,
+        automaticallyAdjustContentInsets,
+        userAgent,
+        adaptive,
+      ];
 }
 
 /// WebView component for loading dynamic content
-class DCFWebView extends StatelessComponent {
+class DCFWebView extends StatelessComponent with EquatableMixin {
   /// The webview properties
   final DCFWebViewProps webViewProps;
   
@@ -197,4 +215,19 @@ class DCFWebView extends StatelessComponent {
       children: [], // WebView is a leaf node - no children allowed just incase you are wondering
     );
   }
+
+  @override
+  List<Object?> get props => [
+        webViewProps,
+        layout,
+        styleSheet,
+        events,
+        onLoadStart,
+        onLoadEnd,
+        onLoadError,
+        onNavigationStateChange,
+        onMessage,
+        onLoadProgress,
+        key,
+      ];
 }

@@ -17,7 +17,7 @@ export 'vdom_api.dart';
 export 'component/component.dart';
 
 // Re-export hooks
-export 'component/state_hook.dart';
+export 'component/hooks/state_hook.dart';
 export 'component/fragment.dart';
 // Re-export element and node classes
 export 'component/component_node.dart';
@@ -27,8 +27,8 @@ export 'component/dcf_element.dart';
 export 'component/error_boundary.dart';
 
 // Re-export store
-export 'component/store.dart';
-
+export 'component/hooks/store.dart';
+export 'component/hooks/memo_hook.dart';
 // Re-export portal system
 export 'portal/enhanced_portal_manager.dart';
 export 'portal/dcf_portal.dart';

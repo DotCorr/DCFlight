@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 /// Gradient types supported by DCFlight
 enum DCFGradientType {
@@ -15,7 +16,7 @@ enum DCFGradientType {
 }
 
 /// Gradient definition for DCFlight styling
-class DCFGradient {
+class DCFGradient extends Equatable {
   final DCFGradientType type;
   final List<Color> colors;
   final List<double>? stops;
@@ -107,4 +108,18 @@ class DCFGradient {
 
     return map;
   }
+
+  @override
+  List<Object?> get props => [
+        type,
+        colors,
+        stops,
+        startX,
+        startY,
+        endX,
+        endY,
+        centerX,
+        centerY,
+        radius,
+      ];
 }

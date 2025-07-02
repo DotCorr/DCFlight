@@ -7,9 +7,10 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 /// Button properties
-class DCFButtonProps {
+class DCFButtonProps extends Equatable {
   /// The title text of the button
   final String title;
   
@@ -34,10 +35,13 @@ class DCFButtonProps {
       'adaptive': adaptive,
     };
   }
+
+  @override
+  List<Object?> get props => [title, disabled, adaptive];
 }
 
 /// A button component implementation using StatelessComponent
-class DCFButton extends StatelessComponent {
+class DCFButton extends StatelessComponent with EquatableMixin {
   /// The button properties
   final DCFButtonProps buttonProps;
   
@@ -51,6 +55,9 @@ class DCFButton extends StatelessComponent {
   final Map<String, dynamic>? events;
   
   /// Press event handler - receives Map<dynamic, dynamic> with press data
+  final Function(Map<dynamic, dynamic>)? onLongPress;
+
+  /// Press event handler - receives Map<dynamic, dynamic> with press data
   final Function(Map<dynamic, dynamic>)? onPress;
   
   /// Create a button component
@@ -61,6 +68,7 @@ class DCFButton extends StatelessComponent {
     ),
     this.styleSheet = const StyleSheet(),
     this.onPress,
+    this.onLongPress,
     this.events,
     super.key,
   });
@@ -72,6 +80,10 @@ class DCFButton extends StatelessComponent {
     
     if (onPress != null) {
       eventMap['onPress'] = onPress;
+    }
+
+    if (onLongPress != null) {
+      eventMap['onLongPress'] = onLongPress;
     }
     
     // Serialize command if provided
@@ -88,5 +100,15 @@ class DCFButton extends StatelessComponent {
       children: [],
     );
   }
-}
 
+  @override
+  List<Object?> get props => [
+        buttonProps,
+        layout,
+        styleSheet,
+        onPress,
+        onLongPress,
+        events,
+        key,
+      ];
+}

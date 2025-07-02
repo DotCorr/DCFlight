@@ -42,7 +42,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         DispatchQueue.main.async {
             self.configureTabBarController(tabBarController, props: props, navigatorId: navigatorId)
             
-            addTabBarToRoot(controller: tabBarController)
+            replaceRoot(controller: tabBarController)
             self.fireInitialEvents(navigatorId: navigatorId, props: props)
         }
         

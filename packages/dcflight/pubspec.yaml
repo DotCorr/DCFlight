@@ -17,6 +17,7 @@ dependencies:
 # framework dependencies (local)
   dcf_primitives:
     path: ../dcf_primitives
+  equatable: ^2.0.7
   
 
 dev_dependencies:

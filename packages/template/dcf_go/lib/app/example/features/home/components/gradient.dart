@@ -9,7 +9,8 @@ class GradientTest extends StatefulComponent {
     final animatedViewCommand = useState<AnimatedViewCommand?>(null);
     final scrollCommand = useState<ScrollViewCommand?>(null);
 
-    return DCFScrollView(
+    return useMemo(() {
+      return DCFScrollView(
       // ✅ Command pattern demonstration for ScrollView in gradient test
       command: scrollCommand.state,
       layout: LayoutProps(flex: 1),
@@ -257,5 +258,6 @@ class GradientTest extends StatefulComponent {
         )),
       ],
     );
+    }, [animatedViewCommand.state, scrollCommand.state]);
   }
 }

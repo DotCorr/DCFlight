@@ -6,10 +6,11 @@
  */
 
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Image properties
-class DCFImageProps {
+class DCFImageProps extends Equatable {
   /// The image source URI (can be a network URL or local resource)
   final String source;
   
@@ -45,10 +46,19 @@ class DCFImageProps {
       if (placeholder != null) 'placeholder': placeholder,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        source,
+        resizeMode,
+        fadeDuration,
+        placeholder,
+        adaptive,
+      ];
 }
 
 /// An image component implementation using StatelessComponent
-class DCFImage extends StatelessComponent {
+class DCFImage extends StatelessComponent with EquatableMixin {
   /// The image properties
   final DCFImageProps imageProps;
   
@@ -110,6 +120,17 @@ class DCFImage extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        imageProps,
+        layout,
+        styleSheet,
+        events,
+        onLoad,
+        onError,
+        key,
+      ];
 }
 
 

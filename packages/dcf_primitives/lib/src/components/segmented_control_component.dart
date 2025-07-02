@@ -5,10 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Segmented control item configuration
-class DCFSegmentItem {
+class DCFSegmentItem extends Equatable {
   /// The title text for the segment
   final String title;
   
@@ -31,10 +32,13 @@ class DCFSegmentItem {
       'enabled': enabled,
     };
   }
+
+  @override
+  List<Object?> get props => [title, iconAsset, enabled];
 }
 
 /// Segmented control properties
-class DCFSegmentedControlProps {
+class DCFSegmentedControlProps extends Equatable {
   /// The list of segment items (type-safe)
   final List<DCFSegmentItem> segments;
   
@@ -79,10 +83,21 @@ class DCFSegmentedControlProps {
       if (tintColor != null) 'tintColor': tintColor,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        segments,
+        selectedIndex,
+        enabled,
+        adaptive,
+        backgroundColor,
+        selectedTintColor,
+        tintColor,
+      ];
 }
 
 /// A segmented control component implementation using StatelessComponent
-class DCFSegmentedControl extends StatelessComponent {
+class DCFSegmentedControl extends StatelessComponent with EquatableMixin {
   /// The segmented control properties
   final DCFSegmentedControlProps segmentedControlProps;
   
@@ -131,4 +146,14 @@ class DCFSegmentedControl extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        segmentedControlProps,
+        layout,
+        styleSheet,
+        events,
+        onSelectionChange,
+        key,
+      ];
 }

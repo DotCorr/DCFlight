@@ -6,67 +6,68 @@ class NavigationDemo extends StatefulComponent {
   DCFComponentNode render() {
     final detailsCommand = useStore(publicDetailScreenCommand);
     final modalCommand = useStore(publicModalScreenCommand);
-    return DCFView(
-      layout: LayoutProps(
-        flex: 1,
-        padding: 20,
-        justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
-        gap: 20,
-      ),
-      children: [
-        DCFText(
-          content: "Navigation Demo",
-          textProps: DCFTextProps(
-            fontSize: 28,
-            fontWeight: DCFFontWeight.bold,
-            color: Colors.black,
+    return useMemo(() {
+      return DCFView(
+        layout: LayoutProps(
+          flex: 1,
+          padding: 20,
+          justifyContent: YogaJustifyContent.center,
+          alignItems: YogaAlign.center,
+          gap: 20,
+        ),
+        children: [
+          DCFText(
+            content: "Navigation Demo",
+            textProps: DCFTextProps(
+              fontSize: 28,
+              fontWeight: DCFFontWeight.bold,
+              color: Colors.black,
+            ),
           ),
-        ),
-        DCFText(
-          content: "Test push navigation with screen commands:",
-          textProps: DCFTextProps(fontSize: 16, color: Colors.grey.shade600),
-        ),
-
-        DCFButton(
-          buttonProps: DCFButtonProps(title: "Push to Detail Screen"),
-          layout: LayoutProps(height: 50, width: 250),
-          styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
-          onPress: (v) {
-            detailsCommand.setState(
-              ScreenNavigationCommand(
-                pushTo: PushToScreenCommand(
-                  screenName: "detail_screen",
-                  params: {
-                    "from": "navigation_demo",
-                    "timestamp": DateTime.now().toString(),
-                  },
-                ),
-              ),
-            );
-          },
-        ),
-
-        DCFButton(
-          buttonProps: DCFButtonProps(title: "Present Modal Screen"),
-          layout: LayoutProps(height: 50, width: 250),
-          styleSheet: StyleSheet(
-            backgroundColor: Colors.green,
-            borderRadius: 8,
+          DCFText(
+            content: "Test push navigation with screen commands:",
+            textProps: DCFTextProps(fontSize: 16, color: Colors.grey.shade600),
           ),
-          onPress: (v) {
-            modalCommand.setState(
-              ScreenNavigationCommand(
-                presentModal: PresentModalCommand(
-                  screenName: "modal_screen",
-                  presentationStyle: "pageSheet",
-                  params: {"modalType": "demo"},
+          DCFButton(
+            buttonProps: DCFButtonProps(title: "Push to Detail Screen"),
+            layout: LayoutProps(height: 50, width: 250),
+            styleSheet:
+                StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
+            onPress: (v) {
+              detailsCommand.setState(
+                ScreenNavigationCommand(
+                  pushTo: PushToScreenCommand(
+                    screenName: "detail_screen",
+                    params: {
+                      "from": "navigation_demo",
+                      "timestamp": DateTime.now().toString(),
+                    },
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
+              );
+            },
+          ),
+          DCFButton(
+            buttonProps: DCFButtonProps(title: "Present Modal Screen"),
+            layout: LayoutProps(height: 50, width: 250),
+            styleSheet: StyleSheet(
+              backgroundColor: Colors.green,
+              borderRadius: 8,
+            ),
+            onPress: (v) {
+              modalCommand.setState(
+                ScreenNavigationCommand(
+                  presentModal: PresentModalCommand(
+                    screenName: "modal_screen",
+                    presentationStyle: "pageSheet",
+                    params: {"modalType": "demo"},
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      );
+    }, []);
   }
 }
