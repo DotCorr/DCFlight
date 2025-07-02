@@ -6,10 +6,11 @@
  */
 
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// A touchable opacity component implementation using StatelessComponent
-class DCFTouchableOpacity extends StatelessComponent {
+class DCFTouchableOpacity extends StatelessComponent with EquatableMixin {
   /// Child nodes
   final List<DCFComponentNode> children;
   
@@ -101,4 +102,21 @@ class DCFTouchableOpacity extends StatelessComponent {
       children: children,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        children,
+        activeOpacity,
+        layout,
+        styleSheet,
+        onPress,
+        onPressIn,
+        onPressOut,
+        onLongPress,
+        longPressDelay,
+        disabled,
+        events,
+        adaptive,
+        key,
+      ];
 }
