@@ -5,14 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// 🚀 DCF Slider Component
 /// 
 /// A slider component that provides native platform behavior.
 /// Supports custom styling, range, and step values with adaptive theming.
-class DCFSlider extends StatelessComponent {
+class DCFSlider extends StatelessComponent with EquatableMixin {
   /// Current value of the slider
   final double value;
   
@@ -129,4 +129,24 @@ class DCFSlider extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        value,
+        minimumValue,
+        maximumValue,
+        step,
+        onValueChange,
+        onSlidingStart,
+        onSlidingComplete,
+        disabled,
+        adaptive,
+        minimumTrackTintColor,
+        maximumTrackTintColor,
+        thumbTintColor,
+        layout,
+        styleSheet,
+        events,
+        key,
+      ];
 }
