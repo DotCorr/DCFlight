@@ -4,7 +4,6 @@ import 'package:dcflight/dcflight.dart';
 import 'package:dcflight/framework/constants/style/gradient.dart';
 
 class GradientTest extends StatefulComponent {
-  GradientTest({super.key});
   @override
   DCFComponentNode render() {
     final animatedViewCommand = useState<AnimatedViewCommand?>(null);

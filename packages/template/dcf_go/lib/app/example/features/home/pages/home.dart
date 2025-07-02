@@ -1,7 +1,7 @@
 import 'package:dcflight/dcflight.dart';
 
 class Home extends StatefulComponent {
-  Home({super.key});
+
   @override
   DCFComponentNode render() {
     final selectedIndexWeb = useState<int>(2);

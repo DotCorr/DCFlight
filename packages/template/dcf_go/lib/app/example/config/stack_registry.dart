@@ -6,6 +6,11 @@ import 'package:dcflight/dcflight.dart';
 import 'package:dcf_go/app/example/config/global_state.dart';
 
 class StackRegistry extends StatefulComponent {
+  // Instantiate screen components once to preserve their state and avoid re-renders.
+  final _detailsScreen = Details();
+  final _deepScreen = DeepScreen();
+  final _modalScreen = ModalScreen();
+
   @override
   DCFComponentNode render() {
     final detailsCommand = useStore(publicDetailScreenCommand);
@@ -29,7 +34,7 @@ class StackRegistry extends StatefulComponent {
             detailsCommand.setState(null);
           },
           onReceiveParams: (data) => print("📨 Detail received params: $data"),
-          children: [Details()],
+          children: [_detailsScreen],
         ),
 
         DCFScreen(
@@ -46,7 +51,7 @@ class StackRegistry extends StatefulComponent {
             deepScreenCommand.setState(null);
           },
           onReceiveParams: (data) => print("📨 Deep received params: $data"),
-          children: [DeepScreen()],
+          children: [_deepScreen],
         ),
 
         DCFScreen(
@@ -59,7 +64,7 @@ class StackRegistry extends StatefulComponent {
             modalScreenCommand.setState(null);
           },
           onReceiveParams: (data) => print("📨 Modal received params: $data"),
-          children: [ModalScreen()],
+          children: [_modalScreen],
         ),
       ],
     );
