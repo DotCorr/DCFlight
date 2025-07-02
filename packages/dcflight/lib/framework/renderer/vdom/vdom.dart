@@ -853,6 +853,15 @@ class VDom {
       newNode.nativeViewId = oldNode.nativeViewId;
       newNode.contentViewId = oldNode.contentViewId;
 
+      // FRAMEWORK-LEVEL OPTIMIZATION:
+      // If two stateless components are "semantically equal" (checked via operator==),
+      // we can skip reconciling their children entirely. This avoids the need for
+      // developers to manually memoize simple, static components.
+      if (oldNode == newNode) {
+        VDomDebugLogger.logReconcile('SKIP_STATELESS', oldNode, newNode, reason: 'Stateless components are semantically equal');
+        return; // The new node is identical to the old one, so no work is needed.
+      }
+
       // Handle reconciliation of the rendered trees
       final oldRenderedNode = oldNode.renderedNode;
       final newRenderedNode = newNode.renderedNode;

@@ -2,20 +2,6 @@ import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcflight/dcflight.dart';
 
 class NavigationDemo extends StatefulComponent {
-  // Lift static text components out of the render method.
-  final _titleText = DCFText(
-    content: "Navigation Demo",
-    textProps: DCFTextProps(
-      fontSize: 28,
-      fontWeight: DCFFontWeight.bold,
-      color: Colors.black,
-    ),
-  );
-  final _subtitleText = DCFText(
-    content: "Test push navigation with screen commands:",
-    textProps: DCFTextProps(fontSize: 16, color: Colors.grey.shade600),
-  );
-
   @override
   DCFComponentNode render() {
     final detailsCommand = useStore(publicDetailScreenCommand);
@@ -29,8 +15,18 @@ class NavigationDemo extends StatefulComponent {
         gap: 20,
       ),
       children: [
-        _titleText,
-        _subtitleText,
+        DCFText(
+          content: "Navigation Demo",
+          textProps: DCFTextProps(
+            fontSize: 28,
+            fontWeight: DCFFontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        DCFText(
+          content: "Test push navigation with screen commands:",
+          textProps: DCFTextProps(fontSize: 16, color: Colors.grey.shade600),
+        ),
         DCFButton(
           buttonProps: DCFButtonProps(title: "Push to Detail Screen"),
           layout: LayoutProps(height: 50, width: 250),

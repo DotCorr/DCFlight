@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 /// Font weight options for text components
 enum DCFFontWeight {
@@ -46,7 +47,7 @@ enum DCFFontWeight {
 }
 
 /// Text style properties
-class DCFTextProps {
+class DCFTextProps extends Equatable {
   /// Font size
   final double? fontSize;
   
@@ -96,10 +97,22 @@ class DCFTextProps {
       'adaptive': adaptive,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        fontSize,
+        fontWeight,
+        fontFamily,
+        isFontAsset,
+        color,
+        textAlign,
+        numberOfLines,
+        adaptive,
+      ];
 }
 
 /// A text component implementation using StatelessComponent
-class DCFText extends StatelessComponent {
+class DCFText extends StatelessComponent with EquatableMixin {
   /// The text content to display
   final String content;
   
@@ -141,4 +154,14 @@ class DCFText extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        content,
+        textProps,
+        layout,
+        styleSheet,
+        events,
+        key,
+      ];
 }

@@ -17,6 +17,7 @@ dependencies:
 # framework dependencies (local)
   dcflight:
    path : ../dcflight
+  equatable: ^2.0.5
 
   
 
@@ -40,5 +41,3 @@ flutter:
 
   assets:
     - assets/icons/
-
-
