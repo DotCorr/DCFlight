@@ -10,10 +10,7 @@ class TabRegistry extends StatelessComponent {
   final _homeScreen = App();
   final _profileScreen = Profile();
   final _navDemoScreen = NavigationDemo();
-  final _githubScreen = DCFView(
-    layout: LayoutProps(flex: 1),
-    children: [GHRepo()],
-  );
+  final _githubScreen = GHRepo();
 
   @override
   DCFComponentNode render() {

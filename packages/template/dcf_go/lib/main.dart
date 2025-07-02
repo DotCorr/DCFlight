@@ -14,11 +14,10 @@ class MyApp extends StatefulComponent {
 
   @override
   DCFComponentNode render() {
-    final selectedIndex = useState<int>(0);
     return DCFNestedNavigationRoot(
       onTabChange: (data) {
         print("🔄 Tab changed to index: ${data["selectedIndex"]}");
-selectedIndex.setState(data["selectedIndex"]);
+
       },
       tabRoutes: const [
         "test_home",
@@ -28,7 +27,7 @@ selectedIndex.setState(data["selectedIndex"]);
       ],
       //sub-routes don't have to be registered in the same order as the tabs
       // fun fact: sub routes can push to the same screen as the tab routes
-      selectedIndex: selectedIndex.state,
+      selectedIndex: 0,
       tabRoutesRegistryComponents: tabReg,
       subRoutesRegistryComponents: subRoutesReg,
     );

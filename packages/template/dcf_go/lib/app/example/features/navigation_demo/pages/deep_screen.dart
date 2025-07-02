@@ -55,6 +55,7 @@ class DeepScreen extends StatefulComponent {
               content: "Slider Value: ${slidedState.state.toStringAsFixed(2)}",
               textProps: DCFTextProps(
                 fontSize: 16,
+                fontWeight:DCFFontWeight.bold,
                 color: Colors.grey.shade600,
               ),
             ),

@@ -20,8 +20,7 @@ class App extends StatefulComponent {
 
     // Per Rule 1, the UI tree of a StatefulComponent must be memoized.
     // The dependency array ensures this tree is only rebuilt when the page state changes.
-    return useMemo(() {
-      return DCFFragment(
+    return  DCFFragment(
        
         children: [
           DCFView(
@@ -76,6 +75,6 @@ class App extends StatefulComponent {
           ),
         ],
       );
-    }, [pagestateLocal.state]);
+   
   }
 }

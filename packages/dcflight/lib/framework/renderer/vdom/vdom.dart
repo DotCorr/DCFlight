@@ -927,11 +927,17 @@ class VDom {
       newNode.nativeViewId = oldNode.nativeViewId;
       newNode.contentViewId = oldNode.contentViewId;
 
-  // FRAMEWORK-LEVEL OPTIMIZATION:
+      // FRAMEWORK-LEVEL OPTIMIZATION:
 // If two stateless components are "semantically equal" (checked via operator==),
 // we can skip component-level operations but MUST still reconcile their rendered content.
 // This avoids the need for developers to manually memoize simple, static components
 // while ensuring that dynamic content (like state-driven text) still updates properly.
+//
+// This tiny check saves MASSIVE work:
+      // - No component re-instantiation
+      // - No render() method call
+      // - No props object creation
+      // - No props comparison
       if (oldNode == newNode) {
         VDomDebugLogger.logReconcile('SKIP_STATELESS', oldNode, newNode,
             reason: 'Stateless components are semantically equal');
@@ -941,7 +947,7 @@ class VDom {
         // due to state updates or context changes
         final oldRenderedNode = oldNode.renderedNode;
         final newRenderedNode = newNode.renderedNode;
-
+        // But still ensures correctness:
         // Reconcile the rendered trees to catch any content changes
         await _reconcile(oldRenderedNode, newRenderedNode);
 

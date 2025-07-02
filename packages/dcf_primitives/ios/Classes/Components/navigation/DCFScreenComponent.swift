@@ -144,16 +144,36 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return
         }
         
-        if navigationController.viewControllers.contains(targetContainer.viewController) {
-            print("⚠️ DCFScreenComponent: Screen '\(screenName)' is already in navigation stack, skipping push")
+        // 🎯 SIMPLE FIX: If it's a tab screen, don't push - just switch to that tab!
+        if targetContainer.presentationStyle == "tab" {
+            print("🎯 DCFScreenComponent: Switching to tab screen '\(screenName)' instead of pushing")
+            switchToTabScreen(screenName)
+            
+            // Send params to the tab screen
+            if let params = params {
+                propagateEvent(
+                    on: targetContainer.contentView,
+                    eventName: "onReceiveParams",
+                    data: ["params": params, "source": sourceContainer.name]
+                )
+            }
+            
+            // Send navigation event
+            propagateEvent(
+                on: sourceContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "pushTo",
+                    "targetScreen": screenName,
+                    "animated": animated
+                ]
+            )
+            
+            print("✅ DCFScreenComponent: Switched to tab screen '\(screenName)'")
             return
         }
         
-        if navigationController.topViewController == targetContainer.viewController {
-            print("⚠️ DCFScreenComponent: Screen '\(screenName)' is already the top view controller, skipping push")
-            return
-        }
-        
+        // Regular push for non-tab screens
         configureScreenForPush(targetContainer)
         
         targetContainer.contentView.isHidden = false
@@ -216,6 +236,13 @@ class DCFScreenComponent: NSObject, DCFComponent {
         }
         
         navigationController.popViewController(animated: animated)
+        
+        // 🎯 FIX: Restore screen to its original tab if it was a tab screen
+        if sourceContainer.presentationStyle == "tab" && sourceContainer.originalTabIndex != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + (animated ? 0.35 : 0.1)) {
+                self.restoreScreenToTab(sourceContainer)
+            }
+        }
         
         propagateEvent(
             on: sourceContainer.contentView,
@@ -468,11 +495,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
         return nil
     }
     
-
-    
-    
-
-    
     private func configureScreenForPush(_ screenContainer: ScreenContainer) {
         guard let pushConfig = objc_getAssociatedObject(
             screenContainer.viewController,
@@ -573,10 +595,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return false
         }
         
-        print("🔍 SCREEN DEBUG: setChildren called for '\(screenContainer.name)' with \(childViews.count) children")
-        print("🔍 SCREEN DEBUG: Container frame: \(screenContainer.contentView.frame)")
-        print("🔍 SCREEN DEBUG: Container superview: \(screenContainer.contentView.superview != nil)")
-        
         print("📱 DCFScreenComponent: Setting \(childViews.count) children for screen '\(screenContainer.name)'")
         
         screenContainer.contentView.subviews.forEach { $0.removeFromSuperview() }
@@ -588,8 +606,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
             childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             childView.isHidden = false
             childView.alpha = 1.0
-            
-            print("  👶 Added child \(index) to screen '\(screenContainer.name)' with frame: \(childView.frame)")
         }
         
         screenContainer.contentView.setNeedsLayout()
@@ -757,7 +773,70 @@ class DCFScreenComponent: NSObject, DCFComponent {
     
     static func removeScreenContainer(name: String) {
         screenRegistry.removeValue(forKey: name)
-    }}
+    }
+    
+    // 🎯 MINIMAL HELPER: Restore tab screen after pop
+    private func restoreScreenToTab(_ screenContainer: ScreenContainer) {
+        guard let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController,
+              let tabIndex = screenContainer.originalTabIndex,
+              tabIndex >= 0 && tabIndex < (tabBarController.viewControllers?.count ?? 0) else {
+            print("❌ DCFScreenComponent: Cannot restore '\(screenContainer.name)' - invalid tab index")
+            return
+        }
+        
+        guard let navController = tabBarController.viewControllers?[tabIndex] as? UINavigationController else {
+            print("❌ DCFScreenComponent: Tab \(tabIndex) is not a navigation controller")
+            return
+        }
+        
+        // Restore the screen as the root of its original tab
+        navController.setViewControllers([screenContainer.viewController], animated: false)
+        
+        // Clear the stolen flag
+        screenContainer.originalTabIndex = nil
+        
+        print("✅ DCFScreenComponent: Restored '\(screenContainer.name)' to tab \(tabIndex)")
+    }
+    
+    // 🎯 HELPER: Find which tab currently contains a screen
+    private func findTabIndexForScreen(_ screenContainer: ScreenContainer) -> Int? {
+        guard let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController else {
+            return nil
+        }
+        
+        for (index, viewController) in (tabBarController.viewControllers ?? []).enumerated() {
+            if let navController = viewController as? UINavigationController {
+                if navController.viewControllers.contains(screenContainer.viewController) {
+                    return index
+                }
+            }
+        }
+        
+        return nil
+    }
+    
+    // 🎯 SIMPLE HELPER: Switch to the tab that contains the target screen
+    private func switchToTabScreen(_ screenName: String) {
+        guard let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController,
+              let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: Cannot switch to tab screen '\(screenName)'")
+            return
+        }
+        
+        // Find which tab contains this screen
+        for (index, viewController) in (tabBarController.viewControllers ?? []).enumerated() {
+            if let navController = viewController as? UINavigationController,
+               navController.viewControllers.contains(targetContainer.viewController) {
+                
+                print("🎯 DCFScreenComponent: Switching to tab \(index) for screen '\(screenName)'")
+                tabBarController.selectedIndex = index
+                return
+            }
+        }
+        
+        print("⚠️ DCFScreenComponent: Could not find tab containing screen '\(screenName)'")
+    }
+}
 
 class ScreenContainer {
     let name: String
@@ -765,6 +844,9 @@ class ScreenContainer {
     let viewController: UIViewController
     let contentView: UIView
     var childNavigators: [Any] = []
+    
+    // 🎯 TRACK: Which tab this screen was stolen from
+    var originalTabIndex: Int? = nil
     
     init(name: String, presentationStyle: String) {
         self.name = name
@@ -781,54 +863,11 @@ class ScreenContainer {
             self.viewController = UIViewController()
         }
         
-        // CRITICAL FIX: Create content view with proper auto-resizing
         self.contentView = UIView()
         self.contentView.backgroundColor = UIColor.clear
         self.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         
-        // CRITICAL FIX: Set view controller's view to content view and configure auto-resizing
         self.viewController.view = contentView
-        
-        // CRITICAL FIX: Add orientation change handling
-        if presentationStyle == "tab" {
-            setupOrientationChangeHandling()
-        }
-    }
-    
-    private func setupOrientationChangeHandling() {
-        NotificationCenter.default.addObserver(
-            forName: UIDevice.orientationDidChangeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.handleOrientationChange()
-        }
-    }
-    
-    private func handleOrientationChange() {
-        print("🔄 ScreenContainer: Handling orientation change for '\(name)'")
-        
-        // CRITICAL FIX: Ensure content view maintains proper bounds
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            // Force layout update
-            self.contentView.setNeedsLayout()
-            self.contentView.layoutIfNeeded()
-            
-            // Update all child views
-            for subview in self.contentView.subviews {
-                subview.frame = self.contentView.bounds
-                subview.setNeedsLayout()
-                subview.layoutIfNeeded()
-            }
-            
-            print("🎯 ScreenContainer: Updated '\(self.name)' frame to: \(self.contentView.frame)")
-        }
-    }
-    
-    deinit {
-        NotificationCenter.default.removeObserver(self, name: UIDevice.orientationDidChangeNotification, object: nil)
     }
 }
 

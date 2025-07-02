@@ -5,8 +5,7 @@ class Details extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final useDetailScreenCommand = useStore(publicDetailScreenCommand);
-    return useMemo(
-      () => DCFView(
+    return DCFView(
         layout: LayoutProps(
           flex: 1,
           padding: 20,
@@ -65,8 +64,7 @@ class Details extends StatefulComponent {
             },
           ),
         ],
-      ),
-      [],
+     
     );
   }
 }

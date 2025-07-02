@@ -5,8 +5,7 @@ class ModalScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final useModalScreenCommand = useStore(publicModalScreenCommand);
-    return useMemo(() {
-      return DCFView(
+    return  DCFView(
         layout: LayoutProps(
           flex: 1,
           padding: 20,
@@ -47,6 +46,6 @@ class ModalScreen extends StatefulComponent {
           ),
         ],
       );
-    }, []);
+  
   }
 }

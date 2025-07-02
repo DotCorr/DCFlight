@@ -9,8 +9,7 @@ class PortalTest extends StatefulComponent {
     final counter = useState<int>(0);
     final scrollCommand = useState<ScrollViewCommand?>(null);
 
-    return useMemo(() {
-      return DCFScrollView(
+    return DCFScrollView(
         // ✅ Command pattern demonstration for ScrollView
         command: scrollCommand.state,
         layout: LayoutProps(flex: 1, padding: 20.0),
@@ -322,6 +321,6 @@ class PortalTest extends StatefulComponent {
           ),
         ],
       );
-    }, [activePortalId.state, counter.state, scrollCommand.state]);
+    
   }
 }

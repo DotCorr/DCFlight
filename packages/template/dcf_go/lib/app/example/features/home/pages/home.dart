@@ -8,8 +8,7 @@ class Home extends StatefulComponent {
     // By wrapping the entire scroll view in useMemo, we ensure that its children
     // (SegmentedControl, WebView, etc.) are not re-created on every render,
     // unless the `selectedIndexWeb.state` actually changes.
-    return useMemo(() {
-      return DCFScrollView(
+    return  DCFScrollView(
         layout: LayoutProps(
           flex: 1,
           padding: 16,
@@ -101,6 +100,5 @@ class Home extends StatefulComponent {
           ),
         ],
       );
-    }, [selectedIndexWeb.state]);
   }
 }
