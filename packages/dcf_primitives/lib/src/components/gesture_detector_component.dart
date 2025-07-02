@@ -6,10 +6,11 @@
  */
 
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// A gesture detector component implementation using StatelessComponent
-class DCFGestureDetector extends StatelessComponent {
+class DCFGestureDetector extends StatelessComponent with EquatableMixin {
   /// Child nodes
   final List<DCFComponentNode> children;
   
@@ -125,4 +126,23 @@ class DCFGestureDetector extends StatelessComponent {
       children: children,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        children,
+        layout,
+        styleSheet,
+        events,
+        onTap,
+        onLongPress,
+        onSwipeLeft,
+        onSwipeRight,
+        onSwipeUp,
+        onSwipeDown,
+        onPanStart,
+        onPanUpdate,
+        onPanEnd,
+        adaptive,
+        key,
+      ];
 }

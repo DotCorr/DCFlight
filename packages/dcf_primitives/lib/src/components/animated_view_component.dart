@@ -6,11 +6,11 @@
  */
 
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
-import '../commands/src/animated_view_commands.dart';
 
 /// An animated view component implementation using StatelessComponent
-class DCFAnimatedView extends StatelessComponent {
+class DCFAnimatedView extends StatelessComponent with EquatableMixin {
   /// Child nodes
   final List<DCFComponentNode> children;
   
@@ -78,4 +78,17 @@ class DCFAnimatedView extends StatelessComponent {
       children: children,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        children,
+        animation,
+        layout,
+        styleSheet,
+        onAnimationEnd,
+        events,
+        adaptive,
+        command,
+        key,
+      ];
 }

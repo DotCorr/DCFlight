@@ -6,10 +6,11 @@
  */
 
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// A basic view component implementation using StatelessComponent
-class DCFView extends StatelessComponent {
+class DCFView extends StatelessComponent with EquatableMixin {
   /// The layout properties
   final LayoutProps layout;
 
@@ -25,6 +26,9 @@ class DCFView extends StatelessComponent {
   /// Whether to use adaptive theming
   final bool adaptive;
 
+  /// Layout event handler
+  final Function(Map<dynamic, dynamic>)? onLayout;
+
   /// Create a view component
   DCFView({
     this.layout = const LayoutProps(padding: 8,flex: 1),
@@ -32,20 +36,37 @@ class DCFView extends StatelessComponent {
     this.children = const [],
     this.events,
     this.adaptive = true,
+    this.onLayout,
     super.key,
   });
 
   @override
   DCFComponentNode render() {
+    final eventMap = events ?? <String, dynamic>{};
+    if (onLayout != null) {
+      eventMap['onLayout'] = onLayout;
+    }
+
     return DCFElement(
       type: 'View',
       props: {
         ...layout.toMap(),
         ...styleSheet.toMap(),
         'adaptive': adaptive,
-        ...(events ?? {}),
+        ...eventMap,
       },
       children: children,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        layout,
+        styleSheet,
+        children,
+        events,
+        adaptive,
+        onLayout,
+        key,
+      ];
 }

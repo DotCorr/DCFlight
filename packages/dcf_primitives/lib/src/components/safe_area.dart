@@ -96,15 +96,14 @@ class DCFSafeArea extends StatefulComponent {
       )
     );
 
-    return DCFElement(
+    return useMemo(() => DCFElement(
       type: 'View',
-      key: "safe_area_${orientationFlag.state}", // Force recreation on orientation change
       props: {
         ...enhancedLayout.toMap(),
         ...styleSheet.toMap(),
         ...(events ?? {}),
       },
       children: children,
-    );
+    ), [orientationFlag.state]);
   }
 }

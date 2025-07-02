@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 /// Presentation styles for screens
 enum DCFPresentationStyle {
@@ -32,7 +33,7 @@ enum DCFPresentationStyle {
 }
 
 /// Configuration for tab presentation
-class DCFTabConfig {
+class DCFTabConfig extends Equatable {
   /// Tab title
   final String title;
 
@@ -65,10 +66,13 @@ class DCFTabConfig {
       'enabled': enabled,
     };
   }
+
+  @override
+  List<Object?> get props => [title, icon, index, badge, enabled];
 }
 
 /// Configuration for modal presentation
-class DCFModalConfig {
+class DCFModalConfig extends Equatable {
   /// Modal detents (height sizes)
   final List<String>? detents;
 
@@ -112,10 +116,21 @@ class DCFModalConfig {
       if (transitionStyle != null) 'transitionStyle': transitionStyle,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        detents,
+        selectedDetentIndex,
+        showDragIndicator,
+        cornerRadius,
+        isDismissible,
+        allowsBackgroundDismiss,
+        transitionStyle,
+      ];
 }
 
 /// Configuration for push presentation
-class DCFPushConfig {
+class DCFPushConfig extends Equatable {
   /// Navigation bar title
   final String? title;
 
@@ -148,10 +163,19 @@ class DCFPushConfig {
       'largeTitleDisplayMode': largeTitleDisplayMode,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        title,
+        hideNavigationBar,
+        hideBackButton,
+        backButtonTitle,
+        largeTitleDisplayMode,
+      ];
 }
 
 /// A screen component that provides navigation context and lifecycle
-class DCFScreen extends StatelessComponent {
+class DCFScreen extends StatelessComponent with EquatableMixin {
   /// Unique screen name/identifier
   final String name;
 
@@ -265,8 +289,7 @@ class DCFScreen extends StatelessComponent {
       ...styleSheet.toMap(),
       ...eventMap,
     };
-
-    // Add navigation command props if command has actions
+    
     if (navigationCommand != null && navigationCommand!.hasCommands) {
       props['navigationCommand'] = navigationCommand!.toMap();
     }
@@ -274,112 +297,27 @@ class DCFScreen extends StatelessComponent {
     return DCFElement(
       type: 'Screen',
       props: props,
-      children: children, // Empty children only for non-tab invisible screens
+      children: children,
     );
   }
-}
-
-/// Screen manager for coordinating screen lifecycle
-class DCFScreenManager {
-  static final DCFScreenManager _instance = DCFScreenManager._();
-  static DCFScreenManager get instance => _instance;
-
-  DCFScreenManager._();
-
-  /// Currently active screens by name
-  final Map<String, bool> _activeScreens = {};
-
-  /// Screen activation callbacks
-  final Map<String, List<Function()>> _activationCallbacks = {};
-
-  /// Register a screen as active
-  void activateScreen(String screenName) {
-    _activeScreens[screenName] = true;
-    _notifyActivation(screenName);
-  }
-
-  /// Register a screen as inactive
-  void deactivateScreen(String screenName) {
-    _activeScreens[screenName] = false;
-    _notifyDeactivation(screenName);
-  }
-
-  /// Check if a screen is active
-  bool isScreenActive(String screenName) {
-    return _activeScreens[screenName] ?? false;
-  }
-
-  /// Register callback for screen activation
-  void onScreenActivated(String screenName, Function() callback) {
-    _activationCallbacks.putIfAbsent(screenName, () => []).add(callback);
-  }
-
-  /// Remove activation callback
-  void removeActivationCallback(String screenName, Function() callback) {
-    _activationCallbacks[screenName]?.remove(callback);
-  }
-
-  void _notifyActivation(String screenName) {
-    _activationCallbacks[screenName]?.forEach((callback) => callback());
-  }
-
-  void _notifyDeactivation(String screenName) {
-    // Could add deactivation callbacks in the future
-  }
-
-  /// Get all active screens
-  List<String> get activeScreens {
-    return _activeScreens.entries
-        .where((entry) => entry.value)
-        .map((entry) => entry.key)
-        .toList();
-  }
-}
-
-class DCFNestedNavigationRoot extends StatelessComponent {
-  final StateHook tabState;
-  final double? animationDuration;
-  final DCFTabBarStyle? tabBarStyle;
-  final Function(dynamic)? onTabChange;
-  final Function(dynamic)? onTabPress;
-  // List of tab routes (screen names)
-  final List<String> tabRoutes;
-  // Registry of tab routes as DCFScreen objects
-  // Assign a route to a corresponding tab Component
-  final DCFComponentNode tabRoutesRegistryComponents;
-  final DCFComponentNode subRoutesRegistryComponents;
-
-  DCFNestedNavigationRoot(
-      {super.key,
-      required this.tabState,
-      this.animationDuration,
-      this.tabBarStyle =
-          const DCFTabBarStyle(selectedTintColor: Colors.blueAccent),
-      this.onTabChange,
-      this.onTabPress,
-      required this.tabRoutes,
-      required this.tabRoutesRegistryComponents,
-      required this.subRoutesRegistryComponents});
 
   @override
-  DCFComponentNode render() {
-    return DCFFragment(children: [
-      tabRoutesRegistryComponents,
-      subRoutesRegistryComponents,
-      DCFTabNavigator(
-        animationDuration: animationDuration,
-        lazyLoad: true,
-        screens: tabRoutes,
-        selectedIndex: tabState.state,
-        tabBarStyle: tabBarStyle,
-        onTabChange:  (data) {
-            final newIndex = data["selectedIndex"] as int;
-            tabState.setState(newIndex);
-            print("🔄 Tab changed to index: $newIndex");
-            onTabChange?.call(data);
-          },
-        onTabPress: onTabPress,
-      ),
-    ]);
-  }
+  List<Object?> get props => [
+        key,
+        name,
+        presentationStyle,
+        tabConfig,
+        modalConfig,
+        pushConfig,
+        children,
+        styleSheet,
+        navigationCommand,
+        events,
+        onAppear,
+        onDisappear,
+        onActivate,
+        onDeactivate,
+        onNavigationEvent,
+        onReceiveParams,
+      ];
 }

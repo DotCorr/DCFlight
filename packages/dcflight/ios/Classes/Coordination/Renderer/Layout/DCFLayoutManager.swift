@@ -5,12 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import UIKit
 import yoga
 import QuartzCore
 
-/// Manages layout for DCFLight components
+/// Manages layout for DCFlight components
 /// Now handles automatic layout calculations natively when layout props change
 public class DCFLayoutManager {
     // Singleton instance
@@ -60,7 +59,7 @@ public class DCFLayoutManager {
             // CRASH FIX: Use the synchronized calculateAndApplyLayout method
             // This will automatically defer if reconciliation is in progress
             let success = YogaShadowTree.shared.calculateAndApplyLayout(
-                width: screenBounds.width, 
+                width: screenBounds.width,
                 height: screenBounds.height
             )
             
@@ -68,12 +67,12 @@ public class DCFLayoutManager {
             DispatchQueue.main.async {
                 self.needsLayoutCalculation = false
                 if success {
+                    print("✅ DCFLayoutManager: Layout calculation successful")
                 } else {
+                    print("⚠️ DCFLayoutManager: Layout calculation deferred, rescheduling")
                     // Reschedule if deferred due to reconciliation
-                    if !success {
-                        self.needsLayoutCalculation = true
-                        self.scheduleLayoutCalculation()
-                    }
+                    self.needsLayoutCalculation = true
+                    self.scheduleLayoutCalculation()
                 }
             }
         }
@@ -225,7 +224,7 @@ public class DCFLayoutManager {
         }
         
         // Level 5: Validate frame values are reasonable
-        guard frame.width.isFinite && frame.height.isFinite && 
+        guard frame.width.isFinite && frame.height.isFinite &&
               frame.origin.x.isFinite && frame.origin.y.isFinite &&
               !frame.width.isNaN && !frame.height.isNaN &&
               !frame.origin.x.isNaN && !frame.origin.y.isNaN else {

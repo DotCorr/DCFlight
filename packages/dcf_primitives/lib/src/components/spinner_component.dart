@@ -5,14 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// 🚀 DCF Spinner/Activity Indicator Component
 /// 
 /// A spinner component that provides native platform activity indicator behavior.
 /// Supports different sizes and colors with adaptive theming.
-class DCFSpinner extends StatelessComponent {
+class DCFSpinner extends StatelessComponent with EquatableMixin {
   /// Whether the spinner is animating
   final bool animating;
   
@@ -75,6 +75,19 @@ class DCFSpinner extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        animating,
+        style,
+        color,
+        hidesWhenStopped,
+        adaptive,
+        layout,
+        styleSheet,
+        events,
+        key,
+      ];
 }
 
 /// Spinner style constants
