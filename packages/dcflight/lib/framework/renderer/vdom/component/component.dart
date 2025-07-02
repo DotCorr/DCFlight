@@ -12,19 +12,11 @@ import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'state_hook.dart';
 import 'store.dart';
 
+// ignore: must_be_immutable
 /// Stateful component with hooks and lifecycle methods + extension support
 abstract class StatefulComponent extends DCFComponentNode {
   /// Unique ID for this component instance
   final String instanceId;
-
-  /// Type name for debugging
-  final String typeName;
-
-  /// The rendered node from the component
-  DCFComponentNode? _renderedNode;
-
-  /// Whether the component is mounted
-  bool _isMounted = false;
 
   /// Whether the component is currently updating to prevent cascading updates
   bool _isUpdating = false;
@@ -41,31 +33,8 @@ abstract class StatefulComponent extends DCFComponentNode {
   /// Create a stateful component
   StatefulComponent({super.key})
       : instanceId =
-            '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}',
-        typeName = _extractTypeName() {
+            '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}' {
     scheduleUpdate = _defaultScheduleUpdate;
-  }
-
-  /// Extract the component type name from the class
-  static String _extractTypeName() {
-    // For Contributors:
-    // Thiss would et the class name directly using runtimeType as that would be better, but
-    // this works in the constructor. We'll use runtime type in a better way.
-
-    //! Comeback if needed: just incase  (refer to the above comment for context)
-    final stackTrace = StackTrace.current.toString();
-    final lines = stackTrace.split('\n');
-
-    // Look for the first line that doesn't contain constructor calls
-    for (final line in lines.skip(1)) {
-      final match = RegExp(r'(\w+Component)').firstMatch(line);
-      if (match != null) {
-        return match.group(1)!;
-      }
-    }
-
-    // Fallback to a generic name
-    return 'UnknownComponent';
   }
 
   /// Default no-op schedule update function (replaced by VDOM)
@@ -96,9 +65,6 @@ abstract class StatefulComponent extends DCFComponentNode {
       _renderedNode!.parent = this;
     }
   }
-
-  /// Get whether the component is mounted
-  bool get isMounted => _isMounted;
 
   /// Called when the component is mounted
   @override
@@ -302,29 +268,20 @@ abstract class StatefulComponent extends DCFComponentNode {
 
   @override
   String toString() {
-    return '$typeName($instanceId)';
+    return '${runtimeType.toString()}($instanceId)';
   }
 }
 
+// ignore: must_be_immutable
 /// Stateless component without hooks or state
 abstract class StatelessComponent extends DCFComponentNode {
   /// Unique ID for this component instance
   final String instanceId;
 
-  /// Type name for debugging
-  final String typeName;
-
-  /// The rendered node from the component
-  DCFComponentNode? _renderedNode;
-
-  /// Whether the component is mounted
-  bool _isMounted = false;
-
   /// Create a stateless component
   StatelessComponent({super.key})
       : instanceId =
-            '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}',
-        typeName = StackTrace.current.toString().split('\n')[1].split(' ')[0];
+            '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}';
 
   /// Render the component - must be implemented by subclasses
   DCFComponentNode render();
@@ -349,9 +306,6 @@ abstract class StatelessComponent extends DCFComponentNode {
       _renderedNode!.parent = this;
     }
   }
-
-  /// Get whether the component is mounted
-  bool get isMounted => _isMounted;
 
   /// Called when the component is mounted
   @override
@@ -405,6 +359,6 @@ abstract class StatelessComponent extends DCFComponentNode {
 
   @override
   String toString() {
-    return '$typeName($instanceId)';
+    return '${runtimeType.toString()}($instanceId)';
   }
 }
