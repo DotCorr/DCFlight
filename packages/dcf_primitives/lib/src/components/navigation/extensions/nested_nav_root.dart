@@ -40,7 +40,6 @@ class DCFNestedNavigationRoot extends StatelessComponent {
         onTabChange:  (data) {
             final newIndex = data["selectedIndex"] as int;
             tabState.setState(newIndex);
-            print("🔄 Tab changed to index: $newIndex");
             onTabChange?.call(data);
           },
         onTabPress: onTabPress,

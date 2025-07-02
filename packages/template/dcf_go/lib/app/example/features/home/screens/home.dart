@@ -20,15 +20,15 @@ class App extends StatefulComponent {
           layout: LayoutProps(flex: 5, flexDirection: YogaFlexDirection.column),
           children: [
             pagestateLocal.state == 0
-                ? Home()
+                ? Home(key: 'vdomR1')
                 : pagestateLocal.state == 1
-                ? GradientTest()
-                : pagestateLocal.state == 2
-                ? DCFView(children: [DCFText(content: "Test")])
-                : pagestateLocal.state == 3
-                ? Profile()
-                : pagestateLocal.state == 4
-                ? PortalTest()
+                ? GradientTest(key:'vdomR2')
+                // : pagestateLocal.state == 2
+                // ? DCFView(children: [DCFText(content: "Test")])
+                // : pagestateLocal.state == 3
+                // ? Profile()
+                // : pagestateLocal.state == 4
+                // ? PortalTest()
                 : DCFView(),
           ],
         ),

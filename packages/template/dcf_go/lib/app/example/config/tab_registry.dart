@@ -15,6 +15,7 @@ class TabRegistry extends StatelessComponent {
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfigSVG.withSVGPackage(
             title: "Home",
+            badge: "hello world",
             package: "dcf_primitives",
             iconName: DCFIcons.house,
             index: 0,

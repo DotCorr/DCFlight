@@ -265,8 +265,7 @@ class DCFScreen extends StatelessComponent {
       ...styleSheet.toMap(),
       ...eventMap,
     };
-
-    // Add navigation command props if command has actions
+    
     if (navigationCommand != null && navigationCommand!.hasCommands) {
       props['navigationCommand'] = navigationCommand!.toMap();
     }
@@ -274,7 +273,7 @@ class DCFScreen extends StatelessComponent {
     return DCFElement(
       type: 'Screen',
       props: props,
-      children: children, // Empty children only for non-tab invisible screens
+      children: children,
     );
   }
 }
