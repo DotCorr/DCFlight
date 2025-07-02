@@ -1082,10 +1082,8 @@ class VDom {
         }
 
         // Recursively dispose rendered content
-        if (oldNode.renderedNode != null) {
-          await _disposeOldComponent(oldNode.renderedNode!);
-        }
-      }
+        await _disposeOldComponent(oldNode.renderedNode!);
+            }
       // Handle StatelessComponent disposal
       else if (oldNode is StatelessComponent) {
         VDomDebugLogger.log('DISPOSE_STATELESS', 'Disposing StatelessComponent', 
@@ -1104,10 +1102,8 @@ class VDom {
         }
 
         // Recursively dispose rendered content
-        if (oldNode.renderedNode != null) {
-          await _disposeOldComponent(oldNode.renderedNode!);
-        }
-      }
+        await _disposeOldComponent(oldNode.renderedNode!);
+            }
       // Handle DCFElement disposal
       else if (oldNode is DCFElement) {
         VDomDebugLogger.log('DISPOSE_ELEMENT', 'Disposing DCFElement', 
