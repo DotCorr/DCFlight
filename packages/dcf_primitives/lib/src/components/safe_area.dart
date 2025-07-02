@@ -96,7 +96,7 @@ class DCFSafeArea extends StatefulComponent {
       )
     );
 
-    return DCFElement(
+    return useMemo(() => DCFElement(
       type: 'View',
       props: {
         ...enhancedLayout.toMap(),
@@ -104,6 +104,6 @@ class DCFSafeArea extends StatefulComponent {
         ...(events ?? {}),
       },
       children: children,
-    );
+    ), [orientationFlag.state]);
   }
 }
