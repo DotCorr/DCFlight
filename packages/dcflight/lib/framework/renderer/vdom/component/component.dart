@@ -6,11 +6,12 @@
  */
 
 import 'dart:math';
+import 'package:dcflight/framework/renderer/vdom/component/hooks/memo_hook.dart';
+import 'package:dcflight/framework/renderer/vdom/component/hooks/store.dart';
 import 'package:dcflight/framework/renderer/vdom/mutator/vdom_mutator_extension_reg.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'state_hook.dart';
-import 'store.dart';
+import 'hooks/state_hook.dart';
 
 // ignore: must_be_immutable
 /// Stateful component with hooks and lifecycle methods + extension support
@@ -153,6 +154,27 @@ abstract class StatefulComponent extends DCFComponentNode {
     _hookIndex++;
 
     return hook.ref;
+  }
+
+  /// Memoizes a value, re-creating it only when dependencies change.
+  /// This is ideal for preserving instances of stateful child components.
+  T useMemo<T>(T Function() create, [List<dynamic> dependencies = const []]) {
+    if (_hookIndex >= _hooks.length) {
+      // Create new hook
+      final hook = MemoHook<T>(create, dependencies);
+      _hooks.add(hook);
+    } else {
+      // Update dependencies for existing hook
+      final hook = _hooks[_hookIndex];
+      if (hook is! MemoHook<T>) {
+        throw Exception('Hook at index $_hookIndex is not of type MemoHook<$T>');
+      }
+      hook.updateDependencies(dependencies);
+    }
+
+    final hook = _hooks[_hookIndex] as MemoHook<T>;
+    _hookIndex++;
+    return hook.value;
   }
 
   /// Create a store hook for global state

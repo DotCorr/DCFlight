@@ -6,13 +6,14 @@ final pagestate = Store<int>(0);
 
 // Test comment for hydration
 class App extends StatefulComponent {
-  // Instantiate page components once to preserve their state.
-  final _homePage = Home();
-  final _gradientTestPage = GradientTest();
-
   @override
   DCFComponentNode render() {
     final pagestateLocal = useStore(pagestate);
+
+    // Instantiate page components once using useMemo.
+    // The empty dependency array [] means they are created only once.
+    final homePage = useMemo(() => Home(), []);
+    final gradientTestPage = useMemo(() => GradientTest(), []);
 
     // Removed DCFPortalProvider wrapper to test modal rendering
     return DCFScrollView(
@@ -22,9 +23,9 @@ class App extends StatefulComponent {
           layout: LayoutProps(flex: 5, flexDirection: YogaFlexDirection.column),
           children: [
             pagestateLocal.state == 0
-                ? _homePage
+                ? homePage
                 : pagestateLocal.state == 1
-                ? _gradientTestPage
+                ? gradientTestPage
                 // : pagestateLocal.state == 2
                 // ? DCFView(children: [DCFText(content: "Test")])
                 // : pagestateLocal.state == 3

@@ -7,7 +7,7 @@
 
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';
-import 'package:dcflight/framework/renderer/vdom/component/state_hook.dart';
+import 'package:dcflight/framework/renderer/vdom/component/hooks/state_hook.dart';
 
 /// VDOM Extension Registry - allows module devs to hook into VDOM internals
 class VDomExtensionRegistry {
