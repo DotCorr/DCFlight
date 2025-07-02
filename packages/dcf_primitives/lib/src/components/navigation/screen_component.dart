@@ -6,7 +6,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
 
 /// Presentation styles for screens
 enum DCFPresentationStyle {
@@ -33,7 +32,7 @@ enum DCFPresentationStyle {
 }
 
 /// Configuration for tab presentation
-class DCFTabConfig extends Equatable {
+class DCFTabConfig {
   /// Tab title
   final String title;
 
@@ -66,9 +65,6 @@ class DCFTabConfig extends Equatable {
       'enabled': enabled,
     };
   }
-
-  @override
-  List<
 }
 
 /// Configuration for modal presentation
