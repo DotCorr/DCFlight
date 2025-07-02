@@ -9,7 +9,7 @@ class DeepScreen extends StatefulComponent {
     final slidedState = useState<double>(0.5);
     final scale = useState<double>(0.2);
 
-    return useMemo(() => DCFScrollView(
+    return  DCFScrollView(
       styleSheet: StyleSheet(backgroundColor: Colors.amber),
       layout: LayoutProps(
         flex: 1,
@@ -128,7 +128,7 @@ class DeepScreen extends StatefulComponent {
           },
         ),
       ],
-    ), [slidedState.state, scale.state]);
+    );
   }
 }
 

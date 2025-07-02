@@ -34,12 +34,7 @@ class ModalScreen extends StatefulComponent {
             onPress: (v) {
               useModalScreenCommand.setState(
                 ScreenNavigationCommand(
-                  dismissModal: DismissModalCommand(
-                    result: {
-                      "dismissed": true,
-                      "timestamp": DateTime.now().toString(),
-                    },
-                  ),
+                  presentModal: PresentModalCommand(screenName: "modal_screen")
                 ),
               );
             },
