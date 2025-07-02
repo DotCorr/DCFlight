@@ -1608,16 +1608,29 @@ class VDom {
   Future<void> createRoot(DCFComponentNode component) async {
     VDomDebugLogger.log('CREATE_ROOT_START', 'Creating root component', 
       component: component.runtimeType.toString());
-    
-    // If there's already a root component, reconcile instead of just replacing
-    if (rootComponent != null) {
-      VDomDebugLogger.log('CREATE_ROOT_RECONCILE', 'Reconciling with existing root');
-      // Perform reconciliation between old and new root
-      await _reconcile(rootComponent!, component);
 
-      // Update the root component reference
+    // On hot restart, the new `component` instance will be different from the existing `rootComponent`.
+    // In this case, we must tear down the old VDOM state and render fresh to match the native side,
+    // which has already cleared its views.
+    if (rootComponent != null && rootComponent != component) {
+      VDomDebugLogger.log('CREATE_ROOT_HOT_RESTART', 'Hot restart detected. Tearing down old VDOM state.');
+
+      // Dispose of the entire old component tree to clean up state and listeners.
+      await _disposeOldComponent(rootComponent!);
+
+      // Clear all VDOM tracking maps to ensure a clean slate.
+      _statefulComponents.clear();
+      _statelessComponents.clear();
+      _nodesByViewId.clear();
+      _previousRenderedNodes.clear();
+      _pendingUpdates.clear();
+      _errorBoundaries.clear();
+      VDomDebugLogger.log('VDOM_STATE_CLEARED', 'All VDOM tracking maps have been cleared.');
+
+      // Set the new root and render it from scratch.
       rootComponent = component;
-      VDomDebugLogger.log('CREATE_ROOT_RECONCILE_COMPLETE', 'Root reconciliation completed');
+      await renderToNative(component, parentViewId: "root");
+      VDomDebugLogger.log('CREATE_ROOT_COMPLETE', 'Root component re-created successfully after hot restart.');
     } else {
       VDomDebugLogger.log('CREATE_ROOT_FIRST', 'Creating first root component');
       // First time creating root
