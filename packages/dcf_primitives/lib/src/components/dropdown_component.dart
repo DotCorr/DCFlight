@@ -7,6 +7,7 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 /// Dropdown properties
 class DCFDropdownProps {
@@ -117,7 +118,7 @@ class DCFDropdownProps {
 
 /// DCFDropdown - Cross-platform dropdown menu component
 /// Provides native dropdown functionality with type-safe positioning and items
-class DCFDropdown extends StatelessComponent {
+class DCFDropdown extends StatelessComponent with EquatableMixin {
   /// The dropdown properties
   final DCFDropdownProps dropdownProps;
   
@@ -153,6 +154,19 @@ class DCFDropdown extends StatelessComponent {
     this.onClose,
     this.events,
   });
+
+  @override
+  List<Object?> get props => [
+    dropdownProps,
+    layout,
+    styleSheet,
+    onValueChange,
+    onMultiValueChange,
+    onOpen,
+    onClose,
+    events,
+    key,
+  ];
 
   @override
   DCFComponentNode render() {

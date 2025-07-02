@@ -12,7 +12,8 @@ class Home extends StatefulComponent {
       return DCFScrollView(
         layout: LayoutProps(
           flex: 1,
-          gap: 10,
+          padding: 16,
+          gap: 2,
           alignContent: YogaAlign.spaceBetween,
           justifyContent: YogaJustifyContent.spaceBetween,
         ),

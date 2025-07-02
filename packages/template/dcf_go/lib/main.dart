@@ -6,16 +6,19 @@ void main() {
   DCFlight.start(app: MyApp());
 }
 
-class MyApp extends StatelessComponent {
+class MyApp extends StatefulComponent {
   // keep outside of the render method to avoid re-instantiation(to be safe)
   // if this was inside the render method if the main component was stateful, useMemo could have been used in the render method
   final tabReg = TabRegistry();
   final subRoutesReg = StackRegistry();
+
   @override
   DCFComponentNode render() {
+    final selectedIndex = useState<int>(0);
     return DCFNestedNavigationRoot(
       onTabChange: (data) {
         print("🔄 Tab changed to index: ${data["selectedIndex"]}");
+selectedIndex.setState(data["selectedIndex"]);
       },
       tabRoutes: const [
         "test_home",
@@ -25,7 +28,7 @@ class MyApp extends StatelessComponent {
       ],
       //sub-routes don't have to be registered in the same order as the tabs
       // fun fact: sub routes can push to the same screen as the tab routes
-      selectedIndex: 0,
+      selectedIndex: selectedIndex.state,
       tabRoutesRegistryComponents: tabReg,
       subRoutesRegistryComponents: subRoutesReg,
     );

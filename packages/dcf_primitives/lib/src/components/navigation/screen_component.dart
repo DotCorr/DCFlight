@@ -74,7 +74,7 @@ class DCFTabConfig extends Equatable {
 /// Configuration for modal presentation
 class DCFModalConfig extends Equatable {
   /// Modal detents (height sizes)
-  final List<String>? detents;
+  final List<DCFModalDetent>? detents;
 
   /// Selected detent index
   final int? selectedDetentIndex;
@@ -320,4 +320,27 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
         onNavigationEvent,
         onReceiveParams,
       ];
+}
+
+
+
+
+enum DCFModalPresentationStyle {
+  /// A standard page sheet presentation that can be resized.
+  pageSheet,
+
+  /// A full-screen presentation.
+  fullScreen,
+
+  /// A presentation that covers the content below it.
+  overCurrentContext,
+}
+
+/// Defines the detents for a resizable modal sheet.
+enum DCFModalDetent {
+  /// A detent that resizes to a medium height.
+  medium,
+
+  /// A detent that resizes to the full height of the screen.
+  large,
 }

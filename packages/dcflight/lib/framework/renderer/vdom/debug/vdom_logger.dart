@@ -4,7 +4,7 @@ import 'package:dcflight/dcflight.dart';
 
 class VDomDebugLogger {
   /// Toggle this to enable/disable all VDOM logging
-  static bool enabled = true;
+  static bool enabled = false;
   
   static int _logId = 0;
   static final Map<String, int> _componentCounts = {};

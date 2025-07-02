@@ -1,6 +1,8 @@
 import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcf_go/app/example/features/home/components/gradient.dart';
+import 'package:dcf_go/app/example/features/home/components/portal_test.dart';
 import 'package:dcf_go/app/example/features/home/pages/home.dart';
+import 'package:dcf_go/app/example/features/profile/screens/profile.dart';
 import 'package:dcflight/dcflight.dart';
 
 
@@ -19,23 +21,23 @@ class App extends StatefulComponent {
     // Per Rule 1, the UI tree of a StatefulComponent must be memoized.
     // The dependency array ensures this tree is only rebuilt when the page state changes.
     return useMemo(() {
-      return DCFScrollView(
-        layout: LayoutProps(height: "100%"),
+      return DCFFragment(
+       
         children: [
           DCFView(
             layout:
-                LayoutProps(flex: 5, flexDirection: YogaFlexDirection.column),
+                LayoutProps(flex: 8, flexDirection: YogaFlexDirection.column),
             children: [
               pagestateLocal.state == 0
                   ? homePage
                   : pagestateLocal.state == 1
                       ? gradientTestPage
-                      // : pagestateLocal.state == 2
-                      // ? DCFView(children: [DCFText(content: "Test")])
-                      // : pagestateLocal.state == 3
-                      // ? Profile()
-                      // : pagestateLocal.state == 4
-                      // ? PortalTest()
+                      : pagestateLocal.state == 2
+                      ? DCFView(children: [DCFText(content: "Test")])
+                      : pagestateLocal.state == 3
+                      ? Profile()
+                      : pagestateLocal.state == 4
+                      ? PortalTest()
                       : DCFView(),
             ],
           ),

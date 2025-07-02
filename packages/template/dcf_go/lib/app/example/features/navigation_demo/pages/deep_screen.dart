@@ -4,6 +4,7 @@ import 'package:dcflight/dcflight.dart';
 class DeepScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
+    print("DeepScreen render called");
     final useDeepScreenCommand = useStore(publicDeepScreenCommand);
     final slidedState = useState<double>(0.5);
     final scale = useState<double>(0.2);
@@ -60,6 +61,7 @@ class DeepScreen extends StatefulComponent {
             DCFSlider(
               value: slidedState.state,
               onValueChange: (v) {
+                print("Slider value changed: ${v['value']} ");
                 slidedState.setState(v['value']);
               },
             ),
@@ -72,7 +74,7 @@ class DeepScreen extends StatefulComponent {
           children: [
             DCFText(
               content:
-                  "Scale Value: ${scale.state.toStringAsFixed(2)}",
+                  "Scale Value: ${scale.state}",
               textProps: DCFTextProps(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -81,6 +83,7 @@ class DeepScreen extends StatefulComponent {
             DCFSlider(
               value: scale.state,
               onValueChange: (v) {
+                print("Scale value changed: ${v['value']}");
                 scale.setState(v['value']);
               },
             ),
