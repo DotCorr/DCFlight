@@ -841,9 +841,7 @@ class VDom {
       final newRenderedNode = newNode.renderedNode;
 
       // Standard reconciliation for components
-      if (oldRenderedNode != null && newRenderedNode != null) {
-        await _reconcile(oldRenderedNode, newRenderedNode);
-      }
+      await _reconcile(oldRenderedNode, newRenderedNode);
     }
     // Handle stateless components
     else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
@@ -866,9 +864,7 @@ class VDom {
       final oldRenderedNode = oldNode.renderedNode;
       final newRenderedNode = newNode.renderedNode;
 
-      if (oldRenderedNode != null && newRenderedNode != null) {
-        await _reconcile(oldRenderedNode, newRenderedNode);
-      }
+      await _reconcile(oldRenderedNode, newRenderedNode);
     }
     // Handle Fragment nodes
     else if (oldNode is DCFFragment && newNode is DCFFragment) {

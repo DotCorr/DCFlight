@@ -100,7 +100,8 @@ class VDomDebugLogger {
     
     log('UPDATE', _describeNode(component), extra: {
       'Reason': reason,
-      'IsMounted': component is StatefulComponent ? (component as StatefulComponent).isMounted : 'N/A',
+      'IsMounted': component is StatefulComponent ? component.isMounted : 
+                   (component is StatelessComponent ? component.isMounted : 'N/A'),
     });
   }
   

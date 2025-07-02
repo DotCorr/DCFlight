@@ -18,6 +18,12 @@ abstract class StatefulComponent extends DCFComponentNode {
   /// Unique ID for this component instance
   final String instanceId;
 
+  /// The rendered node from the component
+  DCFComponentNode? _renderedNode;
+
+  /// Whether the component is mounted
+  bool _isMounted = false;
+
   /// Whether the component is currently updating to prevent cascading updates
   bool _isUpdating = false;
 
@@ -65,6 +71,9 @@ abstract class StatefulComponent extends DCFComponentNode {
       _renderedNode!.parent = this;
     }
   }
+
+  /// Get whether the component is mounted
+  bool get isMounted => _isMounted;
 
   /// Called when the component is mounted
   @override
@@ -160,7 +169,7 @@ abstract class StatefulComponent extends DCFComponentNode {
             _isUpdating = false;
           });
         }
-      }, instanceId, typeName);
+      }, instanceId, runtimeType.toString());
       _hooks.add(hook);
     }
 
@@ -179,7 +188,7 @@ abstract class StatefulComponent extends DCFComponentNode {
             _isUpdating = false;
           });
         }
-      }, instanceId, typeName);
+      }, instanceId, runtimeType.toString());
       _hooks[_hookIndex] = newHook;
       _hookIndex++;
       return newHook;
@@ -278,12 +287,16 @@ abstract class StatelessComponent extends DCFComponentNode {
   /// Unique ID for this component instance
   final String instanceId;
 
+  /// The rendered node from the component
+  DCFComponentNode? _renderedNode;
+
+  /// Whether the component is mounted
+  bool _isMounted = false;
+
   /// Create a stateless component
   StatelessComponent({super.key})
       : instanceId =
             '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}';
-
-  /// Render the component - must be implemented by subclasses
   DCFComponentNode render();
 
   /// Get the rendered node (lazily render if necessary)
@@ -306,6 +319,9 @@ abstract class StatelessComponent extends DCFComponentNode {
       _renderedNode!.parent = this;
     }
   }
+
+  /// Get whether the component is mounted
+  bool get isMounted => _isMounted;
 
   /// Called when the component is mounted
   @override
