@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 /// Presentation styles for screens
 enum DCFPresentationStyle {
@@ -32,7 +33,7 @@ enum DCFPresentationStyle {
 }
 
 /// Configuration for tab presentation
-class DCFTabConfig {
+class DCFTabConfig extends Equatable {
   /// Tab title
   final String title;
 
@@ -65,10 +66,13 @@ class DCFTabConfig {
       'enabled': enabled,
     };
   }
+
+  @override
+  List<Object?> get props => [title, icon, index, badge, enabled];
 }
 
 /// Configuration for modal presentation
-class DCFModalConfig {
+class DCFModalConfig extends Equatable {
   /// Modal detents (height sizes)
   final List<String>? detents;
 
@@ -112,10 +116,21 @@ class DCFModalConfig {
       if (transitionStyle != null) 'transitionStyle': transitionStyle,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        detents,
+        selectedDetentIndex,
+        showDragIndicator,
+        cornerRadius,
+        isDismissible,
+        allowsBackgroundDismiss,
+        transitionStyle,
+      ];
 }
 
 /// Configuration for push presentation
-class DCFPushConfig {
+class DCFPushConfig extends Equatable {
   /// Navigation bar title
   final String? title;
 
@@ -148,10 +163,19 @@ class DCFPushConfig {
       'largeTitleDisplayMode': largeTitleDisplayMode,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        title,
+        hideNavigationBar,
+        hideBackButton,
+        backButtonTitle,
+        largeTitleDisplayMode,
+      ];
 }
 
 /// A screen component that provides navigation context and lifecycle
-class DCFScreen extends StatelessComponent {
+class DCFScreen extends StatelessComponent with EquatableMixin {
   /// Unique screen name/identifier
   final String name;
 
@@ -276,4 +300,24 @@ class DCFScreen extends StatelessComponent {
       children: children,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        key,
+        name,
+        presentationStyle,
+        tabConfig,
+        modalConfig,
+        pushConfig,
+        children,
+        styleSheet,
+        navigationCommand,
+        events,
+        onAppear,
+        onDisappear,
+        onActivate,
+        onDeactivate,
+        onNavigationEvent,
+        onReceiveParams,
+      ];
 }
