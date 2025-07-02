@@ -1,6 +1,27 @@
 import 'package:dcflight/dcflight.dart';
 
 class Home extends StatefulComponent {
+  // For components whose properties do NOT change during the lifecycle of this
+  // component, we can instantiate them once as final fields. This is a key
+  // performance optimization that prevents the VDOM from unnecessarily
+  // re-rendering static sub-trees.
+  final _welcomeView = DCFView(
+    layout: LayoutProps(flex: 1),
+    children: [
+      DCFText(
+        content: "Welcome To DCFlight",
+        textProps: DCFTextProps(
+          fontSize: 25,
+          color: Colors.black,
+          fontWeight: DCFFontWeight.bold,
+        ),
+      ),
+      DCFText(
+        content: "Build native apps with Dart",
+        textProps: DCFTextProps(fontSize: 15, color: Colors.grey),
+      ),
+    ],
+  );
 
   @override
   DCFComponentNode render() {
@@ -60,23 +81,7 @@ class Home extends StatefulComponent {
           layout: LayoutProps(height: 500, width: "100%"),
         ),
 
-        DCFView(
-          layout: LayoutProps(flex: 1),
-          children: [
-            DCFText(
-              content: "Welcome To DCFlight",
-              textProps: DCFTextProps(
-                fontSize: 25,
-                color: Colors.black,
-                fontWeight: DCFFontWeight.bold,
-              ),
-            ),
-            DCFText(
-              content: "Build native apps with Dart",
-              textProps: DCFTextProps(fontSize: 15, color: Colors.grey),
-            ),
-          ],
-        ),
+        _welcomeView,
       ],
     );
   }
