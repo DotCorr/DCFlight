@@ -23,6 +23,8 @@ class MyApp extends StatelessComponent {
         "navigation_demo",
         "test_gh",
       ],
+      //sub-routes don't have to be registered in the same order as the tabs
+      // fun fact: sub routes can push to the same screen as the tab routes
       selectedIndex: 0,
       tabRoutesRegistryComponents: tabReg,
       subRoutesRegistryComponents: subRoutesReg,

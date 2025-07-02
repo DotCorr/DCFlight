@@ -1,3 +1,4 @@
+import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcflight/dcflight.dart';
 
 class Home extends StatefulComponent {
@@ -49,9 +50,10 @@ class Home extends StatefulComponent {
               print("WebView Navigation State Change: $v");
             },
             webViewProps: DCFWebViewProps(
-              source: selectedIndexWeb.state == 0
-                  ? "https://developer.android.com/compose"
-                  : selectedIndexWeb.state == 1
+              source:
+                  selectedIndexWeb.state == 0
+                      ? "https://developer.android.com/compose"
+                      : selectedIndexWeb.state == 1
                       ? "https://developer.apple.com/tutorials/swiftui/"
                       : "https://www.dotcorr.com",
               loadMode: DCFWebViewLoadMode.url,
@@ -59,7 +61,7 @@ class Home extends StatefulComponent {
             layout: LayoutProps(height: 500, width: "100%"),
           ),
           DCFView(
-            layout: LayoutProps(flex: 1),
+            layout: LayoutProps(height: 250, width: "100%"),
             children: [
               DCFText(
                 content: "Welcome To DCFlight",
@@ -68,6 +70,27 @@ class Home extends StatefulComponent {
                   color: Colors.black,
                   fontWeight: DCFFontWeight.bold,
                 ),
+              ),
+              DCFButton(
+                buttonProps: DCFButtonProps(title: "Go to Github"),
+                layout: LayoutProps(height: 50, width: 200),
+                styleSheet: StyleSheet(
+                  backgroundColor: Colors.blue,
+                  borderRadius: 8,
+                ),
+                onPress: (v) {
+                  publicDetailScreenCommand.setState(
+                    ScreenNavigationCommand(
+                      pushTo: PushToScreenCommand(
+                        screenName: "test_gh",
+                        params: {
+                          "from": "home_page",
+                          "timestamp": DateTime.now().toString(),
+                        },
+                      ),
+                    ),
+                  );
+                },
               ),
               DCFText(
                 content: "Build native apps with Dart",
