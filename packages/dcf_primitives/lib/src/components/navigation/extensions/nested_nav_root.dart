@@ -2,8 +2,8 @@
 import 'package:dcflight/dcflight.dart';
 
 class DCFNestedNavigationRoot extends StatelessComponent {
-  final StateHook tabState;
   final double? animationDuration;
+  final int selectedIndex; // Default selected index, can be overridden
   final DCFTabBarStyle? tabBarStyle;
   final Function(dynamic)? onTabChange;
   final Function(dynamic)? onTabPress;
@@ -16,13 +16,14 @@ class DCFNestedNavigationRoot extends StatelessComponent {
 
   DCFNestedNavigationRoot(
       {super.key,
-      required this.tabState,
       this.animationDuration,
       this.tabBarStyle =
           const DCFTabBarStyle(selectedTintColor: Colors.blueAccent),
       this.onTabChange,
       this.onTabPress,
+      required this.selectedIndex,
       required this.tabRoutes,
+      
       required this.tabRoutesRegistryComponents,
       required this.subRoutesRegistryComponents});
 
@@ -35,13 +36,9 @@ class DCFNestedNavigationRoot extends StatelessComponent {
         animationDuration: animationDuration,
         lazyLoad: true,
         screens: tabRoutes,
-        selectedIndex: tabState.state,
+        selectedIndex: selectedIndex,
         tabBarStyle: tabBarStyle,
-        onTabChange:  (data) {
-            final newIndex = data["selectedIndex"] as int;
-            tabState.setState(newIndex);
-            onTabChange?.call(data);
-          },
+        onTabChange:  onTabChange,
         onTabPress: onTabPress,
       ),
     ]);

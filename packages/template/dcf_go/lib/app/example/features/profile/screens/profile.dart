@@ -13,7 +13,7 @@ class Profile extends StatefulComponent {
     // Command states for demonstrating command pattern
     final scrollCommand = useState<ScrollViewCommand?>(null);
 
-    return DCFScrollView(
+    return useMemo(() => DCFScrollView(
       // ✅ Command pattern demonstration for ScrollView
       command: scrollCommand.state,
       layout: LayoutProps(flex: 1, padding: 16.0),
@@ -366,6 +366,14 @@ class Profile extends StatefulComponent {
           },
         ),
       ],
-    );
+    ),[
+      actionSheetVisible.state,
+      alertVisible.state,
+      textInputAlertVisible.state,
+      loginAlertVisible.state,
+      toggleValue.state,
+      checkboxValue.state,
+      scrollCommand.state,
+    ]);
   }
 }

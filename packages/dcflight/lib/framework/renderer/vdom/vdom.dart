@@ -1627,6 +1627,9 @@ class VDom {
       _errorBoundaries.clear();
       VDomDebugLogger.log('VDOM_STATE_CLEARED', 'All VDOM tracking maps have been cleared.');
 
+      // Also reset the debug logger's internal state to prevent misleading warnings.
+      VDomDebugLogger.reset();
+
       // Set the new root and render it from scratch.
       rootComponent = component;
       await renderToNative(component, parentViewId: "root");

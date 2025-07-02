@@ -6,7 +6,7 @@ import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcf_go/app/example/features/profile/screens/profile.dart';
 
 class TabRegistry extends StatelessComponent {
-  // Instantiate screen components once to preserve their state and avoid re-renders.
+  // Instantiate screen components once to preserve their state and avoid re-renders/ in the render method use useMemo but that is for stateful components(not applicable here).
   final _homeScreen = App();
   final _profileScreen = Profile();
   final _navDemoScreen = NavigationDemo();
