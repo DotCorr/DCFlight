@@ -6,8 +6,10 @@
  */
 
 
+import 'package:equatable/equatable.dart';
+
 /// Hit area expansion for touch targets(this feature is experimental, not much has been done to ensure it works before pre-release)
-class DCFHitSlop {
+class DCFHitSlop extends Equatable {
   final double? top;
   final double? bottom;
   final double? left;
@@ -61,4 +63,7 @@ class DCFHitSlop {
       right: map['right']?.toDouble(),
     );
   }
+
+  @override
+  List<Object?> get props => [top, bottom, left, right];
 }

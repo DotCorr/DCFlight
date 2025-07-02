@@ -4,12 +4,12 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/framework/constants/layout/yoga_enums.dart';
 import 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 
 /// Layout properties for components
-class LayoutProps {
+class LayoutProps extends Equatable {
   // Width and height
   final dynamic width;
   final dynamic height;
@@ -503,4 +503,53 @@ class LayoutProps {
   static bool isPercentage(dynamic value) {
     return value is String && value.endsWith('%');
   }
+
+  @override
+  List<Object?> get props => [
+        width,
+        height,
+        minWidth,
+        maxWidth,
+        minHeight,
+        maxHeight,
+        margin,
+        marginTop,
+        marginRight,
+        marginBottom,
+        marginLeft,
+        marginHorizontal,
+        marginVertical,
+        padding,
+        paddingTop,
+        paddingRight,
+        paddingBottom,
+        paddingLeft,
+        paddingHorizontal,
+        paddingVertical,
+        position,
+        absoluteLayout,
+        rotateInDegrees,
+        scale,
+        scaleX,
+        scaleY,
+        flexDirection,
+        justifyContent,
+        alignItems,
+        alignSelf,
+        alignContent,
+        flexWrap,
+        flex,
+        flexGrow,
+        flexShrink,
+        flexBasis,
+        display,
+        overflow,
+        direction,
+        aspectRatio,
+        gap,
+        rowGap,
+        columnGap,
+        // ignore: deprecated_member_use_from_same_package
+        borderWidth,
+      ];
 }

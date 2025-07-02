@@ -6,11 +6,12 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 import 'managers/screen_manager.dart';
 
 /// Tab bar style configuration
-class DCFTabBarStyle {
+class DCFTabBarStyle extends Equatable {
   /// Background color of tab bar
   final Color? backgroundColor;
 
@@ -64,10 +65,22 @@ class DCFTabBarStyle {
       if (height != null) 'height': height,
     };
   }
+
+  @override
+  List<Object?> get props => [
+        backgroundColor,
+        selectedTintColor,
+        unselectedTintColor,
+        translucent,
+        position,
+        showLabels,
+        showIcons,
+        height,
+      ];
 }
 
 /// Tab navigator that coordinates multiple screens in a tab interface
-class DCFTabNavigator extends StatelessComponent {
+class DCFTabNavigator extends StatelessComponent with EquatableMixin {
   /// List of screen names to include in tab navigation
   final List<String> screens;
 
@@ -148,6 +161,21 @@ class DCFTabNavigator extends StatelessComponent {
       children: [], // Tab navigator doesn't have direct children - it coordinates screens
     );
   }
+
+  @override
+  List<Object?> get props => [
+        key,
+        screens,
+        selectedIndex,
+        tabBarStyle,
+        isHidden,
+        lazyLoad,
+        animationDuration,
+        styleSheet,
+        events,
+        onTabChange,
+        onTabPress,
+      ];
 }
 
 /// Tab bar controller for managing tab state and coordination
