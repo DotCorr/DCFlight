@@ -6,11 +6,12 @@
  */
 
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// DCFTextInput - Cross-platform text input component
 /// Provides native text input functionality with comprehensive type safety
-class DCFTextInput extends StatelessComponent {
+class DCFTextInput extends StatelessComponent with EquatableMixin {
   final LayoutProps? layout;
   final StyleSheet? styleSheet;
   final String? value;
@@ -151,6 +152,51 @@ class DCFTextInput extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        layout,
+        styleSheet,
+        value,
+        defaultValue,
+        placeholder,
+        placeholderTextColor,
+        inputType,
+        keyboardType,
+        autoCapitalization,
+        returnKeyType,
+        textContentType,
+        autoCorrect,
+        autoFocus,
+        blurOnSubmit,
+        caretHidden,
+        clearButtonMode,
+        clearTextOnFocus,
+        contextMenuHidden,
+        editable,
+        enablesReturnKeyAutomatically,
+        maxLength,
+        numberOfLines,
+        multiline,
+        secureTextEntry,
+        selectTextOnFocus,
+        selectionColor,
+        spellCheck,
+        textAlign,
+        textColor,
+        fontSize,
+        fontWeight,
+        fontFamily,
+        onChangeText,
+        onFocus,
+        onBlur,
+        onSubmitEditing,
+        onKeyPress,
+        onSelectionChange,
+        onEndEditing,
+        adaptive,
+        key,
+      ];
 }
 
 /// Text input types

@@ -6,11 +6,12 @@
  */
 
 
+import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 export 'package:dcf_primitives/src/components/dictionary/dcf_icons_dict.dart';
 
 /// Icon properties
-class DCFIconProps {
+class DCFIconProps extends Equatable {
   /// The name of the icon
   final String name;
 
@@ -46,10 +47,18 @@ class DCFIconProps {
       if (color != null) 'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
     };
   }
+
+  @override
+  List<Object?> get props => [
+        name,
+        color,
+        package,
+        adaptive,
+      ];
 }
 
 /// An icon component implementation using StatelessComponent
-class DCFIcon extends StatelessComponent {
+class DCFIcon extends StatelessComponent with EquatableMixin {
   /// The icon properties
   final DCFIconProps iconProps;
 
@@ -103,4 +112,15 @@ class DCFIcon extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        iconProps,
+        layout,
+        styleSheet,
+        events,
+        onLoad,
+        onError,
+        key,
+      ];
 }

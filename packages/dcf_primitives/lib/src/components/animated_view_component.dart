@@ -7,7 +7,6 @@
 
 
 import 'package:dcflight/dcflight.dart';
-import '../commands/src/animated_view_commands.dart';
 
 /// An animated view component implementation using StatelessComponent
 class DCFAnimatedView extends StatelessComponent {
