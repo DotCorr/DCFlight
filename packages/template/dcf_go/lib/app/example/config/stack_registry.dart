@@ -37,6 +37,7 @@ class StackRegistry extends StatefulComponent {
             onAppear: (data) => print("✅ Detail screen appeared: $data"),
             onNavigationEvent: (data) {
               print("🚀 Detail navigation event: $data");
+              // dispose the command to avoid memory leaks
               detailsCommand.setState(null);
             },
             onReceiveParams: (data) =>
