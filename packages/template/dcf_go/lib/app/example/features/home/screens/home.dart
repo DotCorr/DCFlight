@@ -1,7 +1,5 @@
 import 'package:dcf_go/app/example/features/home/components/gradient.dart';
 import 'package:dcf_go/app/example/features/home/pages/home.dart';
-import 'package:dcf_go/app/example/features/profile/screens/profile.dart';
-import 'package:dcf_go/app/example/features/home/components/portal_test.dart';
 import 'package:dcflight/dcflight.dart';
 
 final pagestate = Store<int>(0);
