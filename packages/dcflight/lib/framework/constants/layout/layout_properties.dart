@@ -119,7 +119,7 @@ class LayoutProps {
     this.flexShrink,
     this.flexBasis,
     this.display = YogaDisplay.flex,
-    this.overflow,
+    this.overflow = YogaOverflow.hidden,
     this.direction,
     this.aspectRatio,
     this.gap,

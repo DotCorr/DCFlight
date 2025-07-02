@@ -13,42 +13,35 @@ class App extends StatefulComponent {
     final pagestateLocal = useStore(pagestate);
 
     // Removed DCFPortalProvider wrapper to test modal rendering
-    return DCFView(
-      layout: LayoutProps(
-        flex: 1,
-        flexDirection: YogaFlexDirection.column,
-        padding: 8,
-      ),
+    return DCFScrollView(
+      layout: LayoutProps(height: "100%"),
       children: [
-        DCFScrollView(
-          layout: LayoutProps(height: "100%"),
+        DCFView(
+          layout: LayoutProps(flex: 5, flexDirection: YogaFlexDirection.column),
           children: [
-            // Main App Content
-            // DCFSafeAreaView(
-            //   layout: LayoutProps(flex: 1, padding: 8),
-            // children: [
-            DCFView(
-              layout: LayoutProps(
-                flex: 1,
-                flexDirection: YogaFlexDirection.column,
-              ),
-              children: [
-                pagestateLocal.state == 0
-                    ? Home()
-                    : pagestateLocal.state == 1
-                    ? GradientTest()
-                    : pagestateLocal.state == 2
-                    ? DCFView(children: [DCFText(content: "Test")])
-                    : pagestateLocal.state == 3
-                    ? Profile()
-                    : pagestateLocal.state == 4
-                    ? PortalTest()
-                    : DCFView(),
-              ],
-            ),
+            pagestateLocal.state == 0
+                ? Home()
+                : pagestateLocal.state == 1
+                ? GradientTest()
+                : pagestateLocal.state == 2
+                ? DCFView(children: [DCFText(content: "Test")])
+                : pagestateLocal.state == 3
+                ? Profile()
+                : pagestateLocal.state == 4
+                ? PortalTest()
+                : DCFView(),
+          ],
+        ),
 
+        DCFView(
+          layout: LayoutProps(
+            flex: 1,
+            flexDirection: YogaFlexDirection.column,
+            padding: EdgeInsets.all(16).vertical,
+          ),
+          children: [
             DCFDropdown(
-              layout: LayoutProps(height: 40, marginBottom: 8),
+              layout: LayoutProps(height: 40, width: '100%', marginBottom: 8),
               onValueChange: (v) {
                 pagestateLocal.setState(int.parse(v['value']));
               },
@@ -72,8 +65,6 @@ class App extends StatefulComponent {
               ),
             ),
           ],
-          //   ),
-          // ],
         ),
       ],
     );
