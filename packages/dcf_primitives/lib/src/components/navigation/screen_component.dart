@@ -25,6 +25,9 @@ enum DCFPresentationStyle {
   /// Popover presentation - screen appears as a popover (iPad)
   popover,
 
+  /// Overlay presentation - screen appears as a custom overlay
+  overlay,
+
   /// Drawer presentation - screen appears as a side drawer
   drawer,
 
@@ -174,6 +177,97 @@ class DCFPushConfig extends Equatable {
       ];
 }
 
+/// 🎯 NEW: Configuration for popover presentation
+class DCFPopoverConfig extends Equatable {
+  /// Popover title
+  final String? title;
+
+  /// Preferred width
+  final double? preferredWidth;
+
+  /// Preferred height
+  final double? preferredHeight;
+
+  /// Arrow directions allowed
+  final List<String>? permittedArrowDirections;
+
+  /// Whether popover should dismiss on outside tap
+  final bool dismissOnOutsideTap;
+
+  const DCFPopoverConfig({
+    this.title,
+    this.preferredWidth,
+    this.preferredHeight,
+    this.permittedArrowDirections,
+    this.dismissOnOutsideTap = true,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (title != null) 'title': title,
+      if (preferredWidth != null) 'preferredWidth': preferredWidth,
+      if (preferredHeight != null) 'preferredHeight': preferredHeight,
+      if (permittedArrowDirections != null) 'permittedArrowDirections': permittedArrowDirections,
+      'dismissOnOutsideTap': dismissOnOutsideTap,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        title,
+        preferredWidth,
+        preferredHeight,
+        permittedArrowDirections,
+        dismissOnOutsideTap,
+      ];
+}
+
+/// 🎯 NEW: Configuration for overlay presentation
+class DCFOverlayConfig extends Equatable {
+  /// Overlay title
+  final String? title;
+
+  /// Background color for overlay
+  final Color? overlayBackgroundColor;
+
+  /// Whether tapping background dismisses overlay
+  final bool dismissOnTap;
+
+  /// Animation duration
+  final double? animationDuration;
+
+  /// Whether overlay blocks interaction with underlying content
+  final bool blocksInteraction;
+
+  const DCFOverlayConfig({
+    this.title,
+    this.overlayBackgroundColor,
+    this.dismissOnTap = true,
+    this.animationDuration,
+    this.blocksInteraction = true,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (title != null) 'title': title,
+      if (overlayBackgroundColor != null) 
+        'overlayBackgroundColor': '#${overlayBackgroundColor!.value.toRadixString(16).padLeft(8, '0')}',
+      'dismissOnTap': dismissOnTap,
+      if (animationDuration != null) 'animationDuration': animationDuration,
+      'blocksInteraction': blocksInteraction,
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        title,
+        overlayBackgroundColor,
+        dismissOnTap,
+        animationDuration,
+        blocksInteraction,
+      ];
+}
+
 /// A screen component that provides navigation context and lifecycle
 class DCFScreen extends StatelessComponent with EquatableMixin {
   /// Unique screen name/identifier
@@ -190,6 +284,12 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
 
   /// Configuration for push presentation
   final DCFPushConfig? pushConfig;
+
+  /// 🎯 NEW: Configuration for popover presentation
+  final DCFPopoverConfig? popoverConfig;
+
+  /// 🎯 NEW: Configuration for overlay presentation
+  final DCFOverlayConfig? overlayConfig;
 
   /// Screen content
   final List<DCFComponentNode> children;
@@ -228,6 +328,8 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
     this.tabConfig,
     this.modalConfig,
     this.pushConfig,
+    this.popoverConfig,
+    this.overlayConfig,
     this.children = const [],
     this.styleSheet = const StyleSheet(),
     this.navigationCommand,
@@ -279,6 +381,8 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
       if (tabConfig != null) ...tabConfig!.toMap(),
       if (modalConfig != null) ...modalConfig!.toMap(),
       if (pushConfig != null) ...pushConfig!.toMap(),
+      if (popoverConfig != null) ...popoverConfig!.toMap(),
+      if (overlayConfig != null) ...overlayConfig!.toMap(),
 
       ...LayoutProps(
         padding: 0,
@@ -309,6 +413,8 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
         tabConfig,
         modalConfig,
         pushConfig,
+        popoverConfig,
+        overlayConfig,
         children,
         styleSheet,
         navigationCommand,
@@ -321,9 +427,6 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
         onReceiveParams,
       ];
 }
-
-
-
 
 enum DCFModalPresentationStyle {
   /// A standard page sheet presentation that can be resized.
@@ -344,7 +447,6 @@ enum DCFModalDetent {
   /// A detent that resizes to the full height of the screen.
   large,
 }
-
 
 /// Command to push a screen onto the navigation stack
 class PushToScreenCommand {
@@ -479,6 +581,87 @@ class DismissModalCommand {
   }
 }
 
+/// 🎯 NEW: Command to present screen as popover
+class PresentPopoverCommand {
+  final String screenName;
+  final bool animated;
+  final Map<String, dynamic>? params;
+  final String? sourceViewId; // ID of the view to anchor popover to
+  
+  const PresentPopoverCommand({
+    required this.screenName,
+    this.animated = true,
+    this.params,
+    this.sourceViewId,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'screenName': screenName,
+      'animated': animated,
+      if (params != null) 'params': params,
+      if (sourceViewId != null) 'sourceViewId': sourceViewId,
+    };
+  }
+}
+
+/// 🎯 NEW: Command to dismiss current popover
+class DismissPopoverCommand {
+  final bool animated;
+  final Map<String, dynamic>? result;
+  
+  const DismissPopoverCommand({
+    this.animated = true,
+    this.result,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'animated': animated,
+      if (result != null) 'result': result,
+    };
+  }
+}
+
+/// 🎯 NEW: Command to present screen as overlay
+class PresentOverlayCommand {
+  final String screenName;
+  final bool animated;
+  final Map<String, dynamic>? params;
+  
+  const PresentOverlayCommand({
+    required this.screenName,
+    this.animated = true,
+    this.params,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'screenName': screenName,
+      'animated': animated,
+      if (params != null) 'params': params,
+    };
+  }
+}
+
+/// 🎯 NEW: Command to dismiss current overlay
+class DismissOverlayCommand {
+  final bool animated;
+  final Map<String, dynamic>? result;
+  
+  const DismissOverlayCommand({
+    this.animated = true,
+    this.result,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'animated': animated,
+      if (result != null) 'result': result,
+    };
+  }
+}
+
 /// Composite command class for all screen navigation actions
 class ScreenNavigationCommand {
   final PushToScreenCommand? pushTo;
@@ -488,6 +671,10 @@ class ScreenNavigationCommand {
   final ReplaceWithScreenCommand? replaceWith;
   final PresentModalCommand? presentModal;
   final DismissModalCommand? dismissModal;
+  final PresentPopoverCommand? presentPopover;
+  final DismissPopoverCommand? dismissPopover;
+  final PresentOverlayCommand? presentOverlay;
+  final DismissOverlayCommand? dismissOverlay;
   
   const ScreenNavigationCommand({
     this.pushTo,
@@ -497,6 +684,10 @@ class ScreenNavigationCommand {
     this.replaceWith,
     this.presentModal,
     this.dismissModal,
+    this.presentPopover,
+    this.dismissPopover,
+    this.presentOverlay,
+    this.dismissOverlay,
   });
   
   /// Convert command to props map for native consumption
@@ -531,6 +722,22 @@ class ScreenNavigationCommand {
       commandMap['dismissModal'] = dismissModal!.toMap();
     }
     
+    if (presentPopover != null) {
+      commandMap['presentPopover'] = presentPopover!.toMap();
+    }
+    
+    if (dismissPopover != null) {
+      commandMap['dismissPopover'] = dismissPopover!.toMap();
+    }
+    
+    if (presentOverlay != null) {
+      commandMap['presentOverlay'] = presentOverlay!.toMap();
+    }
+    
+    if (dismissOverlay != null) {
+      commandMap['dismissOverlay'] = dismissOverlay!.toMap();
+    }
+    
     return commandMap;
   }
   
@@ -542,7 +749,11 @@ class ScreenNavigationCommand {
            popToRoot != null ||
            replaceWith != null ||
            presentModal != null ||
-           dismissModal != null;
+           dismissModal != null ||
+           presentPopover != null ||
+           dismissPopover != null ||
+           presentOverlay != null ||
+           dismissOverlay != null;
   }
 }
 
@@ -572,6 +783,20 @@ class NavigationPresets {
   
   /// Dismiss modal
   static const ScreenNavigationCommand dismissModal = ScreenNavigationCommand(dismissModal: DismissModalCommand());
+  
+  /// 🎯 NEW: Present popover
+  static ScreenNavigationCommand presentPopover(String screenName, {Map<String, dynamic>? params, String? sourceViewId}) =>
+      ScreenNavigationCommand(presentPopover: PresentPopoverCommand(screenName: screenName, params: params, sourceViewId: sourceViewId));
+  
+  /// 🎯 NEW: Dismiss popover
+  static const ScreenNavigationCommand dismissPopover = ScreenNavigationCommand(dismissPopover: DismissPopoverCommand());
+  
+  /// 🎯 NEW: Present overlay
+  static ScreenNavigationCommand presentOverlay(String screenName, {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(presentOverlay: PresentOverlayCommand(screenName: screenName, params: params));
+  
+  /// 🎯 NEW: Dismiss overlay
+  static const ScreenNavigationCommand dismissOverlay = ScreenNavigationCommand(dismissOverlay: DismissOverlayCommand());
   
   /// Push without animation
   static ScreenNavigationCommand pushToInstant(String screenName, {Map<String, dynamic>? params}) =>

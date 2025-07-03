@@ -158,7 +158,7 @@ abstract class StatefulComponent extends DCFComponentNode {
 
   /// Memoizes a value, re-creating it only when dependencies change.
   /// This is ideal for preserving instances of stateful child components.
-  T useMemo<T>(T Function() create, [List<dynamic> dependencies = const []]) {
+  T useMemo<T>(T Function() create, {List<dynamic> dependencies = const []}) {
     if (_hookIndex >= _hooks.length) {
       // Create new hook
       final hook = MemoHook<T>(create, dependencies);

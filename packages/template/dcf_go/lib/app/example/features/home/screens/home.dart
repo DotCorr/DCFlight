@@ -14,9 +14,20 @@ class App extends StatefulComponent {
   final gradientTestPage = GradientTest();
   final profilePage = Profile();
   final portalTestPage = PortalTest();
+
   @override
   DCFComponentNode render() {
     final pagestateLocal = useStore(pagestate);
+    final overlayCommand = useStore(publicOverlayLoadingCommand);
+
+    useEffect(() {
+      overlayCommand.setState(
+        NavigationPresets.presentOverlay("overlay_loading"),
+      );
+      print(
+        "Hey flutter dev. Effect is like init state but that can mutate if its dependencies state. You can override componentDidMount and componentDidMount if you dont want to use effects (mutate if and only if dependecy(state or changeable value) changes).",
+      );
+    }, dependencies: []);
 
     return DCFView(
       layout: LayoutProps(
