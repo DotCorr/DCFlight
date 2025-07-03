@@ -20,8 +20,6 @@ class StackRegistry extends StatefulComponent {
 
     return DCFFragment(
       children: [
-        
-
         DCFScreen(
           name: "detail_screen",
           presentationStyle: DCFPresentationStyle.push,
@@ -80,20 +78,40 @@ class StackRegistry extends StatefulComponent {
           overlayConfig: DCFOverlayConfig(
             overlayBackgroundColor: Colors.black.withOpacity(0.5),
             dismissOnTap: true,
-            blocksInteraction: false,
-            
+            blocksInteraction: true,
+
             title: "Hey there loading something sweet",
           ),
           children: [
+            // Normally you use this with portals so you app only has one overlay in its lifecycle
             (DCFView(
+              styleSheet: StyleSheet(backgroundColor: Colors.transparent),
               layout: LayoutProps(
-                height: 100,
-                width: 100,
+                flex: 1,
                 alignItems: YogaAlign.center,
                 justifyContent: YogaJustifyContent.center,
               ),
               children: [
-                DCFSpinner(animating: true, color: CupertinoColors.activeBlue),
+                DCFSpinner(
+                  animating: true,
+                  color: CupertinoColors.systemRed,
+                  style: "medium",
+                  layout: LayoutProps(width: "50", height: "50"),
+                  styleSheet: StyleSheet(
+                    borderRadius: 25,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Close Overlay"),
+                  onPress: (v) {
+                    overlayLoadingCommand.setState(ScreenNavigationCommand(
+                      dismissOverlay: DismissOverlayCommand(),
+                    ));
+                  },
+                  layout: LayoutProps(marginTop: 16, width: "80%"),
+                ),
               ],
             )),
           ],

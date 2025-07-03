@@ -78,7 +78,7 @@ class TabRegistry extends StatelessComponent {
             title: "Github",
             package: "dcf_primitives",
             iconName: DCFIcons.github,
-            index: 1,
+            index: 3,
             size: 24.0,
             tintColor: Colors.blue,
           ),

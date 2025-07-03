@@ -41,7 +41,7 @@ class App extends StatefulComponent {
       children: [
         DCFView(
           layout: LayoutProps(
-            height: "90%",
+            height: "80%",
             width: "100%",
             flexDirection: YogaFlexDirection.column,
           ),
