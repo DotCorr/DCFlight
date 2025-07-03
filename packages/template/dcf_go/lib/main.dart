@@ -8,7 +8,7 @@ void main() {
 
 class MyApp extends StatefulComponent {
   // keep outside of the render method to avoid re-instantiation(to be safe)
-  // if this was inside the render method if the main component was stateful, useMemo could have been used in the render method
+  // if you where to access state or context in the render method, you can use useMemo to access them safely
   final tabReg = TabRegistry();
   final subRoutesReg = StackRegistry();
 
