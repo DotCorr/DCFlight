@@ -20,34 +20,7 @@ class StackRegistry extends StatefulComponent {
 
     return DCFFragment(
       children: [
-        DCFScreen(
-          name: "overlay_loading",
-          onNavigationEvent: (data) {
-            print("✅ Overlay loading appeared: $data");
-            overlayLoadingCommand.setState(null);
-          },
-          presentationStyle: DCFPresentationStyle.overlay,
-          navigationCommand: overlayLoadingCommand.state,
-          overlayConfig: DCFOverlayConfig(
-            overlayBackgroundColor: Colors.black.withOpacity(0.5),
-            dismissOnTap: false,
-            blocksInteraction: true,
-            title: "Hey there loading something sweet",
-          ),
-          children: [
-            (DCFView(
-              layout: LayoutProps(
-                height: 100,
-                width: 100,
-                alignItems: YogaAlign.center,
-                justifyContent: YogaJustifyContent.center,
-              ),
-              children: [
-                DCFSpinner(animating: true, color: CupertinoColors.activeBlue),
-              ],
-            )),
-          ],
-        ),
+        
 
         DCFScreen(
           name: "detail_screen",
@@ -94,6 +67,36 @@ class StackRegistry extends StatefulComponent {
           },
           onReceiveParams: (data) => print("📨 Modal received params: $data"),
           children: [_modalScreen],
+        ),
+
+        DCFScreen(
+          name: "overlay_loading",
+          onNavigationEvent: (data) {
+            print("✅ Overlay loading appeared: $data");
+            overlayLoadingCommand.setState(null);
+          },
+          presentationStyle: DCFPresentationStyle.overlay,
+          navigationCommand: overlayLoadingCommand.state,
+          overlayConfig: DCFOverlayConfig(
+            overlayBackgroundColor: Colors.black.withOpacity(0.5),
+            dismissOnTap: true,
+            blocksInteraction: false,
+            
+            title: "Hey there loading something sweet",
+          ),
+          children: [
+            (DCFView(
+              layout: LayoutProps(
+                height: 100,
+                width: 100,
+                alignItems: YogaAlign.center,
+                justifyContent: YogaJustifyContent.center,
+              ),
+              children: [
+                DCFSpinner(animating: true, color: CupertinoColors.activeBlue),
+              ],
+            )),
+          ],
         ),
       ],
     );

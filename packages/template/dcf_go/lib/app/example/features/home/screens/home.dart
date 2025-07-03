@@ -22,11 +22,13 @@ class App extends StatefulComponent {
 
     useEffect(() {
       overlayCommand.setState(
-        NavigationPresets.presentOverlay("overlay_loading"),
+        ScreenNavigationCommand(presentOverlay: PresentOverlayCommand(screenName: "overlay_loading"))
       );
+
       print(
         "Hey flutter dev. Effect is like init state but that can mutate if its dependencies state. You can override componentDidMount and componentDidMount if you dont want to use effects (mutate if and only if dependecy(state or changeable value) changes).",
       );
+      return null;
     }, dependencies: []);
 
     return DCFView(
