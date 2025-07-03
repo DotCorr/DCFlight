@@ -8,7 +8,7 @@ import 'package:dcflight/dcflight.dart';
 class App extends StatefulComponent {
   // Instantiate componets that handle their inernal state (stateful components) once to to avoid re-instantiation
   // on every render or worse case state loss.
-  // By default the vdom is efficient and will only re-render the components that have changed but doing this 
+  // By default the vdom is efficient and will only re-render the components that have changed but doing this
   // adds up to make your app even more performant.
   final homePage = Home();
   final gradientTestPage = GradientTest();
@@ -18,10 +18,20 @@ class App extends StatefulComponent {
   DCFComponentNode render() {
     final pagestateLocal = useStore(pagestate);
 
-    return DCFFragment(
+    return DCFView(
+      layout: LayoutProps(
+        flex: 1,
+        flexDirection: YogaFlexDirection.column,
+        // padding: 16,
+        // gap: 16,
+      ),
       children: [
         DCFView(
-          layout: LayoutProps(flex: 8, flexDirection: YogaFlexDirection.column),
+          layout: LayoutProps(
+            height: "90%",
+            width: "100%",
+            flexDirection: YogaFlexDirection.column,
+          ),
           children: [
             pagestateLocal.state == 0
                 ? homePage
@@ -36,36 +46,34 @@ class App extends StatefulComponent {
                 : DCFView(),
           ],
         ),
-        DCFView(
-          layout: LayoutProps(
-            flex: 1,
-            flexDirection: YogaFlexDirection.column,
-            padding: EdgeInsets.all(16).vertical,
+
+        DCFDropdown(
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.amber,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: Colors.grey,
           ),
-          children: [
-            DCFDropdown(
-              layout: LayoutProps(height: 40, width: '100%', marginBottom: 8),
-              onValueChange: (v) {
-                pagestateLocal.setState(int.parse(v['value']));
-              },
-              onClose: (v) {
-                print("Dropdown closed with value: ${v['value']}");
-              },
-              onOpen: (v) {
-                print("Dropdown opened with value: ${v['value']}");
-              },
-              dropdownProps: DCFDropdownProps(
-                items: [
-                  DCFDropdownMenuItem(title: "Home", value: "0"),
-                  DCFDropdownMenuItem(title: "Gradient Test", value: "1"),
-                  DCFDropdownMenuItem(title: "Really Long List", value: "2"),
-                  DCFDropdownMenuItem(title: "Modal & Alert Test", value: "3"),
-                  DCFDropdownMenuItem(title: "Portal Test", value: "4"),
-                ],
-                selectedValue: pagestateLocal.state.toString(),
-              ),
-            ),
-          ],
+          layout: LayoutProps(height: "10%", width: '100%'),
+          onValueChange: (v) {
+            pagestateLocal.setState(int.parse(v['value']));
+          },
+          onClose: (v) {
+            print("Dropdown closed with value: ${v['value']}");
+          },
+          onOpen: (v) {
+            print("Dropdown opened with value: ${v['value']}");
+          },
+          dropdownProps: DCFDropdownProps(
+            items: [
+              DCFDropdownMenuItem(title: "Home", value: "0"),
+              DCFDropdownMenuItem(title: "Gradient Test", value: "1"),
+              DCFDropdownMenuItem(title: "Really Long List", value: "2"),
+              DCFDropdownMenuItem(title: "Modal & Alert Test", value: "3"),
+              DCFDropdownMenuItem(title: "Portal Test", value: "4"),
+            ],
+            selectedValue: pagestateLocal.state.toString(),
+          ),
         ),
       ],
     );

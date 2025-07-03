@@ -21,8 +21,6 @@ class Home extends StatefulComponent {
                 DCFSegmentItem(title: "Android"),
                 DCFSegmentItem(title: "IOS"),
                 DCFSegmentItem(title: "DCFlight"),
-                DCFSegmentItem(title: "Docs (Markdown)"),
-
               ],
             ),
             onSelectionChange: (v) {
@@ -48,22 +46,15 @@ class Home extends StatefulComponent {
             onNavigationStateChange: (v) {
               print("WebView Navigation State Change: $v");
             },
-        
             webViewProps: DCFWebViewProps(
-              contentType: selectedIndexWeb.state == 3?
-                  DCFWebViewContentType.markdown :
-                  DCFWebViewContentType.html,
               source:
                   selectedIndexWeb.state == 0
                       ? "https://developer.android.com/compose"
                       : selectedIndexWeb.state == 1
                       ? "https://developer.apple.com/tutorials/swiftui/"
-                      : selectedIndexWeb.state == 2
-                      ? "https://www.dotcorr.com":"assets/dcf_primitive_docs/index.md",
-              loadMode: selectedIndexWeb.state == 3
-                  ? DCFWebViewLoadMode.localFile
-                  : DCFWebViewLoadMode.url,
-
+                      : "https://www.dotcorr.com",
+              loadMode: DCFWebViewLoadMode.url,
+       
             ),
             layout: LayoutProps(height: 500, width: "100%"),
           ),
