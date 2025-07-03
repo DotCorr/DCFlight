@@ -6,8 +6,8 @@ import 'package:dcf_go/app/example/features/profile/screens/profile.dart';
 import 'package:dcflight/dcflight.dart';
 
 class App extends StatefulComponent {
-  // Instantiate componets that handle state (stateful components) once to to avoid re-instantiation
-  // on every render.
+  // Instantiate componets that handle their inernal state (stateful components) once to to avoid re-instantiation
+  // on every render or worse case state loss.
   // By default the vdom is efficient and will only re-render the components that have changed but doing this 
   // adds up to make your app even more performant.
   final homePage = Home();
@@ -28,11 +28,11 @@ class App extends StatefulComponent {
                 : pagestateLocal.state == 1
                 ? gradientTestPage
                 : pagestateLocal.state == 2
-                ? DCFView(children: [DCFText(content: "Test")])
+                ? gradientTestPage
                 : pagestateLocal.state == 3
-                ? Profile()
+                ? profilePage
                 : pagestateLocal.state == 4
-                ? PortalTest()
+                ? portalTestPage
                 : DCFView(),
           ],
         ),

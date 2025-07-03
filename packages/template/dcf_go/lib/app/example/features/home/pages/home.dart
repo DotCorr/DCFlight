@@ -5,9 +5,6 @@ class Home extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final selectedIndexWeb = useState<int>(2);
-    // By wrapping the entire scroll view in useMemo, we ensure that its children
-    // (SegmentedControl, WebView, etc.) are not re-created on every render,
-    // unless the `selectedIndexWeb.state` actually changes.
     return  DCFScrollView(
         layout: LayoutProps(
           flex: 1,
@@ -24,6 +21,8 @@ class Home extends StatefulComponent {
                 DCFSegmentItem(title: "Android"),
                 DCFSegmentItem(title: "IOS"),
                 DCFSegmentItem(title: "DCFlight"),
+                DCFSegmentItem(title: "Docs (Markdown)"),
+
               ],
             ),
             onSelectionChange: (v) {
@@ -49,15 +48,22 @@ class Home extends StatefulComponent {
             onNavigationStateChange: (v) {
               print("WebView Navigation State Change: $v");
             },
+        
             webViewProps: DCFWebViewProps(
+              contentType: selectedIndexWeb.state == 3?
+                  DCFWebViewContentType.markdown :
+                  DCFWebViewContentType.html,
               source:
                   selectedIndexWeb.state == 0
                       ? "https://developer.android.com/compose"
                       : selectedIndexWeb.state == 1
                       ? "https://developer.apple.com/tutorials/swiftui/"
-                      : "https://www.dotcorr.com",
-              loadMode: DCFWebViewLoadMode.url,
-              javaScriptEnabled: false
+                      : selectedIndexWeb.state == 2
+                      ? "https://www.dotcorr.com":"assets/dcf_primitive_docs/index.md",
+              loadMode: selectedIndexWeb.state == 3
+                  ? DCFWebViewLoadMode.localFile
+                  : DCFWebViewLoadMode.url,
+
             ),
             layout: LayoutProps(height: 500, width: "100%"),
           ),
