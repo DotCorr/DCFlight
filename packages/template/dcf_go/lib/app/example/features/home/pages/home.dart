@@ -57,6 +57,7 @@ class Home extends StatefulComponent {
                       ? "https://developer.apple.com/tutorials/swiftui/"
                       : "https://www.dotcorr.com",
               loadMode: DCFWebViewLoadMode.url,
+              javaScriptEnabled: false
             ),
             layout: LayoutProps(height: 500, width: "100%"),
           ),
