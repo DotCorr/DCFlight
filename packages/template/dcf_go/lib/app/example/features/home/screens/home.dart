@@ -20,11 +20,25 @@ class App extends StatefulComponent {
     final pagestateLocal = useStore(pagestate);
     final overlayCommand = useStore(publicOverlayLoadingCommand);
 
-    useEffect(() {
-      overlayCommand.setState(
-        ScreenNavigationCommand(presentOverlay: PresentOverlayCommand(screenName: "overlay_loading"))
-      );
+    useInsertionEffect(() {
+      // refer to hooks docs:
+      //*
+      //   Why useInsertionEffect Works But useLayoutEffect Doesn't
+      // The Problem this Solves:
+      // useLayoutEffect runs after component + children mount → Still too early for navigation
+      // useInsertionEffect runs after entire tree is complete → Perfect timing for navigation
 
+      // Your navigation issue specifically needs the complete component tree because:
+
+      // Screen registration happens during component mounting
+      // Navigation commands need all screens to exist
+      // Only useInsertionEffect waits for the full tree initialization
+      //*
+      overlayCommand.setState(
+        ScreenNavigationCommand(
+          presentOverlay: PresentOverlayCommand(screenName: "overlay_loading"),
+        ),
+      );
       print(
         "Hey flutter dev. Effect is like init state but that can mutate if its dependencies state. You can override componentDidMount and componentDidMount if you dont want to use effects (mutate if and only if dependecy(state or changeable value) changes).",
       );
@@ -67,7 +81,7 @@ class App extends StatefulComponent {
             borderWidth: 1,
             borderColor: Colors.grey,
           ),
-          layout: LayoutProps(height: "10%", width: '100%'),
+          layout: LayoutProps(height: "5%", width: '100%'),
           onValueChange: (v) {
             pagestateLocal.setState(int.parse(v['value']));
           },

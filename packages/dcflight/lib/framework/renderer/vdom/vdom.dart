@@ -18,7 +18,7 @@ import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
 
-/// Virtual DOM implementation with efficient reconciliation and state handling
+/// Enhanced Virtual DOM implementation with phased effect execution
 class VDom {
   /// Native bridge for UI operations
   final PlatformInterface _nativeBridge;
@@ -55,6 +55,15 @@ class VDom {
 
   /// Error boundary registry
   final Map<String, ErrorBoundary> _errorBoundaries = {};
+
+  /// NEW: Components waiting for layout effects (after children mount)
+  final Set<String> _componentsWaitingForLayout = {};
+  
+  /// NEW: Components waiting for insertion effects (after tree completion)
+  final Set<String> _componentsWaitingForInsertion = {};
+  
+  /// NEW: Whether the component tree is complete
+  bool _isTreeComplete = false;
 
   /// Create a new VDom instance with the provided native bridge
   VDom(this._nativeBridge) {
@@ -509,14 +518,30 @@ class VDom {
         }
       }
 
-      // Run lifecycle methods
+      // Run lifecycle methods with phased effects
       if (component is StatefulComponent) {
         VDomDebugLogger.log(
             'LIFECYCLE_DID_UPDATE', 'Calling componentDidUpdate');
         component.componentDidUpdate({});
+        
+        // Run immediate effects
         VDomDebugLogger.log(
-            'LIFECYCLE_EFFECTS', 'Running effects after render');
+            'LIFECYCLE_EFFECTS_IMMEDIATE', 'Running immediate effects');
         component.runEffectsAfterRender();
+        
+        // Run layout effects if tree is complete
+        if (_isTreeComplete) {
+          VDomDebugLogger.log(
+              'LIFECYCLE_EFFECTS_LAYOUT', 'Running layout effects');
+          component.runLayoutEffects();
+        }
+        
+        // Run insertion effects if tree is complete
+        if (_isTreeComplete) {
+          VDomDebugLogger.log(
+              'LIFECYCLE_EFFECTS_INSERTION', 'Running insertion effects');
+          component.runInsertionEffects();
+        }
       }
 
       // NEW: Call lifecycle interceptor after update
@@ -540,7 +565,7 @@ class VDom {
     }
   }
 
-  /// Render a node to native UI
+  /// Enhanced render to native with phased effects
   Future<String?> renderToNative(DCFComponentNode node,
       {String? parentViewId, int? index}) async {
     await isReady;
@@ -643,7 +668,7 @@ class VDom {
         return null; // Fragments don't have their own native view ID
       }
 
-      // Handle Component nodes
+      // Handle Component nodes with enhanced phased effects
       if (node is StatefulComponent || node is StatelessComponent) {
         VDomDebugLogger.log('RENDER_COMPONENT', 'Rendering component node',
             component: node.runtimeType.toString());
@@ -689,22 +714,27 @@ class VDom {
           VDomDebugLogger.log('COMPONENT_VIEW_ID', 'Component view ID assigned',
               extra: {'ViewId': viewId});
 
-          // Call lifecycle method if not already mounted
+          // ENHANCED: Mount component with phased effects
           if (node is StatefulComponent && !node.isMounted) {
             VDomDebugLogger.log('LIFECYCLE_DID_MOUNT',
                 'Calling componentDidMount for StatefulComponent');
             node.componentDidMount();
+            
+            // PHASE 1: Run immediate effects (existing behavior)
+            VDomDebugLogger.log('LIFECYCLE_EFFECTS_IMMEDIATE', 'Running immediate effects');
+            node.runEffectsAfterRender();
+            
+            // Queue for later effect phases
+            _componentsWaitingForLayout.add(node.instanceId);
+            _componentsWaitingForInsertion.add(node.instanceId);
+            
+            // Schedule layout effects to run after children
+            _scheduleLayoutEffects(node);
+            
           } else if (node is StatelessComponent && !node.isMounted) {
             VDomDebugLogger.log('LIFECYCLE_DID_MOUNT',
                 'Calling componentDidMount for StatelessComponent');
             node.componentDidMount();
-          }
-
-          // Run effects for stateful components
-          if (node is StatefulComponent) {
-            VDomDebugLogger.log('LIFECYCLE_EFFECTS',
-                'Running effects after render for StatefulComponent');
-            node.runEffectsAfterRender();
           }
 
           // NEW: Call lifecycle interceptor after mount
@@ -757,6 +787,60 @@ class VDom {
       VDomDebugLogger.logRender('ERROR', node, error: e.toString());
       return null;
     }
+  }
+
+  /// NEW: Schedule layout effects to run after children are mounted
+  void _scheduleLayoutEffects(StatefulComponent component) {
+    // Use microtask to ensure children have been processed
+    Future.microtask(() {
+      if (_componentsWaitingForLayout.contains(component.instanceId)) {
+        VDomDebugLogger.log('LIFECYCLE_EFFECTS_LAYOUT', 'Running layout effects for component: ${component.instanceId}');
+        component.runLayoutEffects();
+        _componentsWaitingForLayout.remove(component.instanceId);
+      }
+    });
+  }
+
+  /// NEW: Set root component and trigger tree completion
+  /// This should be called by your application setup code
+  void setRootComponent(DCFComponentNode component) {
+    rootComponent = component;
+    
+    VDomDebugLogger.log('ROOT_COMPONENT_SET', 'Root component set: ${component.runtimeType}');
+    
+    // Wait for next frame to ensure entire tree is rendered
+    Future.microtask(() {
+      _markTreeComplete();
+    });
+  }
+
+  /// NEW: Mark the component tree as complete and run insertion effects
+  void _markTreeComplete() {
+    if (_isTreeComplete) return;
+    
+    _isTreeComplete = true;
+    VDomDebugLogger.log('TREE_COMPLETE', 'Component tree marked as complete');
+    
+    // Run insertion effects for all waiting components
+    for (final componentId in _componentsWaitingForInsertion) {
+      final component = _statefulComponents[componentId];
+      if (component != null) {
+        VDomDebugLogger.log('LIFECYCLE_EFFECTS_INSERTION', 'Running insertion effects for component: $componentId');
+        component.runInsertionEffects();
+      }
+    }
+    _componentsWaitingForInsertion.clear();
+  }
+
+  /// NEW: Get debug information about effect phases
+  Map<String, dynamic> getEffectPhaseDebugInfo() {
+    return {
+      'isTreeComplete': _isTreeComplete,
+      'componentsWaitingForLayout': _componentsWaitingForLayout.length,
+      'componentsWaitingForInsertion': _componentsWaitingForInsertion.length,
+      'layoutQueue': _componentsWaitingForLayout.toList(),
+      'insertionQueue': _componentsWaitingForInsertion.toList(),
+    };
   }
 
   /// Render an element to native UI
@@ -928,12 +1012,12 @@ class VDom {
       newNode.contentViewId = oldNode.contentViewId;
 
       // FRAMEWORK-LEVEL OPTIMIZATION:
-// If two stateless components are "semantically equal" (checked via operator==),
-// we can skip component-level operations but MUST still reconcile their rendered content.
-// This avoids the need for developers to manually memoize simple, static components
-// while ensuring that dynamic content (like state-driven text) still updates properly.
-//
-// This tiny check saves MASSIVE work:
+      // If two stateless components are "semantically equal" (checked via operator==),
+      // we can skip component-level operations but MUST still reconcile their rendered content.
+      // This avoids the need for developers to manually memoize simple, static components
+      // while ensuring that dynamic content (like state-driven text) still updates properly.
+      //
+      // This tiny check saves MASSIVE work:
       // - No component re-instantiation
       // - No render() method call
       // - No props object creation
@@ -1184,6 +1268,10 @@ class VDom {
         _statefulComponents.remove(oldNode.instanceId);
         _pendingUpdates.remove(oldNode.instanceId);
         _previousRenderedNodes.remove(oldNode.instanceId);
+        
+        // NEW: Remove from effect queues
+        _componentsWaitingForLayout.remove(oldNode.instanceId);
+        _componentsWaitingForInsertion.remove(oldNode.instanceId);
 
         // Call lifecycle cleanup
         try {
@@ -1257,6 +1345,66 @@ class VDom {
             'Error': e.toString(),
             'NodeType': oldNode.runtimeType.toString()
           });
+    }
+  }
+
+  /// Create the root component for the application
+  Future<void> createRoot(DCFComponentNode component) async {
+    VDomDebugLogger.log('CREATE_ROOT_START', 'Creating root component',
+        component: component.runtimeType.toString());
+
+    // On hot restart, the new `component` instance will be different from the existing `rootComponent`.
+    // In this case, we must tear down the old VDOM state and render fresh to match the native side,
+    // which has already cleared its views.
+    if (rootComponent != null && rootComponent != component) {
+      VDomDebugLogger.log('CREATE_ROOT_HOT_RESTART',
+          'Hot restart detected. Tearing down old VDOM state.');
+
+      // Dispose of the entire old component tree to clean up state and listeners.
+      await _disposeOldComponent(rootComponent!);
+
+      // Clear all VDOM tracking maps to ensure a clean slate.
+      _statefulComponents.clear();
+      _statelessComponents.clear();
+      _nodesByViewId.clear();
+      _previousRenderedNodes.clear();
+      _pendingUpdates.clear();
+      _errorBoundaries.clear();
+      
+      // NEW: Clear effect queues
+      _componentsWaitingForLayout.clear();
+      _componentsWaitingForInsertion.clear();
+      _isTreeComplete = false;
+      
+      VDomDebugLogger.log(
+          'VDOM_STATE_CLEARED', 'All VDOM tracking maps have been cleared.');
+
+      // Also reset the debug logger's internal state to prevent misleading warnings.
+      VDomDebugLogger.reset();
+
+      // Set the new root and render it from scratch.
+      rootComponent = component;
+      await renderToNative(component, parentViewId: "root");
+      
+      // NEW: Mark tree as complete after root creation
+      setRootComponent(component);
+      
+      VDomDebugLogger.log('CREATE_ROOT_COMPLETE',
+          'Root component re-created successfully after hot restart.');
+    } else {
+      VDomDebugLogger.log('CREATE_ROOT_FIRST', 'Creating first root component');
+      // First time creating root
+      rootComponent = component;
+
+      // Render to native
+      final viewId = await renderToNative(component, parentViewId: "root");
+      
+      // NEW: Mark tree as complete after root creation
+      setRootComponent(component);
+      
+      VDomDebugLogger.log(
+          'CREATE_ROOT_COMPLETE', 'Root component created successfully',
+          extra: {'ViewId': viewId});
     }
   }
 
@@ -1762,52 +1910,6 @@ class VDom {
     return null;
   }
 
-  /// Create the root component for the application
-  Future<void> createRoot(DCFComponentNode component) async {
-    VDomDebugLogger.log('CREATE_ROOT_START', 'Creating root component',
-        component: component.runtimeType.toString());
-
-    // On hot restart, the new `component` instance will be different from the existing `rootComponent`.
-    // In this case, we must tear down the old VDOM state and render fresh to match the native side,
-    // which has already cleared its views.
-    if (rootComponent != null && rootComponent != component) {
-      VDomDebugLogger.log('CREATE_ROOT_HOT_RESTART',
-          'Hot restart detected. Tearing down old VDOM state.');
-
-      // Dispose of the entire old component tree to clean up state and listeners.
-      await _disposeOldComponent(rootComponent!);
-
-      // Clear all VDOM tracking maps to ensure a clean slate.
-      _statefulComponents.clear();
-      _statelessComponents.clear();
-      _nodesByViewId.clear();
-      _previousRenderedNodes.clear();
-      _pendingUpdates.clear();
-      _errorBoundaries.clear();
-      VDomDebugLogger.log(
-          'VDOM_STATE_CLEARED', 'All VDOM tracking maps have been cleared.');
-
-      // Also reset the debug logger's internal state to prevent misleading warnings.
-      VDomDebugLogger.reset();
-
-      // Set the new root and render it from scratch.
-      rootComponent = component;
-      await renderToNative(component, parentViewId: "root");
-      VDomDebugLogger.log('CREATE_ROOT_COMPLETE',
-          'Root component re-created successfully after hot restart.');
-    } else {
-      VDomDebugLogger.log('CREATE_ROOT_FIRST', 'Creating first root component');
-      // First time creating root
-      rootComponent = component;
-
-      // Render to native
-      final viewId = await renderToNative(component, parentViewId: "root");
-      VDomDebugLogger.log(
-          'CREATE_ROOT_COMPLETE', 'Root component created successfully',
-          extra: {'ViewId': viewId});
-    }
-  }
-
   /// Create a portal container with optimized properties for portaling
   Future<String> createPortal(
     String portalId, {
@@ -1923,6 +2025,9 @@ class VDom {
       'HasRootComponent': rootComponent != null,
       'BatchUpdateInProgress': _batchUpdateInProgress,
       'IsUpdateScheduled': _isUpdateScheduled,
+      'IsTreeComplete': _isTreeComplete,
+      'ComponentsWaitingForLayout': _componentsWaitingForLayout.length,
+      'ComponentsWaitingForInsertion': _componentsWaitingForInsertion.length,
     });
   }
 

@@ -15,10 +15,6 @@ class MyApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
     return DCFNestedNavigationRoot(
-      onTabChange: (data) {
-        print("🔄 Tab changed to index: ${data["selectedIndex"]}");
-
-      },
       tabRoutes: const [
         "test_home",
         "test_profile",
