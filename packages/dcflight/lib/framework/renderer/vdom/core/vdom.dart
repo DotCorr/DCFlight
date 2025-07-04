@@ -9,7 +9,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dcflight/framework/renderer/vdom/debug/vdom_logger.dart';
-import 'package:dcflight/framework/renderer/vdom/mutator/vdom_mutator_extension_reg.dart';
+import 'package:dcflight/framework/renderer/vdom/core/mutator/vdom_mutator_extension_reg.dart';
 import 'package:dcflight/framework/renderer/interface/interface.dart'
     show PlatformInterface;
 import 'package:dcflight/framework/renderer/vdom/component/component.dart';

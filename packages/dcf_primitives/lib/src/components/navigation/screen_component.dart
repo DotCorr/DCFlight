@@ -37,19 +37,10 @@ enum DCFPresentationStyle {
 
 /// Configuration for tab presentation
 class DCFTabConfig extends Equatable {
-  /// Tab title
   final String title;
-
-  /// Tab icon - can be String (SF Symbol) or Map (SVG config)
   final dynamic icon;
-
-  /// Tab index in tab bar
   final int index;
-
-  /// Tab badge text
   final String? badge;
-
-  /// Whether tab is enabled
   final bool enabled;
 
   const DCFTabConfig({
@@ -76,25 +67,12 @@ class DCFTabConfig extends Equatable {
 
 /// Configuration for modal presentation
 class DCFModalConfig extends Equatable {
-  /// Modal detents (height sizes)
   final List<DCFModalDetent>? detents;
-
-  /// Selected detent index
   final int? selectedDetentIndex;
-
-  /// Whether to show drag indicator
   final bool showDragIndicator;
-
-  /// Corner radius
   final double? cornerRadius;
-
-  /// Whether modal is dismissible
   final bool isDismissible;
-
-  /// Whether background tap dismisses modal
   final bool allowsBackgroundDismiss;
-
-  /// Transition style
   final String? transitionStyle;
 
   const DCFModalConfig({
@@ -110,8 +88,7 @@ class DCFModalConfig extends Equatable {
   Map<String, dynamic> toMap() {
     return {
       if (detents != null) 'detents': detents,
-      if (selectedDetentIndex != null)
-        'selectedDetentIndex': selectedDetentIndex,
+      if (selectedDetentIndex != null) 'selectedDetentIndex': selectedDetentIndex,
       'showDragIndicator': showDragIndicator,
       if (cornerRadius != null) 'cornerRadius': cornerRadius,
       'isDismissible': isDismissible,
@@ -134,19 +111,10 @@ class DCFModalConfig extends Equatable {
 
 /// Configuration for push presentation
 class DCFPushConfig extends Equatable {
-  /// Navigation bar title
   final String? title;
-
-  /// Whether navigation bar is hidden
   final bool hideNavigationBar;
-
-  /// Whether back button is hidden
   final bool hideBackButton;
-
-  /// Custom back button title
   final String? backButtonTitle;
-
-  /// Whether large titles are enabled
   final bool largeTitleDisplayMode;
 
   const DCFPushConfig({
@@ -177,21 +145,12 @@ class DCFPushConfig extends Equatable {
       ];
 }
 
-/// 🎯 NEW: Configuration for popover presentation
+/// Configuration for popover presentation
 class DCFPopoverConfig extends Equatable {
-  /// Popover title
   final String? title;
-
-  /// Preferred width
   final double? preferredWidth;
-
-  /// Preferred height
   final double? preferredHeight;
-
-  /// Arrow directions allowed
   final List<String>? permittedArrowDirections;
-
-  /// Whether popover should dismiss on outside tap
   final bool dismissOnOutsideTap;
 
   const DCFPopoverConfig({
@@ -222,21 +181,12 @@ class DCFPopoverConfig extends Equatable {
       ];
 }
 
-/// 🎯 NEW: Configuration for overlay presentation
+/// Configuration for overlay presentation
 class DCFOverlayConfig extends Equatable {
-  /// Overlay title
   final String? title;
-
-  /// Background color for overlay
   final Color? overlayBackgroundColor;
-
-  /// Whether tapping background dismisses overlay
   final bool dismissOnTap;
-
-  /// Animation duration
   final double? animationDuration;
-
-  /// Whether overlay blocks interaction with underlying content
   final bool blocksInteraction;
 
   const DCFOverlayConfig({
@@ -270,55 +220,22 @@ class DCFOverlayConfig extends Equatable {
 
 /// A screen component that provides navigation context and lifecycle
 class DCFScreen extends StatelessComponent with EquatableMixin {
-  /// Unique screen name/identifier
   final String name;
-
-  /// How this screen should be presented
   final DCFPresentationStyle presentationStyle;
-
-  /// Configuration for tab presentation
   final DCFTabConfig? tabConfig;
-
-  /// Configuration for modal presentation
   final DCFModalConfig? modalConfig;
-
-  /// Configuration for push presentation
   final DCFPushConfig? pushConfig;
-
-  /// 🎯 NEW: Configuration for popover presentation
   final DCFPopoverConfig? popoverConfig;
-
-  /// 🎯 NEW: Configuration for overlay presentation
   final DCFOverlayConfig? overlayConfig;
-
-  /// Screen content
   final List<DCFComponentNode> children;
-
-  /// Style properties
   final StyleSheet styleSheet;
-
-  /// Command for screen navigation operations
   final ScreenNavigationCommand? navigationCommand;
-
-  /// Event handlers
   final Map<String, dynamic>? events;
-
-  /// Called when screen appears
   final Function(Map<dynamic, dynamic>)? onAppear;
-
-  /// Called when screen disappears
   final Function(Map<dynamic, dynamic>)? onDisappear;
-
-  /// Called when screen is activated (becomes current)
   final Function(Map<dynamic, dynamic>)? onActivate;
-
-  /// Called when screen is deactivated (no longer current)
   final Function(Map<dynamic, dynamic>)? onDeactivate;
-
-  /// Called when navigation occurs from this screen
   final Function(Map<dynamic, dynamic>)? onNavigationEvent;
-
-  /// Called when this screen receives parameters from navigation
   final Function(Map<dynamic, dynamic>)? onReceiveParams;
 
   DCFScreen({
@@ -373,7 +290,6 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
 
     // Build props map
     Map<String, dynamic> props = {
-      // CRITICAL FIX: Always include name and presentationStyle as the first props
       'name': name,
       'presentationStyle': presentationStyle.name,
 
@@ -429,32 +345,27 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
 }
 
 enum DCFModalPresentationStyle {
-  /// A standard page sheet presentation that can be resized.
   pageSheet,
-
-  /// A full-screen presentation.
   fullScreen,
-
-  /// A presentation that covers the content below it.
   overCurrentContext,
 }
 
-/// Defines the detents for a resizable modal sheet.
 enum DCFModalDetent {
-  /// A detent that resizes to a medium height.
   medium,
-
-  /// A detent that resizes to the full height of the screen.
   large,
 }
 
+// ============================================================================
+// 🎯 NAVIGATION COMMANDS - Standard Architecture
+// ============================================================================
+
 /// Command to push a screen onto the navigation stack
-class PushToScreenCommand {
+class PushToCommand {
   final String screenName;
   final bool animated;
-  final Map<String, dynamic>? params; // Optional parameters to pass
+  final Map<String, dynamic>? params;
   
-  const PushToScreenCommand({
+  const PushToCommand({
     required this.screenName,
     this.animated = true,
     this.params,
@@ -470,11 +381,11 @@ class PushToScreenCommand {
 }
 
 /// Command to pop current screen from navigation stack
-class PopScreenCommand {
+class PopCommand {
   final bool animated;
-  final Map<String, dynamic>? result; // Optional result to pass back
+  final Map<String, dynamic>? result;
   
-  const PopScreenCommand({
+  const PopCommand({
     this.animated = true,
     this.result,
   });
@@ -488,11 +399,11 @@ class PopScreenCommand {
 }
 
 /// Command to pop to a specific screen in the stack
-class PopToScreenCommand {
+class PopToCommand {
   final String screenName;
   final bool animated;
   
-  const PopToScreenCommand({
+  const PopToCommand({
     required this.screenName,
     this.animated = true,
   });
@@ -519,12 +430,12 @@ class PopToRootCommand {
 }
 
 /// Command to replace current screen with another
-class ReplaceWithScreenCommand {
+class ReplaceWithCommand {
   final String screenName;
   final bool animated;
   final Map<String, dynamic>? params;
   
-  const ReplaceWithScreenCommand({
+  const ReplaceWithCommand({
     required this.screenName,
     this.animated = true,
     this.params,
@@ -544,7 +455,7 @@ class PresentModalCommand {
   final String screenName;
   final bool animated;
   final Map<String, dynamic>? params;
-  final String? presentationStyle; // "fullScreen", "pageSheet", etc.
+  final String? presentationStyle;
   
   const PresentModalCommand({
     required this.screenName,
@@ -581,12 +492,12 @@ class DismissModalCommand {
   }
 }
 
-/// 🎯 NEW: Command to present screen as popover
+/// Command to present screen as popover
 class PresentPopoverCommand {
   final String screenName;
   final bool animated;
   final Map<String, dynamic>? params;
-  final String? sourceViewId; // ID of the view to anchor popover to
+  final String? sourceViewId;
   
   const PresentPopoverCommand({
     required this.screenName,
@@ -605,7 +516,7 @@ class PresentPopoverCommand {
   }
 }
 
-/// 🎯 NEW: Command to dismiss current popover
+/// Command to dismiss current popover
 class DismissPopoverCommand {
   final bool animated;
   final Map<String, dynamic>? result;
@@ -623,7 +534,7 @@ class DismissPopoverCommand {
   }
 }
 
-/// 🎯 NEW: Command to present screen as overlay
+/// Command to present screen as overlay
 class PresentOverlayCommand {
   final String screenName;
   final bool animated;
@@ -644,7 +555,7 @@ class PresentOverlayCommand {
   }
 }
 
-/// 🎯 NEW: Command to dismiss current overlay
+/// Command to dismiss current overlay
 class DismissOverlayCommand {
   final bool animated;
   final Map<String, dynamic>? result;
@@ -664,11 +575,11 @@ class DismissOverlayCommand {
 
 /// Composite command class for all screen navigation actions
 class ScreenNavigationCommand {
-  final PushToScreenCommand? pushTo;
-  final PopScreenCommand? pop;
-  final PopToScreenCommand? popTo;
+  final PushToCommand? pushTo;
+  final PopCommand? pop;
+  final PopToCommand? popTo;
   final PopToRootCommand? popToRoot;
-  final ReplaceWithScreenCommand? replaceWith;
+  final ReplaceWithCommand? replaceWith;
   final PresentModalCommand? presentModal;
   final DismissModalCommand? dismissModal;
   final PresentPopoverCommand? presentPopover;
@@ -757,51 +668,81 @@ class ScreenNavigationCommand {
   }
 }
 
-/// Navigation presets for common operations
+// ============================================================================
+// 🎯 NAVIGATION PRESETS - Clean API as Default
+// ============================================================================
+
+/// Navigation presets for common operations - USE THESE AS DEFAULT
 class NavigationPresets {
+  // PUSH NAVIGATION
+  
   /// Push to a screen
   static ScreenNavigationCommand pushTo(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(pushTo: PushToScreenCommand(screenName: screenName, params: params));
+      ScreenNavigationCommand(pushTo: PushToCommand(screenName: screenName, params: params));
+  
+  /// Push to a screen without animation
+  static ScreenNavigationCommand pushToInstant(String screenName, {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(pushTo: PushToCommand(screenName: screenName, animated: false, params: params));
+  
+  // POP NAVIGATION
   
   /// Pop current screen
-  static const ScreenNavigationCommand pop = ScreenNavigationCommand(pop: PopScreenCommand());
+  static const ScreenNavigationCommand pop = ScreenNavigationCommand(pop: PopCommand());
+  
+  /// Pop current screen without animation
+  static const ScreenNavigationCommand popInstant = ScreenNavigationCommand(pop: PopCommand(animated: false));
   
   /// Pop to specific screen
   static ScreenNavigationCommand popTo(String screenName) =>
-      ScreenNavigationCommand(popTo: PopToScreenCommand(screenName: screenName));
+      ScreenNavigationCommand(popTo: PopToCommand(screenName: screenName));
   
   /// Pop to root
   static const ScreenNavigationCommand popToRoot = ScreenNavigationCommand(popToRoot: PopToRootCommand());
   
   /// Replace current screen
   static ScreenNavigationCommand replaceWith(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(replaceWith: ReplaceWithScreenCommand(screenName: screenName, params: params));
+      ScreenNavigationCommand(replaceWith: ReplaceWithCommand(screenName: screenName, params: params));
+  
+  // MODAL NAVIGATION
   
   /// Present modal
   static ScreenNavigationCommand presentModal(String screenName, {Map<String, dynamic>? params, String? style}) =>
       ScreenNavigationCommand(presentModal: PresentModalCommand(screenName: screenName, params: params, presentationStyle: style));
   
+  /// Present full screen modal
+  static ScreenNavigationCommand presentFullScreenModal(String screenName, {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(presentModal: PresentModalCommand(screenName: screenName, params: params, presentationStyle: "fullScreen"));
+  
+  /// Present page sheet modal
+  static ScreenNavigationCommand presentPageSheetModal(String screenName, {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(presentModal: PresentModalCommand(screenName: screenName, params: params, presentationStyle: "pageSheet"));
+  
   /// Dismiss modal
   static const ScreenNavigationCommand dismissModal = ScreenNavigationCommand(dismissModal: DismissModalCommand());
   
-  /// 🎯 NEW: Present popover
+  /// Dismiss modal with result
+  static ScreenNavigationCommand dismissModalWithResult(Map<String, dynamic> result) =>
+      ScreenNavigationCommand(dismissModal: DismissModalCommand(result: result));
+  
+  // POPOVER NAVIGATION
+  
+  /// Present popover
   static ScreenNavigationCommand presentPopover(String screenName, {Map<String, dynamic>? params, String? sourceViewId}) =>
       ScreenNavigationCommand(presentPopover: PresentPopoverCommand(screenName: screenName, params: params, sourceViewId: sourceViewId));
   
-  /// 🎯 NEW: Dismiss popover
+  /// Dismiss popover
   static const ScreenNavigationCommand dismissPopover = ScreenNavigationCommand(dismissPopover: DismissPopoverCommand());
   
-  /// 🎯 NEW: Present overlay
+  // OVERLAY NAVIGATION
+  
+  /// Present overlay
   static ScreenNavigationCommand presentOverlay(String screenName, {Map<String, dynamic>? params}) =>
       ScreenNavigationCommand(presentOverlay: PresentOverlayCommand(screenName: screenName, params: params));
   
-  /// 🎯 NEW: Dismiss overlay
+  /// Dismiss overlay
   static const ScreenNavigationCommand dismissOverlay = ScreenNavigationCommand(dismissOverlay: DismissOverlayCommand());
   
-  /// Push without animation
-  static ScreenNavigationCommand pushToInstant(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(pushTo: PushToScreenCommand(screenName: screenName, animated: false, params: params));
-  
-  /// Pop without animation
-  static const ScreenNavigationCommand popInstant = ScreenNavigationCommand(pop: PopScreenCommand(animated: false));
+  /// Dismiss overlay with result
+  static ScreenNavigationCommand dismissOverlayWithResult(Map<String, dynamic> result) =>
+      ScreenNavigationCommand(dismissOverlay: DismissOverlayCommand(result: result));
 }

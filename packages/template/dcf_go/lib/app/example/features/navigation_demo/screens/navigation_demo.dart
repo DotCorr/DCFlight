@@ -33,15 +33,10 @@ class NavigationDemo extends StatefulComponent {
           styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
           onPress: (v) {
             detailsCommand.setState(
-              ScreenNavigationCommand(
-                pushTo: PushToScreenCommand(
-                  screenName: "detail_screen",
-                  params: {
-                    "from": "navigation_demo",
-                    "timestamp": DateTime.now().toString(),
-                  },
-                ),
-              ),
+             NavigationPresets.pushTo(
+                "detail_screen",
+                params: {"source": "navigation_demo"},
+              )
             );
           },
         ),
@@ -54,13 +49,7 @@ class NavigationDemo extends StatefulComponent {
           ),
           onPress: (v) {
             modalCommand.setState(
-              ScreenNavigationCommand(
-                presentModal: PresentModalCommand(
-                  screenName: "modal_screen",
-                  presentationStyle: "pageSheet",
-                  params: {"modalType": "demo"},
-                ),
-              ),
+             NavigationPresets.presentModal("modal_screen")
             );
           },
         ),

@@ -10,6 +10,21 @@ class StackRegistry extends StatefulComponent {
   // Instantiate screen components once OUTSIDE the render method to avoid re-renders/wrap useMemo if you need to render in render method to access things like state but stay safe.
   final _detailsScreen = Details();
   final _deepScreen = DeepScreen();
+  // Hey flutter devs,
+  // this is a very important note to take.
+  // This framework prioritizes performance and memory management. 
+  // Most of these optimisations are done by the vdom and the framework itself.
+  // But you can also help the framework by instantiating components that handle their own state
+  // outside the render method to avoid re-instantiation on every render.
+  // This is because the vdom is efficient and will only re-render the components that have changed,
+  // but doing this adds up to make your app even more performant.
+  // Notice how we are using the same DeepScreen component for both the push and modal screen but differnt instances.
+  // this is because vdom does not trigger rerender cause the component is the same.
+  // To fix this; reinstantiate the component outside the render method or use useMemo to access the component in the render method if you are super paranoid.
+  // Else fan fact: use them, directly in the render method. As long as the state done change it would still be reconciled but with no change so no rerender.
+  // So it doe snot really matter.
+  final _deepScreenInModal = DeepScreen();
+
   final _modalScreen = ModalScreen();
   @override
   DCFComponentNode render() {
@@ -17,6 +32,7 @@ class StackRegistry extends StatefulComponent {
     final deepScreenCommand = useStore(publicDeepScreenCommand);
     final modalScreenCommand = useStore(publicModalScreenCommand);
     final overlayLoadingCommand = useStore(publicOverlayLoadingCommand);
+    final modalScreenInModalCommand = useStore(publicModalScreenInModalCommand);
 
     return DCFFragment(
       children: [
@@ -54,9 +70,24 @@ class StackRegistry extends StatefulComponent {
           onReceiveParams: (data) => print("📨 Deep received params: $data"),
           children: [_deepScreen],
         ),
+
+        DCFScreen(
+          name: "deep_screen_in_modal",
+          presentationStyle: DCFPresentationStyle.modal,
+          navigationCommand: modalScreenInModalCommand.state,
+          onAppear: (data) => print("✅ Deep screen appeared: $data"),
+          onNavigationEvent: (data) {
+            print("🚀 Deep navigation event: $data");
+            modalScreenInModalCommand.setState(null);
+          },
+          onReceiveParams: (data) => print("📨 Deep received params: $data"),
+          children: [_deepScreenInModal],
+        ),
+
         DCFScreen(
           name: "modal_screen",
-          presentationStyle: DCFPresentationStyle.push,
+          presentationStyle: DCFPresentationStyle.modal,
+
           navigationCommand: modalScreenCommand.state,
           onAppear: (data) => print("✅ Modal screen appeared: $data"),
           onNavigationEvent: (data) {
@@ -79,8 +110,6 @@ class StackRegistry extends StatefulComponent {
             overlayBackgroundColor: Colors.black.withOpacity(0.5),
             dismissOnTap: true,
             blocksInteraction: true,
-
-            title: "Hey there loading something sweet",
           ),
           children: [
             // Normally you use this with portals so you app only has one overlay in its lifecycle
@@ -106,9 +135,9 @@ class StackRegistry extends StatefulComponent {
                 DCFButton(
                   buttonProps: DCFButtonProps(title: "Close Overlay"),
                   onPress: (v) {
-                    overlayLoadingCommand.setState(ScreenNavigationCommand(
-                      dismissOverlay: DismissOverlayCommand(),
-                    ));
+                    overlayLoadingCommand.setState(
+                      NavigationPresets.dismissOverlay,
+                    );
                   },
                   layout: LayoutProps(marginTop: 16, width: "80%"),
                 ),

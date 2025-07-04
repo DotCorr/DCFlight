@@ -78,15 +78,7 @@ class Home extends StatefulComponent {
                 ),
                 onPress: (v) {
                   publicDetailScreenCommand.setState(
-                    ScreenNavigationCommand(
-                      pushTo: PushToScreenCommand(
-                        screenName: "test_gh",
-                        params: {
-                          "from": "home_page",
-                          "timestamp": DateTime.now().toString(),
-                        },
-                      ),
-                    ),
+                   NavigationPresets.pushTo("test_gh")
                   );
                 },
               ),

@@ -3,6 +3,7 @@ import 'package:dcf_go/app/example/config/tab_registry.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() {
+
   DCFlight.start(app: MyApp());
 }
 
