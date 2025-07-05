@@ -4,14 +4,11 @@ import 'package:dcflight/dcflight.dart';
 class DeepScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    print("DeepScreen render called");
+    // print("DeepScreen render called");
     final useDeepScreenCommand = useStore(publicDeepScreenCommand);
-    final useDeepScreenInModalCommand = useStore(
-      publicModalScreenInModalCommand,
-    );
 
     final slidedState = useState<double>(0.5);
-    final scale = useState<double>(0.2);
+    final scale = useState<double>(1);
 
     return DCFScrollView(
       styleSheet: StyleSheet(backgroundColor: Colors.amber),
@@ -31,7 +28,7 @@ class DeepScreen extends StatefulComponent {
           ),
           children: [
             DCFText(
-              content: "❤",
+              content: "🏎️",
 
               layout: LayoutProps(
                 height: 100,
@@ -78,7 +75,7 @@ class DeepScreen extends StatefulComponent {
           layout: cardLayout,
           children: [
             DCFText(
-              content: "Scale Value: ${scale.state}",
+              content: "Scale Value: ${scale.state.toStringAsFixed(1)}}",
               textProps: DCFTextProps(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -112,16 +109,9 @@ class DeepScreen extends StatefulComponent {
           layout: LayoutProps(height: 50, width: 200),
           styleSheet: StyleSheet(backgroundColor: Colors.red, borderRadius: 8),
           onPress: (v) {
-           if(useDeepScreenInModalCommand.state ==
-                ScreenNavigationCommand().popToRoot) {
-              useDeepScreenInModalCommand.setState(
-                NavigationPresets.dismissModal,
-              );
-            } else {
-              useDeepScreenCommand.setState(
-                NavigationPresets.popToRoot,
-              );
-            }
+            // won't dismis for modals as they dont share same command state instance. ou can handle that with if statements
+            // But this test involved using this same deep screen componet accross stack and modal. In real life you are most likely not doing this but if you do, hey; use if statements to see where the command is from and take the appropriate action
+            useDeepScreenCommand.setState(NavigationPresets.popToRoot);
           },
         ),
 
@@ -130,16 +120,9 @@ class DeepScreen extends StatefulComponent {
           layout: LayoutProps(height: 50, width: 200),
           styleSheet: StyleSheet(backgroundColor: Colors.cyan, borderRadius: 8),
           onPress: (v) {
-            if (publicModalScreenInModalCommand.state ==
-                ScreenNavigationCommand().dismissModal) {
-              useDeepScreenInModalCommand.setState(
-                NavigationPresets.dismissModal,
-              );
-            } else {
-              useDeepScreenCommand.setState(
-                NavigationPresets.popTo("detail_screen"),
-              );
-            }
+            useDeepScreenCommand.setState(
+              NavigationPresets.popTo("detail_screen"),
+            );
           },
         ),
       ],
