@@ -93,7 +93,7 @@ class App extends StatefulComponent {
             items: [
               DCFDropdownMenuItem(title: "Home", value: "0"),
               DCFDropdownMenuItem(title: "Gradient Test", value: "1"),
-              DCFDropdownMenuItem(title: "Really Long List", value: "2"),
+              // DCFDropdownMenuItem(title: "Really Long List", value: "2"),
               DCFDropdownMenuItem(title: "Modal & Alert Test", value: "3"),
               DCFDropdownMenuItem(title: "Portal Test", value: "4"),
             ],
