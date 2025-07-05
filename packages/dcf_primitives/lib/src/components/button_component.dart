@@ -7,10 +7,13 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 import 'package:equatable/equatable.dart';
 
 /// Button properties
-class DCFButtonProps extends Equatable {
+class DCFButtonProps extends Equatable  implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
   /// The title text of the button
   final String title;
   

@@ -32,6 +32,7 @@ class NavigationDemo extends StatefulComponent {
           layout: LayoutProps(height: 50, width: 250),
           styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
           onPress: (v) {
+            print("Push to Detail Screen button pressed");
             detailsCommand.setState(
              NavigationPresets.pushTo(
                 "detail_screen",
