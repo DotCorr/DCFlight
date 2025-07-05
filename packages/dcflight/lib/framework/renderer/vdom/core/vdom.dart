@@ -19,7 +19,7 @@ import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
 
-/// Work item for the reconciliation queue
+
 class ReconciliationWork {
   final String componentId;
   final ComponentPriority priority;
