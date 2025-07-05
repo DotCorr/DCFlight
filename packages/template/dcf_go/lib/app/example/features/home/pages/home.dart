@@ -1,17 +1,15 @@
+import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcflight/dcflight.dart';
 
 class Home extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final selectedIndexWeb = useState<int>(2);
-    // By wrapping the entire scroll view in useMemo, we ensure that its children
-    // (SegmentedControl, WebView, etc.) are not re-created on every render,
-    // unless the `selectedIndexWeb.state` actually changes.
-    return useMemo(() {
-      return DCFScrollView(
+    return  DCFScrollView(
         layout: LayoutProps(
           flex: 1,
-          gap: 10,
+          padding: 16,
+          gap: 2,
           alignContent: YogaAlign.spaceBetween,
           justifyContent: YogaJustifyContent.spaceBetween,
         ),
@@ -49,17 +47,19 @@ class Home extends StatefulComponent {
               print("WebView Navigation State Change: $v");
             },
             webViewProps: DCFWebViewProps(
-              source: selectedIndexWeb.state == 0
-                  ? "https://developer.android.com/compose"
-                  : selectedIndexWeb.state == 1
+              source:
+                  selectedIndexWeb.state == 0
+                      ? "https://developer.android.com/compose"
+                      : selectedIndexWeb.state == 1
                       ? "https://developer.apple.com/tutorials/swiftui/"
                       : "https://www.dotcorr.com",
               loadMode: DCFWebViewLoadMode.url,
+       
             ),
             layout: LayoutProps(height: 500, width: "100%"),
           ),
           DCFView(
-            layout: LayoutProps(flex: 1),
+            layout: LayoutProps(height: 250, width: "100%"),
             children: [
               DCFText(
                 content: "Welcome To DCFlight",
@@ -69,6 +69,19 @@ class Home extends StatefulComponent {
                   fontWeight: DCFFontWeight.bold,
                 ),
               ),
+              DCFButton(
+                buttonProps: DCFButtonProps(title: "Go to Github"),
+                layout: LayoutProps(height: 50, width: 200),
+                styleSheet: StyleSheet(
+                  backgroundColor: Colors.blue,
+                  borderRadius: 8,
+                ),
+                onPress: (v) {
+                  publicDetailScreenCommand.setState(
+                   NavigationPresets.pushTo("test_gh")
+                  );
+                },
+              ),
               DCFText(
                 content: "Build native apps with Dart",
                 textProps: DCFTextProps(fontSize: 15, color: Colors.grey),
@@ -77,6 +90,5 @@ class Home extends StatefulComponent {
           ),
         ],
       );
-    }, [selectedIndexWeb.state]);
   }
 }

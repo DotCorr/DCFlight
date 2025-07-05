@@ -11,7 +11,7 @@ import 'dart:async';
 import 'package:dcflight/framework/renderer/interface/interface.dart' show PlatformInterface;
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
-import 'vdom.dart';
+import 'core/vdom.dart';
 
 /// Main API for VDOM operations
 /// This class provides a simplified interface to the VDOM implementation

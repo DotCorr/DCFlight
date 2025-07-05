@@ -4,11 +4,16 @@ import 'package:dcflight/dcflight.dart';
 class DeepScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
+    print("DeepScreen render called");
     final useDeepScreenCommand = useStore(publicDeepScreenCommand);
+    final useDeepScreenInModalCommand = useStore(
+      publicModalScreenInModalCommand,
+    );
+
     final slidedState = useState<double>(0.5);
     final scale = useState<double>(0.2);
 
-    return useMemo(() => DCFScrollView(
+    return DCFScrollView(
       styleSheet: StyleSheet(backgroundColor: Colors.amber),
       layout: LayoutProps(
         flex: 1,
@@ -54,12 +59,14 @@ class DeepScreen extends StatefulComponent {
               content: "Slider Value: ${slidedState.state.toStringAsFixed(2)}",
               textProps: DCFTextProps(
                 fontSize: 16,
+                fontWeight: DCFFontWeight.bold,
                 color: Colors.grey.shade600,
               ),
             ),
             DCFSlider(
               value: slidedState.state,
               onValueChange: (v) {
+                print("Slider value changed: ${v['value']} ");
                 slidedState.setState(v['value']);
               },
             ),
@@ -71,8 +78,7 @@ class DeepScreen extends StatefulComponent {
           layout: cardLayout,
           children: [
             DCFText(
-              content:
-                  "Scale Value: ${scale.state.toStringAsFixed(2)}",
+              content: "Scale Value: ${scale.state}",
               textProps: DCFTextProps(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -81,6 +87,7 @@ class DeepScreen extends StatefulComponent {
             DCFSlider(
               value: scale.state,
               onValueChange: (v) {
+                print("Scale value changed: ${v['value']}");
                 scale.setState(v['value']);
               },
             ),
@@ -105,9 +112,16 @@ class DeepScreen extends StatefulComponent {
           layout: LayoutProps(height: 50, width: 200),
           styleSheet: StyleSheet(backgroundColor: Colors.red, borderRadius: 8),
           onPress: (v) {
-            useDeepScreenCommand.setState(
-              ScreenNavigationCommand(popToRoot: PopToRootCommand()),
-            );
+           if(useDeepScreenInModalCommand.state ==
+                ScreenNavigationCommand().popToRoot) {
+              useDeepScreenInModalCommand.setState(
+                NavigationPresets.dismissModal,
+              );
+            } else {
+              useDeepScreenCommand.setState(
+                NavigationPresets.popToRoot,
+              );
+            }
           },
         ),
 
@@ -116,15 +130,20 @@ class DeepScreen extends StatefulComponent {
           layout: LayoutProps(height: 50, width: 200),
           styleSheet: StyleSheet(backgroundColor: Colors.cyan, borderRadius: 8),
           onPress: (v) {
-            useDeepScreenCommand.setState(
-              ScreenNavigationCommand(
-                popTo: PopToScreenCommand(screenName: "detail_screen"),
-              ),
-            );
+            if (publicModalScreenInModalCommand.state ==
+                ScreenNavigationCommand().dismissModal) {
+              useDeepScreenInModalCommand.setState(
+                NavigationPresets.dismissModal,
+              );
+            } else {
+              useDeepScreenCommand.setState(
+                NavigationPresets.popTo("detail_screen"),
+              );
+            }
           },
         ),
       ],
-    ), [slidedState.state, scale.state]);
+    );
   }
 }
 

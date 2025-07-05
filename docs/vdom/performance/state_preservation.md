@@ -1,98 +1,97 @@
 # State Preservation and Component Identity
 
-In DCFlight, a core principle for managing state is the preservation of a component's instance. When a `StatefulComponent`'s internal state (from `useState` or `useStore`) needs to persist across re-renders of its parent, its instance must not be recreated.
+When working with `StatefulComponent`s in DCFlight, preserving component instances across parent re-renders is crucial for maintaining internal state. This guide explains the problem and provides two solutions with their performance characteristics.
 
-This document explains why this is crucial and details the two recommended patterns for achieving it.
+## The Problem: Instance Recreation Destroys State
 
-## The Problem: Why `Home()` in `render()` Loses State
-
-Consider a `StatefulComponent` to be like a physical whiteboard. The state you create with `useState` are the drawings on that specific whiteboard.
-
-If you create a new instance of a stateful component directly inside the `render` method of its parent, you are telling the framework: "Throw away the old whiteboard and bring me a brand new, perfectly clean one."
+Creating a new component instance inside a parent's `render()` method causes state loss:
 
 ```dart
-// ❌ INCORRECT: This will lose the state of `HomePage` on every re-render of `App`.
+// ❌ BAD: Creates new HomePage instance on every App re-render
 class App extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    // ...
-    return HomePage(); // A new instance of HomePage is created every time.
+    final appState = useState("some data");
+    
+    return HomePage(); // New instance = lost HomePage state
   }
 }
 ```
 
-The VDOM sees a new component instance, unmounts the old one (destroying its state), and mounts the new one. Any user interactions or state changes within `HomePage` are lost.
+**What happens:** The VDOM detects a new component instance, unmounts the old `HomePage` (destroying all its `useState`, `useStore`, and `useEffect` state), then mounts the fresh instance.
 
-## Solution 1: The Instance Field Pattern
+## Solution 1: Instance Fields (Optimal Performance)
 
-The most direct way to solve this is to create the component instance once as a `final` field on the parent component's class.
+Create the component instance once as a class field:
 
 ```dart
-// ✅ CORRECT: The instance is created once and reused.
+// ✅ BEST PERFORMANCE: Instance created once, reused forever
 class App extends StatefulComponent {
-  // The instance is created only when App is instantiated.
   final _homePage = HomePage();
 
   @override
   DCFComponentNode render() {
-    // ...
-    return _homePage; // The SAME instance is returned on every render.
+    final appState = useState("some data");
+    
+    return _homePage; // Same instance every render
   }
 }
 ```
 
-*   **Pros:** Simple and requires no hooks.
-*   **Cons:** Can feel clunky, as the component's definition is separated from its usage within the `render` method.
+**Performance:** Zero runtime overhead. No dependency checking, no cache management.
 
-## Solution 2: The `useMemo` Hook (Recommended)
+**Limitations:** Cannot access parent state during component creation.
 
-A cleaner, more idiomatic, and more flexible solution is the `useMemo` hook. This hook allows you to define the component inside the `render` method, but it ensures the creation function is only run once, caching the resulting instance.
+## Solution 2: useMemo Hook (Flexible)
+
+Memoize component creation inside `render()`:
 
 ```dart
-// ✅ CORRECT & RECOMMENDED: The instance is created and memoized inside render.
+// ✅ FLEXIBLE: Instance preserved with access to parent state
 class App extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    // useMemo ensures HomePage() is only called once, and the same
-    // instance is returned on every subsequent render.
-    final homePage = useMemo(() => HomePage(), []);
-
+    final appState = useState("some data");
+    
+    final homePage = useMemo(() => HomePage(
+      initialData: appState.state,
+    ), []); // Empty deps = create once, cache forever
+    
     return homePage;
   }
 }
 ```
 
-*   **Pros:** Keeps component definition and usage co-located. It's the standard pattern in modern hook-based frameworks. It's more flexible because it can re-create the instance if its dependencies change.
-*   **Cons:** Can only be used inside a `StatefulComponent`.
+**Performance:** Small runtime overhead for dependency array comparison on each render.
 
----
+**Benefits:** Component can use parent state/props, definition stays near usage.
 
-### Understanding the `useMemo` Dependency Array `[]`
+## When Components Should Be Recreated
 
-The second argument to `useMemo` is the **dependency array**. This array is the key to controlling when the memoized value is recalculated.
-
-> `useMemo(createFunction, dependencies)`
-
-The rule is simple: **If any value in the `dependencies` array changes between renders, `useMemo` will discard the old cached value and execute `createFunction` again to create a new one.**
-
-#### The Empty Array `[]`
-
-When you provide an empty array `[]`, you are telling `useMemo`: "The dependencies for this value will *never* change."
-
-Because the list of dependencies is empty, the condition for recalculation is never met. As a result, `useMemo` will:
-1.  Execute the creation function (e.g., `() => HomePage()`) on the very first render.
-2.  Cache the returned instance (`HomePage`).
-3.  On **every subsequent render**, it will return the exact same cached instance without ever calling the creation function again.
-
-This is the perfect mechanism for preserving a stateful component's instance for the entire lifetime of its parent.
-
-#### Non-Empty Dependencies
-
-If you needed to create a new component instance whenever a specific prop or state changed, you would include that value in the dependency array.
+Use non-empty dependency arrays when component instances should change:
 
 ```dart
-// Re-creates a new UserProfile component ONLY when `userId` changes.
-final userProfile = useMemo(() => UserProfile(id: userId), [userId]);
+final userProfile = useMemo(() => UserProfile(
+  userId: currentUser.state.id,
+  permissions: userPermissions.state,
+), [currentUser.state.id, userPermissions.state]);
+
+// New UserProfile instance created only when userId or permissions change
 ```
 
-For preserving singleton-like screen components within a parent, the empty dependency array `[]` is almost always what you will use.
+## Performance Comparison
+
+| Pattern | Creation Cost | Runtime Cost | Use Case |
+|---------|---------------|--------------|-----------|
+| Instance field | Once (class instantiation) | Zero | Static components |
+| `useMemo([])` | Once (first render) | ~1µs per render | Components needing parent state |
+| Direct creation | Every render | High + GC pressure | Never recommended for StatefulComponents |
+
+## Best Practices
+
+1. **Use instance fields** for static components that don't need parent state
+2. **Use `useMemo([], [])`** for components that need parent state/props
+3. **Use non-empty deps** only when you actually want to recreate the component instance
+4. **Never create StatefulComponents directly in render()** without memoization
+
+The framework's automatic optimizations (EquatableMixin on primitives, component-level equality) work regardless of which pattern you choose, but preserving instances is essential for maintaining component state.

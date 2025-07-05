@@ -7,12 +7,13 @@
 
 
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
 
 /// 🚀 DCF Checkbox Component
 ///
 /// A checkbox component that provides native platform behavior.
 /// Supports custom styling, sizes, and colors with adaptive theming.
-class DCFCheckbox extends StatelessComponent {
+class DCFCheckbox extends StatelessComponent with EquatableMixin {
   /// Current checked state of the checkbox
   final bool checked;
 
@@ -107,6 +108,23 @@ class DCFCheckbox extends StatelessComponent {
       children: [],
     );
   }
+
+  @override
+  List<Object?> get props => [
+        checked,
+        onValueChange,
+        disabled,
+        adaptive,
+        activeColor,
+        inactiveColor,
+        checkmarkColor,
+        size,
+        checkboxStyle,
+        layout,
+        styleSheet,
+        events,
+        key,
+      ];
 }
 
 /// Checkbox size constants

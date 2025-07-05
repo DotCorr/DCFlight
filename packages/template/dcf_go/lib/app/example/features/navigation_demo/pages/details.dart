@@ -5,8 +5,7 @@ class Details extends StatefulComponent {
   @override
   DCFComponentNode render() {
     final useDetailScreenCommand = useStore(publicDetailScreenCommand);
-    return useMemo(
-      () => DCFView(
+    return DCFView(
         layout: LayoutProps(
           flex: 1,
           padding: 20,
@@ -37,12 +36,10 @@ class Details extends StatefulComponent {
             ),
             onPress: (v) {
               useDetailScreenCommand.setState(
-                ScreenNavigationCommand(
-                  pushTo: PushToScreenCommand(
-                    screenName: "deep_screen",
-                    params: {"level": "deep", "source": "detail_screen"},
-                  ),
-                ),
+               NavigationPresets.pushTo(
+                 "deep_screen",
+                 params: {"source": "details", "timestamp": DateTime.now().toString()},
+               )
               );
             },
           ),
@@ -56,17 +53,12 @@ class Details extends StatefulComponent {
             ),
             onPress: (v) {
               useDetailScreenCommand.setState(
-                ScreenNavigationCommand(
-                  pop: PopScreenCommand(
-                    result: {"message": "Returned from detail screen"},
-                  ),
-                ),
+                NavigationPresets.pop,
               );
             },
           ),
         ],
-      ),
-      [],
+     
     );
   }
 }
