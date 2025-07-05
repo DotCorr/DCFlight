@@ -214,9 +214,9 @@ public class DCFLayoutManager {
         }
         
         // Level 3: Check if view is in valid UIKit state
-        guard view.layer != nil else {
-            return
-        }
+//        guard view.layer != nil else {
+//            return
+//        }
         
         // Level 4: Check if view responds to frame setter (defensive programming)
         guard view.responds(to: #selector(setter: UIView.frame)) else {

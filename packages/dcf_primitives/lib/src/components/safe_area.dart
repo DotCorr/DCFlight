@@ -104,6 +104,6 @@ class DCFSafeArea extends StatefulComponent {
         ...(events ?? {}),
       },
       children: children,
-    ), [orientationFlag.state]);
+    ), dependencies:[orientationFlag.state]);
   }
 }

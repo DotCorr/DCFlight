@@ -10,17 +10,22 @@ import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
 import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';
 import 'package:flutter/foundation.dart';
 
 /// DCFPortal component for rendering children into a different DOM tree location
 /// Similar to React's createPortal, this allows rendering components outside
 /// their normal parent-child hierarchy
-class DCFPortal extends StatefulComponent {
+class DCFPortal extends StatefulComponent
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
   final String targetId;
   final List<DCFComponentNode> children;
   final Map<String, dynamic>? metadata;
-  final int priority;
+  // final int priority;
   final bool createTargetIfMissing;
   final Function(String portalId)? onMount;
   final Function(String portalId)? onUnmount;
@@ -29,7 +34,7 @@ class DCFPortal extends StatefulComponent {
     required this.targetId,
     required this.children,
     this.metadata,
-    this.priority = 0,
+    // this.priority = 0,
     this.createTargetIfMissing = false,
     this.onMount,
     this.onUnmount,
@@ -49,7 +54,7 @@ class DCFPortal extends StatefulComponent {
             targetId: targetId,
             children: children,
             metadata: metadata,
-            priority: priority,
+            // priority: priority,
             createTargetIfMissing: createTargetIfMissing,
             onMount: onMount,
             onUnmount: onUnmount,
@@ -81,7 +86,7 @@ class DCFPortal extends StatefulComponent {
               portalId: portalIdState.state!,
               children: children,
               metadata: metadata,
-              priority: priority,
+              // priority: priority,
             );
           } catch (e) {
             throw Exception('Failed to update portal: $e');
@@ -109,16 +114,20 @@ class DCFPortal extends StatefulComponent {
 }
 
 /// DCFPortalTarget component for creating portal targets
-class DCFPortalTarget extends StatefulComponent {
+class DCFPortalTarget extends StatefulComponent
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
   final String targetId;
   final Map<String, dynamic>? metadata;
-  final int priority;
+  // final int priority;
   final List<DCFComponentNode> children;
 
   DCFPortalTarget({
     required this.targetId,
     this.metadata,
-    this.priority = 0,
+    // this.priority = 0,
     this.children = const [],
     super.key,
   });
@@ -142,7 +151,7 @@ class DCFPortalTarget extends StatefulComponent {
             targetId: targetId,
             nativeViewId: actualViewId,
             metadata: metadata,
-            priority: priority,
+            // priority: priority,
           );
 
           isRegisteredRef.current = true;

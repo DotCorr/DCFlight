@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 
 /// Base class for all Virtual DOM nodes
 abstract class DCFComponentNode{
@@ -24,6 +25,22 @@ abstract class DCFComponentNode{
   DCFComponentNode? _renderedNode;
 
   DCFComponentNode({this.key});
+
+  /// ADDED: Get component priority - override in subclasses that implement ComponentPriorityInterface
+  ComponentPriority get priority {
+    // Check if this node implements ComponentPriorityInterface
+    if (this is ComponentPriorityInterface) {
+      return (this as ComponentPriorityInterface).priority;
+    }
+    
+    // Check rendered node for priority
+    if (_renderedNode != null && _renderedNode is ComponentPriorityInterface) {
+      return (_renderedNode as ComponentPriorityInterface).priority;
+    }
+    
+    // Default priority
+    return ComponentPriority.normal;
+  }
 
   /// Clone this node
   DCFComponentNode clone();
@@ -91,5 +108,3 @@ class EmptyVDomNode extends DCFComponentNode {
     // Empty node has no cleanup logic
   }
 }
-
-

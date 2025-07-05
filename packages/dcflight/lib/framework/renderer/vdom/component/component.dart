@@ -8,7 +8,7 @@
 import 'dart:math';
 import 'package:dcflight/framework/renderer/vdom/component/hooks/memo_hook.dart';
 import 'package:dcflight/framework/renderer/vdom/component/hooks/store.dart';
-import 'package:dcflight/framework/renderer/vdom/mutator/vdom_mutator_extension_reg.dart';
+import 'package:dcflight/framework/renderer/vdom/core/mutator/vdom_mutator_extension_reg.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'hooks/state_hook.dart';
@@ -125,7 +125,8 @@ abstract class StatefulComponent extends DCFComponentNode {
     return hook;
   }
 
-  /// Create an effect hook
+  /// Standard effect hook - runs immediately after component mount
+  /// This is the React-compatible useEffect that runs as soon as the component is mounted
   void useEffect(Function()? Function() effect,
       {List<dynamic> dependencies = const []}) {
     if (_hookIndex >= _hooks.length) {
@@ -135,6 +136,43 @@ abstract class StatefulComponent extends DCFComponentNode {
     } else {
       // Update dependencies for existing hook
       final hook = _hooks[_hookIndex] as EffectHook;
+      hook.updateDependencies(dependencies);
+    }
+
+    _hookIndex++;
+  }
+
+  /// Layout effect hook - runs after component and its children are mounted
+  /// This is ideal for DOM measurements, focus management, or operations that need
+  /// the component tree to be fully rendered. Similar to React's useLayoutEffect.
+  void useLayoutEffect(Function()? Function() effect,
+      {List<dynamic> dependencies = const []}) {
+    if (_hookIndex >= _hooks.length) {
+      // Create new hook
+      final hook = LayoutEffectHook(effect, dependencies);
+      _hooks.add(hook);
+    } else {
+      // Update dependencies for existing hook
+      final hook = _hooks[_hookIndex] as LayoutEffectHook;
+      hook.updateDependencies(dependencies);
+    }
+
+    _hookIndex++;
+  }
+
+  /// Insertion effect hook - runs after the entire component tree is ready
+  /// This is ideal for operations that need the complete application tree,
+  /// such as navigation commands, global state initialization, or third-party
+  /// library integration that requires the full DOM structure.
+  void useInsertionEffect(Function()? Function() effect,
+      {List<dynamic> dependencies = const []}) {
+    if (_hookIndex >= _hooks.length) {
+      // Create new hook
+      final hook = InsertionEffectHook(effect, dependencies);
+      _hooks.add(hook);
+    } else {
+      // Update dependencies for existing hook
+      final hook = _hooks[_hookIndex] as InsertionEffectHook;
       hook.updateDependencies(dependencies);
     }
 
@@ -158,7 +196,7 @@ abstract class StatefulComponent extends DCFComponentNode {
 
   /// Memoizes a value, re-creating it only when dependencies change.
   /// This is ideal for preserving instances of stateful child components.
-  T useMemo<T>(T Function() create, [List<dynamic> dependencies = const []]) {
+  T useMemo<T>(T Function() create, {List<dynamic> dependencies = const []}) {
     if (_hookIndex >= _hooks.length) {
       // Create new hook
       final hook = MemoHook<T>(create, dependencies);
@@ -220,7 +258,7 @@ abstract class StatefulComponent extends DCFComponentNode {
     return hook;
   }
 
-  /// NEW: Use a custom hook registered via extensions
+  /// Use a custom hook registered via extensions
   T useCustomHook<T extends Hook>(String hookName, [List<dynamic>? args]) {
     if (_hookIndex >= _hooks.length) {
       final factory = VDomExtensionRegistry.instance.getHookFactory(hookName);
@@ -246,14 +284,39 @@ abstract class StatefulComponent extends DCFComponentNode {
     return hook;
   }
 
-  /// Run effects after render - called by VDOM
+  /// Run immediate effects after render - called by VDOM (existing behavior)
   void runEffectsAfterRender() {
-    if (kDebugMode && runtimeType.toString().contains('Portal')) {}
+    if (kDebugMode && runtimeType.toString().contains('Portal')) {
+      // Debug logging for portal components
+    }
 
     for (var i = 0; i < _hooks.length; i++) {
       final hook = _hooks[i];
-      if (hook is EffectHook) {
-        if (kDebugMode && runtimeType.toString().contains('Portal')) {}
+      // Only run standard EffectHook, not the specialized subclasses
+      if (hook is EffectHook && hook is! LayoutEffectHook && hook is! InsertionEffectHook) {
+        if (kDebugMode && runtimeType.toString().contains('Portal')) {
+          // Debug logging for portal effects
+        }
+        hook.runEffect();
+      }
+    }
+  }
+
+  /// Run layout effects after children are mounted - called by VDOM
+  void runLayoutEffects() {
+    for (var i = 0; i < _hooks.length; i++) {
+      final hook = _hooks[i];
+      if (hook is LayoutEffectHook) {
+        hook.runEffect();
+      }
+    }
+  }
+
+  /// Run insertion effects after entire tree is ready - called by VDOM
+  void runInsertionEffects() {
+    for (var i = 0; i < _hooks.length; i++) {
+      final hook = _hooks[i];
+      if (hook is InsertionEffectHook) {
         hook.runEffect();
       }
     }
@@ -319,6 +382,8 @@ abstract class StatelessComponent extends DCFComponentNode {
   StatelessComponent({super.key})
       : instanceId =
             '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}';
+  
+  /// Render the component - must be implemented by subclasses
   DCFComponentNode render();
 
   /// Get the rendered node (lazily render if necessary)

@@ -10,10 +10,7 @@ class TabRegistry extends StatelessComponent {
   final _homeScreen = App();
   final _profileScreen = Profile();
   final _navDemoScreen = NavigationDemo();
-  final _githubScreen = DCFView(
-    layout: LayoutProps(flex: 1),
-    children: [GHRepo()],
-  );
+  final _githubScreen = GHRepo();
 
   @override
   DCFComponentNode render() {
@@ -81,7 +78,7 @@ class TabRegistry extends StatelessComponent {
             title: "Github",
             package: "dcf_primitives",
             iconName: DCFIcons.github,
-            index: 1,
+            index: 3,
             size: 24.0,
             tintColor: Colors.blue,
           ),

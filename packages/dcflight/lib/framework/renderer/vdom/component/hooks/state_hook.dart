@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
-
 import 'package:dcflight/framework/renderer/vdom/component/hooks/store.dart';
 
 /// Base hook class for all hook types
@@ -37,7 +35,6 @@ class StateHook<T> extends Hook {
     // Only update and trigger render if value actually changed
     if (_value != newValue) {
       _value = newValue;
-      
       
       // Schedule a component update
       _scheduleUpdate();
@@ -88,6 +85,7 @@ class EffectHook extends Hook {
         try {
           _cleanup!();
         } catch (e) {
+          // Silently handle cleanup errors
         }
         _cleanup = null;
       }
@@ -96,6 +94,7 @@ class EffectHook extends Hook {
       try {
         _cleanup = _effect();
       } catch (e) {
+        // Silently handle effect errors
       }
       
       // Update previous dependencies
@@ -110,9 +109,9 @@ class EffectHook extends Hook {
       try {
         _cleanup!();
       } catch (e) {
+        // Silently handle cleanup errors
       }
       _cleanup = null;
-    } else {
     }
   }
 
@@ -125,6 +124,33 @@ class EffectHook extends Hook {
     }
     
     return true;
+  }
+}
+
+/// Layout effect hook - runs after component and its children are mounted
+/// This is ideal for DOM measurements, focus management, or operations that need
+/// the component tree to be fully rendered
+class LayoutEffectHook extends EffectHook {
+  /// Create a layout effect hook
+  LayoutEffectHook(super.effect, super.dependencies);
+  
+  @override
+  String toString() {
+    return 'LayoutEffectHook(deps: ${_dependencies.length})';
+  }
+}
+
+/// Insertion effect hook - runs after the entire component tree is ready
+/// This is ideal for operations that need the complete application tree,
+/// such as navigation commands, global state initialization, or third-party
+/// library integration that requires the full DOM structure
+class InsertionEffectHook extends EffectHook {
+  /// Create an insertion effect hook
+  InsertionEffectHook(super.effect, super.dependencies);
+  
+  @override
+  String toString() {
+    return 'InsertionEffectHook(deps: ${_dependencies.length})';
   }
 }
 
