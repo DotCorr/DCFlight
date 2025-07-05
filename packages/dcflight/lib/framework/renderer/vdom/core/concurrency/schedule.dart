@@ -102,14 +102,12 @@ class ScheduledWork {
     final stopwatch = Stopwatch()..start();
     
     try {
-      // Execute with timeout based on estimated duration
       await work().timeout(Duration(microseconds: estimatedDuration * 3));
       isCompleted = true;
       return true;
     } catch (e) {
       retryCount++;
       if (retryCount < 3) {
-        // Exponential backoff for retries
         await Future.delayed(Duration(milliseconds: 50 * retryCount));
         return false; // Will be retried
       } else {
@@ -121,12 +119,13 @@ class ScheduledWork {
     }
   }
   
+  /// Cancel this work item
   void cancel() {
     isCancelled = true;
   }
 }
 
-/// Pure Dart concurrent scheduler - NO FLUTTER DEPENDENCIES
+/// Pure Dart concurrent scheduler
 class ConcurrentScheduler {
   static final ConcurrentScheduler _instance = ConcurrentScheduler._();
   static ConcurrentScheduler get instance => _instance;
@@ -143,9 +142,6 @@ class ConcurrentScheduler {
   /// Whether the scheduler is running
   bool _isRunning = false;
   
-  /// Whether we should yield to other work
-  bool _shouldYield = false;
-  
   /// Frame budget tracking (16ms for 60fps target)
   static const int _frameBudgetMicros = 16000;
   int _frameBudgetUsed = 0;
@@ -156,50 +152,42 @@ class ConcurrentScheduler {
   final Map<ComponentPriority, int> _totalExecutionTime = {};
 
   /// Schedule work with component priority
-  /// Schedule work with component priority
-void scheduleWork({
-  required String componentId,
-  required Future<void> Function() work,
-  ComponentPriority priority = ComponentPriority.normal,
-  int? estimatedDuration,
-}) {
-  // Use priority-based default duration if not provided
-  estimatedDuration ??= priority.timeSliceLimit ~/ 2;
-  
-  final scheduledWork = ScheduledWork(
-    componentId: componentId,
-    priority: priority,
-    work: work,
-    estimatedDuration: estimatedDuration,
-  );
-  
-  // Check if we should interrupt current work
-  if (_shouldInterruptCurrentWork(priority)) {
-    _interruptCurrentWork();
+  void scheduleWork({
+    required String componentId,
+    required Future<void> Function() work,
+    ComponentPriority priority = ComponentPriority.normal,
+    int? estimatedDuration,
+  }) {
+    estimatedDuration ??= priority.timeSliceLimit ~/ 2;
+    
+    final scheduledWork = ScheduledWork(
+      componentId: componentId,
+      priority: priority,
+      work: work,
+      estimatedDuration: estimatedDuration,
+    );
+    
+    if (_shouldInterruptCurrentWork(priority)) {
+      _interruptCurrentWork();
+    }
+    
+    _queues[priority]!.add(scheduledWork);
+    
+    if (!_isRunning) {
+      _startScheduler();
+    } else if (priority == ComponentPriority.immediate || priority == ComponentPriority.high) {
+      Timer(Duration.zero, () => _runSchedulerLoop());
+    }
   }
-  
-  // Add to appropriate priority queue
-  _queues[priority]!.add(scheduledWork);
-  
-  // 🔥 CRITICAL FIX: Start scheduler immediately for high-priority work
-  if (!_isRunning) {
-    _startScheduler();
-  } else if (priority == ComponentPriority.immediate || priority == ComponentPriority.high) {
-    // 🔥 CRITICAL: Force immediate processing for interactive events
-    Timer(Duration.zero, () => _runSchedulerLoop());
-  }
-}
+
   /// Check if current work should be interrupted
   bool _shouldInterruptCurrentWork(ComponentPriority newPriority) {
     if (_currentWork == null) return false;
     
-    // Always interrupt for immediate priority
     if (newPriority == ComponentPriority.immediate) return true;
     
-    // Interrupt if new work has higher priority (lower enum index)
     if (newPriority.index < _currentWork!.priority.index) return true;
     
-    // Interrupt if current work is starving others and new work is high priority
     if (_currentWork!.ageMs > 100 && newPriority.index <= ComponentPriority.high.index) {
       return true;
     }
@@ -211,37 +199,31 @@ void scheduleWork({
   void _interruptCurrentWork() {
     if (_currentWork != null) {
       _currentWork!.cancel();
-      _shouldYield = true;
     }
   }
   
- /// Start the concurrent scheduler using pure Dart timers
-void _startScheduler() {
-  if (_isRunning) return;
+  /// Start the concurrent scheduler
+  void _startScheduler() {
+    if (_isRunning) return;
+    
+    _isRunning = true;
+    _frameStart = DateTime.now();
+    _frameBudgetUsed = 0;
+    
+    scheduleMicrotask(_runSchedulerLoop);
+  }
   
-  _isRunning = true;
-  _frameStart = DateTime.now();
-  _frameBudgetUsed = 0;
-  
-  // 🔥 FIXED: Use immediate execution instead of Timer
-  scheduleMicrotask(_runSchedulerLoop); // ← IMMEDIATE EXECUTION
-}
-  
-  /// Main scheduler loop - pure Dart implementation
+  /// Main scheduler loop
   Future<void> _runSchedulerLoop() async {
     while (_isRunning && _hasWork()) {
-      // Check if we should yield to prevent blocking
       if (_shouldYieldToSystem()) {
-        // Yield to system and reschedule
         Timer(Duration(milliseconds: 1), _runSchedulerLoop);
         return;
       }
       
-      // Get next work item based on priority and starvation
       final work = _getNextWork();
       if (work == null) break;
       
-      // Execute work and track performance
       _currentWork = work;
       final startTime = DateTime.now();
       
@@ -250,21 +232,16 @@ void _startScheduler() {
       final duration = DateTime.now().difference(startTime).inMicroseconds;
       _frameBudgetUsed += duration;
       
-      // Update performance stats
       _updatePerformanceStats(work.priority, duration);
       
-      // Handle work result
       if (!success && !work.isCancelled && work.retryCount < 3) {
-        // Reschedule failed work with exponential backoff
         Timer(Duration(milliseconds: 100 * work.retryCount), () {
           _queues[work.priority]!.add(work);
         });
       }
       
       _currentWork = null;
-      _shouldYield = false;
       
-      // Yield occasionally to prevent blocking event loop
       if (duration > 2000) { // 2ms
         await Future.delayed(Duration.zero);
       }
@@ -273,17 +250,13 @@ void _startScheduler() {
     _isRunning = false;
   }
   
-  /// Check if we should yield to the system (pure Dart approach)
+  /// Check if we should yield to the system
   bool _shouldYieldToSystem() {
-    // Yield if we've used most of our frame budget
     if (_frameBudgetUsed > _frameBudgetMicros * 0.8) return true;
     
-    // Yield if we've been running for too long
     final runTime = DateTime.now().difference(_frameStart).inMicroseconds;
     if (runTime > _frameBudgetMicros) return true;
     
-    // Yield if we have pending microtasks (other async work)
-    // This is a heuristic - in practice the event loop will handle this
     return false;
   }
   
@@ -331,10 +304,8 @@ void _startScheduler() {
       });
     }
     
-    // Cancel current work if it matches
     if (_currentWork?.componentId == componentId) {
       _currentWork!.cancel();
-      _shouldYield = true;
     }
   }
   
@@ -384,7 +355,6 @@ void _startScheduler() {
     _currentWork?.cancel();
     _currentWork = null;
     _isRunning = false;
-    _shouldYield = false;
     _frameBudgetUsed = 0;
     _executionCount.clear();
     _totalExecutionTime.clear();
@@ -396,13 +366,14 @@ void _startScheduler() {
       return component.priority;
     }
     
-    // Default priority for components without explicit priority
     return ComponentPriority.normal;
   }
   
   /// Force scheduler to yield (for testing or manual control)
   void forceYield() {
-    _shouldYield = true;
+    if (_currentWork != null) {
+      _currentWork!.cancel();
+    }
   }
   
   /// Get queue lengths for monitoring
