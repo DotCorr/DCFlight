@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 import 'package:equatable/equatable.dart';
 
 /// Presentation styles for screens
@@ -88,7 +89,8 @@ class DCFModalConfig extends Equatable {
   Map<String, dynamic> toMap() {
     return {
       if (detents != null) 'detents': detents,
-      if (selectedDetentIndex != null) 'selectedDetentIndex': selectedDetentIndex,
+      if (selectedDetentIndex != null)
+        'selectedDetentIndex': selectedDetentIndex,
       'showDragIndicator': showDragIndicator,
       if (cornerRadius != null) 'cornerRadius': cornerRadius,
       'isDismissible': isDismissible,
@@ -166,7 +168,8 @@ class DCFPopoverConfig extends Equatable {
       if (title != null) 'title': title,
       if (preferredWidth != null) 'preferredWidth': preferredWidth,
       if (preferredHeight != null) 'preferredHeight': preferredHeight,
-      if (permittedArrowDirections != null) 'permittedArrowDirections': permittedArrowDirections,
+      if (permittedArrowDirections != null)
+        'permittedArrowDirections': permittedArrowDirections,
       'dismissOnOutsideTap': dismissOnOutsideTap,
     };
   }
@@ -200,8 +203,9 @@ class DCFOverlayConfig extends Equatable {
   Map<String, dynamic> toMap() {
     return {
       if (title != null) 'title': title,
-      if (overlayBackgroundColor != null) 
-        'overlayBackgroundColor': '#${overlayBackgroundColor!.value.toRadixString(16).padLeft(8, '0')}',
+      if (overlayBackgroundColor != null)
+        'overlayBackgroundColor':
+            '#${overlayBackgroundColor!.value.toRadixString(16).padLeft(8, '0')}',
       'dismissOnTap': dismissOnTap,
       if (animationDuration != null) 'animationDuration': animationDuration,
       'blocksInteraction': blocksInteraction,
@@ -219,7 +223,11 @@ class DCFOverlayConfig extends Equatable {
 }
 
 /// A screen component that provides navigation context and lifecycle
-class DCFScreen extends StatelessComponent with EquatableMixin {
+class DCFScreen extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
   final String name;
   final DCFPresentationStyle presentationStyle;
   final DCFTabConfig? tabConfig;
@@ -309,7 +317,7 @@ class DCFScreen extends StatelessComponent with EquatableMixin {
       ...styleSheet.toMap(),
       ...eventMap,
     };
-    
+
     if (navigationCommand != null && navigationCommand!.hasCommands) {
       props['navigationCommand'] = navigationCommand!.toMap();
     }
@@ -364,13 +372,13 @@ class PushToCommand {
   final String screenName;
   final bool animated;
   final Map<String, dynamic>? params;
-  
+
   const PushToCommand({
     required this.screenName,
     this.animated = true,
     this.params,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'screenName': screenName,
@@ -384,12 +392,12 @@ class PushToCommand {
 class PopCommand {
   final bool animated;
   final Map<String, dynamic>? result;
-  
+
   const PopCommand({
     this.animated = true,
     this.result,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'animated': animated,
@@ -402,12 +410,12 @@ class PopCommand {
 class PopToCommand {
   final String screenName;
   final bool animated;
-  
+
   const PopToCommand({
     required this.screenName,
     this.animated = true,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'screenName': screenName,
@@ -419,9 +427,9 @@ class PopToCommand {
 /// Command to pop to root screen
 class PopToRootCommand {
   final bool animated;
-  
+
   const PopToRootCommand({this.animated = true});
-  
+
   Map<String, dynamic> toMap() {
     return {
       'animated': animated,
@@ -434,13 +442,13 @@ class ReplaceWithCommand {
   final String screenName;
   final bool animated;
   final Map<String, dynamic>? params;
-  
+
   const ReplaceWithCommand({
     required this.screenName,
     this.animated = true,
     this.params,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'screenName': screenName,
@@ -456,14 +464,14 @@ class PresentModalCommand {
   final bool animated;
   final Map<String, dynamic>? params;
   final String? presentationStyle;
-  
+
   const PresentModalCommand({
     required this.screenName,
     this.animated = true,
     this.params,
     this.presentationStyle,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'screenName': screenName,
@@ -478,12 +486,12 @@ class PresentModalCommand {
 class DismissModalCommand {
   final bool animated;
   final Map<String, dynamic>? result;
-  
+
   const DismissModalCommand({
     this.animated = true,
     this.result,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'animated': animated,
@@ -498,14 +506,14 @@ class PresentPopoverCommand {
   final bool animated;
   final Map<String, dynamic>? params;
   final String? sourceViewId;
-  
+
   const PresentPopoverCommand({
     required this.screenName,
     this.animated = true,
     this.params,
     this.sourceViewId,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'screenName': screenName,
@@ -520,12 +528,12 @@ class PresentPopoverCommand {
 class DismissPopoverCommand {
   final bool animated;
   final Map<String, dynamic>? result;
-  
+
   const DismissPopoverCommand({
     this.animated = true,
     this.result,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'animated': animated,
@@ -539,13 +547,13 @@ class PresentOverlayCommand {
   final String screenName;
   final bool animated;
   final Map<String, dynamic>? params;
-  
+
   const PresentOverlayCommand({
     required this.screenName,
     this.animated = true,
     this.params,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'screenName': screenName,
@@ -559,12 +567,12 @@ class PresentOverlayCommand {
 class DismissOverlayCommand {
   final bool animated;
   final Map<String, dynamic>? result;
-  
+
   const DismissOverlayCommand({
     this.animated = true,
     this.result,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'animated': animated,
@@ -586,7 +594,7 @@ class ScreenNavigationCommand {
   final DismissPopoverCommand? dismissPopover;
   final PresentOverlayCommand? presentOverlay;
   final DismissOverlayCommand? dismissOverlay;
-  
+
   const ScreenNavigationCommand({
     this.pushTo,
     this.pop,
@@ -600,71 +608,71 @@ class ScreenNavigationCommand {
     this.presentOverlay,
     this.dismissOverlay,
   });
-  
+
   /// Convert command to props map for native consumption
   Map<String, dynamic> toMap() {
     final Map<String, dynamic> commandMap = {};
-    
+
     if (pushTo != null) {
       commandMap['pushTo'] = pushTo!.toMap();
     }
-    
+
     if (pop != null) {
       commandMap['pop'] = pop!.toMap();
     }
-    
+
     if (popTo != null) {
       commandMap['popTo'] = popTo!.toMap();
     }
-    
+
     if (popToRoot != null) {
       commandMap['popToRoot'] = popToRoot!.toMap();
     }
-    
+
     if (replaceWith != null) {
       commandMap['replaceWith'] = replaceWith!.toMap();
     }
-    
+
     if (presentModal != null) {
       commandMap['presentModal'] = presentModal!.toMap();
     }
-    
+
     if (dismissModal != null) {
       commandMap['dismissModal'] = dismissModal!.toMap();
     }
-    
+
     if (presentPopover != null) {
       commandMap['presentPopover'] = presentPopover!.toMap();
     }
-    
+
     if (dismissPopover != null) {
       commandMap['dismissPopover'] = dismissPopover!.toMap();
     }
-    
+
     if (presentOverlay != null) {
       commandMap['presentOverlay'] = presentOverlay!.toMap();
     }
-    
+
     if (dismissOverlay != null) {
       commandMap['dismissOverlay'] = dismissOverlay!.toMap();
     }
-    
+
     return commandMap;
   }
-  
+
   /// Check if this command has any actions to execute
   bool get hasCommands {
     return pushTo != null ||
-           pop != null ||
-           popTo != null ||
-           popToRoot != null ||
-           replaceWith != null ||
-           presentModal != null ||
-           dismissModal != null ||
-           presentPopover != null ||
-           dismissPopover != null ||
-           presentOverlay != null ||
-           dismissOverlay != null;
+        pop != null ||
+        popTo != null ||
+        popToRoot != null ||
+        replaceWith != null ||
+        presentModal != null ||
+        dismissModal != null ||
+        presentPopover != null ||
+        dismissPopover != null ||
+        presentOverlay != null ||
+        dismissOverlay != null;
   }
 }
 
@@ -675,74 +683,115 @@ class ScreenNavigationCommand {
 /// Navigation presets for common operations - USE THESE AS DEFAULT
 class NavigationPresets {
   // PUSH NAVIGATION
-  
+
   /// Push to a screen
-  static ScreenNavigationCommand pushTo(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(pushTo: PushToCommand(screenName: screenName, params: params));
-  
+  static ScreenNavigationCommand pushTo(String screenName,
+          {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(
+          pushTo: PushToCommand(screenName: screenName, params: params));
+
   /// Push to a screen without animation
-  static ScreenNavigationCommand pushToInstant(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(pushTo: PushToCommand(screenName: screenName, animated: false, params: params));
-  
+  static ScreenNavigationCommand pushToInstant(String screenName,
+          {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(
+          pushTo: PushToCommand(
+              screenName: screenName, animated: false, params: params));
+
   // POP NAVIGATION
-  
+
   /// Pop current screen
-  static const ScreenNavigationCommand pop = ScreenNavigationCommand(pop: PopCommand());
-  
+  static const ScreenNavigationCommand pop =
+      ScreenNavigationCommand(pop: PopCommand());
+
   /// Pop current screen without animation
-  static const ScreenNavigationCommand popInstant = ScreenNavigationCommand(pop: PopCommand(animated: false));
-  
+  static const ScreenNavigationCommand popInstant =
+      ScreenNavigationCommand(pop: PopCommand(animated: false));
+
   /// Pop to specific screen
   static ScreenNavigationCommand popTo(String screenName) =>
       ScreenNavigationCommand(popTo: PopToCommand(screenName: screenName));
-  
+
   /// Pop to root
-  static const ScreenNavigationCommand popToRoot = ScreenNavigationCommand(popToRoot: PopToRootCommand());
-  
+  static const ScreenNavigationCommand popToRoot =
+      ScreenNavigationCommand(popToRoot: PopToRootCommand());
+
   /// Replace current screen
-  static ScreenNavigationCommand replaceWith(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(replaceWith: ReplaceWithCommand(screenName: screenName, params: params));
-  
+  static ScreenNavigationCommand replaceWith(String screenName,
+          {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(
+          replaceWith:
+              ReplaceWithCommand(screenName: screenName, params: params));
+
   // MODAL NAVIGATION
-  
+
   /// Present modal
-  static ScreenNavigationCommand presentModal(String screenName, {Map<String, dynamic>? params, String? style}) =>
-      ScreenNavigationCommand(presentModal: PresentModalCommand(screenName: screenName, params: params, presentationStyle: style));
-  
+  static ScreenNavigationCommand presentModal(String screenName,
+          {Map<String, dynamic>? params, String? style}) =>
+      ScreenNavigationCommand(
+          presentModal: PresentModalCommand(
+              screenName: screenName,
+              params: params,
+              presentationStyle: style));
+
   /// Present full screen modal
-  static ScreenNavigationCommand presentFullScreenModal(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(presentModal: PresentModalCommand(screenName: screenName, params: params, presentationStyle: "fullScreen"));
-  
+  static ScreenNavigationCommand presentFullScreenModal(String screenName,
+          {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(
+          presentModal: PresentModalCommand(
+              screenName: screenName,
+              params: params,
+              presentationStyle: "fullScreen"));
+
   /// Present page sheet modal
-  static ScreenNavigationCommand presentPageSheetModal(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(presentModal: PresentModalCommand(screenName: screenName, params: params, presentationStyle: "pageSheet"));
-  
+  static ScreenNavigationCommand presentPageSheetModal(String screenName,
+          {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(
+          presentModal: PresentModalCommand(
+              screenName: screenName,
+              params: params,
+              presentationStyle: "pageSheet"));
+
   /// Dismiss modal
-  static const ScreenNavigationCommand dismissModal = ScreenNavigationCommand(dismissModal: DismissModalCommand());
-  
+  static const ScreenNavigationCommand dismissModal =
+      ScreenNavigationCommand(dismissModal: DismissModalCommand());
+
   /// Dismiss modal with result
-  static ScreenNavigationCommand dismissModalWithResult(Map<String, dynamic> result) =>
-      ScreenNavigationCommand(dismissModal: DismissModalCommand(result: result));
-  
+  static ScreenNavigationCommand dismissModalWithResult(
+          Map<String, dynamic> result) =>
+      ScreenNavigationCommand(
+          dismissModal: DismissModalCommand(result: result));
+
   // POPOVER NAVIGATION
-  
+
   /// Present popover
-  static ScreenNavigationCommand presentPopover(String screenName, {Map<String, dynamic>? params, String? sourceViewId}) =>
-      ScreenNavigationCommand(presentPopover: PresentPopoverCommand(screenName: screenName, params: params, sourceViewId: sourceViewId));
-  
+  static ScreenNavigationCommand presentPopover(String screenName,
+          {Map<String, dynamic>? params, String? sourceViewId}) =>
+      ScreenNavigationCommand(
+          presentPopover: PresentPopoverCommand(
+              screenName: screenName,
+              params: params,
+              sourceViewId: sourceViewId));
+
   /// Dismiss popover
-  static const ScreenNavigationCommand dismissPopover = ScreenNavigationCommand(dismissPopover: DismissPopoverCommand());
-  
+  static const ScreenNavigationCommand dismissPopover =
+      ScreenNavigationCommand(dismissPopover: DismissPopoverCommand());
+
   // OVERLAY NAVIGATION
-  
+
   /// Present overlay
-  static ScreenNavigationCommand presentOverlay(String screenName, {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(presentOverlay: PresentOverlayCommand(screenName: screenName, params: params));
-  
+  static ScreenNavigationCommand presentOverlay(String screenName,
+          {Map<String, dynamic>? params}) =>
+      ScreenNavigationCommand(
+          presentOverlay:
+              PresentOverlayCommand(screenName: screenName, params: params));
+
   /// Dismiss overlay
-  static const ScreenNavigationCommand dismissOverlay = ScreenNavigationCommand(dismissOverlay: DismissOverlayCommand());
-  
+  static const ScreenNavigationCommand dismissOverlay =
+      ScreenNavigationCommand(dismissOverlay: DismissOverlayCommand());
+
   /// Dismiss overlay with result
-  static ScreenNavigationCommand dismissOverlayWithResult(Map<String, dynamic> result) =>
-      ScreenNavigationCommand(dismissOverlay: DismissOverlayCommand(result: result));
+  static ScreenNavigationCommand dismissOverlayWithResult(
+          Map<String, dynamic> result) =>
+      ScreenNavigationCommand(
+          dismissOverlay: DismissOverlayCommand(result: result));
 }

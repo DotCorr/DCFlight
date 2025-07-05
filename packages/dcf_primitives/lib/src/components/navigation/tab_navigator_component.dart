@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 import 'package:equatable/equatable.dart';
 
 import 'managers/screen_manager.dart';
@@ -80,7 +81,12 @@ class DCFTabBarStyle extends Equatable {
 }
 
 /// Tab navigator that coordinates multiple screens in a tab interface
-class DCFTabNavigator extends StatelessComponent with EquatableMixin {
+class DCFTabNavigator extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
   /// List of screen names to include in tab navigation
   final List<String> screens;
 
