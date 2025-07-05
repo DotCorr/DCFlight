@@ -3,7 +3,6 @@ import 'package:dcf_go/app/example/config/tab_registry.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() {
-
   DCFlight.start(app: MyApp());
 }
 
@@ -23,7 +22,7 @@ class MyApp extends StatefulComponent {
         "test_gh",
       ],
       //sub-routes don't have to be registered in the same order as the tabs
-      // fun fact: sub routes can push to the same screen as the tab routes
+      // fun fact: sub routes can push to the same screen as the tab routes (not advised doing but incase you do we got you covered)
       selectedIndex: 0,
       tabRoutesRegistryComponents: tabReg,
       subRoutesRegistryComponents: subRoutesReg,
