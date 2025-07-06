@@ -30,7 +30,7 @@ class DeepScreen extends StatefulComponent {
           styleSheet: cardStyle,
           layout: LayoutProps(
             height: 120,
-            width: raceTrack.state > 0.12 ? raceTrack.state * 100 : 120,
+            width: raceTrack.state > 0.12 ? "100%" : 120,
             paddingRight: raceTrack.state * 100,
             alignItems: YogaAlign.center,
           ),
