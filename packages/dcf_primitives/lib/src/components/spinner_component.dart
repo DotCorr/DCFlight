@@ -9,31 +9,36 @@ import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// 🚀 DCF Spinner/Activity Indicator Component
-/// 
+///
 /// A spinner component that provides native platform activity indicator behavior.
 /// Supports different sizes and colors with adaptive theming.
-class DCFSpinner extends StatelessComponent with EquatableMixin {
+class DCFSpinner extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.normal;
+
   /// Whether the spinner is animating
   final bool animating;
-  
+
   /// Size style of the spinner
   final String style;
-  
+
   /// Color of the spinner
   final Color? color;
-  
+
   /// Whether to hide when stopped
   final bool hidesWhenStopped;
-  
+
   /// Whether to use adaptive theming (system colors)
   final bool adaptive;
-  
+
   /// The layout properties
   final LayoutProps layout;
-  
-  /// The style properties  
+
+  /// The style properties
   final StyleSheet styleSheet;
-  
+
   /// Event handlers
   final Map<String, dynamic>? events;
 
@@ -53,7 +58,7 @@ class DCFSpinner extends StatelessComponent with EquatableMixin {
   DCFComponentNode render() {
     // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
-    
+
     Map<String, dynamic> props = {
       'animating': animating,
       'style': style,
@@ -63,12 +68,12 @@ class DCFSpinner extends StatelessComponent with EquatableMixin {
       ...styleSheet.toMap(),
       ...eventMap,
     };
-    
+
     // Add color property if provided
     if (color != null) {
       props['color'] = '#${color!.value.toRadixString(16).padLeft(8, '0')}';
     }
-    
+
     return DCFElement(
       type: 'Spinner',
       props: props,

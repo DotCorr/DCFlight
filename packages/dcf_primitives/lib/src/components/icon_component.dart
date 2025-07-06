@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 export 'package:dcf_primitives/src/components/dictionary/dcf_icons_dict.dart';
 
 /// Icon properties
@@ -44,7 +44,8 @@ class DCFIconProps extends Equatable {
       'package': package,
       'isRelativePath': false,
       'adaptive': adaptive,
-      if (color != null) 'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
+      if (color != null)
+        'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
     };
   }
 
@@ -58,7 +59,12 @@ class DCFIconProps extends Equatable {
 }
 
 /// An icon component implementation using StatelessComponent
-class DCFIcon extends StatelessComponent with EquatableMixin {
+class DCFIcon extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.normal;
+
   /// The icon properties
   final DCFIconProps iconProps;
 

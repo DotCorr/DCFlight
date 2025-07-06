@@ -5,8 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 import 'package:equatable/equatable.dart';
 
 /// Font weight options for text components
@@ -50,28 +50,28 @@ enum DCFFontWeight {
 class DCFTextProps extends Equatable {
   /// Font size
   final double? fontSize;
-  
+
   /// Font weight
   final DCFFontWeight? fontWeight;
-  
+
   /// Font family
   final String? fontFamily;
-  
+
   /// Whether the font family refers to an asset path
   final bool isFontAsset;
-  
+
   /// Text color
   final Color? color;
-  
+
   /// Text alignment
   final String? textAlign;
-  
+
   /// Number of lines (0 for unlimited)
   final int? numberOfLines;
-  
+
   /// Whether to use adaptive theming
   final bool adaptive;
-  
+
   /// Create text props
   const DCFTextProps({
     this.fontSize,
@@ -83,7 +83,7 @@ class DCFTextProps extends Equatable {
     this.numberOfLines,
     this.adaptive = true,
   });
-  
+
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
@@ -91,7 +91,8 @@ class DCFTextProps extends Equatable {
       if (fontWeight != null) 'fontWeight': fontWeight!.value,
       if (fontFamily != null) 'fontFamily': fontFamily,
       if (isFontAsset) 'isFontAsset': isFontAsset,
-      if (color != null) 'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
+      if (color != null)
+        'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
       if (textAlign != null) 'textAlign': textAlign,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
       'adaptive': adaptive,
@@ -112,22 +113,27 @@ class DCFTextProps extends Equatable {
 }
 
 /// A text component implementation using StatelessComponent
-class DCFText extends StatelessComponent with EquatableMixin {
+class DCFText extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.normal;
+
   /// The text content to display
   final String content;
-  
+
   /// The text properties
   final DCFTextProps textProps;
-  
+
   /// The layout properties
   final LayoutProps layout;
-  
+
   /// The style properties
   final StyleSheet styleSheet;
-  
+
   /// Event handlers
   final Map<String, dynamic>? events;
-  
+
   /// Create a text component
   DCFText({
     required this.content,
@@ -137,7 +143,7 @@ class DCFText extends StatelessComponent with EquatableMixin {
     this.events,
     super.key,
   });
-  
+
   @override
   DCFComponentNode render() {
     Map<String, dynamic> props = {

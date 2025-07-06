@@ -12,19 +12,19 @@ import 'package:dcflight/dcflight.dart';
 class DCFSegmentItem extends Equatable {
   /// The title text for the segment
   final String title;
-  
+
   /// Optional icon asset path
   final String? iconAsset;
-  
+
   /// Whether this segment is enabled
   final bool enabled;
-  
+
   const DCFSegmentItem({
     required this.title,
     this.iconAsset,
     this.enabled = true,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -41,25 +41,25 @@ class DCFSegmentItem extends Equatable {
 class DCFSegmentedControlProps extends Equatable {
   /// The list of segment items (type-safe)
   final List<DCFSegmentItem> segments;
-  
+
   /// The currently selected segment index
   final int selectedIndex;
-  
+
   /// Whether the segmented control is enabled
   final bool enabled;
-  
+
   /// Whether to use adaptive theming (system colors)
   final bool adaptive;
-  
+
   /// Background color of the segmented control
   final String? backgroundColor;
-  
+
   /// Color of the selected segment (iOS 13+)
   final String? selectedTintColor;
-  
+
   /// Tint color (affects text color of selected segment)
   final String? tintColor;
-  
+
   /// Create segmented control props
   const DCFSegmentedControlProps({
     this.segments = const [DCFSegmentItem(title: 'Segment 1')],
@@ -70,7 +70,7 @@ class DCFSegmentedControlProps extends Equatable {
     this.selectedTintColor,
     this.tintColor,
   });
-  
+
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
@@ -97,22 +97,27 @@ class DCFSegmentedControlProps extends Equatable {
 }
 
 /// A segmented control component implementation using StatelessComponent
-class DCFSegmentedControl extends StatelessComponent with EquatableMixin {
+class DCFSegmentedControl extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
   /// The segmented control properties
   final DCFSegmentedControlProps segmentedControlProps;
-  
+
   /// The layout properties
   final LayoutProps layout;
-  
+
   /// The style properties
   final StyleSheet styleSheet;
-  
+
   /// Event handlers
   final Map<String, dynamic>? events;
-  
+
   /// Selection change event handler - receives Map<dynamic, dynamic> with selection data
   final Function(Map<dynamic, dynamic>)? onSelectionChange;
-  
+
   /// Create a segmented control component
   DCFSegmentedControl({
     required this.segmentedControlProps,
@@ -125,16 +130,16 @@ class DCFSegmentedControl extends StatelessComponent with EquatableMixin {
     this.events,
     super.key,
   });
-  
+
   @override
   DCFComponentNode render() {
     // Create an events map for the onSelectionChange handler
     Map<dynamic, dynamic> eventMap = events ?? {};
-    
+
     if (onSelectionChange != null) {
       eventMap['onSelectionChange'] = onSelectionChange;
     }
-    
+
     return DCFElement(
       type: 'SegmentedControl',
       props: {

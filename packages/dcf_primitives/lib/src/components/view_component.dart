@@ -5,12 +5,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 
 /// A basic view component implementation using StatelessComponent
-class DCFView extends StatelessComponent with EquatableMixin {
+class DCFView extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.normal;
+
   /// The layout properties
   final LayoutProps layout;
 
@@ -31,7 +36,7 @@ class DCFView extends StatelessComponent with EquatableMixin {
 
   /// Create a view component
   DCFView({
-    this.layout = const LayoutProps(padding: 8,flex: 1),
+    this.layout = const LayoutProps(padding: 8, flex: 1),
     this.styleSheet = const StyleSheet(),
     this.children = const [],
     this.events,

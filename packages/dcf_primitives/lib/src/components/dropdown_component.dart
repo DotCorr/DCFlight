@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
 import 'package:equatable/equatable.dart';
 
@@ -13,58 +12,58 @@ import 'package:equatable/equatable.dart';
 class DCFDropdownProps {
   /// Whether the dropdown is visible
   final bool visible;
-  
+
   /// List of dropdown items
   final List<DCFDropdownMenuItem> items;
-  
+
   /// Currently selected value
   final String? selectedValue;
-  
+
   /// Placeholder text
   final String? placeholder;
-  
+
   /// Color of placeholder text
   final Color? placeholderTextColor;
-  
+
   /// Position of the dropdown
   final DCFDropdownPosition dropdownPosition;
-  
+
   /// Maximum height of dropdown
   final double? maxHeight;
-  
+
   /// Height of each item
   final double? itemHeight;
-  
+
   /// Background color of dropdown
   final Color? backgroundColor;
-  
+
   /// Border color of dropdown
   final Color? borderColor;
-  
+
   /// Border width
   final double? borderWidth;
-  
+
   /// Border radius
   final double? borderRadius;
-  
+
   /// Whether dropdown is searchable
   final bool searchable;
-  
+
   /// Search placeholder text
   final String? searchPlaceholder;
-  
+
   /// Whether multiple selection is enabled
   final bool multiSelect;
-  
+
   /// Currently selected values (for multi-select)
   final List<String>? selectedValues;
-  
+
   /// Whether dropdown is disabled
   final bool disabled;
-  
+
   /// Whether to use adaptive theming
   final bool adaptive;
-  
+
   /// Create dropdown props
   const DCFDropdownProps({
     this.visible = false,
@@ -86,24 +85,32 @@ class DCFDropdownProps {
     this.disabled = false,
     this.adaptive = true,
   });
-  
+
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
       'visible': visible,
-      'items': items.map((item) => {
-        'value': item.value,
-        'label': item.title,  // Use title as label for native
-        'disabled': item.disabled,
-      }).toList(),
+      'items': items
+          .map((item) => {
+                'value': item.value,
+                'label': item.title, // Use title as label for native
+                'disabled': item.disabled,
+              })
+          .toList(),
       'selectedValue': selectedValue,
       'placeholder': placeholder,
-      if (placeholderTextColor != null) 'placeholderTextColor': '#${placeholderTextColor!.value.toRadixString(16).padLeft(8, '0')}',
+      if (placeholderTextColor != null)
+        'placeholderTextColor':
+            '#${placeholderTextColor!.value.toRadixString(16).padLeft(8, '0')}',
       'dropdownPosition': dropdownPosition.name,
       'maxHeight': maxHeight,
       'itemHeight': itemHeight,
-      if (backgroundColor != null) 'backgroundColor': '#${backgroundColor!.value.toRadixString(16).padLeft(8, '0')}',
-      if (borderColor != null) 'borderColor': '#${borderColor!.value.toRadixString(16).padLeft(8, '0')}',
+      if (backgroundColor != null)
+        'backgroundColor':
+            '#${backgroundColor!.value.toRadixString(16).padLeft(8, '0')}',
+      if (borderColor != null)
+        'borderColor':
+            '#${borderColor!.value.toRadixString(16).padLeft(8, '0')}',
       'borderWidth': borderWidth,
       'borderRadius': borderRadius,
       'searchable': searchable,
@@ -118,28 +125,33 @@ class DCFDropdownProps {
 
 /// DCFDropdown - Cross-platform dropdown menu component
 /// Provides native dropdown functionality with type-safe positioning and items
-class DCFDropdown extends StatelessComponent with EquatableMixin {
+class DCFDropdown extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
   /// The dropdown properties
   final DCFDropdownProps dropdownProps;
-  
+
   /// The layout properties
   final LayoutProps layout;
-  
+
   /// The style properties
   final StyleSheet styleSheet;
-  
+
   /// Event handlers
   final Map<String, dynamic>? events;
-  
+
   /// Value change event handler - receives Map<dynamic, dynamic> with selected value and item data
   final Function(Map<dynamic, dynamic>)? onValueChange;
-  
+
   /// Multi-value change event handler - receives Map<dynamic, dynamic> with selected values and items data
   final Function(Map<dynamic, dynamic>)? onMultiValueChange;
-  
+
   /// Open event handler - receives Map<dynamic, dynamic> with dropdown state
   final Function(Map<dynamic, dynamic>)? onOpen;
-  
+
   /// Close event handler - receives Map<dynamic, dynamic> with dropdown state
   final Function(Map<dynamic, dynamic>)? onClose;
 
@@ -157,38 +169,38 @@ class DCFDropdown extends StatelessComponent with EquatableMixin {
 
   @override
   List<Object?> get props => [
-    dropdownProps,
-    layout,
-    styleSheet,
-    onValueChange,
-    onMultiValueChange,
-    onOpen,
-    onClose,
-    events,
-    key,
-  ];
+        dropdownProps,
+        layout,
+        styleSheet,
+        onValueChange,
+        onMultiValueChange,
+        onOpen,
+        onClose,
+        events,
+        key,
+      ];
 
   @override
   DCFComponentNode render() {
     // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
-    
+
     if (onValueChange != null) {
       eventMap['onValueChange'] = onValueChange;
     }
-    
+
     if (onMultiValueChange != null) {
       eventMap['onMultiValueChange'] = onMultiValueChange;
     }
-    
+
     if (onOpen != null) {
       eventMap['onOpen'] = onOpen;
     }
-    
+
     if (onClose != null) {
       eventMap['onClose'] = onClose;
     }
-    
+
     return DCFElement(
       type: 'Dropdown',
       key: key,

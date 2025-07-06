@@ -1381,7 +1381,7 @@ Future<void> _processReconciliationQueue() async {
         }
 
         // Recursively dispose rendered content
-        await _disposeOldComponent(oldNode.renderedNode!);
+        await _disposeOldComponent(oldNode.renderedNode);
       }
       // Handle StatelessComponent disposal
       else if (oldNode is StatelessComponent) {
@@ -1403,7 +1403,7 @@ Future<void> _processReconciliationQueue() async {
         }
 
         // Recursively dispose rendered content
-        await _disposeOldComponent(oldNode.renderedNode!);
+        await _disposeOldComponent(oldNode.renderedNode);
       }
       // Handle DCFElement disposal
       else if (oldNode is DCFElement) {

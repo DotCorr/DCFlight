@@ -5,15 +5,20 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
 import 'package:equatable/equatable.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 
 /// 🚀 DCF Checkbox Component
 ///
 /// A checkbox component that provides native platform behavior.
 /// Supports custom styling, sizes, and colors with adaptive theming.
-class DCFCheckbox extends StatelessComponent with EquatableMixin {
+class DCFCheckbox extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
   /// Current checked state of the checkbox
   final bool checked;
 

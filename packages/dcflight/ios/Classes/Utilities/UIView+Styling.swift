@@ -13,15 +13,24 @@ extension UIView {
     public func applyStyles(props: [String: Any]) {
         // Debug log for applied props
 
+        // CRITICAL FIX: Apply border radius FIRST before gradient to avoid override
+        var hasCornerRadius = false
+        var finalCornerRadius: CGFloat = 0
+        var finalCornerMask: CACornerMask = [
+            .layerMinXMinYCorner, .layerMaxXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner,
+        ]
+
         // Border Radius (Global)
         if let borderRadius = props["borderRadius"] as? CGFloat {
             layer.cornerRadius = borderRadius
-            self.clipsToBounds = true // Enable clipping when border radius is set
+            finalCornerRadius = borderRadius
+            hasCornerRadius = true
+            self.clipsToBounds = true  // Enable clipping when border radius is set
         }
 
         // Per-corner Radius (Overrides global borderRadius if specific corners are set)
         var cornerMask: CACornerMask = []
-        var customRadius: CGFloat? = nil // Use the first specified radius
+        var customRadius: CGFloat? = nil  // Use the first specified radius
 
         if let radius = props["borderTopLeftRadius"] as? CGFloat, radius >= 0 {
             cornerMask.insert(.layerMinXMinYCorner)
@@ -42,14 +51,16 @@ extension UIView {
 
         if !cornerMask.isEmpty {
             layer.maskedCorners = cornerMask
+            finalCornerMask = cornerMask
             if let radius = customRadius {
-                layer.cornerRadius = radius // Apply the radius if specific corners are masked
-                self.clipsToBounds = true // Enable clipping for rounded corners
+                layer.cornerRadius = radius  // Apply the radius if specific corners are masked
+                finalCornerRadius = radius
+                hasCornerRadius = true
+                self.clipsToBounds = true  // Enable clipping for rounded corners
             }
         }
 
         // Border color and width - Apply only if specified
-        // Using inset border approach to match web/Flutter behavior
         if let borderColorStr = props["borderColor"] as? String {
             layer.borderColor = ColorUtilities.color(fromHexString: borderColorStr)?.cgColor
         }
@@ -65,12 +76,15 @@ extension UIView {
             self.backgroundColor = ColorUtilities.color(fromHexString: backgroundColorStr)
         }
 
-        // Background gradient - Apply only if specified
-        // CRITICAL FIX: Apply gradient AFTER all other styling to ensure proper layering
+        // CRITICAL FIX: Apply gradient AFTER border radius and ensure it respects corner radius
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
-            // Defer gradient application to next run loop to ensure child views are added first
+            // Defer gradient application to ensure proper layering and corner radius respect
             DispatchQueue.main.async { [weak self] in
-                self?.applyGradientBackground(gradientData: gradientData)
+                guard let self = self else { return }
+                self.applyGradientBackground(
+                    gradientData: gradientData,
+                    cornerRadius: hasCornerRadius ? finalCornerRadius : nil,
+                    cornerMask: hasCornerRadius ? finalCornerMask : nil)
             }
         }
 
@@ -80,7 +94,7 @@ extension UIView {
         }
 
         // Shadow properties - Apply only if specified
-        var needsMasksToBoundsFalse = false // Track if shadow requires masksToBounds = false
+        var needsMasksToBoundsFalse = false  // Track if shadow requires masksToBounds = false
         if let shadowColorStr = props["shadowColor"] as? String {
             layer.shadowColor = ColorUtilities.color(fromHexString: shadowColorStr)?.cgColor
             needsMasksToBoundsFalse = true
@@ -114,10 +128,15 @@ extension UIView {
             needsMasksToBoundsFalse = true
         }
 
-        // Set masksToBounds based *only* on whether shadow properties were applied
-        if needsMasksToBoundsFalse {
+        // CRITICAL FIX: Handle masksToBounds conflict between shadows and corner radius
+        if needsMasksToBoundsFalse && hasCornerRadius {
+            // We have both shadows and corner radius - use a container approach
+            layer.masksToBounds = false  // Allow shadows
+            // The gradient layer will handle corner radius clipping
+        } else if needsMasksToBoundsFalse {
             layer.masksToBounds = false
         }
+        // If only corner radius, clipsToBounds is already set above
 
         // Transform handling removed - now handled by the layout system instead
 
@@ -126,7 +145,7 @@ extension UIView {
             var hitSlopInsets = UIEdgeInsets.zero
 
             if let top = hitSlopMap["top"] as? CGFloat {
-                hitSlopInsets.top = -top // Negative to expand touch area
+                hitSlopInsets.top = -top  // Negative to expand touch area
             }
             if let bottom = hitSlopMap["bottom"] as? CGFloat {
                 hitSlopInsets.bottom = -bottom
@@ -139,8 +158,9 @@ extension UIView {
             }
 
             // Store hit slop for use in hit testing (requires custom hit test implementation)
-            objc_setAssociatedObject(self, UnsafeRawPointer(bitPattern: "hitSlop".hashValue)!,
-                                   NSValue(uiEdgeInsets: hitSlopInsets), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "hitSlop".hashValue)!,
+                NSValue(uiEdgeInsets: hitSlopInsets), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
 
         // Elevation (Android-style) - Convert to shadow for iOS
@@ -157,12 +177,13 @@ extension UIView {
 
             if elevation > 0 {
                 needsMasksToBoundsFalse = true
+                // Handle masksToBounds conflict for elevation as well
+                if hasCornerRadius {
+                    layer.masksToBounds = false
+                } else {
+                    layer.masksToBounds = false
+                }
             }
-        }
-
-        // Apply masksToBounds setting if needed for elevation shadows
-        if needsMasksToBoundsFalse {
-            layer.masksToBounds = false
         }
 
         // Accessibility properties - Apply only if specified
@@ -175,7 +196,7 @@ extension UIView {
         }
 
         if let testID = props["testID"] as? String {
-            self.accessibilityIdentifier = testID // Used for view lookup and testing
+            self.accessibilityIdentifier = testID  // Used for view lookup and testing
         }
 
         // Pointer Events - Apply only if specified
@@ -185,7 +206,7 @@ extension UIView {
                 self.isUserInteractionEnabled = false
             case "box-none":
                 // View itself doesn't receive events, but children can.
-                self.isUserInteractionEnabled = false // Correct for the view itself
+                self.isUserInteractionEnabled = false  // Correct for the view itself
             case "box-only":
                 // View receives events, children do not (UIKit default handles this if children are disabled).
                 self.isUserInteractionEnabled = true
@@ -227,13 +248,21 @@ extension UIView {
         }
     }
 
-    /// Apply gradient background to the view
-    private func applyGradientBackground(gradientData: [String: Any]) {
+    /// CRITICAL FIX: Apply gradient background with proper corner radius support
+    private func applyGradientBackground(
+        gradientData: [String: Any], cornerRadius: CGFloat? = nil, cornerMask: CACornerMask? = nil
+    ) {
         // CRITICAL FIX: Ensure we have valid bounds before applying gradient
         guard !bounds.isEmpty else {
             // Store gradient data for later application when bounds are available
-            objc_setAssociatedObject(self, UnsafeRawPointer(bitPattern: "pendingGradientData".hashValue)!,
-                                   gradientData, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            let pendingData: [String: Any] = [
+                "gradientData": gradientData,
+                "cornerRadius": cornerRadius ?? 0,
+                "cornerMask": cornerMask?.rawValue ?? CACornerMask.allCorners.rawValue,
+            ]
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "pendingGradientData".hashValue)!,
+                pendingData, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             return
         }
 
@@ -244,7 +273,8 @@ extension UIView {
         }
 
         guard let type = gradientData["type"] as? String,
-              let colorsArray = gradientData["colors"] as? [String] else {
+            let colorsArray = gradientData["colors"] as? [String]
+        else {
             return
         }
 
@@ -265,6 +295,15 @@ extension UIView {
         let gradientLayer = CAGradientLayer()
         gradientLayer.colors = cgColors
         gradientLayer.frame = bounds
+
+        // CRITICAL FIX: Apply corner radius to gradient layer if needed
+        if let cornerRadius = cornerRadius {
+            gradientLayer.cornerRadius = cornerRadius
+            if let cornerMask = cornerMask {
+                gradientLayer.maskedCorners = cornerMask
+            }
+            // Don't set masksToBounds on the gradient layer - it will clip incorrectly
+        }
 
         // Set gradient stops if provided
         if let stops = gradientData["stops"] as? [Double] {
@@ -317,15 +356,31 @@ extension UIView {
             layer.addSublayer(gradientLayer)
         }
 
-        print("✅ Applied gradient: \(type) with \(cgColors.count) colors at frame \(bounds)")
+        print(
+            "✅ Applied gradient: \(type) with \(cgColors.count) colors at frame \(bounds) with cornerRadius: \(cornerRadius ?? 0)"
+        )
 
         // Store gradient layer for later updates
-        objc_setAssociatedObject(self, UnsafeRawPointer(bitPattern: "gradientLayer".hashValue)!,
-                               gradientLayer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        objc_setAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "gradientLayer".hashValue)!,
+            gradientLayer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+
+        // Store corner radius info for updates
+        if let cornerRadius = cornerRadius {
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "gradientCornerRadius".hashValue)!,
+                cornerRadius, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+        if let cornerMask = cornerMask {
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "gradientCornerMask".hashValue)!,
+                cornerMask.rawValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
 
         // Clear pending gradient data since we've applied it
-        objc_setAssociatedObject(self, UnsafeRawPointer(bitPattern: "pendingGradientData".hashValue)!,
-                               nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        objc_setAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "pendingGradientData".hashValue)!,
+            nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
 }
 
@@ -333,26 +388,52 @@ extension UIView {
 extension UIView {
     /// Update gradient layer frame when view bounds change
     @objc public func updateGradientFrame() {
-        guard !bounds.isEmpty else { return } // Skip empty bounds
+        guard !bounds.isEmpty else { return }  // Skip empty bounds
 
         // CRITICAL FIX: Check for pending gradient data first
-        if let pendingGradientData = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "pendingGradientData".hashValue)!) as? [String: Any] {
+        if let pendingData = objc_getAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "pendingGradientData".hashValue)!) as? [String: Any]
+        {
             // Apply pending gradient now that we have bounds
-            applyGradientBackground(gradientData: pendingGradientData)
+            let gradientData = pendingData["gradientData"] as? [String: Any] ?? [:]
+            let cornerRadius = pendingData["cornerRadius"] as? CGFloat
+            let cornerMaskRaw = pendingData["cornerMask"] as? UInt
+            let cornerMask = cornerMaskRaw != nil ? CACornerMask(rawValue: cornerMaskRaw!) : nil
+
+            applyGradientBackground(
+                gradientData: gradientData,
+                cornerRadius: cornerRadius != 0 ? cornerRadius : nil,
+                cornerMask: cornerMask)
             return
         }
 
-        if let gradientLayer = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "gradientLayer".hashValue)!) as? CAGradientLayer {
+        if let gradientLayer = objc_getAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "gradientLayer".hashValue)!) as? CAGradientLayer
+        {
             // Only update if frame has actually changed
             if gradientLayer.frame != bounds {
                 CATransaction.begin()
-                CATransaction.setDisableActions(true) // Prevent animation
+                CATransaction.setDisableActions(true)  // Prevent animation
                 gradientLayer.frame = bounds
+
+                // CRITICAL FIX: Update corner radius on gradient layer during frame update
+                if let cornerRadius = objc_getAssociatedObject(
+                    self, UnsafeRawPointer(bitPattern: "gradientCornerRadius".hashValue)!)
+                    as? CGFloat
+                {
+                    gradientLayer.cornerRadius = cornerRadius
+                }
+                if let cornerMaskRaw = objc_getAssociatedObject(
+                    self, UnsafeRawPointer(bitPattern: "gradientCornerMask".hashValue)!) as? UInt
+                {
+                    gradientLayer.maskedCorners = CACornerMask(rawValue: cornerMaskRaw)
+                }
 
                 // CRITICAL FIX: Ensure gradient stays at the back after frame update
                 if let sublayers = layer.sublayers,
-                   let gradientIndex = sublayers.firstIndex(of: gradientLayer),
-                   gradientIndex > 0 {
+                    let gradientIndex = sublayers.firstIndex(of: gradientLayer),
+                    gradientIndex > 0
+                {
                     // Move gradient to the back if it's not already there
                     gradientLayer.removeFromSuperlayer()
                     layer.insertSublayer(gradientLayer, at: 0)
@@ -360,14 +441,16 @@ extension UIView {
                 }
 
                 CATransaction.commit()
-                print("📐 Updated gradient frame to \(bounds)")
+                print(
+                    "📐 Updated gradient frame to \(bounds) with cornerRadius: \(gradientLayer.cornerRadius)"
+                )
             }
         }
     }
 
     /// Override layoutSubviews to ensure gradient frames are updated
     @objc private func swizzled_layoutSubviews() {
-        swizzled_layoutSubviews() // Call original implementation
+        swizzled_layoutSubviews()  // Call original implementation
 
         // CRITICAL FIX: Only update gradient frame AFTER subviews are laid out
         // This ensures child components are positioned before gradient frame updates
@@ -384,7 +467,8 @@ extension UIView {
         let swizzledSelector = #selector(UIView.swizzled_layoutSubviews)
 
         guard let originalMethod = class_getInstanceMethod(UIView.self, originalSelector),
-              let swizzledMethod = class_getInstanceMethod(UIView.self, swizzledSelector) else {
+            let swizzledMethod = class_getInstanceMethod(UIView.self, swizzledSelector)
+        else {
             return
         }
 
@@ -395,4 +479,11 @@ extension UIView {
     public static func performSwizzling() {
         _ = swizzleLayoutSubviews
     }
+}
+
+// MARK: - CACornerMask Extension for convenience
+extension CACornerMask {
+    static let allCorners: CACornerMask = [
+        .layerMinXMinYCorner, .layerMaxXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner,
+    ]
 }
