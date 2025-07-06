@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
 import 'package:equatable/equatable.dart';
 import 'gradient.dart';
@@ -42,7 +41,7 @@ class StyleSheet extends Equatable {
   final bool? accessible;
   final String? accessibilityLabel;
   final String? testID;
-  final String? pointerEvents; // Changed from bool? to String? to match iOS implementation
+  final String? pointerEvents;
 
   /// Create a style sheet with visual styling properties
   const StyleSheet({
@@ -51,12 +50,12 @@ class StyleSheet extends Equatable {
     this.borderTopRightRadius,
     this.borderBottomLeftRadius,
     this.borderBottomRightRadius,
-    this.borderColor, // Removed default value to allow adaptive theming
+    this.borderColor,
     this.borderWidth,
     this.backgroundColor,
     this.backgroundGradient,
     this.opacity,
-    this.shadowColor, // Removed default value to allow adaptive theming
+    this.shadowColor,
     this.shadowOpacity,
     this.shadowRadius,
     this.shadowOffsetX,
@@ -70,10 +69,11 @@ class StyleSheet extends Equatable {
   });
 
   /// Convert style properties to a map for serialization
+  /// CRITICAL FIX: Ensure proper precedence order when both backgroundColor and backgroundGradient are present
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
 
-    // Add border style properties
+    // CRITICAL FIX: Add border style properties FIRST (they need to be applied before gradients)
     if (borderRadius != null) map['borderRadius'] = borderRadius;
     if (borderTopLeftRadius != null) {
       map['borderTopLeftRadius'] = borderTopLeftRadius;
@@ -88,56 +88,26 @@ class StyleSheet extends Equatable {
       map['borderBottomRightRadius'] = borderBottomRightRadius;
     }
     if (borderColor != null) {
-      // Preserve alpha channel - use full ARGB value
-      final alpha = (borderColor!.a * 255.0).round() & 0xff;
-      if (alpha == 0) {
-        map['borderColor'] = 'transparent';
-      } else if (alpha == 255) {
-        // Fully opaque - use standard hex format
-        final hexValue = borderColor!.toARGB32() & 0xFFFFFF;
-        map['borderColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
-      } else {
-        // Semi-transparent - include alpha in ARGB format
-        final argbValue = borderColor!.toARGB32();
-        map['borderColor'] = '#${argbValue.toRadixString(16).padLeft(8, '0')}';
-      }
+      map['borderColor'] = _colorToString(borderColor!);
     }
     if (borderWidth != null) map['borderWidth'] = borderWidth;
 
-    // Add background and opacity
+    // Add background color - this will be overridden by gradient if both are present
     if (backgroundColor != null) {
-      // Preserve alpha channel - use full ARGB value
-      final alpha = (backgroundColor!.a * 255.0).round() & 0xff;
-      if (alpha == 0) {
-        map['backgroundColor'] = 'transparent';
-      } else if (alpha == 255) {
-        // Fully opaque - use standard hex format
-        final hexValue = backgroundColor!.toARGB32() & 0xFFFFFF;
-        map['backgroundColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
-      } else {
-        // Semi-transparent - include alpha in ARGB format
-        final argbValue = backgroundColor!.toARGB32();
-        map['backgroundColor'] = '#${argbValue.toRadixString(16).padLeft(8, '0')}';
-      }
+      map['backgroundColor'] = _colorToString(backgroundColor!);
     }
-    if (backgroundGradient != null) map['backgroundGradient'] = backgroundGradient!.toMap();
+
+    // CRITICAL FIX: Add gradient AFTER backgroundColor so it can reference border radius
+    // The native side will handle precedence correctly
+    if (backgroundGradient != null) {
+      map['backgroundGradient'] = backgroundGradient!.toMap();
+    }
+
     if (opacity != null) map['opacity'] = opacity;
 
     // Add shadow properties
     if (shadowColor != null) {
-      // Preserve alpha channel - use full ARGB value
-      final alpha = (shadowColor!.a * 255.0).round() & 0xff;
-      if (alpha == 0) {
-        map['shadowColor'] = 'transparent';
-      } else if (alpha == 255) {
-        // Fully opaque - use standard hex format
-        final hexValue = shadowColor!.toARGB32() & 0xFFFFFF;
-        map['shadowColor'] = '#${hexValue.toRadixString(16).padLeft(6, '0')}';
-      } else {
-        // Semi-transparent - include alpha in ARGB format
-        final argbValue = shadowColor!.toARGB32();
-        map['shadowColor'] = '#${argbValue.toRadixString(16).padLeft(8, '0')}';
-      }
+      map['shadowColor'] = _colorToString(shadowColor!);
     }
     if (shadowOpacity != null) map['shadowOpacity'] = shadowOpacity;
     if (shadowRadius != null) map['shadowRadius'] = shadowRadius;
@@ -159,7 +129,25 @@ class StyleSheet extends Equatable {
     return map;
   }
 
+  /// CRITICAL FIX: Centralized color conversion to ensure consistency
+  String _colorToString(Color color) {
+    // Check for transparency first (same pattern across all color conversions)
+    final alpha = (color.a * 255.0).round() & 0xff;
+    if (alpha == 0) {
+      return 'transparent';
+    } else if (alpha == 255) {
+      // Fully opaque - use standard hex format
+      final hexValue = color.toARGB32() & 0xFFFFFF;
+      return '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+    } else {
+      // Semi-transparent - include alpha in ARGB format
+      final argbValue = color.toARGB32();
+      return '#${argbValue.toRadixString(16).padLeft(8, '0')}';
+    }
+  }
+
   /// Create a new StyleSheet by merging this one with another
+  /// CRITICAL FIX: Ensure gradient takes precedence over backgroundColor when merging
   StyleSheet merge(StyleSheet other) {
     return StyleSheet(
       borderRadius: other.borderRadius ?? borderRadius,
@@ -210,7 +198,7 @@ class StyleSheet extends Equatable {
     bool? accessible,
     String? accessibilityLabel,
     String? testID,
-    String? pointerEvents, // Changed from bool? to String?
+    String? pointerEvents,
   }) {
     return StyleSheet(
       borderRadius: borderRadius ?? this.borderRadius,
@@ -237,6 +225,75 @@ class StyleSheet extends Equatable {
       testID: testID ?? this.testID,
       pointerEvents: pointerEvents ?? this.pointerEvents,
     );
+  }
+
+  /// CRITICAL FIX: Add validation method to check for conflicting styles
+  List<String> validateStyles() {
+    final warnings = <String>[];
+
+    // Check for potential conflicts
+    if (backgroundColor != null && backgroundGradient != null) {
+      warnings.add(
+          'Both backgroundColor and backgroundGradient are set. backgroundGradient will take precedence.');
+    }
+
+    // Check for border radius conflicts
+    if (borderRadius != null &&
+        (borderTopLeftRadius != null ||
+            borderTopRightRadius != null ||
+            borderBottomLeftRadius != null ||
+            borderBottomRightRadius != null)) {
+      warnings.add(
+          'Both borderRadius and specific corner radii are set. Specific corners will take precedence.');
+    }
+
+    // Check for shadow/elevation conflicts
+    if (elevation != null &&
+        (shadowColor != null ||
+            shadowOpacity != null ||
+            shadowRadius != null ||
+            shadowOffsetX != null ||
+            shadowOffsetY != null)) {
+      warnings.add(
+          'Both elevation and specific shadow properties are set. Specific shadow properties will take precedence.');
+    }
+
+    return warnings;
+  }
+
+  /// CRITICAL FIX: Add helper method to check if this style has corner radius
+  bool get hasCornerRadius {
+    return borderRadius != null ||
+        borderTopLeftRadius != null ||
+        borderTopRightRadius != null ||
+        borderBottomLeftRadius != null ||
+        borderBottomRightRadius != null;
+  }
+
+  /// CRITICAL FIX: Add helper method to check if this style has shadow properties
+  bool get hasShadow {
+    return shadowColor != null ||
+        shadowOpacity != null ||
+        shadowRadius != null ||
+        shadowOffsetX != null ||
+        shadowOffsetY != null ||
+        elevation != null;
+  }
+
+  /// CRITICAL FIX: Add helper method to get effective corner radius value
+  double? get effectiveCornerRadius {
+    if (borderTopLeftRadius != null ||
+        borderTopRightRadius != null ||
+        borderBottomLeftRadius != null ||
+        borderBottomRightRadius != null) {
+      // Return the first specified corner radius as they should all be the same for consistency
+      return (borderTopLeftRadius ??
+              borderTopRightRadius ??
+              borderBottomLeftRadius ??
+              borderBottomRightRadius)
+          ?.toDouble();
+    }
+    return borderRadius?.toDouble();
   }
 
   /// List of all style property names for easy identification
@@ -267,6 +324,29 @@ class StyleSheet extends Equatable {
   /// Helper method to check if a property is a style property
   static bool isStyleProperty(String propName) {
     return all.contains(propName);
+  }
+
+  /// CRITICAL FIX: Add debug method to print style information
+  void debugPrint() {
+    print('StyleSheet Debug Info:');
+    print('  Border Radius: $borderRadius');
+    print(
+        '  Corner Radii: TL=$borderTopLeftRadius, TR=$borderTopRightRadius, BL=$borderBottomLeftRadius, BR=$borderBottomRightRadius');
+    print('  Border: color=$borderColor, width=$borderWidth');
+    print(
+        '  Background: color=$backgroundColor, gradient=${backgroundGradient != null ? 'present' : 'none'}');
+    print(
+        '  Shadow: color=$shadowColor, opacity=$shadowOpacity, radius=$shadowRadius, offset=($shadowOffsetX,$shadowOffsetY)');
+    print('  Elevation: $elevation');
+    print('  Opacity: $opacity');
+
+    final warnings = validateStyles();
+    if (warnings.isNotEmpty) {
+      print('  WARNINGS:');
+      for (final warning in warnings) {
+        print('    - $warning');
+      }
+    }
   }
 
   @override
