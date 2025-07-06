@@ -1,13 +1,15 @@
-
 # DCFlight
+
 # 🚧 This CLI is Under Development
 
 ## 📌 Key Points
+
 DCFlight in short is a framework that renders actual native UI. It uses the flutter engine (Flutter engine here provides us the runtime and some utilities to initialize DCFlight. More like Hermes in react native). As seen below DCFlight:
-``` swift
+
+```swift
 import dcflight
 
-@main                                                  
+@main
 @objc class AppDelegate: DCFAppDelegate {
   override func application(
     _ application: UIApplication,
@@ -18,94 +20,117 @@ import dcflight
   }
 }
 ```
-It diverges from the flutter abstraction for UI rendering and renders the root view that dcflight depends on to render native UI. No platform views and no absurd abstractions. As a bonus you can still render a flutter Widget by using the ```WidgetToDCFAdaptor``` without impacting performance. 
 
+It diverges from the flutter abstraction for UI rendering and renders the root view that dcflight depends on to render native UI. No platform views and no absurd abstractions. As a bonus you can still render a flutter Widget by using the `WidgetToDCFAdaptor` without impacting performance.
 
 ## 📝 Dart Example
 
 ```dart
-
-void main() {
-  DCFlight.start(app: DCFGo());
-}
-
-import 'package:dcf_go/app/components/footer.dart';
-import 'package:dcf_go/app/components/user_card.dart';
-import 'package:dcf_go/app/store.dart';
-import 'package:dcf_go/app/components/top_bar.dart';
-import 'package:dcf_primitives/dcf_primitives.dart';
+import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcflight/dcflight.dart';
 
-class DCFGo extends StatefulComponent {
+void main() {
+  DCFlight.start(app: Home());
+}
+
+class Home extends StatefulComponent {
   @override
-  VDomNode render() {
-    final globalCounter = useStore(globalCounterState);
-    final counter = useState(0);
-    return Fragment(
-      children: [
-        TopBar(globalCounter: globalCounter, counter: counter),
-        DCFScrollView(
-          showsScrollIndicator: true,
-          style: StyleSheet(backgroundColor: Colors.white),
-          layout: LayoutProps(
-            paddingHorizontal: 20,
-            justifyContent: YogaJustifyContent.spaceBetween,
-            flex: 1,
-            width: "100%",
-            flexDirection: YogaFlexDirection.column,
-          ),
-          children: [
-            UserCard(
-              onPress: () {
-                print("touchable pressed, maybe state woud change");
-                print("counter value: ${counter.value}");
-                print("global counter value: ${globalCounter.state}");
-                counter.setValue(counter.value + 1);
-                globalCounter.setState(globalCounter.state + 1);
-              },
-            ),
-            UserCard(
-              onPress: () {
-                print("touchable pressed, maybe state woud change");
-                print("counter value: ${counter.value}");
-                print("global counter value: ${globalCounter.state}");
-                counter.setValue(counter.value + 1);
-                globalCounter.setState(globalCounter.state + 1);
-              },
-            ),
-            UserCard(
-              onPress: () {
-                print("touchable pressed, maybe state woud change");
-                print("counter value: ${counter.value}");
-                print("global counter value: ${globalCounter.state}");
-                counter.setValue(counter.value + 1);
-                globalCounter.setState(globalCounter.state + 1);
-              },
-            ),
-            UserCard(
-              onPress: () {
-                print("touchable pressed, maybe state woud change");
-                print("counter value: ${counter.value}");
-                print("global counter value: ${globalCounter.state}");
-                counter.setValue(counter.value + 1);
-                globalCounter.setState(globalCounter.state + 1);
-              },
-            ),
-          ],
+  DCFComponentNode render() {
+    final selectedIndexWeb = useState<int>(2);
+    return  DCFScrollView(
+        layout: LayoutProps(
+          flex: 1,
+          padding: 16,
+          gap: 2,
+          alignContent: YogaAlign.spaceBetween,
+          justifyContent: YogaJustifyContent.spaceBetween,
         ),
-        GobalStateCounterComp(),
-      ],
-    );
+        children: [
+          DCFSegmentedControl(
+            segmentedControlProps: DCFSegmentedControlProps(
+              selectedIndex: selectedIndexWeb.state,
+              segments: [
+                DCFSegmentItem(title: "Android"),
+                DCFSegmentItem(title: "IOS"),
+                DCFSegmentItem(title: "DCFlight"),
+              ],
+            ),
+            onSelectionChange: (v) {
+              selectedIndexWeb.setState(v["selectedIndex"]);
+            },
+          ),
+          DCFWebView(
+            onLoadStart: (v) {
+              print("WebView Load Start: $v");
+            },
+            onLoadEnd: (v) {
+              print("WebView Load End: $v");
+            },
+            onLoadError: (v) {
+              print("WebView Load Error: $v");
+            },
+            onLoadProgress: (v) {
+              print("WebView Load Progress: $v");
+            },
+            onMessage: (v) {
+              print("WebView Message: $v");
+            },
+            onNavigationStateChange: (v) {
+              print("WebView Navigation State Change: $v");
+            },
+            webViewProps: DCFWebViewProps(
+              source:
+                  selectedIndexWeb.state == 0
+                      ? "https://developer.android.com/compose"
+                      : selectedIndexWeb.state == 1
+                      ? "https://developer.apple.com/tutorials/swiftui/"
+                      : "https://www.dotcorr.com",
+              loadMode: DCFWebViewLoadMode.url,
+
+            ),
+            layout: LayoutProps(height: 500, width: "100%"),
+          ),
+          DCFView(
+            layout: LayoutProps(height: 250, width: "100%"),
+            children: [
+              DCFText(
+                content: "Welcome To DCFlight",
+                textProps: DCFTextProps(
+                  fontSize: 25,
+                  color: Colors.black,
+                  fontWeight: DCFFontWeight.bold,
+                ),
+              ),
+              DCFButton(
+                buttonProps: DCFButtonProps(title: "Go to Github"),
+                layout: LayoutProps(height: 50, width: 200),
+                styleSheet: StyleSheet(
+                  backgroundColor: Colors.blue,
+                  borderRadius: 8,
+                ),
+                onPress: (v) {
+                  publicDetailScreenCommand.setState(
+                   NavigationPresets.pushTo("test_gh")
+                  );
+                },
+              ),
+              DCFText(
+                content: "Build native apps with Dart",
+                textProps: DCFTextProps(fontSize: 15, color: Colors.grey),
+              ),
+            ],
+          ),
+        ],
+      );
   }
 }
+
 ```
 
+## ☕ Buy Me a Coffee
 
-## ☕ Buy Me a Coffee  
+> **Your support fuels the grind. Every contribution keeps this journey alive.**
 
-> **Your support fuels the grind. Every contribution keeps this journey alive.**  
+[![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://coff.ee/squirelboy360)
 
-[![Buy Me A Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://coff.ee/squirelboy360)  
-
-[https://coff.ee/squirelboy360**](https://coff.ee/squirelboy360)
-
+[https://coff.ee/squirelboy360\*\*](https://coff.ee/squirelboy360)
