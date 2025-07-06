@@ -5,14 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:dcflight_cli/services/dcflight_runner.dart';
 
 class RunCommand extends Command {
   @override
-  String get name => 'run';
+  String get name => 'go';
 
   @override
   String get description => 'Run DCFlight app';
@@ -46,22 +45,22 @@ class RunCommand extends Command {
     final dcfArgs = argResults!['dcf-args'] as List<String>;
 
     print('🚀 Starting DCFlight app...');
-    
+
     // Validate project structure
     await _validateProjectStructure();
-    
+
     // Start DCFlight app
     print('🎯 Launching DCFlight runtime...');
     final dcfRunner = DCFlightRunner(
       additionalArgs: dcfArgs,
       verbose: verbose,
     );
-    
+
     final dcfProcess = await dcfRunner.start();
-    
+
     print('✅ DCFlight app launched successfully!');
     print('💡 Make changes to your code and restart to see updates');
-    
+
     // Wait for the process to complete
     await dcfProcess.exitCode;
   }
@@ -70,20 +69,23 @@ class RunCommand extends Command {
     // Check if we're in a DCFlight project
     final pubspecFile = File('pubspec.yaml');
     if (!await pubspecFile.exists()) {
-      throw Exception('No pubspec.yaml found. Make sure you\'re in a DCFlight project directory.');
+      throw Exception(
+          'No pubspec.yaml found. Make sure you\'re in a DCFlight project directory.');
     }
-    
+
     final pubspecContent = await pubspecFile.readAsString();
     if (!pubspecContent.contains('dcflight:')) {
-      throw Exception('This doesn\'t appear to be a DCFlight project. Missing dcflight dependency in pubspec.yaml.');
+      throw Exception(
+          'This doesn\'t appear to be a DCFlight project. Missing dcflight dependency in pubspec.yaml.');
     }
-    
+
     // Check if main.dart exists
     final mainFile = File('lib/main.dart');
     if (!await mainFile.exists()) {
-      throw Exception('No lib/main.dart found. Make sure you have a main.dart file.');
+      throw Exception(
+          'No lib/main.dart found. Make sure you have a main.dart file.');
     }
-    
+
     print('✅ DCFlight project structure validated');
   }
 }
