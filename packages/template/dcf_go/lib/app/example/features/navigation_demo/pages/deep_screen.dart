@@ -1,5 +1,6 @@
 import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/constants/style/gradient.dart';
 
 class DeepScreen extends StatefulComponent {
   @override
@@ -9,9 +10,14 @@ class DeepScreen extends StatefulComponent {
 
     final slidedState = useState<double>(0.5);
     final scale = useState<double>(1);
+    final raceTrack = useState<double>(0.12);
 
     return DCFScrollView(
-      styleSheet: StyleSheet(backgroundColor: Colors.amber),
+      styleSheet: StyleSheet(
+        backgroundGradient: DCFGradient.linear(
+          colors: [Colors.red, Colors.blue, Colors.green],
+        ),
+      ),
       layout: LayoutProps(
         flex: 1,
         padding: 20,
@@ -21,15 +27,16 @@ class DeepScreen extends StatefulComponent {
       ),
       children: [
         DCFView(
+          styleSheet: cardStyle,
           layout: LayoutProps(
             height: 120,
-            width: 120,
+            width: raceTrack.state > 0.12 ? raceTrack.state * 100 : 120,
+            paddingRight: raceTrack.state * 100,
             alignItems: YogaAlign.center,
           ),
           children: [
             DCFText(
               content: "🏎️",
-
               layout: LayoutProps(
                 height: 100,
                 width: "100%",
@@ -49,7 +56,6 @@ class DeepScreen extends StatefulComponent {
 
         DCFView(
           styleSheet: cardStyle,
-
           layout: cardLayout,
           children: [
             DCFText(
@@ -63,8 +69,29 @@ class DeepScreen extends StatefulComponent {
             DCFSlider(
               value: slidedState.state,
               onValueChange: (v) {
-                print("Slider value changed: ${v['value']} ");
                 slidedState.setState(v['value']);
+              },
+            ),
+          ],
+        ),
+
+        DCFView(
+          styleSheet: cardStyle,
+          layout: cardLayout,
+          children: [
+            DCFText(
+              content:
+                  "Race Track Value: ${raceTrack.state.toStringAsFixed(2)}",
+              textProps: DCFTextProps(
+                fontSize: 16,
+                fontWeight: DCFFontWeight.bold,
+                color: Colors.amber.shade600,
+              ),
+            ),
+            DCFSlider(
+              value: raceTrack.state,
+              onValueChange: (v) {
+                raceTrack.setState(v['value']);
               },
             ),
           ],
@@ -131,7 +158,7 @@ class DeepScreen extends StatefulComponent {
 }
 
 final cardStyle = StyleSheet(
-  backgroundColor: Colors.white30,
+  backgroundColor: Colors.grey.shade100,
   borderRadius: 8,
 
   shadowColor: Colors.black.withOpacity(0.1),
