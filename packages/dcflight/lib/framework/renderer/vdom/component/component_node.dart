@@ -5,10 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
+import 'package:dcflight/framework/renderer/vdom/core/priority/priority.dart';
 
 /// Base class for all Virtual DOM nodes
-abstract class DCFComponentNode{
+abstract class DCFComponentNode {
   /// Unique identifier for this node
   final String? key;
 
@@ -17,10 +17,10 @@ abstract class DCFComponentNode{
 
   /// Native view ID once rendered
   String? nativeViewId;
-  
+
   /// The native view ID of the rendered content
   String? contentViewId;
-  
+
   /// The rendered node from the component (for component nodes)
   DCFComponentNode? _renderedNode;
 
@@ -32,12 +32,12 @@ abstract class DCFComponentNode{
     if (this is ComponentPriorityInterface) {
       return (this as ComponentPriorityInterface).priority;
     }
-    
+
     // Check rendered node for priority
     if (_renderedNode != null && _renderedNode is ComponentPriorityInterface) {
       return (_renderedNode as ComponentPriorityInterface).priority;
     }
-    
+
     // Default priority
     return ComponentPriority.normal;
   }
@@ -50,7 +50,7 @@ abstract class DCFComponentNode{
 
   void mount(DCFComponentNode? parent);
   void unmount();
-  
+
   /// Called when the node is mounted (lifecycle method)
   void componentDidMount() {
     // Base implementation does nothing
@@ -60,10 +60,10 @@ abstract class DCFComponentNode{
   void componentWillUnmount() {
     // Base implementation does nothing
   }
-  
+
   /// Get the rendered node (for component-like nodes)
   DCFComponentNode? get renderedNode => _renderedNode;
-  
+
   /// Set the rendered node (for component-like nodes)
   set renderedNode(DCFComponentNode? node) {
     _renderedNode = node;
@@ -71,7 +71,7 @@ abstract class DCFComponentNode{
       _renderedNode!.parent = this;
     }
   }
-  
+
   /// Get effective native view ID (may be from rendered content)
   String? get effectiveNativeViewId {
     // For component nodes, the native view ID is the ID of their rendered content

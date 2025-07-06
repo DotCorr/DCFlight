@@ -11,7 +11,7 @@ library;
 
 // Re-export the new VDOM API
 export 'vdom_api.dart';
-export 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
+export 'package:dcflight/framework/renderer/vdom/core/priority/priority.dart';
 // Re-export the component classes from the new implementation
 export 'component/component.dart';
 export 'component/fragment.dart';

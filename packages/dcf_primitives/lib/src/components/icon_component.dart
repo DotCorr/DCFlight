@@ -7,7 +7,6 @@
 
 import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 export 'package:dcf_primitives/src/components/dictionary/dcf_icons_dict.dart';
 
 /// Icon properties

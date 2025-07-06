@@ -7,7 +7,6 @@
 
 import 'package:dcflight/dcflight.dart';
 import 'package:equatable/equatable.dart';
-import 'package:dcflight/framework/renderer/vdom/core/concurrency/schedule.dart';
 
 /// 🚀 DCF Checkbox Component
 ///
