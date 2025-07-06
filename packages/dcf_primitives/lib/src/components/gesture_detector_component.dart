@@ -5,58 +5,62 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// A gesture detector component implementation using StatelessComponent
-class DCFGestureDetector extends StatelessComponent with EquatableMixin {
+class DCFGestureDetector extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.immediate;
+
   /// Child nodes
   final List<DCFComponentNode> children;
-  
+
   /// The layout properties
   final LayoutProps layout;
-  
+
   /// The styleSheet properties
   final StyleSheet styleSheet;
-  
+
   /// Event handlers
   final Map<String, dynamic>? events;
-  
+
   /// Tap event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onTap;
-  
+
   /// Long press event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onLongPress;
-  
+
   /// Swipe left event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onSwipeLeft;
-  
+
   /// Swipe right event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onSwipeRight;
-  
+
   /// Swipe up event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onSwipeUp;
-  
+
   /// Swipe down event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onSwipeDown;
-  
+
   /// Pan start event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onPanStart;
-  
+
   /// Pan update event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onPanUpdate;
-  
+
   /// Pan end event handler - receives Map<dynamic, dynamic> with gesture data
   final Function(Map<dynamic, dynamic>)? onPanEnd;
-  
+
   /// Whether to use adaptive theming
   final bool adaptive;
-  
+
   /// Create a gesture detector component
   DCFGestureDetector({
     required this.children,
-    this.layout = const LayoutProps(padding: 8, height: 50,width: 200),
+    this.layout = const LayoutProps(padding: 8, height: 50, width: 200),
     this.styleSheet = const StyleSheet(),
     this.onTap,
     this.onLongPress,
@@ -71,48 +75,48 @@ class DCFGestureDetector extends StatelessComponent with EquatableMixin {
     this.adaptive = true,
     super.key,
   });
-  
+
   @override
   DCFComponentNode render() {
     // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
-    
+
     if (onTap != null) {
       eventMap['onTap'] = onTap;
     }
-    
+
     if (onLongPress != null) {
       eventMap['onLongPress'] = onLongPress;
     }
-    
+
     if (onSwipeLeft != null) {
       eventMap['onSwipeLeft'] = onSwipeLeft;
     }
-    
+
     if (onSwipeRight != null) {
       eventMap['onSwipeRight'] = onSwipeRight;
     }
-    
+
     if (onSwipeUp != null) {
       eventMap['onSwipeUp'] = onSwipeUp;
     }
-    
+
     if (onSwipeDown != null) {
       eventMap['onSwipeDown'] = onSwipeDown;
     }
-    
+
     if (onPanStart != null) {
       eventMap['onPanStart'] = onPanStart;
     }
-    
+
     if (onPanUpdate != null) {
       eventMap['onPanUpdate'] = onPanUpdate;
     }
-    
+
     if (onPanEnd != null) {
       eventMap['onPanEnd'] = onPanEnd;
     }
-    
+
     Map<String, dynamic> props = {
       'adaptive': adaptive,
       ...layout.toMap(),

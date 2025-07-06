@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -13,19 +12,19 @@ import 'package:dcflight/dcflight.dart';
 class DCFImageProps extends Equatable {
   /// The image source URI (can be a network URL or local resource)
   final String source;
-  
+
   /// Resize mode for the image - type-safe enum
   final DCFImageResizeMode? resizeMode;
-  
+
   /// Whether to fade in the image when loaded
   final bool? fadeDuration;
-  
+
   /// Placeholder image to show while loading
   final String? placeholder;
-  
+
   /// Whether to use adaptive theming
   final bool adaptive;
-  
+
   /// Create image props
   const DCFImageProps({
     required this.source,
@@ -34,7 +33,7 @@ class DCFImageProps extends Equatable {
     this.placeholder,
     this.adaptive = true,
   });
-  
+
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
@@ -58,48 +57,50 @@ class DCFImageProps extends Equatable {
 }
 
 /// An image component implementation using StatelessComponent
-class DCFImage extends StatelessComponent with EquatableMixin {
+class DCFImage extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.normal;
+
   /// The image properties
   final DCFImageProps imageProps;
-  
+
   /// The layout properties
   final LayoutProps layout;
-  
+
   /// The styleSheet properties
   final StyleSheet styleSheet;
-  
+
   /// Event handlers
   final Map<String, dynamic>? events;
-  
+
   /// Load event handler - receives Map<dynamic, dynamic> with image load data
   final Function(Map<dynamic, dynamic>)? onLoad;
-  
+
   /// Error event handler - receives Map<dynamic, dynamic> with error data
   final Function(Map<dynamic, dynamic>)? onError;
-  
 
   /// Create an image component
   DCFImage({
     required this.imageProps,
-       this.layout = const LayoutProps(
-     height: 50,width: 200
-    ),
+    this.layout = const LayoutProps(height: 50, width: 200),
     this.styleSheet = const StyleSheet(),
     this.onLoad,
     this.onError,
     this.events,
     super.key,
   });
-  
+
   @override
   DCFComponentNode render() {
     // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
-    
+
     if (onLoad != null) {
       eventMap['onLoad'] = onLoad;
     }
-    
+
     if (onError != null) {
       eventMap['onError'] = onError;
     }
@@ -111,8 +112,6 @@ class DCFImage extends StatelessComponent with EquatableMixin {
       ...styleSheet.toMap(),
       ...eventMap,
     };
-    
-
 
     return DCFElement(
       type: 'Image',
@@ -132,8 +131,6 @@ class DCFImage extends StatelessComponent with EquatableMixin {
         key,
       ];
 }
-
-
 
 /// Image resize modes - type-safe options for image resizing
 enum DCFImageResizeMode {

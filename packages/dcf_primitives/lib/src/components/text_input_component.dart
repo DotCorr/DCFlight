@@ -5,13 +5,16 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// DCFTextInput - Cross-platform text input component
 /// Provides native text input functionality with comprehensive type safety
-class DCFTextInput extends StatelessComponent with EquatableMixin {
+class DCFTextInput extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.immediate;
   final LayoutProps? layout;
   final StyleSheet? styleSheet;
   final String? value;
@@ -52,11 +55,11 @@ class DCFTextInput extends StatelessComponent with EquatableMixin {
   final Function(Map<dynamic, dynamic>)? onSelectionChange;
   final Function(Map<dynamic, dynamic>)? onEndEditing;
   final bool adaptive;
-  
+
   DCFTextInput({
     super.key,
     this.styleSheet,
-    this.layout = const LayoutProps( height: 50,width: 200),
+    this.layout = const LayoutProps(height: 50, width: 200),
     this.value,
     this.defaultValue,
     this.placeholder,
@@ -100,14 +103,15 @@ class DCFTextInput extends StatelessComponent with EquatableMixin {
   @override
   DCFComponentNode render() {
     final events = <String, dynamic>{};
-    
+
     // Add specific event handlers
     if (onChangeText != null) events['onChangeText'] = onChangeText;
     if (onFocus != null) events['onFocus'] = onFocus;
     if (onBlur != null) events['onBlur'] = onBlur;
     if (onSubmitEditing != null) events['onSubmitEditing'] = onSubmitEditing;
     if (onKeyPress != null) events['onKeyPress'] = onKeyPress;
-    if (onSelectionChange != null) events['onSelectionChange'] = onSelectionChange;
+    if (onSelectionChange != null)
+      events['onSelectionChange'] = onSelectionChange;
     if (onEndEditing != null) events['onEndEditing'] = onEndEditing;
 
     return DCFElement(
@@ -117,7 +121,9 @@ class DCFTextInput extends StatelessComponent with EquatableMixin {
         'value': value,
         'defaultValue': defaultValue,
         'placeholder': placeholder,
-        if (placeholderTextColor != null) 'placeholderTextColor': '#${placeholderTextColor!.value.toRadixString(16).padLeft(8, '0')}',
+        if (placeholderTextColor != null)
+          'placeholderTextColor':
+              '#${placeholderTextColor!.value.toRadixString(16).padLeft(8, '0')}',
         'inputType': inputType.name,
         'keyboardType': keyboardType.name,
         'autoCapitalization': autoCapitalization.name,
@@ -137,10 +143,13 @@ class DCFTextInput extends StatelessComponent with EquatableMixin {
         'multiline': multiline,
         'secureTextEntry': secureTextEntry,
         'selectTextOnFocus': selectTextOnFocus,
-        if (selectionColor != null) 'selectionColor': '#${selectionColor!.value.toRadixString(16).padLeft(8, '0')}',
+        if (selectionColor != null)
+          'selectionColor':
+              '#${selectionColor!.value.toRadixString(16).padLeft(8, '0')}',
         'spellCheck': spellCheck,
         'textAlign': textAlign,
-        if (textColor != null) 'textColor': '#${textColor!.value.toRadixString(16).padLeft(8, '0')}',
+        if (textColor != null)
+          'textColor': '#${textColor!.value.toRadixString(16).padLeft(8, '0')}',
         'fontSize': fontSize,
         'fontWeight': fontWeight,
         'fontFamily': fontFamily,

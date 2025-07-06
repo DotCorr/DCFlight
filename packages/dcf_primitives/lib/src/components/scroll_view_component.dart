@@ -10,52 +10,57 @@ import 'package:dcflight/dcflight.dart';
 
 /// DCFScrollView - Optimized scroll view component
 /// Uses your native VirtualizedScrollView for best performance
-class DCFScrollView extends StatelessComponent with EquatableMixin {
+class DCFScrollView extends StatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
   /// Child nodes
   final List<DCFComponentNode> children;
-  
+
   /// Whether to scroll horizontally
   final bool horizontal;
-  
+
   /// The layout properties
   final LayoutProps layout;
-  
+
   /// The style properties
   final StyleSheet styleSheet;
-  
+
   /// Whether to show scrollbar
   final bool showsScrollIndicator;
-  
+
   /// Content container style
   final StyleSheet contentContainerStyle;
-  
+
   /// Event handlers
   final Function(Map<dynamic, dynamic>)? onScroll;
   final Function(Map<dynamic, dynamic>)? onScrollBeginDrag;
   final Function(Map<dynamic, dynamic>)? onScrollEndDrag;
   final Function(Map<dynamic, dynamic>)? onScrollEnd;
   final Function(Map<dynamic, dynamic>)? onContentSizeChange;
-  
+
   /// Scroll indicator styling
   final Color? scrollIndicatorColor;
   final double? scrollIndicatorSize;
-  
+
   /// Scroll behavior
   final bool scrollEnabled;
   final bool alwaysBounceVertical;
   final bool alwaysBounceHorizontal;
   final bool pagingEnabled;
   final bool keyboardDismissMode;
-  
+
   /// Content insets
   final ContentInset? contentInset;
-  
+
   /// Command for imperative scroll operations
   final ScrollViewCommand? command;
-  
+
   /// Additional event handlers map
   final Map<String, dynamic>? events;
-  
+
   DCFScrollView({
     required this.children,
     this.horizontal = false,
@@ -80,17 +85,17 @@ class DCFScrollView extends StatelessComponent with EquatableMixin {
     this.events,
     super.key,
   });
-  
+
   @override
   DCFComponentNode render() {
     // Build comprehensive events map
     final eventMap = <String, dynamic>{};
-    
+
     // Add base events if provided
     if (events != null) {
       eventMap.addAll(events!);
     }
-    
+
     // Add specific event handlers
     if (onScroll != null) {
       eventMap['onScroll'] = onScroll;
@@ -118,22 +123,23 @@ class DCFScrollView extends StatelessComponent with EquatableMixin {
       'alwaysBounceHorizontal': alwaysBounceHorizontal,
       'pagingEnabled': pagingEnabled,
       'keyboardDismissMode': keyboardDismissMode,
-      
+
       // Styling
       if (contentInset != null) 'contentInset': contentInset!.toMap(),
-      if (scrollIndicatorColor != null) 
-        'scrollIndicatorColor': '#${scrollIndicatorColor!.value.toRadixString(16).padLeft(8, '0')}',
+      if (scrollIndicatorColor != null)
+        'scrollIndicatorColor':
+            '#${scrollIndicatorColor!.value.toRadixString(16).padLeft(8, '0')}',
       'scrollIndicatorSize': scrollIndicatorSize,
       'contentContainerStyle': contentContainerStyle.toMap(),
-      
+
       // Layout and style
       ...layout.toMap(),
       ...styleSheet.toMap(),
-      
+
       // Events
       ...eventMap,
     };
-    
+
     // Add command props if command has actions
     if (command != null && command!.hasCommands) {
       props['command'] = command!.toMap();
@@ -214,19 +220,18 @@ class ContentInset extends Equatable {
   List<Object?> get props => [top, left, bottom, right];
 }
 
-
 /// Command to scroll to a specific position
 class ScrollToPositionCommand {
   final double x;
   final double y;
   final bool animated;
-  
+
   const ScrollToPositionCommand({
     required this.x,
     required this.y,
     this.animated = true,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'x': x,
@@ -239,9 +244,9 @@ class ScrollToPositionCommand {
 /// Command to scroll to the top of the scroll view
 class ScrollToTopCommand {
   final bool animated;
-  
+
   const ScrollToTopCommand({this.animated = true});
-  
+
   Map<String, dynamic> toMap() {
     return {
       'animated': animated,
@@ -252,9 +257,9 @@ class ScrollToTopCommand {
 /// Command to scroll to the bottom of the scroll view
 class ScrollToBottomCommand {
   final bool animated;
-  
+
   const ScrollToBottomCommand({this.animated = true});
-  
+
   Map<String, dynamic> toMap() {
     return {
       'animated': animated,
@@ -266,12 +271,12 @@ class ScrollToBottomCommand {
 class SetContentSizeCommand {
   final double width;
   final double height;
-  
+
   const SetContentSizeCommand({
     required this.width,
     required this.height,
   });
-  
+
   Map<String, dynamic> toMap() {
     return {
       'width': width,
@@ -283,18 +288,18 @@ class SetContentSizeCommand {
 /// Command to flash scroll indicators to indicate scrollable content
 class FlashScrollIndicatorsCommand {
   const FlashScrollIndicatorsCommand();
-  
+
   Map<String, dynamic> toMap() {
     return {
       'type': 'flashScrollIndicators',
     };
   }
-  
+
   @override
   bool operator ==(Object other) {
     return other is FlashScrollIndicatorsCommand;
   }
-  
+
   @override
   int get hashCode => 'flashScrollIndicators'.hashCode;
 }
@@ -307,7 +312,7 @@ class ScrollViewCommand {
   final bool? flashScrollIndicators;
   final bool? updateContentSize;
   final SetContentSizeCommand? setContentSize;
-  
+
   const ScrollViewCommand({
     this.scrollToPosition,
     this.scrollToTop,
@@ -316,45 +321,45 @@ class ScrollViewCommand {
     this.updateContentSize,
     this.setContentSize,
   });
-  
+
   /// Convert command to props map for native consumption
   Map<String, dynamic> toMap() {
     final Map<String, dynamic> commandMap = {};
-    
+
     if (scrollToPosition != null) {
       commandMap['scrollToPosition'] = scrollToPosition!.toMap();
     }
-    
+
     if (scrollToTop != null) {
       commandMap['scrollToTop'] = scrollToTop!.toMap();
     }
-    
+
     if (scrollToBottom != null) {
       commandMap['scrollToBottom'] = scrollToBottom!.toMap();
     }
-    
+
     if (flashScrollIndicators == true) {
       commandMap['flashScrollIndicators'] = true;
     }
-    
+
     if (updateContentSize == true) {
       commandMap['updateContentSize'] = true;
     }
-    
+
     if (setContentSize != null) {
       commandMap['setContentSize'] = setContentSize!.toMap();
     }
-    
+
     return commandMap;
   }
-  
+
   /// Check if this command has any actions to execute
   bool get hasCommands {
     return scrollToPosition != null ||
-           scrollToTop != null ||
-           scrollToBottom != null ||
-           flashScrollIndicators == true ||
-           updateContentSize == true ||
-           setContentSize != null;
+        scrollToTop != null ||
+        scrollToBottom != null ||
+        flashScrollIndicators == true ||
+        updateContentSize == true ||
+        setContentSize != null;
   }
 }

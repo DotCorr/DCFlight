@@ -2,6 +2,31 @@ import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:dcflight/framework/constants/style/gradient.dart';
 
+final cardLayout = LayoutProps(
+  flexDirection: YogaFlexDirection.column,
+  height: 100,
+  width: "100%",
+  padding: 10,
+  gap: 2,
+  alignItems: YogaAlign.center,
+);
+
+final cardStyle = StyleSheet(
+  backgroundColor: Colors.grey.shade100,
+  borderRadius: 8,
+
+  backgroundGradient: DCFGradient.radial(
+    colors: [Colors.red, Colors.blue],
+    radius: 10,
+  ),
+
+  shadowColor: Colors.black.withOpacity(0.1),
+  shadowRadius: 10,
+  shadowOffsetX: 0,
+  shadowOffsetY: 2,
+  shadowOpacity: 0.5,
+);
+
 class DeepScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
@@ -10,14 +35,9 @@ class DeepScreen extends StatefulComponent {
 
     final slidedState = useState<double>(0.5);
     final scale = useState<double>(1);
-    final raceTrack = useState<double>(0.12);
+    final raceTrack = useState<double>(0.012);
 
     return DCFScrollView(
-      styleSheet: StyleSheet(
-        backgroundGradient: DCFGradient.linear(
-          colors: [Colors.red, Colors.blue, Colors.green],
-        ),
-      ),
       layout: LayoutProps(
         flex: 1,
         padding: 20,
@@ -30,7 +50,9 @@ class DeepScreen extends StatefulComponent {
           styleSheet: cardStyle,
           layout: LayoutProps(
             height: 120,
-            width: raceTrack.state > 0.12 ? "100%" : 120,
+            // this actionbs would be perfomed in batch with others considering how intense it may be(Usually it is not but by default the framework will batch them)
+            // To fix this we would introduce animation based layouting in later updates
+            width: "100%",
             paddingRight: raceTrack.state * 100,
             alignItems: YogaAlign.center,
           ),
@@ -156,23 +178,3 @@ class DeepScreen extends StatefulComponent {
     );
   }
 }
-
-final cardStyle = StyleSheet(
-  backgroundColor: Colors.grey.shade100,
-  borderRadius: 8,
-
-  shadowColor: Colors.black.withOpacity(0.1),
-  shadowRadius: 10,
-  shadowOffsetX: 0,
-  shadowOffsetY: 2,
-  shadowOpacity: 0.5,
-);
-
-final cardLayout = LayoutProps(
-  flexDirection: YogaFlexDirection.column,
-  height: 100,
-  width: "100%",
-  padding: 10,
-  gap: 2,
-  alignItems: YogaAlign.center,
-);
