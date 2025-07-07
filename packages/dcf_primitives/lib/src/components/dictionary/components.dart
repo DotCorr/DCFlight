@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 export '../view_component.dart';
 export '../text_component.dart';
 export '../button_component.dart';
@@ -25,5 +24,11 @@ export '../slider_component.dart';
 export '../spinner_component.dart';
 export '../alert_component.dart';
 export '../webview_component.dart';
+
+// Export virtualization components
+export '../virtualization/virtualized_list.dart';
+export '../virtualization/flat_list.dart';
+export '../virtualization/section_list.dart';
+export '../virtualization/index.dart';
 export '../navigation/navigation.dart';
 export '../safe_area.dart';

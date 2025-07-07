@@ -5,11 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 library;
 
 // Export component-based primitives
 export 'src/components/dictionary/components.dart';
+
+// Export virtualization components
+export 'src/components/virtualization/index.dart';
 
 // Export the plugin class
 export 'src/dcf_primitives_plugin.dart';
