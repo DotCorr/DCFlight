@@ -12,10 +12,10 @@ dependencies:
     sdk: flutter
   # framework dependencies
   dcflight:
-    path: ../packages/dcflight
+    path: ../../dcflight
 
   dcf_primitives:
-    path: ../packages/dcf_primitives
+    path: ../../dcf_primitives
 
   # dcflight: ^0.0.1
   # dcf_primitives: ^0.0.1
