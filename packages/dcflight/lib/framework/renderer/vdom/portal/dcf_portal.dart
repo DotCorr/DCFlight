@@ -10,7 +10,7 @@ import 'package:dcflight/framework/renderer/vdom/component/component.dart';
 import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
 import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
 import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
-import 'package:dcflight/framework/renderer/vdom/core/priority/priority.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/priority.dart';
 import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';
 import 'package:flutter/foundation.dart';
 

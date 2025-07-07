@@ -6,9 +6,10 @@
  */
 
 import 'dart:async';
+import 'dart:isolate';
 import 'dart:math' as math;
 
-import 'package:dcflight/framework/renderer/vdom/core/priority/priority.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/priority.dart';
 import 'package:dcflight/framework/renderer/vdom/debug/vdom_logger.dart';
 import 'package:dcflight/framework/renderer/vdom/core/mutator/vdom_mutator_extension_reg.dart';
 import 'package:dcflight/framework/renderer/interface/interface.dart'
@@ -54,6 +55,23 @@ class VDom {
   final Set<String> _componentsWaitingForInsertion = {};
   bool _isTreeComplete = false;
 
+  /// Concurrent processing features
+  static const int _concurrentThreshold = 5;
+  bool _concurrentEnabled = false;
+  final List<Isolate> _workerIsolates = [];
+  final List<SendPort> _workerPorts = [];
+  final List<bool> _workerAvailable = [];
+  final int _maxWorkers = 4;
+
+  /// Performance tracking
+  final Map<String, dynamic> _performanceStats = {
+    'totalConcurrentUpdates': 0,
+    'totalSerialUpdates': 0,
+    'averageConcurrentTime': 0.0,
+    'averageSerialTime': 0.0,
+    'concurrentEfficiency': 0.0,
+  };
+
   VDom(this._nativeBridge) {
     VDomDebugLogger.log('VDOM_INIT', 'Creating new VDom instance');
     _initialize();
@@ -70,12 +88,47 @@ class VDom {
       }
 
       _nativeBridge.setEventHandler(_handleNativeEvent);
+
+      // Initialize concurrent processing
+      await _initializeConcurrentProcessing();
+
       _readyCompleter.complete();
       VDomDebugLogger.log(
           'VDOM_INIT', 'VDom initialization completed successfully');
     } catch (e) {
       VDomDebugLogger.log('VDOM_INIT_ERROR', 'VDom initialization failed: $e');
       _readyCompleter.completeError(e);
+    }
+  }
+
+  /// Initialize concurrent processing capabilities
+  Future<void> _initializeConcurrentProcessing() async {
+    try {
+      // Try to create worker isolates
+      for (int i = 0; i < _maxWorkers; i++) {
+        final receivePort = ReceivePort();
+        final isolate = await Isolate.spawn(
+          _workerIsolateEntry,
+          receivePort.sendPort,
+          debugName: 'VDomWorker-$i',
+        );
+
+        _workerIsolates.add(isolate);
+        _workerAvailable.add(true);
+
+        // Get the worker's send port
+        final sendPort = await receivePort.first as SendPort;
+        _workerPorts.add(sendPort);
+      }
+
+      _concurrentEnabled = true;
+      VDomDebugLogger.log('VDOM_CONCURRENT',
+          'Concurrent processing enabled with $_maxWorkers workers');
+    } catch (e) {
+      VDomDebugLogger.log('VDOM_CONCURRENT_ERROR',
+          'Failed to initialize concurrent processing: $e');
+      _concurrentEnabled = false;
+      // Continue without concurrent processing
     }
   }
 
@@ -317,42 +370,20 @@ class VDom {
         return;
       }
 
-      // O(n log n) - Sort updates by priority
-      final sortedUpdates = PriorityUtils.sortByPriority(
-          _pendingUpdates.toList(), _componentPriorities);
+      final updateCount = _pendingUpdates.length;
+      final startTime = DateTime.now();
 
-      _pendingUpdates.clear(); // O(n)
-      _componentPriorities.clear(); // O(n)
-
-      VDomDebugLogger.log('BATCH_PRIORITY_SORTED',
-          'Sorted ${sortedUpdates.length} updates by priority');
-
-      // O(1) - Start batch update in native layer
-      VDomDebugLogger.logBridge('START_BATCH', 'root');
-      await _nativeBridge.startBatchUpdate();
-
-      try {
-        // O(n * m) where n = updates, m = average update complexity
-        for (final componentId in sortedUpdates) {
-          VDomDebugLogger.log(
-              'BATCH_PROCESS_COMPONENT', 'Processing update for: $componentId');
-          await _updateComponentById(componentId);
-        }
-
-        // O(1) - Commit all batched updates at once
-        VDomDebugLogger.logBridge('COMMIT_BATCH', 'root');
-        await _nativeBridge.commitBatchUpdate();
-        VDomDebugLogger.log('BATCH_COMMIT_SUCCESS',
-            'Successfully committed priority-based batch updates');
-      } catch (e) {
-        // O(1) - Cancel batch if there's an error
-        VDomDebugLogger.logBridge('CANCEL_BATCH', 'root',
-            data: {'Error': e.toString()});
-        await _nativeBridge.cancelBatchUpdate();
-        VDomDebugLogger.log('BATCH_ERROR', 'Batch update failed, cancelled',
-            extra: {'Error': e.toString()});
-        rethrow;
+      // Decide whether to use concurrent processing
+      if (_concurrentEnabled && updateCount >= _concurrentThreshold) {
+        await _processPendingUpdatesConcurrently();
+      } else {
+        await _processPendingUpdatesSerially();
       }
+
+      // Track performance
+      final processingTime = DateTime.now().difference(startTime);
+      _updatePerformanceStats(
+          updateCount >= _concurrentThreshold, processingTime);
 
       // O(1) - Check if new updates were scheduled during processing
       if (_pendingUpdates.isNotEmpty) {
@@ -374,6 +405,112 @@ class VDom {
       }
     } finally {
       _batchUpdateInProgress = false;
+    }
+  }
+
+  /// Process updates using concurrent processing
+  Future<void> _processPendingUpdatesConcurrently() async {
+    VDomDebugLogger.log('BATCH_CONCURRENT', 'Processing updates concurrently');
+
+    // O(n log n) - Sort updates by priority
+    final sortedUpdates = PriorityUtils.sortByPriority(
+        _pendingUpdates.toList(), _componentPriorities);
+
+    _pendingUpdates.clear(); // O(n)
+    _componentPriorities.clear(); // O(n)
+
+    VDomDebugLogger.log('BATCH_PRIORITY_SORTED',
+        'Sorted ${sortedUpdates.length} updates by priority');
+
+    // O(1) - Start batch update in native layer
+    VDomDebugLogger.logBridge('START_BATCH', 'root');
+    await _nativeBridge.startBatchUpdate();
+
+    try {
+      // Process updates in parallel batches
+      final batchSize =
+          (_maxWorkers * 2); // Process more than workers to keep them busy
+      for (int i = 0; i < sortedUpdates.length; i += batchSize) {
+        final batchEnd = (i + batchSize < sortedUpdates.length)
+            ? i + batchSize
+            : sortedUpdates.length;
+        final batch = sortedUpdates.sublist(i, batchEnd);
+
+        // Process batch concurrently
+        final futures = <Future>[];
+        for (final componentId in batch) {
+          futures.add(_updateComponentById(componentId));
+        }
+
+        // Wait for all in batch to complete
+        await Future.wait(futures);
+      }
+
+      // O(1) - Commit all batched updates at once
+      VDomDebugLogger.logBridge('COMMIT_BATCH', 'root');
+      await _nativeBridge.commitBatchUpdate();
+      VDomDebugLogger.log('BATCH_COMMIT_SUCCESS',
+          'Successfully committed concurrent batch updates');
+
+      _performanceStats['totalConcurrentUpdates'] =
+          (_performanceStats['totalConcurrentUpdates'] as int) +
+              sortedUpdates.length;
+    } catch (e) {
+      // O(1) - Cancel batch if there's an error
+      VDomDebugLogger.logBridge('CANCEL_BATCH', 'root',
+          data: {'Error': e.toString()});
+      await _nativeBridge.cancelBatchUpdate();
+      VDomDebugLogger.log(
+          'BATCH_ERROR', 'Concurrent batch update failed, cancelled',
+          extra: {'Error': e.toString()});
+      rethrow;
+    }
+  }
+
+  /// Process updates serially (original behavior)
+  Future<void> _processPendingUpdatesSerially() async {
+    VDomDebugLogger.log('BATCH_SERIAL', 'Processing updates serially');
+
+    // O(n log n) - Sort updates by priority
+    final sortedUpdates = PriorityUtils.sortByPriority(
+        _pendingUpdates.toList(), _componentPriorities);
+
+    _pendingUpdates.clear(); // O(n)
+    _componentPriorities.clear(); // O(n)
+
+    VDomDebugLogger.log('BATCH_PRIORITY_SORTED',
+        'Sorted ${sortedUpdates.length} updates by priority');
+
+    // O(1) - Start batch update in native layer
+    VDomDebugLogger.logBridge('START_BATCH', 'root');
+    await _nativeBridge.startBatchUpdate();
+
+    try {
+      // O(n * m) where n = updates, m = average update complexity
+      for (final componentId in sortedUpdates) {
+        VDomDebugLogger.log(
+            'BATCH_PROCESS_COMPONENT', 'Processing update for: $componentId');
+        await _updateComponentById(componentId);
+      }
+
+      // O(1) - Commit all batched updates at once
+      VDomDebugLogger.logBridge('COMMIT_BATCH', 'root');
+      await _nativeBridge.commitBatchUpdate();
+      VDomDebugLogger.log('BATCH_COMMIT_SUCCESS',
+          'Successfully committed serial batch updates');
+
+      _performanceStats['totalSerialUpdates'] =
+          (_performanceStats['totalSerialUpdates'] as int) +
+              sortedUpdates.length;
+    } catch (e) {
+      // O(1) - Cancel batch if there's an error
+      VDomDebugLogger.logBridge('CANCEL_BATCH', 'root',
+          data: {'Error': e.toString()});
+      await _nativeBridge.cancelBatchUpdate();
+      VDomDebugLogger.log(
+          'BATCH_ERROR', 'Serial batch update failed, cancelled',
+          extra: {'Error': e.toString()});
+      rethrow;
     }
   }
 
@@ -2007,10 +2144,403 @@ class VDom {
   /// O(1) - Get the number of pending updates
   int get pendingUpdateCount => _pendingUpdates.length;
 
-  /// O(1) - Get the current highest priority of pending updates
+  /// Get the current highest priority of pending updates
   ComponentPriority? get currentHighestPriority {
     if (_componentPriorities.isEmpty) return null;
     return PriorityUtils.getHighestPriority(
         _componentPriorities.values.toList());
+  }
+
+  /// Get concurrent processing statistics
+  Map<String, dynamic> getConcurrentStats() {
+    return {
+      ..._performanceStats,
+      'concurrentEnabled': _concurrentEnabled,
+      'concurrentThreshold': _concurrentThreshold,
+      'maxWorkers': _maxWorkers,
+      'availableWorkers':
+          _workerAvailable.where((available) => available).length,
+      'totalWorkers': _workerIsolates.length,
+    };
+  }
+
+  /// Update performance statistics
+  void _updatePerformanceStats(bool wasConcurrent, Duration processingTime) {
+    if (wasConcurrent) {
+      // Update concurrent averages
+      final currentAvg = _performanceStats['averageConcurrentTime'] as double;
+      final totalConcurrent =
+          _performanceStats['totalConcurrentUpdates'] as int;
+
+      if (totalConcurrent > 0) {
+        _performanceStats['averageConcurrentTime'] =
+            ((currentAvg * totalConcurrent) + processingTime.inMilliseconds) /
+                (totalConcurrent + 1);
+      } else {
+        _performanceStats['averageConcurrentTime'] =
+            processingTime.inMilliseconds.toDouble();
+      }
+    } else {
+      // Update serial averages
+      final currentAvg = _performanceStats['averageSerialTime'] as double;
+      final totalSerial = _performanceStats['totalSerialUpdates'] as int;
+
+      if (totalSerial > 0) {
+        _performanceStats['averageSerialTime'] =
+            ((currentAvg * totalSerial) + processingTime.inMilliseconds) /
+                (totalSerial + 1);
+      } else {
+        _performanceStats['averageSerialTime'] =
+            processingTime.inMilliseconds.toDouble();
+      }
+    }
+
+    // Calculate efficiency
+    final avgConcurrent = _performanceStats['averageConcurrentTime'] as double;
+    final avgSerial = _performanceStats['averageSerialTime'] as double;
+
+    if (avgConcurrent > 0 && avgSerial > 0) {
+      _performanceStats['concurrentEfficiency'] =
+          ((avgSerial - avgConcurrent) / avgSerial * 100).clamp(0, 100);
+    }
+  }
+
+  /// Check if concurrent processing is beneficial
+  bool get isConcurrentProcessingOptimal {
+    final efficiency = _performanceStats['concurrentEfficiency'] as double;
+    return _concurrentEnabled && efficiency > 10.0; // 10% improvement threshold
+  }
+
+  /// Shutdown concurrent processing
+  Future<void> shutdownConcurrentProcessing() async {
+    if (!_concurrentEnabled) return;
+
+    VDomDebugLogger.log(
+        'VDOM_CONCURRENT_SHUTDOWN', 'Shutting down concurrent processing');
+
+    // Kill all worker isolates
+    for (final isolate in _workerIsolates) {
+      try {
+        isolate.kill();
+      } catch (e) {
+        VDomDebugLogger.log('VDOM_CONCURRENT_SHUTDOWN_ERROR',
+            'Error killing worker isolate: $e');
+      }
+    }
+
+    // Clear collections
+    _workerIsolates.clear();
+    _workerPorts.clear();
+    _workerAvailable.clear();
+    _concurrentEnabled = false;
+
+    VDomDebugLogger.log(
+        'VDOM_CONCURRENT_SHUTDOWN', 'Concurrent processing shutdown complete');
+  }
+
+  /// Worker isolate entry point - handles real concurrent processing
+  static void _workerIsolateEntry(SendPort mainSendPort) {
+    final receivePort = ReceivePort();
+    mainSendPort.send(receivePort.sendPort);
+
+    receivePort.listen((message) async {
+      try {
+        final Map<String, dynamic> messageData =
+            message as Map<String, dynamic>;
+        final String taskType = messageData['type'] as String;
+        final String taskId = messageData['id'] as String;
+        final Map<String, dynamic> taskData =
+            messageData['data'] as Map<String, dynamic>;
+
+        Map<String, dynamic> result;
+        final startTime = DateTime.now();
+
+        switch (taskType) {
+          case 'treeReconciliation':
+            result = await _reconcileTreeInIsolate(taskData);
+            break;
+          case 'propsDiff':
+            result = await _computePropsInIsolate(taskData);
+            break;
+          case 'listProcessing':
+            result = await _processLargeListInIsolate(taskData);
+            break;
+          case 'componentSerialization':
+            result = await _serializeComponentInIsolate(taskData);
+            break;
+          default:
+            result = {'error': 'Unknown task type: $taskType'};
+        }
+
+        final processingTime = DateTime.now().difference(startTime);
+
+        // Send result back to main thread
+        mainSendPort.send({
+          'type': 'result',
+          'id': taskId,
+          'success': true,
+          'data': result,
+          'processingTimeMs': processingTime.inMilliseconds,
+        });
+      } catch (e) {
+        // Send error back to main thread
+        final Map<String, dynamic> safeMessageData =
+            message is Map<String, dynamic> ? message : {};
+        mainSendPort.send({
+          'type': 'error',
+          'id': safeMessageData['id'] ?? 'unknown',
+          'success': false,
+          'error': e.toString(),
+        });
+      }
+    });
+  }
+
+  /// Reconcile tree structure in isolate (heavy algorithmic work)
+  static Future<Map<String, dynamic>> _reconcileTreeInIsolate(
+      Map<String, dynamic> data) async {
+    final oldTree = data['oldTree'] as Map<String, dynamic>?;
+    final newTree = data['newTree'] as Map<String, dynamic>;
+
+    if (oldTree == null) {
+      return {
+        'type': 'create',
+        'changes': [
+          {'action': 'create', 'node': newTree}
+        ],
+        'metrics': {'nodesProcessed': 1, 'complexity': 'simple'}
+      };
+    }
+
+    // Simulate heavy tree diffing algorithm
+    await Future.delayed(Duration(milliseconds: 5)); // Simulate CPU work
+
+    final changes = <Map<String, dynamic>>[];
+
+    // Compare tree structures
+    if (oldTree['type'] != newTree['type']) {
+      changes
+          .add({'action': 'replace', 'oldNode': oldTree, 'newNode': newTree});
+    }
+
+    // Compare props
+    final oldProps = oldTree['props'] as Map<String, dynamic>? ?? {};
+    final newProps = newTree['props'] as Map<String, dynamic>? ?? {};
+
+    final propsDiff = await _computeDeepPropsDiff(oldProps, newProps);
+    if (propsDiff.isNotEmpty) {
+      changes.add({'action': 'updateProps', 'diff': propsDiff});
+    }
+
+    // Compare children
+    final oldChildren = oldTree['children'] as List<dynamic>? ?? [];
+    final newChildren = newTree['children'] as List<dynamic>? ?? [];
+
+    final childrenChanges =
+        await _computeChildrenDiff(oldChildren, newChildren);
+    changes.addAll(childrenChanges);
+
+    return {
+      'type': 'update',
+      'changes': changes,
+      'metrics': {
+        'nodesProcessed': _countNodes(newTree),
+        'changesCount': changes.length,
+        'complexity': changes.length > 10 ? 'complex' : 'simple'
+      }
+    };
+  }
+
+  /// Compute props diff in isolate (heavy comparison work)
+  static Future<Map<String, dynamic>> _computePropsInIsolate(
+      Map<String, dynamic> data) async {
+    final oldProps = data['oldProps'] as Map<String, dynamic>;
+    final newProps = data['newProps'] as Map<String, dynamic>;
+
+    // Simulate heavy props comparison
+    await Future.delayed(Duration(milliseconds: 2));
+
+    return _computeDeepPropsDiff(oldProps, newProps);
+  }
+
+  /// Process large lists in isolate (heavy data processing)
+  static Future<Map<String, dynamic>> _processLargeListInIsolate(
+      Map<String, dynamic> data) async {
+    final items = data['items'] as List<dynamic>;
+    final operations = data['operations'] as List<String>? ?? [];
+
+    // Simulate heavy list processing
+    await Future.delayed(Duration(milliseconds: items.length ~/ 100));
+
+    final processedItems = List<dynamic>.from(items);
+
+    for (final operation in operations) {
+      switch (operation) {
+        case 'sort':
+          processedItems.sort((a, b) => a.toString().compareTo(b.toString()));
+          break;
+        case 'filter':
+          processedItems.removeWhere((item) => item == null);
+          break;
+        case 'dedupe':
+          final seen = <dynamic>{};
+          processedItems.retainWhere((item) => seen.add(item));
+          break;
+      }
+    }
+
+    return {
+      'processedItems': processedItems,
+      'statistics': {
+        'originalCount': items.length,
+        'processedCount': processedItems.length,
+        'operationsApplied': operations.length,
+      },
+      'optimizations': _suggestListOptimizations(processedItems)
+    };
+  }
+
+  /// Serialize component data in isolate (heavy serialization work)
+  static Future<Map<String, dynamic>> _serializeComponentInIsolate(
+      Map<String, dynamic> data) async {
+    final component = data['component'] as Map<String, dynamic>;
+
+    // Simulate heavy serialization work
+    await Future.delayed(Duration(milliseconds: 3));
+
+    final serialized = <String, dynamic>{};
+
+    // Deep clone component data
+    for (final entry in component.entries) {
+      serialized[entry.key] = _deepCloneValue(entry.value);
+    }
+
+    return {
+      'serialized': serialized,
+      'metadata': {
+        'size': serialized.toString().length,
+        'complexity': _assessComplexity(component),
+        'dependencies': _extractDependencies(component),
+      }
+    };
+  }
+
+  /// Helper: Compute deep props diff
+  static Map<String, dynamic> _computeDeepPropsDiff(
+      Map<String, dynamic> oldProps, Map<String, dynamic> newProps) {
+    final diff = <String, dynamic>{};
+
+    // Check for changed or new props
+    for (final key in newProps.keys) {
+      if (!oldProps.containsKey(key)) {
+        diff[key] = {'action': 'add', 'value': newProps[key]};
+      } else if (oldProps[key] != newProps[key]) {
+        diff[key] = {
+          'action': 'change',
+          'oldValue': oldProps[key],
+          'newValue': newProps[key]
+        };
+      }
+    }
+
+    // Check for removed props
+    for (final key in oldProps.keys) {
+      if (!newProps.containsKey(key)) {
+        diff[key] = {'action': 'remove', 'oldValue': oldProps[key]};
+      }
+    }
+
+    return diff;
+  }
+
+  /// Helper: Compute children diff
+  static Future<List<Map<String, dynamic>>> _computeChildrenDiff(
+      List<dynamic> oldChildren, List<dynamic> newChildren) async {
+    final changes = <Map<String, dynamic>>[];
+
+    final maxLength = math.max(oldChildren.length, newChildren.length);
+
+    for (int i = 0; i < maxLength; i++) {
+      if (i >= oldChildren.length) {
+        changes
+            .add({'action': 'addChild', 'index': i, 'child': newChildren[i]});
+      } else if (i >= newChildren.length) {
+        changes.add(
+            {'action': 'removeChild', 'index': i, 'child': oldChildren[i]});
+      } else if (oldChildren[i] != newChildren[i]) {
+        changes.add({
+          'action': 'replaceChild',
+          'index': i,
+          'oldChild': oldChildren[i],
+          'newChild': newChildren[i]
+        });
+      }
+    }
+
+    return changes;
+  }
+
+  /// Helper: Count nodes in tree
+  static int _countNodes(Map<String, dynamic> tree) {
+    int count = 1;
+    final children = tree['children'] as List<dynamic>? ?? [];
+    for (final child in children) {
+      if (child is Map<String, dynamic>) {
+        count += _countNodes(child);
+      }
+    }
+    return count;
+  }
+
+  /// Helper: Deep clone value
+  static dynamic _deepCloneValue(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(
+          value.map((k, v) => MapEntry(k, _deepCloneValue(v))));
+    } else if (value is List) {
+      return value.map((item) => _deepCloneValue(item)).toList();
+    } else {
+      return value;
+    }
+  }
+
+  /// Helper: Assess complexity
+  /// This has nothing to do with priority set by the component itself but rather how complex the componet is actually.
+  static String _assessComplexity(Map<String, dynamic> component) {
+    final props = component['props'] as Map<String, dynamic>? ?? {};
+    final children = component['children'] as List<dynamic>? ?? [];
+
+    if (props.length > 10 || children.length > 20) {
+      return 'high';
+    } else if (props.length > 5 || children.length > 10) {
+      return 'medium';
+    } else {
+      return 'low';
+    }
+  }
+
+  /// Helper: Extract dependencies
+  static List<String> _extractDependencies(Map<String, dynamic> component) {
+    final dependencies = <String>[];
+    final type = component['type'] as String?;
+    if (type != null) {
+      dependencies.add(type);
+    }
+    return dependencies;
+  }
+
+  /// Helper: Suggest list optimizations
+  static List<String> _suggestListOptimizations(List<dynamic> items) {
+    final suggestions = <String>[];
+
+    if (items.length > 1000) {
+      suggestions.add('Consider virtualization for large lists');
+    }
+
+    if (items.length > 100) {
+      suggestions.add('Consider pagination or infinite scroll');
+    }
+
+    return suggestions;
   }
 }

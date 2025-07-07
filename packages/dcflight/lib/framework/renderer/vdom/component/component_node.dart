@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/renderer/vdom/core/priority/priority.dart';
+import 'package:dcflight/framework/renderer/vdom/core/concurrency/priority.dart';
 
 /// Base class for all Virtual DOM nodes
 abstract class DCFComponentNode {
