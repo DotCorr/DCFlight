@@ -7,7 +7,7 @@
 
 import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
-import 'virtualized_list.dart';
+import 'virtualized_list.dart' as vl;
 
 /// SectionList - High-performance sectioned list component
 /// Renders data in sections with headers and footers
@@ -82,10 +82,10 @@ class DCFSectionList<T> extends StatelessComponent
   final bool inverted;
 
   /// Event handlers
-  final Function(VirtualizedListScrollEvent)? onScroll;
-  final Function(VirtualizedListScrollEvent)? onScrollBeginDrag;
-  final Function(VirtualizedListScrollEvent)? onScrollEndDrag;
-  final Function(VirtualizedListScrollEvent)? onMomentumScrollEnd;
+  final Function(vl.VirtualizedListScrollEvent)? onScroll;
+  final Function(vl.VirtualizedListScrollEvent)? onScrollBeginDrag;
+  final Function(vl.VirtualizedListScrollEvent)? onScrollEndDrag;
+  final Function(vl.VirtualizedListScrollEvent)? onMomentumScrollEnd;
 
   /// Called when user scrolls close to the end
   final Function()? onEndReached;
@@ -120,7 +120,7 @@ class DCFSectionList<T> extends StatelessComponent
   final Function()? onRefresh;
 
   /// Commands for imperative operations
-  final SectionListCommand? command;
+  final vl.VirtualizedListCommand? command;
 
   /// Whether to enable debug mode
   final bool debug;
@@ -129,12 +129,12 @@ class DCFSectionList<T> extends StatelessComponent
   final Map<String, dynamic>? additionalProps;
 
   /// Performance monitoring
-  final Function(VirtualizedListMetrics)? onMetrics;
+  final Function(vl.VirtualizedListMetrics)? onMetrics;
 
   /// Section visibility callback
   final Function(List<SectionVisibilityInfo>)? onSectionVisibilityChanged;
 
-  const DCFSectionList({
+  DCFSectionList({
     required this.sections,
     required this.renderItem,
     this.renderSectionHeader,
@@ -191,7 +191,7 @@ class DCFSectionList<T> extends StatelessComponent
           children: [emptyState!],
         );
       }
-      return DCFVirtualizedList(
+      return vl.DCFVirtualizedList(
         itemCount: 0,
         renderItem: (index, info) => DCFView(children: []),
         horizontal: horizontal,
@@ -295,7 +295,7 @@ class DCFSectionList<T> extends StatelessComponent
 
     // Build render function
     DCFComponentNode renderVirtualizedItem(
-        int index, VirtualizedListItemInfo info) {
+        int index, vl.VirtualizedListItemInfo info) {
       if (index < 0 || index >= flatItems.length) {
         return DCFView(children: []);
       }
@@ -424,9 +424,9 @@ class DCFSectionList<T> extends StatelessComponent
     }
 
     // Handle viewability changes for section tracking
-    Function(VirtualizedListViewabilityInfo)? onViewableItemsChanged;
+    Function(vl.VirtualizedListViewabilityInfo)? onViewableItemsChanged;
     if (onSectionVisibilityChanged != null) {
-      onViewableItemsChanged = (VirtualizedListViewabilityInfo info) {
+      onViewableItemsChanged = (vl.VirtualizedListViewabilityInfo info) {
         final visibleSections = <int, SectionVisibilityInfo>{};
 
         for (final viewableItem in info.viewableItems) {
@@ -451,7 +451,7 @@ class DCFSectionList<T> extends StatelessComponent
     // Handle end reached
     if (onEndReached != null) {
       final originalCallback = onViewableItemsChanged;
-      onViewableItemsChanged = (VirtualizedListViewabilityInfo info) {
+      onViewableItemsChanged = (vl.VirtualizedListViewabilityInfo info) {
         // Call original callback first
         originalCallback?.call(info);
 
@@ -470,39 +470,11 @@ class DCFSectionList<T> extends StatelessComponent
       };
     }
 
-    // Build command
-    VirtualizedListCommand? virtualizedCommand;
-    if (command != null) {
-      virtualizedCommand = VirtualizedListCommand(
-        scrollToIndex: command!.scrollToIndex != null
-            ? ScrollToIndexCommand(
-                index: _convertToVirtualizedIndex(command!.scrollToIndex!),
-                animated: command!.scrollToIndex!.animated,
-                viewPosition: command!.scrollToIndex!.viewPosition,
-              )
-            : null,
-        scrollToOffset: command!.scrollToOffset != null
-            ? ScrollToOffsetCommand(
-                offset: command!.scrollToOffset!.offset,
-                animated: command!.scrollToOffset!.animated,
-              )
-            : null,
-        flashScrollIndicators: command!.flashScrollIndicators,
-        recordInteraction: command!.recordInteraction,
-        refresh: command!.refresh != null
-            ? RefreshCommand(
-                maintainScrollPosition:
-                    command!.refresh!.maintainScrollPosition,
-              )
-            : null,
-      );
-    }
-
-    return DCFVirtualizedList(
+    return vl.DCFVirtualizedList(
       itemCount: flatItems.length,
       renderItem: renderVirtualizedItem,
-      getItemSize: getVirtualizedItemSize,
-      keyExtractor: getVirtualizedItemKey,
+      getItemSize: (index) => getVirtualizedItemSize(index),
+      keyExtractor: (index) => getVirtualizedItemKey(index) ?? 'item_$index',
       horizontal: horizontal,
       layout: layout,
       styleSheet: styleSheet,
@@ -518,74 +490,12 @@ class DCFSectionList<T> extends StatelessComponent
       onScrollEndDrag: onScrollEndDrag,
       onMomentumScrollEnd: onMomentumScrollEnd,
       onViewableItemsChanged: onViewableItemsChanged,
-      command: virtualizedCommand,
+      command: command,
       debug: debug,
       additionalProps: additionalProps,
       onMetrics: onMetrics,
       estimatedItemSize: itemSize ?? (horizontal ? 100.0 : 44.0),
     );
-  }
-
-  /// Convert SectionList coordinates to VirtualizedList index
-  int _convertToVirtualizedIndex(SectionListScrollToIndexCommand command) {
-    int virtualizedIndex = 0;
-
-    // Account for header
-    if (header != null) {
-      virtualizedIndex += 1;
-    }
-
-    // Find the target section
-    for (int sectionIndex = 0;
-        sectionIndex < command.sectionIndex;
-        sectionIndex++) {
-      final section = sections[sectionIndex];
-
-      // Add section header
-      if (renderSectionHeader != null) {
-        virtualizedIndex += 1;
-      }
-
-      // Add all items in this section
-      virtualizedIndex += section.data.length;
-
-      // Add item separators
-      if (itemSeparator != null || itemSeparatorBuilder != null) {
-        virtualizedIndex +=
-            (section.data.length - 1).clamp(0, section.data.length);
-      }
-
-      // Add section footer
-      if (renderSectionFooter != null) {
-        virtualizedIndex += 1;
-      }
-
-      // Add section separator
-      if (sectionIndex < sections.length - 1 &&
-          (sectionSeparator != null || sectionSeparatorBuilder != null)) {
-        virtualizedIndex += 1;
-      }
-    }
-
-    // Add section header for target section
-    if (renderSectionHeader != null) {
-      if (command.itemIndex == null) {
-        return virtualizedIndex; // Scroll to section header
-      }
-      virtualizedIndex += 1;
-    }
-
-    // Add items before target item
-    if (command.itemIndex != null) {
-      virtualizedIndex += command.itemIndex!;
-
-      // Add item separators before target item
-      if (itemSeparator != null || itemSeparatorBuilder != null) {
-        virtualizedIndex += command.itemIndex!;
-      }
-    }
-
-    return virtualizedIndex;
   }
 
   @override
@@ -666,46 +576,6 @@ class SectionVisibilityInfo {
     required this.section,
     required this.isVisible,
     required this.visibleItemCount,
-  });
-}
-
-/// Commands for SectionList imperative operations
-class SectionListCommand {
-  final SectionListScrollToIndexCommand? scrollToIndex;
-  final ScrollToOffsetCommand? scrollToOffset;
-  final bool? flashScrollIndicators;
-  final bool? recordInteraction;
-  final RefreshCommand? refresh;
-
-  SectionListCommand({
-    this.scrollToIndex,
-    this.scrollToOffset,
-    this.flashScrollIndicators,
-    this.recordInteraction,
-    this.refresh,
-  });
-
-  bool get hasCommands {
-    return scrollToIndex != null ||
-        scrollToOffset != null ||
-        flashScrollIndicators == true ||
-        recordInteraction == true ||
-        refresh != null;
-  }
-}
-
-/// Scroll to index command for SectionList
-class SectionListScrollToIndexCommand {
-  final int sectionIndex;
-  final int? itemIndex; // null = scroll to section header
-  final bool animated;
-  final String viewPosition; // 'auto', 'start', 'center', 'end'
-
-  SectionListScrollToIndexCommand({
-    required this.sectionIndex,
-    this.itemIndex,
-    this.animated = true,
-    this.viewPosition = 'auto',
   });
 }
 

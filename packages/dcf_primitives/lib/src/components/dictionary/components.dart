@@ -29,6 +29,5 @@ export '../webview_component.dart';
 export '../virtualization/virtualized_list.dart';
 export '../virtualization/flat_list.dart';
 export '../virtualization/section_list.dart';
-export '../virtualization/index.dart';
 export '../navigation/navigation.dart';
 export '../safe_area.dart';

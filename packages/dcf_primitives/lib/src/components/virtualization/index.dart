@@ -7,8 +7,7 @@
 
 /// Virtualization components for high-performance lists
 ///
-/// This module provides React Native-style virtualized list components
-/// that only render visible items for optimal memory usage and smooth scrolling.
+/// ListView that only render visible items for optimal memory usage and smooth scrolling.
 ///
 /// Components:
 /// - [DCFVirtualizedList] - Low-level virtualized list with full control
@@ -81,11 +80,4 @@ export 'virtualized_list.dart'
         ScrollToOffsetCommand,
         RefreshCommand;
 
-export 'flat_list.dart' show FlatListCommand;
-
-export 'section_list.dart'
-    show
-        SectionData,
-        SectionVisibilityInfo,
-        SectionListCommand,
-        SectionListScrollToIndexCommand;
+export 'section_list.dart' show SectionData, SectionVisibilityInfo;

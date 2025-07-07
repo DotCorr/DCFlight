@@ -24,7 +24,7 @@ class DCFVirtualizedList extends StatefulComponent
       renderItem;
 
   /// Function to get the size of each item
-  final double Function(int index)? getItemSize;
+  final double? Function(int index)? getItemSize;
 
   /// Whether to scroll horizontally
   final bool horizontal;
@@ -202,8 +202,8 @@ class DCFVirtualizedList extends StatefulComponent
     final props = <String, dynamic>{
       // Core virtualization props
       'itemCount': itemCount,
-      'getItemSize': getItemSize?.toString() ?? '',
-      'renderItem': renderItem.toString(),
+      'getItemSize': getItemSize != null ? 'dynamic' : '',
+      'renderItem': 'dynamic',
       'horizontal': horizontal,
       'initialNumToRender': initialNumToRender,
       'maxToRenderPerBatch': maxToRenderPerBatch,
@@ -230,7 +230,7 @@ class DCFVirtualizedList extends StatefulComponent
       'debug': debug,
 
       // Key extractor
-      if (keyExtractor != null) 'keyExtractor': keyExtractor.toString(),
+      if (keyExtractor != null) 'keyExtractor': 'dynamic',
 
       // Additional props
       if (additionalProps != null) ...additionalProps!,

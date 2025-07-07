@@ -7,7 +7,7 @@
 
 import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
-import 'virtualized_list.dart';
+import 'virtualized_list.dart' as vl;
 
 /// FlatList - Simplified high-performance list component
 /// A convenience wrapper around VirtualizedList with sensible defaults
@@ -56,10 +56,10 @@ class DCFFlatList<T> extends StatelessComponent
   final bool inverted;
 
   /// Event handlers
-  final Function(VirtualizedListScrollEvent)? onScroll;
-  final Function(VirtualizedListScrollEvent)? onScrollBeginDrag;
-  final Function(VirtualizedListScrollEvent)? onScrollEndDrag;
-  final Function(VirtualizedListScrollEvent)? onMomentumScrollEnd;
+  final Function(vl.VirtualizedListScrollEvent)? onScroll;
+  final Function(vl.VirtualizedListScrollEvent)? onScrollBeginDrag;
+  final Function(vl.VirtualizedListScrollEvent)? onScrollEndDrag;
+  final Function(vl.VirtualizedListScrollEvent)? onMomentumScrollEnd;
 
   /// Called when user scrolls close to the end
   final Function()? onEndReached;
@@ -87,7 +87,7 @@ class DCFFlatList<T> extends StatelessComponent
   final Function()? onRefresh;
 
   /// Commands for imperative operations
-  final FlatListCommand? command;
+  final vl.VirtualizedListCommand? command;
 
   /// Whether to enable debug mode
   final bool debug;
@@ -96,9 +96,9 @@ class DCFFlatList<T> extends StatelessComponent
   final Map<String, dynamic>? additionalProps;
 
   /// Performance monitoring
-  final Function(VirtualizedListMetrics)? onMetrics;
+  final Function(vl.VirtualizedListMetrics)? onMetrics;
 
-  const DCFFlatList({
+  DCFFlatList({
     required this.data,
     required this.renderItem,
     this.keyExtractor,
@@ -146,7 +146,7 @@ class DCFFlatList<T> extends StatelessComponent
         );
       }
       // Return empty VirtualizedList for consistent behavior
-      return DCFVirtualizedList(
+      return vl.DCFVirtualizedList(
         itemCount: 0,
         renderItem: (index, info) => DCFView(children: []),
         horizontal: horizontal,
@@ -174,7 +174,7 @@ class DCFFlatList<T> extends StatelessComponent
 
     // Build render function
     DCFComponentNode renderVirtualizedItem(
-        int index, VirtualizedListItemInfo info) {
+        int index, vl.VirtualizedListItemInfo info) {
       // Handle header
       if (hasHeader && index == 0) {
         return header!;
@@ -288,9 +288,9 @@ class DCFFlatList<T> extends StatelessComponent
     }
 
     // Handle end reached
-    Function(VirtualizedListViewabilityInfo)? onViewableItemsChanged;
+    Function(vl.VirtualizedListViewabilityInfo)? onViewableItemsChanged;
     if (onEndReached != null) {
-      onViewableItemsChanged = (VirtualizedListViewabilityInfo info) {
+      onViewableItemsChanged = (vl.VirtualizedListViewabilityInfo info) {
         if (info.viewableItems.isNotEmpty) {
           final maxIndex = info.viewableItems
               .map((item) => item.index)
@@ -306,39 +306,11 @@ class DCFFlatList<T> extends StatelessComponent
     }
 
     // Build command
-    VirtualizedListCommand? virtualizedCommand;
-    if (command != null) {
-      virtualizedCommand = VirtualizedListCommand(
-        scrollToIndex: command!.scrollToIndex != null
-            ? ScrollToIndexCommand(
-                index:
-                    _convertToVirtualizedIndex(command!.scrollToIndex!.index),
-                animated: command!.scrollToIndex!.animated,
-                viewPosition: command!.scrollToIndex!.viewPosition,
-              )
-            : null,
-        scrollToOffset: command!.scrollToOffset != null
-            ? ScrollToOffsetCommand(
-                offset: command!.scrollToOffset!.offset,
-                animated: command!.scrollToOffset!.animated,
-              )
-            : null,
-        flashScrollIndicators: command!.flashScrollIndicators,
-        recordInteraction: command!.recordInteraction,
-        refresh: command!.refresh != null
-            ? RefreshCommand(
-                maintainScrollPosition:
-                    command!.refresh!.maintainScrollPosition,
-              )
-            : null,
-      );
-    }
-
-    return DCFVirtualizedList(
+    return vl.DCFVirtualizedList(
       itemCount: totalItemCount,
       renderItem: renderVirtualizedItem,
-      getItemSize: getVirtualizedItemSize,
-      keyExtractor: getVirtualizedItemKey,
+      getItemSize: (index) => getVirtualizedItemSize(index),
+      keyExtractor: (index) => getVirtualizedItemKey(index) ?? 'item_$index',
       horizontal: horizontal,
       layout: layout,
       styleSheet: styleSheet,
@@ -354,30 +326,12 @@ class DCFFlatList<T> extends StatelessComponent
       onScrollEndDrag: onScrollEndDrag,
       onMomentumScrollEnd: onMomentumScrollEnd,
       onViewableItemsChanged: onViewableItemsChanged,
-      command: virtualizedCommand,
+      command: command,
       debug: debug,
       additionalProps: additionalProps,
       onMetrics: onMetrics,
       estimatedItemSize: itemSize ?? (horizontal ? 100.0 : 44.0),
     );
-  }
-
-  /// Convert FlatList index to VirtualizedList index accounting for header/separators
-  int _convertToVirtualizedIndex(int flatListIndex) {
-    int virtualizedIndex = flatListIndex;
-
-    // Account for header
-    if (header != null) {
-      virtualizedIndex += 1;
-    }
-
-    // Account for separators
-    if ((separator != null || separatorBuilder != null) && flatListIndex > 0) {
-      virtualizedIndex +=
-          flatListIndex; // Each item after first has a separator before it
-    }
-
-    return virtualizedIndex;
   }
 
   @override
@@ -416,62 +370,4 @@ class DCFFlatList<T> extends StatelessComponent
         onMetrics,
         key,
       ];
-}
-
-/// Commands for FlatList imperative operations
-class FlatListCommand {
-  final ScrollToIndexCommand? scrollToIndex;
-  final ScrollToOffsetCommand? scrollToOffset;
-  final bool? flashScrollIndicators;
-  final bool? recordInteraction;
-  final RefreshCommand? refresh;
-
-  FlatListCommand({
-    this.scrollToIndex,
-    this.scrollToOffset,
-    this.flashScrollIndicators,
-    this.recordInteraction,
-    this.refresh,
-  });
-
-  bool get hasCommands {
-    return scrollToIndex != null ||
-        scrollToOffset != null ||
-        flashScrollIndicators == true ||
-        recordInteraction == true ||
-        refresh != null;
-  }
-}
-
-/// Simplified scroll to index command for FlatList
-class ScrollToIndexCommand {
-  final int index;
-  final bool animated;
-  final String viewPosition; // 'auto', 'start', 'center', 'end'
-
-  ScrollToIndexCommand({
-    required this.index,
-    this.animated = true,
-    this.viewPosition = 'auto',
-  });
-}
-
-/// Simplified scroll to offset command for FlatList
-class ScrollToOffsetCommand {
-  final double offset;
-  final bool animated;
-
-  ScrollToOffsetCommand({
-    required this.offset,
-    this.animated = true,
-  });
-}
-
-/// Simplified refresh command for FlatList
-class RefreshCommand {
-  final bool maintainScrollPosition;
-
-  RefreshCommand({
-    this.maintainScrollPosition = true,
-  });
 }

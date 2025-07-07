@@ -8,7 +8,8 @@
 import UIKit
 import dcflight
 
-/// Advanced VirtualizedList component with React Native-style virtualization
+/// ListView that only render visible items for optimal memory usage and smooth scrolling.
+///
 /// Features:
 /// - Viewport-based rendering (only renders visible items)
 /// - Dynamic item heights with layout caching
