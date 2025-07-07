@@ -32,7 +32,7 @@ This hybrid approach eliminates the fundamental trade-off between performance an
 enum ComponentPriority {
   immediate, // 1ms  - Text inputs, scroll events, touch interactions
   high,      // 5ms  - Buttons, navigation, modals, portals
-  normal,    // 16ms - Regular views, text, images  
+  normal,    // 16ms - Regular views, text, images
   low,       // 50ms - Analytics, background tasks
   idle;      // 100ms- Debug panels, dev tools
 }
@@ -49,13 +49,13 @@ enum ComponentPriority {
 
 ### 🚀 **vs React Native**
 
-| Feature | DCFlight VDOM | React Native | Advantage |
-|---------|---------------|--------------|-----------|
-| Bridge Overhead | **None** | High serialization cost | **3-5x faster updates** |
-| Priority Levels | **5 levels** | 3-4 levels | **Finer responsiveness control** |
-| Time Precision | **Microseconds** | Milliseconds | **More precise scheduling** |
-| Event Reliability | **100%** | ~95% (race conditions) | **Bulletproof interactions** |
-| Memory Safety | **Dart GC + No races** | JS GC + Bridge leaks | **Better stability** |
+| Feature           | DCFlight VDOM          | React Native            | Advantage                        |
+| ----------------- | ---------------------- | ----------------------- | -------------------------------- |
+| Bridge Overhead   | **None**               | High serialization cost | **3-5x faster updates**          |
+| Priority Levels   | **5 levels**           | 3-4 levels              | **Finer responsiveness control** |
+| Time Precision    | **Microseconds**       | Milliseconds            | **More precise scheduling**      |
+| Event Reliability | **100%**               | ~95% (race conditions)  | **Bulletproof interactions**     |
+| Memory Safety     | **Dart GC + No races** | JS GC + Bridge leaks    | **Better stability**             |
 
 ### 🎯 **vs Flutter Engine**
 
@@ -71,6 +71,7 @@ enum ComponentPriority {
 **Purpose**: Manages priority queues and time slicing for optimal responsiveness.
 
 **Key Features**:
+
 - Frame budget tracking (16ms for 60fps)
 - Priority-based interruption
 - Starvation prevention through aging
@@ -89,8 +90,9 @@ if (newPriority == ComponentPriority.immediate) {
 **Purpose**: Prevents race conditions while maintaining update order.
 
 **Safety Guarantees**:
+
 - `_nodesByViewId` map never corrupted
-- Event handlers always point to correct components  
+- Event handlers always point to correct components
 - State changes apply atomically
 - Parent-child relationships remain consistent
 
@@ -107,20 +109,24 @@ while (_reconciliationQueue.isNotEmpty) {
 ### 📱 **User Experience Impact**
 
 **Button Presses**:
+
 - Traditional: 16-50ms delay (1-3 frames)
 - DCFlight: 1-5ms delay (immediate response)
 
 **Scrolling**:
+
 - Traditional: Stutters during state updates
 - DCFlight: Smooth 60fps maintained during complex updates
 
 **Navigation**:
+
 - Traditional: Janky transitions during data loading
 - DCFlight: Instant navigation, background loading
 
 ### 🔬 **Technical Metrics**
 
 **Frame Budget Usage**:
+
 ```dart
 stats['scheduler'] = {
   'frameBudgetUsed': 12000,           // 12ms of 16ms used
@@ -130,6 +136,7 @@ stats['scheduler'] = {
 ```
 
 **Priority Distribution**:
+
 ```dart
 stats['immediate'] = {
   'queueLength': 0,                   // Always processed immediately
@@ -145,11 +152,11 @@ stats['immediate'] = {
 Components can declare their update priority:
 
 ```dart
-class InteractiveButton extends StatefulComponent 
+class InteractiveButton extends StatefulComponent
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
-  
+
   // Button presses get high priority for instant feedback
 }
 ```
@@ -190,7 +197,7 @@ vdom.setDebugLogging(true);
 
 // Logs show:
 // - Priority assignments
-// - Time slice usage  
+// - Time slice usage
 // - Queue processing order
 // - Frame budget tracking
 ```
