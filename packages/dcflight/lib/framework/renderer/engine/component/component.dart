@@ -6,11 +6,11 @@
  */
 
 import 'dart:math';
-import 'package:dcflight/framework/renderer/vdom/component/hooks/memo_hook.dart';
-import 'package:dcflight/framework/renderer/vdom/component/hooks/store.dart';
-import 'package:dcflight/framework/renderer/vdom/core/mutator/vdom_mutator_extension_reg.dart';
+import 'package:dcflight/framework/renderer/engine/component/hooks/memo_hook.dart';
+import 'package:dcflight/framework/renderer/engine/component/hooks/store.dart';
+import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
 import 'package:flutter/foundation.dart';
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
+import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
 import 'hooks/state_hook.dart';
 
 // ignore: must_be_immutable
@@ -205,7 +205,8 @@ abstract class StatefulComponent extends DCFComponentNode {
       // Update dependencies for existing hook
       final hook = _hooks[_hookIndex];
       if (hook is! MemoHook<T>) {
-        throw Exception('Hook at index $_hookIndex is not of type MemoHook<$T>');
+        throw Exception(
+            'Hook at index $_hookIndex is not of type MemoHook<$T>');
       }
       hook.updateDependencies(dependencies);
     }
@@ -293,7 +294,9 @@ abstract class StatefulComponent extends DCFComponentNode {
     for (var i = 0; i < _hooks.length; i++) {
       final hook = _hooks[i];
       // Only run standard EffectHook, not the specialized subclasses
-      if (hook is EffectHook && hook is! LayoutEffectHook && hook is! InsertionEffectHook) {
+      if (hook is EffectHook &&
+          hook is! LayoutEffectHook &&
+          hook is! InsertionEffectHook) {
         if (kDebugMode && runtimeType.toString().contains('Portal')) {
           // Debug logging for portal effects
         }
@@ -382,7 +385,7 @@ abstract class StatelessComponent extends DCFComponentNode {
   StatelessComponent({super.key})
       : instanceId =
             '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}';
-  
+
   /// Render the component - must be implemented by subclasses
   DCFComponentNode render();
 

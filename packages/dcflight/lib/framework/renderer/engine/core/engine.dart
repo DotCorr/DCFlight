@@ -9,19 +9,19 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:math' as math;
 
-import 'package:dcflight/framework/renderer/vdom/core/concurrency/priority.dart';
-import 'package:dcflight/framework/renderer/vdom/debug/vdom_logger.dart';
-import 'package:dcflight/framework/renderer/vdom/core/mutator/vdom_mutator_extension_reg.dart';
+import 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dart';
+import 'package:dcflight/framework/renderer/engine/debug/engine_logger.dart';
+import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
 import 'package:dcflight/framework/renderer/interface/interface.dart'
     show PlatformInterface;
-import 'package:dcflight/framework/renderer/vdom/component/component.dart';
-import 'package:dcflight/framework/renderer/vdom/component/error_boundary.dart';
-import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
+import 'package:dcflight/framework/renderer/engine/component/component.dart';
+import 'package:dcflight/framework/renderer/engine/component/error_boundary.dart';
+import 'package:dcflight/framework/renderer/engine/component/dcf_element.dart';
+import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'package:dcflight/framework/renderer/engine/component/fragment.dart';
 
 /// Enhanced Virtual DOM with priority-based update scheduling
-class VDom {
+class DCFEngine {
   /// Native bridge for UI operations
   final PlatformInterface _nativeBridge;
 
@@ -72,14 +72,14 @@ class VDom {
     'concurrentEfficiency': 0.0,
   };
 
-  VDom(this._nativeBridge) {
-    VDomDebugLogger.log('VDOM_INIT', 'Creating new VDom instance');
+  DCFEngine(this._nativeBridge) {
+    EngineDebugLogger.log('VDOM_INIT', 'Creating new VDom instance');
     _initialize();
   }
 
   /// O(1) - Initialize the VDom with the native bridge
   Future<void> _initialize() async {
-    VDomDebugLogger.log('VDOM_INIT', 'Starting VDom initialization');
+    EngineDebugLogger.log('VDOM_INIT', 'Starting VDom initialization');
 
     try {
       final success = await _nativeBridge.initialize();
@@ -93,10 +93,10 @@ class VDom {
       await _initializeConcurrentProcessing();
 
       _readyCompleter.complete();
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'VDOM_INIT', 'VDom initialization completed successfully');
     } catch (e) {
-      VDomDebugLogger.log('VDOM_INIT_ERROR', 'VDom initialization failed: $e');
+      EngineDebugLogger.log('VDOM_INIT_ERROR', 'VDom initialization failed: $e');
       _readyCompleter.completeError(e);
     }
   }
@@ -122,10 +122,10 @@ class VDom {
       }
 
       _concurrentEnabled = true;
-      VDomDebugLogger.log('VDOM_CONCURRENT',
+      EngineDebugLogger.log('VDOM_CONCURRENT',
           'Concurrent processing enabled with $_maxWorkers workers');
     } catch (e) {
-      VDomDebugLogger.log('VDOM_CONCURRENT_ERROR',
+      EngineDebugLogger.log('VDOM_CONCURRENT_ERROR',
           'Failed to initialize concurrent processing: $e');
       _concurrentEnabled = false;
       // Continue without concurrent processing
@@ -137,28 +137,28 @@ class VDom {
   /// O(1) - Generate a unique view ID
   String _generateViewId() {
     final viewId = (_viewIdCounter++).toString();
-    VDomDebugLogger.log('VIEW_ID_GENERATE', 'Generated view ID: $viewId');
+    EngineDebugLogger.log('VIEW_ID_GENERATE', 'Generated view ID: $viewId');
     return viewId;
   }
 
   /// O(1) - Register a component in the VDOM
   void registerComponent(DCFComponentNode component) {
-    VDomDebugLogger.logMount(component, context: 'registerComponent');
+    EngineDebugLogger.logMount(component, context: 'registerComponent');
 
     if (component is StatefulComponent) {
       _statefulComponents[component.instanceId] = component;
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
-      VDomDebugLogger.log('COMPONENT_REGISTER',
+      EngineDebugLogger.log('COMPONENT_REGISTER',
           'Registered StatefulComponent: ${component.instanceId}');
     } else if (component is StatelessComponent) {
       _statelessComponents[component.instanceId] = component;
-      VDomDebugLogger.log('COMPONENT_REGISTER',
+      EngineDebugLogger.log('COMPONENT_REGISTER',
           'Registered StatelessComponent: ${component.instanceId}');
     }
 
     if (component is ErrorBoundary) {
       _errorBoundaries[component.instanceId] = component;
-      VDomDebugLogger.log('ERROR_BOUNDARY_REGISTER',
+      EngineDebugLogger.log('ERROR_BOUNDARY_REGISTER',
           'Registered ErrorBoundary: ${component.instanceId}');
     }
   }
@@ -166,13 +166,13 @@ class VDom {
   /// O(1) - Handle a native event by finding the appropriate component
   void _handleNativeEvent(
       String viewId, String eventType, Map<dynamic, dynamic> eventData) {
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
         extra: {'EventData': eventData.toString()});
 
     final node = _nodesByViewId[viewId]; // O(1) lookup
     if (node == null) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId');
       return;
     }
@@ -188,14 +188,14 @@ class VDom {
 
       for (final key in eventHandlerKeys) {
         if (node.props.containsKey(key) && node.props[key] is Function) {
-          VDomDebugLogger.log('EVENT_HANDLER_FOUND',
+          EngineDebugLogger.log('EVENT_HANDLER_FOUND',
               'Found handler for $eventType using key: $key');
           _executeEventHandler(node.props[key], eventData);
           return;
         }
       }
 
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
           extra: {'AvailableProps': node.props.keys.toList()});
     }
@@ -203,7 +203,7 @@ class VDom {
 
   /// O(1) - Execute an event handler with flexible signatures
   void _executeEventHandler(Function handler, Map<dynamic, dynamic> eventData) {
-    VDomDebugLogger.log('EVENT_HANDLER_EXECUTE', 'Executing event handler',
+    EngineDebugLogger.log('EVENT_HANDLER_EXECUTE', 'Executing event handler',
         extra: {'HandlerType': handler.runtimeType.toString()});
 
     try {
@@ -212,11 +212,11 @@ class VDom {
       } else {
         Function.apply(handler, []);
       }
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'EVENT_HANDLER_SUCCESS', 'Event handler executed successfully');
       return;
     } catch (e) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'EVENT_HANDLER_RETRY', 'Retrying with different signature');
     }
 
@@ -226,7 +226,7 @@ class VDom {
         final width = eventData['width'] as double? ?? 0.0;
         final height = eventData['height'] as double? ?? 0.0;
         Function.apply(handler, [width, height]);
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'EVENT_HANDLER_SUCCESS', 'Content size change handler executed');
         return;
       } catch (e) {
@@ -237,7 +237,7 @@ class VDom {
     // O(1) - Try with no parameters
     try {
       Function.apply(handler, []);
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'EVENT_HANDLER_SUCCESS', 'Parameter-less handler executed');
       return;
     } catch (e) {
@@ -247,9 +247,9 @@ class VDom {
     // O(1) - Final fallback
     try {
       (handler as dynamic)(eventData);
-      VDomDebugLogger.log('EVENT_HANDLER_SUCCESS', 'Dynamic handler executed');
+      EngineDebugLogger.log('EVENT_HANDLER_SUCCESS', 'Dynamic handler executed');
     } catch (e) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'EVENT_HANDLER_ERROR', 'All handler execution attempts failed',
           extra: {'Error': e.toString()});
       throw Exception(
@@ -259,18 +259,18 @@ class VDom {
 
   /// O(1) - Schedule a component update with priority handling
   void _scheduleComponentUpdate(StatefulComponent component) {
-    VDomDebugLogger.logUpdate(component, 'State change triggered update');
+    EngineDebugLogger.logUpdate(component, 'State change triggered update');
 
     // O(1) - Check for custom state change handler
     final customHandler = VDomExtensionRegistry.instance
         .getStateChangeHandler(component.runtimeType);
     if (customHandler != null) {
-      VDomDebugLogger.log('CUSTOM_STATE_HANDLER',
+      EngineDebugLogger.log('CUSTOM_STATE_HANDLER',
           'Using custom state change handler for ${component.runtimeType}');
 
       final context = VDomStateChangeContext(
         scheduleUpdate: () => _scheduleComponentUpdateInternal(component),
-        skipUpdate: () => VDomDebugLogger.log(
+        skipUpdate: () => EngineDebugLogger.log(
             'STATE_CHANGE_SKIP', 'Custom handler skipped update'),
         partialUpdate: (node) => _partialUpdateNode(node),
       );
@@ -286,12 +286,12 @@ class VDom {
 
   /// O(1) - Internal method for scheduling component updates with priority
   void _scheduleComponentUpdateInternal(StatefulComponent component) {
-    VDomDebugLogger.log('SCHEDULE_UPDATE',
+    EngineDebugLogger.log('SCHEDULE_UPDATE',
         'Scheduling priority-based update for component: ${component.instanceId}');
 
     // O(1) - Verify component is still registered
     if (!_statefulComponents.containsKey(component.instanceId)) {
-      VDomDebugLogger.log('COMPONENT_REREGISTER',
+      EngineDebugLogger.log('COMPONENT_REREGISTER',
           'Re-registering untracked component: ${component.instanceId}');
       registerComponent(component);
     }
@@ -302,7 +302,7 @@ class VDom {
     final wasEmpty = _pendingUpdates.isEmpty;
     _pendingUpdates.add(component.instanceId);
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'UPDATE_QUEUE', 'Added component to priority-based update queue',
         extra: {
           'ComponentId': component.instanceId,
@@ -314,7 +314,7 @@ class VDom {
     // O(1) - Schedule update with priority-based timing
     if (!_isUpdateScheduled) {
       _isUpdateScheduled = true;
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'BATCH_SCHEDULE', 'Scheduling priority-based batch update');
 
       final delay = Duration(milliseconds: priority.delayMs);
@@ -325,7 +325,7 @@ class VDom {
       final currentHighestPriority = PriorityUtils.getHighestPriority(
           _componentPriorities.values.toList());
       if (PriorityUtils.shouldInterrupt(priority, currentHighestPriority)) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'BATCH_INTERRUPT', 'Interrupting for higher priority update');
         _updateTimer?.cancel();
         final newDelay = Duration(milliseconds: priority.delayMs);
@@ -336,18 +336,18 @@ class VDom {
 
   /// O(1) - Partial update for specific node (used by extensions)
   void _partialUpdateNode(DCFComponentNode node) {
-    VDomDebugLogger.log('PARTIAL_UPDATE', 'Performing partial update',
+    EngineDebugLogger.log('PARTIAL_UPDATE', 'Performing partial update',
         component: node.runtimeType.toString());
 
     if (node.effectiveNativeViewId != null) {
-      VDomDebugLogger.log('PARTIAL_UPDATE_NATIVE',
+      EngineDebugLogger.log('PARTIAL_UPDATE_NATIVE',
           'Triggering native update for view: ${node.effectiveNativeViewId}');
     }
   }
 
   /// O(n log n) - Process all pending component updates in priority order
   Future<void> _processPendingUpdates() async {
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'BATCH_START', 'Starting priority-based batch update processing',
         extra: {
           'PendingCount': _pendingUpdates.length,
@@ -355,7 +355,7 @@ class VDom {
         });
 
     if (_batchUpdateInProgress) {
-      VDomDebugLogger.log('BATCH_SKIP', 'Batch already in progress, skipping');
+      EngineDebugLogger.log('BATCH_SKIP', 'Batch already in progress, skipping');
       return;
     }
 
@@ -364,7 +364,7 @@ class VDom {
 
     try {
       if (_pendingUpdates.isEmpty) {
-        VDomDebugLogger.log('BATCH_EMPTY', 'No pending updates to process');
+        EngineDebugLogger.log('BATCH_EMPTY', 'No pending updates to process');
         _isUpdateScheduled = false;
         _batchUpdateInProgress = false;
         return;
@@ -387,7 +387,7 @@ class VDom {
 
       // O(1) - Check if new updates were scheduled during processing
       if (_pendingUpdates.isNotEmpty) {
-        VDomDebugLogger.log('BATCH_NEW_UPDATES',
+        EngineDebugLogger.log('BATCH_NEW_UPDATES',
             'New updates scheduled during batch, processing in next cycle',
             extra: {'NewUpdatesCount': _pendingUpdates.length});
         _isUpdateScheduled = false;
@@ -399,7 +399,7 @@ class VDom {
         _updateTimer = Timer(delay, _processPendingUpdates);
         _isUpdateScheduled = true;
       } else {
-        VDomDebugLogger.log('BATCH_COMPLETE',
+        EngineDebugLogger.log('BATCH_COMPLETE',
             'Priority-based batch processing completed, no new updates');
         _isUpdateScheduled = false;
       }
@@ -410,7 +410,7 @@ class VDom {
 
   /// Process updates using concurrent processing
   Future<void> _processPendingUpdatesConcurrently() async {
-    VDomDebugLogger.log('BATCH_CONCURRENT', 'Processing updates concurrently');
+    EngineDebugLogger.log('BATCH_CONCURRENT', 'Processing updates concurrently');
 
     // O(n log n) - Sort updates by priority
     final sortedUpdates = PriorityUtils.sortByPriority(
@@ -419,11 +419,11 @@ class VDom {
     _pendingUpdates.clear(); // O(n)
     _componentPriorities.clear(); // O(n)
 
-    VDomDebugLogger.log('BATCH_PRIORITY_SORTED',
+    EngineDebugLogger.log('BATCH_PRIORITY_SORTED',
         'Sorted ${sortedUpdates.length} updates by priority');
 
     // O(1) - Start batch update in native layer
-    VDomDebugLogger.logBridge('START_BATCH', 'root');
+    EngineDebugLogger.logBridge('START_BATCH', 'root');
     await _nativeBridge.startBatchUpdate();
 
     try {
@@ -447,9 +447,9 @@ class VDom {
       }
 
       // O(1) - Commit all batched updates at once
-      VDomDebugLogger.logBridge('COMMIT_BATCH', 'root');
+      EngineDebugLogger.logBridge('COMMIT_BATCH', 'root');
       await _nativeBridge.commitBatchUpdate();
-      VDomDebugLogger.log('BATCH_COMMIT_SUCCESS',
+      EngineDebugLogger.log('BATCH_COMMIT_SUCCESS',
           'Successfully committed concurrent batch updates');
 
       _performanceStats['totalConcurrentUpdates'] =
@@ -457,10 +457,10 @@ class VDom {
               sortedUpdates.length;
     } catch (e) {
       // O(1) - Cancel batch if there's an error
-      VDomDebugLogger.logBridge('CANCEL_BATCH', 'root',
+      EngineDebugLogger.logBridge('CANCEL_BATCH', 'root',
           data: {'Error': e.toString()});
       await _nativeBridge.cancelBatchUpdate();
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'BATCH_ERROR', 'Concurrent batch update failed, cancelled',
           extra: {'Error': e.toString()});
       rethrow;
@@ -469,7 +469,7 @@ class VDom {
 
   /// Process updates serially (original behavior)
   Future<void> _processPendingUpdatesSerially() async {
-    VDomDebugLogger.log('BATCH_SERIAL', 'Processing updates serially');
+    EngineDebugLogger.log('BATCH_SERIAL', 'Processing updates serially');
 
     // O(n log n) - Sort updates by priority
     final sortedUpdates = PriorityUtils.sortByPriority(
@@ -478,25 +478,25 @@ class VDom {
     _pendingUpdates.clear(); // O(n)
     _componentPriorities.clear(); // O(n)
 
-    VDomDebugLogger.log('BATCH_PRIORITY_SORTED',
+    EngineDebugLogger.log('BATCH_PRIORITY_SORTED',
         'Sorted ${sortedUpdates.length} updates by priority');
 
     // O(1) - Start batch update in native layer
-    VDomDebugLogger.logBridge('START_BATCH', 'root');
+    EngineDebugLogger.logBridge('START_BATCH', 'root');
     await _nativeBridge.startBatchUpdate();
 
     try {
       // O(n * m) where n = updates, m = average update complexity
       for (final componentId in sortedUpdates) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'BATCH_PROCESS_COMPONENT', 'Processing update for: $componentId');
         await _updateComponentById(componentId);
       }
 
       // O(1) - Commit all batched updates at once
-      VDomDebugLogger.logBridge('COMMIT_BATCH', 'root');
+      EngineDebugLogger.logBridge('COMMIT_BATCH', 'root');
       await _nativeBridge.commitBatchUpdate();
-      VDomDebugLogger.log('BATCH_COMMIT_SUCCESS',
+      EngineDebugLogger.log('BATCH_COMMIT_SUCCESS',
           'Successfully committed serial batch updates');
 
       _performanceStats['totalSerialUpdates'] =
@@ -504,10 +504,10 @@ class VDom {
               sortedUpdates.length;
     } catch (e) {
       // O(1) - Cancel batch if there's an error
-      VDomDebugLogger.logBridge('CANCEL_BATCH', 'root',
+      EngineDebugLogger.logBridge('CANCEL_BATCH', 'root',
           data: {'Error': e.toString()});
       await _nativeBridge.cancelBatchUpdate();
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'BATCH_ERROR', 'Serial batch update failed, cancelled',
           extra: {'Error': e.toString()});
       rethrow;
@@ -516,14 +516,14 @@ class VDom {
 
   /// O(m) where m = component tree depth - Update a component by its ID
   Future<void> _updateComponentById(String componentId) async {
-    VDomDebugLogger.log('COMPONENT_UPDATE_START',
+    EngineDebugLogger.log('COMPONENT_UPDATE_START',
         'Starting update for component: $componentId');
 
     // O(1) - Component lookup
     final component =
         _statefulComponents[componentId] ?? _statelessComponents[componentId];
     if (component == null) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'COMPONENT_UPDATE_NOT_FOUND', 'Component not found: $componentId');
       return;
     }
@@ -533,7 +533,7 @@ class VDom {
       final lifecycleInterceptor = VDomExtensionRegistry.instance
           .getLifecycleInterceptor(component.runtimeType);
       if (lifecycleInterceptor != null) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'LIFECYCLE_INTERCEPTOR', 'Calling beforeUpdate interceptor');
         final context = VDomLifecycleContext(
           scheduleUpdate: () =>
@@ -546,14 +546,14 @@ class VDom {
 
       // O(1) - Perform component-specific update preparation
       if (component is StatefulComponent) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'COMPONENT_PREPARE', 'Preparing StatefulComponent for render');
         component.prepareForRender();
       }
 
       // O(1) - Store the previous rendered node before re-rendering
       final oldRenderedNode = component.renderedNode;
-      VDomDebugLogger.log('COMPONENT_OLD_NODE', 'Stored old rendered node',
+      EngineDebugLogger.log('COMPONENT_OLD_NODE', 'Stored old rendered node',
           extra: {'HasOldNode': oldRenderedNode != null});
 
       if (oldRenderedNode != null) {
@@ -565,12 +565,12 @@ class VDom {
       final newRenderedNode = component.renderedNode;
 
       if (newRenderedNode == null) {
-        VDomDebugLogger.log('COMPONENT_UPDATE_NULL',
+        EngineDebugLogger.log('COMPONENT_UPDATE_NULL',
             'Component rendered null, skipping update');
         return;
       }
 
-      VDomDebugLogger.log('COMPONENT_NEW_NODE', 'Generated new rendered node',
+      EngineDebugLogger.log('COMPONENT_NEW_NODE', 'Generated new rendered node',
           component: newRenderedNode.runtimeType.toString());
 
       // O(1) - Set parent relationship for the new rendered node
@@ -579,14 +579,14 @@ class VDom {
       // O(tree depth) - Reconcile trees to apply minimal changes
       final previousRenderedNode = _previousRenderedNodes[componentId];
       if (previousRenderedNode != null) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'RECONCILE_START', 'Starting reconciliation with previous node');
 
         final parentViewId = _findParentViewId(component); // O(depth)
 
         if (previousRenderedNode.effectiveNativeViewId == null ||
             parentViewId == null) {
-          VDomDebugLogger.log('RECONCILE_FALLBACK',
+          EngineDebugLogger.log('RECONCILE_FALLBACK',
               'Using fallback reconciliation due to missing IDs');
           await _reconcile(
               previousRenderedNode, newRenderedNode); // O(tree size)
@@ -596,7 +596,7 @@ class VDom {
                 previousRenderedNode.effectiveNativeViewId;
           }
         } else {
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'RECONCILE_NORMAL', 'Performing normal reconciliation');
           await _reconcile(
               previousRenderedNode, newRenderedNode); // O(tree size)
@@ -604,10 +604,10 @@ class VDom {
         }
 
         _previousRenderedNodes.remove(componentId); // O(1)
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'RECONCILE_CLEANUP', 'Cleaned up previous rendered node reference');
       } else {
-        VDomDebugLogger.log('RENDER_FROM_SCRATCH',
+        EngineDebugLogger.log('RENDER_FROM_SCRATCH',
             'No previous rendering, creating from scratch');
         final parentViewId = _findParentViewId(component); // O(depth)
         if (parentViewId != null) {
@@ -615,33 +615,33 @@ class VDom {
               parentViewId: parentViewId); // O(tree size)
           if (newViewId != null) {
             component.contentViewId = newViewId;
-            VDomDebugLogger.log('RENDER_NEW_SUCCESS',
+            EngineDebugLogger.log('RENDER_NEW_SUCCESS',
                 'Successfully rendered new component view: $newViewId');
           }
         } else {
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'RENDER_NO_PARENT', 'No parent view ID found for rendering');
         }
       }
 
       // O(hooks count) - Run lifecycle methods with phased effects
       if (component is StatefulComponent) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'LIFECYCLE_DID_UPDATE', 'Calling componentDidUpdate');
         component.componentDidUpdate({});
 
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'LIFECYCLE_EFFECTS_IMMEDIATE', 'Running immediate effects');
         component.runEffectsAfterRender();
 
         if (_isTreeComplete) {
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'LIFECYCLE_EFFECTS_LAYOUT', 'Running layout effects');
           component.runLayoutEffects();
         }
 
         if (_isTreeComplete) {
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'LIFECYCLE_EFFECTS_INSERTION', 'Running insertion effects');
           component.runInsertionEffects();
         }
@@ -649,7 +649,7 @@ class VDom {
 
       // O(1) - Call lifecycle interceptor after update
       if (lifecycleInterceptor != null) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'LIFECYCLE_INTERCEPTOR', 'Calling afterUpdate interceptor');
         final context = VDomLifecycleContext(
           scheduleUpdate: () =>
@@ -660,10 +660,10 @@ class VDom {
         lifecycleInterceptor.afterUpdate(component, context);
       }
 
-      VDomDebugLogger.log('COMPONENT_UPDATE_SUCCESS',
+      EngineDebugLogger.log('COMPONENT_UPDATE_SUCCESS',
           'Component update completed successfully: $componentId');
     } catch (e) {
-      VDomDebugLogger.log('COMPONENT_UPDATE_ERROR', 'Component update failed',
+      EngineDebugLogger.log('COMPONENT_UPDATE_ERROR', 'Component update failed',
           extra: {'ComponentId': componentId, 'Error': e.toString()});
     }
   }
@@ -673,13 +673,13 @@ class VDom {
       {String? parentViewId, int? index}) async {
     await isReady;
 
-    VDomDebugLogger.logRender('START', node,
+    EngineDebugLogger.logRender('START', node,
         viewId: node.effectiveNativeViewId, parentId: parentViewId);
 
     try {
       // O(children count) - Handle Fragment nodes
       if (node is DCFFragment) {
-        VDomDebugLogger.log('RENDER_FRAGMENT', 'Rendering fragment node');
+        EngineDebugLogger.log('RENDER_FRAGMENT', 'Rendering fragment node');
 
         // O(1) - Call lifecycle interceptor before mount
         final lifecycleInterceptor = VDomExtensionRegistry.instance
@@ -695,20 +695,20 @@ class VDom {
 
         // O(1) - Mount the fragment
         if (!node.isMounted) {
-          VDomDebugLogger.logMount(node, context: 'Fragment mounting');
+          EngineDebugLogger.logMount(node, context: 'Fragment mounting');
           node.mount(node.parent);
         }
 
         // O(1) - Check if this fragment is a portal placeholder
         if (node.metadata != null &&
             node.metadata!['isPortalPlaceholder'] == true) {
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'PORTAL_PLACEHOLDER', 'Rendering portal placeholder fragment');
           final targetId = node.metadata!['targetId'] as String?;
           final portalId = node.metadata!['portalId'] as String?;
 
           if (targetId != null && portalId != null) {
-            VDomDebugLogger.log(
+            EngineDebugLogger.log(
                 'PORTAL_PLACEHOLDER_DETAILS', 'Portal placeholder details',
                 extra: {'TargetId': targetId, 'PortalId': portalId});
             return null; // Portal placeholders have no native view
@@ -718,7 +718,7 @@ class VDom {
         // O(1) - Check if this fragment is a portal target
         if (node.metadata != null && node.metadata!['isPortalTarget'] == true) {
           final targetId = node.metadata!['targetId'] as String?;
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'PORTAL_TARGET', 'Rendering portal target fragment',
               extra: {'TargetId': targetId});
         }
@@ -727,7 +727,7 @@ class VDom {
         int childIndex = index ?? 0;
         final childIds = <String>[];
 
-        VDomDebugLogger.log('FRAGMENT_CHILDREN',
+        EngineDebugLogger.log('FRAGMENT_CHILDREN',
             'Rendering ${node.children.length} fragment children');
         for (final child in node.children) {
           final childId = await renderToNative(child,
@@ -740,7 +740,7 @@ class VDom {
 
         // O(1) - Store child IDs for cleanup later
         node.childViewIds = childIds;
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'FRAGMENT_CHILDREN_COMPLETE', 'Fragment children rendered',
             extra: {'ChildCount': childIds.length, 'ChildIds': childIds});
 
@@ -759,7 +759,7 @@ class VDom {
 
       // O(component render complexity + children render complexity) - Handle Component nodes with enhanced phased effects
       if (node is StatefulComponent || node is StatelessComponent) {
-        VDomDebugLogger.log('RENDER_COMPONENT', 'Rendering component node',
+        EngineDebugLogger.log('RENDER_COMPONENT', 'Rendering component node',
             component: node.runtimeType.toString());
 
         try {
@@ -782,12 +782,12 @@ class VDom {
           // O(component render complexity) - Get the rendered content
           final renderedNode = node.renderedNode;
           if (renderedNode == null) {
-            VDomDebugLogger.logRender('ERROR', node,
+            EngineDebugLogger.logRender('ERROR', node,
                 error: 'Component rendered null');
             throw Exception('Component rendered null');
           }
 
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'COMPONENT_RENDERED_NODE', 'Component rendered content',
               extra: {'RenderedType': renderedNode.runtimeType.toString()});
 
@@ -800,16 +800,16 @@ class VDom {
 
           // O(1) - Store the view ID
           node.contentViewId = viewId;
-          VDomDebugLogger.log('COMPONENT_VIEW_ID', 'Component view ID assigned',
+          EngineDebugLogger.log('COMPONENT_VIEW_ID', 'Component view ID assigned',
               extra: {'ViewId': viewId});
 
           // O(hooks count) - Enhanced: Mount component with phased effects
           if (node is StatefulComponent && !node.isMounted) {
-            VDomDebugLogger.log('LIFECYCLE_DID_MOUNT',
+            EngineDebugLogger.log('LIFECYCLE_DID_MOUNT',
                 'Calling componentDidMount for StatefulComponent');
             node.componentDidMount();
 
-            VDomDebugLogger.log(
+            EngineDebugLogger.log(
                 'LIFECYCLE_EFFECTS_IMMEDIATE', 'Running immediate effects');
             node.runEffectsAfterRender();
 
@@ -819,7 +819,7 @@ class VDom {
 
             _scheduleLayoutEffects(node);
           } else if (node is StatelessComponent && !node.isMounted) {
-            VDomDebugLogger.log('LIFECYCLE_DID_MOUNT',
+            EngineDebugLogger.log('LIFECYCLE_DID_MOUNT',
                 'Calling componentDidMount for StatelessComponent');
             node.componentDidMount();
           }
@@ -835,42 +835,42 @@ class VDom {
             lifecycleInterceptor.afterMount(node, context);
           }
 
-          VDomDebugLogger.logRender('SUCCESS', node, viewId: viewId);
+          EngineDebugLogger.logRender('SUCCESS', node, viewId: viewId);
           return viewId;
         } catch (error, stackTrace) {
-          VDomDebugLogger.logRender('ERROR', node, error: error.toString());
+          EngineDebugLogger.logRender('ERROR', node, error: error.toString());
 
           // O(tree depth) - Try to find nearest error boundary
           final errorBoundary = _findNearestErrorBoundary(node);
           if (errorBoundary != null) {
-            VDomDebugLogger.log('ERROR_BOUNDARY_HANDLE',
+            EngineDebugLogger.log('ERROR_BOUNDARY_HANDLE',
                 'Error handled by boundary: ${errorBoundary.instanceId}');
             errorBoundary.handleError(error, stackTrace);
             return null; // Error handled by boundary
           }
 
-          VDomDebugLogger.log('ERROR_BOUNDARY_NOT_FOUND',
+          EngineDebugLogger.log('ERROR_BOUNDARY_NOT_FOUND',
               'No error boundary found, propagating error');
           rethrow;
         }
       }
       // O(element render complexity + children render complexity) - Handle Element nodes
       else if (node is DCFElement) {
-        VDomDebugLogger.log('RENDER_ELEMENT', 'Rendering element node',
+        EngineDebugLogger.log('RENDER_ELEMENT', 'Rendering element node',
             extra: {'ElementType': node.type});
         return await _renderElementToNative(node,
             parentViewId: parentViewId, index: index);
       }
       // O(1) - Handle EmptyVDomNode
       else if (node is EmptyVDomNode) {
-        VDomDebugLogger.log('RENDER_EMPTY', 'Rendering empty node');
+        EngineDebugLogger.log('RENDER_EMPTY', 'Rendering empty node');
         return null; // Empty nodes don't create native views
       }
 
-      VDomDebugLogger.logRender('UNKNOWN', node, error: 'Unknown node type');
+      EngineDebugLogger.logRender('UNKNOWN', node, error: 'Unknown node type');
       return null;
     } catch (e) {
-      VDomDebugLogger.logRender('ERROR', node, error: e.toString());
+      EngineDebugLogger.logRender('ERROR', node, error: e.toString());
       return null;
     }
   }
@@ -879,7 +879,7 @@ class VDom {
   void _scheduleLayoutEffects(StatefulComponent component) {
     Future.microtask(() {
       if (_componentsWaitingForLayout.contains(component.instanceId)) {
-        VDomDebugLogger.log('LIFECYCLE_EFFECTS_LAYOUT',
+        EngineDebugLogger.log('LIFECYCLE_EFFECTS_LAYOUT',
             'Running layout effects for component: ${component.instanceId}');
         component.runLayoutEffects();
         _componentsWaitingForLayout.remove(component.instanceId);
@@ -890,7 +890,7 @@ class VDom {
   /// O(1) - Set root component and trigger tree completion
   void setRootComponent(DCFComponentNode component) {
     rootComponent = component;
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'ROOT_COMPONENT_SET', 'Root component set: ${component.runtimeType}');
 
     Future.microtask(() {
@@ -903,13 +903,13 @@ class VDom {
     if (_isTreeComplete) return;
 
     _isTreeComplete = true;
-    VDomDebugLogger.log('TREE_COMPLETE', 'Component tree marked as complete');
+    EngineDebugLogger.log('TREE_COMPLETE', 'Component tree marked as complete');
 
     // O(waiting components count) - Run insertion effects for all waiting components
     for (final componentId in _componentsWaitingForInsertion) {
       final component = _statefulComponents[componentId];
       if (component != null) {
-        VDomDebugLogger.log('LIFECYCLE_EFFECTS_INSERTION',
+        EngineDebugLogger.log('LIFECYCLE_EFFECTS_INSERTION',
             'Running insertion effects for component: $componentId');
         component.runInsertionEffects();
       }
@@ -931,7 +931,7 @@ class VDom {
   /// O(children count + event types count) - Render an element to native UI
   Future<String?> _renderElementToNative(DCFElement element,
       {String? parentViewId, int? index}) async {
-    VDomDebugLogger.log('ELEMENT_RENDER_START', 'Starting element render',
+    EngineDebugLogger.log('ELEMENT_RENDER_START', 'Starting element render',
         extra: {
           'ElementType': element.type,
           'ParentViewId': parentViewId,
@@ -944,18 +944,18 @@ class VDom {
     // O(1) - Store map from view ID to node
     _nodesByViewId[viewId] = element;
     element.nativeViewId = viewId;
-    VDomDebugLogger.log('ELEMENT_VIEW_MAPPING', 'Mapped element to view ID',
+    EngineDebugLogger.log('ELEMENT_VIEW_MAPPING', 'Mapped element to view ID',
         extra: {'ViewId': viewId, 'ElementType': element.type});
 
     // O(1) - Create the view
-    VDomDebugLogger.logBridge('CREATE_VIEW', viewId, data: {
+    EngineDebugLogger.logBridge('CREATE_VIEW', viewId, data: {
       'ElementType': element.type,
       'Props': element.props.keys.toList()
     });
     final success =
         await _nativeBridge.createView(viewId, element.type, element.props);
     if (!success) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'ELEMENT_CREATE_FAILED', 'Failed to create native view',
           extra: {'ViewId': viewId, 'ElementType': element.type});
       return null;
@@ -963,7 +963,7 @@ class VDom {
 
     // O(1) - If parent is specified, attach to parent
     if (parentViewId != null) {
-      VDomDebugLogger.logBridge('ATTACH_VIEW', viewId,
+      EngineDebugLogger.logBridge('ATTACH_VIEW', viewId,
           data: {'ParentViewId': parentViewId, 'Index': index ?? 0});
       await _nativeBridge.attachView(viewId, parentViewId, index ?? 0);
     }
@@ -971,14 +971,14 @@ class VDom {
     // O(event types count) - Register event listeners
     final eventTypes = element.eventTypes;
     if (eventTypes.isNotEmpty) {
-      VDomDebugLogger.logBridge('ADD_EVENT_LISTENERS', viewId,
+      EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', viewId,
           data: {'EventTypes': eventTypes});
       await _nativeBridge.addEventListeners(viewId, eventTypes);
     }
 
     // O(children count * child render complexity) - Render children
     final childIds = <String>[];
-    VDomDebugLogger.log('ELEMENT_CHILDREN_START',
+    EngineDebugLogger.log('ELEMENT_CHILDREN_START',
         'Rendering ${element.children.length} children');
 
     for (var i = 0; i < element.children.length; i++) {
@@ -991,12 +991,12 @@ class VDom {
 
     // O(children count) - Set children order
     if (childIds.isNotEmpty) {
-      VDomDebugLogger.logBridge('SET_CHILDREN', viewId,
+      EngineDebugLogger.logBridge('SET_CHILDREN', viewId,
           data: {'ChildIds': childIds});
       await _nativeBridge.setChildren(viewId, childIds);
     }
 
-    VDomDebugLogger.log('ELEMENT_RENDER_SUCCESS', 'Element render completed',
+    EngineDebugLogger.log('ELEMENT_RENDER_SUCCESS', 'Element render completed',
         extra: {'ViewId': viewId, 'ChildCount': childIds.length});
     return viewId;
   }
@@ -1004,14 +1004,14 @@ class VDom {
   /// O(tree size) - Reconcile two nodes by efficiently updating only what changed
   Future<void> _reconcile(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
-    VDomDebugLogger.logReconcile('START', oldNode, newNode,
+    EngineDebugLogger.logReconcile('START', oldNode, newNode,
         reason: 'Beginning reconciliation');
 
     // O(1) - Check for custom reconciliation handler first
     final customHandler = VDomExtensionRegistry.instance
         .getReconciliationHandler(newNode.runtimeType);
     if (customHandler != null && customHandler.shouldHandle(oldNode, newNode)) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'CUSTOM_RECONCILE', 'Using custom reconciliation handler',
           component: newNode.runtimeType.toString());
 
@@ -1023,7 +1023,7 @@ class VDom {
       );
 
       await customHandler.reconcile(oldNode, newNode, context);
-      VDomDebugLogger.logReconcile('CUSTOM_COMPLETE', oldNode, newNode,
+      EngineDebugLogger.logReconcile('CUSTOM_COMPLETE', oldNode, newNode,
           reason: 'Custom reconciliation completed');
       return;
     }
@@ -1033,7 +1033,7 @@ class VDom {
 
     // O(1) - If the node types are completely different, replace the node entirely
     if (oldNode.runtimeType != newNode.runtimeType) {
-      VDomDebugLogger.logReconcile('REPLACE_TYPE', oldNode, newNode,
+      EngineDebugLogger.logReconcile('REPLACE_TYPE', oldNode, newNode,
           reason: 'Different node types');
       await _replaceNode(oldNode, newNode);
       return;
@@ -1041,7 +1041,7 @@ class VDom {
 
     // O(1) - Critical hot reload fix: If the keys are different, replace the component entirely
     if (oldNode.key != newNode.key) {
-      VDomDebugLogger.logReconcile('REPLACE_KEY', oldNode, newNode,
+      EngineDebugLogger.logReconcile('REPLACE_KEY', oldNode, newNode,
           reason: 'Different keys - hot reload fix');
       await _replaceNode(oldNode, newNode);
       return;
@@ -1050,18 +1050,18 @@ class VDom {
     // O(element reconciliation complexity) - Handle different node types
     if (oldNode is DCFElement && newNode is DCFElement) {
       if (oldNode.type != newNode.type) {
-        VDomDebugLogger.logReconcile('REPLACE_ELEMENT_TYPE', oldNode, newNode,
+        EngineDebugLogger.logReconcile('REPLACE_ELEMENT_TYPE', oldNode, newNode,
             reason: 'Different element types');
         await _replaceNode(oldNode, newNode);
       } else {
-        VDomDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
+        EngineDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
             reason: 'Same element type - updating props and children');
         await _reconcileElement(oldNode, newNode);
       }
     }
     // O(component reconciliation complexity) - Handle component nodes
     else if (oldNode is StatefulComponent && newNode is StatefulComponent) {
-      VDomDebugLogger.logReconcile('UPDATE_STATEFUL', oldNode, newNode,
+      EngineDebugLogger.logReconcile('UPDATE_STATEFUL', oldNode, newNode,
           reason: 'Reconciling StatefulComponent');
 
       // O(1) - Transfer important properties between nodes
@@ -1083,7 +1083,7 @@ class VDom {
     }
     // O(component reconciliation complexity) - Handle stateless components
     else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
-      VDomDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
+      EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
           reason: 'Reconciling StatelessComponent');
 
       // O(1) - Transfer IDs
@@ -1092,7 +1092,7 @@ class VDom {
 
       // O(1) - Framework-level optimization: skip if semantically equal
       if (oldNode == newNode) {
-        VDomDebugLogger.logReconcile('SKIP_STATELESS', oldNode, newNode,
+        EngineDebugLogger.logReconcile('SKIP_STATELESS', oldNode, newNode,
             reason: 'Stateless components are semantically equal');
 
         // O(rendered tree size) - Still reconcile the rendered content
@@ -1111,7 +1111,7 @@ class VDom {
     }
     // O(fragment children reconciliation) - Handle Fragment nodes
     else if (oldNode is DCFFragment && newNode is DCFFragment) {
-      VDomDebugLogger.logReconcile('UPDATE_FRAGMENT', oldNode, newNode,
+      EngineDebugLogger.logReconcile('UPDATE_FRAGMENT', oldNode, newNode,
           reason: 'Reconciling Fragment');
 
       // O(1) - Transfer children relationships
@@ -1122,7 +1122,7 @@ class VDom {
       if (oldNode.children.isNotEmpty || newNode.children.isNotEmpty) {
         final parentViewId = _findParentViewId(oldNode); // O(tree depth)
         if (parentViewId != null) {
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'FRAGMENT_CHILDREN_RECONCILE', 'Reconciling fragment children',
               extra: {
                 'ParentViewId': parentViewId,
@@ -1136,19 +1136,19 @@ class VDom {
     }
     // O(1) - Handle empty nodes
     else if (oldNode is EmptyVDomNode && newNode is EmptyVDomNode) {
-      VDomDebugLogger.logReconcile('SKIP_EMPTY', oldNode, newNode,
+      EngineDebugLogger.logReconcile('SKIP_EMPTY', oldNode, newNode,
           reason: 'Both nodes are empty');
       return;
     }
 
-    VDomDebugLogger.logReconcile('COMPLETE', oldNode, newNode,
+    EngineDebugLogger.logReconcile('COMPLETE', oldNode, newNode,
         reason: 'Reconciliation completed successfully');
   }
 
   /// O(tree depth + disposal complexity) - Replace a node entirely
   Future<void> _replaceNode(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
-    VDomDebugLogger.log('REPLACE_NODE_START', 'Starting node replacement',
+    EngineDebugLogger.log('REPLACE_NODE_START', 'Starting node replacement',
         extra: {
           'OldNodeType': oldNode.runtimeType.toString(),
           'NewNodeType': newNode.runtimeType.toString(),
@@ -1172,7 +1172,7 @@ class VDom {
 
     // O(1) - Can't replace if the old node has no view ID
     if (oldNode.effectiveNativeViewId == null) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'REPLACE_NODE_NO_VIEW_ID', 'Old node has no view ID, cannot replace');
       return;
     }
@@ -1180,19 +1180,19 @@ class VDom {
     // O(tree depth) - Find parent info for placing the new node
     final parentViewId = _findParentViewId(oldNode);
     if (parentViewId == null) {
-      VDomDebugLogger.log('REPLACE_NODE_NO_PARENT', 'No parent view ID found');
+      EngineDebugLogger.log('REPLACE_NODE_NO_PARENT', 'No parent view ID found');
       return;
     }
 
     // O(siblings count) - Find index of node in parent
     final index = _findNodeIndexInParent(oldNode);
-    VDomDebugLogger.log('REPLACE_NODE_POSITION', 'Found replacement position',
+    EngineDebugLogger.log('REPLACE_NODE_POSITION', 'Found replacement position',
         extra: {'ParentViewId': parentViewId, 'Index': index});
 
     // O(1) - Temporarily exit batch mode to ensure atomic delete+create
     final wasBatchMode = _batchUpdateInProgress;
     if (wasBatchMode) {
-      VDomDebugLogger.log('REPLACE_BATCH_PAUSE',
+      EngineDebugLogger.log('REPLACE_BATCH_PAUSE',
           'Temporarily pausing batch mode for atomic replacement');
       await _nativeBridge.commitBatchUpdate();
       _batchUpdateInProgress = false;
@@ -1206,16 +1206,16 @@ class VDom {
       final newEventTypes =
           (newNode is DCFElement) ? newNode.eventTypes : <String>[];
 
-      VDomDebugLogger.log('REPLACE_EVENT_TYPES', 'Comparing event types',
+      EngineDebugLogger.log('REPLACE_EVENT_TYPES', 'Comparing event types',
           extra: {'OldEvents': oldEventTypes, 'NewEvents': newEventTypes});
 
       // O(tree render complexity) - Special case: component that renders a fragment
       if (newNode is StatefulComponent || newNode is StatelessComponent) {
         final renderedNode = newNode.renderedNode;
         if (renderedNode is DCFFragment) {
-          VDomDebugLogger.log('REPLACE_COMPONENT_TO_FRAGMENT',
+          EngineDebugLogger.log('REPLACE_COMPONENT_TO_FRAGMENT',
               'Replacing component with fragment renderer');
-          VDomDebugLogger.logBridge('DELETE_VIEW', oldViewId);
+          EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
           await _nativeBridge.deleteView(oldViewId);
           _nodesByViewId.remove(oldViewId);
 
@@ -1227,7 +1227,7 @@ class VDom {
 
       // O(1) - Reuse the same view ID to preserve native event listener connections
       newNode.nativeViewId = oldViewId;
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'REPLACE_REUSE_VIEW_ID', 'Reusing view ID for event preservation',
           extra: {'ViewId': oldViewId});
 
@@ -1240,13 +1240,13 @@ class VDom {
 
       if (oldEventSet.length != newEventSet.length ||
           !oldEventSet.containsAll(newEventSet)) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'REPLACE_UPDATE_EVENTS', 'Updating event listeners');
 
         // O(removed events count) - Remove old event listeners that are no longer needed
         final eventsToRemove = oldEventSet.difference(newEventSet);
         if (eventsToRemove.isNotEmpty) {
-          VDomDebugLogger.logBridge('REMOVE_EVENT_LISTENERS', oldViewId,
+          EngineDebugLogger.logBridge('REMOVE_EVENT_LISTENERS', oldViewId,
               data: {'EventTypes': eventsToRemove.toList()});
           await _nativeBridge.removeEventListeners(
               oldViewId, eventsToRemove.toList());
@@ -1255,7 +1255,7 @@ class VDom {
         // O(added events count) - Add new event listeners
         final eventsToAdd = newEventSet.difference(oldEventSet);
         if (eventsToAdd.isNotEmpty) {
-          VDomDebugLogger.logBridge('ADD_EVENT_LISTENERS', oldViewId,
+          EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', oldViewId,
               data: {'EventTypes': eventsToAdd.toList()});
           await _nativeBridge.addEventListeners(
               oldViewId, eventsToAdd.toList());
@@ -1263,7 +1263,7 @@ class VDom {
       }
 
       // O(1) - Delete the old view completely
-      VDomDebugLogger.logBridge('DELETE_VIEW', oldViewId);
+      EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
       await _nativeBridge.deleteView(oldViewId);
 
       // O(tree render complexity) - Create the new view with the preserved view ID
@@ -1271,17 +1271,17 @@ class VDom {
           parentViewId: parentViewId, index: index);
 
       if (newViewId != null && newViewId.isNotEmpty) {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'REPLACE_NODE_SUCCESS', 'Node replacement completed successfully',
             extra: {'NewViewId': newViewId});
       } else {
-        VDomDebugLogger.log('REPLACE_NODE_FAILED',
+        EngineDebugLogger.log('REPLACE_NODE_FAILED',
             'Node replacement failed - no view ID returned');
       }
     } finally {
       // O(1) - Resume batch mode if we were previously in batch mode
       if (wasBatchMode) {
-        VDomDebugLogger.log('REPLACE_BATCH_RESUME', 'Resuming batch mode');
+        EngineDebugLogger.log('REPLACE_BATCH_RESUME', 'Resuming batch mode');
         await _nativeBridge.startBatchUpdate();
         _batchUpdateInProgress = true;
       }
@@ -1300,7 +1300,7 @@ class VDom {
 
   /// O(tree size) - Dispose of old component instance and clean up its state
   Future<void> _disposeOldComponent(DCFComponentNode oldNode) async {
-    VDomDebugLogger.logUnmount(oldNode, context: 'Disposing old component');
+    EngineDebugLogger.logUnmount(oldNode, context: 'Disposing old component');
 
     try {
       // O(1) - Call lifecycle interceptor before unmount
@@ -1317,7 +1317,7 @@ class VDom {
 
       // O(hooks count) - Handle StatefulComponent disposal
       if (oldNode is StatefulComponent) {
-        VDomDebugLogger.log('DISPOSE_STATEFUL', 'Disposing StatefulComponent',
+        EngineDebugLogger.log('DISPOSE_STATEFUL', 'Disposing StatefulComponent',
             extra: {'InstanceId': oldNode.instanceId});
 
         // O(1) - Remove from component tracking first to prevent further updates
@@ -1333,10 +1333,10 @@ class VDom {
         // O(hooks count) - Call lifecycle cleanup
         try {
           oldNode.componentWillUnmount();
-          VDomDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
               'Called componentWillUnmount for StatefulComponent');
         } catch (e) {
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'LIFECYCLE_WILL_UNMOUNT_ERROR', 'Error in componentWillUnmount',
               extra: {'Error': e.toString()});
         }
@@ -1346,7 +1346,7 @@ class VDom {
       }
       // O(1) - Handle StatelessComponent disposal
       else if (oldNode is StatelessComponent) {
-        VDomDebugLogger.log('DISPOSE_STATELESS', 'Disposing StatelessComponent',
+        EngineDebugLogger.log('DISPOSE_STATELESS', 'Disposing StatelessComponent',
             extra: {'InstanceId': oldNode.instanceId});
 
         // O(1) - Remove from component tracking
@@ -1355,10 +1355,10 @@ class VDom {
         // O(1) - Call lifecycle cleanup
         try {
           oldNode.componentWillUnmount();
-          VDomDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
               'Called componentWillUnmount for StatelessComponent');
         } catch (e) {
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'LIFECYCLE_WILL_UNMOUNT_ERROR', 'Error in componentWillUnmount',
               extra: {'Error': e.toString()});
         }
@@ -1368,7 +1368,7 @@ class VDom {
       }
       // O(children count * disposal complexity) - Handle DCFElement disposal
       else if (oldNode is DCFElement) {
-        VDomDebugLogger.log('DISPOSE_ELEMENT', 'Disposing DCFElement', extra: {
+        EngineDebugLogger.log('DISPOSE_ELEMENT', 'Disposing DCFElement', extra: {
           'ElementType': oldNode.type,
           'ChildCount': oldNode.children.length
         });
@@ -1382,7 +1382,7 @@ class VDom {
       // O(1) - Remove from view tracking
       if (oldNode.effectiveNativeViewId != null) {
         _nodesByViewId.remove(oldNode.effectiveNativeViewId);
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'DISPOSE_VIEW_TRACKING', 'Removed from view tracking',
             extra: {'ViewId': oldNode.effectiveNativeViewId});
       }
@@ -1397,7 +1397,7 @@ class VDom {
         lifecycleInterceptor.afterUnmount(oldNode, context);
       }
     } catch (e) {
-      VDomDebugLogger.log('DISPOSE_ERROR', 'Error during component disposal',
+      EngineDebugLogger.log('DISPOSE_ERROR', 'Error during component disposal',
           extra: {
             'Error': e.toString(),
             'NodeType': oldNode.runtimeType.toString()
@@ -1407,12 +1407,12 @@ class VDom {
 
   /// O(tree render complexity) - Create the root component for the application
   Future<void> createRoot(DCFComponentNode component) async {
-    VDomDebugLogger.log('CREATE_ROOT_START', 'Creating root component',
+    EngineDebugLogger.log('CREATE_ROOT_START', 'Creating root component',
         component: component.runtimeType.toString());
 
     // O(tree disposal complexity) - On hot restart, tear down old VDOM state
     if (rootComponent != null && rootComponent != component) {
-      VDomDebugLogger.log('CREATE_ROOT_HOT_RESTART',
+      EngineDebugLogger.log('CREATE_ROOT_HOT_RESTART',
           'Hot restart detected. Tearing down old VDOM state.');
 
       await _disposeOldComponent(rootComponent!);
@@ -1431,24 +1431,24 @@ class VDom {
       _componentsWaitingForInsertion.clear();
       _isTreeComplete = false;
 
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'VDOM_STATE_CLEARED', 'All VDOM tracking maps have been cleared.');
-      VDomDebugLogger.reset();
+      EngineDebugLogger.reset();
 
       rootComponent = component;
       await renderToNative(component, parentViewId: "root");
       setRootComponent(component);
 
-      VDomDebugLogger.log('CREATE_ROOT_COMPLETE',
+      EngineDebugLogger.log('CREATE_ROOT_COMPLETE',
           'Root component re-created successfully after hot restart.');
     } else {
-      VDomDebugLogger.log('CREATE_ROOT_FIRST', 'Creating first root component');
+      EngineDebugLogger.log('CREATE_ROOT_FIRST', 'Creating first root component');
       rootComponent = component;
 
       final viewId = await renderToNative(component, parentViewId: "root");
       setRootComponent(component);
 
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'CREATE_ROOT_COMPLETE', 'Root component created successfully',
           extra: {'ViewId': viewId});
     }
@@ -1462,7 +1462,7 @@ class VDom {
     while (current != null) {
       final viewId = current.effectiveNativeViewId;
       if (viewId != null && viewId.isNotEmpty) {
-        VDomDebugLogger.log('PARENT_VIEW_FOUND', 'Found parent view ID',
+        EngineDebugLogger.log('PARENT_VIEW_FOUND', 'Found parent view ID',
             extra: {
               'ParentViewId': viewId,
               'ParentType': current.runtimeType.toString()
@@ -1472,7 +1472,7 @@ class VDom {
       current = current.parent;
     }
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'PARENT_VIEW_DEFAULT', 'No parent view found, using root');
     return "root"; // Default to root if no parent found
   }
@@ -1480,20 +1480,20 @@ class VDom {
   /// O(siblings count) - Find a node's index in its parent's children
   int _findNodeIndexInParent(DCFComponentNode node) {
     if (node.parent == null) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'NODE_INDEX_NO_PARENT', 'No parent found, using index 0');
       return 0;
     }
 
     if (node.parent is! DCFElement) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'NODE_INDEX_NOT_ELEMENT', 'Parent is not DCFElement, using index 0');
       return 0;
     }
 
     final parent = node.parent as DCFElement;
     final index = parent.children.indexOf(node);
-    VDomDebugLogger.log('NODE_INDEX_FOUND', 'Found node index in parent',
+    EngineDebugLogger.log('NODE_INDEX_FOUND', 'Found node index in parent',
         extra: {'Index': index, 'ParentChildCount': parent.children.length});
     return index;
   }
@@ -1501,7 +1501,7 @@ class VDom {
   /// O(props count + event types count) - Reconcile an element - update props and children
   Future<void> _reconcileElement(
       DCFElement oldElement, DCFElement newElement) async {
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_ELEMENT_START', 'Starting element reconciliation', extra: {
       'ElementType': oldElement.type,
       'ViewId': oldElement.nativeViewId
@@ -1514,7 +1514,7 @@ class VDom {
 
       // O(1) - Always update the tracking map to maintain event handler lookup
       _nodesByViewId[oldElement.nativeViewId!] = newElement;
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'RECONCILE_UPDATE_TRACKING', 'Updated node tracking map');
 
       // O(event types count) - Handle event registration changes during reconciliation
@@ -1526,13 +1526,13 @@ class VDom {
 
       if (oldEventSet.length != newEventSet.length ||
           !oldEventSet.containsAll(newEventSet)) {
-        VDomDebugLogger.log('RECONCILE_UPDATE_EVENTS',
+        EngineDebugLogger.log('RECONCILE_UPDATE_EVENTS',
             'Event types changed, updating listeners',
             extra: {'OldEvents': oldEventTypes, 'NewEvents': newEventTypes});
 
         final eventsToRemove = oldEventSet.difference(newEventSet);
         if (eventsToRemove.isNotEmpty) {
-          VDomDebugLogger.logBridge(
+          EngineDebugLogger.logBridge(
               'REMOVE_EVENT_LISTENERS', oldElement.nativeViewId!,
               data: {'EventTypes': eventsToRemove.toList()});
           await _nativeBridge.removeEventListeners(
@@ -1541,7 +1541,7 @@ class VDom {
 
         final eventsToAdd = newEventSet.difference(oldEventSet);
         if (eventsToAdd.isNotEmpty) {
-          VDomDebugLogger.logBridge(
+          EngineDebugLogger.logBridge(
               'ADD_EVENT_LISTENERS', oldElement.nativeViewId!,
               data: {'EventTypes': eventsToAdd.toList()});
           await _nativeBridge.addEventListeners(
@@ -1554,16 +1554,16 @@ class VDom {
 
       // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
-        VDomDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
+        EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
             data: {'ChangedProps': changedProps.keys.toList()});
         await _nativeBridge.updateView(oldElement.nativeViewId!, changedProps);
       } else {
-        VDomDebugLogger.log(
+        EngineDebugLogger.log(
             'RECONCILE_NO_PROP_CHANGES', 'No prop changes detected');
       }
 
       // O(children reconciliation complexity) - Reconcile children with the most efficient algorithm
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'RECONCILE_CHILDREN_START', 'Starting children reconciliation',
           extra: {
             'OldChildCount': oldElement.children.length,
@@ -1572,7 +1572,7 @@ class VDom {
       await _reconcileChildren(oldElement, newElement);
     }
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_ELEMENT_COMPLETE', 'Element reconciliation completed');
   }
 
@@ -1617,7 +1617,7 @@ class VDom {
       }
     }
 
-    VDomDebugLogger.log('PROP_DIFF_COMPLETE', 'Props diffing completed',
+    EngineDebugLogger.log('PROP_DIFF_COMPLETE', 'Props diffing completed',
         extra: {
           'Added': addedCount,
           'Changed': changedCount,
@@ -1634,7 +1634,7 @@ class VDom {
     final oldChildren = oldElement.children;
     final newChildren = newElement.children;
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_CHILDREN', 'Starting children reconciliation',
         extra: {
           'OldCount': oldChildren.length,
@@ -1644,14 +1644,14 @@ class VDom {
 
     // O(1) - Fast path: no children
     if (oldChildren.isEmpty && newChildren.isEmpty) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'RECONCILE_CHILDREN_EMPTY', 'No children to reconcile');
       return;
     }
 
     // O(children count) - Check if children have keys for optimized reconciliation
     final hasKeys = _childrenHaveKeys(newChildren);
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_CHILDREN_STRATEGY', 'Choosing reconciliation strategy',
         extra: {'HasKeys': hasKeys});
 
@@ -1680,7 +1680,7 @@ class VDom {
       String parentViewId,
       List<DCFComponentNode> oldChildren,
       List<DCFComponentNode> newChildren) async {
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_FRAGMENT_CHILDREN', 'Reconciling fragment children',
         extra: {
           'ParentViewId': parentViewId,
@@ -1702,7 +1702,7 @@ class VDom {
       String parentViewId,
       List<DCFComponentNode> oldChildren,
       List<DCFComponentNode> newChildren) async {
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_KEYED_START', 'Starting keyed children reconciliation',
         extra: {
           'ParentViewId': parentViewId,
@@ -1720,7 +1720,7 @@ class VDom {
       oldChildOrderByKey[key] = i;
     }
 
-    VDomDebugLogger.log('RECONCILE_KEYED_MAP', 'Created old children map',
+    EngineDebugLogger.log('RECONCILE_KEYED_MAP', 'Created old children map',
         extra: {'KeyCount': oldChildrenMap.length});
 
     final updatedChildIds = <String>[];
@@ -1736,7 +1736,7 @@ class VDom {
       String? childViewId;
 
       if (oldChild != null) {
-        VDomDebugLogger.log('RECONCILE_KEYED_UPDATE', 'Updating existing child',
+        EngineDebugLogger.log('RECONCILE_KEYED_UPDATE', 'Updating existing child',
             extra: {'Key': key, 'Position': i});
 
         processedOldChildren.add(oldChild);
@@ -1746,7 +1746,7 @@ class VDom {
         final oldIndex = oldChildOrderByKey[key];
         if (oldIndex != null && oldIndex != i) {
           hasStructuralChanges = true;
-          VDomDebugLogger.log(
+          EngineDebugLogger.log(
               'RECONCILE_KEYED_REORDER', 'Child position changed',
               extra: {'Key': key, 'OldIndex': oldIndex, 'NewIndex': i});
           if (childViewId != null) {
@@ -1754,7 +1754,7 @@ class VDom {
           }
         }
       } else {
-        VDomDebugLogger.log('RECONCILE_KEYED_CREATE', 'Creating new child',
+        EngineDebugLogger.log('RECONCILE_KEYED_CREATE', 'Creating new child',
             extra: {'Key': key, 'Position': i});
         hasStructuralChanges = true;
         childViewId = await renderToNative(newChild,
@@ -1770,22 +1770,22 @@ class VDom {
     for (var oldChild in oldChildren) {
       if (!processedOldChildren.contains(oldChild)) {
         hasStructuralChanges = true;
-        VDomDebugLogger.log('RECONCILE_KEYED_REMOVE', 'Removing old child',
+        EngineDebugLogger.log('RECONCILE_KEYED_REMOVE', 'Removing old child',
             extra: {'ChildType': oldChild.runtimeType.toString()});
 
         try {
           oldChild.componentWillUnmount();
-          VDomDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
               'Called componentWillUnmount for removed child');
         } catch (e) {
-          VDomDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
               'Error in componentWillUnmount for removed child',
               extra: {'Error': e.toString()});
         }
 
         final viewId = oldChild.effectiveNativeViewId;
         if (viewId != null) {
-          VDomDebugLogger.logBridge('DELETE_VIEW', viewId);
+          EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
           await _nativeBridge.deleteView(viewId);
           _nodesByViewId.remove(viewId);
         }
@@ -1794,14 +1794,14 @@ class VDom {
 
     // O(children count) - Only call setChildren if there were structural changes
     if (hasStructuralChanges && updatedChildIds.isNotEmpty) {
-      VDomDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
+      EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
         'ChildIds': updatedChildIds,
         'ChildCount': updatedChildIds.length
       });
       await _nativeBridge.setChildren(parentViewId, updatedChildIds);
     }
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_KEYED_COMPLETE', 'Keyed children reconciliation completed',
         extra: {
           'StructuralChanges': hasStructuralChanges,
@@ -1814,7 +1814,7 @@ class VDom {
       String parentViewId,
       List<DCFComponentNode> oldChildren,
       List<DCFComponentNode> newChildren) async {
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_SIMPLE_START', 'Starting simple children reconciliation',
         extra: {
           'ParentViewId': parentViewId,
@@ -1831,7 +1831,7 @@ class VDom {
       final oldChild = oldChildren[i];
       final newChild = newChildren[i];
 
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'RECONCILE_SIMPLE_UPDATE', 'Updating child at index $i');
 
       await _reconcile(oldChild, newChild);
@@ -1845,7 +1845,7 @@ class VDom {
     // O((new - common) * render complexity) - Handle length differences
     if (newChildren.length > oldChildren.length) {
       hasStructuralChanges = true;
-      VDomDebugLogger.log('RECONCILE_SIMPLE_ADD',
+      EngineDebugLogger.log('RECONCILE_SIMPLE_ADD',
           'Adding ${newChildren.length - commonLength} new children');
 
       for (int i = commonLength; i < newChildren.length; i++) {
@@ -1859,7 +1859,7 @@ class VDom {
     } else if (oldChildren.length > newChildren.length) {
       // O(old - common) - Remove extra old children
       hasStructuralChanges = true;
-      VDomDebugLogger.log('RECONCILE_SIMPLE_REMOVE',
+      EngineDebugLogger.log('RECONCILE_SIMPLE_REMOVE',
           'Removing ${oldChildren.length - commonLength} old children');
 
       for (int i = commonLength; i < oldChildren.length; i++) {
@@ -1867,17 +1867,17 @@ class VDom {
 
         try {
           oldChild.componentWillUnmount();
-          VDomDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
               'Called componentWillUnmount for removed child');
         } catch (e) {
-          VDomDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
               'Error in componentWillUnmount for removed child',
               extra: {'Error': e.toString()});
         }
 
         final viewId = oldChild.effectiveNativeViewId;
         if (viewId != null) {
-          VDomDebugLogger.logBridge('DELETE_VIEW', viewId);
+          EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
           await _nativeBridge.deleteView(viewId);
           _nodesByViewId.remove(viewId);
         }
@@ -1886,14 +1886,14 @@ class VDom {
 
     // O(children count) - Only call setChildren if there were structural changes
     if (hasStructuralChanges && updatedChildIds.isNotEmpty) {
-      VDomDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
+      EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
         'ChildIds': updatedChildIds,
         'ChildCount': updatedChildIds.length
       });
       await _nativeBridge.setChildren(parentViewId, updatedChildIds);
     }
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'RECONCILE_SIMPLE_COMPLETE', 'Simple children reconciliation completed',
         extra: {
           'StructuralChanges': hasStructuralChanges,
@@ -1903,7 +1903,7 @@ class VDom {
 
   /// O(1) - Move a child to a specific index in its parent
   Future<void> _moveChild(String childId, String parentId, int index) async {
-    VDomDebugLogger.logBridge('MOVE_CHILD', childId,
+    EngineDebugLogger.logBridge('MOVE_CHILD', childId,
         data: {'ParentId': parentId, 'NewIndex': index});
 
     await _nativeBridge.detachView(childId);
@@ -1916,14 +1916,14 @@ class VDom {
 
     while (current != null) {
       if (current is ErrorBoundary) {
-        VDomDebugLogger.log('ERROR_BOUNDARY_FOUND', 'Found error boundary',
+        EngineDebugLogger.log('ERROR_BOUNDARY_FOUND', 'Found error boundary',
             extra: {'BoundaryId': current.instanceId});
         return current;
       }
       current = current.parent;
     }
 
-    VDomDebugLogger.log('ERROR_BOUNDARY_NOT_FOUND',
+    EngineDebugLogger.log('ERROR_BOUNDARY_NOT_FOUND',
         'No error boundary found in component tree');
     return null;
   }
@@ -1935,7 +1935,7 @@ class VDom {
       int? index}) async {
     await isReady;
 
-    VDomDebugLogger.log('CREATE_PORTAL_START', 'Creating portal container',
+    EngineDebugLogger.log('CREATE_PORTAL_START', 'Creating portal container',
         extra: {
           'PortalId': portalId,
           'ParentViewId': parentViewId,
@@ -1952,20 +1952,20 @@ class VDom {
     };
 
     try {
-      VDomDebugLogger.logBridge('CREATE_PORTAL', portalId,
+      EngineDebugLogger.logBridge('CREATE_PORTAL', portalId,
           data: {'Type': 'View', 'Props': portalProps.keys.toList()});
       await _nativeBridge.createView(portalId, 'View', portalProps);
 
-      VDomDebugLogger.logBridge('ATTACH_PORTAL', portalId,
+      EngineDebugLogger.logBridge('ATTACH_PORTAL', portalId,
           data: {'ParentViewId': parentViewId, 'Index': index ?? 0});
       await _nativeBridge.attachView(portalId, parentViewId, index ?? 0);
 
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'CREATE_PORTAL_SUCCESS', 'Portal container created successfully',
           extra: {'PortalId': portalId});
       return portalId;
     } catch (e) {
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'CREATE_PORTAL_ERROR', 'Failed to create portal container',
           extra: {'PortalId': portalId, 'Error': e.toString()});
       rethrow;
@@ -1974,7 +1974,7 @@ class VDom {
 
   /// O(children count) - Get the current child view IDs of a view (for portal management)
   List<String> getCurrentChildren(String viewId) {
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'GET_CURRENT_CHILDREN', 'Getting current children for view',
         extra: {'ViewId': viewId});
 
@@ -1987,13 +1987,13 @@ class VDom {
           childViewIds.add(childViewId);
         }
       }
-      VDomDebugLogger.log(
+      EngineDebugLogger.log(
           'GET_CURRENT_CHILDREN_SUCCESS', 'Retrieved child view IDs',
           extra: {'ViewId': viewId, 'ChildCount': childViewIds.length});
       return childViewIds;
     }
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'GET_CURRENT_CHILDREN_EMPTY', 'No children found for view',
         extra: {'ViewId': viewId});
     return [];
@@ -2002,7 +2002,7 @@ class VDom {
   /// O(1) - Update children of a view (for portal management)
   Future<void> updateViewChildren(String viewId, List<String> childIds) async {
     await isReady;
-    VDomDebugLogger.logBridge('UPDATE_VIEW_CHILDREN', viewId,
+    EngineDebugLogger.logBridge('UPDATE_VIEW_CHILDREN', viewId,
         data: {'ChildIds': childIds, 'ChildCount': childIds.length});
     await _nativeBridge.setChildren(viewId, childIds);
   }
@@ -2010,24 +2010,24 @@ class VDom {
   /// O(view count) - Delete views (for portal cleanup)
   Future<void> deleteViews(List<String> viewIds) async {
     await isReady;
-    VDomDebugLogger.log('DELETE_VIEWS_START', 'Deleting multiple views',
+    EngineDebugLogger.log('DELETE_VIEWS_START', 'Deleting multiple views',
         extra: {'ViewIds': viewIds, 'Count': viewIds.length});
 
     for (final viewId in viewIds) {
-      VDomDebugLogger.logBridge('DELETE_VIEW', viewId);
+      EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
       await _nativeBridge.deleteView(viewId);
       _nodesByViewId.remove(viewId); // O(1)
     }
 
-    VDomDebugLogger.log('DELETE_VIEWS_COMPLETE', 'Successfully deleted views',
+    EngineDebugLogger.log('DELETE_VIEWS_COMPLETE', 'Successfully deleted views',
         extra: {'Count': viewIds.length});
   }
 
   /// O(1) - Print comprehensive VDOM statistics (for debugging)
   void printDebugStats() {
-    VDomDebugLogger.printStats();
+    EngineDebugLogger.printStats();
 
-    VDomDebugLogger.log('VDOM_STATS', 'Current enhanced VDOM state', extra: {
+    EngineDebugLogger.log('VDOM_STATS', 'Current enhanced VDOM state', extra: {
       'StatefulComponents': _statefulComponents.length,
       'StatelessComponents': _statelessComponents.length,
       'NodesByViewId': _nodesByViewId.length,
@@ -2047,19 +2047,19 @@ class VDom {
     for (final priority in _componentPriorities.values) {
       priorityStats[priority.name] = (priorityStats[priority.name] ?? 0) + 1;
     }
-    VDomDebugLogger.log('PRIORITY_STATS', 'Component priority distribution',
+    EngineDebugLogger.log('PRIORITY_STATS', 'Component priority distribution',
         extra: priorityStats);
   }
 
   /// O(1) - Reset debug logging (for testing)
   void resetDebugLogging() {
-    VDomDebugLogger.reset();
+    EngineDebugLogger.reset();
   }
 
   /// O(1) - Enable/disable debug logging
   void setDebugLogging(bool enabled) {
-    VDomDebugLogger.enabled = enabled;
-    VDomDebugLogger.log('DEBUG_LOGGING_CHANGED',
+    EngineDebugLogger.enabled = enabled;
+    EngineDebugLogger.log('DEBUG_LOGGING_CHANGED',
         'Debug logging ${enabled ? 'enabled' : 'disabled'}');
   }
 
@@ -2098,7 +2098,7 @@ class VDom {
     _componentsWaitingForLayout.remove(componentId); // O(1)
     _componentsWaitingForInsertion.remove(componentId); // O(1)
 
-    VDomDebugLogger.log('CANCEL_COMPONENT_UPDATES',
+    EngineDebugLogger.log('CANCEL_COMPONENT_UPDATES',
         'Cancelled all updates for component: $componentId');
   }
 
@@ -2106,7 +2106,7 @@ class VDom {
   void flushHighPriorityUpdates() {
     if (_pendingUpdates.isEmpty) return;
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'FLUSH_HIGH_PRIORITY', 'Flushing high priority updates');
 
     // O(priorities count) - Check if we have high priority updates
@@ -2117,7 +2117,7 @@ class VDom {
     if (hasHighPriority) {
       _updateTimer?.cancel();
       _updateTimer = Timer(Duration.zero, _processPendingUpdates);
-      VDomDebugLogger.log('FLUSH_HIGH_PRIORITY_SCHEDULED',
+      EngineDebugLogger.log('FLUSH_HIGH_PRIORITY_SCHEDULED',
           'Scheduled immediate high priority batch');
     }
   }
@@ -2131,7 +2131,7 @@ class VDom {
     _updateTimer?.cancel();
     _isUpdateScheduled = false;
 
-    VDomDebugLogger.log('CLEAR_ALL_UPDATES', 'Cleared all pending updates',
+    EngineDebugLogger.log('CLEAR_ALL_UPDATES', 'Cleared all pending updates',
         extra: {'ClearedCount': clearedCount});
   }
 
@@ -2215,7 +2215,7 @@ class VDom {
   Future<void> shutdownConcurrentProcessing() async {
     if (!_concurrentEnabled) return;
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'VDOM_CONCURRENT_SHUTDOWN', 'Shutting down concurrent processing');
 
     // Kill all worker isolates
@@ -2223,7 +2223,7 @@ class VDom {
       try {
         isolate.kill();
       } catch (e) {
-        VDomDebugLogger.log('VDOM_CONCURRENT_SHUTDOWN_ERROR',
+        EngineDebugLogger.log('VDOM_CONCURRENT_SHUTDOWN_ERROR',
             'Error killing worker isolate: $e');
       }
     }
@@ -2234,7 +2234,7 @@ class VDom {
     _workerAvailable.clear();
     _concurrentEnabled = false;
 
-    VDomDebugLogger.log(
+    EngineDebugLogger.log(
         'VDOM_CONCURRENT_SHUTDOWN', 'Concurrent processing shutdown complete');
   }
 

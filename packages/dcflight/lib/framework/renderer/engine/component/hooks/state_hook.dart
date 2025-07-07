@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/renderer/vdom/component/hooks/store.dart';
+import 'package:dcflight/framework/renderer/engine/component/hooks/store.dart';
 
 /// Base hook class for all hook types
 abstract class Hook {

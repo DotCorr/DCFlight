@@ -6,8 +6,8 @@
  */
 
 import 'dart:async';
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'package:dcflight/framework/renderer/vdom/vdom_api.dart';
+import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'package:dcflight/framework/renderer/engine/engine_api.dart';
 
 /// Enhanced Portal Manager with React-like capabilities
 /// Supports:
@@ -23,7 +23,7 @@ class EnhancedPortalManager {
   EnhancedPortalManager._internal();
 
   /// Access to the VDOM API for proper portal operations
-  VDomAPI get _vdomApi => VDomAPI.instance;
+  DCFEngineAPI get _vdomApi => DCFEngineAPI.instance;
 
   /// Map of target IDs to their portal containers
   final Map<String, PortalTarget> _portalTargets = {};

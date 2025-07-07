@@ -5,7 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/renderer/vdom/component/hooks/state_hook.dart';
+import 'package:dcflight/framework/renderer/engine/component/hooks/state_hook.dart';
+
 /// A hook that memoizes a value, re-creating it only when dependencies change.
 class MemoHook<T> extends Hook {
   final T Function() create;

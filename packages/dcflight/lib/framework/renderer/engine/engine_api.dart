@@ -9,32 +9,31 @@
 import 'dart:async';
 
 import 'package:dcflight/framework/renderer/interface/interface.dart' show PlatformInterface;
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
-import 'core/vdom.dart';
+import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'core/engine.dart';
 
 /// Main API for VDOM operations
 /// This class provides a simplified interface to the VDOM implementation
-class VDomAPI {
+class DCFEngineAPI {
   /// Singleton instance
-  static final VDomAPI _instance = VDomAPI._();
-  static VDomAPI get instance => _instance;
+  static final DCFEngineAPI _instance = DCFEngineAPI._();
+  static DCFEngineAPI get instance => _instance;
   
   /// Internal VDOM implementation
-  late final VDom _vdom;
+  late final DCFEngine _vdom;
   
   /// Ready completer
   final Completer<void> _readyCompleter = Completer<void>();
   
   /// Private constructor
-  VDomAPI._() {
+  DCFEngineAPI._() {
     // Will be initialized explicitly with init()
   }
   
   /// Initialize the VDOM API with a platform interface
   Future<void> init(PlatformInterface platformInterface) async {
     try {
-      _vdom = VDom(platformInterface);
+      _vdom = DCFEngine(platformInterface);
       await _vdom.isReady;
       _readyCompleter.complete();
     } catch (e) {
@@ -51,24 +50,6 @@ class VDomAPI {
     await isReady;
     return _vdom.createRoot(component);
   }
-  
-  /// Create an element
-  DCFElement createElement(
-    String type, {
-    Map<String, dynamic>? props,
-    List<DCFComponentNode>? children,
-    String? key,
-  }) {
-    return DCFElement(
-      type: type,
-      props: props ?? {},
-      children: children ?? [],
-      key: key,
-    );
-  }
-  
-  // REMOVED: calculateLayout method
-  // Layout is now calculated automatically when layout props change
   
   /// Render a node to native UI
   Future<String?> renderToNative(DCFComponentNode node,
@@ -108,9 +89,5 @@ class VDomAPI {
   Future<void> deleteViews(List<String> viewIds) async {
     await isReady;
     await _vdom.deleteViews(viewIds);
-  }
-  
-  /// Log VDOM state for debugging
-  void debugLog(String message) {
   }
 }
