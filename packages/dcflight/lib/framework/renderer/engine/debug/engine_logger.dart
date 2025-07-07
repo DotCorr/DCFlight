@@ -2,7 +2,7 @@
 
 import 'package:dcflight/dcflight.dart';
 
-class VDomDebugLogger {
+class EngineDebugLogger {
   /// Toggle this to enable/disable all VDOM logging
   static bool enabled = false;
   

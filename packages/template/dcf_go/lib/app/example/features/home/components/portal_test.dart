@@ -1,5 +1,5 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/renderer/vdom/portal/explicit_portal_api.dart';
+import 'package:dcflight/framework/renderer/engine/portal/explicit_portal_api.dart';
 
 /// Simple Portal Test - demonstrates ExplicitPortalAPI usage
 class PortalTest extends StatefulComponent {

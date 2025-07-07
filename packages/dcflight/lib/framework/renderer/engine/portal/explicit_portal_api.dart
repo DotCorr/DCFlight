@@ -6,9 +6,9 @@
  */
 
 import 'dart:async';
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'package:dcflight/framework/renderer/vdom/component/component.dart';
-import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';
+import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'package:dcflight/framework/renderer/engine/component/component.dart';
+import 'package:dcflight/framework/renderer/engine/portal/enhanced_portal_manager.dart';
 
 /// Explicit Portal API 
 /// 

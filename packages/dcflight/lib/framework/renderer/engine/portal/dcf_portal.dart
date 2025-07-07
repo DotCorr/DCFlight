@@ -6,12 +6,12 @@
  */
 
 import 'dart:async';
-import 'package:dcflight/framework/renderer/vdom/component/component.dart';
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
-import 'package:dcflight/framework/renderer/vdom/component/fragment.dart';
-import 'package:dcflight/framework/renderer/vdom/component/dcf_element.dart';
-import 'package:dcflight/framework/renderer/vdom/core/concurrency/priority.dart';
-import 'package:dcflight/framework/renderer/vdom/portal/enhanced_portal_manager.dart';
+import 'package:dcflight/framework/renderer/engine/component/component.dart';
+import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'package:dcflight/framework/renderer/engine/component/fragment.dart';
+import 'package:dcflight/framework/renderer/engine/component/dcf_element.dart';
+import 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dart';
+import 'package:dcflight/framework/renderer/engine/portal/enhanced_portal_manager.dart';
 import 'package:flutter/foundation.dart';
 
 /// DCFPortal component for rendering children into a different DOM tree location

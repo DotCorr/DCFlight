@@ -47,7 +47,7 @@ export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
         ElementVisitor,
         WidgetInspectorService;
 // Core Infrastructure
-export 'framework/renderer/vdom/index.dart';
+export 'framework/renderer/engine/index.dart';
 
 
 
@@ -70,9 +70,9 @@ export 'framework/devtools/hot_restart.dart';
 export 'package:dcf_primitives/dcf_primitives.dart';
 export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
-import 'package:dcflight/framework/renderer/vdom/component/component_node.dart';
+import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
 
-import 'framework/renderer/vdom/vdom_api.dart';
+import 'framework/renderer/engine/engine_api.dart';
 import 'framework/renderer/interface/interface.dart';
 import 'framework/utilities/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
@@ -94,7 +94,7 @@ class DCFlight {
     ScreenUtilities.instance.refreshDimensions();
 
     // Initialize VDOM API with the bridge
-    await VDomAPI.instance.init(bridge);
+    await DCFEngineAPI.instance.init(bridge);
 
 
     // Register core plugin
@@ -111,7 +111,7 @@ class DCFlight {
     final wasHotRestart = await HotRestartDetector.detectAndCleanup();
 
     // Get the VDOM API instance
-    final vdom = VDomAPI.instance;
+    final vdom = DCFEngineAPI.instance;
 
     // Create our main app component
     final mainApp = app;
