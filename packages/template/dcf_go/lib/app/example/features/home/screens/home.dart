@@ -1,6 +1,7 @@
 import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcf_go/app/example/features/home/components/gradient.dart';
 import 'package:dcf_go/app/example/features/home/components/portal_test.dart';
+import 'package:dcf_go/app/example/features/home/components/very_long_list.dart';
 import 'package:dcf_go/app/example/features/home/pages/home.dart';
 import 'package:dcf_go/app/example/features/profile/screens/profile.dart';
 import 'package:dcflight/dcflight.dart';
@@ -12,6 +13,7 @@ class App extends StatefulComponent {
   // adds up to make your app even more performant.
   final homePage = Home();
   final gradientTestPage = GradientTest();
+  final veryLongListPage = VeryLongList();
   final profilePage = Profile();
   final portalTestPage = PortalTest();
 
@@ -35,7 +37,7 @@ class App extends StatefulComponent {
       // Only useInsertionEffect waits for the full tree initialization
       //*
       overlayCommand.setState(
-        NavigationPresets.presentOverlay("overlay_loading")
+        NavigationPresets.presentOverlay("overlay_loading"),
       );
       print(
         "Hey flutter dev. Effect is like init state but that can mutate if its dependencies state. You can override componentDidMount and componentDidMount if you dont want to use effects (mutate if and only if dependecy(state or changeable value) changes).",
@@ -63,11 +65,13 @@ class App extends StatefulComponent {
                 : pagestateLocal.state == 1
                 ? gradientTestPage
                 : pagestateLocal.state == 2
-                ? gradientTestPage
+                ? veryLongListPage
                 : pagestateLocal.state == 3
                 ? profilePage
                 : pagestateLocal.state == 4
                 ? portalTestPage
+                : pagestateLocal.state == 5
+                ? VeryLongList()
                 : DCFView(),
           ],
         ),
@@ -93,9 +97,10 @@ class App extends StatefulComponent {
             items: [
               DCFDropdownMenuItem(title: "Home", value: "0"),
               DCFDropdownMenuItem(title: "Gradient Test", value: "1"),
-              // DCFDropdownMenuItem(title: "Really Long List", value: "2"),
+              DCFDropdownMenuItem(title: "Really Long List", value: "2"),
               DCFDropdownMenuItem(title: "Modal & Alert Test", value: "3"),
               DCFDropdownMenuItem(title: "Portal Test", value: "4"),
+              DCFDropdownMenuItem(title: "Very Long List", value: "5"),
             ],
             selectedValue: pagestateLocal.state.toString(),
           ),
