@@ -1,241 +1,793 @@
-import 'dart:math';
-import 'dart:async';
-import 'dart:developer' as developer;
+/*
+ * FIXED: Complex Dashboard with EXPLICIT SIZING
+ * No more overlapping components!
+ */
+
 import 'package:dcflight/dcflight.dart';
+import 'dart:math' as math;
 
 void main() {
-  DCFlight.start(app: MyApp());
+  DCFlight.start(app: ComplexDashboardHome());
 }
 
-class MyApp extends StatefulComponent {
+class ComplexDashboardHome extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final resultHook = useState<String>('No calculation yet');
-    final isCalculatingHook = useState<bool>(false);
-    final counterHook = useState<int>(0);
-    final timingHook = useState<String>('');
+    // 🎯 STATE HOOKS - When these update, VDom will have LOTS of work
+    final selectedTab = useState<int>(0, 'selectedTab');
+    final refreshTrigger = useState<int>(0, 'refreshTrigger');
+    final filterText = useState<String>('', 'filterText');
+    final sortMode = useState<String>('name', 'sortMode');
+    final viewMode = useState<String>('grid', 'viewMode');
+    final animationScale = useState<double>(1.0, 'animationScale');
 
-    // This timer simulates other UI updates happening during heavy calculation
-    useEffect(() {
-      final timer = Timer.periodic(Duration(milliseconds: 100), (timer) {
-        if (!isCalculatingHook.state) return;
-        counterHook.setState(counterHook.state + 1);
+    // 📊 COMPLEX DATA - This will trigger heavy processing
+    final dashboardData = useState<List<DashboardItem>>(
+      _generateComplexData(),
+      'dashboardData',
+    );
+
+    // 🎭 FILTERED DATA - Changes cause cascade updates
+    final filteredData = useMemo(() {
+      var data =
+          dashboardData.state
+              .where(
+                (item) => item.title.toLowerCase().contains(
+                  filterText.state.toLowerCase(),
+                ),
+              )
+              .toList();
+
+      // Sort data
+      switch (sortMode.state) {
+        case 'name':
+          data.sort((a, b) => a.title.compareTo(b.title));
+          break;
+        case 'value':
+          data.sort((a, b) => b.value.compareTo(a.value));
+          break;
+        case 'status':
+          data.sort((a, b) => a.status.compareTo(b.status));
+          break;
+      }
+
+      return data;
+    }, dependencies: [dashboardData.state, filterText.state, sortMode.state]);
+
+    // 🔥 REFRESH ALL DATA - This will trigger 100+ component updates!
+    void refreshAllData() {
+      // This single call will trigger VDom isolate processing!
+      dashboardData.setState(_generateComplexData());
+      refreshTrigger.setState(refreshTrigger.state + 1);
+
+      // Add some visual feedback
+      animationScale.setState(0.95);
+      Future.delayed(Duration(milliseconds: 150), () {
+        animationScale.setState(1.0);
       });
-      return () => timer.cancel();
-    }, dependencies: [isCalculatingHook.state]);
+    }
 
     return DCFScrollView(
       layout: LayoutProps(
-        padding: 20,
-        flex: 1,
-        justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
+        width: "100%", // EXPLICIT WIDTH
+        height: "100%", // EXPLICIT HEIGHT
+        padding: 16,
+        gap: 12,
       ),
-      styleSheet: StyleSheet(backgroundColor: Colors.white),
+      styleSheet: StyleSheet(backgroundColor: Colors.grey[50]),
       children: [
-        DCFText(
-          content: 'DCFlight VDom Concurrency Test',
-          textProps: DCFTextProps(
-            fontSize: 24,
-            fontWeight: DCFFontWeight.bold,
-            color: Colors.black,
-            textAlign: 'center',
+        // 📱 TOP CONTROLS - Tab Switcher
+        _buildTabSwitcher(selectedTab),
+
+        // 🎛️ FILTER & CONTROLS SECTION
+        _buildControlsSection(filterText, sortMode, viewMode, refreshAllData),
+
+        // 📊 STATS CARDS ROW - 6 cards that update frequently
+        _buildStatsRow(dashboardData.state, refreshTrigger.state),
+
+        // 📈 CHARTS SECTION - Heavy rendering components
+        _buildChartsSection(dashboardData.state, selectedTab.state),
+
+        // 📋 DATA GRID - This is where the magic happens!
+        // When filterText or sortMode changes, this triggers updates to 50+ components
+        _buildDataGrid(filteredData, viewMode.state, animationScale.state),
+
+        // 🎮 ACTION BUTTONS - Trigger complex updates
+        _buildActionButtons(refreshAllData, dashboardData, selectedTab),
+
+        // 🔍 DEBUG SECTION - Shows VDom performance stats
+        _buildDebugSection(refreshTrigger.state),
+      ],
+    );
+  }
+
+  // 🎯 TAB SWITCHER - FIXED SIZING
+  DCFComponentNode _buildTabSwitcher(StateHook<int> selectedTab) {
+    return DCFSegmentedControl(
+      layout: LayoutProps(
+        width: "100%", // EXPLICIT WIDTH
+        height: 44.0, // EXPLICIT HEIGHT
+        marginBottom: 12,
+      ),
+      segmentedControlProps: DCFSegmentedControlProps(
+        selectedIndex: selectedTab.state,
+        segments: [
+          DCFSegmentItem(title: "Analytics"),
+          DCFSegmentItem(title: "Performance"),
+          DCFSegmentItem(title: "Users"),
+          DCFSegmentItem(title: "Revenue"),
+        ],
+      ),
+      onSelectionChange: (data) {
+        selectedTab.setState(data["selectedIndex"]);
+      },
+    );
+  }
+
+  // 🎛️ CONTROLS - FIXED SIZING
+  DCFComponentNode _buildControlsSection(
+    StateHook<String> filterText,
+    StateHook<String> sortMode,
+    StateHook<String> viewMode,
+    VoidCallback refreshCallback,
+  ) {
+    return DCFView(
+      layout: LayoutProps(
+        width: "100%", // EXPLICIT WIDTH
+        height: 50.0, // EXPLICIT HEIGHT
+        gap: 8,
+        flexDirection: YogaFlexDirection.row,
+        flexWrap: YogaWrap.wrap,
+        marginBottom: 12,
+      ),
+      children: [
+        // Search Input - FIXED SIZING
+        DCFTextInput(
+          placeholder: "🔍 Search dashboard items...",
+          value: filterText.state,
+          layout: LayoutProps(
+            width: 250.0, // EXPLICIT WIDTH instead of flex
+            height: 40.0, // EXPLICIT HEIGHT
+            padding: 8,
           ),
-        ),
-
-        DCFView(layout: LayoutProps(height: 20), children: []),
-
-        DCFText(
-          content: 'This calculation would freeze other frameworks:',
-          textProps: DCFTextProps(
-            fontSize: 16,
-            color: Colors.grey,
-            textAlign: 'center',
-          ),
-        ),
-
-        DCFView(layout: LayoutProps(height: 30), children: []),
-
-        DCFButton(
-          layout: LayoutProps(padding: 15, height: 100),
           styleSheet: StyleSheet(
-            borderRadius: 8,
-            backgroundColor:
-                isCalculatingHook.state ? Colors.grey : Colors.blue,
+            borderWidth: 1,
+            borderColor: Colors.grey[300],
+            borderRadius: 6,
           ),
-          // disabled: isCalculatingHook.state,
-          onPress: (_) async {
-            developer.log('🚀 Starting heavy calculation...');
-            final startTime = DateTime.now();
-
-            isCalculatingHook.setState(true);
-            resultHook.setState('Calculating...');
-            counterHook.setState(0);
-            timingHook.setState(
-              'Started at: ${startTime.toString().substring(11, 19)}',
-            );
-
-            // Give UI a chance to update before starting calculation
-            await Future.delayed(Duration(milliseconds: 100));
-
-            // This is BLOCKING math that would freeze other UIs
-            // But DCFlight VDom should handle it smoothly
-            developer.log('💪 Performing blocking calculation...');
-            double result = performBlockingCalculation();
-
-            final endTime = DateTime.now();
-            final duration = endTime.difference(startTime);
-            developer.log(
-              '✅ Calculation completed in ${duration.inMilliseconds}ms',
-            );
-
-            resultHook.setState('Result: ${result.toStringAsFixed(6)}');
-            timingHook.setState('Completed in: ${duration.inMilliseconds}ms');
-            isCalculatingHook.setState(false);
+          onChangeText: (data) {
+            // 🔥 THIS TRIGGERS ISOLATE PROCESSING!
+            filterText.setState(data);
           },
-
-          buttonProps: DCFButtonProps(
-            title:
-                isCalculatingHook.state
-                    ? 'Calculating...'
-                    : 'Start Heavy Calculation',
-          ),
         ),
 
-        DCFView(layout: LayoutProps(height: 30), children: []),
-
-        DCFText(
-          content: resultHook.state,
-          textProps: DCFTextProps(
-            fontSize: 16,
-            color: Colors.black,
-            textAlign: 'center',
+        // Sort Dropdown - FIXED SIZING
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Sort: ${sortMode.state}"),
+          layout: LayoutProps(
+            width: 120.0, // EXPLICIT WIDTH
+            height: 40.0, // EXPLICIT HEIGHT
           ),
-        ),
-
-        if (timingHook.state.isNotEmpty) ...[
-          DCFView(layout: LayoutProps(height: 10), children: []),
-          DCFText(
-            content: timingHook.state,
-            textProps: DCFTextProps(
-              fontSize: 12,
-              color: Colors.blue,
-              textAlign: 'center',
-            ),
-          ),
-        ],
-
-        DCFView(layout: LayoutProps(height: 20), children: []),
-
-        if (isCalculatingHook.state) ...[
-          DCFText(
-            content:
-                'UI Counter (proving UI is not frozen): ${counterHook.state}',
-            textProps: DCFTextProps(
-              fontSize: 14,
-              color: Colors.green,
-              textAlign: 'center',
-            ),
-          ),
-
-          DCFView(layout: LayoutProps(height: 10), children: []),
-
-          DCFSpinner(
-            layout: LayoutProps(height: 30, width: 30),
-            animating: true,
-            style: DCFSpinnerStyle.medium,
-            color: Colors.blue,
-          ),
-        ],
-
-        DCFView(layout: LayoutProps(height: 40), children: []),
-
-        DCFScrollView(
-          layout: LayoutProps(padding: 15, height: "30%"),
           styleSheet: StyleSheet(
-            borderRadius: 8,
-            backgroundColor: Colors.grey.shade200,
+            backgroundColor: Colors.blue[100],
+            borderRadius: 6,
           ),
-          children: [
-            DCFText(
-              content: 'Test Instructions:',
-              textProps: DCFTextProps(
-                fontSize: 14,
-                fontWeight: DCFFontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-            DCFText(
-              content: '1. Tap the button to start heavy calculation',
-              textProps: DCFTextProps(fontSize: 12, color: Colors.black),
-            ),
-            DCFText(
-              content: '2. Watch the counter - it should keep updating',
-              textProps: DCFTextProps(fontSize: 12, color: Colors.black),
-            ),
-            DCFText(
-              content: '3. UI should remain responsive throughout',
-              textProps: DCFTextProps(fontSize: 12, color: Colors.black),
-            ),
-            DCFText(
-              content: '4. Other frameworks would freeze here!',
-              textProps: DCFTextProps(
-                fontSize: 12,
-                fontWeight: DCFFontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-          ],
+          onPress: (_) {
+            final modes = ['name', 'value', 'status'];
+            final currentIndex = modes.indexOf(sortMode.state);
+            final nextIndex = (currentIndex + 1) % modes.length;
+            sortMode.setState(modes[nextIndex]);
+          },
+        ),
+
+        // View Mode Toggle - FIXED SIZING
+        DCFButton(
+          buttonProps: DCFButtonProps(
+            title: viewMode.state == 'grid' ? "📱" : "📄",
+          ),
+          layout: LayoutProps(
+            width: 50.0, // EXPLICIT WIDTH
+            height: 40.0, // EXPLICIT HEIGHT
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.green[100],
+            borderRadius: 6,
+          ),
+          onPress: (_) {
+            viewMode.setState(viewMode.state == 'grid' ? 'list' : 'grid');
+          },
+        ),
+
+        // Refresh Button - FIXED SIZING
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "🔄 Refresh All"),
+          layout: LayoutProps(
+            width: 120.0, // EXPLICIT WIDTH
+            height: 40.0, // EXPLICIT HEIGHT
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.orange[100],
+            borderRadius: 6,
+          ),
+          onPress: (_) => refreshCallback(),
         ),
       ],
     );
   }
+
+  // 📊 STATS CARDS - FIXED SIZING
+  DCFComponentNode _buildStatsRow(List<DashboardItem> data, int refreshKey) {
+    final stats = _calculateStats(data);
+
+    return DCFView(
+      layout: LayoutProps(
+        width: "100%", // EXPLICIT WIDTH
+        height: 100.0, // EXPLICIT HEIGHT
+        gap: 8,
+        flexDirection: YogaFlexDirection.row,
+        flexWrap: YogaWrap.wrap,
+        marginBottom: 12,
+      ),
+      children: [
+        _buildStatCard("📈 Total Items", "${data.length}", Colors.blue),
+        _buildStatCard("💰 Avg Value", "\$${stats['avgValue']}", Colors.green),
+        _buildStatCard("⭐ Top Score", "${stats['maxValue']}", Colors.purple),
+        _buildStatCard("📊 Active", "${stats['activeCount']}", Colors.orange),
+        _buildStatCard(
+          "⏱️ Updated",
+          "${DateTime.now().minute}:${DateTime.now().second}",
+          Colors.red,
+        ),
+        _buildStatCard("🎯 Refresh", "#$refreshKey", Colors.teal),
+      ],
+    );
+  }
+
+  DCFComponentNode _buildStatCard(String title, String value, Color color) {
+    return DCFView(
+      layout: LayoutProps(
+        width: 160.0, // EXPLICIT WIDTH
+        height: 80.0, // EXPLICIT HEIGHT
+        padding: 12,
+      ),
+      styleSheet: StyleSheet(
+        backgroundColor: color.withOpacity(0.1),
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: color.withOpacity(0.2),
+      ),
+      children: [
+        DCFText(
+          content: title,
+          layout: LayoutProps(height: 16.0), // EXPLICIT HEIGHT
+          textProps: DCFTextProps(fontSize: 12, color: Colors.grey[600]),
+        ),
+        DCFText(
+          content: value,
+          layout: LayoutProps(height: 24.0, marginTop: 8), // EXPLICIT HEIGHT
+          textProps: DCFTextProps(
+            fontSize: 18,
+            fontWeight: DCFFontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 📈 CHARTS SECTION - FIXED SIZING
+  DCFComponentNode _buildChartsSection(
+    List<DashboardItem> data,
+    int selectedTab,
+  ) {
+    return DCFView(
+      layout: LayoutProps(
+        width: "100%", // EXPLICIT WIDTH
+        height: 220.0, // EXPLICIT HEIGHT
+        gap: 12,
+        flexDirection: YogaFlexDirection.row,
+        marginBottom: 16,
+      ),
+      children: [
+        // Chart 1 - Line Chart
+        _buildMockChart("📈 Performance", Colors.blue, data.take(10).toList()),
+
+        // Chart 2 - Bar Chart
+        _buildMockChart(
+          "📊 Analytics",
+          Colors.green,
+          data.skip(10).take(10).toList(),
+        ),
+
+        // Chart 3 - Pie Chart
+        _buildMockChart(
+          "🥧 Distribution",
+          Colors.purple,
+          data.skip(20).take(10).toList(),
+        ),
+      ],
+    );
+  }
+
+  DCFComponentNode _buildMockChart(
+    String title,
+    Color color,
+    List<DashboardItem> chartData,
+  ) {
+    return DCFView(
+      layout: LayoutProps(
+        width: 300.0, // EXPLICIT WIDTH instead of flex: 1
+        height: 200.0, // EXPLICIT HEIGHT
+        padding: 12,
+      ),
+      styleSheet: StyleSheet(
+        backgroundColor: Colors.white,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: Colors.grey[200],
+      ),
+      children: [
+        DCFText(
+          content: title,
+          layout: LayoutProps(height: 20.0), // EXPLICIT HEIGHT
+          textProps: DCFTextProps(
+            fontSize: 14,
+            fontWeight: DCFFontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+        // Mock chart visualization
+        DCFView(
+          layout: LayoutProps(
+            width: "100%",
+            height: 150.0, // EXPLICIT HEIGHT instead of flex: 1
+            gap: 4,
+            marginTop: 8,
+          ),
+          children:
+              chartData
+                  .take(5)
+                  .map(
+                    (item) => DCFView(
+                      layout: LayoutProps(
+                        height: 20.0, // EXPLICIT HEIGHT
+                        width: "${(item.value / 100 * 80).toInt()}%",
+                      ),
+                      styleSheet: StyleSheet(
+                        backgroundColor: color.withOpacity(0.6),
+                        borderRadius: 2,
+                      ),
+                    ),
+                  )
+                  .toList(),
+        ),
+      ],
+    );
+  }
+
+  // 📋 DATA GRID - FIXED SIZING
+  DCFComponentNode _buildDataGrid(
+    List<DashboardItem> items,
+    String viewMode,
+    double scale,
+  ) {
+    // Calculate explicit height based on content
+    final itemHeight = viewMode == 'grid' ? 130.0 : 70.0;
+    final itemsPerRow = viewMode == 'grid' ? 3 : 1;
+    final rows = (items.length / itemsPerRow).ceil();
+    final contentHeight =
+        (rows * itemHeight) + (rows * 8) + 50; // items + gaps + header
+
+    return DCFView(
+      layout: LayoutProps(
+        width: "100%", // EXPLICIT WIDTH
+        height: contentHeight, // CALCULATED EXPLICIT HEIGHT
+        gap: 8,
+        scale: scale,
+        marginBottom: 16,
+      ),
+      children: [
+        DCFText(
+          content:
+              "📋 Dashboard Items (${items.length}) - ${viewMode.toUpperCase()} VIEW",
+          layout: LayoutProps(height: 24.0), // EXPLICIT HEIGHT
+          textProps: DCFTextProps(
+            fontSize: 16,
+            fontWeight: DCFFontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+
+        // 🔥 THIS IS WHERE THE MAGIC HAPPENS!
+        // 50+ components that update simultaneously
+        DCFView(
+          layout: LayoutProps(
+            width: "100%", // EXPLICIT WIDTH
+            height: contentHeight - 40, // EXPLICIT HEIGHT minus header
+            gap: viewMode == 'grid' ? 8 : 4,
+            flexDirection:
+                viewMode == 'grid'
+                    ? YogaFlexDirection.row
+                    : YogaFlexDirection.column,
+            flexWrap: viewMode == 'grid' ? YogaWrap.wrap : YogaWrap.nowrap,
+          ),
+          children:
+              items.map((item) => _buildDataItem(item, viewMode)).toList(),
+        ),
+      ],
+    );
+  }
+
+  // 📦 INDIVIDUAL DATA ITEM - FIXED SIZING
+  DCFComponentNode _buildDataItem(DashboardItem item, String viewMode) {
+    final isGrid = viewMode == 'grid';
+
+    return DCFView(
+      layout: LayoutProps(
+        width: isGrid ? 280.0 : "100%", // EXPLICIT WIDTH
+        height: isGrid ? 120.0 : 60.0, // EXPLICIT HEIGHT
+        padding: 12,
+        marginBottom: isGrid ? 8.0 : 4.0, // EXPLICIT MARGIN
+      ),
+      styleSheet: StyleSheet(
+        backgroundColor: Colors.white,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: _getStatusColor(item.status).withOpacity(0.3),
+        shadowColor: Colors.black.withOpacity(0.1),
+        shadowOffsetX: 0,
+        shadowOffsetY: 2,
+        shadowOpacity: 4,
+      ),
+      children: [
+        // Header Row
+        DCFView(
+          layout: LayoutProps(
+            width: "100%", // EXPLICIT WIDTH
+            height: 20.0, // EXPLICIT HEIGHT
+            flexDirection: YogaFlexDirection.row,
+            justifyContent: YogaJustifyContent.spaceBetween,
+            alignItems: YogaAlign.center,
+          ),
+          children: [
+            DCFText(
+              content: item.title,
+              layout: LayoutProps(
+                width: isGrid ? 220.0 : "85%", // EXPLICIT WIDTH
+                height: 18.0, // EXPLICIT HEIGHT
+              ),
+              textProps: DCFTextProps(
+                fontSize: isGrid ? 14 : 16,
+                fontWeight: DCFFontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            DCFView(
+              layout: LayoutProps(
+                width: 8.0, // EXPLICIT WIDTH
+                height: 8.0, // EXPLICIT HEIGHT
+              ),
+              styleSheet: StyleSheet(
+                borderRadius: 4,
+                backgroundColor: _getStatusColor(item.status),
+              ),
+            ),
+          ],
+        ),
+
+        if (isGrid) ...[
+          // Grid view - more detailed info
+          DCFText(
+            content: item.description,
+            layout: LayoutProps(
+              width: "100%", // EXPLICIT WIDTH
+              height: 32.0, // EXPLICIT HEIGHT
+              marginTop: 4,
+            ),
+            textProps: DCFTextProps(fontSize: 12, color: Colors.grey[600]),
+          ),
+          DCFView(
+            layout: LayoutProps(
+              width: "100%", // EXPLICIT WIDTH
+              height: 24.0, // EXPLICIT HEIGHT
+              flexDirection: YogaFlexDirection.row,
+              justifyContent: YogaJustifyContent.spaceBetween,
+              alignItems: YogaAlign.center,
+              marginTop: 8,
+            ),
+            children: [
+              DCFText(
+                content: "\$${item.value}",
+                layout: LayoutProps(
+                  width: 100.0, // EXPLICIT WIDTH
+                  height: 20.0, // EXPLICIT HEIGHT
+                ),
+                textProps: DCFTextProps(
+                  fontSize: 16,
+                  fontWeight: DCFFontWeight.bold,
+                  color: Colors.green[600],
+                ),
+              ),
+              DCFText(
+                content: item.status,
+                layout: LayoutProps(
+                  width: 80.0, // EXPLICIT WIDTH
+                  height: 16.0, // EXPLICIT HEIGHT
+                ),
+                textProps: DCFTextProps(
+                  fontSize: 12,
+                  color: _getStatusColor(item.status),
+                ),
+              ),
+            ],
+          ),
+        ] else ...[
+          // List view - compact info
+          DCFView(
+            layout: LayoutProps(
+              width: "100%", // EXPLICIT WIDTH
+              height: 20.0, // EXPLICIT HEIGHT
+              flexDirection: YogaFlexDirection.row,
+              justifyContent: YogaJustifyContent.spaceBetween,
+              alignItems: YogaAlign.center,
+              marginTop: 4,
+            ),
+            children: [
+              DCFText(
+                content: "\$${item.value} • ${item.status}",
+                layout: LayoutProps(
+                  width: "100%", // EXPLICIT WIDTH
+                  height: 16.0, // EXPLICIT HEIGHT
+                ),
+                textProps: DCFTextProps(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  // 🎮 ACTION BUTTONS - FIXED SIZING
+  DCFComponentNode _buildActionButtons(
+    VoidCallback refreshCallback,
+    StateHook<List<DashboardItem>> dashboardData,
+    StateHook<int> selectedTab,
+  ) {
+    return DCFView(
+      layout: LayoutProps(
+        width: "100%", // EXPLICIT WIDTH
+        height: 60.0, // EXPLICIT HEIGHT
+        gap: 8,
+        flexDirection: YogaFlexDirection.row,
+        flexWrap: YogaWrap.wrap,
+        marginBottom: 16,
+      ),
+      children: [
+        // Add Random Items - FIXED SIZING
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "➕ Add 20 Items"),
+          layout: LayoutProps(
+            width: 140.0, // EXPLICIT WIDTH
+            height: 45.0, // EXPLICIT HEIGHT
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.green[100],
+            borderRadius: 6,
+          ),
+          onPress: (_) {
+            final newItems = List.generate(
+              20,
+              (i) => DashboardItem(
+                id: DateTime.now().millisecondsSinceEpoch + i,
+                title: "New Item ${i + 1}",
+                description: "Added dynamically",
+                value: math.Random().nextInt(1000) + 100,
+                status:
+                    ['active', 'pending', 'inactive'][math.Random().nextInt(3)],
+              ),
+            );
+            dashboardData.setState([...dashboardData.state, ...newItems]);
+          },
+        ),
+
+        // Shuffle All - FIXED SIZING
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "🎲 Shuffle All"),
+          layout: LayoutProps(
+            width: 120.0, // EXPLICIT WIDTH
+            height: 45.0, // EXPLICIT HEIGHT
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.purple[100],
+            borderRadius: 6,
+          ),
+          onPress: (_) {
+            final shuffled = List<DashboardItem>.from(dashboardData.state);
+            shuffled.shuffle();
+            dashboardData.setState(shuffled);
+          },
+        ),
+
+        // Update Values - FIXED SIZING
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "💰 Update Values"),
+          layout: LayoutProps(
+            width: 140.0, // EXPLICIT WIDTH
+            height: 45.0, // EXPLICIT HEIGHT
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.orange[100],
+            borderRadius: 6,
+          ),
+          onPress: (_) {
+            final updated =
+                dashboardData.state
+                    .map(
+                      (item) => DashboardItem(
+                        id: item.id,
+                        title: item.title,
+                        description: item.description,
+                        value:
+                            math.Random().nextInt(1000) +
+                            100, // New random value
+                        status: item.status,
+                      ),
+                    )
+                    .toList();
+            dashboardData.setState(updated);
+          },
+        ),
+
+        // Clear All - FIXED SIZING
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "🗑️ Clear All"),
+          layout: LayoutProps(
+            width: 100.0, // EXPLICIT WIDTH
+            height: 45.0, // EXPLICIT HEIGHT
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.red[100],
+            borderRadius: 6,
+          ),
+          onPress: (_) {
+            dashboardData.setState([]);
+          },
+        ),
+
+        // Reset Demo - FIXED SIZING
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "🔄 Reset Demo"),
+          layout: LayoutProps(
+            width: 120.0, // EXPLICIT WIDTH
+            height: 45.0, // EXPLICIT HEIGHT
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: Colors.blue[100],
+            borderRadius: 6,
+          ),
+          onPress: (_) => refreshCallback(),
+        ),
+      ],
+    );
+  }
+
+  // 🔍 DEBUG SECTION - FIXED SIZING
+  DCFComponentNode _buildDebugSection(int refreshKey) {
+    return DCFView(
+      layout: LayoutProps(
+        width: "100%", // EXPLICIT WIDTH
+        height: 120.0, // EXPLICIT HEIGHT
+        padding: 12,
+        marginTop: 16,
+      ),
+      styleSheet: StyleSheet(
+        backgroundColor: Colors.grey[100],
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: Colors.grey[300],
+      ),
+      children: [
+        DCFText(
+          content: "🔍 VDom Performance Debug",
+          layout: LayoutProps(height: 20.0), // EXPLICIT HEIGHT
+          textProps: DCFTextProps(
+            fontSize: 14,
+            fontWeight: DCFFontWeight.bold,
+            color: Colors.grey[800],
+          ),
+        ),
+        DCFText(
+          content:
+              "• Updates: #$refreshKey\n• Watch console for isolate logs\n• Try searching, sorting, or refreshing to trigger concurrent processing",
+          layout: LayoutProps(height: 50.0, marginTop: 8), // EXPLICIT HEIGHT
+          textProps: DCFTextProps(fontSize: 12, color: Colors.grey[600]),
+        ),
+        DCFText(
+          content:
+              "🚀 When you see 5+ components updating simultaneously, VDom isolates kick in!",
+          layout: LayoutProps(height: 20.0, marginTop: 8), // EXPLICIT HEIGHT
+          textProps: DCFTextProps(
+            fontSize: 11,
+            color: Colors.blue[600],
+            fontWeight: DCFFontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 📊 HELPER FUNCTIONS (unchanged)
+
+  List<DashboardItem> _generateComplexData() {
+    final random = math.Random();
+    final statuses = [
+      'active',
+      'pending',
+      'inactive',
+      'processing',
+      'completed',
+    ];
+    final prefixes = ['Project', 'Task', 'Report', 'Analysis', 'Campaign'];
+
+    return List.generate(75, (index) {
+      // 75 items = plenty for isolate trigger!
+      return DashboardItem(
+        id: index,
+        title: "${prefixes[random.nextInt(prefixes.length)]} ${index + 1}",
+        description: "Description for item ${index + 1} with some detail text",
+        value: random.nextInt(5000) + 100,
+        status: statuses[random.nextInt(statuses.length)],
+      );
+    });
+  }
+
+  Map<String, dynamic> _calculateStats(List<DashboardItem> data) {
+    if (data.isEmpty) return {'avgValue': 0, 'maxValue': 0, 'activeCount': 0};
+
+    final values = data.map((item) => item.value).toList();
+    final avgValue = (values.reduce((a, b) => a + b) / values.length).round();
+    final maxValue = values.reduce(math.max);
+    final activeCount = data.where((item) => item.status == 'active').length;
+
+    return {
+      'avgValue': avgValue,
+      'maxValue': maxValue,
+      'activeCount': activeCount,
+    };
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'active':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'inactive':
+        return Colors.grey;
+      case 'processing':
+        return Colors.blue;
+      case 'completed':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
 }
 
-/// Performs intentionally blocking calculation that would freeze other UIs
-double performBlockingCalculation() {
-  developer.log('🔥 Starting HEAVY blocking calculation...');
-  double result = 0.0;
+// 📦 DATA MODEL (unchanged)
+class DashboardItem {
+  final int id;
+  final String title;
+  final String description;
+  final int value;
+  final String status;
 
-  // This is intentionally CPU-intensive and blocking
-  // Increased from 5M to 20M operations
-  for (int i = 0; i < 20000000; i++) {
-    result += sqrt(i.toDouble()) * sin(i.toDouble()) * cos(i.toDouble());
-
-    // Add some extra complexity
-    if (i % 1000 == 0) {
-      result = result / (i + 1) * pi;
-    }
-
-    // More frequent string operations
-    if (i % 5000 == 0) {
-      final str = 'calculation_$i';
-      result += str.length;
-      // Add string processing
-      final reversed = str.split('').reversed.join('');
-      result += reversed.length;
-    }
-
-    // Log progress every 5M operations
-    if (i % 5000000 == 0 && i > 0) {
-      developer.log('📊 Progress: ${(i / 20000000 * 100).toInt()}% complete');
-    }
-  }
-
-  developer.log('🎯 Math operations complete, starting list processing...');
-
-  // Additional blocking operations - increased complexity
-  for (int j = 0; j < 5000; j++) {
-    final list = List.generate(2000, (index) => Random().nextDouble());
-    list.sort();
-    result += list.first + list.last;
-
-    // Add more list operations
-    final shuffled = List<double>.from(list);
-    shuffled.shuffle();
-    result += shuffled.reduce((a, b) => a + b) / shuffled.length;
-  }
-
-  developer.log('✨ Blocking calculation FINISHED!');
-  return result;
+  DashboardItem({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.value,
+    required this.status,
+  });
 }
