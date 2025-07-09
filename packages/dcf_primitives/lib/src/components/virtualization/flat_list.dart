@@ -172,11 +172,17 @@ class DCFFlatList<T> extends StatelessComponent
       totalItemCount += data.length - 1; // separators between items
     }
 
+    // DEBUG: Log the counts
+    print('DEBUG FlatList: data.length=${data.length}, hasHeader=$hasHeader, hasFooter=$hasFooter, hasSeparators=$hasSeparators, totalItemCount=$totalItemCount');
+
     // Build render function
     DCFComponentNode renderVirtualizedItem(
         int index, vl.VirtualizedListItemInfo info) {
+      print('DEBUG FlatList: renderVirtualizedItem called with index=$index');
+
       // Handle header
       if (hasHeader && index == 0) {
+        print('DEBUG FlatList: Rendering header at index 0');
         return header!;
       }
 
@@ -187,6 +193,7 @@ class DCFFlatList<T> extends StatelessComponent
       // Handle footer
       if (hasFooter &&
           adjustedIndex == (totalItemCount - (hasHeader ? 1 : 0) - 1)) {
+        print('DEBUG FlatList: Rendering footer at adjustedIndex=$adjustedIndex');
         return footer!;
       }
 
@@ -205,10 +212,12 @@ class DCFFlatList<T> extends StatelessComponent
       // Bounds check
       if (dataIndex >= 0 && dataIndex < data.length) {
         final item = data[dataIndex];
+        print('DEBUG FlatList: Rendering data item at dataIndex=$dataIndex');
         return renderItem(item, dataIndex);
       }
 
       // Fallback for any edge cases
+      print('DEBUG FlatList: Fallback render for index=$index, adjustedIndex=$adjustedIndex, dataIndex=$dataIndex');
       return DCFView(children: []);
     }
 
@@ -306,6 +315,7 @@ class DCFFlatList<T> extends StatelessComponent
     }
 
     // Build command
+    print('DEBUG FlatList: Creating VirtualizedList with itemCount=$totalItemCount');
     return vl.DCFVirtualizedList(
       itemCount: totalItemCount,
       renderItem: renderVirtualizedItem,

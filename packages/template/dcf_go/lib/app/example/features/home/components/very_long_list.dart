@@ -6,7 +6,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:dcf_primitives/dcf_primitives.dart';
 
 /// VeryLongList - Performance test component with 100,000 items
 /// Demonstrates virtualization capabilities with large datasets
@@ -14,10 +13,7 @@ class VeryLongList extends StatefulComponent {
   @override
   DCFComponentNode render() {
     // Generate 100,000 items for performance testing
-    final itemsState = useState<List<ListItem>>(
-      _generateItems(100000),
-      'items',
-    );
+    final itemsState = useState<List<ListItem>>(_generateItems(500), 'items');
 
     final scrollMetricsState = useState<VirtualizedListMetrics?>(
       null,
@@ -28,77 +24,94 @@ class VeryLongList extends StatefulComponent {
     return DCFView(
       layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
       children: [
-        // Performance metrics header
-        DCFView(
-          layout: LayoutProps(
-            height: 60,
-            padding: 16,
-            flexDirection: YogaFlexDirection.row,
-            justifyContent: YogaJustifyContent.spaceBetween,
-            alignItems: YogaAlign.center,
-          ),
-          styleSheet: StyleSheet(
-            backgroundColor: Colors.black.withOpacity(0.9),
-          ),
+        DCFSafeArea(
           children: [
-            DCFText(content: 'Items: ${itemsState.state.length}'),
-            if (scrollMetricsState.state != null)
-              DCFText(
-                content: 'Rendered: ${scrollMetricsState.state!.renderedItems}',
+            // Performance metrics header
+            DCFView(
+              layout: LayoutProps(
+                height: 100,
+                width: "100%",
+                padding: 16,
+                flexDirection: YogaFlexDirection.row,
+                justifyContent: YogaJustifyContent.spaceBetween,
+                flexWrap: YogaWrap.wrap,
+                alignItems: YogaAlign.center,
               ),
-            DCFText(
-              content: 'Pos: ${scrollPositionState.state.toStringAsFixed(0)}',
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.red.withOpacity(0.9),
+              ),
+              children: [
+                DCFText(content: 'Items: ${itemsState.state.length}'),
+                if (scrollMetricsState.state != null)
+                  DCFText(
+                    content:
+                        'Rendered: ${scrollMetricsState.state!.renderedItems}',
+                  ),
+                DCFText(
+                  content:
+                      'Pos: ${scrollPositionState.state.toStringAsFixed(0)}',
+                ),
+              ],
+            ),
+
+            // Virtualized list
+            DCFFlatList<ListItem>(separator: DCFView(
+              layout: LayoutProps(height: 20),
+              styleSheet: StyleSheet(backgroundColor: Colors.red[300]),
+            ),
+              data: itemsState.state,
+              renderItem:
+                  (item, index) => VeryLongListItem(item: item, index: index),
+              keyExtractor: (item, index) => item.id,
+              itemSize: 80.0, // Fixed height for optimal performance
+
+              showsScrollIndicator: true,
+              removeClippedSubviews: true,
+              initialNumToRender: 15, // Start with minimal items
+              layout: LayoutProps(flex: 1),
+              onScroll: (event) {
+                print("DEBUG: scroll event - offset=${event.contentOffset.y}");
+                scrollPositionState.setState(event.contentOffset.y);
+              },
+              onMetrics: (metrics) {
+                scrollMetricsState.setState(metrics);
+                print('Metrics updated: $metrics');
+              },
+              onEndReached: () {
+                // Simulate loading more data
+                print('DEBUG: Reached end of list - could load more items');
+              },
+              onEndReachedThreshold: 0.1,
+              // separator: DCFView(
+              //   layout: LayoutProps(height: 1),
+              //   styleSheet: StyleSheet(backgroundColor: Colors.grey[300]),
+              // ),
+              header: DCFView(
+                layout: LayoutProps(
+                  height: 50,
+                  padding: 16,
+                  justifyContent: YogaJustifyContent.center,
+                ),
+                styleSheet: StyleSheet(backgroundColor: Colors.blue[50]),
+                children: [
+                  DCFText(content: '📋 Very Long List Performance Test'),
+                ],
+              ),
+              footer: DCFView(
+                layout: LayoutProps(
+                  height: 50,
+                  padding: 16,
+                  justifyContent: YogaJustifyContent.center,
+                ),
+                styleSheet: StyleSheet(backgroundColor: Colors.green[50]),
+                children: [
+                  DCFText(
+                    content: '🎉 End of ${itemsState.state.length} items!',
+                  ),
+                ],
+              ),
             ),
           ],
-        ),
-
-        // Virtualized list
-        DCFFlatList<ListItem>(
-          data: itemsState.state,
-          renderItem:
-              (item, index) => VeryLongListItem(item: item, index: index),
-          keyExtractor: (item, index) => item.id,
-          itemSize: 80.0, // Fixed height for optimal performance
-          horizontal: false,
-          showsScrollIndicator: true,
-          removeClippedSubviews: true,
-          initialNumToRender: 15, // Start with minimal items
-          layout: LayoutProps(flex: 1),
-          onScroll: (event) {
-            scrollPositionState.setState(event.contentOffset.y);
-          },
-          onMetrics: (metrics) {
-            scrollMetricsState.setState(metrics);
-          },
-          onEndReached: () {
-            // Simulate loading more data
-            print('Reached end of list - could load more items');
-          },
-          onEndReachedThreshold: 0.1,
-          separator: DCFView(
-            layout: LayoutProps(height: 1),
-            styleSheet: StyleSheet(backgroundColor: Colors.grey[300]),
-          ),
-          header: DCFView(
-            layout: LayoutProps(
-              height: 50,
-              padding: 16,
-              justifyContent: YogaJustifyContent.center,
-            ),
-            styleSheet: StyleSheet(backgroundColor: Colors.blue[50]),
-            children: [DCFText(content: '📋 Very Long List Performance Test')],
-          ),
-          footer: DCFView(
-            layout: LayoutProps(
-              height: 50,
-              padding: 16,
-              justifyContent: YogaJustifyContent.center,
-            ),
-            styleSheet: StyleSheet(backgroundColor: Colors.green[50]),
-            children: [
-              DCFText(content: '🎉 End of ${itemsState.state.length} items!'),
-            ],
-          ),
         ),
       ],
     );
