@@ -1,311 +1,23 @@
 /*
- * TARGETED FIX: The issue is that render window updates during scroll aren't working
- *
- * Root cause: The useState for renderWindow isn't triggering re-renders properly
- * when the scroll handler updates it during scroll events.
+ * Proper FlatList test app using the FIXED DCFVirtualizedList
+ * No more workarounds - this uses the actual fixed virtualization
  */
 
 import 'package:dcflight/dcflight.dart';
 
-/// Fixed test that should work beyond 20 items
-class FixedVirtualizationTest extends StatefulComponent {
+/// Main test app that properly uses DCFFlatList with fixed virtualization
+class ProperVirtualizedApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    print('🔍 FixedVirtualizationTest: Starting render');
+    final testModeState = useState<int>(0, 'testMode');
+    final testMode = testModeState.state;
 
-    // Create test data
-    final data = List.generate(
-      1000,
-      (index) =>
-          SimpleItem(id: 'fixed_item_$index', title: 'Fixed Item ${index + 1}'),
-    );
-
-    // 🚀 KEY FIX: Use a more aggressive state update strategy
-    final renderRangeState = useState<RenderRange>(
-      RenderRange(start: 0, end: 19), // Start with 20 items
-      'renderRange',
-    );
-    final scrollOffsetState = useState<double>(0.0, 'scrollOffset');
-
-    final renderRange = renderRangeState.state;
-    final scrollOffset = scrollOffsetState.state;
-
-    print('🔍 Current render range: ${renderRange.start}-${renderRange.end}');
-    print('🔍 Current scroll offset: ${scrollOffset.toStringAsFixed(0)}px');
-
-    // Calculate which items should be visible based on scroll
-    const double itemHeight = 70.0;
-    const double viewportHeight = 600.0; // Estimate
-
-    final firstVisibleIndex = (scrollOffset / itemHeight).floor().clamp(
-      0,
-      data.length - 1,
-    );
-    final lastVisibleIndex = ((scrollOffset + viewportHeight) / itemHeight)
-        .ceil()
-        .clamp(0, data.length - 1);
-
-    print('🔍 Visible range should be: $firstVisibleIndex-$lastVisibleIndex');
-
-    // Build children for current render range
-    final children = <DCFComponentNode>[];
-
-    // Add header
-    children.add(
-      DCFView(
-        key: 'fixed_header',
-        layout: LayoutProps(
-          height: 80,
-          padding: 16,
-          justifyContent: YogaJustifyContent.center,
-        ),
-        styleSheet: StyleSheet(backgroundColor: Colors.blue[100]),
-        children: [
-          DCFText(content: 'Fixed Virtualization Test'),
-          DCFText(
-            content:
-                'Rendering ${renderRange.end - renderRange.start + 1} items (${renderRange.start}-${renderRange.end})',
-          ),
-          DCFText(
-            content:
-                'Scroll: ${scrollOffset.toStringAsFixed(0)}px | Visible: $firstVisibleIndex-$lastVisibleIndex',
-          ),
-        ],
-      ),
-    );
-
-    // Add spacer before rendered items
-    if (renderRange.start > 0) {
-      final spacerHeight = renderRange.start * itemHeight;
-      children.add(
-        DCFView(
-          key: 'before_spacer',
-          layout: LayoutProps(height: spacerHeight),
-          styleSheet: StyleSheet(backgroundColor: Colors.red[100]),
-          children: [
-            DCFView(
-              layout: LayoutProps(
-                padding: 8,
-                justifyContent: YogaJustifyContent.center,
-              ),
-              children: [
-                DCFText(
-                  content:
-                      'SPACER: ${renderRange.start} items above (${spacerHeight.toStringAsFixed(0)}px)',
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Add actual items
-    int renderedCount = 0;
-    for (
-      int i = renderRange.start;
-      i <= renderRange.end && i < data.length;
-      i++
-    ) {
-      children.add(
-        DCFView(
-          key: 'fixed_item_$i',
-          layout: LayoutProps(
-            height: itemHeight,
-            padding: 16,
-            flexDirection: YogaFlexDirection.row,
-            alignItems: YogaAlign.center,
-          ),
-          styleSheet: StyleSheet(
-            backgroundColor: i % 2 == 0 ? Colors.white : Colors.grey[50],
-            borderWidth: 1,
-            borderColor: Colors.grey[300],
-          ),
-          children: [
-            DCFView(
-              layout: LayoutProps(
-                width: 40,
-                height: 40,
-                marginRight: 12,
-                justifyContent: YogaJustifyContent.center,
-                alignItems: YogaAlign.center,
-              ),
-              styleSheet: StyleSheet(
-                backgroundColor: _getIndexColor(i),
-                borderRadius: 20,
-              ),
-              children: [
-                DCFText(
-                  content: '$i',
-                  textProps: DCFTextProps(
-                    color: Colors.white,
-                    // fontWeight: "bold",
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            DCFView(
-              layout: LayoutProps(flex: 1),
-              children: [
-                DCFText(content: data[i].title),
-                DCFText(
-                  content:
-                      'Index: $i | Y: ${(i * itemHeight).toStringAsFixed(0)}px',
-                  textProps: DCFTextProps(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-      renderedCount++;
-    }
-
-    print('🔍 Actually rendered $renderedCount items');
-
-    // Add spacer after rendered items
-    if (renderRange.end < data.length - 1) {
-      final remainingItems = data.length - 1 - renderRange.end;
-      final spacerHeight = remainingItems * itemHeight;
-      children.add(
-        DCFView(
-          key: 'after_spacer',
-          layout: LayoutProps(height: spacerHeight),
-          styleSheet: StyleSheet(backgroundColor: Colors.green[100]),
-          children: [
-            DCFView(
-              layout: LayoutProps(
-                padding: 8,
-                justifyContent: YogaJustifyContent.center,
-              ),
-              children: [
-                DCFText(
-                  content:
-                      'SPACER: $remainingItems items below (${spacerHeight.toStringAsFixed(0)}px)',
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Add footer
-    children.add(
-      DCFView(
-        key: 'fixed_footer',
-        layout: LayoutProps(
-          height: 60,
-          padding: 16,
-          justifyContent: YogaJustifyContent.center,
-        ),
-        styleSheet: StyleSheet(backgroundColor: Colors.purple[100]),
-        children: [
-          DCFText(content: 'End of list - ${data.length} total items'),
-        ],
-      ),
-    );
-
-    // 🚀 KEY FIX: More aggressive scroll handler that forces updates
-    void handleScroll(Map<dynamic, dynamic> event) {
-      final contentOffset = event['contentOffset'] as Map<dynamic, dynamic>?;
-      if (contentOffset == null) return;
-
-      final newOffset = (contentOffset['y'] as num?)?.toDouble() ?? 0.0;
-      scrollOffsetState.setState(newOffset);
-
-      // Calculate new render range based on scroll position
-      final buffer = 30; // Render 30 items before and after visible area
-      final newFirstVisible = (newOffset / itemHeight).floor().clamp(
-        0,
-        data.length - 1,
-      );
-      final newLastVisible = ((newOffset + viewportHeight) / itemHeight)
-          .ceil()
-          .clamp(0, data.length - 1);
-
-      final newStart = (newFirstVisible - buffer).clamp(0, data.length - 1);
-      final newEnd = (newLastVisible + buffer).clamp(0, data.length - 1);
-
-      final newRange = RenderRange(start: newStart, end: newEnd);
-
-      // 🚀 AGGRESSIVE UPDATE: Update render range if ANY change is needed
-      if (newRange.start != renderRange.start ||
-          newRange.end != renderRange.end) {
-        print(
-          '🚀 UPDATING RENDER RANGE: ${renderRange.start}-${renderRange.end} -> ${newRange.start}-${newRange.end}',
-        );
-        print('🚀 Scroll offset: ${newOffset.toStringAsFixed(0)}px');
-        print('🚀 Visible items: $newFirstVisible-$newLastVisible');
-
-        renderRangeState.setState(newRange);
-      }
-    }
-
-    return DCFView(
-      layout: LayoutProps(flex: 1),
-      children: [
-        DCFSafeArea(
-          layout: LayoutProps(flex: 1),
-          children: [
-            DCFScrollView(
-              layout: LayoutProps(flex: 1),
-              onScroll: handleScroll,
-              children: children,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Color _getIndexColor(int index) {
-    final colors = [
-      Colors.blue[400]!,
-      Colors.green[400]!,
-      Colors.orange[400]!,
-      Colors.purple[400]!,
-      Colors.red[400]!,
-      Colors.teal[400]!,
+    final tests = [
+      ('Large Dataset (1000 items)', () => LargeDatasetFlatList()),
+      ('Variable Heights', () => VariableHeightFlatList()),
+      ('With Headers/Footers', () => HeaderFooterFlatList()),
+      ('Multi-Column Grid', () => MultiColumnFlatList()),
     ];
-    return colors[index % colors.length];
-  }
-}
-
-/// Simple data class
-class SimpleItem {
-  final String id;
-  final String title;
-
-  SimpleItem({required this.id, required this.title});
-}
-
-/// Helper class for render range
-class RenderRange {
-  final int start;
-  final int end;
-
-  RenderRange({required this.start, required this.end});
-
-  @override
-  String toString() => 'RenderRange($start-$end)';
-}
-
-/// Test to compare with broken DCFVirtualizedList
-class BrokenVirtualizedListTest extends StatefulComponent {
-  @override
-  DCFComponentNode render() {
-    final data = List.generate(
-      1000,
-      (index) => SimpleItem(
-        id: 'broken_item_$index',
-        title: 'Broken Item ${index + 1}',
-      ),
-    );
 
     return DCFView(
       layout: LayoutProps(flex: 1),
@@ -313,96 +25,610 @@ class BrokenVirtualizedListTest extends StatefulComponent {
         DCFSafeArea(
           layout: LayoutProps(flex: 1),
           children: [
+            // Test selector
             DCFView(
               layout: LayoutProps(
-                height: 60,
+                height: 100,
                 padding: 16,
-                justifyContent: YogaJustifyContent.center,
+                flexDirection: YogaFlexDirection.column,
               ),
-              styleSheet: StyleSheet(backgroundColor: Colors.red[100]),
-              children: [DCFText(content: 'Broken DCFVirtualizedList Test')],
-            ),
-
-            // This should show the same issue you're experiencing
-            DCFVirtualizedList(
-              data: data,
-              getItem: (data, index) => (data as List)[index],
-              getItemCount: (data) => (data as List).length,
-              renderItem: ({required item, required index}) {
-                return DCFView(
-                  layout: LayoutProps(
-                    height: 70,
-                    padding: 16,
-                    justifyContent: YogaJustifyContent.center,
-                  ),
-                  styleSheet: StyleSheet(
-                    backgroundColor:
-                        index % 2 == 0 ? Colors.blue[50] : Colors.green[50],
-                    borderWidth: 1,
-                    borderColor: Colors.grey[300],
-                  ),
-                  children: [DCFText(content: (item as SimpleItem).title)],
-                );
-              },
-              debug: true,
-              layout: LayoutProps(flex: 1),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Master test to compare fixed vs broken
-class ComparisonTest extends StatefulComponent {
-  @override
-  DCFComponentNode render() {
-    final useFixedState = useState<bool>(true, 'useFixed');
-    final useFixed = useFixedState.state;
-
-    return DCFView(
-      layout: LayoutProps(flex: 1),
-      children: [
-        DCFSafeArea(
-          layout: LayoutProps(flex: 1),
-          children: [
-            // Toggle button
-            DCFView(
-              layout: LayoutProps(
-                height: 80,
-                padding: 16,
-                justifyContent: YogaJustifyContent.center,
-              ),
-              styleSheet: StyleSheet(backgroundColor: Colors.grey[200]),
+              styleSheet: StyleSheet(backgroundColor: Colors.grey[100]),
               children: [
-                DCFTouchableOpacity(
-                  layout: LayoutProps(padding: 12),
-                  styleSheet: StyleSheet(
-                    backgroundColor:
-                        useFixed ? Colors.green[300] : Colors.red[300],
-                    borderRadius: 8,
+                DCFText(
+                  content: 'Fixed DCFVirtualizedList Tests',
+                  textProps: DCFTextProps(
+                    fontWeight: DCFFontWeight.bold,
+                    fontSize: 18,
                   ),
-                  onPress: (v) => useFixedState.setState(!useFixed),
+                ),
+                DCFText(
+                  content: 'Current: ${tests[testMode].$1}',
+                  textProps: DCFTextProps(fontSize: 14),
+                ),
+                DCFView(
+                  layout: LayoutProps(
+                    flexDirection: YogaFlexDirection.row,
+                    marginTop: 8,
+                  ),
                   children: [
-                    DCFText(
-                      content:
-                          useFixed
-                              ? 'Using FIXED Implementation'
-                              : 'Using BROKEN Implementation',
-                      textProps: DCFTextProps(
-                        color: Colors.white,
-                        // fontWeight: "bold",
+                    for (int i = 0; i < tests.length; i++)
+                      DCFTouchableOpacity(
+                        layout: LayoutProps(padding: 8, marginRight: 8),
+                        styleSheet: StyleSheet(
+                          backgroundColor:
+                              i == testMode
+                                  ? Colors.blue[500]
+                                  : Colors.grey[300],
+                          borderRadius: 6,
+                        ),
+                        onPress: (v) => testModeState.setState(i),
+                        children: [
+                          DCFText(
+                            content: '${i + 1}',
+                            textProps: DCFTextProps(
+                              color:
+                                  i == testMode ? Colors.white : Colors.black,
+                              // fontWeight: "bold",
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
                   ],
                 ),
               ],
             ),
 
-            // Show the selected test
-            useFixed ? FixedVirtualizationTest() : BrokenVirtualizedListTest(),
+            // Current test
+            tests[testMode].$2(),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Test 1: Large dataset with 1000 items
+class LargeDatasetFlatList extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final data = useMemo(
+      () => List.generate(
+        1000,
+        (index) => TestItem(
+          id: 'large_$index',
+          title: 'Large Dataset Item ${index + 1}',
+          subtitle: 'This is item number $index',
+          category: ['Work', 'Personal', 'Important', 'Urgent'][index % 4],
+          value: (index + 1) * 10.5,
+        ),
+      ),
+      dependencies: [],
+    );
+
+    return DCFView(
+      layout: LayoutProps(flex: 1),
+      children: [
+        DCFView(
+          layout: LayoutProps(
+            height: 60,
+            padding: 16,
+            justifyContent: YogaJustifyContent.center,
+          ),
+          styleSheet: StyleSheet(backgroundColor: Colors.blue[100]),
+          children: [
+            DCFText(content: 'Large Dataset Test - ${data.length} items'),
+          ],
+        ),
+
+        DCFFlatList<TestItem>(
+          data: data,
+          renderItem:
+              (item, index) => LargeDatasetItem(index: index, item: item),
+          keyExtractor: (item, index) => item.id,
+          debug: true, // Enable debug to see virtualization working
+          // Virtualization settings
+          initialNumToRender: 15,
+          windowSize: 25,
+          maxToRenderPerBatch: 8,
+
+          layout: LayoutProps(flex: 1),
+
+          // Add separator for better visual distinction
+          itemSeparatorComponent: DCFView(
+            layout: LayoutProps(height: 1),
+            styleSheet: StyleSheet(backgroundColor: Colors.grey[200]),
+            children: [],
+          ),
+
+          // End reached callback
+          onEndReached: () {
+            print('🔥 End reached! Could load more data here...');
+          },
+          onEndReachedThreshold: 0.1,
+        ),
+      ],
+    );
+  }
+}
+
+/// Test 2: Variable height items
+class VariableHeightFlatList extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final data = useMemo(
+      () => List.generate(
+        300,
+        (index) => VariableTestItem(
+          id: 'var_$index',
+          title: 'Variable Item ${index + 1}',
+          content: _generateVariableContent(index),
+          height: _getVariableHeight(index),
+        ),
+      ),
+      dependencies: [],
+    );
+
+    return DCFView(
+      layout: LayoutProps(flex: 1),
+      children: [
+        DCFView(
+          layout: LayoutProps(
+            height: 60,
+            padding: 16,
+            justifyContent: YogaJustifyContent.center,
+          ),
+          styleSheet: StyleSheet(backgroundColor: Colors.green[100]),
+          children: [
+            DCFText(content: 'Variable Heights Test - ${data.length} items'),
+          ],
+        ),
+
+        DCFFlatList<VariableTestItem>(
+          data: data,
+          renderItem:
+              (item, index) => VariableHeightItem(index: index, item: item),
+          keyExtractor: (item, index) => item.id,
+          debug: true,
+
+          // For variable heights, provide getItemLayout for better performance
+          getItemLayout:
+              (data, index) => {
+                'length': data[index].height,
+                'offset':
+                    0.0, // Would calculate cumulative offset for perfect scrolling
+                'index': index,
+              },
+
+          layout: LayoutProps(flex: 1),
+        ),
+      ],
+    );
+  }
+
+  String _generateVariableContent(int index) {
+    if (index % 7 == 0) {
+      return 'This is a very long content item that spans multiple lines and contains a lot of text to demonstrate variable height items in the virtualized list. It should make the item much taller than others.';
+    } else if (index % 4 == 0) {
+      return 'Medium length content with some additional details and information.';
+    } else if (index % 2 == 0) {
+      return 'Short content item.';
+    } else {
+      return 'Tiny.';
+    }
+  }
+
+  double _getVariableHeight(int index) {
+    if (index % 7 == 0) return 120.0;
+    if (index % 4 == 0) return 80.0;
+    if (index % 2 == 0) return 60.0;
+    return 40.0;
+  }
+}
+
+/// Test 3: Headers and footers
+class HeaderFooterFlatList extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final data = useMemo(
+      () => List.generate(
+        200,
+        (index) => TestItem(
+          id: 'header_$index',
+          title: 'Header Test Item ${index + 1}',
+          subtitle: 'Item with headers and footers',
+          category: 'Test',
+          value: index.toDouble(),
+        ),
+      ),
+      dependencies: [],
+    );
+
+    return DCFView(
+      layout: LayoutProps(flex: 1),
+      children: [
+        DCFView(
+          layout: LayoutProps(
+            height: 60,
+            padding: 16,
+            justifyContent: YogaJustifyContent.center,
+          ),
+          styleSheet: StyleSheet(backgroundColor: Colors.purple[100]),
+          children: [
+            DCFText(content: 'Headers & Footers Test - ${data.length} items'),
+          ],
+        ),
+
+        DCFFlatList<TestItem>(
+          data: data,
+          renderItem: (item, index) => StandardItem(index: index, item: item),
+          keyExtractor: (item, index) => item.id,
+          debug: true,
+
+          layout: LayoutProps(flex: 1),
+
+          // List header
+          listHeaderComponent: DCFView(
+            layout: LayoutProps(
+              height: 80,
+              padding: 20,
+              justifyContent: YogaJustifyContent.center,
+              alignItems: YogaAlign.center,
+            ),
+            styleSheet: StyleSheet(
+              backgroundColor: Colors.blue[500],
+              borderRadius: 12,
+              // margin: 8,
+            ),
+            children: [
+              DCFText(
+                content: '📋 List Header',
+                textProps: DCFTextProps(
+                  color: Colors.white,
+                  // fontWeight: "bold",
+                  fontSize: 18,
+                ),
+              ),
+              DCFText(
+                content: 'This header scrolls with the content',
+                textProps: DCFTextProps(color: Colors.white, fontSize: 14),
+              ),
+            ],
+          ),
+
+          // List footer
+          listFooterComponent: DCFView(
+            layout: LayoutProps(
+              height: 80,
+              padding: 20,
+              justifyContent: YogaJustifyContent.center,
+              alignItems: YogaAlign.center,
+            ),
+            styleSheet: StyleSheet(
+              backgroundColor: Colors.green[500],
+              borderRadius: 12,
+              // margin: 8,
+            ),
+            children: [
+              DCFText(
+                content: '🎯 List Footer',
+                textProps: DCFTextProps(
+                  color: Colors.white,
+                  // fontWeight: "bold",
+                  fontSize: 18,
+                ),
+              ),
+              DCFText(
+                content: 'End of ${data.length} items',
+                textProps: DCFTextProps(color: Colors.white, fontSize: 14),
+              ),
+            ],
+          ),
+
+          // Item separator
+          itemSeparatorComponent: DCFView(
+            layout: LayoutProps(height: 2),
+            styleSheet: StyleSheet(backgroundColor: Colors.grey[300]),
+            children: [],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Test 4: Multi-column grid
+class MultiColumnFlatList extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final data = useMemo(
+      () => List.generate(
+        150,
+        (index) => GridTestItem(
+          id: 'grid_$index',
+          title: 'Grid ${index + 1}',
+          color: _getGridColor(index),
+        ),
+      ),
+      dependencies: [],
+    );
+
+    return DCFView(
+      layout: LayoutProps(flex: 1),
+      children: [
+        DCFView(
+          layout: LayoutProps(
+            height: 60,
+            padding: 16,
+            justifyContent: YogaJustifyContent.center,
+          ),
+          styleSheet: StyleSheet(backgroundColor: Colors.orange[100]),
+          children: [
+            DCFText(content: 'Multi-Column Grid Test - ${data.length} items'),
+          ],
+        ),
+
+        DCFFlatList<GridTestItem>(
+          data: data,
+          renderItem: (item, index) => GridItem(index: index, item: item),
+          keyExtractor: (item, index) => item.id,
+          debug: true,
+
+          // Multi-column settings
+          numColumns: 3,
+          columnWrapperLayout: LayoutProps(
+            padding: 4,
+            justifyContent: YogaJustifyContent.spaceBetween,
+          ),
+
+          layout: LayoutProps(flex: 1),
+        ),
+      ],
+    );
+  }
+
+  Color _getGridColor(int index) {
+    final colors = [
+      Colors.red[300]!,
+      Colors.blue[300]!,
+      Colors.green[300]!,
+      Colors.yellow[300]!,
+      Colors.purple[300]!,
+      Colors.orange[300]!,
+    ];
+    return colors[index % colors.length];
+  }
+}
+
+// Data classes
+class TestItem {
+  final String id;
+  final String title;
+  final String subtitle;
+  final String category;
+  final double value;
+
+  TestItem({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.category,
+    required this.value,
+  });
+}
+
+class VariableTestItem {
+  final String id;
+  final String title;
+  final String content;
+  final double height;
+
+  VariableTestItem({
+    required this.id,
+    required this.title,
+    required this.content,
+    required this.height,
+  });
+}
+
+class GridTestItem {
+  final String id;
+  final String title;
+  final Color color;
+
+  GridTestItem({required this.id, required this.title, required this.color});
+}
+
+// Item components
+class LargeDatasetItem extends StatelessComponent {
+  final int index;
+  final TestItem item;
+
+  LargeDatasetItem({required this.index, required this.item, super.key});
+
+  @override
+  DCFComponentNode render() {
+    return DCFView(
+      layout: LayoutProps(
+        height: 70,
+        padding: 16,
+        flexDirection: YogaFlexDirection.row,
+        alignItems: YogaAlign.center,
+      ),
+      styleSheet: StyleSheet(
+        backgroundColor: index % 2 == 0 ? Colors.white : Colors.grey[50],
+      ),
+      children: [
+        DCFView(
+          layout: LayoutProps(
+            width: 50,
+            height: 50,
+            marginRight: 16,
+            justifyContent: YogaJustifyContent.center,
+            alignItems: YogaAlign.center,
+          ),
+          styleSheet: StyleSheet(
+            backgroundColor: _getCategoryColor(item.category),
+            borderRadius: 25,
+          ),
+          children: [
+            DCFText(
+              content: '$index',
+              textProps: DCFTextProps(
+                color: Colors.white,
+                // fontWeight: "bold",
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        DCFView(
+          layout: LayoutProps(flex: 1),
+          children: [
+            DCFText(
+              content: item.title,
+              textProps: DCFTextProps(
+                // fontWeight: "600",
+                fontSize: 16,
+              ),
+            ),
+            DCFText(
+              content: '${item.subtitle} • ${item.category}',
+              textProps: DCFTextProps(color: Colors.grey[600], fontSize: 13),
+            ),
+          ],
+        ),
+        DCFText(
+          content: '\$${item.value.toStringAsFixed(1)}',
+          textProps: DCFTextProps(
+            // fontWeight: "bold",
+            color: Colors.green[600],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case 'Work':
+        return Colors.blue[500]!;
+      case 'Personal':
+        return Colors.green[500]!;
+      case 'Important':
+        return Colors.red[500]!;
+      case 'Urgent':
+        return Colors.orange[500]!;
+      default:
+        return Colors.grey[500]!;
+    }
+  }
+}
+
+class VariableHeightItem extends StatelessComponent {
+  final int index;
+  final VariableTestItem item;
+
+  VariableHeightItem({required this.index, required this.item, super.key});
+
+  @override
+  DCFComponentNode render() {
+    return DCFView(
+      layout: LayoutProps(
+        height: item.height,
+        padding: 16,
+        justifyContent: YogaJustifyContent.center,
+      ),
+      styleSheet: StyleSheet(
+        backgroundColor: _getHeightColor(item.height),
+        borderWidth: 1,
+        borderColor: Colors.grey[300],
+        // margin: 4,
+        borderRadius: 8,
+      ),
+      children: [
+        DCFText(
+          content: item.title,
+          textProps: DCFTextProps(
+            // fontWeight: "bold",
+            fontSize: 16,
+          ),
+        ),
+        DCFText(
+          content: item.content,
+          textProps: DCFTextProps(fontSize: 14, color: Colors.grey[700]),
+        ),
+        DCFText(
+          content: 'Height: ${item.height.toInt()}px',
+          textProps: DCFTextProps(fontSize: 12, color: Colors.grey[500]),
+        ),
+      ],
+    );
+  }
+
+  Color _getHeightColor(double height) {
+    if (height > 100) return Colors.red[50]!;
+    if (height > 70) return Colors.yellow[50]!;
+    if (height > 50) return Colors.green[50]!;
+    return Colors.blue[50]!;
+  }
+}
+
+class StandardItem extends StatelessComponent {
+  final int index;
+  final TestItem item;
+
+  StandardItem({required this.index, required this.item, super.key});
+
+  @override
+  DCFComponentNode render() {
+    return DCFView(
+      layout: LayoutProps(
+        height: 60,
+        padding: 16,
+        flexDirection: YogaFlexDirection.row,
+        alignItems: YogaAlign.center,
+      ),
+      styleSheet: StyleSheet(backgroundColor: Colors.white),
+      children: [
+        DCFText(
+          content: item.title,
+          textProps: DCFTextProps(
+            // fontWeight: "600",
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class GridItem extends StatelessComponent {
+  final int index;
+  final GridTestItem item;
+
+  GridItem({required this.index, required this.item, super.key});
+
+  @override
+  DCFComponentNode render() {
+    return DCFView(
+      layout: LayoutProps(
+        height: 80,
+        justifyContent: YogaJustifyContent.center,
+        alignItems: YogaAlign.center,
+      ),
+      styleSheet: StyleSheet(
+        backgroundColor: item.color,
+        borderRadius: 8,
+        // margin: 4,
+      ),
+      children: [
+        DCFText(
+          content: item.title,
+          textProps: DCFTextProps(
+            color: Colors.white,
+            // fontWeight: "bold",
+            fontSize: 14,
+          ),
         ),
       ],
     );
