@@ -1,351 +1,352 @@
 /*
- * Copyright (c) Dotcorr Studio. and affiliates.
+ * TARGETED FIX: The issue is that render window updates during scroll aren't working
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Root cause: The useState for renderWindow isn't triggering re-renders properly
+ * when the scroll handler updates it during scroll events.
  */
 
 import 'package:dcflight/dcflight.dart';
 
-/// DEBUG: What's actually being rendered vs what should be rendered
-class DebugRenderedItems extends StatefulComponent {
+/// Fixed test that should work beyond 20 items
+class FixedVirtualizationTest extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final itemsState = useMemo(
-      () => List.generate(
-        1000,
-        (index) => ListItem(
-          id: 'item_$index',
-          title: 'Item #${index + 1}',
-          subtitle: 'Debug test item',
-          value: (index + 1) * 1.5,
-          isHighlighted: index % 50 == 0,
-          category: ['Work', 'Personal', 'Important'][index % 3],
-          timestamp: DateTime.now(),
-        ),
-      ),
-      dependencies: [],
+    print('🔍 FixedVirtualizationTest: Starting render');
+
+    // Create test data
+    final data = List.generate(
+      1000,
+      (index) =>
+          SimpleItem(id: 'fixed_item_$index', title: 'Fixed Item ${index + 1}'),
     );
 
+    // 🚀 KEY FIX: Use a more aggressive state update strategy
+    final renderRangeState = useState<RenderRange>(
+      RenderRange(start: 0, end: 19), // Start with 20 items
+      'renderRange',
+    );
     final scrollOffsetState = useState<double>(0.0, 'scrollOffset');
-    final highestRenderedIndexState = useState<int>(19, 'highestRenderedIndex');
-    final isLoadingState = useState<bool>(
-      false,
-      'isLoading',
-    ); // Prevent double loading
 
-    const double itemHeight = 80.0;
-    const double headerHeight = 60.0;
-    const double footerHeight = 60.0;
-    const int batchSize = 20;
-
+    final renderRange = renderRangeState.state;
     final scrollOffset = scrollOffsetState.state;
-    final totalItems = itemsState.length;
-    final totalContentHeight =
-        headerHeight + (totalItems * itemHeight) + footerHeight;
-    final highestRendered = highestRenderedIndexState.state;
-    final isLoading = isLoadingState.state;
 
-    // Calculate which items are actually visible based on scroll position
-    // Account for header being part of the scrollable content
-    final firstVisibleIndex =
-        scrollOffset <= headerHeight
-            ? 0
-            : ((scrollOffset - headerHeight) / itemHeight).floor().clamp(
-              0,
-              totalItems - 1,
-            );
+    print('🔍 Current render range: ${renderRange.start}-${renderRange.end}');
+    print('🔍 Current scroll offset: ${scrollOffset.toStringAsFixed(0)}px');
 
-    // Use a reasonable viewport estimate or get from layout
-    final viewportHeight = 600.0; // Could be made dynamic later
-    final lastVisibleIndex =
-        scrollOffset <= headerHeight
-            ? ((viewportHeight - (headerHeight - scrollOffset)) / itemHeight)
-                .ceil()
-                .clamp(0, totalItems - 1)
-            : ((scrollOffset - headerHeight + viewportHeight) / itemHeight)
-                .ceil()
-                .clamp(0, totalItems - 1);
+    // Calculate which items should be visible based on scroll
+    const double itemHeight = 70.0;
+    const double viewportHeight = 600.0; // Estimate
 
-    // Check expansion - use a more robust threshold
-    final threshold = highestRendered - 10; // Load earlier but not too early
-    if (lastVisibleIndex > threshold &&
-        highestRendered < totalItems - 1 &&
-        !isLoading) {
-      final newHighestRendered = (highestRendered + batchSize).clamp(
-        0,
-        totalItems - 1,
-      );
-      // Use microtask to prevent render loops
-      isLoadingState.setState(true); // Set loading immediately
-      Future.microtask(() {
-        if (highestRenderedIndexState.state == highestRendered) {
-          // Prevent double updates
-          highestRenderedIndexState.setState(newHighestRendered);
-          isLoadingState.setState(false); // Clear loading after update
-          print(
-            '🚀 EXPANDING: From 0-$highestRendered to 0-$newHighestRendered',
-          );
-        }
-      });
-    }
-
-    // 🚀 DEBUG: Build items and LOG what we're building
-    final renderedItems = <DCFComponentNode>[];
-    print('🔍 BUILDING ITEMS: Should build 0-$highestRendered');
-
-    for (int i = 0; i <= highestRendered && i < totalItems; i++) {
-      final item = DebugListItem(
-        key: 'debug_item_$i',
-        index: i,
-        title: itemsState[i].title,
-      );
-      renderedItems.add(item);
-
-      // Log every 10th item
-      if (i % 10 == 0) {
-        print('✅ Built item $i: ${itemsState[i].title}');
-      }
-    }
-
-    print('🔍 TOTAL BUILT: ${renderedItems.length} items');
-    print('🔍 FIRST ITEM: ${renderedItems.isNotEmpty ? "Item 0" : "NONE"}');
-    print(
-      '🔍 LAST ITEM: ${renderedItems.isNotEmpty ? "Item ${renderedItems.length - 1}" : "NONE"}',
+    final firstVisibleIndex = (scrollOffset / itemHeight).floor().clamp(
+      0,
+      data.length - 1,
     );
+    final lastVisibleIndex = ((scrollOffset + viewportHeight) / itemHeight)
+        .ceil()
+        .clamp(0, data.length - 1);
 
-    // Calculate bottom spacer height more accurately
-    final remainingItems = totalItems - highestRendered - 1;
-    final bottomSpacerHeight =
-        remainingItems > 0 ? remainingItems * itemHeight : 0.0;
+    print('🔍 Visible range should be: $firstVisibleIndex-$lastVisibleIndex');
 
-    // 🚀 DEBUG: Log what goes into the ScrollView children
-    final scrollViewChildren = <DCFComponentNode>[
-      // Header
+    // Build children for current render range
+    final children = <DCFComponentNode>[];
+
+    // Add header
+    children.add(
       DCFView(
-        key: 'debug_header',
+        key: 'fixed_header',
         layout: LayoutProps(
-          height: headerHeight,
+          height: 80,
           padding: 16,
           justifyContent: YogaJustifyContent.center,
         ),
-        styleSheet: StyleSheet(backgroundColor: Colors.purple[100]),
+        styleSheet: StyleSheet(backgroundColor: Colors.blue[100]),
         children: [
+          DCFText(content: 'Fixed Virtualization Test'),
           DCFText(
             content:
-                '🔍 DEBUG HEADER - Should see ${renderedItems.length} items below',
+                'Rendering ${renderRange.end - renderRange.start + 1} items (${renderRange.start}-${renderRange.end})',
+          ),
+          DCFText(
+            content:
+                'Scroll: ${scrollOffset.toStringAsFixed(0)}px | Visible: $firstVisibleIndex-$lastVisibleIndex',
           ),
         ],
       ),
+    );
 
-      // 🚀 ADD ITEMS TO CHILDREN
-      ...renderedItems,
-
-      // Bottom spacer
-      if (bottomSpacerHeight > 0)
+    // Add spacer before rendered items
+    if (renderRange.start > 0) {
+      final spacerHeight = renderRange.start * itemHeight;
+      children.add(
         DCFView(
-          key: 'debug_bottom_spacer',
-          layout: LayoutProps(height: bottomSpacerHeight),
-          styleSheet: StyleSheet(backgroundColor: Colors.red[200]),
+          key: 'before_spacer',
+          layout: LayoutProps(height: spacerHeight),
+          styleSheet: StyleSheet(backgroundColor: Colors.red[100]),
           children: [
             DCFView(
               layout: LayoutProps(
-                padding: 16,
+                padding: 8,
                 justifyContent: YogaJustifyContent.center,
               ),
               children: [
-                DCFText(content: '🔍 SPACER: $remainingItems items remaining'),
                 DCFText(
-                  content: 'Height: ${bottomSpacerHeight.toStringAsFixed(0)}px',
+                  content:
+                      'SPACER: ${renderRange.start} items above (${spacerHeight.toStringAsFixed(0)}px)',
                 ),
               ],
             ),
           ],
         ),
+      );
+    }
 
-      // Footer
-      DCFView(
-        key: 'debug_footer',
-        layout: LayoutProps(
-          height: footerHeight,
-          padding: 16,
-          justifyContent: YogaJustifyContent.center,
-        ),
-        styleSheet: StyleSheet(backgroundColor: Colors.green[100]),
-        children: [DCFText(content: '🔍 DEBUG FOOTER')],
-      ),
-    ];
-
-    print(
-      '🔍 SCROLL VIEW CHILDREN: ${scrollViewChildren.length} total children',
-    );
-    print(
-      '🔍 BREAKDOWN: 1 header + ${renderedItems.length} items + ${bottomSpacerHeight > 0 ? 1 : 0} spacer + 1 footer',
-    );
-
-    return DCFView(
-      layout: LayoutProps(flex: 1, flexDirection: YogaFlexDirection.column),
-      children: [
-        // Debug header
+    // Add actual items
+    int renderedCount = 0;
+    for (
+      int i = renderRange.start;
+      i <= renderRange.end && i < data.length;
+      i++
+    ) {
+      children.add(
         DCFView(
-          layout: LayoutProps(
-            height: 120,
-            width: "100%",
-            padding: 16,
-            flexDirection: YogaFlexDirection.column,
-          ),
-          styleSheet: StyleSheet(backgroundColor: Colors.blue.withOpacity(0.2)),
-          children: [
-            DCFText(
-              content:
-                  'DEBUG: Scroll=${scrollOffset.toStringAsFixed(0)}px | Visible: $firstVisibleIndex-$lastVisibleIndex',
-            ),
-            DCFText(
-              content:
-                  'Built ${renderedItems.length} items (0-$highestRendered)',
-            ),
-            DCFText(
-              content: 'ScrollView has ${scrollViewChildren.length} children',
-            ),
-            DCFText(
-              content:
-                  'Should expand: ${lastVisibleIndex > threshold} (last=$lastVisibleIndex > threshold=$threshold)',
-            ),
-          ],
-        ),
-
-        // ScrollView with stable key to prevent attachment issues
-        DCFScrollView(
-          key: 'debug_scroll_view', // Stable key
-          layout: LayoutProps(flex: 1),
-          showsScrollIndicator: true,
-          command: ScrollViewCommand(
-            setContentSize: SetContentSizeCommand(
-              width: 400,
-              height: totalContentHeight,
-            ),
-          ),
-          onScroll: (event) {
-            final contentOffset =
-                event['contentOffset'] as Map<dynamic, dynamic>?;
-            if (contentOffset != null) {
-              final y = (contentOffset['y'] as num?)?.toDouble() ?? 0.0;
-              scrollOffsetState.setState(y);
-            }
-          },
-          children: scrollViewChildren,
-        ),
-      ],
-    );
-  }
-}
-
-/// Simple debug item that shows its index clearly
-class DebugListItem extends StatelessComponent {
-  final int index;
-  final String title;
-
-  DebugListItem({required this.index, required this.title, super.key});
-
-  @override
-  DCFComponentNode render() {
-    return DCFView(
-      layout: LayoutProps(
-        height: 80,
-        padding: 16,
-        flexDirection: YogaFlexDirection.row,
-        alignItems: YogaAlign.center,
-      ),
-      styleSheet: StyleSheet(
-        backgroundColor: index % 2 == 0 ? Colors.white : Colors.grey[100],
-        borderWidth: 1,
-        borderColor: Colors.blue[200],
-      ),
-      children: [
-        DCFView(
-          layout: LayoutProps(
-            width: 60,
-            height: 60,
-            marginRight: 16,
-            justifyContent: YogaJustifyContent.center,
-
-            alignItems: YogaAlign.center,
-          ),
-          styleSheet: StyleSheet(
-            backgroundColor: Colors.blue[300],
-            borderRadius: 30,
-          ),
-          children: [
-            DCFText(
-              content: '$index',
-              textProps: DCFTextProps(textAlign: "center"),
-            ),
-          ],
-        ),
-        DCFView(
-          layout: LayoutProps(
-            flex: 1,
-            flexDirection: YogaFlexDirection.column,
-            justifyContent: YogaJustifyContent.center,
-          ),
-          children: [
-            DCFText(content: title),
-            DCFText(content: 'Index: $index | Y: ${index * 80}px'),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Even simpler test - just show 10 actual items
-class ShowActualItems extends StatefulComponent {
-  @override
-  DCFComponentNode render() {
-    // Just 10 items, no virtualization
-    const int totalItems = 10;
-    const double itemHeight = 100.0;
-
-    final items = <DCFComponentNode>[];
-    for (int i = 0; i < totalItems; i++) {
-      items.add(
-        DCFView(
-          key: 'actual_item_$i',
+          key: 'fixed_item_$i',
           layout: LayoutProps(
             height: itemHeight,
-            padding: 20,
-            margin: 4,
-            justifyContent: YogaJustifyContent.center,
+            padding: 16,
+            flexDirection: YogaFlexDirection.row,
             alignItems: YogaAlign.center,
           ),
           styleSheet: StyleSheet(
-            backgroundColor: Colors.primaries[i % Colors.primaries.length],
-            borderRadius: 8,
+            backgroundColor: i % 2 == 0 ? Colors.white : Colors.grey[50],
+            borderWidth: 1,
+            borderColor: Colors.grey[300],
           ),
           children: [
-            DCFText(content: 'ACTUAL ITEM $i'),
-            DCFText(content: 'This should be visible'),
+            DCFView(
+              layout: LayoutProps(
+                width: 40,
+                height: 40,
+                marginRight: 12,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: _getIndexColor(i),
+                borderRadius: 20,
+              ),
+              children: [
+                DCFText(
+                  content: '$i',
+                  textProps: DCFTextProps(
+                    color: Colors.white,
+                    // fontWeight: "bold",
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+            DCFView(
+              layout: LayoutProps(flex: 1),
+              children: [
+                DCFText(content: data[i].title),
+                DCFText(
+                  content:
+                      'Index: $i | Y: ${(i * itemHeight).toStringAsFixed(0)}px',
+                  textProps: DCFTextProps(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+      renderedCount++;
+    }
+
+    print('🔍 Actually rendered $renderedCount items');
+
+    // Add spacer after rendered items
+    if (renderRange.end < data.length - 1) {
+      final remainingItems = data.length - 1 - renderRange.end;
+      final spacerHeight = remainingItems * itemHeight;
+      children.add(
+        DCFView(
+          key: 'after_spacer',
+          layout: LayoutProps(height: spacerHeight),
+          styleSheet: StyleSheet(backgroundColor: Colors.green[100]),
+          children: [
+            DCFView(
+              layout: LayoutProps(
+                padding: 8,
+                justifyContent: YogaJustifyContent.center,
+              ),
+              children: [
+                DCFText(
+                  content:
+                      'SPACER: $remainingItems items below (${spacerHeight.toStringAsFixed(0)}px)',
+                ),
+              ],
+            ),
           ],
         ),
       );
     }
 
-    print('ACTUAL ITEMS: Built ${items.length} items');
+    // Add footer
+    children.add(
+      DCFView(
+        key: 'fixed_footer',
+        layout: LayoutProps(
+          height: 60,
+          padding: 16,
+          justifyContent: YogaJustifyContent.center,
+        ),
+        styleSheet: StyleSheet(backgroundColor: Colors.purple[100]),
+        children: [
+          DCFText(content: 'End of list - ${data.length} total items'),
+        ],
+      ),
+    );
+
+    // 🚀 KEY FIX: More aggressive scroll handler that forces updates
+    void handleScroll(Map<dynamic, dynamic> event) {
+      final contentOffset = event['contentOffset'] as Map<dynamic, dynamic>?;
+      if (contentOffset == null) return;
+
+      final newOffset = (contentOffset['y'] as num?)?.toDouble() ?? 0.0;
+      scrollOffsetState.setState(newOffset);
+
+      // Calculate new render range based on scroll position
+      final buffer = 30; // Render 30 items before and after visible area
+      final newFirstVisible = (newOffset / itemHeight).floor().clamp(
+        0,
+        data.length - 1,
+      );
+      final newLastVisible = ((newOffset + viewportHeight) / itemHeight)
+          .ceil()
+          .clamp(0, data.length - 1);
+
+      final newStart = (newFirstVisible - buffer).clamp(0, data.length - 1);
+      final newEnd = (newLastVisible + buffer).clamp(0, data.length - 1);
+
+      final newRange = RenderRange(start: newStart, end: newEnd);
+
+      // 🚀 AGGRESSIVE UPDATE: Update render range if ANY change is needed
+      if (newRange.start != renderRange.start ||
+          newRange.end != renderRange.end) {
+        print(
+          '🚀 UPDATING RENDER RANGE: ${renderRange.start}-${renderRange.end} -> ${newRange.start}-${newRange.end}',
+        );
+        print('🚀 Scroll offset: ${newOffset.toStringAsFixed(0)}px');
+        print('🚀 Visible items: $newFirstVisible-$newLastVisible');
+
+        renderRangeState.setState(newRange);
+      }
+    }
 
     return DCFView(
       layout: LayoutProps(flex: 1),
       children: [
-        DCFText(
-          content:
-              'Actual Items Test - Should see ${items.length} colored items',
-        ),
-
-        DCFScrollView(
+        DCFSafeArea(
           layout: LayoutProps(flex: 1),
           children: [
-            DCFText(content: 'HEADER - Items should appear below'),
-            ...items,
-            DCFText(content: 'FOOTER - Items should appear above'),
+            DCFScrollView(
+              layout: LayoutProps(flex: 1),
+              onScroll: handleScroll,
+              children: children,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Color _getIndexColor(int index) {
+    final colors = [
+      Colors.blue[400]!,
+      Colors.green[400]!,
+      Colors.orange[400]!,
+      Colors.purple[400]!,
+      Colors.red[400]!,
+      Colors.teal[400]!,
+    ];
+    return colors[index % colors.length];
+  }
+}
+
+/// Simple data class
+class SimpleItem {
+  final String id;
+  final String title;
+
+  SimpleItem({required this.id, required this.title});
+}
+
+/// Helper class for render range
+class RenderRange {
+  final int start;
+  final int end;
+
+  RenderRange({required this.start, required this.end});
+
+  @override
+  String toString() => 'RenderRange($start-$end)';
+}
+
+/// Test to compare with broken DCFVirtualizedList
+class BrokenVirtualizedListTest extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final data = List.generate(
+      1000,
+      (index) => SimpleItem(
+        id: 'broken_item_$index',
+        title: 'Broken Item ${index + 1}',
+      ),
+    );
+
+    return DCFView(
+      layout: LayoutProps(flex: 1),
+      children: [
+        DCFSafeArea(
+          layout: LayoutProps(flex: 1),
+          children: [
+            DCFView(
+              layout: LayoutProps(
+                height: 60,
+                padding: 16,
+                justifyContent: YogaJustifyContent.center,
+              ),
+              styleSheet: StyleSheet(backgroundColor: Colors.red[100]),
+              children: [DCFText(content: 'Broken DCFVirtualizedList Test')],
+            ),
+
+            // This should show the same issue you're experiencing
+            DCFVirtualizedList(
+              data: data,
+              getItem: (data, index) => (data as List)[index],
+              getItemCount: (data) => (data as List).length,
+              renderItem: ({required item, required index}) {
+                return DCFView(
+                  layout: LayoutProps(
+                    height: 70,
+                    padding: 16,
+                    justifyContent: YogaJustifyContent.center,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor:
+                        index % 2 == 0 ? Colors.blue[50] : Colors.green[50],
+                    borderWidth: 1,
+                    borderColor: Colors.grey[300],
+                  ),
+                  children: [DCFText(content: (item as SimpleItem).title)],
+                );
+              },
+              debug: true,
+              layout: LayoutProps(flex: 1),
+            ),
           ],
         ),
       ],
@@ -353,23 +354,57 @@ class ShowActualItems extends StatefulComponent {
   }
 }
 
-// Keep the ListItem class
-class ListItem {
-  final String id;
-  final String title;
-  final String subtitle;
-  final double value;
-  final bool isHighlighted;
-  final String category;
-  final DateTime timestamp;
+/// Master test to compare fixed vs broken
+class ComparisonTest extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final useFixedState = useState<bool>(true, 'useFixed');
+    final useFixed = useFixedState.state;
 
-  ListItem({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    this.isHighlighted = false,
-    required this.category,
-    required this.timestamp,
-  });
+    return DCFView(
+      layout: LayoutProps(flex: 1),
+      children: [
+        DCFSafeArea(
+          layout: LayoutProps(flex: 1),
+          children: [
+            // Toggle button
+            DCFView(
+              layout: LayoutProps(
+                height: 80,
+                padding: 16,
+                justifyContent: YogaJustifyContent.center,
+              ),
+              styleSheet: StyleSheet(backgroundColor: Colors.grey[200]),
+              children: [
+                DCFTouchableOpacity(
+                  layout: LayoutProps(padding: 12),
+                  styleSheet: StyleSheet(
+                    backgroundColor:
+                        useFixed ? Colors.green[300] : Colors.red[300],
+                    borderRadius: 8,
+                  ),
+                  onPress: (v) => useFixedState.setState(!useFixed),
+                  children: [
+                    DCFText(
+                      content:
+                          useFixed
+                              ? 'Using FIXED Implementation'
+                              : 'Using BROKEN Implementation',
+                      textProps: DCFTextProps(
+                        color: Colors.white,
+                        // fontWeight: "bold",
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            // Show the selected test
+            useFixed ? FixedVirtualizationTest() : BrokenVirtualizedListTest(),
+          ],
+        ),
+      ],
+    );
+  }
 }
