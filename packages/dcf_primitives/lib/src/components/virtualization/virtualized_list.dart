@@ -9,14 +9,14 @@ import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// VirtualizedList - High-performance list component following React Native's approach
-/// 
+///
 /// Key Concepts from React Native:
 /// 1. Maintains a finite render window of active items
 /// 2. Replaces items outside window with appropriately sized blank space
 /// 3. Window adapts to scrolling behavior
 /// 4. Items rendered incrementally with priority-based rendering
 /// 5. High-priority for visible area, low-priority for far items
-/// 
+///
 /// This is the base implementation - use DCFFlatList for most cases
 class DCFVirtualizedList extends StatefulComponent
     with EquatableMixin
@@ -27,8 +27,9 @@ class DCFVirtualizedList extends StatefulComponent
   /// Required props following React Native API
   final Function(dynamic data, int index) getItem;
   final Function(dynamic data) getItemCount;
-  final DCFComponentNode Function({required dynamic item, required int index}) renderItem;
-  
+  final DCFComponentNode Function({required dynamic item, required int index})
+      renderItem;
+
   /// The data source - can be any type, not just arrays
   final dynamic data;
 
@@ -147,16 +148,15 @@ class DCFVirtualizedList extends StatefulComponent
     // Core state for virtualization
     final scrollOffsetState = useState<double>(0.0, 'scrollOffset');
     final viewportSizeState = useState<double>(
-      horizontal ? (layout.width ?? 400.0) : (layout.height ?? 600.0), 
-      'viewportSize'
-    );
+        horizontal ? (layout.width ?? 400.0) : (layout.height ?? 600.0),
+        'viewportSize');
     final renderWindowState = useState<RenderWindow>(
-      RenderWindow(first: 0, last: initialNumToRender - 1),
-      'renderWindow'
-    );
-    final itemLayoutCacheState = useState<Map<int, ItemLayout>>({}, 'itemLayoutCache');
+        RenderWindow(first: 0, last: initialNumToRender - 1), 'renderWindow');
+    final itemLayoutCacheState =
+        useState<Map<int, ItemLayout>>({}, 'itemLayoutCache');
     final scrollingState = useState<bool>(false, 'scrolling');
-    final lastScrollTimeState = useState<DateTime>(DateTime.now(), 'lastScrollTime');
+    final lastScrollTimeState =
+        useState<DateTime>(DateTime.now(), 'lastScrollTime');
 
     final itemCount = getItemCount(data);
     final scrollOffset = scrollOffsetState.state;
@@ -165,12 +165,27 @@ class DCFVirtualizedList extends StatefulComponent
     final itemLayoutCache = itemLayoutCacheState.state;
 
     if (debug) {
-      print('VirtualizedList Debug: itemCount=$itemCount, renderWindow=$renderWindow, scrollOffset=$scrollOffset');
+      print(
+          '🔍 VirtualizedList Debug: itemCount=$itemCount, renderWindow=${renderWindow.first}-${renderWindow.last}, scrollOffset=${scrollOffset.toStringAsFixed(0)}');
     }
 
     // Handle empty state
     if (itemCount == 0) {
       return _buildEmptyState();
+    }
+
+    // 🚀 FIXED: More aggressive render range calculation
+    final renderRange = _calculateRenderRange(
+      scrollOffset: scrollOffset,
+      viewportSize: viewportSize,
+      itemLayoutCache: itemLayoutCache,
+      itemCount: itemCount,
+      windowSize: windowSize,
+    );
+
+    if (debug) {
+      print(
+          '🔍 VirtualizedList: Calculated render range: ${renderRange.start}-${renderRange.end}');
     }
 
     // Build the virtual children list
@@ -184,29 +199,27 @@ class DCFVirtualizedList extends StatefulComponent
       ));
     }
 
-    // Calculate render range based on current window
-    final renderRange = _calculateRenderRange(
-      scrollOffset: scrollOffset,
-      viewportSize: viewportSize,
-      itemLayoutCache: itemLayoutCache,
-      itemCount: itemCount,
-      windowSize: windowSize,
-    );
-
     // Add spacer before visible items (virtual scrolling)
     if (renderRange.start > 0) {
-      final spacerSize = _calculateSpacerSize(0, renderRange.start - 1, itemLayoutCache);
+      final spacerSize =
+          _calculateSpacerSize(0, renderRange.start - 1, itemLayoutCache);
+      if (debug)
+        print(
+            '🔍 Before spacer size: ${spacerSize.toStringAsFixed(0)}px for items 0-${renderRange.start - 1}');
       virtualChildren.add(_buildSpacer('before_spacer', spacerSize));
     }
 
-    // Render visible items
-    for (int index = renderRange.start; index <= renderRange.end && index < itemCount; index++) {
+    // 🚀 FIXED: Render visible items with proper range
+    int actualRendered = 0;
+    for (int index = renderRange.start;
+        index <= renderRange.end && index < itemCount;
+        index++) {
       final item = getItem(data, index);
       final itemKey = keyExtractor?.call(item, index) ?? 'item_$index';
-      
+
       // Render the actual item
       final renderedItem = renderItem(item: item, index: index);
-      
+
       // Wrap in container for layout management
       virtualChildren.add(DCFView(
         key: itemKey,
@@ -217,6 +230,8 @@ class DCFVirtualizedList extends StatefulComponent
         children: [renderedItem],
       ));
 
+      actualRendered++;
+
       // Add separator if provided and not last item
       if (ItemSeparatorComponent != null && index < itemCount - 1) {
         virtualChildren.add(DCFView(
@@ -226,9 +241,18 @@ class DCFVirtualizedList extends StatefulComponent
       }
     }
 
+    if (debug) {
+      print(
+          '🔍 Actually rendered $actualRendered items from ${renderRange.start} to ${renderRange.end}');
+    }
+
     // Add spacer after visible items
     if (renderRange.end < itemCount - 1) {
-      final spacerSize = _calculateSpacerSize(renderRange.end + 1, itemCount - 1, itemLayoutCache);
+      final spacerSize = _calculateSpacerSize(
+          renderRange.end + 1, itemCount - 1, itemLayoutCache);
+      if (debug)
+        print(
+            '🔍 After spacer size: ${spacerSize.toStringAsFixed(0)}px for items ${renderRange.end + 1}-${itemCount - 1}');
       virtualChildren.add(_buildSpacer('after_spacer', spacerSize));
     }
 
@@ -240,12 +264,12 @@ class DCFVirtualizedList extends StatefulComponent
       ));
     }
 
-    // Enhanced scroll handler with virtualization logic
+    // 🚀 FIXED: Enhanced scroll handler with better render window updates
     void handleScroll(Map<dynamic, dynamic> event) {
       final contentOffset = event['contentOffset'] as Map<dynamic, dynamic>?;
       if (contentOffset == null) return;
 
-      final newOffset = horizontal 
+      final newOffset = horizontal
           ? (contentOffset['x'] as num?)?.toDouble() ?? 0.0
           : (contentOffset['y'] as num?)?.toDouble() ?? 0.0;
 
@@ -257,7 +281,7 @@ class DCFVirtualizedList extends StatefulComponent
       // Schedule scroll end detection
       _scheduleScrollEndDetection(scrollingState, lastScrollTimeState);
 
-      // Calculate new render window
+      // 🚀 FIXED: Always calculate new render range and update if needed
       final newRenderRange = _calculateRenderRange(
         scrollOffset: newOffset,
         viewportSize: viewportSize,
@@ -266,16 +290,17 @@ class DCFVirtualizedList extends StatefulComponent
         windowSize: windowSize,
       );
 
-      // Update render window if significantly changed
+      // 🚀 FIXED: More lenient render window update condition
       if (_shouldUpdateRenderWindow(renderWindow, newRenderRange)) {
+        if (debug) {
+          print(
+              '🚀 VirtualizedList: Updating render window from ${renderWindow.first}-${renderWindow.last} to ${newRenderRange.start}-${newRenderRange.end}');
+        }
+
         renderWindowState.setState(RenderWindow(
           first: newRenderRange.start,
           last: newRenderRange.end,
         ));
-
-        if (debug) {
-          print('VirtualizedList: Updated render window to $newRenderRange');
-        }
       }
 
       // Handle end reached
@@ -287,15 +312,9 @@ class DCFVirtualizedList extends StatefulComponent
       }
     }
 
-    // Use effect for incremental rendering
-    useEffect(() {
-      if (!scrollingState.state) {
-        _scheduleIncrementalRendering(renderWindow, itemCount, renderWindowState.setState);
-      }
-      return null;
-    }, dependencies:[renderWindow, scrollingState.state]);
+    // 🚀 REMOVED: The problematic useEffect that was interfering with scroll updates
+    // The render window should update immediately during scroll, not in effects
 
-    // 🚀 FIXED: Return DCFScrollView with correct API from your implementation
     return DCFScrollView(
       key: key,
       horizontal: horizontal,
@@ -304,15 +323,15 @@ class DCFVirtualizedList extends StatefulComponent
       showsScrollIndicator: showsScrollIndicator,
       scrollEnabled: scrollEnabled,
       pagingEnabled: pagingEnabled,
-      // 🚀 FIXED: Use correct scroll event handlers
       onScroll: handleScroll,
-      onScrollBeginDrag: onScrollBeginDrag != null 
-          ? (event) => onScrollBeginDrag!(VirtualizedListScrollEvent.fromMap(event))
+      onScrollBeginDrag: onScrollBeginDrag != null
+          ? (event) =>
+              onScrollBeginDrag!(VirtualizedListScrollEvent.fromMap(event))
           : null,
       onScrollEndDrag: onScrollEndDrag != null
-          ? (event) => onScrollEndDrag!(VirtualizedListScrollEvent.fromMap(event))
+          ? (event) =>
+              onScrollEndDrag!(VirtualizedListScrollEvent.fromMap(event))
           : null,
-      // 🚀 FIXED: Convert commands properly
       command: _convertCommandToScrollView(command),
       children: virtualChildren,
     );
@@ -347,7 +366,7 @@ class DCFVirtualizedList extends StatefulComponent
     );
   }
 
-  // Calculate which items should be rendered based on React Native's algorithm
+  // 🚀 FIXED: Better render range calculation with proper viewport handling
   RenderRange _calculateRenderRange({
     required double scrollOffset,
     required double viewportSize,
@@ -357,12 +376,16 @@ class DCFVirtualizedList extends StatefulComponent
   }) {
     if (itemCount == 0) return RenderRange(start: 0, end: -1);
 
+    // Use a more realistic default item size
+    const double defaultItemSize = 60.0; // Better than 50
+
     // Find first visible item
     int firstVisible = 0;
     double currentOffset = 0.0;
 
     for (int i = 0; i < itemCount; i++) {
-      final itemSize = _getItemSize(i, itemLayoutCache);
+      final itemSize =
+          _getItemSize(i, itemLayoutCache, defaultSize: defaultItemSize);
       if (currentOffset + itemSize > scrollOffset) {
         firstVisible = i;
         break;
@@ -375,38 +398,55 @@ class DCFVirtualizedList extends StatefulComponent
     double visibleSize = 0.0;
 
     for (int i = firstVisible; i < itemCount; i++) {
-      final itemSize = _getItemSize(i, itemLayoutCache);
+      final itemSize =
+          _getItemSize(i, itemLayoutCache, defaultSize: defaultItemSize);
       visibleSize += itemSize;
       lastVisible = i;
-      
+
       if (visibleSize >= viewportSize) break;
     }
 
-    // Apply window size (React Native's key optimization)
-    // windowSize is in units of visible lengths
-    final windowItems = ((windowSize - 1) / 2).round();
-    final start = (firstVisible - windowItems).clamp(0, itemCount - 1);
-    final end = (lastVisible + windowItems).clamp(0, itemCount - 1);
+    // 🚀 FIXED: More aggressive window expansion for better user experience
+    // React Native typically uses windowSize=21, but we'll be more aggressive
+    final extraItems = windowSize; // Was windowSize / 2
+    final start = (firstVisible - extraItems).clamp(0, itemCount - 1);
+    final end = (lastVisible + extraItems).clamp(0, itemCount - 1);
+
+    if (debug) {
+      print(
+          '🔍 Render range calc: firstVisible=$firstVisible, lastVisible=$lastVisible, expanded to $start-$end');
+    }
 
     return RenderRange(start: start, end: end);
   }
 
-  // Get item size with fallback to estimated size
-  double _getItemSize(int index, Map<int, ItemLayout> itemLayoutCache) {
+  // 🚀 FIXED: Better item size calculation with fallback
+  double _getItemSize(int index, Map<int, ItemLayout> itemLayoutCache,
+      {double defaultSize = 60.0}) {
     if (itemLayoutCache.containsKey(index)) {
       return itemLayoutCache[index]!.length;
     }
 
     if (getItemLayout != null) {
       final layout = getItemLayout!(data, index);
-      return layout['length']?.toDouble() ?? 50.0;
+      final size = layout['length']?.toDouble() ?? defaultSize;
+
+      // Cache the calculated size
+      itemLayoutCache[index] = ItemLayout(
+        length: size,
+        offset: 0.0, // Will be calculated later if needed
+        index: index,
+      );
+
+      return size;
     }
 
-    return 50.0; // Default estimated item size
+    return defaultSize;
   }
 
   // Calculate total size for spacers
-  double _calculateSpacerSize(int startIndex, int endIndex, Map<int, ItemLayout> itemLayoutCache) {
+  double _calculateSpacerSize(
+      int startIndex, int endIndex, Map<int, ItemLayout> itemLayoutCache) {
     double totalSize = 0.0;
     for (int i = startIndex; i <= endIndex; i++) {
       totalSize += _getItemSize(i, itemLayoutCache);
@@ -414,20 +454,35 @@ class DCFVirtualizedList extends StatefulComponent
     return totalSize;
   }
 
-  // Check if render window should be updated
+  // 🚀 FIXED: Much more lenient render window update condition
   bool _shouldUpdateRenderWindow(RenderWindow current, RenderRange newRange) {
-    // Update if the change is significant (more than maxToRenderPerBatch items)
-    return (current.first - newRange.start).abs() >= maxToRenderPerBatch ||
-           (current.last - newRange.end).abs() >= maxToRenderPerBatch;
+    // Update if there's ANY significant change, not just large changes
+    final startDiff = (current.first - newRange.start).abs();
+    final endDiff = (current.last - newRange.end).abs();
+
+    // Update if we need to render new items that aren't currently rendered
+    final needsNewItems =
+        newRange.start < current.first || newRange.end > current.last;
+
+    // 🚀 CRITICAL FIX: Update if the change is more than 3 items OR we need new items
+    final shouldUpdate = startDiff >= 3 || endDiff >= 3 || needsNewItems;
+
+    if (debug && shouldUpdate) {
+      print(
+          '🔍 Should update render window: startDiff=$startDiff, endDiff=$endDiff, needsNewItems=$needsNewItems');
+    }
+
+    return shouldUpdate;
   }
 
-  // 🚀 FIXED: Use proper function type for setState
+  // Use proper function type for setState
   void _scheduleScrollEndDetection(
     StateHook<bool> scrollingState,
     StateHook<DateTime> lastScrollTimeState,
   ) {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (DateTime.now().difference(lastScrollTimeState.state).inMilliseconds > 100) {
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (DateTime.now().difference(lastScrollTimeState.state).inMilliseconds >
+          150) {
         scrollingState.setState(false);
       }
     });
@@ -442,7 +497,8 @@ class DCFVirtualizedList extends StatefulComponent
   ) {
     if (onEndReached == null) return;
 
-    final totalContentSize = _calculateSpacerSize(0, itemCount - 1, itemLayoutCache);
+    final totalContentSize =
+        _calculateSpacerSize(0, itemCount - 1, itemLayoutCache);
     final distanceFromEnd = totalContentSize - (scrollOffset + viewportSize);
     final threshold = viewportSize * onEndReachedThreshold;
 
@@ -451,34 +507,18 @@ class DCFVirtualizedList extends StatefulComponent
     }
   }
 
-  // 🚀 FIXED: Use proper function type for setState
-  void _scheduleIncrementalRendering(
-    RenderWindow currentWindow,
-    int itemCount,
-    Function(RenderWindow) setRenderWindow,
-  ) {
-    // This is React Native's low-priority rendering for items far from visible area
-    Future.delayed(updateCellsBatchingPeriod, () {
-      // Expand window gradually for better performance
-      final expandedFirst = (currentWindow.first - maxToRenderPerBatch).clamp(0, itemCount - 1);
-      final expandedLast = (currentWindow.last + maxToRenderPerBatch).clamp(0, itemCount - 1);
-
-      if (expandedFirst != currentWindow.first || expandedLast != currentWindow.last) {
-        setRenderWindow(RenderWindow(first: expandedFirst, last: expandedLast));
-      }
-    });
-  }
-
   // Convert VirtualizedList commands to ScrollView commands
-  ScrollViewCommand? _convertCommandToScrollView(VirtualizedListCommand? command) {
+  ScrollViewCommand? _convertCommandToScrollView(
+      VirtualizedListCommand? command) {
     if (command == null) return null;
 
     if (command.scrollToIndex != null) {
       // Convert scroll to index to scroll to offset
       final index = command.scrollToIndex!.index;
-      final itemLayoutCache = <int, ItemLayout>{}; // Would need to get from state
+      final itemLayoutCache =
+          <int, ItemLayout>{}; // Would need to get from state
       final offset = _calculateSpacerSize(0, index - 1, itemLayoutCache);
-      
+
       return ScrollViewCommand(
         scrollToPosition: ScrollToPositionCommand(
           x: horizontal ? offset : 0,
@@ -608,8 +648,8 @@ class VirtualizedListScrollEvent {
     return VirtualizedListScrollEvent(
       contentOffset: VirtualizedListContentOffset.fromMap(
           map['contentOffset'] as Map? ?? {}),
-      contentSize: VirtualizedListContentSize.fromMap(
-          map['contentSize'] as Map? ?? {}),
+      contentSize:
+          VirtualizedListContentSize.fromMap(map['contentSize'] as Map? ?? {}),
       layoutMeasurement: VirtualizedListLayoutMeasurement.fromMap(
           map['layoutMeasurement'] as Map? ?? {}),
       velocity: (map['velocity'] as num?)?.toDouble() ?? 0.0,
