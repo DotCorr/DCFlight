@@ -13,7 +13,7 @@ class App extends StatefulComponent {
   // adds up to make your app even more performant.
   final homePage = Home();
   final gradientTestPage = GradientTest();
-  final veryLongListPage = FixedVirtualizationTest();
+  final veryLongListPage = ProperVirtualizedApp();
   final profilePage = Profile();
   final portalTestPage = PortalTest();
 
@@ -70,8 +70,6 @@ class App extends StatefulComponent {
                 ? profilePage
                 : pagestateLocal.state == 4
                 ? portalTestPage
-                : pagestateLocal.state == 5
-                ? veryLongListPage
                 : DCFView(),
           ],
         ),
@@ -100,7 +98,6 @@ class App extends StatefulComponent {
               DCFDropdownMenuItem(title: "Really Long List", value: "2"),
               DCFDropdownMenuItem(title: "Modal & Alert Test", value: "3"),
               DCFDropdownMenuItem(title: "Portal Test", value: "4"),
-              DCFDropdownMenuItem(title: "Very Long List", value: "5"),
             ],
             selectedValue: pagestateLocal.state.toString(),
           ),
