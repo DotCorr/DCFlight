@@ -10,18 +10,18 @@ import 'package:dcflight/dcflight.dart';
 import 'virtualized_list.dart' as vl;
 
 /// FlatList - Simplified high-performance list component
-/// A convenience wrapper around VirtualizedList with sensible defaults
-/// Perfect for most common list use cases
+/// A convenience wrapper around VirtualizedList following React Native's approach
+/// Perfect for most common list use cases with simple array data
 class DCFFlatList<T> extends StatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
 
-  /// List of data items
+  /// List of data items - must be a List (unlike VirtualizedList which accepts any data)
   final List<T> data;
 
-  /// Function to render each item
+  /// Function to render each item - simpler API than VirtualizedList
   final DCFComponentNode Function(T item, int index) renderItem;
 
   /// Function to extract unique key for each item
@@ -37,54 +37,49 @@ class DCFFlatList<T> extends StatelessComponent
   /// Scroll behavior properties
   final bool showsScrollIndicator;
   final bool scrollEnabled;
-  final bool bounces;
   final bool pagingEnabled;
-
-  /// Estimated size of each item (for optimization)
-  final double? itemSize;
-
-  /// Function to get dynamic size of each item
-  final double Function(T item, int index)? getItemSize;
-
-  /// Initial number of items to render
-  final int? initialNumToRender;
-
-  /// Whether to remove clipped subviews for memory optimization
-  final bool removeClippedSubviews;
-
-  /// Whether the list is inverted (items rendered from bottom to top)
   final bool inverted;
+
+  /// Performance optimization props (inherited from VirtualizedList)
+  final int? initialNumToRender;
+  final int? maxToRenderPerBatch;
+  final int? windowSize;
+  final bool removeClippedSubviews;
+  final Duration? updateCellsBatchingPeriod;
+
+  /// Function to get item layout if known ahead of time
+  final Function(List<T> data, int index)? getItemLayout;
 
   /// Event handlers
   final Function(vl.VirtualizedListScrollEvent)? onScroll;
   final Function(vl.VirtualizedListScrollEvent)? onScrollBeginDrag;
   final Function(vl.VirtualizedListScrollEvent)? onScrollEndDrag;
+  final Function(vl.VirtualizedListScrollEvent)? onMomentumScrollBegin;
   final Function(vl.VirtualizedListScrollEvent)? onMomentumScrollEnd;
 
-  /// Called when user scrolls close to the end
+  /// Viewability detection
+  final Function(vl.VirtualizedListViewabilityInfo)? onViewableItemsChanged;
+  final vl.ViewabilityConfig? viewabilityConfig;
+
+  /// End reached detection
   final Function()? onEndReached;
-
-  /// How close to the end before onEndReached is called (0-1)
   final double onEndReachedThreshold;
-
-  /// Component to render at the top of the list
-  final DCFComponentNode? header;
-
-  /// Component to render at the bottom of the list
-  final DCFComponentNode? footer;
-
-  /// Component to render when the list is empty
-  final DCFComponentNode? emptyState;
-
-  /// Component to render between items
-  final DCFComponentNode? separator;
-
-  /// Function to render custom separator between items
-  final DCFComponentNode Function(int index)? separatorBuilder;
 
   /// Refresh control
   final bool refreshing;
   final Function()? onRefresh;
+
+  /// List decoration components
+  final DCFComponentNode? listHeaderComponent;
+  final DCFComponentNode? listFooterComponent;
+  final DCFComponentNode? listEmptyComponent;
+  final DCFComponentNode? itemSeparatorComponent;
+
+  /// Multi-column support (FlatList specific)
+  final int? numColumns;
+  // 🚀 FIXED: Separate layout and style for column wrapper
+  final LayoutProps? columnWrapperLayout; // For layout properties like padding, margin
+  final StyleSheet? columnWrapperStyle;   // For visual properties like backgroundColor
 
   /// Commands for imperative operations
   final vl.VirtualizedListCommand? command;
@@ -93,10 +88,7 @@ class DCFFlatList<T> extends StatelessComponent
   final bool debug;
 
   /// Additional props for customization
-  final Map<String, dynamic>? additionalProps;
-
-  /// Performance monitoring
-  final Function(vl.VirtualizedListMetrics)? onMetrics;
+  final Map<String, dynamic>? extraData;
 
   DCFFlatList({
     required this.data,
@@ -107,240 +99,206 @@ class DCFFlatList<T> extends StatelessComponent
     this.styleSheet = const StyleSheet(),
     this.showsScrollIndicator = true,
     this.scrollEnabled = true,
-    this.bounces = true,
     this.pagingEnabled = false,
-    this.itemSize,
-    this.getItemSize,
-    this.initialNumToRender,
-    this.removeClippedSubviews = true,
     this.inverted = false,
+    this.initialNumToRender,
+    this.maxToRenderPerBatch,
+    this.windowSize,
+    this.removeClippedSubviews = false,
+    this.updateCellsBatchingPeriod,
+    this.getItemLayout,
     this.onScroll,
     this.onScrollBeginDrag,
     this.onScrollEndDrag,
+    this.onMomentumScrollBegin,
     this.onMomentumScrollEnd,
+    this.onViewableItemsChanged,
+    this.viewabilityConfig,
     this.onEndReached,
     this.onEndReachedThreshold = 0.1,
-    this.header,
-    this.footer,
-    this.emptyState,
-    this.separator,
-    this.separatorBuilder,
     this.refreshing = false,
     this.onRefresh,
+    this.listHeaderComponent,
+    this.listFooterComponent,
+    this.listEmptyComponent,
+    this.itemSeparatorComponent,
+    this.numColumns,
+    this.columnWrapperLayout,
+    this.columnWrapperStyle,  
     this.command,
     this.debug = false,
-    this.additionalProps,
-    this.onMetrics,
+    this.extraData,
     super.key,
-  });
+  }) : assert(numColumns == null || numColumns > 0, 'numColumns must be greater than 0');
 
   @override
   DCFComponentNode render() {
-    // Handle empty state
-    if (data.isEmpty) {
-      if (emptyState != null) {
-        return DCFView(
-          layout: layout,
-          styleSheet: styleSheet,
-          children: [emptyState!],
-        );
-      }
-      // Return empty VirtualizedList for consistent behavior
-      return vl.DCFVirtualizedList(
-        itemCount: 0,
-        renderItem: (index, info) => DCFView(children: []),
-        horizontal: horizontal,
-        layout: layout,
-        styleSheet: styleSheet,
-        showsScrollIndicator: showsScrollIndicator,
-        scrollEnabled: scrollEnabled,
-        bounces: bounces,
-        pagingEnabled: pagingEnabled,
-        debug: debug,
-      );
+    if (debug) {
+      print('FlatList Debug: Rendering with ${data.length} items');
     }
 
-    // Calculate total item count including separators, header, and footer
-    int totalItemCount = data.length;
-    bool hasHeader = header != null;
-    bool hasFooter = footer != null;
-    bool hasSeparators = separator != null || separatorBuilder != null;
+    // Handle multi-column layout
+    final List<dynamic> processedData;
+    final DCFComponentNode Function({required dynamic item, required int index}) processedRenderItem;
 
-    if (hasHeader) totalItemCount += 1;
-    if (hasFooter) totalItemCount += 1;
-    if (hasSeparators && data.length > 1) {
-      totalItemCount += data.length - 1; // separators between items
-    }
-
-    // DEBUG: Log the counts
-    print('DEBUG FlatList: data.length=${data.length}, hasHeader=$hasHeader, hasFooter=$hasFooter, hasSeparators=$hasSeparators, totalItemCount=$totalItemCount');
-
-    // Build render function
-    DCFComponentNode renderVirtualizedItem(
-        int index, vl.VirtualizedListItemInfo info) {
-      print('DEBUG FlatList: renderVirtualizedItem called with index=$index');
-
-      // Handle header
-      if (hasHeader && index == 0) {
-        print('DEBUG FlatList: Rendering header at index 0');
-        return header!;
-      }
-
-      // Adjust index for header
-      int adjustedIndex = index;
-      if (hasHeader) adjustedIndex -= 1;
-
-      // Handle footer
-      if (hasFooter &&
-          adjustedIndex == (totalItemCount - (hasHeader ? 1 : 0) - 1)) {
-        print('DEBUG FlatList: Rendering footer at adjustedIndex=$adjustedIndex');
-        return footer!;
-      }
-
-      // Handle separators
-      if (hasSeparators && adjustedIndex > 0 && adjustedIndex % 2 == 1) {
-        final separatorIndex = (adjustedIndex - 1) ~/ 2;
-        if (separatorBuilder != null) {
-          return separatorBuilder!(separatorIndex);
-        }
-        return separator!;
-      }
-
-      // Handle regular items
-      final dataIndex = hasSeparators ? adjustedIndex ~/ 2 : adjustedIndex;
-
-      // Bounds check
-      if (dataIndex >= 0 && dataIndex < data.length) {
-        final item = data[dataIndex];
-        print('DEBUG FlatList: Rendering data item at dataIndex=$dataIndex');
-        return renderItem(item, dataIndex);
-      }
-
-      // Fallback for any edge cases
-      print('DEBUG FlatList: Fallback render for index=$index, adjustedIndex=$adjustedIndex, dataIndex=$dataIndex');
-      return DCFView(children: []);
-    }
-
-    // Build size function
-    double? getVirtualizedItemSize(int index) {
-      // Handle header
-      if (hasHeader && index == 0) {
-        return itemSize ?? (horizontal ? 100.0 : 50.0); // Default header size
-      }
-
-      // Adjust index for header
-      int adjustedIndex = index;
-      if (hasHeader) adjustedIndex -= 1;
-
-      // Handle footer
-      if (hasFooter &&
-          adjustedIndex == (totalItemCount - (hasHeader ? 1 : 0) - 1)) {
-        return itemSize ?? (horizontal ? 100.0 : 50.0); // Default footer size
-      }
-
-      // Handle separators
-      if (hasSeparators && adjustedIndex > 0 && adjustedIndex % 2 == 1) {
-        return 1.0; // Thin separator
-      }
-
-      // Handle regular items
-      final dataIndex = hasSeparators ? adjustedIndex ~/ 2 : adjustedIndex;
-
-      if (dataIndex >= 0 && dataIndex < data.length) {
-        final item = data[dataIndex];
-
-        if (getItemSize != null) {
-          return getItemSize!(item, dataIndex);
-        }
-
-        return itemSize;
-      }
-
-      return null; // Use estimated size
-    }
-
-    // Build key extractor
-    String? getVirtualizedItemKey(int index) {
-      // Handle header
-      if (hasHeader && index == 0) {
-        return 'header';
-      }
-
-      // Adjust index for header
-      int adjustedIndex = index;
-      if (hasHeader) adjustedIndex -= 1;
-
-      // Handle footer
-      if (hasFooter &&
-          adjustedIndex == (totalItemCount - (hasHeader ? 1 : 0) - 1)) {
-        return 'footer';
-      }
-
-      // Handle separators
-      if (hasSeparators && adjustedIndex > 0 && adjustedIndex % 2 == 1) {
-        final separatorIndex = (adjustedIndex - 1) ~/ 2;
-        return 'separator_$separatorIndex';
-      }
-
-      // Handle regular items
-      final dataIndex = hasSeparators ? adjustedIndex ~/ 2 : adjustedIndex;
-
-      if (dataIndex >= 0 && dataIndex < data.length) {
-        final item = data[dataIndex];
-        if (keyExtractor != null) {
-          return keyExtractor!(item, dataIndex);
-        }
-        return 'item_$dataIndex';
-      }
-
-      return 'unknown_$index';
-    }
-
-    // Handle end reached
-    Function(vl.VirtualizedListViewabilityInfo)? onViewableItemsChanged;
-    if (onEndReached != null) {
-      onViewableItemsChanged = (vl.VirtualizedListViewabilityInfo info) {
-        if (info.viewableItems.isNotEmpty) {
-          final maxIndex = info.viewableItems
-              .map((item) => item.index)
-              .reduce((a, b) => a > b ? a : b);
-          final threshold =
-              (totalItemCount * (1.0 - onEndReachedThreshold)).floor();
-
-          if (maxIndex >= threshold) {
-            onEndReached!();
-          }
-        }
+    if (numColumns != null && numColumns! > 1) {
+      // Multi-column implementation following React Native's approach
+      processedData = _createMultiColumnData();
+      processedRenderItem = _renderMultiColumnItem;
+    } else {
+      // Single column - direct mapping
+      processedData = data;
+      processedRenderItem = ({required dynamic item, required int index}) {
+        return renderItem(item as T, index);
       };
     }
 
-    // Build command
-    print('DEBUG FlatList: Creating VirtualizedList with itemCount=$totalItemCount');
+    // Create VirtualizedList with FlatList's simplified API
     return vl.DCFVirtualizedList(
-      itemCount: totalItemCount,
-      renderItem: renderVirtualizedItem,
-      getItemSize: (index) => getVirtualizedItemSize(index),
-      keyExtractor: (index) => getVirtualizedItemKey(index) ?? 'item_$index',
+      // Core required props for VirtualizedList
+      data: processedData,
+      getItem: (data, index) => (data as List)[index],
+      getItemCount: (data) => (data as List).length,
+      renderItem: processedRenderItem,
+
+      // Layout optimization
+      getItemLayout: getItemLayout != null
+          ? (data, index) => getItemLayout!(this.data, index)
+          : null,
+
+      // Key extraction
+      keyExtractor: keyExtractor != null
+          ? (item, index) => numColumns != null && numColumns! > 1
+              ? 'row_$index' // For multi-column, use row index
+              : keyExtractor!(item as T, index)
+          : null,
+
+      // Performance props with FlatList defaults
+      initialNumToRender: initialNumToRender ?? 10,
+      maxToRenderPerBatch: maxToRenderPerBatch ?? 10,
+      windowSize: windowSize ?? 21,
+      removeClippedSubviews: removeClippedSubviews,
+      updateCellsBatchingPeriod: updateCellsBatchingPeriod ?? const Duration(milliseconds: 50),
+
+      // Layout and styling
       horizontal: horizontal,
       layout: layout,
       styleSheet: styleSheet,
+      inverted: inverted,
+
+      // Scroll behavior
       showsScrollIndicator: showsScrollIndicator,
       scrollEnabled: scrollEnabled,
-      bounces: bounces,
       pagingEnabled: pagingEnabled,
-      initialNumToRender: initialNumToRender ?? (horizontal ? 5 : 10),
-      removeClippedSubviews: removeClippedSubviews,
-      inverted: inverted,
+
+      // Event handlers
       onScroll: onScroll,
       onScrollBeginDrag: onScrollBeginDrag,
       onScrollEndDrag: onScrollEndDrag,
+      onMomentumScrollBegin: onMomentumScrollBegin,
       onMomentumScrollEnd: onMomentumScrollEnd,
+
+      // Viewability
       onViewableItemsChanged: onViewableItemsChanged,
+      viewabilityConfig: viewabilityConfig,
+
+      // End reached
+      onEndReached: onEndReached,
+      onEndReachedThreshold: onEndReachedThreshold,
+
+      // Refresh
+      refreshing: refreshing,
+      onRefresh: onRefresh,
+
+      // List components
+      ListHeaderComponent: listHeaderComponent,
+      ListFooterComponent: listFooterComponent,
+      ListEmptyComponent: listEmptyComponent,
+      ItemSeparatorComponent: itemSeparatorComponent,
+
+      // Commands and debug
       command: command,
       debug: debug,
-      additionalProps: additionalProps,
-      onMetrics: onMetrics,
-      estimatedItemSize: itemSize ?? (horizontal ? 100.0 : 44.0),
+      extraData: extraData,
+
+      // Pass through the key
+      key: key,
+    );
+  }
+
+  /// Create multi-column data structure
+  /// Groups items into rows for multi-column rendering
+  List<List<T?>> _createMultiColumnData() {
+    if (numColumns == null || numColumns! <= 1) return [data];
+
+    final List<List<T?>> rows = [];
+    final int cols = numColumns!;
+
+    for (int i = 0; i < data.length; i += cols) {
+      final List<T?> row = List.filled(cols, null);
+      
+      for (int j = 0; j < cols && (i + j) < data.length; j++) {
+        row[j] = data[i + j];
+      }
+      
+      rows.add(row);
+    }
+
+    return rows;
+  }
+
+  /// Render multi-column row
+  /// Creates a horizontal layout with multiple items
+  DCFComponentNode _renderMultiColumnItem({required dynamic item, required int index}) {
+    final row = item as List<T?>;
+    final List<DCFComponentNode> columnChildren = [];
+
+    for (int i = 0; i < row.length; i++) {
+      final T? cellItem = row[i];
+      
+      if (cellItem != null) {
+        // Calculate the actual data index
+        final int dataIndex = (index * numColumns!) + i;
+        
+        // Render the item with flex: 1 for equal width columns
+        columnChildren.add(
+          DCFView(
+            layout: const LayoutProps(flex: 1),
+            children: [renderItem(cellItem, dataIndex)],
+          ),
+        );
+      } else {
+        // Empty cell to maintain column structure
+        columnChildren.add(
+          DCFView(
+            layout: const LayoutProps(flex: 1),
+            children: [],
+          ),
+        );
+      }
+    }
+
+    // 🚀 FIXED: Return horizontal row container with BOTH layout and style
+    return DCFView(
+      layout: LayoutProps(
+        flexDirection: YogaFlexDirection.row,
+        width: "100%",
+        // Apply column wrapper layout properties
+        padding: columnWrapperLayout?.padding,
+        margin: columnWrapperLayout?.margin,
+        paddingTop: columnWrapperLayout?.paddingTop,
+        paddingBottom: columnWrapperLayout?.paddingBottom,
+        paddingLeft: columnWrapperLayout?.paddingLeft,
+        paddingRight: columnWrapperLayout?.paddingRight,
+        marginTop: columnWrapperLayout?.marginTop,
+        marginBottom: columnWrapperLayout?.marginBottom,
+        marginLeft: columnWrapperLayout?.marginLeft,
+        marginRight: columnWrapperLayout?.marginRight,
+        alignItems: columnWrapperLayout?.alignItems,
+        justifyContent: columnWrapperLayout?.justifyContent,
+      ),
+      styleSheet: columnWrapperStyle ?? const StyleSheet(),
+      children: columnChildren,
     );
   }
 
@@ -354,30 +312,35 @@ class DCFFlatList<T> extends StatelessComponent
         styleSheet,
         showsScrollIndicator,
         scrollEnabled,
-        bounces,
         pagingEnabled,
-        itemSize,
-        getItemSize,
-        initialNumToRender,
-        removeClippedSubviews,
         inverted,
+        initialNumToRender,
+        maxToRenderPerBatch,
+        windowSize,
+        removeClippedSubviews,
+        updateCellsBatchingPeriod,
+        getItemLayout,
         onScroll,
         onScrollBeginDrag,
         onScrollEndDrag,
+        onMomentumScrollBegin,
         onMomentumScrollEnd,
+        onViewableItemsChanged,
+        viewabilityConfig,
         onEndReached,
         onEndReachedThreshold,
-        header,
-        footer,
-        emptyState,
-        separator,
-        separatorBuilder,
         refreshing,
         onRefresh,
+        listHeaderComponent,
+        listFooterComponent,
+        listEmptyComponent,
+        itemSeparatorComponent,
+        numColumns,
+        columnWrapperLayout, // 🚀 FIXED: Include both in props
+        columnWrapperStyle,
         command,
         debug,
-        additionalProps,
-        onMetrics,
+        extraData,
         key,
       ];
 }

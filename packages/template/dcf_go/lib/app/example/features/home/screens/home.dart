@@ -13,7 +13,7 @@ class App extends StatefulComponent {
   // adds up to make your app even more performant.
   final homePage = Home();
   final gradientTestPage = GradientTest();
-  final veryLongListPage = VeryLongList();
+  final veryLongListPage = DebugRenderedItems();
   final profilePage = Profile();
   final portalTestPage = PortalTest();
 
@@ -71,7 +71,7 @@ class App extends StatefulComponent {
                 : pagestateLocal.state == 4
                 ? portalTestPage
                 : pagestateLocal.state == 5
-                ? VeryLongList()
+                ? veryLongListPage
                 : DCFView(),
           ],
         ),

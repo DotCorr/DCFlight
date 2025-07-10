@@ -67,7 +67,7 @@ export 'section_list.dart';
 // Re-export commonly used types for convenience
 export 'virtualized_list.dart'
     show
-        VirtualizedListItemInfo,
+     
         VirtualizedListScrollEvent,
         VirtualizedListContentOffset,
         VirtualizedListContentSize,

@@ -195,12 +195,12 @@ public class DCFLayoutManager {
     
     // Direct layout application helper
     private func applyLayoutDirectly(to view: UIView, frame: CGRect) {
-        
-        if frame.origin.y > 1000 {
-            print("🚨 BLOCKING off-screen layout: viewId=\(viewRegistry.first(where: { $0.value == view })?.key ?? "unknown"), frame=\(frame)")
-            return
-        }
-        
+//        
+//        if frame.origin.y > 1000 {
+//            print("🚨 BLOCKING off-screen layout: viewId=\(viewRegistry.first(where: { $0.value == view })?.key ?? "unknown"), frame=\(frame)")
+//            return
+//        }
+//        
         // 🔥 HOT RESTART COMPREHENSIVE SAFETY: Multiple validation layers
         
         // Level 1: Check if view is nil or in invalid state
@@ -212,11 +212,6 @@ public class DCFLayoutManager {
         guard view.superview != nil || view.window != nil else {
             return
         }
-        
-        // Level 3: Check if view is in valid UIKit state
-//        guard view.layer != nil else {
-//            return
-//        }
         
         // Level 4: Check if view responds to frame setter (defensive programming)
         guard view.responds(to: #selector(setter: UIView.frame)) else {
