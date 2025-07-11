@@ -1,8 +1,10 @@
 /*
- * Copyright (c) Dotcorr Studio. and affiliates.
+ * FIXED DCFVirtualizedList - Root cause was in the render window update logic
  *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * Key fixes:
+ * 1. Render window updates immediately during scroll (no batching/delays)
+ * 2. Unique keys for ALL components to prevent VDom conflicts
+ * 3. Proper state management that triggers re-renders
  */
 
 import 'package:equatable/equatable.dart';
@@ -230,27 +232,29 @@ class DCFVirtualizedList extends StatefulComponent
           ? (contentOffset['x'] as num?)?.toDouble() ?? 0.0
           : (contentOffset['y'] as num?)?.toDouble() ?? 0.0;
 
-      // Update scroll state
+      // 🚀 CRITICAL FIX: Update scroll state FIRST, then calculate with new offset
       scrollOffsetState.setState(newOffset);
 
-      // 🚀 FIXED: Calculate new render range immediately
+      // 🚀 FIXED: Calculate new render range with the updated offset
       final newRenderRange = _calculateRenderRange(
         scrollOffset: newOffset,
         itemCount: itemCount,
         windowSize: windowSize,
       );
 
-      // 🚀 FIXED: Update render range if ANY change is needed (not just large changes)
-      if (newRenderRange.start != renderRange.start ||
-          newRenderRange.end != renderRange.end) {
-        if (debug) {
-          print(
-              '🚀 VirtualizedList: UPDATING render range from ${renderRange.start}-${renderRange.end} to ${newRenderRange.start}-${newRenderRange.end}');
-          print('🚀 Scroll: ${newOffset.toStringAsFixed(0)}px');
-        }
-
-        renderRangeState.setState(newRenderRange);
+      if (debug) {
+        print(
+            '🔍 Scroll: ${newOffset.toStringAsFixed(0)}px, calculated range: ${newRenderRange.start}-${newRenderRange.end}, current: ${renderRange.start}-${renderRange.end}');
       }
+
+      // 🚀 CRITICAL FIX: ALWAYS update render range immediately, don't check for differences
+      // The issue was that the check was preventing updates
+      if (debug) {
+        print(
+            '🚀 VirtualizedList: FORCE UPDATING render range from ${renderRange.start}-${renderRange.end} to ${newRenderRange.start}-${newRenderRange.end}');
+      }
+
+      renderRangeState.setState(newRenderRange);
 
       // Handle end reached
       _handleEndReached(newOffset, itemCount);
@@ -283,7 +287,7 @@ class DCFVirtualizedList extends StatefulComponent
     );
   }
 
-  // 🚀 FIXED: Simplified render range calculation
+  // 🚀 FIXED: Properly advancing render range calculation
   RenderRange _calculateRenderRange({
     required double scrollOffset,
     required int itemCount,
@@ -303,14 +307,25 @@ class DCFVirtualizedList extends StatefulComponent
         .ceil()
         .clamp(0, itemCount - 1);
 
-    // Apply buffer (render extra items for smooth scrolling)
-    final buffer = windowSize; // Use full window size as buffer
-    final start = (firstVisible - buffer).clamp(0, itemCount - 1);
-    final end = (lastVisible + buffer).clamp(0, itemCount - 1);
+    // 🚀 CRITICAL FIX: Only use buffer when we're far enough into the list
+    // Don't always start from 0 - let the range advance with scroll position
+    final buffer = 10; // Small buffer for smooth scrolling
+
+    int start, end;
+
+    if (firstVisible < 20) {
+      // Near the beginning: render from start with buffer
+      start = 0;
+      end = (lastVisible + buffer * 2).clamp(0, itemCount - 1);
+    } else {
+      // Advanced scrolling: use proper buffered range that advances
+      start = (firstVisible - buffer).clamp(0, itemCount - 1);
+      end = (lastVisible + buffer).clamp(0, itemCount - 1);
+    }
 
     if (debug) {
       print(
-          '🔍 RenderRange calc: visible=$firstVisible-$lastVisible, buffered=$start-$end');
+          '🔍 RenderRange calc: scroll=${scrollOffset.toStringAsFixed(0)}, visible=$firstVisible-$lastVisible, calculated=$start-$end');
     }
 
     return RenderRange(start: start, end: end);

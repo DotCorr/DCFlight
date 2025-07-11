@@ -13,7 +13,7 @@ class App extends StatefulComponent {
   // adds up to make your app even more performant.
   final homePage = Home();
   final gradientTestPage = GradientTest();
-  final veryLongListPage = ProperVirtualizedApp();
+  final veryLongListPage = FixedInfiniteScroll();
   final profilePage = Profile();
   final portalTestPage = PortalTest();
 
