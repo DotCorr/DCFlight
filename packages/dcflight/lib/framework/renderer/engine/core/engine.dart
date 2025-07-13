@@ -96,7 +96,8 @@ class DCFEngine {
       EngineDebugLogger.log(
           'VDOM_INIT', 'VDom initialization completed successfully');
     } catch (e) {
-      EngineDebugLogger.log('VDOM_INIT_ERROR', 'VDom initialization failed: $e');
+      EngineDebugLogger.log(
+          'VDOM_INIT_ERROR', 'VDom initialization failed: $e');
       _readyCompleter.completeError(e);
     }
   }
@@ -247,7 +248,8 @@ class DCFEngine {
     // O(1) - Final fallback
     try {
       (handler as dynamic)(eventData);
-      EngineDebugLogger.log('EVENT_HANDLER_SUCCESS', 'Dynamic handler executed');
+      EngineDebugLogger.log(
+          'EVENT_HANDLER_SUCCESS', 'Dynamic handler executed');
     } catch (e) {
       EngineDebugLogger.log(
           'EVENT_HANDLER_ERROR', 'All handler execution attempts failed',
@@ -355,7 +357,8 @@ class DCFEngine {
         });
 
     if (_batchUpdateInProgress) {
-      EngineDebugLogger.log('BATCH_SKIP', 'Batch already in progress, skipping');
+      EngineDebugLogger.log(
+          'BATCH_SKIP', 'Batch already in progress, skipping');
       return;
     }
 
@@ -410,7 +413,8 @@ class DCFEngine {
 
   /// Process updates using concurrent processing
   Future<void> _processPendingUpdatesConcurrently() async {
-    EngineDebugLogger.log('BATCH_CONCURRENT', 'Processing updates concurrently');
+    EngineDebugLogger.log(
+        'BATCH_CONCURRENT', 'Processing updates concurrently');
 
     // O(n log n) - Sort updates by priority
     final sortedUpdates = PriorityUtils.sortByPriority(
@@ -800,7 +804,8 @@ class DCFEngine {
 
           // O(1) - Store the view ID
           node.contentViewId = viewId;
-          EngineDebugLogger.log('COMPONENT_VIEW_ID', 'Component view ID assigned',
+          EngineDebugLogger.log(
+              'COMPONENT_VIEW_ID', 'Component view ID assigned',
               extra: {'ViewId': viewId});
 
           // O(hooks count) - Enhanced: Mount component with phased effects
@@ -1180,7 +1185,8 @@ class DCFEngine {
     // O(tree depth) - Find parent info for placing the new node
     final parentViewId = _findParentViewId(oldNode);
     if (parentViewId == null) {
-      EngineDebugLogger.log('REPLACE_NODE_NO_PARENT', 'No parent view ID found');
+      EngineDebugLogger.log(
+          'REPLACE_NODE_NO_PARENT', 'No parent view ID found');
       return;
     }
 
@@ -1346,7 +1352,8 @@ class DCFEngine {
       }
       // O(1) - Handle StatelessComponent disposal
       else if (oldNode is StatelessComponent) {
-        EngineDebugLogger.log('DISPOSE_STATELESS', 'Disposing StatelessComponent',
+        EngineDebugLogger.log(
+            'DISPOSE_STATELESS', 'Disposing StatelessComponent',
             extra: {'InstanceId': oldNode.instanceId});
 
         // O(1) - Remove from component tracking
@@ -1368,10 +1375,11 @@ class DCFEngine {
       }
       // O(children count * disposal complexity) - Handle DCFElement disposal
       else if (oldNode is DCFElement) {
-        EngineDebugLogger.log('DISPOSE_ELEMENT', 'Disposing DCFElement', extra: {
-          'ElementType': oldNode.type,
-          'ChildCount': oldNode.children.length
-        });
+        EngineDebugLogger.log('DISPOSE_ELEMENT', 'Disposing DCFElement',
+            extra: {
+              'ElementType': oldNode.type,
+              'ChildCount': oldNode.children.length
+            });
 
         // Recursively dispose child components
         for (final child in oldNode.children) {
@@ -1442,7 +1450,8 @@ class DCFEngine {
       EngineDebugLogger.log('CREATE_ROOT_COMPLETE',
           'Root component re-created successfully after hot restart.');
     } else {
-      EngineDebugLogger.log('CREATE_ROOT_FIRST', 'Creating first root component');
+      EngineDebugLogger.log(
+          'CREATE_ROOT_FIRST', 'Creating first root component');
       rootComponent = component;
 
       final viewId = await renderToNative(component, parentViewId: "root");
@@ -1478,24 +1487,210 @@ class DCFEngine {
   }
 
   /// O(siblings count) - Find a node's index in its parent's children
+  Future<void> _reconcileStatefulComponent(
+      StatefulComponent oldComponent, StatefulComponent newComponent) async {
+    EngineDebugLogger.logReconcile(
+        'UPDATE_STATEFUL', oldComponent, newComponent,
+        reason: 'Reconciling StatefulComponent');
+
+    // Transfer critical properties
+    newComponent.nativeViewId = oldComponent.nativeViewId;
+    newComponent.contentViewId = oldComponent.contentViewId;
+    newComponent.parent = oldComponent.parent;
+
+    // Update component tracking
+    _statefulComponents[newComponent.instanceId] = newComponent;
+    newComponent.scheduleUpdate = () => _scheduleComponentUpdate(newComponent);
+    registerComponent(newComponent);
+
+    // Get the rendered content
+    final oldRenderedNode = oldComponent.renderedNode;
+    final newRenderedNode = newComponent.renderedNode;
+
+    if (oldRenderedNode == null && newRenderedNode == null) {
+      return; // Both null, nothing to do
+    }
+
+    if (oldRenderedNode == null && newRenderedNode != null) {
+      // First render - create from scratch
+      final parentViewId = _findParentViewId(newComponent) ?? "root";
+      final newViewId =
+          await renderToNative(newRenderedNode, parentViewId: parentViewId);
+      newComponent.contentViewId = newViewId;
+      return;
+    }
+
+    if (oldRenderedNode != null && newRenderedNode == null) {
+      // Component now renders null - remove old content
+      await _disposeOldComponent(oldRenderedNode);
+      newComponent.contentViewId = null;
+      return;
+    }
+
+    // Both exist - check if root node types are different
+    if (oldRenderedNode!.runtimeType != newRenderedNode!.runtimeType) {
+      EngineDebugLogger.log(
+          'COMPONENT_ROOT_TYPE_CHANGE', 'Component root node type changed',
+          extra: {
+            'OldType': oldRenderedNode.runtimeType.toString(),
+            'NewType': newRenderedNode.runtimeType.toString(),
+            'ComponentId': newComponent.instanceId
+          });
+
+      // ROOT TYPE CHANGE FIX: Handle this as a component-level replacement
+      await _handleComponentRootReplacement(
+          oldComponent, newComponent, oldRenderedNode, newRenderedNode);
+    } else {
+      // Same root type - normal reconciliation
+      newRenderedNode.parent = newComponent;
+      await _reconcile(oldRenderedNode, newRenderedNode);
+
+      // Update content view ID
+      if (oldRenderedNode.effectiveNativeViewId != null) {
+        newComponent.contentViewId = oldRenderedNode.effectiveNativeViewId;
+      }
+    }
+  }
+
+  /// Handle component root node replacement (the real fix for ternary operators)
+  Future<void> _handleComponentRootReplacement(
+      StatefulComponent oldComponent,
+      StatefulComponent newComponent,
+      DCFComponentNode oldRenderedNode,
+      DCFComponentNode newRenderedNode) async {
+    EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_START',
+        'Handling component root replacement');
+
+    try {
+      // Step 1: Find where this component is placed in its parent
+      final parentViewId = _findParentViewId(oldComponent);
+      final componentIndex = _findNodeIndexInParent(oldComponent);
+
+      if (parentViewId == null) {
+        EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_NO_PARENT',
+            'No parent found for component root replacement');
+        return;
+      }
+
+      EngineDebugLogger.log(
+          'COMPONENT_ROOT_REPLACEMENT_PLACEMENT', 'Found placement info',
+          extra: {
+            'ParentViewId': parentViewId,
+            'ComponentIndex': componentIndex
+          });
+
+      // Step 2: Remove the old rendered content
+      await _removeComponentRenderedContent(oldRenderedNode);
+
+      // Step 3: Create the new rendered content in the same location
+      newRenderedNode.parent = newComponent;
+      final newViewId = await renderToNative(newRenderedNode,
+          parentViewId: parentViewId, index: componentIndex);
+
+      // Step 4: Update component's content view ID
+      newComponent.contentViewId = newViewId;
+
+      EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_SUCCESS',
+          'Component root replacement completed',
+          extra: {'NewViewId': newViewId});
+    } catch (e, stackTrace) {
+      EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_ERROR',
+          'Component root replacement failed',
+          extra: {'Error': e.toString(), 'StackTrace': stackTrace.toString()});
+
+      // Fallback: try to at least render the new content
+      try {
+        final parentViewId = _findParentViewId(newComponent) ?? "root";
+        newRenderedNode.parent = newComponent;
+        final fallbackViewId =
+            await renderToNative(newRenderedNode, parentViewId: parentViewId);
+        newComponent.contentViewId = fallbackViewId;
+      } catch (fallbackError) {
+        EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_FALLBACK_FAILED',
+            'Fallback also failed: $fallbackError');
+      }
+    }
+  }
+
+  /// Remove component's rendered content properly
+  Future<void> _removeComponentRenderedContent(
+      DCFComponentNode renderedNode) async {
+    try {
+      // Collect all view IDs that need to be removed
+      final viewIdsToRemove = <String>[];
+      _collectViewIdsRecursively(renderedNode, viewIdsToRemove);
+
+      // Remove from tracking maps
+      for (final viewId in viewIdsToRemove) {
+        _nodesByViewId.remove(viewId);
+      }
+
+      // Delete the views from native layer
+      for (final viewId in viewIdsToRemove) {
+        try {
+          await _nativeBridge.deleteView(viewId);
+        } catch (e) {
+          EngineDebugLogger.log(
+              'DELETE_VIEW_ERROR', 'Failed to delete view: $viewId, error: $e');
+        }
+      }
+
+      EngineDebugLogger.log(
+          'COMPONENT_CONTENT_REMOVED', 'Removed component rendered content',
+          extra: {
+            'ViewsRemoved': viewIdsToRemove.length,
+            'ViewIds': viewIdsToRemove
+          });
+    } catch (e) {
+      EngineDebugLogger.log('COMPONENT_CONTENT_REMOVAL_ERROR',
+          'Failed to remove component content: $e');
+    }
+  }
+
+  /// Recursively collect all view IDs in a component tree
+  void _collectViewIdsRecursively(DCFComponentNode node, List<String> viewIds) {
+    // Add this node's view ID if it exists
+    if (node.effectiveNativeViewId != null) {
+      viewIds.add(node.effectiveNativeViewId!);
+    }
+
+    // Recursively collect from children
+    if (node is DCFElement) {
+      for (final child in node.children) {
+        _collectViewIdsRecursively(child, viewIds);
+      }
+    } else if (node is DCFFragment) {
+      for (final child in node.children) {
+        _collectViewIdsRecursively(child, viewIds);
+      }
+    } else if (node is StatefulComponent || node is StatelessComponent) {
+      if (node.renderedNode != null) {
+        _collectViewIdsRecursively(node.renderedNode!, viewIds);
+      }
+    }
+  }
+
+  /// Enhanced find node index that works for components too
   int _findNodeIndexInParent(DCFComponentNode node) {
     if (node.parent == null) {
-      EngineDebugLogger.log(
-          'NODE_INDEX_NO_PARENT', 'No parent found, using index 0');
       return 0;
     }
 
-    if (node.parent is! DCFElement) {
-      EngineDebugLogger.log(
-          'NODE_INDEX_NOT_ELEMENT', 'Parent is not DCFElement, using index 0');
-      return 0;
+    // Handle different parent types
+    if (node.parent is DCFElement) {
+      final parent = node.parent as DCFElement;
+      return parent.children.indexOf(node);
+    } else if (node.parent is DCFFragment) {
+      final parent = node.parent as DCFFragment;
+      return parent.children.indexOf(node);
+    } else if (node.parent is StatefulComponent ||
+        node.parent is StatelessComponent) {
+      // Component is the direct child of another component
+      // In this case, it takes the place of its parent's rendered content
+      return _findNodeIndexInParent(node.parent!);
     }
 
-    final parent = node.parent as DCFElement;
-    final index = parent.children.indexOf(node);
-    EngineDebugLogger.log('NODE_INDEX_FOUND', 'Found node index in parent',
-        extra: {'Index': index, 'ParentChildCount': parent.children.length});
-    return index;
+    return 0;
   }
 
   /// O(props count + event types count) - Reconcile an element - update props and children
@@ -1736,7 +1931,8 @@ class DCFEngine {
       String? childViewId;
 
       if (oldChild != null) {
-        EngineDebugLogger.log('RECONCILE_KEYED_UPDATE', 'Updating existing child',
+        EngineDebugLogger.log(
+            'RECONCILE_KEYED_UPDATE', 'Updating existing child',
             extra: {'Key': key, 'Position': i});
 
         processedOldChildren.add(oldChild);
