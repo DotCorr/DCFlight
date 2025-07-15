@@ -25,7 +25,7 @@ class MyApp extends StatefulComponent {
       ],
       //sub-routes don't have to be registered in the same order as the tabs
       // fun fact: sub routes can push to the same screen as the tab routes (not advised doing but incase you do we got you covered)
-      selectedIndex: 0,
+      selectedIndex: 2,
       tabRoutesRegistryComponents: tabReg,
       subRoutesRegistryComponents: subRoutesReg,
     );
