@@ -106,12 +106,13 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         
         for (index, screenName) in screens.enumerated() {
             if let screenContainer = DCFScreenComponent.getScreenContainer(name: screenName) {
-                let navController = UINavigationController(rootViewController: screenContainer.viewController)
+                let navController = UINavigationController()
                 
-                // CRITICAL FIX: Ensure proper view controller containment
                 screenContainer.viewController.view = screenContainer.contentView
                 screenContainer.contentView.frame = UIScreen.main.bounds
                 screenContainer.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                
+                navController.setViewControllers([screenContainer.viewController], animated: false)
                 
                 configureTabBarItemWithRetry(navController, screenContainer: screenContainer, index: index)
                 
@@ -130,7 +131,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             }
         }
         
-        tabBarController.viewControllers = viewControllers
+        tabBarController.setViewControllers(viewControllers, animated: false)
         
         let selectedIndex = props["selectedIndex"] as? Int ?? 0
         if selectedIndex >= 0 && selectedIndex < viewControllers.count {
@@ -148,6 +149,29 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         )
         
         print("🎯 DCFTabNavigatorComponent: Tab bar configuration complete")
+    }
+
+    static func cleanupAllTabNavigators() {
+        for (_, tabController) in tabNavigatorRegistry {
+            if let viewControllers = tabController.viewControllers {
+                for viewController in viewControllers {
+                    if let navController = viewController as? UINavigationController {
+                        navController.setViewControllers([], animated: false)
+                        if navController.navigationBar.superview != nil {
+                            navController.navigationBar.removeFromSuperview()
+                        }
+                        navController.delegate = nil
+                    }
+                }
+            }
+            
+            tabController.setViewControllers([], animated: false)
+            tabController.delegate = nil
+        }
+        
+        tabNavigatorRegistry.removeAll()
+        navigatorState.removeAll()
+        placeholderViewRegistry.removeAll()
     }
     
     private func configureTabBarItemWithRetry(_ viewController: UIViewController, screenContainer: ScreenContainer, index: Int, retryCount: Int = 0) {
