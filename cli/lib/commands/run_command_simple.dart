@@ -5,7 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
+// Experimental feature
+//
 import 'dart:io';
 import 'package:args/command_runner.dart';
 
@@ -14,7 +15,8 @@ class RunCommandSimple extends Command {
   String get name => 'run';
 
   @override
-  String get description => 'Run DCFlight app with live code hydration (simple)';
+  String get description =>
+      'Run DCFlight app with live code hydration (simple)';
 
   RunCommandSimple() {
     argParser.addOption(

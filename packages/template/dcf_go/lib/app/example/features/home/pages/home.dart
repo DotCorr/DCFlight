@@ -1,5 +1,4 @@
 import 'package:dcf_go/app/example/config/global_state.dart';
-import 'package:dcf_go/app/example/features/home/components/fixed_virtual_list.dart';
 
 import 'package:dcflight/dcflight.dart';
 
