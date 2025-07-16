@@ -6,7 +6,7 @@ extension DCFScreenComponent {
 
     // MARK: - Enhanced Push Configuration Storage
 
-    private func storePushConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
+    internal func storePushConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
         var pushConfig: [String: Any] = [:]
 
         if let pushConfigData = props["pushConfig"] as? [String: Any] {
@@ -36,10 +36,12 @@ extension DCFScreenComponent {
             // NEW: Store header actions
             if let prefixActions = props["prefixActions"] as? [[String: Any]] {
                 pushConfig["prefixActions"] = prefixActions
+                print("📝 Extension: Found \(prefixActions.count) prefix actions in props")
             }
 
             if let suffixActions = props["suffixActions"] as? [[String: Any]] {
                 pushConfig["suffixActions"] = suffixActions
+                print("📝 Extension: Found \(suffixActions.count) suffix actions in props")
             }
         }
 
@@ -50,6 +52,7 @@ extension DCFScreenComponent {
                 pushConfig,
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
+            print("🎯 Extension: Stored push config for '\(screenContainer.name)': \(pushConfig)")
         }
     }
 
@@ -62,14 +65,20 @@ extension DCFScreenComponent {
                 UnsafeRawPointer(bitPattern: "pushConfig".hashValue)!
             ) as? [String: Any]
         else {
+            print("⚠️ DCFScreenComponent: No push config found for screen '\(screenContainer.name)'")
             return
         }
+
+        print(
+            "🔧 DCFScreenComponent: Configuring push screen '\(screenContainer.name)' with config keys: \(pushConfig.keys)"
+        )
 
         let viewController = screenContainer.viewController
 
         // Configure basic navigation item properties
         if let title = pushConfig["title"] as? String {
             viewController.navigationItem.title = title
+            print("✅ Set title: \(title)")
         }
 
         let hideBackButton = pushConfig["hideBackButton"] as? Bool ?? false
@@ -96,24 +105,41 @@ extension DCFScreenComponent {
     private func configureHeaderActions(
         for viewController: UIViewController, pushConfig: [String: Any]
     ) {
+        print(
+            "🎯 DCFScreenComponent: Configuring header actions for '\(viewController.title ?? "Unknown")'"
+        )
+        print("🎯 DCFScreenComponent: Push config keys: \(pushConfig.keys)")
+
         // Configure left bar button items (prefix actions)
         if let prefixActionsData = pushConfig["prefixActions"] as? [[String: Any]] {
+            print("📝 Found \(prefixActionsData.count) prefix actions")
+            print("📝 Prefix actions data: \(prefixActionsData)")
+
             let leftBarButtonItems = createBarButtonItems(
                 from: prefixActionsData,
                 for: viewController,
                 position: .left
             )
             viewController.navigationItem.leftBarButtonItems = leftBarButtonItems
+            print("✅ Set \(leftBarButtonItems.count) left bar button items")
+        } else {
+            print("ℹ️ No prefix actions found in push config")
         }
 
         // Configure right bar button items (suffix actions)
         if let suffixActionsData = pushConfig["suffixActions"] as? [[String: Any]] {
+            print("📝 Found \(suffixActionsData.count) suffix actions")
+            print("📝 Suffix actions data: \(suffixActionsData)")
+
             let rightBarButtonItems = createBarButtonItems(
                 from: suffixActionsData,
                 for: viewController,
                 position: .right
             )
             viewController.navigationItem.rightBarButtonItems = rightBarButtonItems
+            print("✅ Set \(rightBarButtonItems.count) right bar button items")
+        } else {
+            print("ℹ️ No suffix actions found in push config")
         }
     }
 
@@ -156,12 +182,17 @@ extension DCFScreenComponent {
         let enabled = actionData["enabled"] as? Bool ?? true
         let actionId = actionData["actionId"] as? String ?? "action_\(position)_\(index)"
 
+        print(
+            "🔨 Creating bar button item - Title: '\(title)', ActionId: '\(actionId)', Enabled: \(enabled)"
+        )
+
         guard let iconConfig = actionData["icon"] as? [String: Any] else {
             print("❌ DCFScreenComponent: Missing icon config for header action")
             return nil
         }
 
         let iconType = iconConfig["type"] as? String ?? "sf"
+        print("🎨 Icon type: \(iconType)")
 
         var barButtonItem: UIBarButtonItem?
 
@@ -174,22 +205,36 @@ extension DCFScreenComponent {
                 target: self,
                 action: #selector(headerActionPressed(_:))
             )
+            print("✅ Created text-only button: '\(title)'")
 
         case "sf":
             // SF Symbol button
             if let symbolName = iconConfig["name"] as? String {
                 let image = UIImage(systemName: symbolName)
-                barButtonItem = UIBarButtonItem(
-                    image: image,
-                    style: .plain,
-                    target: self,
-                    action: #selector(headerActionPressed(_:))
-                )
 
-                // Add title if provided and not empty
+                // 🎯 FIX: Handle icon+title vs icon-only buttons properly
                 if !title.isEmpty {
-                    barButtonItem?.title = title
+                    // Create button with both icon and title
+                    barButtonItem = UIBarButtonItem(
+                        title: title,
+                        style: .plain,
+                        target: self,
+                        action: #selector(headerActionPressed(_:))
+                    )
+                    barButtonItem?.image = image
+                    print("✅ Created SF symbol button with title: '\(title)' + \(symbolName)")
+                } else {
+                    // Create icon-only button
+                    barButtonItem = UIBarButtonItem(
+                        image: image,
+                        style: .plain,
+                        target: self,
+                        action: #selector(headerActionPressed(_:))
+                    )
+                    print("✅ Created SF symbol icon-only button: \(symbolName)")
                 }
+            } else {
+                print("❌ Missing SF symbol name")
             }
 
         case "package":
@@ -204,17 +249,29 @@ extension DCFScreenComponent {
                     iconConfig: iconConfig
                 )
 
-                barButtonItem = UIBarButtonItem(
-                    image: image,
-                    style: .plain,
-                    target: self,
-                    action: #selector(headerActionPressed(_:))
-                )
-
-                // Add title if provided and not empty
+                // 🎯 FIX: Handle icon+title vs icon-only buttons properly
                 if !title.isEmpty {
-                    barButtonItem?.title = title
+                    // Create button with both icon and title
+                    barButtonItem = UIBarButtonItem(
+                        title: title,
+                        style: .plain,
+                        target: self,
+                        action: #selector(headerActionPressed(_:))
+                    )
+                    barButtonItem?.image = image
+                    print("✅ Created SVG package button with title: '\(title)' + \(iconName)")
+                } else {
+                    // Create icon-only button
+                    barButtonItem = UIBarButtonItem(
+                        image: image,
+                        style: .plain,
+                        target: self,
+                        action: #selector(headerActionPressed(_:))
+                    )
+                    print("✅ Created SVG package icon-only button: \(iconName)")
                 }
+            } else {
+                print("❌ Missing SVG package config")
             }
 
         case "svg":
@@ -222,17 +279,29 @@ extension DCFScreenComponent {
             if let assetPath = iconConfig["assetPath"] as? String {
                 let image = loadSVGFromAssetPath(assetPath, iconConfig: iconConfig)
 
-                barButtonItem = UIBarButtonItem(
-                    image: image,
-                    style: .plain,
-                    target: self,
-                    action: #selector(headerActionPressed(_:))
-                )
-
-                // Add title if provided and not empty
+                // 🎯 FIX: Handle icon+title vs icon-only buttons properly
                 if !title.isEmpty {
-                    barButtonItem?.title = title
+                    // Create button with both icon and title
+                    barButtonItem = UIBarButtonItem(
+                        title: title,
+                        style: .plain,
+                        target: self,
+                        action: #selector(headerActionPressed(_:))
+                    )
+                    barButtonItem?.image = image
+                    print("✅ Created SVG asset button with title: '\(title)' + \(assetPath)")
+                } else {
+                    // Create icon-only button
+                    barButtonItem = UIBarButtonItem(
+                        image: image,
+                        style: .plain,
+                        target: self,
+                        action: #selector(headerActionPressed(_:))
+                    )
+                    print("✅ Created SVG asset icon-only button: \(assetPath)")
                 }
+            } else {
+                print("❌ Missing SVG asset path")
             }
 
         default:
@@ -244,6 +313,7 @@ extension DCFScreenComponent {
                 target: self,
                 action: #selector(headerActionPressed(_:))
             )
+            print("✅ Created fallback text button: '\(title)'")
         }
 
         // Configure button properties
@@ -264,6 +334,10 @@ extension DCFScreenComponent {
                 viewController,
                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC
             )
+
+            print("✅ Bar button item created and configured successfully")
+        } else {
+            print("❌ Failed to create bar button item")
         }
 
         return barButtonItem
@@ -376,6 +450,8 @@ extension DCFScreenComponent {
     // MARK: - Header Action Event Handling
 
     @objc private func headerActionPressed(_ sender: UIBarButtonItem) {
+        print("🎯 DCFScreenComponent: Header action button was pressed!")
+
         guard
             let actionData = objc_getAssociatedObject(
                 sender,
@@ -396,8 +472,13 @@ extension DCFScreenComponent {
         print("🎯 DCFScreenComponent: Header action pressed - ID: \(actionId), Title: \(title)")
 
         // Find the screen container for this view controller
-        for (screenName, container) in DCFScreenComponent.screenRegistry {
+        var foundContainer = false
+        for (_, container) in DCFScreenComponent.screenRegistry {
             if container.viewController == viewController {
+                foundContainer = true
+                print(
+                    "📡 DCFScreenComponent: Found container '\(container.name)' for view controller")
+
                 // Propagate the action press event
                 propagateEvent(
                     on: container.contentView,
@@ -405,11 +486,16 @@ extension DCFScreenComponent {
                     data: [
                         "actionId": actionId,
                         "title": title,
-                        "screenName": screenName,
+                        "screenName": container.name,
                     ]
                 )
+                print("📡 DCFScreenComponent: Sent onHeaderActionPress event to Dart")
                 break
             }
+        }
+
+        if !foundContainer {
+            print("❌ DCFScreenComponent: Could not find container for view controller")
         }
     }
 }

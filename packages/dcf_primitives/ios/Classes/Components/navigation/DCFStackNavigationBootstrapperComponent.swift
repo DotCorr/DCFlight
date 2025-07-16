@@ -185,6 +185,16 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
         screenContainer.contentView.frame = UIScreen.main.bounds
         screenContainer.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
+        // 🎯 CRITICAL FIX: Configure header actions for initial screen
+        if screenContainer.presentationStyle == "push" {
+            // Create a DCFScreenComponent instance to access the extension methods
+            let screenComponent = DCFScreenComponent()
+            screenComponent.configureScreenForPush(screenContainer)
+            print(
+                "✅ DCFStackNavigationBootstrapperComponent: Configured header actions for initial screen '\(screenName)'"
+            )
+        }
+
         // Set as root view controller of the navigation controller
         navigationController.viewControllers = [screenContainer.viewController]
 
