@@ -187,8 +187,7 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
 
         // Set as root view controller of the navigation controller
         navigationController.viewControllers = [screenContainer.viewController]
-        //      bare in mind this is custom to push from the push config extension
-        DCFScreenComponent().configureScreenForPush(screenContainer)
+
         // Fire initial lifecycle events (like DCFTabNavigatorComponent does)
         DispatchQueue.main.async {
             propagateEvent(
