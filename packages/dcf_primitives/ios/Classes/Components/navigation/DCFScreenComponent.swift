@@ -5,16 +5,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
-    
+
     func createView(props: [String: Any]) -> UIView {
         guard let screenName = props["name"] as? String,
               let presentationStyle = props["presentationStyle"] as? String else {
             print("❌ DCFScreenComponent: Missing required props 'name' or 'presentationStyle'")
             return UIView()
         }
-        
+
         let contextKey = createContextKey(screenName: screenName, presentationStyle: presentationStyle)
-        
+
         let screenContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[contextKey] {
             screenContainer = existing
@@ -22,12 +22,12 @@ class DCFScreenComponent: NSObject, DCFComponent {
         } else {
             screenContainer = ScreenContainer(name: screenName, presentationStyle: presentationStyle)
             DCFScreenComponent.screenRegistry[contextKey] = screenContainer
-            
+
             // 🎯 FIXED: Register screen's intended presentation style
             DCFScreenComponent.screenPresentationRegistry[screenName] = presentationStyle
             print("✅ DCFScreenComponent: Created new screen container for '\(contextKey)' and registered presentation style '\(presentationStyle)'")
         }
-        
+
         configureScreen(screenContainer, props: props)
         storeTabConfiguration(screenContainer, props: props)
         storePushConfiguration(screenContainer, props: props)
@@ -37,26 +37,26 @@ class DCFScreenComponent: NSObject, DCFComponent {
         storeSheetConfiguration(screenContainer, props: props)
         storeDrawerConfiguration(screenContainer, props: props)
         storeSplitViewConfiguration(screenContainer, props: props)
-        
+
         let _ = updateView(screenContainer.contentView, withProps: props)
-        
+
         return screenContainer.contentView
     }
-    
+
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         if let existingContainer = findScreenContainer(for: view) {
             return updateExistingScreen(existingContainer, view: view, props: props)
         }
-        
+
         guard let screenName = props["name"] as? String,
               let presentationStyle = props["presentationStyle"] as? String else {
             print("❌ DCFScreenComponent: Missing required props for update - applying basic styles only")
             view.applyStyles(props: props)
             return false
         }
-        
+
         let contextKey = createContextKey(screenName: screenName, presentationStyle: presentationStyle)
-        
+
         let screenContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[contextKey] {
             screenContainer = existing
@@ -65,13 +65,13 @@ class DCFScreenComponent: NSObject, DCFComponent {
             DCFScreenComponent.screenRegistry[contextKey] = screenContainer
             DCFScreenComponent.screenPresentationRegistry[screenName] = presentationStyle
             print("✅ DCFScreenComponent: Created new screen container for '\(contextKey)' during update")
-            
+
             configureScreen(screenContainer, props: props)
         }
-        
+
         return updateExistingScreen(screenContainer, view: view, props: props)
     }
-    
+
     private func createContextKey(screenName: String, presentationStyle: String) -> String {
         switch presentationStyle {
         case "tab":
@@ -122,7 +122,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return "unknown_\(screenName)_\(UUID().uuidString.prefix(8))"
         }
     }
-    
+
     private func updateExistingScreen(_ screenContainer: ScreenContainer, view: UIView, props: [String: Any]) -> Bool {
         storeTabConfiguration(screenContainer, props: props)
         storePushConfiguration(screenContainer, props: props)
@@ -133,18 +133,18 @@ class DCFScreenComponent: NSObject, DCFComponent {
         storeDrawerConfiguration(screenContainer, props: props)
         storeSplitViewConfiguration(screenContainer, props: props)
         handleNavigationCommand(screenContainer: screenContainer, props: props)
-        
+
         view.applyStyles(props: props)
         return true
     }
-    
+
     private func handleNavigationCommand(screenContainer: ScreenContainer, props: [String: Any]) {
         guard let commandData = props["navigationCommand"] as? [String: Any] else {
             return
         }
-        
+
         print("🚀 DCFScreenComponent: Processing navigation command for '\(screenContainer.name)': \(commandData)")
-        
+
         if let pushToData = commandData["pushTo"] as? [String: Any] {
             if let targetScreenName = pushToData["screenName"] as? String {
                 let animated = pushToData["animated"] as? Bool ?? true
@@ -152,7 +152,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 smartNavigateTo(targetScreenName, method: .push, animated: animated, params: params, from: screenContainer)
             }
         }
-        
+
         if let modalData = commandData["presentModal"] as? [String: Any] {
             if let targetScreenName = modalData["screenName"] as? String {
                 let animated = modalData["animated"] as? Bool ?? true
@@ -161,7 +161,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 smartNavigateTo(targetScreenName, method: .modal, animated: animated, params: params, presentationStyle: presentationStyle, from: screenContainer)
             }
         }
-        
+
         if let sheetData = commandData["presentSheet"] as? [String: Any] {
             if let targetScreenName = sheetData["screenName"] as? String {
                 let animated = sheetData["animated"] as? Bool ?? true
@@ -169,7 +169,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 smartNavigateTo(targetScreenName, method: .sheet, animated: animated, params: params, from: screenContainer)
             }
         }
-        
+
         if let popoverData = commandData["presentPopover"] as? [String: Any] {
             if let targetScreenName = popoverData["screenName"] as? String {
                 let animated = popoverData["animated"] as? Bool ?? true
@@ -178,7 +178,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 smartNavigateTo(targetScreenName, method: .popover, animated: animated, params: params, sourceViewId: sourceViewId, from: screenContainer)
             }
         }
-        
+
         if let overlayData = commandData["presentOverlay"] as? [String: Any] {
             if let targetScreenName = overlayData["screenName"] as? String {
                 let animated = overlayData["animated"] as? Bool ?? true
@@ -186,7 +186,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 smartNavigateTo(targetScreenName, method: .overlay, animated: animated, params: params, from: screenContainer)
             }
         }
-        
+
         if let drawerData = commandData["presentDrawer"] as? [String: Any] {
             if let targetScreenName = drawerData["screenName"] as? String {
                 let animated = drawerData["animated"] as? Bool ?? true
@@ -195,7 +195,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 smartNavigateTo(targetScreenName, method: .drawer, animated: animated, params: params, drawerDirection: direction, from: screenContainer)
             }
         }
-        
+
         if let splitData = commandData["presentSplitView"] as? [String: Any] {
             if let targetScreenName = splitData["screenName"] as? String {
                 let animated = splitData["animated"] as? Bool ?? true
@@ -203,11 +203,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 smartNavigateTo(targetScreenName, method: .splitView, animated: animated, params: params, from: screenContainer)
             }
         }
-        
+
         // Handle other navigation commands (pop, dismiss, etc.)
         handleStandardNavigationCommands(commandData: commandData, from: screenContainer)
     }
-    
+
     // 🎯 ENHANCED: Smart navigation with all presentation styles
     private func smartNavigateTo(
         _ targetScreenName: String,
@@ -220,30 +220,30 @@ class DCFScreenComponent: NSObject, DCFComponent {
         from sourceContainer: ScreenContainer
     ) {
         print("🧠 DCFScreenComponent: Smart navigation to '\(targetScreenName)' - requested: \(requestedMethod)")
-        
+
         // 1. Determine the target screen's registered presentation style
         guard let registeredPresentationStyle = DCFScreenComponent.screenPresentationRegistry[targetScreenName] else {
             print("⚠️ DCFScreenComponent: Screen '\(targetScreenName)' not registered - using requested method \(requestedMethod)")
             executeNavigationMethod(requestedMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
             return
         }
-        
+
         print("🎯 DCFScreenComponent: Screen '\(targetScreenName)' is registered as '\(registeredPresentationStyle)'")
-        
+
         // 2. Determine the appropriate navigation method based on registered style
         let appropriateMethod = determineAppropriateMethod(for: registeredPresentationStyle)
-        
+
         // 3. Log the smart decision
         if appropriateMethod != requestedMethod {
             print("🔄 DCFScreenComponent: Smart navigation override - requested '\(requestedMethod)' but using '\(appropriateMethod)' for '\(registeredPresentationStyle)' screen")
         } else {
             print("✅ DCFScreenComponent: Smart navigation - requested method matches registered style")
         }
-        
+
         // 4. Execute the appropriate navigation method
         executeNavigationMethod(appropriateMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
     }
-    
+
     private func determineAppropriateMethod(for presentationStyle: String) -> NavigationMethod {
         switch presentationStyle {
         case "tab":
@@ -266,7 +266,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return .push // Default fallback
         }
     }
-    
+
     private func executeNavigationMethod(
         _ method: NavigationMethod,
         to targetScreenName: String,
@@ -296,14 +296,14 @@ class DCFScreenComponent: NSObject, DCFComponent {
             presentSplitViewScreen(targetScreenName, animated: animated, params: params, from: sourceContainer)
         }
     }
-    
+
     // MARK: - Navigation Method Implementations
-    
+
     private func pushToScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing push navigation to '\(screenName)'")
-        
+
         let pushContextKey = createContextKey(screenName: screenName, presentationStyle: "push")
-        
+
         let targetContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[pushContextKey] {
             targetContainer = existing
@@ -313,18 +313,18 @@ class DCFScreenComponent: NSObject, DCFComponent {
             DCFScreenComponent.screenRegistry[pushContextKey] = targetContainer
             print("✅ DCFScreenComponent: Created new push container for '\(screenName)'")
         }
-        
+
         guard let navigationController = getCurrentActiveNavigationController() else {
             print("❌ DCFScreenComponent: No active navigation controller found for push")
             return
         }
-        
-        configureScreenForPush(targetContainer)
-        
+
+        DCFScreenComponent().configureScreenForPush(targetContainer)
+
         targetContainer.contentView.isHidden = false
         targetContainer.contentView.alpha = 1.0
         targetContainer.contentView.backgroundColor = UIColor.systemBackground
-        
+
         if let params = params {
             propagateEvent(
                 on: targetContainer.contentView,
@@ -332,9 +332,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 data: ["params": params, "source": sourceContainer.name]
             )
         }
-        
+
         navigationController.pushViewController(targetContainer.viewController, animated: animated)
-        
+
         propagateEvent(
             on: sourceContainer.contentView,
             eventName: "onNavigationEvent",
@@ -344,15 +344,15 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 "animated": animated
             ]
         )
-        
+
         print("✅ DCFScreenComponent: Successfully pushed container for '\(screenName)'")
     }
-    
+
     private func presentModalScreen(_ screenName: String, animated: Bool, params: [String: Any]?, presentationStyle: String?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing modal presentation for '\(screenName)'")
-        
+
         let modalContextKey = createContextKey(screenName: screenName, presentationStyle: "modal")
-        
+
         let targetContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[modalContextKey] {
             targetContainer = existing
@@ -362,16 +362,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
             DCFScreenComponent.screenRegistry[modalContextKey] = targetContainer
             print("✅ DCFScreenComponent: Created new modal container for '\(screenName)'")
         }
-        
+
         guard let presentingViewController = getCurrentPresentingViewController() else {
             print("❌ DCFScreenComponent: No suitable presenting view controller found")
             return
         }
-        
+
         targetContainer.contentView.isHidden = false
         targetContainer.contentView.alpha = 1.0
         targetContainer.contentView.backgroundColor = UIColor.systemBackground
-        
+
         if let style = presentationStyle {
             switch style.lowercased() {
             case "fullscreen":
@@ -388,7 +388,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 }
             }
         }
-        
+
         if let params = params {
             propagateEvent(
                 on: targetContainer.contentView,
@@ -396,7 +396,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 data: ["params": params, "source": sourceContainer.name]
             )
         }
-        
+
         presentingViewController.present(targetContainer.viewController, animated: animated) {
             propagateEvent(
                 on: sourceContainer.contentView,
@@ -408,16 +408,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 ]
             )
         }
-        
+
         print("✅ DCFScreenComponent: Successfully presented modal container for '\(screenName)'")
     }
-    
+
     // 🎯 NEW: Sheet presentation using iOS 15+ bottom sheet
     private func presentSheetScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing sheet presentation for '\(screenName)'")
-        
+
         let sheetContextKey = createContextKey(screenName: screenName, presentationStyle: "sheet")
-        
+
         let targetContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[sheetContextKey] {
             targetContainer = existing
@@ -427,27 +427,27 @@ class DCFScreenComponent: NSObject, DCFComponent {
             DCFScreenComponent.screenRegistry[sheetContextKey] = targetContainer
             print("✅ DCFScreenComponent: Created new sheet container for '\(screenName)'")
         }
-        
+
         guard let presentingViewController = getCurrentPresentingViewController() else {
             print("❌ DCFScreenComponent: No suitable presenting view controller found for sheet")
             return
         }
-        
+
         targetContainer.contentView.isHidden = false
         targetContainer.contentView.alpha = 1.0
         targetContainer.contentView.backgroundColor = UIColor.systemBackground
-        
+
         // Configure as bottom sheet
         if #available(iOS 15.0, *) {
             targetContainer.viewController.modalPresentationStyle = .pageSheet
-            
+
             if let sheet = targetContainer.viewController.sheetPresentationController {
                 configureSheetDetents(sheet: sheet, for: targetContainer)
             }
         } else {
             targetContainer.viewController.modalPresentationStyle = .formSheet
         }
-        
+
         if let params = params {
             propagateEvent(
                 on: targetContainer.contentView,
@@ -455,7 +455,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 data: ["params": params, "source": sourceContainer.name]
             )
         }
-        
+
         presentingViewController.present(targetContainer.viewController, animated: animated) {
             propagateEvent(
                 on: sourceContainer.contentView,
@@ -467,15 +467,15 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 ]
             )
         }
-        
+
         print("✅ DCFScreenComponent: Successfully presented sheet container for '\(screenName)'")
     }
-    
+
     private func presentPopoverScreen(_ screenName: String, animated: Bool, params: [String: Any]?, sourceViewId: String?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing popover presentation for '\(screenName)'")
-        
+
         let popoverContextKey = createContextKey(screenName: screenName, presentationStyle: "popover")
-        
+
         let targetContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[popoverContextKey] {
             targetContainer = existing
@@ -485,24 +485,24 @@ class DCFScreenComponent: NSObject, DCFComponent {
             DCFScreenComponent.screenRegistry[popoverContextKey] = targetContainer
             print("✅ DCFScreenComponent: Created new popover container for '\(screenName)'")
         }
-        
+
         guard let presentingViewController = getCurrentPresentingViewController() else {
             print("❌ DCFScreenComponent: No suitable presenting view controller found for popover")
             return
         }
-        
+
         targetContainer.contentView.isHidden = false
         targetContainer.contentView.alpha = 1.0
         targetContainer.contentView.backgroundColor = UIColor.systemBackground
-        
+
         // Configure as popover
         targetContainer.viewController.modalPresentationStyle = .popover
-        
+
         if let popoverController = targetContainer.viewController.popoverPresentationController {
             // Configure popover from stored config
             configurePopoverController(popoverController, for: targetContainer, presentingViewController: presentingViewController)
         }
-        
+
         if let params = params {
             propagateEvent(
                 on: targetContainer.contentView,
@@ -510,7 +510,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 data: ["params": params, "source": sourceContainer.name]
             )
         }
-        
+
         presentingViewController.present(targetContainer.viewController, animated: animated) {
             propagateEvent(
                 on: sourceContainer.contentView,
@@ -522,16 +522,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 ]
             )
         }
-        
+
         print("✅ DCFScreenComponent: Successfully presented popover container for '\(screenName)'")
     }
-    
+
     // 🎯 FIXED: Proper overlay presentation
     private func presentOverlayScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing overlay presentation for '\(screenName)'")
-        
+
         let overlayContextKey = createContextKey(screenName: screenName, presentationStyle: "overlay")
-        
+
         let targetContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[overlayContextKey] {
             targetContainer = existing
@@ -541,25 +541,25 @@ class DCFScreenComponent: NSObject, DCFComponent {
             DCFScreenComponent.screenRegistry[overlayContextKey] = targetContainer
             print("✅ DCFScreenComponent: Created new overlay container for '\(screenName)'")
         }
-        
+
         guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
             print("❌ DCFScreenComponent: No root view controller found for overlay")
             return
         }
-        
+
         // 🎯 FIXED: Apply overlay configuration from stored props
         let overlayView = targetContainer.contentView
         overlayView.isHidden = false
         overlayView.alpha = 0.0
-        
+
         // Apply overlay configuration
         configureOverlayView(overlayView, for: targetContainer)
-        
+
         // Add overlay to the top of the view hierarchy
         rootViewController.view.addSubview(overlayView)
         overlayView.frame = rootViewController.view.bounds
         overlayView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        
+
         if let params = params {
             propagateEvent(
                 on: targetContainer.contentView,
@@ -567,7 +567,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 data: ["params": params, "source": sourceContainer.name]
             )
         }
-        
+
         // Animate overlay appearance
         if animated {
             UIView.animate(withDuration: 0.3) {
@@ -582,7 +582,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                         "animated": animated
                     ]
                 )
-                
+
                 // 🎯 FIXED: Fire onAppear event on the overlay itself
                 propagateEvent(
                     on: targetContainer.contentView,
@@ -601,23 +601,23 @@ class DCFScreenComponent: NSObject, DCFComponent {
                     "animated": animated
                 ]
             )
-            
+
             propagateEvent(
                 on: targetContainer.contentView,
                 eventName: "onAppear",
                 data: ["screenName": screenName]
             )
         }
-        
+
         print("✅ DCFScreenComponent: Successfully presented overlay container for '\(screenName)'")
     }
-    
+
     // 🎯 NEW: Native drawer presentation
     private func presentDrawerScreen(_ screenName: String, animated: Bool, params: [String: Any]?, direction: String?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing drawer presentation for '\(screenName)'")
-        
+
         let drawerContextKey = createContextKey(screenName: screenName, presentationStyle: "drawer")
-        
+
         let targetContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[drawerContextKey] {
             targetContainer = existing
@@ -627,15 +627,15 @@ class DCFScreenComponent: NSObject, DCFComponent {
             DCFScreenComponent.screenRegistry[drawerContextKey] = targetContainer
             print("✅ DCFScreenComponent: Created new drawer container for '\(screenName)'")
         }
-        
+
         // Use native side menu implementation
         guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
             print("❌ DCFScreenComponent: No root view controller found for drawer")
             return
         }
-        
+
         presentNativeDrawer(targetContainer, direction: direction ?? "left", animated: animated, from: rootViewController)
-        
+
         if let params = params {
             propagateEvent(
                 on: targetContainer.contentView,
@@ -643,7 +643,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 data: ["params": params, "source": sourceContainer.name]
             )
         }
-        
+
         propagateEvent(
             on: sourceContainer.contentView,
             eventName: "onNavigationEvent",
@@ -653,16 +653,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 "animated": animated
             ]
         )
-        
+
         print("✅ DCFScreenComponent: Successfully presented drawer container for '\(screenName)'")
     }
-    
+
     // 🎯 NEW: Split view presentation
     private func presentSplitViewScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing split view presentation for '\(screenName)'")
-        
+
         let splitContextKey = createContextKey(screenName: screenName, presentationStyle: "splitView")
-        
+
         let targetContainer: ScreenContainer
         if let existing = DCFScreenComponent.screenRegistry[splitContextKey] {
             targetContainer = existing
@@ -672,17 +672,17 @@ class DCFScreenComponent: NSObject, DCFComponent {
             DCFScreenComponent.screenRegistry[splitContextKey] = targetContainer
             print("✅ DCFScreenComponent: Created new split view container for '\(screenName)'")
         }
-        
+
         // Use UISplitViewController
         let splitViewController = UISplitViewController()
         splitViewController.viewControllers = [sourceContainer.viewController, targetContainer.viewController]
         splitViewController.preferredDisplayMode = .oneBesideSecondary
-        
+
         guard let presentingViewController = getCurrentPresentingViewController() else {
             print("❌ DCFScreenComponent: No suitable presenting view controller found for split view")
             return
         }
-        
+
         if let params = params {
             propagateEvent(
                 on: targetContainer.contentView,
@@ -690,7 +690,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 data: ["params": params, "source": sourceContainer.name]
             )
         }
-        
+
         presentingViewController.present(splitViewController, animated: animated) {
             propagateEvent(
                 on: sourceContainer.contentView,
@@ -702,22 +702,22 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     ]
                                 )
                             }
-                            
+
                             print("✅ DCFScreenComponent: Successfully presented split view container for '\(screenName)'")
                         }
-                        
+
                         private func switchToTabScreen(_ screenName: String, params: [String: Any]?, from sourceContainer: ScreenContainer, animated: Bool) {
                             let tabContextKey = "tab_\(screenName)"
                             guard let tabContainer = DCFScreenComponent.screenRegistry[tabContextKey] else {
                                 print("❌ DCFScreenComponent: Tab screen '\(screenName)' not found")
                                 return
                             }
-                            
+
                             guard let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController else {
                                 print("❌ DCFScreenComponent: No tab bar controller found")
                                 return
                             }
-                            
+
                             var tabIndex: Int? = nil
                             for (index, viewController) in (tabBarController.viewControllers ?? []).enumerated() {
                                 if let navController = viewController as? UINavigationController,
@@ -726,16 +726,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     break
                                 }
                             }
-                            
+
                             guard let foundTabIndex = tabIndex else {
                                 print("⚠️ DCFScreenComponent: Could not find tab containing screen '\(screenName)'")
                                 return
                             }
-                            
+
                             print("🎯 DCFScreenComponent: Switching to tab \(foundTabIndex) for screen '\(screenName)'")
-                            
+
                             tabBarController.selectedIndex = foundTabIndex
-                            
+
                             if let params = params {
                                 propagateEvent(
                                     on: tabContainer.contentView,
@@ -743,7 +743,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     data: ["params": params, "source": sourceContainer.name]
                                 )
                             }
-                            
+
                             propagateEvent(
                                 on: sourceContainer.contentView,
                                 eventName: "onNavigationEvent",
@@ -753,24 +753,24 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     "animated": animated
                                 ]
                             )
-                            
+
                             propagateEvent(
                                 on: tabContainer.contentView,
                                 eventName: "onAppear",
                                 data: ["screenName": screenName]
                             )
-                            
+
                             propagateEvent(
                                 on: tabContainer.contentView,
                                 eventName: "onActivate",
                                 data: ["screenName": screenName]
                             )
-                            
+
                             print("✅ DCFScreenComponent: Successfully switched to tab '\(screenName)'")
                         }
-                        
+
                         // MARK: - Configuration Methods
-                        
+
                         private func configureOverlayView(_ overlayView: UIView, for screenContainer: ScreenContainer) {
                             guard let overlayConfig = objc_getAssociatedObject(
                                 screenContainer.viewController,
@@ -780,7 +780,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 overlayView.backgroundColor = UIColor.black.withAlphaComponent(0.5)
                                 return
                             }
-                            
+
                             // Apply background color
                             if let backgroundColorString = overlayConfig["overlayBackgroundColor"] as? String {
                                 if let color = ColorUtilities.color(fromHexString: backgroundColorString) {
@@ -789,13 +789,13 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             } else {
                                 overlayView.backgroundColor = UIColor.black.withAlphaComponent(0.5)
                             }
-                            
+
                             // Apply dismiss on tap
                             let dismissOnTap = overlayConfig["dismissOnTap"] as? Bool ?? true
                             if dismissOnTap {
                                 let tapGesture = UITapGestureRecognizer(target: self, action: #selector(overlayBackgroundTapped(_:)))
                                 overlayView.addGestureRecognizer(tapGesture)
-                                
+
                                 // Store reference to container for dismissal
                                 objc_setAssociatedObject(
                                     tapGesture,
@@ -804,14 +804,14 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     .OBJC_ASSOCIATION_RETAIN_NONATOMIC
                                 )
                             }
-                            
+
                             // Apply interaction blocking
                             let blocksInteraction = overlayConfig["blocksInteraction"] as? Bool ?? true
                             overlayView.isUserInteractionEnabled = blocksInteraction
-                            
+
                             print("🎯 DCFScreenComponent: Applied overlay configuration - dismissOnTap: \(dismissOnTap), blocksInteraction: \(blocksInteraction)")
                         }
-                        
+
                         @objc private func overlayBackgroundTapped(_ gesture: UITapGestureRecognizer) {
                             guard let screenContainer = objc_getAssociatedObject(
                                 gesture,
@@ -819,11 +819,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             ) as? ScreenContainer else {
                                 return
                             }
-                            
+
                             print("🎯 DCFScreenComponent: Overlay background tapped - dismissing '\(screenContainer.name)'")
                             dismissOverlayScreen(animated: true, result: ["dismissReason": "backgroundTap"], from: screenContainer)
                         }
-                        
+
                         private func configurePopoverController(_ popoverController: UIPopoverPresentationController, for screenContainer: ScreenContainer, presentingViewController: UIViewController) {
                             guard let popoverConfig = objc_getAssociatedObject(
                                 screenContainer.viewController,
@@ -835,13 +835,13 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 popoverController.permittedArrowDirections = .any
                                 return
                             }
-                            
+
                             // Apply preferred size
                             if let width = popoverConfig["preferredWidth"] as? CGFloat,
                                let height = popoverConfig["preferredHeight"] as? CGFloat {
                                 screenContainer.viewController.preferredContentSize = CGSize(width: width, height: height)
                             }
-                            
+
                             // Apply arrow directions
                             if let arrowDirections = popoverConfig["permittedArrowDirections"] as? [String] {
                                 var directions: UIPopoverArrowDirection = []
@@ -866,12 +866,12 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             } else {
                                 popoverController.permittedArrowDirections = .any
                             }
-                            
+
                             // Default source view if not specified
                             popoverController.sourceView = presentingViewController.view
                             popoverController.sourceRect = CGRect(x: presentingViewController.view.bounds.midX, y: presentingViewController.view.bounds.midY, width: 0, height: 0)
                         }
-                        
+
                         @available(iOS 15.0, *)
                         private func configureSheetDetents(sheet: UISheetPresentationController, for screenContainer: ScreenContainer) {
                             guard let sheetConfig = objc_getAssociatedObject(
@@ -883,9 +883,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 sheet.prefersGrabberVisible = true
                                 return
                             }
-                            
+
                             var detents: [UISheetPresentationController.Detent] = []
-                            
+
                             if let detentArray = sheetConfig["detents"] as? [String] {
                                 for detentString in detentArray {
                                     switch detentString.lowercased() {
@@ -908,26 +908,26 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             } else {
                                 detents = [.medium(), .large()]
                             }
-                            
+
                             sheet.detents = detents
                             sheet.prefersGrabberVisible = sheetConfig["showDragIndicator"] as? Bool ?? true
-                            
+
                             if let cornerRadius = sheetConfig["cornerRadius"] as? CGFloat {
                                 if #available(iOS 16.0, *) {
                                     sheet.preferredCornerRadius = cornerRadius
                                 }
                             }
                         }
-                        
+
                         private func presentNativeDrawer(_ drawerContainer: ScreenContainer, direction: String, animated: Bool, from presentingViewController: UIViewController) {
                             let drawerView = drawerContainer.contentView
                             drawerView.backgroundColor = UIColor.systemBackground
-                            
+
                             // Calculate drawer frame based on direction
                             let screenBounds = presentingViewController.view.bounds
                             var drawerFrame: CGRect
                             let drawerWidth: CGFloat = 280 // Default drawer width
-                            
+
                             switch direction.lowercased() {
                             case "left":
                                 drawerFrame = CGRect(x: -drawerWidth, y: 0, width: drawerWidth, height: screenBounds.height)
@@ -940,10 +940,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             default:
                                 drawerFrame = CGRect(x: -drawerWidth, y: 0, width: drawerWidth, height: screenBounds.height)
                             }
-                            
+
                             drawerView.frame = drawerFrame
                             presentingViewController.view.addSubview(drawerView)
-                            
+
                             // Animate drawer in
                             var finalFrame = drawerFrame
                             switch direction.lowercased() {
@@ -958,7 +958,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             default:
                                 finalFrame.origin.x = 0
                             }
-                            
+
                             if animated {
                                 UIView.animate(withDuration: 0.3) {
                                     drawerView.frame = finalFrame
@@ -967,28 +967,28 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 drawerView.frame = finalFrame
                             }
                         }
-                        
+
                         // MARK: - Standard Navigation Commands
-                        
+
                         private func handleStandardNavigationCommands(commandData: [String: Any], from sourceContainer: ScreenContainer) {
                             if let popData = commandData["pop"] as? [String: Any] {
                                 let animated = popData["animated"] as? Bool ?? true
                                 let result = popData["result"] as? [String: Any]
                                 popCurrentScreen(animated: animated, result: result, from: sourceContainer)
                             }
-                            
+
                             if let popToData = commandData["popTo"] as? [String: Any] {
                                 if let targetScreenName = popToData["screenName"] as? String {
                                     let animated = popToData["animated"] as? Bool ?? true
                                     popToScreen(targetScreenName, animated: animated, from: sourceContainer)
                                 }
                             }
-                            
+
                             if let popToRootData = commandData["popToRoot"] as? [String: Any] {
                                 let animated = popToRootData["animated"] as? Bool ?? true
                                 popToRootScreen(animated: animated, from: sourceContainer)
                             }
-                            
+
                             if let replaceData = commandData["replaceWith"] as? [String: Any] {
                                 if let targetScreenName = replaceData["screenName"] as? String {
                                     let animated = replaceData["animated"] as? Bool ?? true
@@ -996,53 +996,53 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     replaceCurrentScreen(with: targetScreenName, animated: animated, params: params, from: sourceContainer)
                                 }
                             }
-                            
+
                             if let dismissData = commandData["dismissModal"] as? [String: Any] {
                                 let animated = dismissData["animated"] as? Bool ?? true
                                 let result = dismissData["result"] as? [String: Any]
                                 dismissModalScreen(animated: animated, result: result, from: sourceContainer)
                             }
-                            
+
                             if let dismissSheetData = commandData["dismissSheet"] as? [String: Any] {
                                 let animated = dismissSheetData["animated"] as? Bool ?? true
                                 let result = dismissSheetData["result"] as? [String: Any]
                                 dismissSheetScreen(animated: animated, result: result, from: sourceContainer)
                             }
-                            
+
                             if let dismissPopoverData = commandData["dismissPopover"] as? [String: Any] {
                                 let animated = dismissPopoverData["animated"] as? Bool ?? true
                                 let result = dismissPopoverData["result"] as? [String: Any]
                                 dismissPopoverScreen(animated: animated, result: result, from: sourceContainer)
                             }
-                            
+
                             if let dismissOverlayData = commandData["dismissOverlay"] as? [String: Any] {
                                 let animated = dismissOverlayData["animated"] as? Bool ?? true
                                 let result = dismissOverlayData["result"] as? [String: Any]
                                 dismissOverlayScreen(animated: animated, result: result, from: sourceContainer)
                             }
-                            
+
                             if let dismissDrawerData = commandData["dismissDrawer"] as? [String: Any] {
                                 let animated = dismissDrawerData["animated"] as? Bool ?? true
                                 let result = dismissDrawerData["result"] as? [String: Any]
                                 dismissDrawerScreen(animated: animated, result: result, from: sourceContainer)
                             }
                         }
-                        
+
                         // MARK: - Dismiss Methods
-                        
+
                         private func popCurrentScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
                             guard let navigationController = getCurrentActiveNavigationController() else {
                                 print("❌ DCFScreenComponent: No navigation controller found for pop")
                                 return
                             }
-                            
+
                             guard navigationController.viewControllers.count > 1 else {
                                 print("❌ DCFScreenComponent: Cannot pop root view controller")
                                 return
                             }
-                            
+
                             let targetViewController = navigationController.viewControllers[navigationController.viewControllers.count - 2]
-                            
+
                             var targetScreenName: String? = nil
                             for (_, container) in DCFScreenComponent.screenRegistry {
                                 if container.viewController == targetViewController {
@@ -1050,7 +1050,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     break
                                 }
                             }
-                            
+
                             if let result = result, let targetName = targetScreenName {
                                 for (_, container) in DCFScreenComponent.screenRegistry {
                                     if container.name == targetName {
@@ -1063,9 +1063,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                 }
                             }
-                            
+
                             navigationController.popViewController(animated: animated)
-                            
+
                             propagateEvent(
                                 on: sourceContainer.contentView,
                                 eventName: "onNavigationEvent",
@@ -1075,16 +1075,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     "animated": animated
                                 ]
                             )
-                            
+
                             print("✅ DCFScreenComponent: Popped screen '\(sourceContainer.name)'")
                         }
-                        
+
                         private func popToScreen(_ screenName: String, animated: Bool, from sourceContainer: ScreenContainer) {
                             guard let navigationController = getCurrentActiveNavigationController() else {
                                 print("❌ DCFScreenComponent: No navigation controller found for popTo")
                                 return
                             }
-                            
+
                             var targetViewController: UIViewController?
                             for (_, container) in DCFScreenComponent.screenRegistry {
                                 if container.name == screenName && navigationController.viewControllers.contains(container.viewController) {
@@ -1092,14 +1092,14 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     break
                                 }
                             }
-                            
+
                             guard let targetVC = targetViewController else {
                                 print("❌ DCFScreenComponent: Target screen '\(screenName)' not found in navigation stack")
                                 return
                             }
-                            
+
                             navigationController.popToViewController(targetVC, animated: animated)
-                            
+
                             propagateEvent(
                                 on: sourceContainer.contentView,
                                 eventName: "onNavigationEvent",
@@ -1109,18 +1109,18 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     "animated": animated
                                 ]
                             )
-                            
+
                             print("✅ DCFScreenComponent: Popped to screen '\(screenName)' from '\(sourceContainer.name)'")
                         }
-                        
+
                         private func popToRootScreen(animated: Bool, from sourceContainer: ScreenContainer) {
                             guard let navigationController = getCurrentActiveNavigationController() else {
                                 print("❌ DCFScreenComponent: No navigation controller found for popToRoot")
                                 return
                             }
-                            
+
                             navigationController.popToRootViewController(animated: animated)
-                            
+
                             propagateEvent(
                                 on: sourceContainer.contentView,
                                 eventName: "onNavigationEvent",
@@ -1129,16 +1129,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     "animated": animated
                                 ]
                             )
-                            
+
                             print("✅ DCFScreenComponent: Popped to root from '\(sourceContainer.name)'")
                         }
-                        
+
                         private func replaceCurrentScreen(with screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
                             guard let navigationController = getCurrentActiveNavigationController() else {
                                 print("❌ DCFScreenComponent: No navigation controller found for replace")
                                 return
                             }
-                            
+
                             let replaceContextKey = createContextKey(screenName: screenName, presentationStyle: "push")
                             let targetContainer: ScreenContainer
                             if let existing = DCFScreenComponent.screenRegistry[replaceContextKey] {
@@ -1147,9 +1147,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 targetContainer = ScreenContainer(name: screenName, presentationStyle: "push")
                                 DCFScreenComponent.screenRegistry[replaceContextKey] = targetContainer
                             }
-                            
-                            configureScreenForPush(targetContainer)
-                            
+
+                            DCFScreenComponent().configureScreenForPush(targetContainer)
                             if let params = params {
                                 propagateEvent(
                                     on: targetContainer.contentView,
@@ -1157,11 +1156,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     data: ["params": params, "source": sourceContainer.name]
                                 )
                             }
-                            
+
                             var viewControllers = navigationController.viewControllers
                             viewControllers[viewControllers.count - 1] = targetContainer.viewController
                             navigationController.setViewControllers(viewControllers, animated: animated)
-                            
+
                             propagateEvent(
                                 on: sourceContainer.contentView,
                                 eventName: "onNavigationEvent",
@@ -1171,10 +1170,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     "animated": animated
                                 ]
                             )
-                            
+
                             print("✅ DCFScreenComponent: Replaced '\(sourceContainer.name)' with '\(screenName)'")
                         }
-                        
+
                         private func dismissModalScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
                             if let result = result, let presentingViewController = sourceContainer.viewController.presentingViewController {
                                 for (_, container) in DCFScreenComponent.screenRegistry {
@@ -1188,7 +1187,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                 }
                             }
-                            
+
                             sourceContainer.viewController.dismiss(animated: animated) {
                                 propagateEvent(
                                     on: sourceContainer.contentView,
@@ -1199,10 +1198,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     ]
                                 )
                             }
-                            
+
                             print("✅ DCFScreenComponent: Dismissed modal '\(sourceContainer.name)'")
                         }
-                        
+
                         private func dismissSheetScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
                             if let result = result, let presentingViewController = sourceContainer.viewController.presentingViewController {
                                 for (_, container) in DCFScreenComponent.screenRegistry {
@@ -1216,7 +1215,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                 }
                             }
-                            
+
                             sourceContainer.viewController.dismiss(animated: animated) {
                                 propagateEvent(
                                     on: sourceContainer.contentView,
@@ -1227,10 +1226,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     ]
                                 )
                             }
-                            
+
                             print("✅ DCFScreenComponent: Dismissed sheet '\(sourceContainer.name)'")
                         }
-                        
+
                         private func dismissPopoverScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
                             if let result = result, let presentingViewController = sourceContainer.viewController.presentingViewController {
                                 for (_, container) in DCFScreenComponent.screenRegistry {
@@ -1244,7 +1243,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                 }
                             }
-                            
+
                             sourceContainer.viewController.dismiss(animated: animated) {
                                 propagateEvent(
                                     on: sourceContainer.contentView,
@@ -1255,10 +1254,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     ]
                                 )
                             }
-                            
+
                             print("✅ DCFScreenComponent: Dismissed popover '\(sourceContainer.name)'")
                         }
-                        
+
                         private func dismissOverlayScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
                             if let result = result {
                                 // Find the parent container that presented this overlay
@@ -1273,9 +1272,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                 }
                             }
-                            
+
                             let overlayView = sourceContainer.contentView
-                            
+
                             if animated {
                                 UIView.animate(withDuration: 0.3, animations: {
                                     overlayView.alpha = 0.0
@@ -1301,10 +1300,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     ]
                                 )
                             }
-                            
+
                             print("✅ DCFScreenComponent: Dismissed overlay '\(sourceContainer.name)'")
                         }
-                        
+
                         private func dismissDrawerScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
                             if let result = result {
                                 for (_, container) in DCFScreenComponent.screenRegistry {
@@ -1318,11 +1317,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                 }
                             }
-                            
+
                             let drawerView = sourceContainer.contentView
                             let currentFrame = drawerView.frame
                             var dismissFrame = currentFrame
-                            
+
                             // Determine dismiss direction based on current position
                             if currentFrame.origin.x <= 10 {
                                 // Left drawer
@@ -1337,7 +1336,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 // Bottom drawer
                                 dismissFrame.origin.y = drawerView.superview!.bounds.height
                             }
-                            
+
                             if animated {
                                 UIView.animate(withDuration: 0.3, animations: {
                                     drawerView.frame = dismissFrame
@@ -1363,33 +1362,33 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     ]
                                 )
                             }
-                            
+
                             print("✅ DCFScreenComponent: Dismissed drawer '\(sourceContainer.name)'")
                         }
-                        
+
                         // MARK: - Helper Methods
-                        
+
                         private func getCurrentActiveNavigationController() -> UINavigationController? {
                             if let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController,
                                let selectedNavController = tabBarController.selectedViewController as? UINavigationController {
                                 return selectedNavController
                             }
-                            
+
                             if let rootViewController = UIApplication.shared.windows.first?.rootViewController {
                                 return findNavigationController(in: rootViewController)
                             }
-                            
+
                             return nil
                         }
-                        
+
                         private func getCurrentPresentingViewController() -> UIViewController? {
                             guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
                                 return nil
                             }
-                            
+
                             return getTopmostViewController(from: rootViewController)
                         }
-                        
+
                         private func getTopmostViewController(from viewController: UIViewController) -> UIViewController {
                             if let presentedViewController = viewController.presentedViewController {
                                 return getTopmostViewController(from: presentedViewController)
@@ -1403,59 +1402,30 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 return viewController
                             }
                         }
-                        
+
                         private func findNavigationController(in viewController: UIViewController) -> UINavigationController? {
                             if let navController = viewController as? UINavigationController {
                                 return navController
                             }
-                            
+
                             if let tabBarController = viewController as? UITabBarController,
                                let selectedViewController = tabBarController.selectedViewController {
                                 return findNavigationController(in: selectedViewController)
                             }
-                            
+
                             for child in viewController.children {
                                 if let navController = findNavigationController(in: child) {
                                     return navController
                                 }
                             }
-                            
+
                             return nil
                         }
-                        
-//                        private func configureScreenForPush(_ screenContainer: ScreenContainer) {
-//                            guard let pushConfig = objc_getAssociatedObject(
-//                                screenContainer.viewController,
-//                                UnsafeRawPointer(bitPattern: "pushConfig".hashValue)!
-//                            ) as? [String: Any] else {
-//                                return
-//                            }
-//                            
-//                            let viewController = screenContainer.viewController
-//                            
-//                            if let title = pushConfig["title"] as? String {
-//                                viewController.navigationItem.title = title
-//                            }
-//                            
-//                            let hideBackButton = pushConfig["hideBackButton"] as? Bool ?? false
-//                            viewController.navigationItem.hidesBackButton = hideBackButton
-//                            
-//                            if let backButtonTitle = pushConfig["backButtonTitle"] as? String {
-//                                let backItem = UIBarButtonItem(title: backButtonTitle, style: .plain, target: nil, action: nil)
-//                                viewController.navigationItem.backBarButtonItem = backItem
-//                            }
-//                            
-//                            let largeTitleDisplayMode = pushConfig["largeTitleDisplayMode"] as? Bool ?? false
-//                            if #available(iOS 11.0, *) {
-//                                viewController.navigationItem.largeTitleDisplayMode = largeTitleDisplayMode ? .always : .never
-//                            }
-//                        }
-                        
                         // MARK: - Configuration Storage Methods
-                        
+
                         private func storeTabConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                             var tabConfig: [String: Any] = [:]
-                            
+
                             if let tabConfigData = props["tabConfig"] as? [String: Any] {
                                 tabConfig = tabConfigData
                             } else {
@@ -1463,24 +1433,24 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 if let title = props["title"] as? String {
                                     tabConfig["title"] = title
                                 }
-                                
+
                                 if let icon = props["icon"] {
                                     tabConfig["icon"] = icon
                                 }
-                                
+
                                 if let badge = props["badge"] as? String {
                                     tabConfig["badge"] = badge
                                 }
-                                
+
                                 if let enabled = props["enabled"] as? Bool {
                                     tabConfig["enabled"] = enabled
                                 }
-                                
+
                                 if let index = props["index"] as? Int {
                                     tabConfig["index"] = index
                                 }
                             }
-                            
+
                             if !tabConfig.isEmpty {
                                 objc_setAssociatedObject(
                                     screenContainer.viewController,
@@ -1490,34 +1460,34 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 )
                             }
                         }
-                        
+
                         private func storePushConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                             var pushConfig: [String: Any] = [:]
-                            
+
                             if let pushConfigData = props["pushConfig"] as? [String: Any] {
                                 pushConfig = pushConfigData
                             } else {
                                 if let title = props["title"] as? String {
                                     pushConfig["title"] = title
                                 }
-                                
+
                                 if let hideNavigationBar = props["hideNavigationBar"] as? Bool {
                                     pushConfig["hideNavigationBar"] = hideNavigationBar
                                 }
-                                
+
                                 if let hideBackButton = props["hideBackButton"] as? Bool {
                                     pushConfig["hideBackButton"] = hideBackButton
                                 }
-                                
+
                                 if let backButtonTitle = props["backButtonTitle"] as? String {
                                     pushConfig["backButtonTitle"] = backButtonTitle
                                 }
-                                
+
                                 if let largeTitleDisplayMode = props["largeTitleDisplayMode"] as? Bool {
                                     pushConfig["largeTitleDisplayMode"] = largeTitleDisplayMode
                                 }
                             }
-                            
+
                             if !pushConfig.isEmpty {
                                         objc_setAssociatedObject(
                                             screenContainer.viewController,
@@ -1527,10 +1497,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         )
                                     }
                                 }
-                                
+
                                 private func storeModalConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     var modalConfig: [String: Any] = [:]
-                                    
+
                                     if let modalConfigData = props["modalConfig"] as? [String: Any] {
                                         modalConfig = modalConfigData
                                     } else {
@@ -1538,20 +1508,20 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         if let detents = props["detents"] as? [String] {
                                             modalConfig["detents"] = detents
                                         }
-                                        
+
                                         if let showDragIndicator = props["showDragIndicator"] as? Bool {
                                             modalConfig["showDragIndicator"] = showDragIndicator
                                         }
-                                        
+
                                         if let cornerRadius = props["cornerRadius"] as? CGFloat {
                                             modalConfig["cornerRadius"] = cornerRadius
                                         }
-                                        
+
                                         if let transitionStyle = props["transitionStyle"] as? String {
                                             modalConfig["transitionStyle"] = transitionStyle
                                         }
                                     }
-                                    
+
                                     if !modalConfig.isEmpty {
                                         objc_setAssociatedObject(
                                             screenContainer.viewController,
@@ -1561,31 +1531,31 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         )
                                     }
                                 }
-                                
+
                                 private func storePopoverConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     var popoverConfig: [String: Any] = [:]
-                                    
+
                                     // Extract popover config from props
                                     if let title = props["title"] as? String {
                                         popoverConfig["title"] = title
                                     }
-                                    
+
                                     if let preferredWidth = props["preferredWidth"] as? CGFloat {
                                         popoverConfig["preferredWidth"] = preferredWidth
                                     }
-                                    
+
                                     if let preferredHeight = props["preferredHeight"] as? CGFloat {
                                         popoverConfig["preferredHeight"] = preferredHeight
                                     }
-                                    
+
                                     if let permittedArrowDirections = props["permittedArrowDirections"] as? [String] {
                                         popoverConfig["permittedArrowDirections"] = permittedArrowDirections
                                     }
-                                    
+
                                     if let dismissOnOutsideTap = props["dismissOnOutsideTap"] as? Bool {
                                         popoverConfig["dismissOnOutsideTap"] = dismissOnOutsideTap
                                     }
-                                    
+
                                     if !popoverConfig.isEmpty {
                                         objc_setAssociatedObject(
                                             screenContainer.viewController,
@@ -1595,31 +1565,31 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         )
                                     }
                                 }
-                                
+
                                 private func storeOverlayConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     var overlayConfig: [String: Any] = [:]
-                                    
+
                                     // Extract overlay config from props
                                     if let title = props["title"] as? String {
                                         overlayConfig["title"] = title
                                     }
-                                    
+
                                     if let overlayBackgroundColor = props["overlayBackgroundColor"] as? String {
                                         overlayConfig["overlayBackgroundColor"] = overlayBackgroundColor
                                     }
-                                    
+
                                     if let dismissOnTap = props["dismissOnTap"] as? Bool {
                                         overlayConfig["dismissOnTap"] = dismissOnTap
                                     }
-                                    
+
                                     if let animationDuration = props["animationDuration"] as? Double {
                                         overlayConfig["animationDuration"] = animationDuration
                                     }
-                                    
+
                                     if let blocksInteraction = props["blocksInteraction"] as? Bool {
                                         overlayConfig["blocksInteraction"] = blocksInteraction
                                     }
-                                    
+
                                     if !overlayConfig.isEmpty {
                                         objc_setAssociatedObject(
                                             screenContainer.viewController,
@@ -1629,23 +1599,23 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         )
                                     }
                                 }
-                                
+
                                 private func storeSheetConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     var sheetConfig: [String: Any] = [:]
-                                    
+
                                     // Extract sheet config from props
                                     if let detents = props["detents"] as? [String] {
                                         sheetConfig["detents"] = detents
                                     }
-                                    
+
                                     if let showDragIndicator = props["showDragIndicator"] as? Bool {
                                         sheetConfig["showDragIndicator"] = showDragIndicator
                                     }
-                                    
+
                                     if let cornerRadius = props["cornerRadius"] as? CGFloat {
                                         sheetConfig["cornerRadius"] = cornerRadius
                                     }
-                                    
+
                                     if !sheetConfig.isEmpty {
                                         objc_setAssociatedObject(
                                             screenContainer.viewController,
@@ -1655,23 +1625,23 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         )
                                     }
                                 }
-                                
+
                                 private func storeDrawerConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     var drawerConfig: [String: Any] = [:]
-                                    
+
                                     // Extract drawer config from props
                                     if let direction = props["direction"] as? String {
                                         drawerConfig["direction"] = direction
                                     }
-                                    
+
                                     if let width = props["drawerWidth"] as? CGFloat {
                                         drawerConfig["drawerWidth"] = width
                                     }
-                                    
+
                                     if let height = props["drawerHeight"] as? CGFloat {
                                         drawerConfig["drawerHeight"] = height
                                     }
-                                    
+
                                     if !drawerConfig.isEmpty {
                                         objc_setAssociatedObject(
                                             screenContainer.viewController,
@@ -1681,19 +1651,19 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         )
                                     }
                                 }
-                                
+
                                 private func storeSplitViewConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     var splitViewConfig: [String: Any] = [:]
-                                    
+
                                     // Extract split view config from props
                                     if let displayMode = props["displayMode"] as? String {
                                         splitViewConfig["displayMode"] = displayMode
                                     }
-                                    
+
                                     if let primaryColumnWidth = props["primaryColumnWidth"] as? CGFloat {
                                         splitViewConfig["primaryColumnWidth"] = primaryColumnWidth
                                     }
-                                    
+
                                     if !splitViewConfig.isEmpty {
                                         objc_setAssociatedObject(
                                             screenContainer.viewController,
@@ -1703,37 +1673,37 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         )
                                     }
                                 }
-                                
+
                                 func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
                                     guard let screenContainer = findScreenContainer(for: view) else {
                                         print("❌ DCFScreenComponent: Could not find screen container for setChildren")
                                         return false
                                     }
-                                    
+
                                     print("📱 DCFScreenComponent: Setting \(childViews.count) children for screen '\(screenContainer.name)'")
-                                    
+
                                     screenContainer.contentView.subviews.forEach { $0.removeFromSuperview() }
-                                    
+
                                     for childView in childViews {
                                         screenContainer.contentView.addSubview(childView)
-                                        
+
                                         childView.frame = screenContainer.contentView.bounds
                                         childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
                                         childView.isHidden = false
                                         childView.alpha = 1.0
                                     }
-                                    
+
                                     screenContainer.contentView.setNeedsLayout()
                                     screenContainer.contentView.layoutIfNeeded()
-                                    
+
                                     for childView in childViews {
                                         childView.setNeedsLayout()
                                         childView.layoutIfNeeded()
                                     }
-                                    
+
                                     return true
                                 }
-                                
+
                                 private func configureScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     switch screenContainer.presentationStyle {
                                     case "tab":
@@ -1756,10 +1726,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         print("⚠️ DCFScreenComponent: Unknown presentation style '\(screenContainer.presentationStyle)'")
                                     }
                                 }
-                                
+
                                 private func configureTabScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     let viewController = screenContainer.viewController
-                                    
+
                                     if #available(iOS 11.0, *) {
                                         viewController.extendedLayoutIncludesOpaqueBars = true
                                         viewController.edgesForExtendedLayout = .all
@@ -1767,55 +1737,55 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     } else {
                                         viewController.automaticallyAdjustsScrollViewInsets = false
                                     }
-                                    
+
                                     if let title = props["title"] as? String {
                                         viewController.title = title
                                         viewController.tabBarItem.title = title
                                     }
-                                    
+
                                     if let iconName = props["icon"] as? String {
                                         viewController.tabBarItem.image = UIImage(systemName: iconName)
                                     }
-                                    
+
                                     if let badge = props["badge"] as? String {
                                         viewController.tabBarItem.badgeValue = badge
                                     }
-                                    
+
                                     let enabled = props["enabled"] as? Bool ?? true
                                     viewController.tabBarItem.isEnabled = enabled
-                                    
+
                                     if let index = props["index"] as? Int {
                                         viewController.tabBarItem.tag = index
                                     }
                                 }
-                                
+
                                 private func configurePushScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     let viewController = screenContainer.viewController
-                                    
+
                                     if let title = props["title"] as? String {
                                         viewController.navigationItem.title = title
                                     }
-                                    
+
                                     let hideNavigationBar = props["hideNavigationBar"] as? Bool ?? false
                                     viewController.navigationController?.setNavigationBarHidden(hideNavigationBar, animated: false)
-                                    
+
                                     let hideBackButton = props["hideBackButton"] as? Bool ?? false
                                     viewController.navigationItem.hidesBackButton = hideBackButton
-                                    
+
                                     if let backButtonTitle = props["backButtonTitle"] as? String {
                                         let backItem = UIBarButtonItem(title: backButtonTitle, style: .plain, target: nil, action: nil)
                                         viewController.navigationItem.backBarButtonItem = backItem
                                     }
-                                    
+
                                     let largeTitleDisplayMode = props["largeTitleDisplayMode"] as? Bool ?? false
                                     if #available(iOS 11.0, *) {
                                         viewController.navigationItem.largeTitleDisplayMode = largeTitleDisplayMode ? .always : .never
                                     }
                                 }
-                                
+
                                 private func configureModalScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     let viewController = screenContainer.viewController
-                                    
+
                                     if let transitionStyle = props["transitionStyle"] as? String {
                                         switch transitionStyle.lowercased() {
                                         case "coververtical":
@@ -1832,33 +1802,33 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                             viewController.modalTransitionStyle = .coverVertical
                                         }
                                     }
-                                    
+
                                     if #available(iOS 15.0, *) {
                                         viewController.modalPresentationStyle = .pageSheet
-                                        
+
                                         if let sheet = viewController.sheetPresentationController {
                                             configureSheetDetents(sheet: sheet, for: screenContainer)
                                         }
                                     }
                                 }
-                                
+
                                 private func configureSheetScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     let viewController = screenContainer.viewController
-                                    
+
                                     if let title = props["title"] as? String {
                                         viewController.navigationItem.title = title
                                     }
-                                    
+
                                     // Sheet-specific configuration will be applied during presentation
                                 }
-                                
+
                                 private func configurePopoverScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     let viewController = screenContainer.viewController
-                                    
+
                                     if let title = props["title"] as? String {
                                         viewController.navigationItem.title = title
                                     }
-                                    
+
                                     // Set preferred content size for popover
                                     if let width = props["preferredWidth"] as? CGFloat,
                                        let height = props["preferredHeight"] as? CGFloat {
@@ -1867,37 +1837,37 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         viewController.preferredContentSize = CGSize(width: 320, height: 480) // Default size
                                     }
                                 }
-                                
+
                                 private func configureOverlayScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     let viewController = screenContainer.viewController
-                                    
+
                                     if let title = props["title"] as? String {
                                         viewController.navigationItem.title = title
                                     }
-                                    
+
                                     // Overlay-specific configuration will be applied during presentation
                                 }
-                                
+
                                 private func configureDrawerScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     let viewController = screenContainer.viewController
-                                    
+
                                     if let title = props["title"] as? String {
                                         viewController.navigationItem.title = title
                                     }
-                                    
+
                                     // Drawer-specific configuration will be applied during presentation
                                 }
-                                
+
                                 private func configureSplitViewScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     let viewController = screenContainer.viewController
-                                    
+
                                     if let title = props["title"] as? String {
                                         viewController.navigationItem.title = title
                                     }
-                                    
+
                                     // Split view-specific configuration will be applied during presentation
                                 }
-                                
+
                                 private func findScreenContainer(for view: UIView) -> ScreenContainer? {
                                     for (_, container) in DCFScreenComponent.screenRegistry {
                                         if container.contentView == view {
@@ -1906,57 +1876,57 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                     return nil
                                 }
-                                
+
                                 static func getScreenContainer(name: String) -> ScreenContainer? {
                                     let tabKey = "tab_\(name)"
                                     if let tabContainer = screenRegistry[tabKey] {
                                         return tabContainer
                                     }
-                                    
+
                                     for (_, container) in screenRegistry {
                                         if container.name == name {
                                             return container
                                         }
                                     }
-                                    
+
                                     return nil
                                 }
-                                
+
                                 static func getAllScreenContainers() -> [String: ScreenContainer] {
                                     return screenRegistry
                                 }
-                                
+
                                 static func removeScreenContainer(contextKey: String) {
                                     screenRegistry.removeValue(forKey: contextKey)
                                 }
-                                
+
                                 static func cleanupUnusedContainers() {
                                     let activeViewControllers = getAllActiveViewControllers()
                                     var keysToRemove: [String] = []
-                                    
+
                                     for (contextKey, container) in screenRegistry {
                                         if contextKey.hasPrefix("tab_") {
                                             continue
                                         }
-                                        
+
                                         if !activeViewControllers.contains(container.viewController) {
                                             keysToRemove.append(contextKey)
                                         }
                                     }
-                                    
+
                                     for key in keysToRemove {
                                         print("🧹 DCFScreenComponent: Cleaning up unused container '\(key)'")
                                         screenRegistry.removeValue(forKey: key)
                                     }
-                                    
+
                                     if keysToRemove.count > 0 {
                                         print("✅ DCFScreenComponent: Cleaned up \(keysToRemove.count) unused containers")
                                     }
                                 }
-                                
+
                                 private static func getAllActiveViewControllers() -> Set<UIViewController> {
                                     var activeControllers: Set<UIViewController> = []
-                                    
+
                                     if let tabBarController = UIApplication.shared.windows.first?.rootViewController as? UITabBarController {
                                         for tabViewController in tabBarController.viewControllers ?? [] {
                                             if let navController = tabViewController as? UINavigationController {
@@ -1966,21 +1936,21 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                             }
                                         }
                                     }
-                                    
+
                                     if let rootViewController = UIApplication.shared.windows.first?.rootViewController {
                                         collectPresentedViewControllers(from: rootViewController, into: &activeControllers)
                                     }
-                                    
+
                                     return activeControllers
                                 }
-                                
+
                                 private static func collectPresentedViewControllers(from viewController: UIViewController, into activeControllers: inout Set<UIViewController>) {
                                     activeControllers.insert(viewController)
-                                    
+
                                     if let presentedViewController = viewController.presentedViewController {
                                         collectPresentedViewControllers(from: presentedViewController, into: &activeControllers)
                                     }
-                                    
+
                                     for child in viewController.children {
                                         collectPresentedViewControllers(from: child, into: &activeControllers)
                                     }
@@ -1997,7 +1967,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 case drawer = "drawer"
                                 case splitView = "splitView"
                                 case switchTab = "switchTab"
-                                
+
                                 var description: String {
                                     return self.rawValue
                                 }
@@ -2010,21 +1980,21 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 let viewController: UIViewController
                                 let contentView: UIView
                                 var childNavigators: [Any] = []
-                                
+
                                 init(name: String, presentationStyle: String) {
                                     self.name = name
                                     self.presentationStyle = presentationStyle
-                                    
+
                                     self.viewController = UIViewController()
                                     self.contentView = UIView()
                                     self.contentView.backgroundColor = UIColor.clear
                                     self.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                                    
+
                                     self.viewController.view = contentView
-                                    
+
                                     print("📱 ScreenContainer: Created '\(name)' with style '\(presentationStyle)'")
                                 }
-                                
+
                                 deinit {
                                     print("🗑️ ScreenContainer: Deallocated '\(name)' with style '\(presentationStyle)'")
                                 }
@@ -2035,13 +2005,13 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 // 🎯 Registry to track each screen's intended presentation style
                                 static var screenPresentationRegistry: [String: String] = [:]
                                 static var currentNavigationController: UINavigationController? = nil
-                                
+
                                 static func startPeriodicCleanup() {
                                     Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { _ in
                                         cleanupUnusedContainers()
                                     }
                                 }
-                                
+
                                 // 🎯 DEBUG: Helper to see what's registered
                                 static func printRegisteredScreens() {
                                     print("🎯 DCFScreenComponent: Registered screens:")
