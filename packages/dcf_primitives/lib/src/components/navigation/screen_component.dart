@@ -110,42 +110,6 @@ class DCFModalConfig extends Equatable {
       ];
 }
 
-/// Configuration for push presentation
-class DCFPushConfig extends Equatable {
-  final String? title;
-  final bool hideNavigationBar;
-  final bool hideBackButton;
-  final String? backButtonTitle;
-  final bool largeTitleDisplayMode;
-
-  const DCFPushConfig({
-    this.title,
-    this.hideNavigationBar = false,
-    this.hideBackButton = false,
-    this.backButtonTitle,
-    this.largeTitleDisplayMode = false,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      if (title != null) 'title': title,
-      'hideNavigationBar': hideNavigationBar,
-      'hideBackButton': hideBackButton,
-      if (backButtonTitle != null) 'backButtonTitle': backButtonTitle,
-      'largeTitleDisplayMode': largeTitleDisplayMode,
-    };
-  }
-
-  @override
-  List<Object?> get props => [
-        title,
-        hideNavigationBar,
-        hideBackButton,
-        backButtonTitle,
-        largeTitleDisplayMode,
-      ];
-}
-
 /// Configuration for popover presentation
 class DCFPopoverConfig extends Equatable {
   final String? title;
@@ -227,6 +191,7 @@ class DCFScreen extends StatelessComponent
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
+
   final String name;
   final DCFPresentationStyle presentationStyle;
   final DCFTabConfig? tabConfig;
@@ -244,6 +209,9 @@ class DCFScreen extends StatelessComponent
   final Function(Map<dynamic, dynamic>)? onDeactivate;
   final Function(Map<dynamic, dynamic>)? onNavigationEvent;
   final Function(Map<dynamic, dynamic>)? onReceiveParams;
+
+  // NEW: Header action event handler
+  final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
 
   DCFScreen({
     super.key,
@@ -264,6 +232,7 @@ class DCFScreen extends StatelessComponent
     this.onDeactivate,
     this.onNavigationEvent,
     this.onReceiveParams,
+    this.onHeaderActionPress, // NEW: Header action handler
   });
 
   @override
@@ -293,6 +262,11 @@ class DCFScreen extends StatelessComponent
 
     if (onReceiveParams != null) {
       eventMap['onReceiveParams'] = onReceiveParams;
+    }
+
+    // NEW: Add header action event handler
+    if (onHeaderActionPress != null) {
+      eventMap['onHeaderActionPress'] = onHeaderActionPress;
     }
 
     // Build props map
@@ -348,6 +322,7 @@ class DCFScreen extends StatelessComponent
         onDeactivate,
         onNavigationEvent,
         onReceiveParams,
+        onHeaderActionPress,
       ];
 }
 
