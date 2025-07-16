@@ -61,11 +61,25 @@ class StackScreenRegistry extends StatefulComponent {
                 title: "Settings",
                 package: "dcf_primitives",
                 iconName: DCFIcons.search,
-                actionId: "settings_action",
+                actionId: "home_action",
               ),
               DCFPushHeaderActionConfig.withSFSymbolOnly(
                 symbolName: "magnifyingglass",
-                actionId: "search_action",
+                actionId: "home_action",
+              ),
+            ],
+            prefixActions: [
+              DCFPushHeaderActionConfig.withSVGPackage(
+                title: "Accessibility",
+                package: "dcf_primitives",
+                iconName: DCFIcons.accessibility,
+                actionId: "home_action",
+              ),
+              DCFPushHeaderActionConfig.withSVGPackage(
+                title: "Delete",
+                package: "dcf_primitives",
+                iconName: DCFIcons.delete,
+                actionId: "home_action",
               ),
             ],
           ),
@@ -93,7 +107,7 @@ class StackScreenRegistry extends StatefulComponent {
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Settings",
                 package: "dcf_primitives",
-                iconName: "settings",
+                iconName: DCFIcons.settings,
                 actionId: "settings_action",
               ),
             ],
