@@ -1423,33 +1423,33 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             return nil
                         }
                         
-                        private func configureScreenForPush(_ screenContainer: ScreenContainer) {
-                            guard let pushConfig = objc_getAssociatedObject(
-                                screenContainer.viewController,
-                                UnsafeRawPointer(bitPattern: "pushConfig".hashValue)!
-                            ) as? [String: Any] else {
-                                return
-                            }
-                            
-                            let viewController = screenContainer.viewController
-                            
-                            if let title = pushConfig["title"] as? String {
-                                viewController.navigationItem.title = title
-                            }
-                            
-                            let hideBackButton = pushConfig["hideBackButton"] as? Bool ?? false
-                            viewController.navigationItem.hidesBackButton = hideBackButton
-                            
-                            if let backButtonTitle = pushConfig["backButtonTitle"] as? String {
-                                let backItem = UIBarButtonItem(title: backButtonTitle, style: .plain, target: nil, action: nil)
-                                viewController.navigationItem.backBarButtonItem = backItem
-                            }
-                            
-                            let largeTitleDisplayMode = pushConfig["largeTitleDisplayMode"] as? Bool ?? false
-                            if #available(iOS 11.0, *) {
-                                viewController.navigationItem.largeTitleDisplayMode = largeTitleDisplayMode ? .always : .never
-                            }
-                        }
+//                        private func configureScreenForPush(_ screenContainer: ScreenContainer) {
+//                            guard let pushConfig = objc_getAssociatedObject(
+//                                screenContainer.viewController,
+//                                UnsafeRawPointer(bitPattern: "pushConfig".hashValue)!
+//                            ) as? [String: Any] else {
+//                                return
+//                            }
+//                            
+//                            let viewController = screenContainer.viewController
+//                            
+//                            if let title = pushConfig["title"] as? String {
+//                                viewController.navigationItem.title = title
+//                            }
+//                            
+//                            let hideBackButton = pushConfig["hideBackButton"] as? Bool ?? false
+//                            viewController.navigationItem.hidesBackButton = hideBackButton
+//                            
+//                            if let backButtonTitle = pushConfig["backButtonTitle"] as? String {
+//                                let backItem = UIBarButtonItem(title: backButtonTitle, style: .plain, target: nil, action: nil)
+//                                viewController.navigationItem.backBarButtonItem = backItem
+//                            }
+//                            
+//                            let largeTitleDisplayMode = pushConfig["largeTitleDisplayMode"] as? Bool ?? false
+//                            if #available(iOS 11.0, *) {
+//                                viewController.navigationItem.largeTitleDisplayMode = largeTitleDisplayMode ? .always : .never
+//                            }
+//                        }
                         
                         // MARK: - Configuration Storage Methods
                         

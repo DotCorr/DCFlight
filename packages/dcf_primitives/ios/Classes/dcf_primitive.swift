@@ -28,8 +28,6 @@ import dcflight
             "Image", componentClass: DCFImageComponent.self)
         DCFComponentRegistry.shared.registerComponent(
             "ScrollView", componentClass: DCFScrollViewComponent.self)
-        DCFComponentRegistry.shared.registerComponent(
-            "VirtualizedList", componentClass: DCFVirtualizedListComponent.self)
 
         // Register new primitives
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)

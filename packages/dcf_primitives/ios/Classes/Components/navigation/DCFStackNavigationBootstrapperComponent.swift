@@ -21,13 +21,13 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
         // Configure navigation bar style from props
         configureNavigationBarStyle(navigationController, props: props)
 
+        // 🎯 FIXED: Use multiple retry attempts with increasing delays
+        setupInitialScreenWithRetry(
+            navigationController, initialScreen: initialScreen, retryCount: 0, maxRetries: 10)
+
+        // Set as root controller immediately (like DCFTabNavigatorComponent does)
         DispatchQueue.main.async {
-            // Set up the initial screen (wait for screens to be registered)
-            self.setupInitialScreen(navigationController, initialScreen: initialScreen)
-
-            // Set as root controller (like DCFTabNavigatorComponent does)
             replaceRoot(controller: navigationController)
-
             print("✅ DCFStackNavigationBootstrapperComponent: Stack navigation root ready")
         }
 
@@ -36,11 +36,29 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
         placeholderView.isHidden = true
         placeholderView.backgroundColor = UIColor.clear
 
+        // Store reference to navigation controller for future use
+        objc_setAssociatedObject(
+            placeholderView,
+            UnsafeRawPointer(bitPattern: "navigationController".hashValue)!,
+            navigationController,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+
         return placeholderView
     }
 
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         // Basic update support - navigation bar style changes etc.
+        guard
+            let navigationController = objc_getAssociatedObject(
+                view,
+                UnsafeRawPointer(bitPattern: "navigationController".hashValue)!
+            ) as? UINavigationController
+        else {
+            return false
+        }
+
+        configureNavigationBarStyle(navigationController, props: props)
         return true
     }
 
@@ -106,46 +124,141 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
         }
     }
 
-    private func setupInitialScreen(
-        _ navigationController: UINavigationController, initialScreen: String
+    // 🎯 FIXED: Retry logic with exponential backoff
+    private func setupInitialScreenWithRetry(
+        _ navigationController: UINavigationController,
+        initialScreen: String,
+        retryCount: Int,
+        maxRetries: Int
     ) {
-        // Find the initial screen container from DCFScreenComponent registry
-        guard
-            let initialScreenContainer = DCFScreenComponent.getScreenContainer(name: initialScreen)
-        else {
+        // Check if screen is available
+        if let initialScreenContainer = DCFScreenComponent.getScreenContainer(name: initialScreen) {
             print(
-                "❌ DCFStackNavigationBootstrapperComponent: Initial screen '\(initialScreen)' not found"
+                "🎯 DCFStackNavigationBootstrapperComponent: Found initial screen '\(initialScreen)' on attempt \(retryCount + 1)"
             )
-            print(
-                "   Available screens: \(Array(DCFScreenComponent.getAllScreenContainers().keys))")
+            setupInitialScreen(
+                navigationController, screenContainer: initialScreenContainer,
+                screenName: initialScreen)
             return
         }
 
+        // Screen not found yet
+        if retryCount < maxRetries {
+            let delayMs = min(50 * (retryCount + 1), 500)  // Exponential backoff: 50ms, 100ms, 150ms... max 500ms
+            print(
+                "⏳ DCFStackNavigationBootstrapperComponent: Initial screen '\(initialScreen)' not found, retrying in \(delayMs)ms (attempt \(retryCount + 1)/\(maxRetries + 1))"
+            )
+            print(
+                "   Available screens: \(Array(DCFScreenComponent.getAllScreenContainers().keys))")
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(delayMs)) {
+                self.setupInitialScreenWithRetry(
+                    navigationController, initialScreen: initialScreen, retryCount: retryCount + 1,
+                    maxRetries: maxRetries)
+            }
+        } else {
+            print(
+                "❌ DCFStackNavigationBootstrapperComponent: Failed to find initial screen '\(initialScreen)' after \(maxRetries + 1) attempts"
+            )
+            print(
+                "   Available screens: \(Array(DCFScreenComponent.getAllScreenContainers().keys))")
+
+            // Create a fallback screen
+            createFallbackScreen(navigationController, initialScreen: initialScreen)
+        }
+    }
+
+    private func setupInitialScreen(
+        _ navigationController: UINavigationController,
+        screenContainer: ScreenContainer,
+        screenName: String
+    ) {
         print(
-            "🎯 DCFStackNavigationBootstrapperComponent: Setting up initial screen '\(initialScreen)'"
-        )
+            "🎯 DCFStackNavigationBootstrapperComponent: Setting up initial screen '\(screenName)'")
 
         // Ensure content view is ready
-        initialScreenContainer.contentView.isHidden = false
-        initialScreenContainer.contentView.alpha = 1.0
-        initialScreenContainer.contentView.backgroundColor = UIColor.systemBackground
+        screenContainer.contentView.isHidden = false
+        screenContainer.contentView.alpha = 1.0
+        screenContainer.contentView.backgroundColor = UIColor.systemBackground
+
+        // Set proper frame and autoresizing
+        screenContainer.contentView.frame = UIScreen.main.bounds
+        screenContainer.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
         // Set as root view controller of the navigation controller
-        navigationController.viewControllers = [initialScreenContainer.viewController]
-
+        navigationController.viewControllers = [screenContainer.viewController]
+        //      bare in mind this is custom to push from the push config extension
+        DCFScreenComponent().configureScreenForPush(screenContainer)
         // Fire initial lifecycle events (like DCFTabNavigatorComponent does)
-        propagateEvent(
-            on: initialScreenContainer.contentView,
-            eventName: "onAppear",
-            data: ["screenName": initialScreen, "isInitial": true]
+        DispatchQueue.main.async {
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onAppear",
+                data: ["screenName": screenName, "isInitial": true]
+            )
+
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onActivate",
+                data: ["screenName": screenName, "isInitial": true]
+            )
+        }
+
+        print("✅ DCFStackNavigationBootstrapperComponent: Initial screen '\(screenName)' ready")
+    }
+
+    private func createFallbackScreen(
+        _ navigationController: UINavigationController, initialScreen: String
+    ) {
+        print(
+            "🔧 DCFStackNavigationBootstrapperComponent: Creating fallback screen for '\(initialScreen)'"
         )
 
-        propagateEvent(
-            on: initialScreenContainer.contentView,
-            eventName: "onActivate",
-            data: ["screenName": initialScreen, "isInitial": true]
-        )
+        let fallbackVC = UIViewController()
+        fallbackVC.view.backgroundColor = UIColor.systemBackground
+        fallbackVC.title = "Loading..."
 
-        print("✅ DCFStackNavigationBootstrapperComponent: Initial screen '\(initialScreen)' ready")
+        // Add loading label
+        let loadingLabel = UILabel()
+        loadingLabel.text = "Waiting for '\(initialScreen)' screen to be registered..."
+        loadingLabel.textAlignment = .center
+        loadingLabel.numberOfLines = 0
+        loadingLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        fallbackVC.view.addSubview(loadingLabel)
+        NSLayoutConstraint.activate([
+            loadingLabel.centerXAnchor.constraint(equalTo: fallbackVC.view.centerXAnchor),
+            loadingLabel.centerYAnchor.constraint(equalTo: fallbackVC.view.centerYAnchor),
+            loadingLabel.leadingAnchor.constraint(
+                greaterThanOrEqualTo: fallbackVC.view.leadingAnchor, constant: 20),
+            loadingLabel.trailingAnchor.constraint(
+                lessThanOrEqualTo: fallbackVC.view.trailingAnchor, constant: -20),
+        ])
+
+        navigationController.viewControllers = [fallbackVC]
+
+        // Keep trying to find the screen every second
+        continueSearchingForScreen(
+            navigationController, initialScreen: initialScreen, fallbackVC: fallbackVC)
+    }
+
+    private func continueSearchingForScreen(
+        _ navigationController: UINavigationController, initialScreen: String,
+        fallbackVC: UIViewController
+    ) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if let screenContainer = DCFScreenComponent.getScreenContainer(name: initialScreen) {
+                print(
+                    "🎉 DCFStackNavigationBootstrapperComponent: Found initial screen '\(initialScreen)' during background search!"
+                )
+                self.setupInitialScreen(
+                    navigationController, screenContainer: screenContainer,
+                    screenName: initialScreen)
+            } else {
+                // Keep searching
+                self.continueSearchingForScreen(
+                    navigationController, initialScreen: initialScreen, fallbackVC: fallbackVC)
+            }
+        }
     }
 }
