@@ -1464,39 +1464,49 @@ class DCFScreenComponent: NSObject, DCFComponent {
                         private func storePushConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                             var pushConfig: [String: Any] = [:]
 
-                            if let pushConfigData = props["pushConfig"] as? [String: Any] {
-                                pushConfig = pushConfigData
-                            } else {
-                                if let title = props["title"] as? String {
-                                    pushConfig["title"] = title
-                                }
+                            // Extract push config from props
+                            if let title = props["title"] as? String {
+                                pushConfig["title"] = title
+                            }
 
-                                if let hideNavigationBar = props["hideNavigationBar"] as? Bool {
-                                    pushConfig["hideNavigationBar"] = hideNavigationBar
-                                }
+                            if let hideNavigationBar = props["hideNavigationBar"] as? Bool {
+                                pushConfig["hideNavigationBar"] = hideNavigationBar
+                            }
 
-                                if let hideBackButton = props["hideBackButton"] as? Bool {
-                                    pushConfig["hideBackButton"] = hideBackButton
-                                }
+                            if let hideBackButton = props["hideBackButton"] as? Bool {
+                                pushConfig["hideBackButton"] = hideBackButton
+                            }
 
-                                if let backButtonTitle = props["backButtonTitle"] as? String {
-                                    pushConfig["backButtonTitle"] = backButtonTitle
-                                }
+                            if let backButtonTitle = props["backButtonTitle"] as? String {
+                                pushConfig["backButtonTitle"] = backButtonTitle
+                            }
 
-                                if let largeTitleDisplayMode = props["largeTitleDisplayMode"] as? Bool {
-                                    pushConfig["largeTitleDisplayMode"] = largeTitleDisplayMode
-                                }
+                            if let largeTitleDisplayMode = props["largeTitleDisplayMode"] as? Bool {
+                                pushConfig["largeTitleDisplayMode"] = largeTitleDisplayMode
+                            }
+
+                            // 🎯 CRITICAL FIX: Extract header actions from props
+                            if let prefixActions = props["prefixActions"] as? [[String: Any]] {
+                                pushConfig["prefixActions"] = prefixActions
+                                print("📝 Main: Found \(prefixActions.count) prefix actions in props")
+                            }
+
+                            if let suffixActions = props["suffixActions"] as? [[String: Any]] {
+                                pushConfig["suffixActions"] = suffixActions
+                                print("📝 Main: Found \(suffixActions.count) suffix actions in props")
                             }
 
                             if !pushConfig.isEmpty {
-                                        objc_setAssociatedObject(
-                                            screenContainer.viewController,
-                                            UnsafeRawPointer(bitPattern: "pushConfig".hashValue)!,
-                                            pushConfig,
-                                            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-                                        )
-                                    }
-                                }
+                                objc_setAssociatedObject(
+                                    screenContainer.viewController,
+                                    UnsafeRawPointer(bitPattern: "pushConfig".hashValue)!,
+                                    pushConfig,
+                                    .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+                                )
+
+                                print("🎯 Main: Stored push config for '\(screenContainer.name)': \(pushConfig)")
+                            }
+                        }
 
                                 private func storeModalConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     var modalConfig: [String: Any] = [:]
