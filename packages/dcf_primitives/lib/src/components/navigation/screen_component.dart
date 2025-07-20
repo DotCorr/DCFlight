@@ -210,7 +210,7 @@ class DCFScreen extends StatelessComponent
   final Function(Map<dynamic, dynamic>)? onNavigationEvent;
   final Function(Map<dynamic, dynamic>)? onReceiveParams;
 
-  // NEW: Header action event handler
+  // Header action event handler
   final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
 
   DCFScreen({
@@ -232,41 +232,48 @@ class DCFScreen extends StatelessComponent
     this.onDeactivate,
     this.onNavigationEvent,
     this.onReceiveParams,
-    this.onHeaderActionPress, // NEW: Header action handler
+    this.onHeaderActionPress,
   });
 
   @override
   DCFComponentNode render() {
-    // Build event map
-    Map<String, dynamic> eventMap = events ?? {};
+    // 🎯 FIXED: Create a proper event map that includes ALL event handlers
+    Map<String, dynamic> eventMap = {};
 
+    // Add custom events passed in
+    if (events != null) {
+      eventMap.addAll(events!);
+    }
+
+    // 🎯 CRITICAL FIX: Add ALL event handlers to the props map
+    // This ensures they are registered with the native event system
     if (onAppear != null) {
-      eventMap['onAppear'] = onAppear;
+      eventMap['onAppear'] = onAppear!;
     }
 
     if (onDisappear != null) {
-      eventMap['onDisappear'] = onDisappear;
+      eventMap['onDisappear'] = onDisappear!;
     }
 
     if (onActivate != null) {
-      eventMap['onActivate'] = onActivate;
+      eventMap['onActivate'] = onActivate!;
     }
 
     if (onDeactivate != null) {
-      eventMap['onDeactivate'] = onDeactivate;
+      eventMap['onDeactivate'] = onDeactivate!;
     }
 
     if (onNavigationEvent != null) {
-      eventMap['onNavigationEvent'] = onNavigationEvent;
+      eventMap['onNavigationEvent'] = onNavigationEvent!;
     }
 
     if (onReceiveParams != null) {
-      eventMap['onReceiveParams'] = onReceiveParams;
+      eventMap['onReceiveParams'] = onReceiveParams!;
     }
 
-    // NEW: Add header action event handler
+    // 🎯 MOST IMPORTANT FIX: Add header action handler to event map
     if (onHeaderActionPress != null) {
-      eventMap['onHeaderActionPress'] = onHeaderActionPress;
+      eventMap['onHeaderActionPress'] = onHeaderActionPress!;
     }
 
     // Build props map
@@ -281,6 +288,7 @@ class DCFScreen extends StatelessComponent
       if (popoverConfig != null) ...popoverConfig!.toMap(),
       if (overlayConfig != null) ...overlayConfig!.toMap(),
 
+      // Layout and style props
       ...LayoutProps(
         padding: 0,
         margin: 0,
@@ -288,9 +296,12 @@ class DCFScreen extends StatelessComponent
         width: "100%",
       ).toMap(),
       ...styleSheet.toMap(),
+
+      // 🎯 CRITICAL: Add event handlers to props (like DCFWebView does)
       ...eventMap,
     };
 
+    // Add navigation command if present
     if (navigationCommand != null && navigationCommand!.hasCommands) {
       props['navigationCommand'] = navigationCommand!.toMap();
     }
