@@ -786,7 +786,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
         print("✅ DCFScreenComponent: Successfully presented drawer container for '\(screenName)'")
     }
 
-    // 🎯 NEW: Split view presentation
     private func presentSplitViewScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing split view presentation for '\(screenName)'")
 
@@ -807,105 +806,203 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return
         }
 
-        // 🎯 CRITICAL FIX: Create a simple split view without trying to reuse view controllers
-        let splitViewController = UISplitViewController()
-        
-        // Create a simple master view controller
-        let masterVC = UIViewController()
-        masterVC.view.backgroundColor = UIColor.systemBlue
-        masterVC.title = "Master"
-        
-        let masterLabel = UILabel()
-        masterLabel.text = "Master View\n(\(sourceContainer.name))"
-        masterLabel.numberOfLines = 0
-        masterLabel.textAlignment = .center
-        masterLabel.textColor = .white
-        masterLabel.font = UIFont.boldSystemFont(ofSize: 18)
-        masterLabel.translatesAutoresizingMaskIntoConstraints = false
-        masterVC.view.addSubview(masterLabel)
-        
-        NSLayoutConstraint.activate([
-            masterLabel.centerXAnchor.constraint(equalTo: masterVC.view.centerXAnchor),
-            masterLabel.centerYAnchor.constraint(equalTo: masterVC.view.centerYAnchor)
-        ])
-        
-        // Create detail view controller using the target container
-        let detailVC = UIViewController()
-        detailVC.view.backgroundColor = UIColor.systemBackground
-        detailVC.title = targetContainer.name
-        
-        // Set up the target container's content
-        targetContainer.contentView.isHidden = false
-        targetContainer.contentView.alpha = 1.0
-        targetContainer.contentView.backgroundColor = UIColor.systemBackground
-        targetContainer.contentView.frame = detailVC.view.bounds
-        targetContainer.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        
-        // Add target container's content to detail view
-        detailVC.view.addSubview(targetContainer.contentView)
+        // Get split view configuration
+        let splitConfig = objc_getAssociatedObject(
+            targetContainer.viewController,
+            UnsafeRawPointer(bitPattern: "splitViewConfig".hashValue)!
+        ) as? [String: Any] ?? [:]
 
-        // Wrap both in navigation controllers
+        let useThreePaneLayout = splitConfig["useThreePaneLayout"] as? Bool ?? false
+        
+        if useThreePaneLayout {
+            presentThreePaneSplitView(screenName: screenName, targetContainer: targetContainer, splitConfig: splitConfig, presentingViewController: presentingViewController, animated: animated, params: params, sourceContainer: sourceContainer)
+        } else {
+            presentTwoPaneSplitView(screenName: screenName, targetContainer: targetContainer, splitConfig: splitConfig, presentingViewController: presentingViewController, animated: animated, params: params, sourceContainer: sourceContainer)
+        }
+    }
+
+    // MARK: - 3-Pane Split View Implementation
+    private func presentThreePaneSplitView(
+        screenName: String,
+        targetContainer: ScreenContainer,
+        splitConfig: [String: Any],
+        presentingViewController: UIViewController,
+        animated: Bool,
+        params: [String: Any]?,
+        sourceContainer: ScreenContainer
+    ) {
+        print("🎯 Creating 3-pane split view: Sidebar | Content | Inspector")
+        
+        // Create containers for each pane
+        let sidebarContainer = ScreenContainer(name: "\(screenName)_sidebar", presentationStyle: "splitView_sidebar")
+        let inspectorContainer = ScreenContainer(name: "\(screenName)_inspector", presentationStyle: "splitView_inspector")
+        
+        // Register containers
+        DCFScreenComponent.screenRegistry["\(screenName)_sidebar"] = sidebarContainer
+        DCFScreenComponent.screenRegistry["\(screenName)_inspector"] = inspectorContainer
+        
+        // Create view controllers for each pane
+        let sidebarVC = createSidebarViewController(container: sidebarContainer, config: splitConfig)
+        let contentVC = createContentViewController(container: targetContainer)
+        let inspectorVC = createInspectorViewController(container: inspectorContainer, config: splitConfig)
+        
+        // Wrap in navigation controllers
+        let sidebarNavController = UINavigationController(rootViewController: sidebarVC)
+        let contentNavController = UINavigationController(rootViewController: contentVC)
+        let inspectorNavController = UINavigationController(rootViewController: inspectorVC)
+        
+        // 🎯 CREATE 3-PANE SPLIT VIEW CONTROLLER
+        if #available(iOS 14.0, *) {
+            // Use new 3-column split view controller
+            let splitViewController = UISplitViewController(style: .tripleColumn)
+            splitViewController.setViewController(sidebarNavController, for: .primary)
+            splitViewController.setViewController(contentNavController, for: .secondary)
+            splitViewController.setViewController(inspectorNavController, for: .supplementary)
+            
+            configureThreePaneSplitViewController(splitViewController, config: splitConfig)
+            presentSplitViewController(splitViewController, from: presentingViewController, animated: animated, params: params, sourceContainer: sourceContainer, targetContainer: targetContainer, screenName: screenName)
+            
+        } else {
+            // Fallback for iOS 13 and below - create nested split views
+            let primarySplitVC = UISplitViewController()
+            primarySplitVC.viewControllers = [sidebarNavController, contentNavController]
+            primarySplitVC.preferredDisplayMode = .oneBesideSecondary
+            
+            let secondarySplitVC = UISplitViewController()
+            secondarySplitVC.viewControllers = [primarySplitVC, inspectorNavController]
+            secondarySplitVC.preferredDisplayMode = .oneBesideSecondary
+            
+            configureLegacyThreePaneSplitViewController(secondarySplitVC, config: splitConfig)
+            presentSplitViewController(secondarySplitVC, from: presentingViewController, animated: animated, params: params, sourceContainer: sourceContainer, targetContainer: targetContainer, screenName: screenName)
+        }
+        
+        // Store references for later use
+        objc_setAssociatedObject(targetContainer.viewController, UnsafeRawPointer(bitPattern: "sidebarContainer".hashValue)!, sidebarContainer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        objc_setAssociatedObject(targetContainer.viewController, UnsafeRawPointer(bitPattern: "inspectorContainer".hashValue)!, inspectorContainer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+
+    // MARK: - 2-Pane Split View Implementation
+    private func presentTwoPaneSplitView(
+        screenName: String,
+        targetContainer: ScreenContainer,
+        splitConfig: [String: Any],
+        presentingViewController: UIViewController,
+        animated: Bool,
+        params: [String: Any]?,
+        sourceContainer: ScreenContainer
+    ) {
+        print("🎯 Creating 2-pane split view: Master | Detail")
+        
+        // Create master container
+        let masterContainer = ScreenContainer(name: "\(screenName)_master", presentationStyle: "splitView_master")
+        DCFScreenComponent.screenRegistry["\(screenName)_master"] = masterContainer
+        
+        // Create view controllers
+        let masterVC = createMasterViewController(container: masterContainer, config: splitConfig)
+        let detailVC = createContentViewController(container: targetContainer)
+        
+        // Wrap in navigation controllers
         let masterNavController = UINavigationController(rootViewController: masterVC)
         let detailNavController = UINavigationController(rootViewController: detailVC)
         
-        // Configure split view controller
+        // Create split view controller
+        let splitViewController = UISplitViewController()
         splitViewController.viewControllers = [masterNavController, detailNavController]
         
-        // Device-specific configuration
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            splitViewController.preferredDisplayMode = .primaryOverlay
-        } else {
-            splitViewController.preferredDisplayMode = .oneBesideSecondary
-        }
+        configureTwoPaneSplitViewController(splitViewController, config: splitConfig)
+        presentSplitViewController(splitViewController, from: presentingViewController, animated: animated, params: params, sourceContainer: sourceContainer, targetContainer: targetContainer, screenName: screenName)
         
-        // Configure split view based on stored config
-        configureSplitViewController(splitViewController, for: targetContainer)
-
-        if let params = params {
-            propagateEvent(
-                on: targetContainer.contentView,
-                eventName: "onReceiveParams",
-                data: ["params": params, "source": sourceContainer.name]
-            )
-        }
-
-        // Present the split view controller
-        presentingViewController.present(splitViewController, animated: animated) {
-            propagateEvent(
-                on: sourceContainer.contentView,
-                eventName: "onNavigationEvent",
-                data: [
-                    "action": "presentSplitView",
-                    "targetScreen": screenName,
-                    "animated": animated
-                ]
-            )
-            
-            // Fire onAppear for the detail screen
-            propagateEvent(
-                on: targetContainer.contentView,
-                eventName: "onAppear",
-                data: ["screenName": screenName]
-            )
-        }
-
-        print("✅ DCFScreenComponent: Successfully presented split view container for '\(screenName)'")
+        // Store reference
+        objc_setAssociatedObject(targetContainer.viewController, UnsafeRawPointer(bitPattern: "masterContainer".hashValue)!, masterContainer, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
 
-    // MARK: - Split View Configuration Helper
+    // MARK: - View Controller Creation Methods
 
-    private func configureSplitViewController(_ splitViewController: UISplitViewController, for screenContainer: ScreenContainer) {
-        guard let splitViewConfig = objc_getAssociatedObject(
-            screenContainer.viewController,
-            UnsafeRawPointer(bitPattern: "splitViewConfig".hashValue)!
-        ) as? [String: Any] else {
-            // Default configuration
-            splitViewController.preferredDisplayMode = .oneBesideSecondary
-            return
+    private func createSidebarViewController(container: ScreenContainer, config: [String: Any]) -> UIViewController {
+        let sidebarVC = UIViewController()
+        sidebarVC.title = config["sidebarTitle"] as? String ?? "Sidebar"
+        sidebarVC.view.backgroundColor = UIColor.systemGroupedBackground
+        
+        setupContainerView(container: container, parentView: sidebarVC.view)
+        return sidebarVC
+    }
+
+    private func createContentViewController(container: ScreenContainer) -> UIViewController {
+        let contentVC = UIViewController()
+        contentVC.title = container.name
+        contentVC.view.backgroundColor = UIColor.systemBackground
+        
+        setupContainerView(container: container, parentView: contentVC.view)
+        return contentVC
+    }
+
+    private func createInspectorViewController(container: ScreenContainer, config: [String: Any]) -> UIViewController {
+        let inspectorVC = UIViewController()
+        inspectorVC.title = config["inspectorTitle"] as? String ?? "Inspector"
+        inspectorVC.view.backgroundColor = UIColor.systemGroupedBackground
+        
+        setupContainerView(container: container, parentView: inspectorVC.view)
+        return inspectorVC
+    }
+
+    private func createMasterViewController(container: ScreenContainer, config: [String: Any]) -> UIViewController {
+        let masterVC = UIViewController()
+        masterVC.title = config["sidebarTitle"] as? String ?? "Master"
+        masterVC.view.backgroundColor = UIColor.systemGroupedBackground
+        
+        setupContainerView(container: container, parentView: masterVC.view)
+        return masterVC
+    }
+
+    private func setupContainerView(container: ScreenContainer, parentView: UIView) {
+        container.contentView.isHidden = false
+        container.contentView.alpha = 1.0
+        container.contentView.frame = parentView.bounds
+        container.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.contentView.backgroundColor = UIColor.clear
+        parentView.addSubview(container.contentView)
+    }
+
+    // MARK: - Split View Configuration Methods
+
+    @available(iOS 14.0, *)
+    private func configureThreePaneSplitViewController(_ splitViewController: UISplitViewController, config: [String: Any]) {
+        // Configure display mode
+        splitViewController.preferredDisplayMode = .oneBesideSecondary
+        
+        // Configure column widths
+        if let primaryWidth = config["primaryColumnWidth"] as? CGFloat {
+            splitViewController.preferredPrimaryColumnWidth = primaryWidth
         }
+        
+        if let supplementaryWidth = config["supplementaryColumnWidth"] as? CGFloat {
+            splitViewController.preferredSupplementaryColumnWidth = supplementaryWidth
+        }
+        
+        // Configure behavior (with version check)
+        splitViewController.primaryBackgroundStyle = .sidebar
+        
+        // Only set displayModeButtonVisibility if available (iOS 14.5+)
+        if #available(iOS 14.5, *) {
+            splitViewController.displayModeButtonVisibility = .automatic
+        }
+        
+        print("✅ Configured 3-pane split view")
+    }
 
+    private func configureLegacyThreePaneSplitViewController(_ splitViewController: UISplitViewController, config: [String: Any]) {
+        splitViewController.preferredDisplayMode = .oneBesideSecondary
+        
+        if let supplementaryWidth = config["supplementaryColumnWidth"] as? CGFloat {
+            splitViewController.preferredPrimaryColumnWidthFraction = supplementaryWidth / UIScreen.main.bounds.width
+        }
+        
+        print("✅ Configured legacy 3-pane split view")
+    }
+
+    private func configureTwoPaneSplitViewController(_ splitViewController: UISplitViewController, config: [String: Any]) {
         // Apply display mode
-        if let displayMode = splitViewConfig["displayMode"] as? String {
+        if let displayMode = config["displayMode"] as? String {
             switch displayMode.lowercased() {
             case "automatic":
                 splitViewController.preferredDisplayMode = .automatic
@@ -922,8 +1019,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
             }
         }
 
-        // Apply primary column width (iPad only)
-        if let primaryColumnWidth = splitViewConfig["primaryColumnWidth"] as? CGFloat {
+        // Apply primary column width
+        if let primaryColumnWidth = config["primaryColumnWidth"] as? CGFloat {
             if #available(iOS 14.0, *) {
                 splitViewController.preferredPrimaryColumnWidth = primaryColumnWidth
             } else {
@@ -931,48 +1028,103 @@ class DCFScreenComponent: NSObject, DCFComponent {
             }
         }
         
-        // Set delegate for handling split view events
-        let delegate = SplitViewControllerDelegate(screenContainer: screenContainer)
-        splitViewController.delegate = delegate
-        
-        // Store delegate reference to prevent deallocation
-        objc_setAssociatedObject(
-            splitViewController,
-            UnsafeRawPointer(bitPattern: "splitViewDelegate".hashValue)!,
-            delegate,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
+        print("✅ Configured 2-pane split view")
     }
 
-    // MARK: - Split View Delegate
+    // MARK: - Common Presentation Method
+    private func presentSplitViewController(
+        _ splitViewController: UISplitViewController,
+        from presentingViewController: UIViewController,
+        animated: Bool,
+        params: [String: Any]?,
+        sourceContainer: ScreenContainer,
+        targetContainer: ScreenContainer,
+        screenName: String
+    ) {
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "source": sourceContainer.name]
+            )
+        }
 
-    class SplitViewControllerDelegate: NSObject, UISplitViewControllerDelegate {
-        let screenContainer: ScreenContainer
-        
-        init(screenContainer: ScreenContainer) {
-            self.screenContainer = screenContainer
-            super.init()
-        }
-        
-        func splitViewController(_ splitViewController: UISplitViewController, collapseSecondary secondaryViewController: UIViewController, onto primaryViewController: UIViewController) -> Bool {
-            // Handle iPhone rotation or size class changes
+        presentingViewController.present(splitViewController, animated: animated) {
             propagateEvent(
-                on: screenContainer.contentView,
-                eventName: "onSplitViewCollapseSecondary",
-                data: ["screenName": screenContainer.name]
+                on: sourceContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "presentSplitView",
+                    "targetScreen": screenName,
+                    "animated": animated
+                ]
             )
-            return false // Let the system handle the collapse
+            
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onAppear",
+                data: ["screenName": screenName]
+            )
+        }
+
+        print("✅ Successfully presented split view for '\(screenName)'")
+    }
+
+    // MARK: - Enhanced setChildren for Split View Support
+    func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
+        guard let screenContainer = findScreenContainer(for: view) else {
+            print("❌ DCFScreenComponent: Could not find screen container for setChildren")
+            return false
+        }
+
+        // Handle special split view containers
+        if screenContainer.name.hasSuffix("_sidebar") {
+            print("🏠 Setting sidebar children for '\(screenContainer.name)'")
+            return setSplitViewChildren(screenContainer, childViews: childViews, type: "sidebar")
+        } else if screenContainer.name.hasSuffix("_inspector") {
+            print("🔍 Setting inspector children for '\(screenContainer.name)'")
+            return setSplitViewChildren(screenContainer, childViews: childViews, type: "inspector")
+        } else if screenContainer.name.hasSuffix("_master") {
+            print("🎯 Setting master children for '\(screenContainer.name)'")
+            return setSplitViewChildren(screenContainer, childViews: childViews, type: "master")
+        }
+
+        // Handle regular content
+        print("📱 Setting \(childViews.count) children for screen '\(screenContainer.name)'")
+        
+        screenContainer.contentView.subviews.forEach { $0.removeFromSuperview() }
+        
+        for childView in childViews {
+            screenContainer.contentView.addSubview(childView)
+            childView.frame = screenContainer.contentView.bounds
+            childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            childView.isHidden = false
+            childView.alpha = 1.0
         }
         
-        func splitViewController(_ splitViewController: UISplitViewController, separateSecondaryFrom primaryViewController: UIViewController) -> UIViewController? {
-            // Handle iPhone rotation or size class changes
-            propagateEvent(
-                on: screenContainer.contentView,
-                eventName: "onSplitViewSeparateSecondary",
-                data: ["screenName": screenContainer.name]
-            )
-            return nil // Let the system handle the separation
+        screenContainer.contentView.setNeedsLayout()
+        screenContainer.contentView.layoutIfNeeded()
+        
+        return true
+    }
+
+    private func setSplitViewChildren(_ container: ScreenContainer, childViews: [UIView], type: String) -> Bool {
+        print("🎯 Setting \(childViews.count) \(type) children")
+        
+        container.contentView.subviews.forEach { $0.removeFromSuperview() }
+        
+        for childView in childViews {
+            container.contentView.addSubview(childView)
+            childView.frame = container.contentView.bounds
+            childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            childView.isHidden = false
+            childView.alpha = 1.0
         }
+        
+        container.contentView.setNeedsLayout()
+        container.contentView.layoutIfNeeded()
+        
+        return true
     }
 
                         private func switchToTabScreen(_ screenName: String, params: [String: Any]?, from sourceContainer: ScreenContainer, animated: Bool) {
@@ -1906,36 +2058,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                 }
 
-                                func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
-                                    guard let screenContainer = findScreenContainer(for: view) else {
-                                        print("❌ DCFScreenComponent: Could not find screen container for setChildren")
-                                        return false
-                                    }
-
-                                    print("📱 DCFScreenComponent: Setting \(childViews.count) children for screen '\(screenContainer.name)'")
-
-                                    screenContainer.contentView.subviews.forEach { $0.removeFromSuperview() }
-
-                                    for childView in childViews {
-                                        screenContainer.contentView.addSubview(childView)
-
-                                        childView.frame = screenContainer.contentView.bounds
-                                        childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                                        childView.isHidden = false
-                                        childView.alpha = 1.0
-                                    }
-
-                                    screenContainer.contentView.setNeedsLayout()
-                                    screenContainer.contentView.layoutIfNeeded()
-
-                                    for childView in childViews {
-                                        childView.setNeedsLayout()
-                                        childView.layoutIfNeeded()
-                                    }
-
-                                    return true
-                                }
-
+                              
                                 private func configureScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
                                     switch screenContainer.presentationStyle {
                                     case "tab":

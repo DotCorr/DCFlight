@@ -270,6 +270,7 @@ class DCFScreen extends StatelessComponent
   final DCFPushConfig? pushConfig;
   final DCFPopoverConfig? popoverConfig;
   final DCFOverlayConfig? overlayConfig;
+  final DCFSplitViewConfig? splitViewConfig; // 🎯 Now properly typed
   final List<DCFComponentNode> children;
   final StyleSheet styleSheet;
   final ScreenNavigationCommand? navigationCommand;
@@ -280,13 +281,7 @@ class DCFScreen extends StatelessComponent
   final Function(Map<dynamic, dynamic>)? onDeactivate;
   final Function(Map<dynamic, dynamic>)? onNavigationEvent;
   final Function(Map<dynamic, dynamic>)? onReceiveParams;
-
-  // Header action event handler
   final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
-
-  // 🎯 NEW: Navigation bar configuration for tab screens
-  /// Navigation bar configuration (applies to tab screens that are in navigation controllers)
-  /// This allows tab screens to have large titles, navigation bar actions, etc.
   final DCFNavigationBarConfig? navigationBarConfig;
 
   DCFScreen({
@@ -298,6 +293,7 @@ class DCFScreen extends StatelessComponent
     this.pushConfig,
     this.popoverConfig,
     this.overlayConfig,
+    this.splitViewConfig,
     this.children = const [],
     this.styleSheet = const StyleSheet(),
     this.navigationCommand,
@@ -309,85 +305,90 @@ class DCFScreen extends StatelessComponent
     this.onNavigationEvent,
     this.onReceiveParams,
     this.onHeaderActionPress,
-    this.navigationBarConfig, // 🎯 NEW: For tab screens with navigation features
+    this.navigationBarConfig,
   });
 
   @override
   DCFComponentNode render() {
-    // Create a proper event map that includes ALL event handlers
+    // Create event map
     Map<String, dynamic> eventMap = {};
-
-    // Add custom events passed in
-    if (events != null) {
-      eventMap.addAll(events!);
-    }
-
-    // Add ALL event handlers to the props map
-    if (onAppear != null) {
-      eventMap['onAppear'] = onAppear!;
-    }
-
-    if (onDisappear != null) {
-      eventMap['onDisappear'] = onDisappear!;
-    }
-
-    if (onActivate != null) {
-      eventMap['onActivate'] = onActivate!;
-    }
-
-    if (onDeactivate != null) {
-      eventMap['onDeactivate'] = onDeactivate!;
-    }
-
-    if (onNavigationEvent != null) {
+    if (events != null) eventMap.addAll(events!);
+    if (onAppear != null) eventMap['onAppear'] = onAppear!;
+    if (onDisappear != null) eventMap['onDisappear'] = onDisappear!;
+    if (onActivate != null) eventMap['onActivate'] = onActivate!;
+    if (onDeactivate != null) eventMap['onDeactivate'] = onDeactivate!;
+    if (onNavigationEvent != null)
       eventMap['onNavigationEvent'] = onNavigationEvent!;
-    }
-
-    if (onReceiveParams != null) {
-      eventMap['onReceiveParams'] = onReceiveParams!;
-    }
-
-    if (onHeaderActionPress != null) {
+    if (onReceiveParams != null) eventMap['onReceiveParams'] = onReceiveParams!;
+    if (onHeaderActionPress != null)
       eventMap['onHeaderActionPress'] = onHeaderActionPress!;
-    }
 
     // Build props map
     Map<String, dynamic> props = {
       'name': name,
       'presentationStyle': presentationStyle.name,
-
-      // Add configuration based on presentation style
       if (tabConfig != null) ...tabConfig!.toMap(),
       if (modalConfig != null) ...modalConfig!.toMap(),
       if (pushConfig != null) ...pushConfig!.toMap(),
       if (popoverConfig != null) ...popoverConfig!.toMap(),
       if (overlayConfig != null) ...overlayConfig!.toMap(),
-
-      // 🎯 NEW: Add navigation bar config for tab screens
+      if (splitViewConfig != null) ...splitViewConfig!.toMap(),
       if (navigationBarConfig != null) ...navigationBarConfig!.toMap(),
-
-      // Layout and style props
-      ...LayoutProps(
-        padding: 0,
-        margin: 0,
-        height: "100%",
-        width: "100%",
-      ).toMap(),
+      ...LayoutProps(padding: 0, margin: 0, height: "100%", width: "100%")
+          .toMap(),
       ...styleSheet.toMap(),
-
-      // Add event handlers to props
       ...eventMap,
     };
 
-    // Add navigation command if present
     if (navigationCommand != null && navigationCommand!.hasCommands) {
       props['navigationCommand'] = navigationCommand!.toMap();
     }
 
+    // 🎯 HANDLE SPLIT VIEW WITH CUSTOM CHILDREN
+    List<DCFComponentNode> allChildren = [];
+
+    if (presentationStyle == DCFPresentationStyle.splitView &&
+        splitViewConfig != null) {
+      // Create sidebar screen if sidebarChildren exist
+      if (splitViewConfig!.sidebarChildren != null &&
+          splitViewConfig!.sidebarChildren!.isNotEmpty) {
+        final sidebarScreen = DCFElement(
+          type: 'Screen',
+          props: {
+            'name': '${name}_sidebar',
+            'presentationStyle': 'splitView_sidebar',
+            ...LayoutProps(padding: 0, margin: 0, height: "100%", width: "100%")
+                .toMap(),
+          },
+          children: splitViewConfig!.sidebarChildren!,
+        );
+        allChildren.add(sidebarScreen);
+      }
+
+      // Create inspector screen if inspectorChildren exist
+      if (splitViewConfig!.inspectorChildren != null &&
+          splitViewConfig!.inspectorChildren!.isNotEmpty) {
+        final inspectorScreen = DCFElement(
+          type: 'Screen',
+          props: {
+            'name': '${name}_inspector',
+            'presentationStyle': 'splitView_inspector',
+            ...LayoutProps(padding: 0, margin: 0, height: "100%", width: "100%")
+                .toMap(),
+          },
+          children: splitViewConfig!.inspectorChildren!,
+        );
+        allChildren.add(inspectorScreen);
+      }
+    }
+
+    // Add the main children (detail/content side)
+    allChildren.addAll(children);
+
     return DCFElement(
       type: 'Screen',
       props: props,
-      children: children,
+      children: allChildren,
     );
   }
 
@@ -401,6 +402,7 @@ class DCFScreen extends StatelessComponent
         pushConfig,
         popoverConfig,
         overlayConfig,
+        splitViewConfig,
         children,
         styleSheet,
         navigationCommand,
@@ -412,7 +414,7 @@ class DCFScreen extends StatelessComponent
         onNavigationEvent,
         onReceiveParams,
         onHeaderActionPress,
-        navigationBarConfig, // 🎯 NEW
+        navigationBarConfig,
       ];
 }
 

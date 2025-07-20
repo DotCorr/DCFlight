@@ -67,15 +67,53 @@ class StackRegistry extends StatefulComponent {
         DCFScreen(
           name: "deep_screen_in_modal",
           presentationStyle: DCFPresentationStyle.splitView,
-          navigationCommand: modalScreenInModalCommand.state,
-          // modalConfig: DCFModalConfig(detents: [DCFModalDetent.large]),
-          onAppear: (data) => print("✅ Deep screen appeared: $data"),
-          onNavigationEvent: (data) {
-            print("🚀 Deep navigation event: $data");
-            modalScreenInModalCommand.setState(null);
-          },
-          onReceiveParams: (data) => print("📨 Deep received params: $data"),
+          splitViewConfig: DCFSplitViewConfig(
+            useThreePaneLayout: true, // 🎯 3-pane layout!
+            primaryColumnWidth: 250.0, // Sidebar width
+            supplementaryColumnWidth: 300.0, // Inspector width
+            displayMode:
+                DCFSplitViewDisplayMode.oneBesideSecondary, // 🎯 Type-safe!
+            // 🎯 SIDEBAR (Left) - Navigation
+            sidebarTitle: "Files",
+            sidebarChildren: [
+              DCFView(
+                layout: LayoutProps(flex: 1, padding: 16),
+                children: [
+                  DCFText(content: "📁 Project Files"),
+                  DCFButton(
+                    buttonProps: DCFButtonProps(title: "📄 Document 1"),
+                  ),
+                  DCFButton(
+                    buttonProps: DCFButtonProps(title: "📄 Document 2"),
+                  ),
+                  DCFButton(
+                    buttonProps: DCFButtonProps(title: "📄 Document 3"),
+                  ),
+                ],
+              ),
+            ],
+
+            // 🎯 INSPECTOR (Right) - Properties
+            inspectorTitle: "Inspector",
+            inspectorChildren: [
+              DCFView(
+                layout: LayoutProps(flex: 1, padding: 16),
+                children: [
+                  DCFText(content: "🔧 Properties"),
+                  DCFText(content: "Width: 300px"),
+                  DCFText(content: "Height: 200px"),
+                  DCFButton(
+                    buttonProps: DCFButtonProps(title: "Background Color"),
+                  ),
+                  DCFButton(
+                    buttonProps: DCFButtonProps(title: "Border Settings"),
+                  ),
+                ],
+              ),
+            ],
+          ),
           children: [
+            // 🎯 MAIN CONTENT (Center) - Your canvas/editor
             DCFSafeArea(children: [_deepScreenInModal]),
           ],
         ),
