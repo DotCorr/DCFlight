@@ -67,27 +67,109 @@ class DCFTabConfig extends Equatable {
 
 /// Configuration for modal presentation
 class DCFModalConfig extends Equatable {
+  /// List of available detents (standard enum values)
   final List<DCFModalDetent>? detents;
+
+  /// List of custom detents with specific heights
+  final List<DCFCustomModalDetent>? customDetents;
+
+  /// Initially selected detent index
   final int? selectedDetentIndex;
+
+  /// Whether to show the drag indicator (grabber)
   final bool showDragIndicator;
+
+  /// Corner radius for the modal
   final double? cornerRadius;
+
+  /// Whether the modal can be dismissed
   final bool isDismissible;
+
+  /// Whether tapping outside dismisses the modal
   final bool allowsBackgroundDismiss;
+
+  /// Transition style for the modal
   final String? transitionStyle;
 
   const DCFModalConfig({
     this.detents,
+    this.customDetents,
     this.selectedDetentIndex,
     this.showDragIndicator = true,
     this.cornerRadius,
     this.isDismissible = true,
     this.allowsBackgroundDismiss = true,
     this.transitionStyle,
-  });
+  }) : assert(
+          detents == null || customDetents == null,
+          'Cannot specify both detents and customDetents. Use one or the other.',
+        );
+
+  /// Create modal config with standard detents
+  factory DCFModalConfig.withDetents({
+    required List<DCFModalDetent> detents,
+    int? selectedDetentIndex,
+    bool showDragIndicator = true,
+    double? cornerRadius,
+    bool isDismissible = true,
+    bool allowsBackgroundDismiss = true,
+    String? transitionStyle,
+  }) {
+    return DCFModalConfig(
+      detents: detents,
+      selectedDetentIndex: selectedDetentIndex,
+      showDragIndicator: showDragIndicator,
+      cornerRadius: cornerRadius,
+      isDismissible: isDismissible,
+      allowsBackgroundDismiss: allowsBackgroundDismiss,
+      transitionStyle: transitionStyle,
+    );
+  }
+
+  /// Create modal config with custom height detents
+  factory DCFModalConfig.withCustomDetents({
+    required List<DCFCustomModalDetent> customDetents,
+    int? selectedDetentIndex,
+    bool showDragIndicator = true,
+    double? cornerRadius,
+    bool isDismissible = true,
+    bool allowsBackgroundDismiss = true,
+    String? transitionStyle,
+  }) {
+    return DCFModalConfig(
+      customDetents: customDetents,
+      selectedDetentIndex: selectedDetentIndex,
+      showDragIndicator: showDragIndicator,
+      cornerRadius: cornerRadius,
+      isDismissible: isDismissible,
+      allowsBackgroundDismiss: allowsBackgroundDismiss,
+      transitionStyle: transitionStyle,
+    );
+  }
+
+  /// Create simple modal config (defaults to large detent)
+  factory DCFModalConfig.simple({
+    bool showDragIndicator = true,
+    double? cornerRadius,
+    bool isDismissible = true,
+    bool allowsBackgroundDismiss = true,
+  }) {
+    return DCFModalConfig(
+      detents: [
+        DCFModalDetent.large
+      ], // Default to large (full screen behavior)
+      showDragIndicator: showDragIndicator,
+      cornerRadius: cornerRadius,
+      isDismissible: isDismissible,
+      allowsBackgroundDismiss: allowsBackgroundDismiss,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
-      if (detents != null) 'detents': detents,
+      if (detents != null) 'detents': detents!.map((d) => d.name).toList(),
+      if (customDetents != null)
+        'customDetents': customDetents!.map((d) => d.toMap()).toList(),
       if (selectedDetentIndex != null)
         'selectedDetentIndex': selectedDetentIndex,
       'showDragIndicator': showDragIndicator,
@@ -101,6 +183,7 @@ class DCFModalConfig extends Equatable {
   @override
   List<Object?> get props => [
         detents,
+        customDetents,
         selectedDetentIndex,
         showDragIndicator,
         cornerRadius,
@@ -414,8 +497,51 @@ enum DCFModalPresentationStyle {
 }
 
 enum DCFModalDetent {
+  /// Small detent - approximately 25% of screen height
+  small,
+
+  /// Medium detent - approximately 50% of screen height
   medium,
+
+  /// Large detent - full available height (default)
   large,
+}
+
+/// Custom modal detent with specific height value
+class DCFCustomModalDetent {
+  final double height;
+  final String identifier;
+
+  const DCFCustomModalDetent({
+    required this.height,
+    required this.identifier,
+  });
+
+  /// Create a detent with percentage of screen height (0.0 to 1.0)
+  factory DCFCustomModalDetent.percentage(double percentage) {
+    assert(percentage > 0.0 && percentage <= 1.0,
+        'Percentage must be between 0.0 and 1.0');
+    return DCFCustomModalDetent(
+      height: percentage,
+      identifier: 'custom_${percentage.toStringAsFixed(2)}',
+    );
+  }
+
+  /// Create a detent with fixed height in points
+  factory DCFCustomModalDetent.points(double points) {
+    assert(points > 0, 'Height must be greater than 0');
+    return DCFCustomModalDetent(
+      height: points,
+      identifier: 'fixed_${points.toInt()}',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'height': height,
+      'identifier': identifier,
+    };
+  }
 }
 
 // ============================================================================

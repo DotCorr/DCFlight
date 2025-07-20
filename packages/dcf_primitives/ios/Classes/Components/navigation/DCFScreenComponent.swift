@@ -373,22 +373,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
         targetContainer.contentView.alpha = 1.0
         targetContainer.contentView.backgroundColor = UIColor.systemBackground
 
-        if let style = presentationStyle {
-            switch style.lowercased() {
-            case "fullscreen":
-                targetContainer.viewController.modalPresentationStyle = .fullScreen
-            case "pagesheet":
-                if #available(iOS 13.0, *) {
-                    targetContainer.viewController.modalPresentationStyle = .pageSheet
-                }
-            case "formsheet":
-                targetContainer.viewController.modalPresentationStyle = .formSheet
-            default:
-                if #available(iOS 13.0, *) {
-                    targetContainer.viewController.modalPresentationStyle = .pageSheet
-                }
-            }
-        }
+        // 🎯 CRITICAL FIX: Configure modal presentation BEFORE presenting
+        configureModalPresentation(targetContainer: targetContainer, presentationStyle: presentationStyle)
 
         if let params = params {
             propagateEvent(
@@ -411,6 +397,113 @@ class DCFScreenComponent: NSObject, DCFComponent {
         }
 
         print("✅ DCFScreenComponent: Successfully presented modal container for '\(screenName)'")
+    }
+
+    // 🎯 NEW: Configure modal presentation properly
+    private func configureModalPresentation(targetContainer: ScreenContainer, presentationStyle: String?) {
+        let viewController = targetContainer.viewController
+        
+        // Set default to large page sheet (full screen behavior)
+        if #available(iOS 13.0, *) {
+            viewController.modalPresentationStyle = .pageSheet
+        } else {
+            viewController.modalPresentationStyle = .formSheet
+        }
+        
+        // 🎯 CRITICAL: Configure sheet presentation BEFORE presenting
+        if #available(iOS 15.0, *) {
+            if let sheet = viewController.sheetPresentationController {
+                // Check if user provided custom detents
+                if let modalConfig = objc_getAssociatedObject(
+                    targetContainer.viewController,
+                    UnsafeRawPointer(bitPattern: "modalConfig".hashValue)!
+                ) as? [String: Any], let detents = modalConfig["detents"] as? [String] {
+                    // User provided custom detents
+                    configureCustomDetents(sheet: sheet, detents: detents, modalConfig: modalConfig)
+                } else {
+                    // 🎯 DEFAULT: Start with large (full) detent for normal modal behavior
+                    sheet.detents = [.large()]
+                    sheet.selectedDetentIdentifier = .large
+                    sheet.prefersGrabberVisible = true
+                    sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+                    print("🎯 Modal: Using default large detent")
+                }
+            }
+        }
+        
+        // Handle presentation style override
+        if let style = presentationStyle {
+            switch style.lowercased() {
+            case "fullscreen":
+                viewController.modalPresentationStyle = .fullScreen
+            case "pagesheet":
+                if #available(iOS 13.0, *) {
+                    viewController.modalPresentationStyle = .pageSheet
+                }
+            case "formsheet":
+                viewController.modalPresentationStyle = .formSheet
+            default:
+                break // Keep the default pageSheet
+            }
+        }
+    }
+
+    // 🎯 Configure custom detents when user provides them
+    @available(iOS 15.0, *)
+    private func configureCustomDetents(sheet: UISheetPresentationController, detents: [String], modalConfig: [String: Any]) {
+        var sheetDetents: [UISheetPresentationController.Detent] = []
+        
+        for detentString in detents {
+            switch detentString.lowercased() {
+            case "small", "compact":
+                if #available(iOS 16.0, *) {
+                    sheetDetents.append(.custom(identifier: .init("small")) { context in
+                        return context.maximumDetentValue * 0.25 // 25% of screen
+                    })
+                } else {
+                    sheetDetents.append(.medium())
+                }
+            case "medium", "half":
+                sheetDetents.append(.medium())
+            case "large", "full":
+                sheetDetents.append(.large())
+            default:
+                // Try to parse as percentage (e.g., "0.7" for 70%)
+                if let percentage = Double(detentString), percentage > 0 && percentage <= 1 {
+                    if #available(iOS 16.0, *) {
+                        sheetDetents.append(.custom(identifier: .init("custom_\(percentage)")) { context in
+                            return context.maximumDetentValue * percentage
+                        })
+                    } else {
+                        sheetDetents.append(.large())
+                    }
+                } else {
+                    sheetDetents.append(.large()) // Default fallback
+                }
+            }
+        }
+        
+        if sheetDetents.isEmpty {
+            sheetDetents = [.large()]
+        }
+        
+        sheet.detents = sheetDetents
+        // Start with the largest detent by default
+        if #available(iOS 16.0, *) {
+            sheet.selectedDetentIdentifier = sheetDetents.last?.identifier
+        } else {
+            //Todo: Fallback on earlier versions
+        }
+        
+        sheet.prefersGrabberVisible = modalConfig["showDragIndicator"] as? Bool ?? true
+        
+        if let cornerRadius = modalConfig["cornerRadius"] as? CGFloat {
+            if #available(iOS 16.0, *) {
+                sheet.preferredCornerRadius = cornerRadius
+            }
+        }
+        
+        print("🎯 Modal: Configured custom detents: \(detents)")
     }
 
     // 🎯 NEW: Sheet presentation using iOS 15+ bottom sheet
@@ -468,8 +561,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 ]
             )
         }
-
-        print("✅ DCFScreenComponent: Successfully presented sheet container for '\(screenName)'")
     }
 
     private func presentPopoverScreen(_ screenName: String, animated: Bool, params: [String: Any]?, sourceViewId: String?, from sourceContainer: ScreenContainer) {
