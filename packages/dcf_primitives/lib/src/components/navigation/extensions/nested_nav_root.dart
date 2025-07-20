@@ -1,4 +1,3 @@
-
 import 'package:dcf_primitives/src/components/navigation/tab_navigator_component.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -24,22 +23,24 @@ class DCFNestedNavigationRoot extends StatelessComponent {
       this.onTabPress,
       required this.selectedIndex,
       required this.tabRoutes,
-      
       required this.tabRoutesRegistryComponents,
       required this.subRoutesRegistryComponents});
 
   @override
   DCFComponentNode render() {
     return DCFFragment(children: [
+      // These components are not actually children of the tab navigator component
+      // It just preloads the tab routes registry components and sub routes registry components
       tabRoutesRegistryComponents,
       subRoutesRegistryComponents,
       DCFTabNavigator(
         animationDuration: animationDuration,
+        // Todo: lazy load at abstraction as well (this means that the tab routes registry components and sub routes registry components will be loaded lazily by using if statements. This is not advisable but just providing that option)
         lazyLoad: true,
         screens: tabRoutes,
         selectedIndex: selectedIndex,
         tabBarStyle: tabBarStyle,
-        onTabChange:  onTabChange,
+        onTabChange: onTabChange,
         onTabPress: onTabPress,
       ),
     ]);

@@ -51,12 +51,14 @@ class TabRegistry extends StatelessComponent {
 
         DCFScreen(
           name: "navigation_demo",
+
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(
             title: "Navigation",
             icon: "square.stack",
             index: 2,
           ),
+
           navigationCommand: publicDetailScreenCommand.state,
           onAppear: (data) => print("✅ Navigation demo screen appeared: $data"),
           onActivate:
