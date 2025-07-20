@@ -108,6 +108,12 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             if let screenContainer = DCFScreenComponent.getScreenContainer(name: screenName) {
                 let navController = UINavigationController()
                 
+                let needsLargeTitles = checkIfScreenNeedsLargeTitles(screenContainer: screenContainer)
+                
+                if #available(iOS 11.0, *) {
+                    navController.navigationBar.prefersLargeTitles = needsLargeTitles
+                }
+                
                 screenContainer.viewController.view = screenContainer.contentView
                 screenContainer.contentView.frame = UIScreen.main.bounds
                 screenContainer.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -536,6 +542,19 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         placeholderViewRegistry.removeValue(forKey: navigatorId)
     }
 }
+
+
+private func checkIfScreenNeedsLargeTitles(screenContainer: ScreenContainer) -> Bool {
+    guard let navBarConfig = objc_getAssociatedObject(
+        screenContainer.viewController,
+        UnsafeRawPointer(bitPattern: "navigationBarConfig".hashValue)!
+    ) as? [String: Any] else {
+        return false
+    }
+    
+    return navBarConfig["largeTitleDisplayMode"] as? Bool ?? false
+}
+
 
 extension DCFSvgComponent {
     private static var tabIconCache = [String: SVGKImage]()
