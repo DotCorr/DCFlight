@@ -1,5 +1,9 @@
 
 # DCFlight
+
+[![pub package](https://img.shields.io/pub/v/dcf_primitives.svg)](https://pub.com/packages/dcf_primitives)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # 🚧 This CLI is Under Development
 
 ## 📌 Key Points
