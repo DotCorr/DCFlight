@@ -12,17 +12,10 @@ class StackRegistry extends StatefulComponent {
   final _deepScreen = DeepScreen();
   // Hey flutter devs,
   // this is a very important note to take.
-  // This framework prioritizes performance and memory management. 
+  // This framework prioritizes performance and memory management.
   // Most of these optimisations are done by the vdom and the framework itself.
   // But you can also help the framework by instantiating components that handle their own state
   // outside the render method to avoid re-instantiation on every render.
-  // This is because the vdom is efficient and will only re-render the components that have changed,
-  // but doing this adds up to make your app even more performant.
-  // Notice how we are using the same DeepScreen component for both the push and modal screen but differnt instances.
-  // this is because vdom does not trigger rerender cause the component is the same.
-  // To fix this; reinstantiate the component outside the render method or use useMemo to access the component in the render method if you are super paranoid.
-  // Else fan fact: use them, directly in the render method. As long as the state done change it would still be reconciled but with no change so no rerender.
-  // So it doe snot really matter.
   final _deepScreenInModal = DeepScreen();
 
   final _modalScreen = ModalScreen();
