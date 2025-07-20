@@ -5,4 +5,5 @@ final publicDeepScreenCommand = Store<ScreenNavigationCommand?>(null);
 final publicModalScreenCommand = Store<ScreenNavigationCommand?>(null);
 final publicOverlayLoadingCommand = Store<ScreenNavigationCommand?>(null);
 final publicModalScreenInModalCommand = Store<ScreenNavigationCommand?>(null);
+final publicPopOverScreenCommand = Store<ScreenNavigationCommand?>(null);
 final pagestate = Store<int>(0);
