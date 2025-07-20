@@ -1,7 +1,7 @@
 import 'package:dcf_go/app/example/features/navigation_demo/pages/deep_screen.dart';
 import 'package:dcf_go/app/example/features/navigation_demo/pages/details.dart';
-import 'package:dcf_go/app/example/features/navigation_demo/pages/modal_screen.dart'
-    show ModalScreen;
+import 'package:dcf_go/app/example/features/navigation_demo/pages/modal_screen.dart';
+import 'package:dcf_go/app/example/features/navigation_demo/pop_overs/info.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:flutter/cupertino.dart';
@@ -10,6 +10,7 @@ class StackRegistry extends StatefulComponent {
   // Instantiate screen components once OUTSIDE the render method to avoid re-renders/wrap useMemo if you need to render in render method to access things like state but stay safe.
   final _detailsScreen = Details();
   final _deepScreen = DeepScreen();
+  final _popOverScreen = PopOverScreen();
   // Hey flutter devs,
   // this is a very important note to take.
   // This framework prioritizes performance and memory management.
@@ -26,6 +27,7 @@ class StackRegistry extends StatefulComponent {
     final modalScreenCommand = useStore(publicModalScreenCommand);
     final overlayLoadingCommand = useStore(publicOverlayLoadingCommand);
     final modalScreenInModalCommand = useStore(publicModalScreenInModalCommand);
+    final popOverScreenCommand = useStore(publicPopOverScreenCommand);
 
     return DCFFragment(
       children: [
@@ -140,6 +142,24 @@ class StackRegistry extends StatefulComponent {
               ],
             )),
           ],
+        ),
+        DCFScreen(
+          name: "universal_pop_over",
+          presentationStyle: DCFPresentationStyle.popover,
+
+          popoverConfig: DCFPopoverConfig(
+            title: "Portaled Content",
+            dismissOnOutsideTap: true,
+          ),
+          navigationCommand: popOverScreenCommand.state,
+          onAppear: (data) => print("✅ Detail screen appeared: $data"),
+          onNavigationEvent: (data) {
+            print("🚀 Detail navigation event: $data");
+            // dispose the command to avoid memory leaks
+            popOverScreenCommand.setState(null);
+          },
+          onReceiveParams: (data) => print("📨 Detail received params: $data"),
+          children: [_popOverScreen],
         ),
       ],
     );

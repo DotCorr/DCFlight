@@ -209,27 +209,63 @@ class DCFScreenComponent: NSObject, DCFComponent {
     ) {
         print("🧠 DCFScreenComponent: Smart navigation to '\(targetScreenName)' - requested: \(requestedMethod)")
 
-        // Determine the target screen's registered presentation style
-        guard let registeredPresentationStyle = DCFScreenComponent.screenPresentationRegistry[targetScreenName] else {
+        // 🎯 FIX: Always respect the navigation command over registered presentation style
+        // The user's navigation command should take precedence
+        
+        print("✅ DCFScreenComponent: Using requested navigation method '\(requestedMethod)' for '\(targetScreenName)'")
+        
+        // Execute the requested navigation method directly
+        executeNavigationMethod(requestedMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
+    }
+
+    // ALTERNATIVE: If you want to keep some smart navigation but allow override
+    private func smartNavigateToWithOverride(
+        _ targetScreenName: String,
+        method requestedMethod: NavigationMethod,
+        animated: Bool,
+        params: [String: Any]? = nil,
+        presentationStyle: String? = nil,
+        sourceViewId: String? = nil,
+        drawerDirection: String? = nil,
+        from sourceContainer: ScreenContainer
+    ) {
+        print("🧠 DCFScreenComponent: Smart navigation to '\(targetScreenName)' - requested: \(requestedMethod)")
+
+        // Check if screen is registered with a different presentation style
+        if let registeredPresentationStyle = DCFScreenComponent.screenPresentationRegistry[targetScreenName] {
+            print("🎯 DCFScreenComponent: Screen '\(targetScreenName)' is registered as '\(registeredPresentationStyle)'")
+            
+            let appropriateMethod = determineAppropriateMethod(for: registeredPresentationStyle)
+            
+            // 🎯 NEW: Only override if the requested method doesn't make sense
+            // Allow explicit navigation commands to override registration
+            if shouldOverrideNavigationMethod(requested: requestedMethod, registered: appropriateMethod) {
+                print("🔄 DCFScreenComponent: Smart navigation override - requested '\(requestedMethod)' but using '\(appropriateMethod)' for '\(registeredPresentationStyle)' screen")
+                executeNavigationMethod(appropriateMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
+            } else {
+                print("✅ DCFScreenComponent: Respecting requested navigation method '\(requestedMethod)'")
+                executeNavigationMethod(requestedMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
+            }
+        } else {
             print("⚠️ DCFScreenComponent: Screen '\(targetScreenName)' not registered - using requested method \(requestedMethod)")
             executeNavigationMethod(requestedMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
-            return
         }
+    }
 
-        print("🎯 DCFScreenComponent: Screen '\(targetScreenName)' is registered as '\(registeredPresentationStyle)'")
-
-        // Determine the appropriate navigation method based on registered style
-        let appropriateMethod = determineAppropriateMethod(for: registeredPresentationStyle)
-
-        // Log the smart decision
-        if appropriateMethod != requestedMethod {
-            print("🔄 DCFScreenComponent: Smart navigation override - requested '\(requestedMethod)' but using '\(appropriateMethod)' for '\(registeredPresentationStyle)' screen")
-        } else {
-            print("✅ DCFScreenComponent: Smart navigation - requested method matches registered style")
+    // 🎯 NEW: Helper to determine when to override navigation
+    private func shouldOverrideNavigationMethod(requested: NavigationMethod, registered: NavigationMethod) -> Bool {
+        // Only override in specific cases where it doesn't make sense
+        switch (requested, registered) {
+        case (.push, .overlay), (.push, .modal):
+            // Allow push to override overlay/modal registration
+            return false
+        case (.modal, .push), (.overlay, .push):
+            // Allow modal/overlay to override push registration
+            return false
+        default:
+            // In most other cases, respect the registration
+            return true
         }
-
-        // Execute the appropriate navigation method
-        executeNavigationMethod(appropriateMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
     }
 
     private func determineAppropriateMethod(for presentationStyle: String) -> NavigationMethod {
