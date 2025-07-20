@@ -2,6 +2,64 @@ import SVGKit
 import UIKit
 import dcflight
 
+// MARK: - Header Action Handler
+class DCFHeaderActionHandler: NSObject {
+    static let shared = DCFHeaderActionHandler()
+    
+    private override init() {
+        super.init()
+    }
+    
+    @objc func headerActionPressed(_ sender: UIBarButtonItem) {
+        print("🎯 DCFHeaderActionHandler: Header action button was pressed!")
+
+        guard
+            let actionData = objc_getAssociatedObject(
+                sender,
+                UnsafeRawPointer(bitPattern: "actionData".hashValue)!
+            ) as? [String: Any],
+            let viewController = objc_getAssociatedObject(
+                sender,
+                UnsafeRawPointer(bitPattern: "viewController".hashValue)!
+            ) as? UIViewController
+        else {
+            print("❌ DCFHeaderActionHandler: No action data found for header action")
+            return
+        }
+
+        let actionId = actionData["actionId"] as? String ?? "unknown_action"
+        let title = actionData["title"] as? String ?? ""
+
+        print("🎯 DCFHeaderActionHandler: Header action pressed - ID: \(actionId), Title: \(title)")
+
+        // Find the screen container for this view controller
+        var foundContainer = false
+        for (_, container) in DCFScreenComponent.screenRegistry {
+            if container.viewController == viewController {
+                foundContainer = true
+                print("📡 DCFHeaderActionHandler: Found container '\(container.name)' for view controller")
+
+                // Propagate the action press event
+                propagateEvent(
+                    on: container.contentView,
+                    eventName: "onHeaderActionPress",
+                    data: [
+                        "actionId": actionId,
+                        "title": title,
+                        "screenName": container.name,
+                    ]
+                )
+                print("📡 DCFHeaderActionHandler: Sent onHeaderActionPress event to Dart")
+                break
+            }
+        }
+
+        if !foundContainer {
+            print("❌ DCFHeaderActionHandler: Could not find container for view controller")
+        }
+    }
+}
+
 extension DCFScreenComponent {
 
     // MARK: - Enhanced Push Configuration Storage
@@ -202,8 +260,8 @@ extension DCFScreenComponent {
             barButtonItem = UIBarButtonItem(
                 title: title,
                 style: .plain,
-                target: self,
-                action: #selector(headerActionPressed(_:))
+                target: DCFHeaderActionHandler.shared,
+                action: #selector(DCFHeaderActionHandler.headerActionPressed(_:))
             )
             print("✅ Created text-only button: '\(title)'")
 
@@ -218,8 +276,8 @@ extension DCFScreenComponent {
                     barButtonItem = UIBarButtonItem(
                         title: title,
                         style: .plain,
-                        target: self,
-                        action: #selector(headerActionPressed(_:))
+                        target: DCFHeaderActionHandler.shared,
+                        action: #selector(DCFHeaderActionHandler.headerActionPressed(_:))
                     )
                     barButtonItem?.image = image
                     print("✅ Created SF symbol button with title: '\(title)' + \(symbolName)")
@@ -228,8 +286,8 @@ extension DCFScreenComponent {
                     barButtonItem = UIBarButtonItem(
                         image: image,
                         style: .plain,
-                        target: self,
-                        action: #selector(headerActionPressed(_:))
+                        target: DCFHeaderActionHandler.shared,
+                        action: #selector(DCFHeaderActionHandler.headerActionPressed(_:))
                     )
                     print("✅ Created SF symbol icon-only button: \(symbolName)")
                 }
@@ -255,8 +313,8 @@ extension DCFScreenComponent {
                     barButtonItem = UIBarButtonItem(
                         title: title,
                         style: .plain,
-                        target: self,
-                        action: #selector(headerActionPressed(_:))
+                        target: DCFHeaderActionHandler.shared,
+                        action: #selector(DCFHeaderActionHandler.headerActionPressed(_:))
                     )
                     barButtonItem?.image = image
                     print("✅ Created SVG package button with title: '\(title)' + \(iconName)")
@@ -265,8 +323,8 @@ extension DCFScreenComponent {
                     barButtonItem = UIBarButtonItem(
                         image: image,
                         style: .plain,
-                        target: self,
-                        action: #selector(headerActionPressed(_:))
+                        target: DCFHeaderActionHandler.shared,
+                        action: #selector(DCFHeaderActionHandler.headerActionPressed(_:))
                     )
                     print("✅ Created SVG package icon-only button: \(iconName)")
                 }
@@ -285,8 +343,8 @@ extension DCFScreenComponent {
                     barButtonItem = UIBarButtonItem(
                         title: title,
                         style: .plain,
-                        target: self,
-                        action: #selector(headerActionPressed(_:))
+                        target: DCFHeaderActionHandler.shared,
+                        action: #selector(DCFHeaderActionHandler.headerActionPressed(_:))
                     )
                     barButtonItem?.image = image
                     print("✅ Created SVG asset button with title: '\(title)' + \(assetPath)")
@@ -295,8 +353,8 @@ extension DCFScreenComponent {
                     barButtonItem = UIBarButtonItem(
                         image: image,
                         style: .plain,
-                        target: self,
-                        action: #selector(headerActionPressed(_:))
+                        target: DCFHeaderActionHandler.shared,
+                        action: #selector(DCFHeaderActionHandler.headerActionPressed(_:))
                     )
                     print("✅ Created SVG asset icon-only button: \(assetPath)")
                 }
@@ -310,8 +368,8 @@ extension DCFScreenComponent {
             barButtonItem = UIBarButtonItem(
                 title: title,
                 style: .plain,
-                target: self,
-                action: #selector(headerActionPressed(_:))
+                target: DCFHeaderActionHandler.shared,
+                action: #selector(DCFHeaderActionHandler.headerActionPressed(_:))
             )
             print("✅ Created fallback text button: '\(title)'")
         }
@@ -445,57 +503,5 @@ extension DCFScreenComponent {
         context.fill(rect)
 
         return UIGraphicsGetImageFromCurrentImageContext()
-    }
-
-    // MARK: - Header Action Event Handling
-
-    @objc private func headerActionPressed(_ sender: UIBarButtonItem) {
-        print("🎯 DCFScreenComponent: Header action button was pressed!")
-
-        guard
-            let actionData = objc_getAssociatedObject(
-                sender,
-                UnsafeRawPointer(bitPattern: "actionData".hashValue)!
-            ) as? [String: Any],
-            let viewController = objc_getAssociatedObject(
-                sender,
-                UnsafeRawPointer(bitPattern: "viewController".hashValue)!
-            ) as? UIViewController
-        else {
-            print("❌ DCFScreenComponent: No action data found for header action")
-            return
-        }
-
-        let actionId = actionData["actionId"] as? String ?? "unknown_action"
-        let title = actionData["title"] as? String ?? ""
-
-        print("🎯 DCFScreenComponent: Header action pressed - ID: \(actionId), Title: \(title)")
-
-        // Find the screen container for this view controller
-        var foundContainer = false
-        for (_, container) in DCFScreenComponent.screenRegistry {
-            if container.viewController == viewController {
-                foundContainer = true
-                print(
-                    "📡 DCFScreenComponent: Found container '\(container.name)' for view controller")
-
-                // Propagate the action press event
-                propagateEvent(
-                    on: container.contentView,
-                    eventName: "onHeaderActionPress",
-                    data: [
-                        "actionId": actionId,
-                        "title": title,
-                        "screenName": container.name,
-                    ]
-                )
-                print("📡 DCFScreenComponent: Sent onHeaderActionPress event to Dart")
-                break
-            }
-        }
-
-        if !foundContainer {
-            print("❌ DCFScreenComponent: Could not find container for view controller")
-        }
     }
 }
