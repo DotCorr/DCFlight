@@ -53,7 +53,7 @@ class DCFScrollView extends StatelessComponent
   final bool keyboardDismissMode;
 
   /// Content insets
-  final ContentInset? contentInset;
+  final DCFContentInset? contentInset;
 
   /// Command for imperative scroll operations
   final ScrollViewCommand? command;
@@ -180,19 +180,19 @@ class DCFScrollView extends StatelessComponent
 }
 
 /// Content insets for scroll views
-class ContentInset extends Equatable {
+class DCFContentInset extends Equatable {
   final double top;
   final double left;
   final double bottom;
   final double right;
 
-  const ContentInset.all(double value)
+  const DCFContentInset.all(double value)
       : top = value,
         left = value,
         bottom = value,
         right = value;
 
-  const ContentInset.symmetric({
+  const DCFContentInset.symmetric({
     double vertical = 0,
     double horizontal = 0,
   })  : top = vertical,
@@ -200,7 +200,7 @@ class ContentInset extends Equatable {
         left = horizontal,
         right = horizontal;
 
-  const ContentInset.only({
+  const DCFContentInset.only({
     this.top = 0,
     this.left = 0,
     this.bottom = 0,
