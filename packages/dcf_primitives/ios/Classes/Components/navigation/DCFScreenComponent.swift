@@ -1,6 +1,9 @@
 import UIKit
 import dcflight
 
+import UIKit
+import dcflight
+
 class DCFScreenComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
@@ -23,7 +26,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
             screenContainer = ScreenContainer(name: screenName, presentationStyle: presentationStyle)
             DCFScreenComponent.screenRegistry[contextKey] = screenContainer
 
-            // 🎯 FIXED: Register screen's intended presentation style
+            // Register screen's intended presentation style
             DCFScreenComponent.screenPresentationRegistry[screenName] = presentationStyle
             print("✅ DCFScreenComponent: Created new screen container for '\(contextKey)' and registered presentation style '\(presentationStyle)'")
         }
@@ -36,7 +39,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
         storeOverlayConfiguration(screenContainer, props: props)
         storeSheetConfiguration(screenContainer, props: props)
         storeDrawerConfiguration(screenContainer, props: props)
-        storeSplitViewConfiguration(screenContainer, props: props)
 
         let _ = updateView(screenContainer.contentView, withProps: props)
 
@@ -112,12 +114,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 return existingKey
             }
             return "drawer_\(screenName)_\(UUID().uuidString.prefix(8))"
-        case "splitView":
-            let existingSplitKeys = DCFScreenComponent.screenRegistry.keys.filter { $0.hasPrefix("splitView_\(screenName)_") }
-            if let existingKey = existingSplitKeys.first {
-                return existingKey
-            }
-            return "splitView_\(screenName)_\(UUID().uuidString.prefix(8))"
         default:
             return "unknown_\(screenName)_\(UUID().uuidString.prefix(8))"
         }
@@ -131,7 +127,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
         storeOverlayConfiguration(screenContainer, props: props)
         storeSheetConfiguration(screenContainer, props: props)
         storeDrawerConfiguration(screenContainer, props: props)
-        storeSplitViewConfiguration(screenContainer, props: props)
         storeNavigationBarConfiguration(screenContainer, props: props)
         handleNavigationCommand(screenContainer: screenContainer, props: props)
 
@@ -197,19 +192,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
             }
         }
 
-        if let splitData = commandData["presentSplitView"] as? [String: Any] {
-            if let targetScreenName = splitData["screenName"] as? String {
-                let animated = splitData["animated"] as? Bool ?? true
-                let params = splitData["params"] as? [String: Any]
-                smartNavigateTo(targetScreenName, method: .splitView, animated: animated, params: params, from: screenContainer)
-            }
-        }
-
         // Handle other navigation commands (pop, dismiss, etc.)
         handleStandardNavigationCommands(commandData: commandData, from: screenContainer)
     }
 
-    // 🎯 ENHANCED: Smart navigation with all presentation styles
+    // Smart navigation with supported presentation styles only
     private func smartNavigateTo(
         _ targetScreenName: String,
         method requestedMethod: NavigationMethod,
@@ -222,7 +209,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     ) {
         print("🧠 DCFScreenComponent: Smart navigation to '\(targetScreenName)' - requested: \(requestedMethod)")
 
-        // 1. Determine the target screen's registered presentation style
+        // Determine the target screen's registered presentation style
         guard let registeredPresentationStyle = DCFScreenComponent.screenPresentationRegistry[targetScreenName] else {
             print("⚠️ DCFScreenComponent: Screen '\(targetScreenName)' not registered - using requested method \(requestedMethod)")
             executeNavigationMethod(requestedMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
@@ -231,17 +218,17 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
         print("🎯 DCFScreenComponent: Screen '\(targetScreenName)' is registered as '\(registeredPresentationStyle)'")
 
-        // 2. Determine the appropriate navigation method based on registered style
+        // Determine the appropriate navigation method based on registered style
         let appropriateMethod = determineAppropriateMethod(for: registeredPresentationStyle)
 
-        // 3. Log the smart decision
+        // Log the smart decision
         if appropriateMethod != requestedMethod {
             print("🔄 DCFScreenComponent: Smart navigation override - requested '\(requestedMethod)' but using '\(appropriateMethod)' for '\(registeredPresentationStyle)' screen")
         } else {
             print("✅ DCFScreenComponent: Smart navigation - requested method matches registered style")
         }
 
-        // 4. Execute the appropriate navigation method
+        // Execute the appropriate navigation method
         executeNavigationMethod(appropriateMethod, to: targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, sourceViewId: sourceViewId, drawerDirection: drawerDirection, from: sourceContainer)
     }
 
@@ -261,8 +248,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return .overlay
         case "drawer":
             return .drawer
-        case "splitView":
-            return .splitView
         default:
             return .push // Default fallback
         }
@@ -293,12 +278,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
             presentOverlayScreen(targetScreenName, animated: animated, params: params, from: sourceContainer)
         case .drawer:
             presentDrawerScreen(targetScreenName, animated: animated, params: params, direction: drawerDirection, from: sourceContainer)
-        case .splitView:
-            presentSplitViewScreen(targetScreenName, animated: animated, params: params, from: sourceContainer)
         }
     }
 
-    // MARK: - Navigation Method Implementations
+    // MARK: - Navigation Method Implementations (Keep existing implementations)
 
     private func pushToScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing push navigation to '\(screenName)'")
@@ -373,7 +356,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         targetContainer.contentView.alpha = 1.0
         targetContainer.contentView.backgroundColor = UIColor.systemBackground
 
-        // 🎯 CRITICAL FIX: ALWAYS configure modal presentation
+        // Configure modal presentation
         configureModalPresentation(targetContainer: targetContainer, presentationStyle: presentationStyle)
 
         if let params = params {
@@ -398,6 +381,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
         print("✅ DCFScreenComponent: Successfully presented modal container for '\(screenName)'")
     }
+
 
     private func configureModalPresentation(targetContainer: ScreenContainer, presentationStyle: String?) {
         let viewController = targetContainer.viewController
@@ -2198,7 +2182,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 case popover = "popover"
                                 case overlay = "overlay"
                                 case drawer = "drawer"
-                                case splitView = "splitView"
+                             
                                 case switchTab = "switchTab"
 
                                 var description: String {

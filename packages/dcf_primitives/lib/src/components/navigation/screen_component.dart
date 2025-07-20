@@ -30,9 +30,6 @@ enum DCFPresentationStyle {
 
   /// Drawer presentation - screen appears as a side drawer
   drawer,
-
-  /// Split view presentation - screen appears in split view
-  splitView,
 }
 
 /// Configuration for tab presentation

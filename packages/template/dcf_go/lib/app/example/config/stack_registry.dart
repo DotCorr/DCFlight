@@ -66,7 +66,7 @@ class StackRegistry extends StatefulComponent {
 
         DCFScreen(
           name: "deep_screen_in_modal",
-          presentationStyle: DCFPresentationStyle.splitView,
+          presentationStyle: DCFPresentationStyle.modal,
           navigationCommand: modalScreenInModalCommand.state,
           // modalConfig: DCFModalConfig(detents: [DCFModalDetent.large]),
           onAppear: (data) => print("✅ Deep screen appeared: $data"),
