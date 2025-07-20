@@ -69,7 +69,7 @@ class StackRegistry extends StatefulComponent {
           presentationStyle: DCFPresentationStyle.modal,
           navigationCommand: modalScreenInModalCommand.state,
           modalConfig: DCFModalConfig(
-            customDetents: [DCFCustomModalDetent.percentage(0.2)],
+            customDetents: [DCFCustomModalDetent(height:,identifier:))],
           ),
           onAppear: (data) => print("✅ Deep screen appeared: $data"),
           onNavigationEvent: (data) {

@@ -373,7 +373,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         targetContainer.contentView.alpha = 1.0
         targetContainer.contentView.backgroundColor = UIColor.systemBackground
 
-        // 🎯 CRITICAL FIX: Configure modal presentation BEFORE presenting
+        // 🎯 CRITICAL FIX: ALWAYS configure modal presentation
         configureModalPresentation(targetContainer: targetContainer, presentationStyle: presentationStyle)
 
         if let params = params {
@@ -399,34 +399,56 @@ class DCFScreenComponent: NSObject, DCFComponent {
         print("✅ DCFScreenComponent: Successfully presented modal container for '\(screenName)'")
     }
 
-    // 🎯 NEW: Configure modal presentation properly
     private func configureModalPresentation(targetContainer: ScreenContainer, presentationStyle: String?) {
         let viewController = targetContainer.viewController
         
-        // Set default to large page sheet (full screen behavior)
+        print("🎯 Configuring modal presentation for '\(targetContainer.name)'")
+        
+        // Set default presentation style
         if #available(iOS 13.0, *) {
             viewController.modalPresentationStyle = .pageSheet
         } else {
             viewController.modalPresentationStyle = .formSheet
         }
         
-        // 🎯 CRITICAL: Configure sheet presentation BEFORE presenting
+        // 🎯 ALWAYS configure sheet presentation if available
         if #available(iOS 15.0, *) {
             if let sheet = viewController.sheetPresentationController {
-                // Check if user provided custom detents
+                // Get stored modal config
                 if let modalConfig = objc_getAssociatedObject(
                     targetContainer.viewController,
                     UnsafeRawPointer(bitPattern: "modalConfig".hashValue)!
-                ) as? [String: Any], let detents = modalConfig["detents"] as? [String] {
-                    // User provided custom detents
-                    configureCustomDetents(sheet: sheet, detents: detents, modalConfig: modalConfig)
+                ) as? [String: Any] {
+                    print("🎯 Found modal config: \(modalConfig)")
+                    
+                    // Check for customDetents first
+                    if let customDetents = modalConfig["customDetents"] as? [[String: Any]] {
+                        print("🎯 Applying custom detents: \(customDetents)")
+                        applyCustomDetents(sheet: sheet, customDetents: customDetents, modalConfig: modalConfig)
+                    }
+                    // Check for standard detents
+                    else if let detents = modalConfig["detents"] as? [String] {
+                        print("🎯 Applying standard detents: \(detents)")
+                        applyStandardDetents(sheet: sheet, detents: detents, modalConfig: modalConfig)
+                    }
+                    // No detents specified - use default
+                    else {
+                        print("🎯 Using default large detent")
+                        sheet.detents = [.large()]
+                        sheet.selectedDetentIdentifier = .large
+                    }
+                    
+                    // Apply other modal config
+                    sheet.prefersGrabberVisible = modalConfig["showDragIndicator"] as? Bool ?? true
+                    
+                    if let cornerRadius = modalConfig["cornerRadius"] as? CGFloat, #available(iOS 16.0, *) {
+                        sheet.preferredCornerRadius = cornerRadius
+                    }
                 } else {
-                    // 🎯 DEFAULT: Start with large (full) detent for normal modal behavior
+                    print("🎯 No modal config found - using default")
                     sheet.detents = [.large()]
                     sheet.selectedDetentIdentifier = .large
                     sheet.prefersGrabberVisible = true
-                    sheet.prefersScrollingExpandsWhenScrolledToEdge = true
-                    print("🎯 Modal: Using default large detent")
                 }
             }
         }
@@ -443,69 +465,84 @@ class DCFScreenComponent: NSObject, DCFComponent {
             case "formsheet":
                 viewController.modalPresentationStyle = .formSheet
             default:
-                break // Keep the default pageSheet
+                break
             }
         }
     }
 
-    // 🎯 Configure custom detents when user provides them
+    // 🎯 NEW: Apply custom detents
     @available(iOS 15.0, *)
-    private func configureCustomDetents(sheet: UISheetPresentationController, detents: [String], modalConfig: [String: Any]) {
+    private func applyCustomDetents(sheet: UISheetPresentationController, customDetents: [[String: Any]], modalConfig: [String: Any]) {
+        var sheetDetents: [UISheetPresentationController.Detent] = []
+        
+        for customDetent in customDetents {
+            if let height = customDetent["height"] as? Double {
+                let identifier = customDetent["identifier"] as? String ?? "custom_\(height)"
+                
+                if #available(iOS 16.0, *) {
+                    sheetDetents.append(.custom(identifier: .init(identifier)) { context in
+                        if height <= 1.0 {
+                            // Percentage
+                            return context.maximumDetentValue * height
+                        } else {
+                            // Fixed points
+                            return height
+                        }
+                    })
+                } else {
+                    // iOS 15 fallback
+                    if height <= 0.5 {
+                        sheetDetents.append(.medium())
+                    } else {
+                        sheetDetents.append(.large())
+                    }
+                }
+            }
+        }
+        
+        if !sheetDetents.isEmpty {
+            sheet.detents = sheetDetents
+            if #available(iOS 16.0, *) {
+                sheet.selectedDetentIdentifier = sheetDetents.first?.identifier
+            } else {
+                // Fallback on earlier versions
+            }
+        }
+    }
+
+    // 🎯 NEW: Apply standard detents
+    @available(iOS 15.0, *)
+    private func applyStandardDetents(sheet: UISheetPresentationController, detents: [String], modalConfig: [String: Any]) {
         var sheetDetents: [UISheetPresentationController.Detent] = []
         
         for detentString in detents {
             switch detentString.lowercased() {
-            case "small", "compact":
+            case "small":
                 if #available(iOS 16.0, *) {
                     sheetDetents.append(.custom(identifier: .init("small")) { context in
-                        return context.maximumDetentValue * 0.25 // 25% of screen
+                        return context.maximumDetentValue * 0.25
                     })
                 } else {
                     sheetDetents.append(.medium())
                 }
-            case "medium", "half":
+            case "medium":
                 sheetDetents.append(.medium())
-            case "large", "full":
+            case "large":
                 sheetDetents.append(.large())
             default:
-                // Try to parse as percentage (e.g., "0.7" for 70%)
-                if let percentage = Double(detentString), percentage > 0 && percentage <= 1 {
-                    if #available(iOS 16.0, *) {
-                        sheetDetents.append(.custom(identifier: .init("custom_\(percentage)")) { context in
-                            return context.maximumDetentValue * percentage
-                        })
-                    } else {
-                        sheetDetents.append(.large())
-                    }
-                } else {
-                    sheetDetents.append(.large()) // Default fallback
-                }
+                sheetDetents.append(.large())
             }
         }
         
-        if sheetDetents.isEmpty {
-            sheetDetents = [.large()]
-        }
-        
-        sheet.detents = sheetDetents
-        // Start with the largest detent by default
-        if #available(iOS 16.0, *) {
-            sheet.selectedDetentIdentifier = sheetDetents.last?.identifier
-        } else {
-            //Todo: Fallback on earlier versions
-        }
-        
-        sheet.prefersGrabberVisible = modalConfig["showDragIndicator"] as? Bool ?? true
-        
-        if let cornerRadius = modalConfig["cornerRadius"] as? CGFloat {
+        if !sheetDetents.isEmpty {
+            sheet.detents = sheetDetents
             if #available(iOS 16.0, *) {
-                sheet.preferredCornerRadius = cornerRadius
+                sheet.selectedDetentIdentifier = sheetDetents.first?.identifier
+            } else {
+                // Fallback on earlier versions
             }
         }
-        
-        print("🎯 Modal: Configured custom detents: \(detents)")
     }
-
     // 🎯 NEW: Sheet presentation using iOS 15+ bottom sheet
     private func presentSheetScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing sheet presentation for '\(screenName)'")
