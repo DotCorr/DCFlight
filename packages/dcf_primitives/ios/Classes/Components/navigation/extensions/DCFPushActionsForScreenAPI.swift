@@ -203,11 +203,11 @@ extension DCFScreenComponent {
 
     // MARK: - Bar Button Item Creation
 
-    private enum BarButtonPosition {
+    internal enum BarButtonPosition {
         case left, right
     }
 
-    private func createBarButtonItems(
+    internal func createBarButtonItems(
         from actionsData: [[String: Any]],
         for viewController: UIViewController,
         position: BarButtonPosition

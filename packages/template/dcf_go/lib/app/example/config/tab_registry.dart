@@ -6,7 +6,7 @@ import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcf_go/app/example/features/profile/screens/profile.dart';
 
 class TabRegistry extends StatelessComponent {
-  // Instantiate screen components once to preserve their state and avoid re-renders/ in the render method use useMemo but that is for stateful components(not applicable here).
+  // Instantiate screen components once to preserve their state and avoid re-renders
   final _homeScreen = App();
   final _profileScreen = Profile();
   final _navDemoScreen = NavigationDemo();
@@ -32,7 +32,6 @@ class TabRegistry extends StatelessComponent {
           onActivate: (data) => print("🟢 Home screen activated: $data"),
           children: [_homeScreen],
         ),
-
         DCFScreen(
           name: "test_profile",
           presentationStyle: DCFPresentationStyle.tab,
@@ -49,9 +48,9 @@ class TabRegistry extends StatelessComponent {
           children: [_profileScreen],
         ),
 
+        // 🎯 ENHANCED: Navigation demo with large title and actions
         DCFScreen(
           name: "navigation_demo",
-
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfig(
             title: "Navigation",
@@ -59,6 +58,30 @@ class TabRegistry extends StatelessComponent {
             index: 2,
           ),
 
+          // 🎯 NEW: Add navigation bar configuration for tab screen
+          navigationBarConfig: DCFNavigationBarConfig(
+            title: "Navigation Demo",
+            largeTitleDisplayMode: true,
+            suffixActions: [
+              // Add navigation bar actions
+              DCFPushHeaderActionConfig.withSFSymbolOnly(
+                symbolName: "gear",
+                actionId: "settings_action",
+              ),
+              DCFPushHeaderActionConfig.withSFSymbolOnly(
+                symbolName: "plus",
+                actionId: "add_action",
+              ),
+            ],
+            prefixActions: [
+              DCFPushHeaderActionConfig.withSVGPackage(
+                title: "Help",
+                package: "dcf_primitives",
+                iconName: DCFIcons.info,
+                actionId: "help_action",
+              ),
+            ],
+          ),
           navigationCommand: publicDetailScreenCommand.state,
           onAppear: (data) => print("✅ Navigation demo screen appeared: $data"),
           onActivate:
@@ -69,12 +92,30 @@ class TabRegistry extends StatelessComponent {
           },
           onReceiveParams:
               (data) => print("📨 Navigation demo received params: $data"),
+          // 🎯 NEW: Handle header action presses
+          onHeaderActionPress: (data) {
+            print("🎯 Navigation demo header action pressed: $data");
+            final actionId = data['actionId'] as String?;
+            switch (actionId) {
+              case 'settings_action':
+                print("Settings gear tapped!");
+                // Add your settings action here
+                break;
+              case 'add_action':
+                print("Add plus tapped!");
+                // Add your add action here
+                break;
+              case 'help_action':
+                print("Help info tapped!");
+                // Add your help action here
+                break;
+            }
+          },
           children: [_navDemoScreen],
         ),
 
         DCFScreen(
           name: "test_gh",
-
           presentationStyle: DCFPresentationStyle.tab,
           tabConfig: DCFTabConfigSVG.withSVGPackage(
             title: "Github",
@@ -84,8 +125,27 @@ class TabRegistry extends StatelessComponent {
             size: 24.0,
             tintColor: Colors.blue,
           ),
+          // 🎯 You can also add navigation bar config to other tabs if needed
+          navigationBarConfig: DCFNavigationBarConfig(
+            title: "GitHub Repos",
+            largeTitleDisplayMode: true,
+            suffixActions: [
+              DCFPushHeaderActionConfig.withSFSymbolOnly(
+                symbolName: "arrow.clockwise",
+                actionId: "refresh_action",
+              ),
+            ],
+          ),
           onAppear: (data) => print("✅ Github screen appeared: $data"),
           onActivate: (data) => print("🟢 Github screen activated: $data"),
+          onHeaderActionPress: (data) {
+            print("🎯 GitHub header action pressed: $data");
+            final actionId = data['actionId'] as String?;
+            if (actionId == 'refresh_action') {
+              print("Refreshing GitHub repos!");
+              // Add your refresh logic here
+            }
+          },
           children: [_githubScreen],
         ),
       ],

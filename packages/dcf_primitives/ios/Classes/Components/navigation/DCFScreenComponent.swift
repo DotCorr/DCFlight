@@ -132,6 +132,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         storeSheetConfiguration(screenContainer, props: props)
         storeDrawerConfiguration(screenContainer, props: props)
         storeSplitViewConfiguration(screenContainer, props: props)
+        storeNavigationBarConfiguration(screenContainer, props: props)
         handleNavigationCommand(screenContainer: screenContainer, props: props)
 
         view.applyStyles(props: props)
@@ -1720,6 +1721,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     if let index = props["index"] as? Int {
                                         viewController.tabBarItem.tag = index
                                     }
+                                     configureNavigationBarForTabScreen(viewController, props: props)
                                 }
 
                                 private func configurePushScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
