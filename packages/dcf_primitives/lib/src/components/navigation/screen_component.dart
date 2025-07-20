@@ -213,6 +213,11 @@ class DCFScreen extends StatelessComponent
   // Header action event handler
   final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
 
+  // 🎯 NEW: Navigation bar configuration for tab screens
+  /// Navigation bar configuration (applies to tab screens that are in navigation controllers)
+  /// This allows tab screens to have large titles, navigation bar actions, etc.
+  final DCFNavigationBarConfig? navigationBarConfig;
+
   DCFScreen({
     super.key,
     required this.name,
@@ -233,11 +238,12 @@ class DCFScreen extends StatelessComponent
     this.onNavigationEvent,
     this.onReceiveParams,
     this.onHeaderActionPress,
+    this.navigationBarConfig, // 🎯 NEW: For tab screens with navigation features
   });
 
   @override
   DCFComponentNode render() {
-    // 🎯 FIXED: Create a proper event map that includes ALL event handlers
+    // Create a proper event map that includes ALL event handlers
     Map<String, dynamic> eventMap = {};
 
     // Add custom events passed in
@@ -245,8 +251,7 @@ class DCFScreen extends StatelessComponent
       eventMap.addAll(events!);
     }
 
-    // 🎯 CRITICAL FIX: Add ALL event handlers to the props map
-    // This ensures they are registered with the native event system
+    // Add ALL event handlers to the props map
     if (onAppear != null) {
       eventMap['onAppear'] = onAppear!;
     }
@@ -271,7 +276,6 @@ class DCFScreen extends StatelessComponent
       eventMap['onReceiveParams'] = onReceiveParams!;
     }
 
-    // 🎯 MOST IMPORTANT FIX: Add header action handler to event map
     if (onHeaderActionPress != null) {
       eventMap['onHeaderActionPress'] = onHeaderActionPress!;
     }
@@ -288,6 +292,9 @@ class DCFScreen extends StatelessComponent
       if (popoverConfig != null) ...popoverConfig!.toMap(),
       if (overlayConfig != null) ...overlayConfig!.toMap(),
 
+      // 🎯 NEW: Add navigation bar config for tab screens
+      if (navigationBarConfig != null) ...navigationBarConfig!.toMap(),
+
       // Layout and style props
       ...LayoutProps(
         padding: 0,
@@ -297,7 +304,7 @@ class DCFScreen extends StatelessComponent
       ).toMap(),
       ...styleSheet.toMap(),
 
-      // 🎯 CRITICAL: Add event handlers to props (like DCFWebView does)
+      // Add event handlers to props
       ...eventMap,
     };
 
@@ -334,6 +341,69 @@ class DCFScreen extends StatelessComponent
         onNavigationEvent,
         onReceiveParams,
         onHeaderActionPress,
+        navigationBarConfig, // 🎯 NEW
+      ];
+}
+
+// 🎯 NEW: Navigation bar configuration class
+/// Configuration for navigation bar appearance and behavior (for tab screens)
+class DCFNavigationBarConfig extends Equatable {
+  /// Navigation bar title (overrides tab title for navigation bar)
+  final String? title;
+
+  /// Whether to show large title
+  final bool largeTitleDisplayMode;
+
+  /// Whether to hide the navigation bar
+  final bool hideNavigationBar;
+
+  /// Whether to hide the back button (for pushed screens)
+  final bool hideBackButton;
+
+  /// Custom back button title
+  final String? backButtonTitle;
+
+  /// Left navigation bar actions
+  final List<DCFPushHeaderActionConfig>? prefixActions;
+
+  /// Right navigation bar actions
+  final List<DCFPushHeaderActionConfig>? suffixActions;
+
+  const DCFNavigationBarConfig({
+    this.title,
+    this.largeTitleDisplayMode = false,
+    this.hideNavigationBar = false,
+    this.hideBackButton = false,
+    this.backButtonTitle,
+    this.prefixActions,
+    this.suffixActions,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (title != null) 'navigationBarTitle': title,
+      'largeTitleDisplayMode': largeTitleDisplayMode,
+      'hideNavigationBar': hideNavigationBar,
+      'hideBackButton': hideBackButton,
+      if (backButtonTitle != null) 'backButtonTitle': backButtonTitle,
+      if (prefixActions != null && prefixActions!.isNotEmpty)
+        'prefixActions':
+            prefixActions!.map((action) => action.toMap()).toList(),
+      if (suffixActions != null && suffixActions!.isNotEmpty)
+        'suffixActions':
+            suffixActions!.map((action) => action.toMap()).toList(),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        title,
+        largeTitleDisplayMode,
+        hideNavigationBar,
+        hideBackButton,
+        backButtonTitle,
+        prefixActions,
+        suffixActions,
       ];
 }
 
