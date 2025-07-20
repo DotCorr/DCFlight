@@ -59,27 +59,23 @@ class StackScreenRegistry extends StatefulComponent {
             suffixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Settings",
-                package: "dcf_primitives",
+                package: dcfP,
                 iconName: DCFIcons.search,
-                actionId: "home_action",
-              ),
-              DCFPushHeaderActionConfig.withSFSymbolOnly(
-                symbolName: "magnifyingglass",
-                actionId: "home_action",
+                actionId: "search",
               ),
             ],
             prefixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Accessibility",
-                package: "dcf_primitives",
+                package: dcfP,
                 iconName: DCFIcons.accessibility,
-                actionId: "home_action",
+                actionId: "accessibility",
               ),
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Delete",
-                package: "dcf_primitives",
+                package: dcfP,
                 iconName: DCFIcons.delete,
-                actionId: "home_action",
+                actionId: "delete",
               ),
             ],
           ),
