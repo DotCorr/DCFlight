@@ -1,0 +1,43 @@
+name: tab_nav_app
+description: "A new DCFlight application"
+publish_to: 'none' 
+
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+# framework dependencies
+  dcflight:
+    path: ../packages/dcflight
+
+  dcf_primitives:
+    path: ../packages/dcf_primitives
+
+  # dcflight: ^0.0.1
+  # dcf_primitives: ^0.0.1
+
+  icons_launcher: ^3.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+# setup icon for your app 
+# after updating the image_path, run 
+# ```flutter pub get dart run icons_launcher:create``` 
+icons_launcher:
+  image_path: "assets/dcf/dcf.png"
+  platforms:
+    android:
+      enable: true
+    ios:
+      enable: true
+
+# Assets go here
+flutter:
+  assets:
+    - assets/
