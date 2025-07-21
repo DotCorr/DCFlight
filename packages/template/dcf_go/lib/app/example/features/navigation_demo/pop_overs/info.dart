@@ -3,7 +3,7 @@ import 'package:dcflight/dcflight.dart';
 class PopOverScreen extends StatelessComponent {
   @override
   DCFComponentNode render() {
-    return DCFView(
+    return DCFSafeArea(
       layout: LayoutProps(flex: 1),
       children: [
         DCFText(

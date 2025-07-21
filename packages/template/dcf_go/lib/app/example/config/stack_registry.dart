@@ -146,11 +146,7 @@ class StackRegistry extends StatefulComponent {
         DCFScreen(
           name: "universal_pop_over",
           presentationStyle: DCFPresentationStyle.popover,
-
-          popoverConfig: DCFPopoverConfig(
-            title: "Portaled Content",
-            dismissOnOutsideTap: true,
-          ),
+          // popoverConfig: DCFPopoverConfig(dismissOnOutsideTap: true),
           navigationCommand: popOverScreenCommand.state,
           onAppear: (data) => print("✅ Detail screen appeared: $data"),
           onNavigationEvent: (data) {
