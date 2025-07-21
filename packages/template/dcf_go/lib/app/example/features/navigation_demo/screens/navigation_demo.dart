@@ -6,7 +6,6 @@ class NavigationDemo extends StatefulComponent {
   DCFComponentNode render() {
     final detailsCommand = useStore(publicDetailScreenCommand);
     final modalCommand = useStore(publicModalScreenCommand);
-    final popOverScreenCommand = useStore(publicPopOverScreenCommand);
 
     return DCFView(
       layout: LayoutProps(
@@ -53,19 +52,6 @@ class NavigationDemo extends StatefulComponent {
           onPress: (v) {
             modalCommand.setState(
               NavigationPresets.presentModal("modal_screen"),
-            );
-          },
-        ),
-        DCFButton(
-          buttonProps: DCFButtonProps(title: "Pop Over Screen"),
-          layout: LayoutProps(height: 50, width: 250),
-          styleSheet: StyleSheet(
-            backgroundColor: Colors.orange,
-            borderRadius: 8,
-          ),
-          onPress: (v) {
-            popOverScreenCommand.setState(
-              NavigationPresets.presentPopover("universal_pop_over"),
             );
           },
         ),

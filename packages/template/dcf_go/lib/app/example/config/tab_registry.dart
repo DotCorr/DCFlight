@@ -5,7 +5,7 @@ import 'package:dcf_go/app/example/features/github/screens/gh_repo.dart';
 import 'package:dcf_go/app/example/config/global_state.dart';
 import 'package:dcf_go/app/example/features/profile/screens/profile.dart';
 
-class TabRegistry extends StatelessComponent {
+class TabRegistry extends StatefulComponent {
   // Instantiate screen components once to preserve their state and avoid re-renders
   final _homeScreen = App();
   final _profileScreen = Profile();
@@ -14,6 +14,8 @@ class TabRegistry extends StatelessComponent {
 
   @override
   DCFComponentNode render() {
+    final popOverScreenCommand = useStore(publicPopOverScreenCommand);  
+    
     return DCFFragment(
       children: [
         DCFScreen(
@@ -47,8 +49,7 @@ class TabRegistry extends StatelessComponent {
           onActivate: (data) => print("🟢 Profile screen activated: $data"),
           children: [_profileScreen],
         ),
-
-        // 🎯 ENHANCED: Navigation demo with large title and actions
+        
         DCFScreen(
           name: "navigation_demo",
           presentationStyle: DCFPresentationStyle.tab,
@@ -58,18 +59,20 @@ class TabRegistry extends StatelessComponent {
             index: 2,
           ),
 
-          // 🎯 NEW: Add navigation bar configuration for tab screen
           navigationBarConfig: DCFNavigationBarConfig(
             title: "Navigation Demo",
             largeTitleDisplayMode: true,
             suffixActions: [
-              // Add navigation bar actions
+           
               DCFPushHeaderActionConfig.withSFSymbolOnly(
                 symbolName: "gear",
                 actionId: "settings_action",
               ),
-              DCFPushHeaderActionConfig.withSFSymbolOnly(
-                symbolName: "plus",
+              DCFPushHeaderActionConfig.withSVGPackage(
+               iconName: DCFIcons.plus,
+                package: "dcf_primitives",
+                title: "Add",
+                size: 24.0,
                 actionId: "add_action",
               ),
             ],
@@ -103,7 +106,10 @@ class TabRegistry extends StatelessComponent {
                 break;
               case 'add_action':
                 print("Add plus tapped!");
-                // Add your add action here
+                
+                popOverScreenCommand.setState(
+              NavigationPresets.presentPopover("universal_pop_over"),
+            );
                 break;
               case 'help_action':
                 print("Help info tapped!");
