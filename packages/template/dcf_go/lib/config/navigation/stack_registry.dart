@@ -1,4 +1,5 @@
-import "package:dcf_go/app.dart";
+import "package:dcf_go/features/animation_modal.dart";
+import "package:dcf_go/features/app.dart";
 import "package:dcf_go/main.dart";
 import "package:dcflight/dcflight.dart";
 
@@ -9,7 +10,7 @@ class StackScreenRegistry extends StatefulComponent {
     final homeNavCommand = useStore(homeNavigationCommand);
     final profileNavCommand = useStore(profileNavigationCommand);
     final settingsNavCommand = useStore(settingsNavigationCommand);
-    final detailNavCommand = useStore(detailNavigationCommand);
+    final animatedModalNavCommand = useStore(animatedModalNavigationCommand);
 
     return DCFFragment(
       children: [
@@ -21,10 +22,10 @@ class StackScreenRegistry extends StatefulComponent {
 
             prefixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
-                title: "Menu",
+                title: "Animation",
                 package: dcfP,
-                iconName: DCFIcons.menu,
-                actionId: "menu_action",
+                iconName: DCFIcons.rabbit,
+                actionId: "anim_action",
               ),
             ],
           ),
@@ -34,11 +35,11 @@ class StackScreenRegistry extends StatefulComponent {
             homeNavigationCommand.setState(null);
           },
           onHeaderActionPress: (data) {
-            print("🎯 Home header action pressed: $data");
-            if (data['actionId'] == "menu_action") {
+           
+            if (data['actionId'] == "anim_action") {
               // Open drawer navigation
-              detailNavCommand.setState(
-                NavigationPresets.pushTo("detail_screen"),
+              animatedModalNavCommand.setState(
+                NavigationPresets.presentModal("animated_modal_screen"),
               );
             }
           },
@@ -103,33 +104,15 @@ class StackScreenRegistry extends StatefulComponent {
         ),
 
         DCFScreen(
-          name: "detail_screen",
-          presentationStyle: DCFPresentationStyle.push,
-          pushConfig: DCFPushConfig(
-            title: "Detail",
-            backButtonTitle: "Back",
-            // Add multiple actions
-            suffixActions: [
-              DCFPushHeaderActionConfig.withSFSymbol(
-                title: "Share",
-                symbolName: "square.and.arrow.up",
-              ),
-              DCFPushHeaderActionConfig.withSFSymbolOnly(
-                symbolName: "ellipsis",
-              ),
-            ],
-          ),
-          navigationCommand: detailNavCommand.state,
+          name: "animated_modal_screen",
+          presentationStyle: DCFPresentationStyle.modal,
+          
+          navigationCommand: animatedModalNavCommand.state,
           onNavigationEvent: (data) {
             print("🚀 Detail navigation event: $data");
-            detailNavigationCommand.setState(null);
+            animatedModalNavigationCommand.setState(null);
           },
-          onHeaderActionPress: (data) {
-            print("🎯 Detail header action pressed: $data");
-          },
-          onReceiveParams: (data) => print("📨 Detail received params: $data"),
-          onAppear: (data) => print("✅ Detail screen appeared: $data"),
-          children: [DetailScreen()],
+          children: [AnimatedModalScreen()],
         ),
       ],
     );
