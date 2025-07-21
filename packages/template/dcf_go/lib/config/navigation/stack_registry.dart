@@ -10,7 +10,6 @@ class StackScreenRegistry extends StatefulComponent {
     final profileNavCommand = useStore(profileNavigationCommand);
     final settingsNavCommand = useStore(settingsNavigationCommand);
     final detailNavCommand = useStore(detailNavigationCommand);
-    final drawerNavCommand = useStore(drawerNavigationCommand);
 
     return DCFFragment(
       children: [
@@ -38,8 +37,8 @@ class StackScreenRegistry extends StatefulComponent {
             print("🎯 Home header action pressed: $data");
             if (data['actionId'] == "menu_action") {
               // Open drawer navigation
-              drawerNavigationCommand.setState(
-                NavigationPresets.presentDrawer("drawer"),
+              detailNavCommand.setState(
+                NavigationPresets.pushTo("detail_screen"),
               );
             }
           },
@@ -130,18 +129,6 @@ class StackScreenRegistry extends StatefulComponent {
           },
           onReceiveParams: (data) => print("📨 Detail received params: $data"),
           onAppear: (data) => print("✅ Detail screen appeared: $data"),
-          children: [DetailScreen()],
-        ),
-
-        DCFScreen(
-          name: "drawer",
-          presentationStyle: DCFPresentationStyle.drawer,
-
-          navigationCommand: drawerNavCommand.state,
-          onNavigationEvent: (data) {
-            drawerNavCommand.setState(null);
-          },
-
           children: [DetailScreen()],
         ),
       ],

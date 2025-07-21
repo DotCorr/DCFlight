@@ -38,7 +38,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         storePopoverConfiguration(screenContainer, props: props)
         storeOverlayConfiguration(screenContainer, props: props)
         storeSheetConfiguration(screenContainer, props: props)
-        storeDrawerConfiguration(screenContainer, props: props)
+      
 
         let _ = updateView(screenContainer.contentView, withProps: props)
 
@@ -126,7 +126,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
         storePopoverConfiguration(screenContainer, props: props)
         storeOverlayConfiguration(screenContainer, props: props)
         storeSheetConfiguration(screenContainer, props: props)
-        storeDrawerConfiguration(screenContainer, props: props)
         storeNavigationBarConfiguration(screenContainer, props: props)
         handleNavigationCommand(screenContainer: screenContainer, props: props)
 
@@ -180,15 +179,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 let animated = overlayData["animated"] as? Bool ?? true
                 let params = overlayData["params"] as? [String: Any]
                 smartNavigateTo(targetScreenName, method: .overlay, animated: animated, params: params, from: screenContainer)
-            }
-        }
-
-        if let drawerData = commandData["presentDrawer"] as? [String: Any] {
-            if let targetScreenName = drawerData["screenName"] as? String {
-                let animated = drawerData["animated"] as? Bool ?? true
-                let params = drawerData["params"] as? [String: Any]
-                let direction = drawerData["direction"] as? String
-                smartNavigateTo(targetScreenName, method: .drawer, animated: animated, params: params, drawerDirection: direction, from: screenContainer)
             }
         }
 
@@ -282,8 +272,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return .popover
         case "overlay":
             return .overlay
-        case "drawer":
-            return .drawer
+   
         default:
             return .push // Default fallback
         }
@@ -312,8 +301,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
             presentPopoverScreen(targetScreenName, animated: animated, params: params, sourceViewId: sourceViewId, from: sourceContainer)
         case .overlay:
             presentOverlayScreen(targetScreenName, animated: animated, params: params, from: sourceContainer)
-        case .drawer:
-            presentDrawerScreen(targetScreenName, animated: animated, params: params, direction: drawerDirection, from: sourceContainer)
         }
     }
 
@@ -760,241 +747,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
         print("✅ DCFScreenComponent: Successfully presented overlay container for '\(screenName)'")
     }
-
-    // 🎯 NEW: Native drawer presentation
-    private func presentDrawerScreen(_ screenName: String, animated: Bool, params: [String: Any]?, direction: String?, from sourceContainer: ScreenContainer) {
-        print("📱 DCFScreenComponent: Executing drawer presentation for '\(screenName)'")
-
-        let drawerContextKey = createContextKey(screenName: screenName, presentationStyle: "drawer")
-
-        let targetContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[drawerContextKey] {
-            targetContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing drawer container for '\(screenName)'")
-        } else {
-            targetContainer = ScreenContainer(name: screenName, presentationStyle: "drawer")
-            DCFScreenComponent.screenRegistry[drawerContextKey] = targetContainer
-            print("✅ DCFScreenComponent: Created new drawer container for '\(screenName)'")
-        }
-
-        // Use native side menu implementation
-        guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
-            print("❌ DCFScreenComponent: No root view controller found for drawer")
-            return
-        }
-
-        presentNativeDrawer(targetContainer, direction: direction ?? "left", animated: animated, from: rootViewController)
-
-        if let params = params {
-            propagateEvent(
-                on: targetContainer.contentView,
-                eventName: "onReceiveParams",
-                data: ["params": params, "source": sourceContainer.name]
-            )
-        }
-
-        propagateEvent(
-            on: sourceContainer.contentView,
-            eventName: "onNavigationEvent",
-            data: [
-                "action": "presentDrawer",
-                "targetScreen": screenName,
-                "animated": animated
-            ]
-        )
-
-        print("✅ DCFScreenComponent: Successfully presented drawer container for '\(screenName)'")
-    }
-
-    // 🎯 NEW: Split view presentation
-    private func presentSplitViewScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
-        print("📱 DCFScreenComponent: Executing split view presentation for '\(screenName)'")
-
-        let splitContextKey = createContextKey(screenName: screenName, presentationStyle: "splitView")
-
-        let targetContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[splitContextKey] {
-            targetContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing split view container for '\(screenName)'")
-        } else {
-            targetContainer = ScreenContainer(name: screenName, presentationStyle: "splitView")
-            DCFScreenComponent.screenRegistry[splitContextKey] = targetContainer
-            print("✅ DCFScreenComponent: Created new split view container for '\(screenName)'")
-        }
-
-        guard let presentingViewController = getCurrentPresentingViewController() else {
-            print("❌ DCFScreenComponent: No suitable presenting view controller found for split view")
-            return
-        }
-
-        // 🎯 CRITICAL FIX: Create a simple split view without trying to reuse view controllers
-        let splitViewController = UISplitViewController()
-        
-        // Create a simple master view controller
-        let masterVC = UIViewController()
-        masterVC.view.backgroundColor = UIColor.systemBlue
-        masterVC.title = "Master"
-        
-        let masterLabel = UILabel()
-        masterLabel.text = "Master View\n(\(sourceContainer.name))"
-        masterLabel.numberOfLines = 0
-        masterLabel.textAlignment = .center
-        masterLabel.textColor = .white
-        masterLabel.font = UIFont.boldSystemFont(ofSize: 18)
-        masterLabel.translatesAutoresizingMaskIntoConstraints = false
-        masterVC.view.addSubview(masterLabel)
-        
-        NSLayoutConstraint.activate([
-            masterLabel.centerXAnchor.constraint(equalTo: masterVC.view.centerXAnchor),
-            masterLabel.centerYAnchor.constraint(equalTo: masterVC.view.centerYAnchor)
-        ])
-        
-        // Create detail view controller using the target container
-        let detailVC = UIViewController()
-        detailVC.view.backgroundColor = UIColor.systemBackground
-        detailVC.title = targetContainer.name
-        
-        // Set up the target container's content
-        targetContainer.contentView.isHidden = false
-        targetContainer.contentView.alpha = 1.0
-        targetContainer.contentView.backgroundColor = UIColor.systemBackground
-        targetContainer.contentView.frame = detailVC.view.bounds
-        targetContainer.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        
-        // Add target container's content to detail view
-        detailVC.view.addSubview(targetContainer.contentView)
-
-        // Wrap both in navigation controllers
-        let masterNavController = UINavigationController(rootViewController: masterVC)
-        let detailNavController = UINavigationController(rootViewController: detailVC)
-        
-        // Configure split view controller
-        splitViewController.viewControllers = [masterNavController, detailNavController]
-        
-        // Device-specific configuration
-        if UIDevice.current.userInterfaceIdiom == .phone {
-            splitViewController.preferredDisplayMode = .primaryOverlay
-        } else {
-            splitViewController.preferredDisplayMode = .oneBesideSecondary
-        }
-        
-        // Configure split view based on stored config
-        configureSplitViewController(splitViewController, for: targetContainer)
-
-        if let params = params {
-            propagateEvent(
-                on: targetContainer.contentView,
-                eventName: "onReceiveParams",
-                data: ["params": params, "source": sourceContainer.name]
-            )
-        }
-
-        // Present the split view controller
-        presentingViewController.present(splitViewController, animated: animated) {
-            propagateEvent(
-                on: sourceContainer.contentView,
-                eventName: "onNavigationEvent",
-                data: [
-                    "action": "presentSplitView",
-                    "targetScreen": screenName,
-                    "animated": animated
-                ]
-            )
-            
-            // Fire onAppear for the detail screen
-            propagateEvent(
-                on: targetContainer.contentView,
-                eventName: "onAppear",
-                data: ["screenName": screenName]
-            )
-        }
-
-        print("✅ DCFScreenComponent: Successfully presented split view container for '\(screenName)'")
-    }
-
-    // MARK: - Split View Configuration Helper
-
-    private func configureSplitViewController(_ splitViewController: UISplitViewController, for screenContainer: ScreenContainer) {
-        guard let splitViewConfig = objc_getAssociatedObject(
-            screenContainer.viewController,
-            UnsafeRawPointer(bitPattern: "splitViewConfig".hashValue)!
-        ) as? [String: Any] else {
-            // Default configuration
-            splitViewController.preferredDisplayMode = .oneBesideSecondary
-            return
-        }
-
-        // Apply display mode
-        if let displayMode = splitViewConfig["displayMode"] as? String {
-            switch displayMode.lowercased() {
-            case "automatic":
-                splitViewController.preferredDisplayMode = .automatic
-            case "secondaryonly":
-                splitViewController.preferredDisplayMode = .secondaryOnly
-            case "onebesidesecondary":
-                splitViewController.preferredDisplayMode = .oneBesideSecondary
-            case "primaryoverlay":
-                splitViewController.preferredDisplayMode = .primaryOverlay
-            case "primaryhidden":
-                splitViewController.preferredDisplayMode = .primaryHidden
-            default:
-                splitViewController.preferredDisplayMode = .oneBesideSecondary
-            }
-        }
-
-        // Apply primary column width (iPad only)
-        if let primaryColumnWidth = splitViewConfig["primaryColumnWidth"] as? CGFloat {
-            if #available(iOS 14.0, *) {
-                splitViewController.preferredPrimaryColumnWidth = primaryColumnWidth
-            } else {
-                splitViewController.preferredPrimaryColumnWidthFraction = primaryColumnWidth / UIScreen.main.bounds.width
-            }
-        }
-        
-        // Set delegate for handling split view events
-        let delegate = SplitViewControllerDelegate(screenContainer: screenContainer)
-        splitViewController.delegate = delegate
-        
-        // Store delegate reference to prevent deallocation
-        objc_setAssociatedObject(
-            splitViewController,
-            UnsafeRawPointer(bitPattern: "splitViewDelegate".hashValue)!,
-            delegate,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
-    }
-
-    // MARK: - Split View Delegate
-
-    class SplitViewControllerDelegate: NSObject, UISplitViewControllerDelegate {
-        let screenContainer: ScreenContainer
-        
-        init(screenContainer: ScreenContainer) {
-            self.screenContainer = screenContainer
-            super.init()
-        }
-        
-        func splitViewController(_ splitViewController: UISplitViewController, collapseSecondary secondaryViewController: UIViewController, onto primaryViewController: UIViewController) -> Bool {
-            // Handle iPhone rotation or size class changes
-            propagateEvent(
-                on: screenContainer.contentView,
-                eventName: "onSplitViewCollapseSecondary",
-                data: ["screenName": screenContainer.name]
-            )
-            return false // Let the system handle the collapse
-        }
-        
-        func splitViewController(_ splitViewController: UISplitViewController, separateSecondaryFrom primaryViewController: UIViewController) -> UIViewController? {
-            // Handle iPhone rotation or size class changes
-            propagateEvent(
-                on: screenContainer.contentView,
-                eventName: "onSplitViewSeparateSecondary",
-                data: ["screenName": screenContainer.name]
-            )
-            return nil // Let the system handle the separation
-        }
-    }
-
                         private func switchToTabScreen(_ screenName: String, params: [String: Any]?, from sourceContainer: ScreenContainer, animated: Bool) {
                             let tabContextKey = "tab_\(screenName)"
                             guard let tabContainer = DCFScreenComponent.screenRegistry[tabContextKey] else {
@@ -1208,54 +960,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             }
                         }
 
-                        private func presentNativeDrawer(_ drawerContainer: ScreenContainer, direction: String, animated: Bool, from presentingViewController: UIViewController) {
-                            let drawerView = drawerContainer.contentView
-                            drawerView.backgroundColor = UIColor.systemBackground
-
-                            // Calculate drawer frame based on direction
-                            let screenBounds = presentingViewController.view.bounds
-                            var drawerFrame: CGRect
-                            let drawerWidth: CGFloat = 280 // Default drawer width
-
-                            switch direction.lowercased() {
-                            case "left":
-                                drawerFrame = CGRect(x: -drawerWidth, y: 0, width: drawerWidth, height: screenBounds.height)
-                            case "right":
-                                drawerFrame = CGRect(x: screenBounds.width, y: 0, width: drawerWidth, height: screenBounds.height)
-                            case "top":
-                                drawerFrame = CGRect(x: 0, y: -screenBounds.height * 0.6, width: screenBounds.width, height: screenBounds.height * 0.6)
-                            case "bottom":
-                                drawerFrame = CGRect(x: 0, y: screenBounds.height, width: screenBounds.width, height: screenBounds.height * 0.6)
-                            default:
-                                drawerFrame = CGRect(x: -drawerWidth, y: 0, width: drawerWidth, height: screenBounds.height)
-                            }
-
-                            drawerView.frame = drawerFrame
-                            presentingViewController.view.addSubview(drawerView)
-
-                            // Animate drawer in
-                            var finalFrame = drawerFrame
-                            switch direction.lowercased() {
-                            case "left":
-                                finalFrame.origin.x = 0
-                            case "right":
-                                finalFrame.origin.x = screenBounds.width - drawerWidth
-                            case "top":
-                                finalFrame.origin.y = 0
-                            case "bottom":
-                                finalFrame.origin.y = screenBounds.height - finalFrame.height
-                            default:
-                                finalFrame.origin.x = 0
-                            }
-
-                            if animated {
-                                UIView.animate(withDuration: 0.3) {
-                                    drawerView.frame = finalFrame
-                                }
-                            } else {
-                                drawerView.frame = finalFrame
-                            }
-                        }
+   
 
                         // MARK: - Standard Navigation Commands
 
@@ -1310,11 +1015,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 dismissOverlayScreen(animated: animated, result: result, from: sourceContainer)
                             }
 
-                            if let dismissDrawerData = commandData["dismissDrawer"] as? [String: Any] {
-                                let animated = dismissDrawerData["animated"] as? Bool ?? true
-                                let result = dismissDrawerData["result"] as? [String: Any]
-                                dismissDrawerScreen(animated: animated, result: result, from: sourceContainer)
-                            }
                         }
 
                         // MARK: - Dismiss Methods
@@ -1593,67 +1293,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             print("✅ DCFScreenComponent: Dismissed overlay '\(sourceContainer.name)'")
                         }
 
-                        private func dismissDrawerScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
-                            if let result = result {
-                                for (_, container) in DCFScreenComponent.screenRegistry {
-                                    if container.presentationStyle != "drawer" {
-                                        propagateEvent(
-                                            on: container.contentView,
-                                            eventName: "onReceiveParams",
-                                            data: ["result": result, "source": sourceContainer.name]
-                                        )
-                                        break
-                                    }
-                                }
-                            }
-
-                            let drawerView = sourceContainer.contentView
-                            let currentFrame = drawerView.frame
-                            var dismissFrame = currentFrame
-
-                            // Determine dismiss direction based on current position
-                            if currentFrame.origin.x <= 10 {
-                                // Left drawer
-                                dismissFrame.origin.x = -currentFrame.width
-                            } else if currentFrame.origin.x >= drawerView.superview!.bounds.width - currentFrame.width - 10 {
-                                // Right drawer
-                                dismissFrame.origin.x = drawerView.superview!.bounds.width
-                            } else if currentFrame.origin.y <= 10 {
-                                // Top drawer
-                                dismissFrame.origin.y = -currentFrame.height
-                            } else {
-                                // Bottom drawer
-                                dismissFrame.origin.y = drawerView.superview!.bounds.height
-                            }
-
-                            if animated {
-                                UIView.animate(withDuration: 0.3, animations: {
-                                    drawerView.frame = dismissFrame
-                                }) { _ in
-                                    drawerView.removeFromSuperview()
-                                    propagateEvent(
-                                        on: sourceContainer.contentView,
-                                        eventName: "onNavigationEvent",
-                                        data: [
-                                            "action": "dismissDrawer",
-                                            "animated": animated
-                                        ]
-                                    )
-                                }
-                            } else {
-                                drawerView.removeFromSuperview()
-                                propagateEvent(
-                                    on: sourceContainer.contentView,
-                                    eventName: "onNavigationEvent",
-                                    data: [
-                                        "action": "dismissDrawer",
-                                        "animated": animated
-                                    ]
-                                )
-                            }
-
-                            print("✅ DCFScreenComponent: Dismissed drawer '\(sourceContainer.name)'")
-                        }
+                      
 
                         // MARK: - Helper Methods
 
@@ -1878,53 +1518,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     }
                                 }
 
-                                private func storeDrawerConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
-                                    var drawerConfig: [String: Any] = [:]
-
-                                    // Extract drawer config from props
-                                    if let direction = props["direction"] as? String {
-                                        drawerConfig["direction"] = direction
-                                    }
-
-                                    if let width = props["drawerWidth"] as? CGFloat {
-                                        drawerConfig["drawerWidth"] = width
-                                    }
-
-                                    if let height = props["drawerHeight"] as? CGFloat {
-                                        drawerConfig["drawerHeight"] = height
-                                    }
-
-                                    if !drawerConfig.isEmpty {
-                                        objc_setAssociatedObject(
-                                            screenContainer.viewController,
-                                            UnsafeRawPointer(bitPattern: "drawerConfig".hashValue)!,
-                                            drawerConfig,
-                                            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-                                        )
-                                    }
-                                }
-
-                                private func storeSplitViewConfiguration(_ screenContainer: ScreenContainer, props: [String: Any]) {
-                                    var splitViewConfig: [String: Any] = [:]
-
-                                    // Extract split view config from props
-                                    if let displayMode = props["displayMode"] as? String {
-                                        splitViewConfig["displayMode"] = displayMode
-                                    }
-
-                                    if let primaryColumnWidth = props["primaryColumnWidth"] as? CGFloat {
-                                        splitViewConfig["primaryColumnWidth"] = primaryColumnWidth
-                                    }
-
-                                    if !splitViewConfig.isEmpty {
-                                        objc_setAssociatedObject(
-                                            screenContainer.viewController,
-                                            UnsafeRawPointer(bitPattern: "splitViewConfig".hashValue)!,
-                                            splitViewConfig,
-                                            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-                                        )
-                                    }
-                                }
+                            
 
                                 func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
                                     guard let screenContainer = findScreenContainer(for: view) else {
@@ -1970,10 +1564,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                         configurePopoverScreen(screenContainer, props: props)
                                     case "overlay":
                                         configureOverlayScreen(screenContainer, props: props)
-                                    case "drawer":
-                                        configureDrawerScreen(screenContainer, props: props)
-                                    case "splitView":
-                                        configureSplitViewScreen(screenContainer, props: props)
+                               
                                     default:
                                         print("⚠️ DCFScreenComponent: Unknown presentation style '\(screenContainer.presentationStyle)'")
                                     }
@@ -2101,25 +1692,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                     // Overlay-specific configuration will be applied during presentation
                                 }
 
-                                private func configureDrawerScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
-                                    let viewController = screenContainer.viewController
-
-                                    if let title = props["title"] as? String {
-                                        viewController.navigationItem.title = title
-                                    }
-
-                                    // Drawer-specific configuration will be applied during presentation
-                                }
-
-                                private func configureSplitViewScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
-                                    let viewController = screenContainer.viewController
-
-                                    if let title = props["title"] as? String {
-                                        viewController.navigationItem.title = title
-                                    }
-
-                                    // Split view-specific configuration will be applied during presentation
-                                }
 
                                 private func findScreenContainer(for view: UIView) -> ScreenContainer? {
                                     for (_, container) in DCFScreenComponent.screenRegistry {
@@ -2217,8 +1789,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                 case sheet = "sheet"
                                 case popover = "popover"
                                 case overlay = "overlay"
-                                case drawer = "drawer"
-                             
+          
                                 case switchTab = "switchTab"
 
                                 var description: String {

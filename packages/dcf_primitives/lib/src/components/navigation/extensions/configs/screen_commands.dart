@@ -216,47 +216,6 @@ class DismissOverlayCommand {
   }
 }
 
-class PresentDrawerCommand {
-  final String screenName;
-  final bool animated;
-  final Map<String, dynamic>? params;
-  final String? direction; // "left", "right", "top", "bottom"
-
-  const PresentDrawerCommand({
-    required this.screenName,
-    this.animated = true,
-    this.params,
-    this.direction = "left",
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'screenName': screenName,
-      'animated': animated,
-      if (params != null) 'params': params,
-      if (direction != null) 'direction': direction,
-    };
-  }
-}
-
-/// Command to dismiss current drawer
-class DismissDrawerCommand {
-  final bool animated;
-  final Map<String, dynamic>? result;
-
-  const DismissDrawerCommand({
-    this.animated = true,
-    this.result,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'animated': animated,
-      if (result != null) 'result': result,
-    };
-  }
-}
-
 /// Composite command class for all screen navigation actions
 class ScreenNavigationCommand {
   final PushToCommand? pushTo;
@@ -270,9 +229,6 @@ class ScreenNavigationCommand {
   final DismissPopoverCommand? dismissPopover;
   final PresentOverlayCommand? presentOverlay;
   final DismissOverlayCommand? dismissOverlay;
-  // 🎯 NEW: Drawer navigation commands
-  final PresentDrawerCommand? presentDrawer;
-  final DismissDrawerCommand? dismissDrawer;
 
   const ScreenNavigationCommand({
     this.pushTo,
@@ -286,8 +242,6 @@ class ScreenNavigationCommand {
     this.dismissPopover,
     this.presentOverlay,
     this.dismissOverlay,
-    this.presentDrawer, // 🎯 NEW
-    this.dismissDrawer, // 🎯 NEW
   });
 
   /// Convert command to props map for native consumption
@@ -338,15 +292,6 @@ class ScreenNavigationCommand {
       commandMap['dismissOverlay'] = dismissOverlay!.toMap();
     }
 
-    // 🎯 NEW: Add drawer commands
-    if (presentDrawer != null) {
-      commandMap['presentDrawer'] = presentDrawer!.toMap();
-    }
-
-    if (dismissDrawer != null) {
-      commandMap['dismissDrawer'] = dismissDrawer!.toMap();
-    }
-
     return commandMap;
   }
 
@@ -362,9 +307,7 @@ class ScreenNavigationCommand {
         presentPopover != null ||
         dismissPopover != null ||
         presentOverlay != null ||
-        dismissOverlay != null ||
-        presentDrawer != null ||
-        dismissDrawer != null;
+        dismissOverlay != null;
   }
 }
 
@@ -486,44 +429,4 @@ class NavigationPresets {
           Map<String, dynamic> result) =>
       ScreenNavigationCommand(
           dismissOverlay: DismissOverlayCommand(result: result));
-
-  // 🎯 NEW: DRAWER NAVIGATION
-
-  /// Present drawer from left side
-  static ScreenNavigationCommand presentDrawer(String screenName,
-          {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          presentDrawer: PresentDrawerCommand(
-              screenName: screenName, params: params, direction: "left"));
-
-  /// Present drawer from right side
-  static ScreenNavigationCommand presentRightDrawer(String screenName,
-          {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          presentDrawer: PresentDrawerCommand(
-              screenName: screenName, params: params, direction: "right"));
-
-  /// Present drawer from top
-  static ScreenNavigationCommand presentTopDrawer(String screenName,
-          {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          presentDrawer: PresentDrawerCommand(
-              screenName: screenName, params: params, direction: "top"));
-
-  /// Present drawer from bottom
-  static ScreenNavigationCommand presentBottomDrawer(String screenName,
-          {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          presentDrawer: PresentDrawerCommand(
-              screenName: screenName, params: params, direction: "bottom"));
-
-  /// Dismiss drawer
-  static const ScreenNavigationCommand dismissDrawer =
-      ScreenNavigationCommand(dismissDrawer: DismissDrawerCommand());
-
-  /// Dismiss drawer with result
-  static ScreenNavigationCommand dismissDrawerWithResult(
-          Map<String, dynamic> result) =>
-      ScreenNavigationCommand(
-          dismissDrawer: DismissDrawerCommand(result: result));
 }
