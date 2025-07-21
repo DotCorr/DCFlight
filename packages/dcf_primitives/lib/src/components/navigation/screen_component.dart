@@ -27,9 +27,6 @@ enum DCFPresentationStyle {
 
   /// Overlay presentation - screen appears as a custom overlay
   overlay,
-
-  /// Drawer presentation - screen appears as a side drawer
-  drawer,
 }
 
 
@@ -60,12 +57,7 @@ class DCFScreen extends StatelessComponent
   final Function(Map<dynamic, dynamic>)? onDeactivate;
   final Function(Map<dynamic, dynamic>)? onNavigationEvent;
   final Function(Map<dynamic, dynamic>)? onReceiveParams;
-
-  // Header action event handler
   final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
-
-  /// Navigation bar configuration (applies to tab screens that are in navigation controllers)
-  /// This allows tab screens to have large titles, navigation bar actions, etc.
   final DCFNavigationBarConfig? navigationBarConfig;
 
   DCFScreen({
@@ -88,7 +80,7 @@ class DCFScreen extends StatelessComponent
     this.onNavigationEvent,
     this.onReceiveParams,
     this.onHeaderActionPress,
-    this.navigationBarConfig, 
+    this.navigationBarConfig,
   });
 
   @override
@@ -156,6 +148,7 @@ class DCFScreen extends StatelessComponent
       ...eventMap,
     };
 
+    // Add navigation command if present
     if (navigationCommand != null && navigationCommand!.hasCommands) {
       props['navigationCommand'] = navigationCommand!.toMap();
     }
@@ -188,7 +181,7 @@ class DCFScreen extends StatelessComponent
         onNavigationEvent,
         onReceiveParams,
         onHeaderActionPress,
-        navigationBarConfig, // 🎯 NEW
+        navigationBarConfig,
       ];
 }
 

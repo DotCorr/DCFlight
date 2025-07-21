@@ -6,7 +6,6 @@ final homeNavigationCommand = Store<ScreenNavigationCommand?>(null);
 final profileNavigationCommand = Store<ScreenNavigationCommand?>(null);
 final settingsNavigationCommand = Store<ScreenNavigationCommand?>(null);
 final detailNavigationCommand = Store<ScreenNavigationCommand?>(null);
-final drawerNavigationCommand = Store<ScreenNavigationCommand?>(null);
 
 
 void main() {
