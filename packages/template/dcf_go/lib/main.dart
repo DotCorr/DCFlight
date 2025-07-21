@@ -5,7 +5,7 @@ import 'package:dcflight/dcflight.dart';
 final homeNavigationCommand = Store<ScreenNavigationCommand?>(null);
 final profileNavigationCommand = Store<ScreenNavigationCommand?>(null);
 final settingsNavigationCommand = Store<ScreenNavigationCommand?>(null);
-final detailNavigationCommand = Store<ScreenNavigationCommand?>(null);
+final animatedModalNavigationCommand = Store<ScreenNavigationCommand?>(null);
 
 
 void main() {
@@ -17,7 +17,6 @@ class MyStackApp extends StatefulComponent {
   DCFComponentNode render() {
     return DCFStackNavigationRoot(
       initialScreen: "home_screen",
-      // 🎯 FIXED: Create screen registry component that renders screens FIRST
       screenRegistryComponents: StackScreenRegistry(),
       navigationBarStyle: const DCFNavigationBarStyle(
         backgroundColor: Colors.indigo,
