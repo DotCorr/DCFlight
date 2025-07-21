@@ -1,4 +1,35 @@
 import 'package:dcflight/dcflight.dart';
+import 'package:equatable/equatable.dart';
+
+/// Configuration for tab presentation
+class DCFTabConfig extends Equatable {
+  final String title;
+  final dynamic icon;
+  final int index;
+  final String? badge;
+  final bool enabled;
+
+  const DCFTabConfig({
+    required this.title,
+    required this.icon,
+    required this.index,
+    this.badge,
+    this.enabled = true,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'icon': icon,
+      'index': index,
+      if (badge != null) 'badge': badge,
+      'enabled': enabled,
+    };
+  }
+
+  @override
+  List<Object?> get props => [title, icon, index, badge, enabled];
+}
 
 extension DCFTabConfigSVG on DCFTabConfig {
   /// Create SF Symbol icon config
