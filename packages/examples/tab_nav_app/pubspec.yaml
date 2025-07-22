@@ -18,6 +18,9 @@ dependencies:
   dcf_primitives:
     path: ../packages/dcf_primitives
 
+  dcf_reanimated:
+    path: ../packages/dcf_reanimated
+
   # dcflight: ^0.0.1
   # dcf_primitives: ^0.0.1
 

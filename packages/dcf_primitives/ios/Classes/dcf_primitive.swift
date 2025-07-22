@@ -40,8 +40,6 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent(
             "TouchableOpacity", componentClass: DCFTouchableOpacityComponent.self)
         // Register animation primitives
-        DCFComponentRegistry.shared.registerComponent(
-            "AnimatedView", componentClass: DCFAnimatedViewComponent.self)
 
         // Register new cross-platform primitives
         DCFComponentRegistry.shared.registerComponent(

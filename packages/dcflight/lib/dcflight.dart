@@ -78,6 +78,7 @@ import 'framework/utilities/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
 import 'framework/devtools/hot_restart.dart';
 import 'package:flutter/material.dart';
+export 'package:equatable/equatable.dart';
 
 /// DCFlight Framework entry points
 class DCFlight {

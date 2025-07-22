@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:equatable/equatable.dart';
+
 import 'package:dcflight/dcflight.dart';
 
 /// An animated view component implementation using StatelessComponent
