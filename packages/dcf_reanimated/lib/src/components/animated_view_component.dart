@@ -40,6 +40,24 @@ class AnimationControllerHookFactory extends VDomHookFactory {
   }
 }
 
+extension AnimationHooks on StatefulComponent {
+  /// Hook to create a native animation controller with proper cleanup
+  String useAnimationController() {
+    final controller = useCustomHook<AnimationControllerHook>('useAnimationController', []);
+    
+    // 🔧 NEW: Use effect for cleanup when component unmounts
+    useEffect(() {
+      // Cleanup function - called when component unmounts
+      return () {
+        debugPrint('🧹 useAnimationController: Component unmounting, cleaning up ${controller.controllerId}');
+        controller.dispose();
+      };
+    }, dependencies:[]); // Empty deps = run once on mount, cleanup on unmount
+    
+    return controller.controllerId;
+  }
+}
+
 // ============================================================================
 // ANIMATED VIEW COMPONENT - With Full Layout & Styling Support
 // ============================================================================
@@ -452,13 +470,6 @@ void setupDCFReanimated() {
   print('🎬 DCF Reanimated: Animation system initialized');
 }
 
-/// Extension on StatefulComponent to add animation controller hook method
-extension AnimationHooks on StatefulComponent {
-  /// Hook to create a native animation controller for UI thread animation
-  String useAnimationController() {
-    return useCustomHook<AnimationControllerHook>('useAnimationController', []).controllerId;
-  }
-}
 
 /// Utility functions for animation
 class AnimationUtils {

@@ -22,6 +22,11 @@ public class DCFAnimationEngine {
     
     // Register a view for UI thread animation
     func registerAnimationController(_ controllerId: String, view: AnimatedView) {
+        // Clean up existing controller if it exists
+        if let existingController = activeAnimations[controllerId] {
+            print("🔄 DCFAnimationEngine: Replacing existing controller \(controllerId)")
+        }
+        
         activeAnimations[controllerId] = AnimationController(view: view)
         startDisplayLinkIfNeeded()
         print("🎬 DCFAnimationEngine: Registered controller \(controllerId)")
@@ -29,9 +34,9 @@ public class DCFAnimationEngine {
     
     // Execute command on UI thread
     func executeCommand(_ controllerId: String, command: [String: Any]) {
-        guard let controller = activeAnimations[controllerId] else { 
+        guard let controller = activeAnimations[controllerId] else {
             print("⚠️ DCFAnimationEngine: Controller \(controllerId) not found")
-            return 
+            return
         }
         controller.executeCommand(command)
     }
@@ -49,14 +54,23 @@ public class DCFAnimationEngine {
         let currentTime = CACurrentMediaTime()
         var hasActiveAnimations = false
         
-        for (_, controller) in activeAnimations {
+        // Update all active animations
+        for (controllerId, controller) in activeAnimations {
             if controller.updateFrame(currentTime: currentTime) {
                 hasActiveAnimations = true
+            } else {
+                // Animation finished and not repeating - remove it
+                print("✅ DCFAnimationEngine: Animation \(controllerId) completed")
             }
         }
         
+        // Clean up completed animations
+        activeAnimations = activeAnimations.filter { _, controller in
+            controller.updateFrame(currentTime: currentTime)
+        }
+        
         // Stop display link if no animations
-        if !hasActiveAnimations && isRunning {
+        if activeAnimations.isEmpty && isRunning {
             displayLink?.invalidate()
             displayLink = nil
             isRunning = false
@@ -64,8 +78,12 @@ public class DCFAnimationEngine {
         }
     }
     
-    // Clean up controller
+    // Clean up controller when view is removed
     func removeController(_ controllerId: String) {
+        if let controller = activeAnimations[controllerId] {
+            // Stop the animation
+            controller.executeCommand(["type": "stop"])
+        }
         activeAnimations.removeValue(forKey: controllerId)
         print("🗑️ DCFAnimationEngine: Removed controller \(controllerId)")
     }
@@ -100,12 +118,9 @@ class AnimationController {
             currentAnimation?.isPaused = false
         case "stop":
             currentAnimation = nil
-        case "sequence":
-            handleSequenceCommand(command)
-        case "parallel":
-            handleParallelCommand(command)
+            view.resetToInitialState()
         default:
-            print("⚠️ AnimationController: Unknown command type: \(commandType)")
+            break
         }
     }
     
@@ -125,30 +140,19 @@ class AnimationController {
         print("🎬 AnimationController: Started direct UI thread animation")
     }
     
-    private func handleSequenceCommand(_ command: [String: Any]) {
-        // TODO: Implement sequence animation handling
-        print("📋 AnimationController: Sequence animations not yet implemented")
-    }
-    
-    private func handleParallelCommand(_ command: [String: Any]) {
-        // TODO: Implement parallel animation handling
-        print("⚡ AnimationController: Parallel animations not yet implemented")
-    }
-    
     // Returns true if animation is active
     func updateFrame(currentTime: CFTimeInterval) -> Bool {
         guard let animation = currentAnimation else { return false }
         return animation.updateFrame(currentTime: currentTime)
     }
 }
-
 // ============================================================================
 // DIRECT ANIMATION - Frame-by-Frame UI Thread Animation
 // ============================================================================
 
 class DirectAnimation {
     private weak var view: AnimatedView?
-    private let startTime: CFTimeInterval
+    private var startTime: CFTimeInterval
     private let duration: TimeInterval
     private let curve: (Double) -> Double
     private let fromValues: [String: CGFloat]
@@ -167,7 +171,7 @@ class DirectAnimation {
         } else if let durationSec = command["duration"] as? Double {
             self.duration = durationSec / 1000.0
         } else {
-            self.duration = 0.3 // Default
+            self.duration = 0.3
         }
         
         // Extract repeat flag
@@ -183,7 +187,7 @@ class DirectAnimation {
         // Extract target values
         self.toValues = Self.extractTargetValues(command)
         
-        print("🎯 DirectAnimation: Created with duration \(duration)s, targets: \(toValues)")
+        print("🎯 DirectAnimation: Created with duration \(duration)s, repeat: \(repeatAnimation)")
         
         // Fire animation start event
         fireAnimationStartEvent(view: view)
@@ -205,17 +209,36 @@ class DirectAnimation {
             // Trigger completion callback
             fireAnimationEndEvent(view: view)
             
-            // Handle repeat
+            // Handle repeat - SIMPLE AND WORKING
             if repeatAnimation {
-                // Reset and restart (simplified repeat logic)
-                view.resetToInitialState()
-                return true // Continue animation loop
+                print("🔄 DirectAnimation: Restarting animation cycle")
+                
+                // Reset start time for new cycle
+                self.startTime = currentTime
+                
+                // Reset view to initial state
+                resetViewToInitial(view: view)
+                
+                // Small delay to make the reset visible
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                    self?.fireAnimationStartEvent(view: view)
+                }
+                
+                return true // Continue for next cycle
             }
             
             return false // Animation complete
         }
         
-        return true // Continue animation
+        return true // Continue current cycle
+    }
+    
+    private func resetViewToInitial(view: AnimatedView) {
+        // Reset to identity transform
+        view.transform = CGAffineTransform.identity
+        view.alpha = 1.0
+        
+        print("🔄 DirectAnimation: Reset view to initial state")
     }
     
     private func applyCurrentValues(view: AnimatedView, progress: Double) {
@@ -223,23 +246,29 @@ class DirectAnimation {
         var hasTransform = false
         
         // Apply scale
-        if let fromScale = fromValues["scale"], let toScale = toValues["scale"] {
-            let currentScale = fromScale + (toScale - fromScale) * CGFloat(progress)
+        if let toScale = toValues["scale"] {
+            let currentScale = 1.0 + (toScale - 1.0) * CGFloat(progress)
             transform = transform.scaledBy(x: currentScale, y: currentScale)
             hasTransform = true
         }
         
         // Apply translation
-        let translateX = interpolateValue("translateX", progress: progress) ?? 0
-        let translateY = interpolateValue("translateY", progress: progress) ?? 0
-        if translateX != 0 || translateY != 0 {
-            transform = transform.translatedBy(x: translateX, y: translateY)
+        if let toTranslateX = toValues["translateX"] {
+            let currentTranslateX = toTranslateX * CGFloat(progress)
+            transform = transform.translatedBy(x: currentTranslateX, y: 0)
+            hasTransform = true
+        }
+        
+        if let toTranslateY = toValues["translateY"] {
+            let currentTranslateY = toTranslateY * CGFloat(progress)
+            transform = transform.translatedBy(x: 0, y: currentTranslateY)
             hasTransform = true
         }
         
         // Apply rotation
-        if let rotation = interpolateValue("rotation", progress: progress) {
-            transform = transform.rotated(by: rotation)
+        if let toRotation = toValues["rotation"] {
+            let currentRotation = toRotation * CGFloat(progress)
+            transform = transform.rotated(by: currentRotation)
             hasTransform = true
         }
         
@@ -249,14 +278,10 @@ class DirectAnimation {
         }
         
         // Apply opacity
-        if let opacity = interpolateValue("opacity", progress: progress) {
-            view.alpha = opacity
+        if let toOpacity = toValues["opacity"] {
+            let currentOpacity = 1.0 + (toOpacity - 1.0) * CGFloat(progress)
+            view.alpha = currentOpacity
         }
-    }
-    
-    private func interpolateValue(_ key: String, progress: Double) -> CGFloat? {
-        guard let fromValue = fromValues[key], let toValue = toValues[key] else { return nil }
-        return fromValue + (toValue - fromValue) * CGFloat(progress)
     }
     
     private func fireAnimationStartEvent(view: AnimatedView) {
@@ -267,8 +292,7 @@ class DirectAnimation {
         propagateEvent(on: view, eventName: "onAnimationEnd", data: [:])
     }
     
-    // MARK: - Static Helper Methods
-    
+    // Static helper methods
     static func captureCurrentValues(_ view: AnimatedView) -> [String: CGFloat] {
         var values: [String: CGFloat] = [:]
         
@@ -317,26 +341,8 @@ class DirectAnimation {
             return { 1 - (1 - $0) * (1 - $0) }
         case "easeinout":
             return { $0 < 0.5 ? 2 * $0 * $0 : 1 - 2 * (1 - $0) * (1 - $0) }
-        case "elasticout":
-            return { sin(-13.0 * (.pi/2) * ($0 + 1)) * pow(2, -10 * $0) + 1 }
-        case "bounceout":
-            return { value in
-                if value < 1/2.75 {
-                    return 7.5625 * value * value
-                } else if value < 2/2.75 {
-                    let adjustedValue = value - 1.5/2.75
-                    return 7.5625 * adjustedValue * adjustedValue + 0.75
-                } else if value < 2.5/2.75 {
-                    let adjustedValue = value - 2.25/2.75
-                    return 7.5625 * adjustedValue * adjustedValue + 0.9375
-                } else {
-                    let adjustedValue = value - 2.625/2.75
-                    return 7.5625 * adjustedValue * adjustedValue + 0.984375
-                }
-            }
         default:
-            return { $0 < 0.5 ? 2 * $0 * $0 : 1 - 2 * (1 - $0) * (1 - $0) } // Default to easeInOut
+            return { $0 < 0.5 ? 2 * $0 * $0 : 1 - 2 * (1 - $0) * (1 - $0) }
         }
     }
 }
-
