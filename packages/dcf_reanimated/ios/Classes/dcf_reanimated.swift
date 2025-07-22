@@ -17,8 +17,6 @@ import dcflight
     }
     
     @objc public static func registerComponents() {
-        // Initialize method swizzling for gradient support
-        UIView.performSwizzling()
         DCFComponentRegistry.shared.registerComponent("AnimatedView", componentClass: DCFAnimatedViewComponent.self)
     }
 }

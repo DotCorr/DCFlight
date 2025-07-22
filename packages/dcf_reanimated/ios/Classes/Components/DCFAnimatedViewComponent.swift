@@ -1,21 +1,17 @@
 /*
- * Copyright (c) Dotcorr Studio. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ * DCFAnimatedViewComponent.swift - SINGLE UI Thread Animation System
  */
 
 import UIKit
 import dcflight
 
-/// Component that implements animated view with UI thread animation engine
+/// Component that ONLY uses UI Thread Animation Engine
 class DCFAnimatedViewComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create animated view
         let animatedView = AnimatedView()
         
         // Set up adaptive background color
@@ -42,79 +38,40 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let animatedView = view as? AnimatedView else { return false }
         
-        print("🔄 DCFAnimatedViewComponent: Updating view with props: \(props.keys)")
-        
-        // REQUIRED: Check for native animation controller ID (UI thread animation)
+        // 🚀 ONLY UI Thread Animation System
         if let nativeAnimationId = props["nativeAnimationId"] as? String {
             // Register with UI thread animation engine
             DCFAnimationEngine.shared.registerAnimationController(nativeAnimationId, view: animatedView)
-            print("🔗 DCFAnimatedViewComponent: Registered view with native animation ID: \(nativeAnimationId)")
+            print("🔗 UI Thread Animation: Registered \(nativeAnimationId)")
             
-            // Handle command - send directly to UI thread animation engine
+            // Handle command via UI thread engine
             if let commandData = props["command"] as? [String: Any] {
                 DCFAnimationEngine.shared.executeCommand(nativeAnimationId, command: commandData)
-                print("⚡ DCFAnimatedViewComponent: Command sent to UI thread engine")
+                print("⚡ UI Thread Animation: Command executed")
             }
         } else {
-            print("⚠️ DCFAnimatedViewComponent: No nativeAnimationId provided - animation will not work")
-            print("💡 DCFAnimatedViewComponent: Use useAnimationController() hook to provide nativeAnimationId")
+            print("⚠️ DCFAnimatedView: No nativeAnimationId - use useAnimationController() hook!")
         }
         
-        // Handle background color property
+        // Handle styling
         if props.keys.contains("backgroundColor") {
             if let backgroundColor = props["backgroundColor"] as? String {
-                let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
-                view.backgroundColor = uiColor
+                view.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
             }
         }
         
-        // Handle adaptive color only if explicitly provided and no backgroundColor is set
-        if props.keys.contains("adaptive") && !props.keys.contains("backgroundColor") {
-            let isAdaptive = props["adaptive"] as? Bool ?? true
-            if isAdaptive {
-                if #available(iOS 13.0, *) {
-                    view.backgroundColor = UIColor.systemBackground
-                } else {
-                    view.backgroundColor = UIColor.white
-                }
-            }
-        }
-        
-        // Apply StyleSheet properties (handles borderRadius and other properties)
+        // Apply StyleSheet properties
         view.applyStyles(props: props)
         
         return true
     }
     
-    // MARK: - Animation Helpers
-    
-    private func getCurve(from name: String) -> UIView.AnimationOptions {
-        switch name.lowercased() {
-        case "linear":
-            return .curveLinear
-        case "easein":
-            return .curveEaseIn
-        case "easeout":
-            return .curveEaseOut
-        case "easeinout":
-            return .curveEaseInOut
-        default:
-            return .curveEaseInOut
-        }
-    }
-    
-
-    
-    // MARK: - View Registration
-    
+    // Standard DCFComponent methods
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
         if let animatedView = view as? AnimatedView {
-            // Trigger onViewId event
             propagateEvent(on: animatedView, eventName: "onViewId", data: ["id": nodeId])
         }
     }
-    
-    // MARK: - DCFComponent Protocol
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(
@@ -130,7 +87,7 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     }
 }
 
-/// Custom animated view class for UI thread animation only
+/// Simple AnimatedView class - NO animation logic (handled by DCFAnimationEngine)
 class AnimatedView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -146,14 +103,10 @@ class AnimatedView: UIView {
         clipsToBounds = true
     }
     
-    /// Reset the view to its initial state (used by UI thread animation engine)
+    /// Reset method for DCFAnimationEngine
     func resetToInitialState() {
         print("🔄 AnimatedView: Resetting to initial state")
-        
-        // Remove any active animations
         layer.removeAllAnimations()
-        
-        // Reset transform and opacity
         transform = CGAffineTransform.identity
         alpha = 1.0
     }
