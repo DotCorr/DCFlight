@@ -1,10 +1,11 @@
 /*
- * DCFAnimatedViewComponent.swift - SINGLE UI Thread Animation System
+ * DCF Reanimated - UI Thread Animation System
+ * Copyright (c) Dotcorr Studio. and affiliates.
+ * Licensed under the MIT license
  */
 
-import UIKit
 import dcflight
-
+import UIKit
 /// Component that ONLY uses UI Thread Animation Engine
 class DCFAnimatedViewComponent: NSObject, DCFComponent {
     required override init() {
@@ -38,6 +39,8 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let animatedView = view as? AnimatedView else { return false }
         
+        print("🔄 DCFAnimatedViewComponent: Updating view with props: \(props.keys)")
+        
         // 🚀 ONLY UI Thread Animation System
         if let nativeAnimationId = props["nativeAnimationId"] as? String {
             // Register with UI thread animation engine
@@ -60,7 +63,19 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
             }
         }
         
-        // Apply StyleSheet properties
+        // Handle adaptive color only if explicitly provided and no backgroundColor is set
+        if props.keys.contains("adaptive") && !props.keys.contains("backgroundColor") {
+            let isAdaptive = props["adaptive"] as? Bool ?? true
+            if isAdaptive {
+                if #available(iOS 13.0, *) {
+                    view.backgroundColor = UIColor.systemBackground
+                } else {
+                    view.backgroundColor = UIColor.white
+                }
+            }
+        }
+        
+        // Apply StyleSheet properties (handles borderRadius, layout, etc.)
         view.applyStyles(props: props)
         
         return true
@@ -87,8 +102,15 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     }
 }
 
+// ============================================================================
+// ANIMATED VIEW CLASS - Simple Container for Animation Engine
+// ============================================================================
+
 /// Simple AnimatedView class - NO animation logic (handled by DCFAnimationEngine)
 class AnimatedView: UIView {
+    /// Store the animation controller ID for cleanup
+    private var controllerId: String?
+    
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupView()
@@ -103,6 +125,11 @@ class AnimatedView: UIView {
         clipsToBounds = true
     }
     
+    /// Set the controller ID for this view
+    func setControllerId(_ id: String) {
+        self.controllerId = id
+    }
+    
     /// Reset method for DCFAnimationEngine
     func resetToInitialState() {
         print("🔄 AnimatedView: Resetting to initial state")
@@ -110,4 +137,13 @@ class AnimatedView: UIView {
         transform = CGAffineTransform.identity
         alpha = 1.0
     }
+    
+    /// Clean up animation controller when view is removed
+    deinit {
+        if let controllerId = controllerId {
+            DCFAnimationEngine.shared.removeController(controllerId)
+            print("🗑️ AnimatedView: Cleaned up controller \(controllerId)")
+        }
+    }
 }
+
