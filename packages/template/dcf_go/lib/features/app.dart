@@ -7,8 +7,7 @@ class HomeScreen extends StatefulComponent {
     // Use global navigation commands
     final profileCommand = useStore(profileNavigationCommand);
     final settingsCommand = useStore(settingsNavigationCommand);
-    final detailCommand = useStore(animatedModalNavigationCommand);
-
+    
     return DCFView(
       layout: LayoutProps(
         flex: 1,
