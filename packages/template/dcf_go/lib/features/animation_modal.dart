@@ -7,19 +7,20 @@ class AnimatedModalScreen extends StatefulComponent {
   DCFComponentNode render() {
     final modalNavigationCommand = useStore(animatedModalNavigationCommand);
     
-    // 🎬 Create animation controllers for different elements
+
+
+    // 🎬 Create animation controllers
     final titleAnimationController = useAnimationController();
     final descriptionAnimationController = useAnimationController();
     final buttonAnimationController = useAnimationController();
     final backgroundAnimationController = useAnimationController();
-    
+
     return DCFView(
       styleSheet: StyleSheet(backgroundColor: Colors.amber),
       layout: LayoutProps(
         height: "100%",
         width: "100%",
-        padding: 16,
-        gap: 2,
+   
         alignContent: YogaAlign.center,
         justifyContent: YogaJustifyContent.flexStart,
       ),
@@ -27,7 +28,11 @@ class AnimatedModalScreen extends StatefulComponent {
         // 🎯 Animated Background Container
         DCFAnimatedView(
           nativeAnimationId: backgroundAnimationController,
-          command: AnimationPresets.fadeIn, // Entrance animation
+          command: AnimationPresets.fadeIn,
+          layout: LayoutProps(
+            height: "100%", 
+            width: "100%",
+          ),
           children: [
             DCFView(
               styleSheet: StyleSheet(
@@ -35,15 +40,18 @@ class AnimatedModalScreen extends StatefulComponent {
                 borderRadius: 16,
               ),
               layout: LayoutProps(
+                height: "100%",
+                width: "100%",
                 padding: 20,
                 gap: 16,
               ),
               children: [
-                // 🎭 Animated Title with Bounce Effect
+                // 🎭 Animated Title
                 DCFAnimatedView(
                   nativeAnimationId: titleAnimationController,
-                  command: AnimationPresets.bounceIn, // Complex sequence animation
+                  command: AnimationPresets.elastic,
                   layout: LayoutProps(
+                    height: "80%", 
                     padding: 16,
                     marginBottom: 20,
                     width: "100%",
@@ -78,16 +86,19 @@ class AnimatedModalScreen extends StatefulComponent {
                     AnimateCommand(
                       toScale: 0.8,
                       toOpacity: 0.0,
-                      duration: 0.0, // Start invisible
+                      duration: 0.0,
                     ),
                     AnimateCommand(
-                      delay: 0.3, // Delay for staggered effect
+                      delay: 0.3,
                       toScale: 1.0,
                       toOpacity: 1.0,
                       duration: 0.4,
                       curve: 'elasticOut',
                     ),
                   ]),
+                  layout: LayoutProps(
+                    height: 60, // 👈 Added height for consistent spacing
+                  ),
                   children: [
                     DCFSegmentedControl(
                       segmentedControlProps: DCFSegmentedControlProps(
@@ -100,21 +111,15 @@ class AnimatedModalScreen extends StatefulComponent {
                       ),
                       onSelectionChange: (data) {
                         final selectedIndex = data['selectedIndex'] ?? 0;
-                        
-                        // Just trigger different animations based on selection
-                        // This has nothing to do with navigation!
                         switch (selectedIndex) {
                           case 0:
                             print("🎯 Selected Bounce animation");
-                            // Could trigger bounce on other elements here
                             break;
                           case 1:
-                            print("🌊 Selected Slide animation"); 
-                            // Could trigger slide on other elements here
+                            print("🌊 Selected Slide animation");
                             break;
                           case 2:
                             print("🌟 Selected Fade animation");
-                            // Could trigger fade on other elements here
                             break;
                         }
                       },
@@ -122,23 +127,24 @@ class AnimatedModalScreen extends StatefulComponent {
                   ],
                 ),
 
-                // 🎪 Animated Description with Slide Effect
+                // 🎪 Animated Description
                 DCFAnimatedView(
                   nativeAnimationId: descriptionAnimationController,
                   command: SequenceCommand([
                     AnimateCommand(
-                      toTranslateX: -300, // Start off-screen left
+                      toTranslateX: -300,
                       toOpacity: 0.0,
                       duration: 0.0,
                     ),
                     AnimateCommand(
-                      delay: 0.5, // Staggered delay
+                      delay: 0.5,
                       toTranslateX: 0,
                       toOpacity: 1.0,
                       duration: 0.6,
                       curve: 'easeOut',
                     ),
                   ]),
+                  layout: LayoutProps(height: 120), // 👈 Explicit height added
                   children: [
                     DCFView(
                       styleSheet: StyleSheet(
@@ -168,7 +174,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ],
                 ),
 
-                // 🎯 Interactive Animation Buttons
+                // 🎯 Interactive Buttons
                 DCFView(
                   layout: LayoutProps(
                     flexDirection: YogaFlexDirection.row,
@@ -176,10 +182,9 @@ class AnimatedModalScreen extends StatefulComponent {
                     justifyContent: YogaJustifyContent.spaceEvenly,
                   ),
                   children: [
-                    // Pulse Button
                     DCFAnimatedView(
                       nativeAnimationId: useAnimationController(),
-                      command: AnimationPresets.pulse, // Continuous pulse
+                      command: AnimationPresets.pulse,
                       layout: LayoutProps(
                         height: 50,
                         width: 100,
@@ -197,18 +202,14 @@ class AnimatedModalScreen extends StatefulComponent {
                             borderRadius: 20,
                           ),
                           onPress: (v) {
-                            // Trigger shake animation on description
-                            // Note: You'd need to store controller references to trigger this
                             print("🎯 Pulse button pressed!");
                           },
                         ),
                       ],
                     ),
-
-                    // Spin Button
                     DCFAnimatedView(
                       nativeAnimationId: useAnimationController(),
-                      command: AnimationPresets.spin, // Continuous spin
+                      command: AnimationPresets.spin,
                       layout: LayoutProps(
                         height: 50,
                         width: 100,
@@ -234,23 +235,24 @@ class AnimatedModalScreen extends StatefulComponent {
                   ],
                 ),
 
-                // 🎭 Animated Dismiss Button with Hover Effects
+                // 🎭 Animated Dismiss Button
                 DCFAnimatedView(
                   nativeAnimationId: buttonAnimationController,
                   command: SequenceCommand([
                     AnimateCommand(
-                      toTranslateY: 50, // Start below
+                      toTranslateY: 50,
                       toOpacity: 0.0,
                       duration: 0.0,
                     ),
                     AnimateCommand(
-                      delay: 0.8, // Final element appears
+                      delay: 0.8,
                       toTranslateY: 0,
                       toOpacity: 1.0,
                       duration: 0.5,
                       curve: 'bounceOut',
                     ),
                   ]),
+                  layout: LayoutProps(height: 60), // 👈 Added height
                   onAnimationEnd: (data) {
                     print("🎯 Dismiss button ready!");
                   },
@@ -265,21 +267,16 @@ class AnimatedModalScreen extends StatefulComponent {
                         borderRadius: 25,
                       ),
                       onPress: (v) {
-                        // Create exit animation before dismissing
                         final exitAnimation = ParallelCommand([
-                          AnimationPresets.slideOutToBottom, // Slide down
-                          AnimationPresets.fadeOut, // Fade out
+                          AnimationPresets.slideOutToBottom,
+                          AnimationPresets.fadeOut,
                           AnimateCommand(
-                            toScale: 0.8, // Scale down slightly
+                            toScale: 0.8,
                             duration: 0.4,
                             curve: 'easeIn',
                           ),
                         ]);
-                        
-                        // Trigger exit animations on all controllers
-                        // Note: In real implementation, you'd store refs and animate all elements
-                        
-                        // Dismiss after animation completes
+                        // Simulate exit
                         Future.delayed(Duration(milliseconds: 400), () {
                           modalNavigationCommand.setState(
                             NavigationPresets.dismissModal,
@@ -290,7 +287,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ],
                 ),
 
-                // 🎪 Performance Info Text
+                // 🎪 Final Info Text
                 DCFAnimatedView(
                   nativeAnimationId: useAnimationController(),
                   command: SequenceCommand([
@@ -300,13 +297,14 @@ class AnimatedModalScreen extends StatefulComponent {
                       duration: 0.0,
                     ),
                     AnimateCommand(
-                      delay: 1.0, // Final reveal
+                      delay: 1.0,
                       toScale: 1.0,
                       toOpacity: 1.0,
                       duration: 0.3,
                       curve: 'elasticOut',
                     ),
                   ]),
+                  layout: LayoutProps(height: 80), // 👈 Explicit height
                   children: [
                     DCFView(
                       styleSheet: StyleSheet(
