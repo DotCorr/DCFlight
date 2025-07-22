@@ -110,8 +110,9 @@ class DCFTextInput extends StatelessComponent
     if (onBlur != null) events['onBlur'] = onBlur;
     if (onSubmitEditing != null) events['onSubmitEditing'] = onSubmitEditing;
     if (onKeyPress != null) events['onKeyPress'] = onKeyPress;
-    if (onSelectionChange != null)
+    if (onSelectionChange != null) {
       events['onSelectionChange'] = onSelectionChange;
+    }
     if (onEndEditing != null) events['onEndEditing'] = onEndEditing;
 
     return DCFElement(

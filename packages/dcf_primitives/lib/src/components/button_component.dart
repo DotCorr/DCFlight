@@ -6,7 +6,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
 
 /// Button properties
 class DCFButtonProps extends Equatable implements ComponentPriorityInterface {

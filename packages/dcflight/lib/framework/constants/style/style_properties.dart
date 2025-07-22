@@ -6,7 +6,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
 import 'gradient.dart';
 import 'hit_slop.dart';
 

@@ -1511,7 +1511,7 @@ class DCFEngine {
       return; // Both null, nothing to do
     }
 
-    if (oldRenderedNode == null && newRenderedNode != null) {
+    if (oldRenderedNode == null) {
       // First render - create from scratch
       final parentViewId = _findParentViewId(newComponent) ?? "root";
       final newViewId =
@@ -1520,7 +1520,7 @@ class DCFEngine {
       return;
     }
 
-    if (oldRenderedNode != null && newRenderedNode == null) {
+    if (newRenderedNode == null) {
       // Component now renders null - remove old content
       await _disposeOldComponent(oldRenderedNode);
       newComponent.contentViewId = null;
@@ -1528,7 +1528,7 @@ class DCFEngine {
     }
 
     // Both exist - check if root node types are different
-    if (oldRenderedNode!.runtimeType != newRenderedNode!.runtimeType) {
+    if (oldRenderedNode.runtimeType != newRenderedNode.runtimeType) {
       EngineDebugLogger.log(
           'COMPONENT_ROOT_TYPE_CHANGE', 'Component root node type changed',
           extra: {
@@ -2523,7 +2523,7 @@ class DCFEngine {
     final oldProps = oldTree['props'] as Map<String, dynamic>? ?? {};
     final newProps = newTree['props'] as Map<String, dynamic>? ?? {};
 
-    final propsDiff = await _computeDeepPropsDiff(oldProps, newProps);
+    final propsDiff = _computeDeepPropsDiff(oldProps, newProps);
     if (propsDiff.isNotEmpty) {
       changes.add({'action': 'updateProps', 'diff': propsDiff});
     }

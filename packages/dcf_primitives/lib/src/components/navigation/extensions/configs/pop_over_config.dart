@@ -1,6 +1,5 @@
 
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
 
 /// Configuration for popover presentation
 class DCFPopoverConfig extends Equatable {
