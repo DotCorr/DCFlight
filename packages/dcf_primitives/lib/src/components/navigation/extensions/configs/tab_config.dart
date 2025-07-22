@@ -1,5 +1,4 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
 
 /// Configuration for tab presentation
 class DCFTabConfig extends Equatable {

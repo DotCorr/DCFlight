@@ -4,7 +4,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
 
 /// A navigation root that provides stack-based navigation through pure screen registration
 /// No additional navigator component needed - DCFScreens handle their own navigation

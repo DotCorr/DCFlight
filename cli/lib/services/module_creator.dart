@@ -283,7 +283,7 @@ class ModuleCreator {
     print('📁 Location: lib/modules/$moduleName/');
     print('🏗️  Module: $className');
     print('\n📖 Next steps:');
-    print('   1. Import the module: import \'modules/$moduleName/${moduleName}.dart\';');
+    print('   1. Import the module: import \'modules/$moduleName/$moduleName.dart\';');
     print('   2. Use the module in your app');
     print('\n🎉 Happy coding with DCFlight!');
   }

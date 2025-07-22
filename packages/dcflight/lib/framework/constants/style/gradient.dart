@@ -7,7 +7,6 @@
 
 
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
 
 /// Gradient types supported by DCFlight
 enum DCFGradientType {
