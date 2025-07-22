@@ -39,7 +39,7 @@ class AnimatedModalScreen extends StatefulComponent {
             repeat: true,        // Keep repeating
           ),
           layout: LayoutProps(
-            height: 150,
+            height: 65,
             width: 150,
             marginBottom: 30,
           ),
@@ -78,7 +78,7 @@ class AnimatedModalScreen extends StatefulComponent {
             repeat: true,        // Keep repeating
           ),
           layout: LayoutProps(
-            height: 150,
+            height: 65,
             width: 150,
             marginBottom: 30,
           ),
@@ -116,7 +116,7 @@ class AnimatedModalScreen extends StatefulComponent {
             repeat: true,        // Keep repeating
           ),
           layout: LayoutProps(
-            height: 150,
+            height: 65,
             width: 150,
             marginBottom: 30,
           ),
