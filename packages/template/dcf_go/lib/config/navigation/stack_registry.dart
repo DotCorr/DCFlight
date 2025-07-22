@@ -44,7 +44,7 @@ class StackScreenRegistry extends StatefulComponent {
             }
           },
           onAppear: (data) => print("✅ Home screen appeared: $data"),
-          children: [HomeScreen()],
+          builder: () => HomeScreen(),
         ),
 
         // 🎯 Profile screen with edit button
@@ -73,7 +73,7 @@ class StackScreenRegistry extends StatefulComponent {
             print("🎯 Profile header action pressed: $data");
           },
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
-          children: [ProfileScreen()],
+          builder: () =>ProfileScreen(),
         ),
 
         // 🎯 Settings screen with cancel/done pattern
@@ -100,7 +100,7 @@ class StackScreenRegistry extends StatefulComponent {
             print("🎯 Settings header action pressed: $data");
           },
           onAppear: (data) => print("✅ Settings screen appeared: $data"),
-          children: [SettingsScreen()],
+          builder: () =>SettingsScreen(),
         ),
 
         DCFScreen(
@@ -112,7 +112,7 @@ class StackScreenRegistry extends StatefulComponent {
             print("🚀 Detail navigation event: $data");
             animatedModalNavigationCommand.setState(null);
           },
-          children: [AnimatedModalScreen()],
+          builder: () => AnimatedModalScreen(),
         ),
       ],
     );

@@ -1,3 +1,6 @@
+// File: screen_component.dart
+// UPDATED: DCFScreen with lazy loading support
+
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
@@ -11,26 +14,17 @@ import 'package:dcflight/dcflight.dart';
 enum DCFPresentationStyle {
   /// Tab presentation - screen appears as a tab in tab bar
   tab,
-
   /// Push presentation - screen appears pushed onto navigation stack
   push,
-
   /// Modal presentation - screen appears as a modal overlay
   modal,
-
   /// Sheet presentation - screen appears as a bottom sheet
   sheet,
-
   /// Popover presentation - screen appears as a popover (iPad)
   popover,
-
   /// Overlay presentation - screen appears as a custom overlay
   overlay,
 }
-
-
-
-
 
 /// A screen component that provides navigation context and lifecycle
 class DCFScreen extends StatelessComponent
@@ -46,7 +40,12 @@ class DCFScreen extends StatelessComponent
   final DCFPushConfig? pushConfig;
   final DCFPopoverConfig? popoverConfig;
   final DCFOverlayConfig? overlayConfig;
-  final List<DCFComponentNode> children;
+  
+  // 🎯 NEW: Lazy loading support
+  @Deprecated('Use builder instead of children')
+  final DCFComponentNode Function()? builder;
+  final List<DCFComponentNode>? children; // Keep for backward compatibility
+  
   final StyleSheet styleSheet;
   final ScreenNavigationCommand? navigationCommand;
   final Map<String, dynamic>? events;
@@ -68,7 +67,12 @@ class DCFScreen extends StatelessComponent
     this.pushConfig,
     this.popoverConfig,
     this.overlayConfig,
-    this.children = const [],
+    
+    // 🎯 NEW: Choose between builder (lazy) or children (eager)
+    this.builder, // Use this for lazy loading
+
+    this.children, // Keep for backward compatibility
+    
     this.styleSheet = const StyleSheet(),
     this.navigationCommand,
     this.events,
@@ -80,7 +84,10 @@ class DCFScreen extends StatelessComponent
     this.onReceiveParams,
     this.onHeaderActionPress,
     this.navigationBarConfig,
-  });
+  }) : assert(
+         builder != null || children != null,
+         'Either builder or children must be provided'
+       );
 
   @override
   DCFComponentNode render() {
@@ -152,10 +159,22 @@ class DCFScreen extends StatelessComponent
       props['navigationCommand'] = navigationCommand!.toMap();
     }
 
+    // 🎯 NEW: Determine children - use builder if provided, fallback to children
+    List<DCFComponentNode> actualChildren;
+    
+    if (builder != null) {
+      // 🚀 LAZY LOADING: Create component only when screen is rendered
+      print("🏗️ DCFScreen: Lazy loading component for screen '$name'");
+      actualChildren = [builder!()];
+    } else {
+      // 🔄 BACKWARD COMPATIBILITY: Use provided children
+      actualChildren = children ?? [];
+    }
+
     return DCFElement(
       type: 'Screen',
       props: props,
-      children: children,
+      children: actualChildren,
     );
   }
 
@@ -169,6 +188,7 @@ class DCFScreen extends StatelessComponent
         pushConfig,
         popoverConfig,
         overlayConfig,
+        builder,
         children,
         styleSheet,
         navigationCommand,
@@ -244,4 +264,3 @@ class DCFNavigationBarConfig extends Equatable {
         suffixActions,
       ];
 }
-
