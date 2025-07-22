@@ -17,14 +17,7 @@ class MyStackApp extends StatefulComponent {
   DCFComponentNode render() {
     return DCFStackNavigationRoot(
       initialScreen: "home_screen",
-      screenRegistryComponents: StackScreenRegistry(),
-      navigationBarStyle: const DCFNavigationBarStyle(
-        backgroundColor: Colors.indigo,
-        showBackButton: true,
-        hideBorder: false,
-      ),
-      hideNavigationBar: false,
-
+      screenRegistryComponents: StackScreenRegistry()
     );
   }
 }
