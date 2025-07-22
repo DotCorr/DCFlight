@@ -108,7 +108,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
 
 /// Simple AnimatedView class - NO animation logic (handled by DCFAnimationEngine)
 class AnimatedView: UIView {
-    /// Store the animation controller ID for cleanup
     private var controllerId: String?
     
     override init(frame: CGRect) {
@@ -125,12 +124,10 @@ class AnimatedView: UIView {
         clipsToBounds = true
     }
     
-    /// Set the controller ID for this view
     func setControllerId(_ id: String) {
         self.controllerId = id
     }
     
-    /// Reset method for DCFAnimationEngine
     func resetToInitialState() {
         print("🔄 AnimatedView: Resetting to initial state")
         layer.removeAllAnimations()
@@ -138,7 +135,6 @@ class AnimatedView: UIView {
         alpha = 1.0
     }
     
-    /// Clean up animation controller when view is removed
     deinit {
         if let controllerId = controllerId {
             DCFAnimationEngine.shared.removeController(controllerId)
@@ -146,4 +142,3 @@ class AnimatedView: UIView {
         }
     }
 }
-
