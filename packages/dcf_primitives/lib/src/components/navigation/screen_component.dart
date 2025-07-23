@@ -1,5 +1,3 @@
-// File: screen_component.dart
-// UPDATED: DCFScreen with lazy loading support
 
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
@@ -26,7 +24,6 @@ enum DCFPresentationStyle {
   overlay,
 }
 
-/// A screen component that provides navigation context and lifecycle
 class DCFScreen extends StatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
@@ -41,11 +38,13 @@ class DCFScreen extends StatelessComponent
   final DCFPopoverConfig? popoverConfig;
   final DCFOverlayConfig? overlayConfig;
   
-  // 🎯 NEW: Lazy loading support
-  @Deprecated('Use builder instead of children')
+  /// 🎯 LAZY LOADING: Builder function
   final DCFComponentNode Function()? builder;
-  final List<DCFComponentNode>? children; // Keep for backward compatibility
   
+  /// 🎯 NEW: Whether to actually render children (for lazy loading)
+  final bool renderChildren;
+  
+  final List<DCFComponentNode>? children; // Keep for backward compatibility
   final StyleSheet styleSheet;
   final ScreenNavigationCommand? navigationCommand;
   final Map<String, dynamic>? events;
@@ -67,12 +66,9 @@ class DCFScreen extends StatelessComponent
     this.pushConfig,
     this.popoverConfig,
     this.overlayConfig,
-    
-    // 🎯 NEW: Choose between builder (lazy) or children (eager)
-    this.builder, // Use this for lazy loading
-
-    this.children, // Keep for backward compatibility
-    
+    this.builder,
+    this.renderChildren = true, 
+    this.children,
     this.styleSheet = const StyleSheet(),
     this.navigationCommand,
     this.events,
@@ -84,91 +80,53 @@ class DCFScreen extends StatelessComponent
     this.onReceiveParams,
     this.onHeaderActionPress,
     this.navigationBarConfig,
-  }) : assert(
-         builder != null || children != null,
-         'Either builder or children must be provided'
-       );
+  });
 
   @override
   DCFComponentNode render() {
-    // Create a proper event map that includes ALL event handlers
+    // Build event map (same as before)
     Map<String, dynamic> eventMap = {};
+    if (events != null) eventMap.addAll(events!);
+    if (onAppear != null) eventMap['onAppear'] = onAppear!;
+    if (onDisappear != null) eventMap['onDisappear'] = onDisappear!;
+    if (onActivate != null) eventMap['onActivate'] = onActivate!;
+    if (onDeactivate != null) eventMap['onDeactivate'] = onDeactivate!;
+    if (onNavigationEvent != null) eventMap['onNavigationEvent'] = onNavigationEvent!;
+    if (onReceiveParams != null) eventMap['onReceiveParams'] = onReceiveParams!;
+    if (onHeaderActionPress != null) eventMap['onHeaderActionPress'] = onHeaderActionPress!;
 
-    // Add custom events passed in
-    if (events != null) {
-      eventMap.addAll(events!);
-    }
-
-    // Add ALL event handlers to the props map
-    if (onAppear != null) {
-      eventMap['onAppear'] = onAppear!;
-    }
-
-    if (onDisappear != null) {
-      eventMap['onDisappear'] = onDisappear!;
-    }
-
-    if (onActivate != null) {
-      eventMap['onActivate'] = onActivate!;
-    }
-
-    if (onDeactivate != null) {
-      eventMap['onDeactivate'] = onDeactivate!;
-    }
-
-    if (onNavigationEvent != null) {
-      eventMap['onNavigationEvent'] = onNavigationEvent!;
-    }
-
-    if (onReceiveParams != null) {
-      eventMap['onReceiveParams'] = onReceiveParams!;
-    }
-
-    if (onHeaderActionPress != null) {
-      eventMap['onHeaderActionPress'] = onHeaderActionPress!;
-    }
-
-    // Build props map
+    // Build props map (same as before)
     Map<String, dynamic> props = {
       'name': name,
       'presentationStyle': presentationStyle.name,
-
-      // Add configuration based on presentation style
       if (tabConfig != null) ...tabConfig!.toMap(),
       if (modalConfig != null) ...modalConfig!.toMap(),
       if (pushConfig != null) ...pushConfig!.toMap(),
       if (popoverConfig != null) ...popoverConfig!.toMap(),
       if (overlayConfig != null) ...overlayConfig!.toMap(),
-
       if (navigationBarConfig != null) ...navigationBarConfig!.toMap(),
-
-      // Layout and style props
-      ...LayoutProps(
-        padding: 0,
-        margin: 0,
-        height: "100%",
-        width: "100%",
-      ).toMap(),
+      ...LayoutProps(padding: 0, margin: 0, height: "100%", width: "100%").toMap(),
       ...styleSheet.toMap(),
-
       ...eventMap,
     };
 
-    // Add navigation command if present
     if (navigationCommand != null && navigationCommand!.hasCommands) {
       props['navigationCommand'] = navigationCommand!.toMap();
     }
 
-    // 🎯 NEW: Determine children - use builder if provided, fallback to children
-    List<DCFComponentNode> actualChildren;
+    // 🎯 THE ONLY CHANGE: Conditional rendering based on renderChildren flag
+    List<DCFComponentNode> actualChildren = [];
     
-    if (builder != null) {
-      // 🚀 LAZY LOADING: Create component only when screen is rendered
-      print("🏗️ DCFScreen: Lazy loading component for screen '$name'");
-      actualChildren = [builder!()];
+    if (renderChildren) {
+      if (builder != null) {
+        print("🏗️ DCFScreen: Rendering component for screen '$name'");
+        actualChildren = [builder!()];
+      } else if (children != null) {
+        actualChildren = children!;
+      }
     } else {
-      // 🔄 BACKWARD COMPATIBILITY: Use provided children
-      actualChildren = children ?? [];
+      print("⏸️ DCFScreen: Skipping render for placeholder screen '$name'");
+      // No children = empty screen container
     }
 
     return DCFElement(
@@ -180,29 +138,14 @@ class DCFScreen extends StatelessComponent
 
   @override
   List<Object?> get props => [
-        key,
-        name,
-        presentationStyle,
-        tabConfig,
-        modalConfig,
-        pushConfig,
-        popoverConfig,
-        overlayConfig,
-        builder,
-        children,
-        styleSheet,
-        navigationCommand,
-        events,
-        onAppear,
-        onDisappear,
-        onActivate,
-        onDeactivate,
-        onNavigationEvent,
-        onReceiveParams,
-        onHeaderActionPress,
-        navigationBarConfig,
+        key, name, presentationStyle, tabConfig, modalConfig, pushConfig,
+        popoverConfig, overlayConfig, builder, renderChildren, children,
+        styleSheet, navigationCommand, events, onAppear, onDisappear,
+        onActivate, onDeactivate, onNavigationEvent, onReceiveParams,
+        onHeaderActionPress, navigationBarConfig,
       ];
 }
+
 
 /// Configuration for navigation bar appearance and behavior (for tab screens)
 class DCFNavigationBarConfig extends Equatable {
@@ -264,3 +207,6 @@ class DCFNavigationBarConfig extends Equatable {
         suffixActions,
       ];
 }
+
+
+
