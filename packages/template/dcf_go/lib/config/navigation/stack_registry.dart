@@ -111,7 +111,7 @@ class StackScreenRegistry extends StatefulComponent {
           navigationCommand: animatedModalNavCommand.state,
           onNavigationEvent: (data) {
             print("🚀 Detail navigation event: $data");
-            print("modal command: ${animatedModalNavigationCommand.state==animatedModalNavigationCommand.state?.presentModal}");
+            print("modal command: ${animatedModalNavigationCommand.state}");
             animatedModalNavigationCommand.setState(null);
           },
           // renderChildren: animatedModalNavigationCommand != null,
