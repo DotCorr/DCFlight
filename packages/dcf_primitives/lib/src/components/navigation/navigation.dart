@@ -1,5 +1,5 @@
 export 'extensions/configs/tab_config.dart';
-export 'screen_component.dart';
+export 'extensions/components/screen_component.dart';
 export 'extensions/components/nested_nav_root.dart';
 export 'extensions/components/stack_nav_root.dart';
 export 'extensions/configs/push_header_config.dart';

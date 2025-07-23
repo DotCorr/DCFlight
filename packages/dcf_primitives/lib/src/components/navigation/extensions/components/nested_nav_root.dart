@@ -1,4 +1,4 @@
-import 'package:dcf_primitives/src/components/navigation/tab_navigator_component.dart';
+import 'package:dcf_primitives/src/components/navigation/extensions/components/tab_navigator_component.dart';
 import 'package:dcflight/dcflight.dart';
 
 class DCFNestedNavigationRoot extends StatelessComponent {

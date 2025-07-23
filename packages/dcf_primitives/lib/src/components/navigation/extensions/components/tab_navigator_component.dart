@@ -7,7 +7,7 @@
 
 import 'package:dcflight/dcflight.dart';
 
-import 'managers/screen_manager.dart';
+import '../../managers/screen_manager.dart';
 
 /// Tab bar style configuration
 class DCFTabBarStyle extends Equatable {
