@@ -15,6 +15,7 @@ class StackScreenRegistry extends StatefulComponent {
     return DCFFragment(
       children: [
         DCFScreen(
+         renderChildren: true,
           name: "home_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -110,8 +111,10 @@ class StackScreenRegistry extends StatefulComponent {
           navigationCommand: animatedModalNavCommand.state,
           onNavigationEvent: (data) {
             print("🚀 Detail navigation event: $data");
+            print("modal command: ${animatedModalNavigationCommand.state==animatedModalNavigationCommand.state?.presentModal}");
             animatedModalNavigationCommand.setState(null);
           },
+          // renderChildren: animatedModalNavigationCommand != null,
           builder: () => AnimatedModalScreen(),
         ),
       ],
