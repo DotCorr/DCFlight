@@ -35,6 +35,7 @@ class AnimatedModalScreen extends StatefulComponent {
             padding: 20,
             justifyContent: YogaJustifyContent.center,
             alignItems: YogaAlign.center,
+            position: YogaPositionType.absolute,
           absoluteLayout: AbsoluteLayout.centeredVertically()),
           children: [
             // 🎯 Simple animated box
