@@ -25,7 +25,6 @@ class DCFPortal extends StatefulComponent
   final String targetId;
   final List<DCFComponentNode> children;
   final Map<String, dynamic>? metadata;
-  // final int priority;
   final bool createTargetIfMissing;
   final Function(String portalId)? onMount;
   final Function(String portalId)? onUnmount;
@@ -34,7 +33,6 @@ class DCFPortal extends StatefulComponent
     required this.targetId,
     required this.children,
     this.metadata,
-    // this.priority = 0,
     this.createTargetIfMissing = false,
     this.onMount,
     this.onUnmount,
@@ -54,7 +52,6 @@ class DCFPortal extends StatefulComponent
             targetId: targetId,
             children: children,
             metadata: metadata,
-            // priority: priority,
             createTargetIfMissing: createTargetIfMissing,
             onMount: onMount,
             onUnmount: onUnmount,
@@ -70,14 +67,12 @@ class DCFPortal extends StatefulComponent
       return () {
         if (portalIdState.state != null) {
           portalManager.removePortal(portalIdState.state!).catchError((e) {});
-        } else {}
+        }
       };
     }, dependencies: []); // Only run once on mount/unmount
 
     // Separate effect to update portal when properties change
     useEffect(() {
-      // Calculate dependencies fresh each time
-
       if (portalIdState.state != null) {
         // Use a microtask to ensure the update happens after the current render cycle
         Future.microtask(() {
@@ -86,13 +81,12 @@ class DCFPortal extends StatefulComponent
               portalId: portalIdState.state!,
               children: children,
               metadata: metadata,
-              // priority: priority,
             );
           } catch (e) {
             throw Exception('Failed to update portal: $e');
           }
         });
-      } else {}
+      }
 
       // Return cleanup function for this effect
       return () {};
@@ -121,13 +115,11 @@ class DCFPortalTarget extends StatefulComponent
 
   final String targetId;
   final Map<String, dynamic>? metadata;
-  // final int priority;
   final List<DCFComponentNode> children;
 
   DCFPortalTarget({
     required this.targetId,
     this.metadata,
-    // this.priority = 0,
     this.children = const [],
     super.key,
   });
@@ -151,7 +143,6 @@ class DCFPortalTarget extends StatefulComponent
             targetId: targetId,
             nativeViewId: actualViewId,
             metadata: metadata,
-            // priority: priority,
           );
 
           isRegisteredRef.current = true;
@@ -194,16 +185,11 @@ class DCFPortalTarget extends StatefulComponent
           isRegisteredRef.current = false;
         }
       };
-    }, dependencies: [
-      targetId,
-      nativeViewId,
-      priority
-    ]); // Re-run when these change
+    }, dependencies: [targetId]); // Only depend on targetId
 
     // Create the element that will be our portal target
     final element = DCFElement(
-      type:
-          'View', // Use View component to create a native container(why not fragment or any conceptual/virtual element? Cause portal is porting nodes that already exits into actual native componets so we need a real view to port to)
+      type: 'View', // Use View component to create a native container
       props: {
         'isPortalTarget': true,
         'targetId': targetId,
