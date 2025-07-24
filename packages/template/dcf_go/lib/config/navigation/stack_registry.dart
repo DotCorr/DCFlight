@@ -15,7 +15,7 @@ class StackScreenRegistry extends StatefulComponent {
     return DCFFragment(
       children: [
         DCFScreen(
-         renderChildren: true,
+          renderChildren: true,
           name: "home_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -36,7 +36,6 @@ class StackScreenRegistry extends StatefulComponent {
             homeNavigationCommand.setState(null);
           },
           onHeaderActionPress: (data) {
-           
             if (data['actionId'] == "anim_action") {
               // Open drawer navigation
               animatedModalNavCommand.setState(
@@ -55,7 +54,7 @@ class StackScreenRegistry extends StatefulComponent {
           pushConfig: DCFPushConfig(
             title: "Profile",
             backButtonTitle: "Home",
-            // Add edit button
+
             suffixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Settings",
@@ -74,7 +73,7 @@ class StackScreenRegistry extends StatefulComponent {
             print("🎯 Profile header action pressed: $data");
           },
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
-          builder: () =>ProfileScreen(),
+          builder: () => ProfileScreen(),
         ),
 
         // 🎯 Settings screen with cancel/done pattern
@@ -101,13 +100,13 @@ class StackScreenRegistry extends StatefulComponent {
             print("🎯 Settings header action pressed: $data");
           },
           onAppear: (data) => print("✅ Settings screen appeared: $data"),
-          builder: () =>SettingsScreen(),
+          builder: () => SettingsScreen(),
         ),
 
         DCFScreen(
           name: "animated_modal_screen",
           presentationStyle: DCFPresentationStyle.modal,
-          
+
           navigationCommand: animatedModalNavCommand.state,
           onNavigationEvent: (data) {
             print("🚀 Detail navigation event: $data");
