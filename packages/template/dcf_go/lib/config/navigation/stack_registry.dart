@@ -39,7 +39,10 @@ class StackScreenRegistry extends StatefulComponent {
             if (data['actionId'] == "anim_action") {
               // Open drawer navigation
               animatedModalNavCommand.setState(
-                NavigationPresets.presentModal("animated_modal_screen"),
+                NavigationPresets.pushTo("animated_modal_screen", params: {
+                  "title": "Animated Modal",
+                  "message": "This is an animated modal screen"
+                }),
               );
             }
           },
@@ -105,7 +108,7 @@ class StackScreenRegistry extends StatefulComponent {
 
         DCFScreen(
           name: "animated_modal_screen",
-          presentationStyle: DCFPresentationStyle.modal,
+          presentationStyle: DCFPresentationStyle.push,
 
           navigationCommand: animatedModalNavCommand.state,
           onNavigationEvent: (data) {
@@ -113,6 +116,12 @@ class StackScreenRegistry extends StatefulComponent {
             print("modal command: ${animatedModalNavigationCommand.state}");
             animatedModalNavigationCommand.setState(null);
           },
+          onAppear: (data) => print("✅ Animated modal screen appeared: $data"),
+          onDisappear: (data) => print("❌ Animated modal screen disappeared: $data"),
+          onActivate: (data) => print("✅ Animated modal screen activated: $data"),
+          onDeactivate: (data) => print("❌ Animated modal screen deactivated: $data"),
+          onReceiveParams: (data) => print("📬 Animated modal screen received params: $data"),
+          
           // renderChildren: animatedModalNavigationCommand != null,
           builder: () => AnimatedModalScreen(),
         ),

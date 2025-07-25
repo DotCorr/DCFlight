@@ -44,38 +44,7 @@ extension DCFScreenComponent {
         configureNavigationBarForTabScreen(viewController, props: props)
     }
 
-    internal func configureNavigationBarForTabScreen(
-        _ viewController: UIViewController, props: [String: Any]
-    ) {
-
-        if let navigationBarTitle = props["navigationBarTitle"] as? String {
-            viewController.navigationItem.title = navigationBarTitle
-        }
-
-        let largeTitleDisplayMode = props["largeTitleDisplayMode"] as? Bool ?? false
-        if #available(iOS 11.0, *) {
-            viewController.navigationItem.largeTitleDisplayMode =
-                largeTitleDisplayMode ? .always : .never
-        }
-
-        let hideNavigationBar = props["hideNavigationBar"] as? Bool ?? false
-        if hideNavigationBar {
-            viewController.navigationController?.setNavigationBarHidden(
-                hideNavigationBar, animated: false)
-        }
-
-        let hideBackButton = props["hideBackButton"] as? Bool ?? false
-        viewController.navigationItem.hidesBackButton = hideBackButton
-
-        if let backButtonTitle = props["backButtonTitle"] as? String {
-            let backItem = UIBarButtonItem(
-                title: backButtonTitle, style: .plain, target: nil, action: nil)
-            viewController.navigationItem.backBarButtonItem = backItem
-        }
-
-        configureHeaderActionsFromProps(for: viewController, props: props)
-    }
-
+   
     private func configureHeaderActionsFromProps(
         for viewController: UIViewController, props: [String: Any]
     ) {
@@ -99,40 +68,7 @@ extension DCFScreenComponent {
         }
     }
 
-    internal func storeNavigationBarConfiguration(
-        _ screenContainer: ScreenContainer, props: [String: Any]
-    ) {
-        var navBarConfig: [String: Any] = [:]
-
-        if let navigationBarTitle = props["navigationBarTitle"] as? String {
-            navBarConfig["navigationBarTitle"] = navigationBarTitle
-        }
-
-        if let largeTitleDisplayMode = props["largeTitleDisplayMode"] as? Bool {
-            navBarConfig["largeTitleDisplayMode"] = largeTitleDisplayMode
-        }
-
-        if let hideNavigationBar = props["hideNavigationBar"] as? Bool {
-            navBarConfig["hideNavigationBar"] = hideNavigationBar
-        }
-
-        if let prefixActions = props["prefixActions"] as? [[String: Any]] {
-            navBarConfig["prefixActions"] = prefixActions
-        }
-
-        if let suffixActions = props["suffixActions"] as? [[String: Any]] {
-            navBarConfig["suffixActions"] = suffixActions
-        }
-
-        if !navBarConfig.isEmpty {
-            objc_setAssociatedObject(
-                screenContainer.viewController,
-                UnsafeRawPointer(bitPattern: "navigationBarConfig".hashValue)!,
-                navBarConfig,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-        }
-    }
+  
 }
 
 
