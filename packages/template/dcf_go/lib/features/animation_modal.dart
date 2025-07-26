@@ -36,7 +36,8 @@ class AnimatedModalScreen extends StatefulComponent {
             justifyContent: YogaJustifyContent.center,
             alignItems: YogaAlign.center,
             position: YogaPositionType.absolute,
-          absoluteLayout: AbsoluteLayout.centeredVertically()),
+            absoluteLayout: AbsoluteLayout.centeredVertically(),
+          ),
           children: [
             // 🎯 Simple animated box
             DCFAnimatedView(
