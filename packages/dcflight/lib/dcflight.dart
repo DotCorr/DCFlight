@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
-
 // Main entry point for the DCFlight framework
 library;
 
@@ -46,10 +44,9 @@ export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
         Element,
         ElementVisitor,
         WidgetInspectorService;
+export 'dart:async';
 // Core Infrastructure
 export 'framework/renderer/engine/index.dart';
-
-
 
 // Native Bridge System
 export 'framework/renderer/interface/interface.dart';
@@ -97,7 +94,6 @@ class DCFlight {
     // Initialize VDOM API with the bridge
     await DCFEngineAPI.instance.init(bridge);
 
-
     // Register core plugin
     PluginRegistry.instance.registerPlugin(CorePlugin.instance);
 
@@ -107,7 +103,7 @@ class DCFlight {
   /// Start the application with the given root component
   static Future<void> start({required DCFComponentNode app}) async {
     await _initialize();
-    
+
     // Check for hot restart and cleanup if needed (debug mode only)
     final wasHotRestart = await HotRestartDetector.detectAndCleanup();
 
@@ -119,9 +115,8 @@ class DCFlight {
 
     // Create root with this component
     await vdom.createRoot(mainApp);
-    
-    if (wasHotRestart) {
-    }
+
+    if (wasHotRestart) {}
 
     // Wait for the VDom to be ready
     vdom.isReady.whenComplete(() async {
