@@ -1,6 +1,8 @@
-# DCFlight
+# DEV Status - ARCHIVED (paused)
+Currently took a break from mobile dev due to changing global dynamics. I have decided to focus on AI projects for internal or private use and commercial use.
 
-# 🚧 This CLI is Under Development
+### DCFlight was a Side Project which means if this is public rn you can contribute. Fully validated and works but not completed. Contribitions are welcomed.
+
 
 ## 📌 Key Points
 
