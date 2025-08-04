@@ -7,7 +7,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-
+import '../../../dictionary/navigation.dart';
 /// Presentation styles for screens
 enum DCFPresentationStyle {
   /// Tab presentation - screen appears as a tab in tab bar
