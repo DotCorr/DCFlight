@@ -21,6 +21,9 @@ dependencies:
   dcf_reanimated:
     path: ../../dcf_reanimated
 
+  dcf_screens:
+    path: ../../dcf_screens
+
   # dcflight: ^0.0.1
   # dcf_primitives: ^0.0.1
 

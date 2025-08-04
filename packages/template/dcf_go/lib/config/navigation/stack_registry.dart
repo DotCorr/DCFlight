@@ -1,6 +1,7 @@
 import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/app.dart";
 import "package:dcf_go/main.dart";
+import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class StackScreenRegistry extends StatefulComponent {
@@ -52,6 +53,7 @@ class StackScreenRegistry extends StatefulComponent {
 
         // 🎯 Profile screen with edit button
         DCFScreen(
+          renderChildren: profileNavigationCommand.state != null,
           name: "profile_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -81,6 +83,7 @@ class StackScreenRegistry extends StatefulComponent {
 
         // 🎯 Settings screen with cancel/done pattern
         DCFScreen(
+           renderChildren: settingsNavigationCommand.state != null,
           name: "settings_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -109,6 +112,7 @@ class StackScreenRegistry extends StatefulComponent {
         DCFScreen(
           name: "animated_modal_screen",
           presentationStyle: DCFPresentationStyle.push,
+           renderChildren: animatedModalNavCommand.state != null,
 
           navigationCommand: animatedModalNavCommand.state,
           onNavigationEvent: (data) {
