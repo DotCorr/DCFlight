@@ -14,17 +14,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return UIView()
         }
 
-        let contextKey = createContextKey(screenName: screenName, presentationStyle: presentationStyle)
-
+        // 🎯 REMOVED: Smart context key system - use simple screen name
         let screenContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[contextKey] {
+        if let existing = DCFScreenComponent.screenRegistry[screenName] {
             screenContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing screen container for '\(contextKey)'")
+            print("♻️ DCFScreenComponent: Reusing existing screen container for '\(screenName)'")
         } else {
             screenContainer = ScreenContainer(name: screenName, presentationStyle: presentationStyle)
-            DCFScreenComponent.screenRegistry[contextKey] = screenContainer
+            DCFScreenComponent.screenRegistry[screenName] = screenContainer
             DCFScreenComponent.screenPresentationRegistry[screenName] = presentationStyle
-            print("✅ DCFScreenComponent: Created new screen container for '\(contextKey)' and registered presentation style '\(presentationStyle)'")
+            print("✅ DCFScreenComponent: Created new screen container for '\(screenName)' and registered presentation style '\(presentationStyle)'")
         }
 
         configureScreen(screenContainer, props: props)
@@ -52,60 +51,22 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return false
         }
 
-        let contextKey = createContextKey(screenName: screenName, presentationStyle: presentationStyle)
-
+        // 🎯 REMOVED: Smart context key system - use simple screen name
         let screenContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[contextKey] {
+        if let existing = DCFScreenComponent.screenRegistry[screenName] {
             screenContainer = existing
         } else {
             screenContainer = ScreenContainer(name: screenName, presentationStyle: presentationStyle)
-            DCFScreenComponent.screenRegistry[contextKey] = screenContainer
+            DCFScreenComponent.screenRegistry[screenName] = screenContainer
             DCFScreenComponent.screenPresentationRegistry[screenName] = presentationStyle
-            print("✅ DCFScreenComponent: Created new screen container for '\(contextKey)' during update")
+            print("✅ DCFScreenComponent: Created new screen container for '\(screenName)' during update")
             configureScreen(screenContainer, props: props)
         }
 
         return updateExistingScreen(screenContainer, view: view, props: props)
     }
 
-    private func createContextKey(screenName: String, presentationStyle: String) -> String {
-        switch presentationStyle {
-        case "tab":
-            return "tab_\(screenName)"
-        case "push":
-            let existingPushKeys = DCFScreenComponent.screenRegistry.keys.filter { $0.hasPrefix("push_\(screenName)_") }
-            if let existingKey = existingPushKeys.first {
-                return existingKey
-            }
-            return "push_\(screenName)_\(UUID().uuidString.prefix(8))"
-        case "modal":
-            let existingModalKeys = DCFScreenComponent.screenRegistry.keys.filter { $0.hasPrefix("modal_\(screenName)_") }
-            if let existingKey = existingModalKeys.first {
-                return existingKey
-            }
-            return "modal_\(screenName)_\(UUID().uuidString.prefix(8))"
-        case "sheet":
-            let existingSheetKeys = DCFScreenComponent.screenRegistry.keys.filter { $0.hasPrefix("sheet_\(screenName)_") }
-            if let existingKey = existingSheetKeys.first {
-                return existingKey
-            }
-            return "sheet_\(screenName)_\(UUID().uuidString.prefix(8))"
-        case "popover":
-            let existingPopoverKeys = DCFScreenComponent.screenRegistry.keys.filter { $0.hasPrefix("popover_\(screenName)_") }
-            if let existingKey = existingPopoverKeys.first {
-                return existingKey
-            }
-            return "popover_\(screenName)_\(UUID().uuidString.prefix(8))"
-        case "overlay":
-            let existingOverlayKeys = DCFScreenComponent.screenRegistry.keys.filter { $0.hasPrefix("overlay_\(screenName)_") }
-            if let existingKey = existingOverlayKeys.first {
-                return existingKey
-            }
-            return "overlay_\(screenName)_\(UUID().uuidString.prefix(8))"
-        default:
-            return "unknown_\(screenName)_\(UUID().uuidString.prefix(8))"
-        }
-    }
+    // 🎯 REMOVED: Complex createContextKey function - no longer needed
 
     private func updateExistingScreen(_ screenContainer: ScreenContainer, view: UIView, props: [String: Any]) -> Bool {
         storeTabConfiguration(screenContainer, props: props)
@@ -223,16 +184,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func pushToScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing push navigation to '\(screenName)'")
 
-        let pushContextKey = createContextKey(screenName: screenName, presentationStyle: "push")
-
-        let targetContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[pushContextKey] {
-            targetContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing push container for '\(screenName)'")
-        } else {
-            targetContainer = ScreenContainer(name: screenName, presentationStyle: "push")
-            DCFScreenComponent.screenRegistry[pushContextKey] = targetContainer
-            print("✅ DCFScreenComponent: Created new push container for '\(screenName)'")
+        // 🎯 REMOVED: Smart context key system - use direct screen name lookup
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: No screen container found for '\(screenName)' - cannot navigate")
+            return
         }
 
         guard let navigationController = getCurrentActiveNavigationController() else {
@@ -296,16 +251,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func presentModalScreen(_ screenName: String, animated: Bool, params: [String: Any]?, presentationStyle: String?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing modal presentation for '\(screenName)'")
 
-        let modalContextKey = createContextKey(screenName: screenName, presentationStyle: "modal")
-
-        let targetContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[modalContextKey] {
-            targetContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing modal container for '\(screenName)'")
-        } else {
-            targetContainer = ScreenContainer(name: screenName, presentationStyle: "modal")
-            DCFScreenComponent.screenRegistry[modalContextKey] = targetContainer
-            print("✅ DCFScreenComponent: Created new modal container for '\(screenName)'")
+        // 🎯 REMOVED: Smart context key system - use direct screen name lookup
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: No screen container found for '\(screenName)' - cannot present modal")
+            return
         }
 
         guard let presentingViewController = getCurrentPresentingViewController() else {
@@ -357,16 +306,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func presentSheetScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing sheet presentation for '\(screenName)'")
 
-        let sheetContextKey = createContextKey(screenName: screenName, presentationStyle: "sheet")
-
-        let targetContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[sheetContextKey] {
-            targetContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing sheet container for '\(screenName)'")
-        } else {
-            targetContainer = ScreenContainer(name: screenName, presentationStyle: "sheet")
-            DCFScreenComponent.screenRegistry[sheetContextKey] = targetContainer
-            print("✅ DCFScreenComponent: Created new sheet container for '\(screenName)'")
+        // 🎯 REMOVED: Smart context key system - use direct screen name lookup
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: No screen container found for '\(screenName)' - cannot present sheet")
+            return
         }
 
         guard let presentingViewController = getCurrentPresentingViewController() else {
@@ -423,16 +366,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func presentPopoverScreen(_ screenName: String, animated: Bool, params: [String: Any]?, sourceViewId: String?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing popover presentation for '\(screenName)'")
 
-        let popoverContextKey = createContextKey(screenName: screenName, presentationStyle: "popover")
-
-        let targetContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[popoverContextKey] {
-            targetContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing popover container for '\(screenName)'")
-        } else {
-            targetContainer = ScreenContainer(name: screenName, presentationStyle: "popover")
-            DCFScreenComponent.screenRegistry[popoverContextKey] = targetContainer
-            print("✅ DCFScreenComponent: Created new popover container for '\(screenName)'")
+        // 🎯 REMOVED: Smart context key system - use direct screen name lookup
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: No screen container found for '\(screenName)' - cannot present popover")
+            return
         }
 
         guard let presentingViewController = getCurrentPresentingViewController() else {
@@ -488,16 +425,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func presentOverlayScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing overlay presentation for '\(screenName)'")
 
-        let overlayContextKey = createContextKey(screenName: screenName, presentationStyle: "overlay")
-
-        let targetContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[overlayContextKey] {
-            targetContainer = existing
-            print("♻️ DCFScreenComponent: Reusing existing overlay container for '\(screenName)'")
-        } else {
-            targetContainer = ScreenContainer(name: screenName, presentationStyle: "overlay")
-            DCFScreenComponent.screenRegistry[overlayContextKey] = targetContainer
-            print("✅ DCFScreenComponent: Created new overlay container for '\(screenName)'")
+        // 🎯 REMOVED: Smart context key system - use direct screen name lookup
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: No screen container found for '\(screenName)' - cannot present overlay")
+            return
         }
 
         guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else {
@@ -592,16 +523,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
         let targetViewController = navigationController.viewControllers[navigationController.viewControllers.count - 2]
 
         var targetScreenName: String? = nil
-        for (_, container) in DCFScreenComponent.screenRegistry {
+        for (screenName, container) in DCFScreenComponent.screenRegistry {
             if container.viewController == targetViewController {
-                targetScreenName = container.name
+                targetScreenName = screenName
                 break
             }
         }
 
         if let result = result, let targetName = targetScreenName {
-            for (_, container) in DCFScreenComponent.screenRegistry {
-                if container.name == targetName {
+            for (screenName, container) in DCFScreenComponent.screenRegistry {
+                if screenName == targetName {
                     propagateEvent(
                         on: container.contentView,
                         eventName: "onReceiveParams",
@@ -627,8 +558,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
         )
 
         if let targetName = targetScreenName {
-            for (_, container) in DCFScreenComponent.screenRegistry {
-                if container.name == targetName {
+            for (screenName, container) in DCFScreenComponent.screenRegistry {
+                if screenName == targetName {
                     propagateEvent(
                         on: container.contentView,
                         eventName: "onAppear",
@@ -665,8 +596,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
         }
 
         var targetViewController: UIViewController?
-        for (_, container) in DCFScreenComponent.screenRegistry {
-            if container.name == screenName && navigationController.viewControllers.contains(container.viewController) {
+        for (containerScreenName, container) in DCFScreenComponent.screenRegistry {
+            if containerScreenName == screenName && navigationController.viewControllers.contains(container.viewController) {
                 targetViewController = container.viewController
                 break
             }
@@ -691,8 +622,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
             data: ["screenName": sourceContainer.name]
         )
 
-        for (_, container) in DCFScreenComponent.screenRegistry {
-            if container.name == screenName {
+        for (containerScreenName, container) in DCFScreenComponent.screenRegistry {
+            if containerScreenName == screenName {
                 propagateEvent(
                     on: container.contentView,
                     eventName: "onAppear",
@@ -730,9 +661,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
         let rootViewController = navigationController.viewControllers.first
         var rootScreenName: String?
         
-        for (_, container) in DCFScreenComponent.screenRegistry {
+        for (screenName, container) in DCFScreenComponent.screenRegistry {
             if container.viewController == rootViewController {
-                rootScreenName = container.name
+                rootScreenName = screenName
                 break
             }
         }
@@ -752,8 +683,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
         )
 
         if let rootName = rootScreenName {
-            for (_, container) in DCFScreenComponent.screenRegistry {
-                if container.name == rootName {
+            for (screenName, container) in DCFScreenComponent.screenRegistry {
+                if screenName == rootName {
                     propagateEvent(
                         on: container.contentView,
                         eventName: "onAppear",
@@ -788,13 +719,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return
         }
 
-        let replaceContextKey = createContextKey(screenName: screenName, presentationStyle: "push")
-        let targetContainer: ScreenContainer
-        if let existing = DCFScreenComponent.screenRegistry[replaceContextKey] {
-            targetContainer = existing
-        } else {
-            targetContainer = ScreenContainer(name: screenName, presentationStyle: "push")
-            DCFScreenComponent.screenRegistry[replaceContextKey] = targetContainer
+        // 🎯 REMOVED: Smart context key system - use direct screen name lookup
+        guard let targetContainer = DCFScreenComponent.screenRegistry[screenName] else {
+            print("❌ DCFScreenComponent: No screen container found for '\(screenName)' - cannot replace")
+            return
         }
 
         DCFScreenComponent().configureScreenForPush(targetContainer)
@@ -850,7 +778,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
     private func dismissModalScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
         if let result = result, let presentingViewController = sourceContainer.viewController.presentingViewController {
-            for (_, container) in DCFScreenComponent.screenRegistry {
+            for (screenName, container) in DCFScreenComponent.screenRegistry {
                 if container.viewController == presentingViewController {
                     propagateEvent(
                         on: container.contentView,
@@ -890,7 +818,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
     private func dismissSheetScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
         if let result = result, let presentingViewController = sourceContainer.viewController.presentingViewController {
-            for (_, container) in DCFScreenComponent.screenRegistry {
+            for (screenName, container) in DCFScreenComponent.screenRegistry {
                 if container.viewController == presentingViewController {
                     propagateEvent(
                         on: container.contentView,
@@ -930,7 +858,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
     private func dismissPopoverScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
         if let result = result, let presentingViewController = sourceContainer.viewController.presentingViewController {
-            for (_, container) in DCFScreenComponent.screenRegistry {
+            for (screenName, container) in DCFScreenComponent.screenRegistry {
                 if container.viewController == presentingViewController {
                     propagateEvent(
                         on: container.contentView,
@@ -970,7 +898,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
     private func dismissOverlayScreen(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
         if let result = result {
-            for (_, container) in DCFScreenComponent.screenRegistry {
+            for (screenName, container) in DCFScreenComponent.screenRegistry {
                 if container.presentationStyle != "overlay" {
                     propagateEvent(
                         on: container.contentView,
@@ -1681,19 +1609,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
         return nil
     }
 
+    // 🎯 FIXED: Simple screen container lookup by name
     static func getScreenContainer(name: String) -> ScreenContainer? {
-        let tabKey = "tab_\(name)"
-        if let tabContainer = screenRegistry[tabKey] {
-            return tabContainer
-        }
-
-        for (_, container) in screenRegistry {
-            if container.name == name {
-                return container
-            }
-        }
-
-        return nil
+        return screenRegistry[name]
     }
 
     static func getAllScreenContainers() -> [String: ScreenContainer] {
@@ -1781,7 +1699,7 @@ class ScreenContainer {
     let contentView: UIView
     var childNavigators: [Any] = []
 
-    init(name: String, presentationStyle: String) {
+   init(name: String, presentationStyle: String) {
         self.name = name
         self.presentationStyle = presentationStyle
 
@@ -1801,6 +1719,7 @@ class ScreenContainer {
 }
 
 extension DCFScreenComponent {
+    // 🎯 FIXED: Simple screen registry - no complex context keys
     static var screenRegistry: [String: ScreenContainer] = [:]
     static var screenPresentationRegistry: [String: String] = [:]
     static var currentNavigationController: UINavigationController? = nil

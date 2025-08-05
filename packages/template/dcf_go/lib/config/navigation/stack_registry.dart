@@ -1,6 +1,7 @@
 import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/app.dart";
 import "package:dcf_go/main.dart";
+import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class StackScreenRegistry extends StatefulComponent {
@@ -15,9 +16,12 @@ class StackScreenRegistry extends StatefulComponent {
     return DCFFragment(
       children: [
         DCFScreen(
-          renderChildren: true,
           name: "home_screen",
           presentationStyle: DCFPresentationStyle.push,
+          navigationStateCleaner: (v) {
+            print("🧹 Cleaning up home navigation state: $v");
+            homeNavigationCommand.setState(null);
+          },
           pushConfig: DCFPushConfig(
             title: "Home",
 
@@ -31,23 +35,31 @@ class StackScreenRegistry extends StatefulComponent {
             ],
           ),
           navigationCommand: homeNavCommand.state,
-          onNavigationEvent: (data) {
-            print("🚀 Home navigation event: $data");
-            homeNavigationCommand.setState(null);
-          },
+
           onHeaderActionPress: (data) {
             if (data['actionId'] == "anim_action") {
               // Open drawer navigation
               animatedModalNavCommand.setState(
-                NavigationPresets.pushTo("animated_modal_screen", params: {
-                  "title": "Animated Modal",
-                  "message": "This is an animated modal screen"
-                }),
+                NavigationPresets.pushTo(
+                  "animated_modal_screen",
+                  params: {
+                    "title": "Animated Modal",
+                    "message": "This is an animated modal screen",
+                  },
+                ),
               );
             }
           },
           onAppear: (data) => print("✅ Home screen appeared: $data"),
-          builder: () => HomeScreen(),
+          builder: () {
+            final isSuspended = homeNavCommand.state == null;
+            if (isSuspended) {
+              print("⏸️ Home screen is suspended - not rendering children");
+              return DCFFragment(children: []); // TRULY EMPTY
+            }
+            print("🏗️ Home screen is active - rendering children");
+            return HomeScreen();
+          },
         ),
 
         // 🎯 Profile screen with edit button
@@ -68,19 +80,33 @@ class StackScreenRegistry extends StatefulComponent {
             ],
           ),
           navigationCommand: profileNavCommand.state,
+          navigationStateCleaner: (v) {
+            print("🧹 Cleaning up profile navigation state: $v");
+            profileNavigationCommand.setState(null);
+          },
           onNavigationEvent: (data) {
             print("🚀 Profile navigation event: $data");
-            profileNavigationCommand.setState(null);
           },
           onHeaderActionPress: (data) {
             print("🎯 Profile header action pressed: $data");
           },
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
-          builder: () => ProfileScreen(),
+          builder: () {
+            final isSuspended = profileNavCommand.state == null;
+            if (isSuspended) {
+              print("⏸️ Profile screen is suspended - not rendering children");
+              return DCFFragment(children: []); // TRULY EMPTY
+            }
+            print("🏗️ Profile screen is active - rendering children");
+            return ProfileScreen();
+          },
         ),
 
         // 🎯 Settings screen with cancel/done pattern
         DCFScreen(
+          navigationStateCleaner: (v) {
+            settingsNavigationCommand.setState(null);
+          },
           name: "settings_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -95,15 +121,23 @@ class StackScreenRegistry extends StatefulComponent {
             ],
           ),
           navigationCommand: settingsNavCommand.state,
-          onNavigationEvent: (data) {
-            print("🚀 Settings navigation event: $data");
-            settingsNavigationCommand.setState(null);
-          },
+
           onHeaderActionPress: (data) {
             print("🎯 Settings header action pressed: $data");
           },
           onAppear: (data) => print("✅ Settings screen appeared: $data"),
-          builder: () => SettingsScreen(),
+
+          builder: () {
+            final isSuspended = settingsNavCommand.state == null;
+            if (isSuspended) {
+              print("⏸️ Settings screen is suspended - not rendering children");
+              return DCFFragment(
+                children: [], // TRULY EMPTY
+              );
+            }
+            print("🏗️ Settings screen is active - rendering children");
+            return SettingsScreen();
+          },
         ),
 
         DCFScreen(
@@ -111,19 +145,22 @@ class StackScreenRegistry extends StatefulComponent {
           presentationStyle: DCFPresentationStyle.push,
 
           navigationCommand: animatedModalNavCommand.state,
-          onNavigationEvent: (data) {
-            print("🚀 Detail navigation event: $data");
-            print("modal command: ${animatedModalNavigationCommand.state}");
+          navigationStateCleaner: (v) {
+            print("🧹 Cleaning up animated modal navigation state: $v");
             animatedModalNavigationCommand.setState(null);
           },
-          onAppear: (data) => print("✅ Animated modal screen appeared: $data"),
-          onDisappear: (data) => print("❌ Animated modal screen disappeared: $data"),
-          onActivate: (data) => print("✅ Animated modal screen activated: $data"),
-          onDeactivate: (data) => print("❌ Animated modal screen deactivated: $data"),
-          onReceiveParams: (data) => print("📬 Animated modal screen received params: $data"),
-          
-          // renderChildren: animatedModalNavigationCommand != null,
-          builder: () => AnimatedModalScreen(),
+
+          builder: () {
+            final isSuspended = animatedModalNavCommand.state == null;
+            if (isSuspended) {
+              print(
+                "⏸️ Animated modal screen is suspended - not rendering children",
+              );
+              return DCFFragment(children: []);
+            }
+
+            return AnimatedModalScreen();
+          },
         ),
       ],
     );

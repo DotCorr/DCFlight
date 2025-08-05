@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
@@ -7,19 +6,25 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import '../../../dictionary/navigation.dart';
 
 /// Presentation styles for screens
 enum DCFPresentationStyle {
   /// Tab presentation - screen appears as a tab in tab bar
   tab,
+
   /// Push presentation - screen appears pushed onto navigation stack
   push,
+
   /// Modal presentation - screen appears as a modal overlay
   modal,
+
   /// Sheet presentation - screen appears as a bottom sheet
   sheet,
+
   /// Popover presentation - screen appears as a popover (iPad)
   popover,
+
   /// Overlay presentation - screen appears as a custom overlay
   overlay,
 }
@@ -37,17 +42,15 @@ class DCFScreen extends StatelessComponent
   final DCFPushConfig? pushConfig;
   final DCFPopoverConfig? popoverConfig;
   final DCFOverlayConfig? overlayConfig;
-  
-  /// 🎯 LAZY LOADING: Builder function
+
   final DCFComponentNode Function()? builder;
-  
-  /// 🎯 NEW: Whether to actually render children (for lazy loading)
-  final bool renderChildren;
-  
-  final List<DCFComponentNode>? children; // Keep for backward compatibility
+
+  final List<DCFComponentNode>? children;
   final StyleSheet styleSheet;
   final ScreenNavigationCommand? navigationCommand;
   final Map<String, dynamic>? events;
+  // This is used to clean up navigation state when the screen is popped or navigated away
+  final Function(Map<dynamic, dynamic>)? navigationStateCleaner;
   final Function(Map<dynamic, dynamic>)? onAppear;
   final Function(Map<dynamic, dynamic>)? onDisappear;
   final Function(Map<dynamic, dynamic>)? onActivate;
@@ -60,6 +63,7 @@ class DCFScreen extends StatelessComponent
   DCFScreen({
     super.key,
     required this.name,
+    required this.navigationStateCleaner,
     required this.presentationStyle,
     this.tabConfig,
     this.modalConfig,
@@ -67,7 +71,6 @@ class DCFScreen extends StatelessComponent
     this.popoverConfig,
     this.overlayConfig,
     this.builder,
-    this.renderChildren = true, 
     this.children,
     this.styleSheet = const StyleSheet(),
     this.navigationCommand,
@@ -84,16 +87,32 @@ class DCFScreen extends StatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Build event map (same as before)
+    onNavigationEventWithCleanup(data) {
+      if (navigationStateCleaner != null) {
+        if (data['action'] == 'pop' ||
+            data['action'] == 'popToRoot' ||
+            data['action'] == 'popTo' ||
+            data['action'] == 'replaceWith') {
+          navigationStateCleaner!(data);
+        }
+      }
+      onNavigationEvent?.call(data);
+    }
+
     Map<String, dynamic> eventMap = {};
     if (events != null) eventMap.addAll(events!);
     if (onAppear != null) eventMap['onAppear'] = onAppear!;
     if (onDisappear != null) eventMap['onDisappear'] = onDisappear!;
     if (onActivate != null) eventMap['onActivate'] = onActivate!;
     if (onDeactivate != null) eventMap['onDeactivate'] = onDeactivate!;
-    if (onNavigationEvent != null) eventMap['onNavigationEvent'] = onNavigationEvent!;
+    if (onNavigationEvent != null)
+      eventMap['onNavigationEvent'] = onNavigationEvent!;
+    if (navigationStateCleaner != null)
+      eventMap['onNavigationEvent'] = onNavigationEventWithCleanup;
+
     if (onReceiveParams != null) eventMap['onReceiveParams'] = onReceiveParams!;
-    if (onHeaderActionPress != null) eventMap['onHeaderActionPress'] = onHeaderActionPress!;
+    if (onHeaderActionPress != null)
+      eventMap['onHeaderActionPress'] = onHeaderActionPress!;
 
     // Build props map (same as before)
     Map<String, dynamic> props = {
@@ -105,7 +124,8 @@ class DCFScreen extends StatelessComponent
       if (popoverConfig != null) ...popoverConfig!.toMap(),
       if (overlayConfig != null) ...overlayConfig!.toMap(),
       if (navigationBarConfig != null) ...navigationBarConfig!.toMap(),
-      ...LayoutProps(padding: 0, margin: 0, height: "100%", width: "100%").toMap(),
+      ...LayoutProps(padding: 0, margin: 0, height: "100%", width: "100%")
+          .toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
     };
@@ -114,19 +134,13 @@ class DCFScreen extends StatelessComponent
       props['navigationCommand'] = navigationCommand!.toMap();
     }
 
-    // 🎯 THE ONLY CHANGE: Conditional rendering based on renderChildren flag
     List<DCFComponentNode> actualChildren = [];
-    
-    if (renderChildren) {
-      if (builder != null) {
-        print("🏗️ DCFScreen: Rendering component for screen '$name'");
-        actualChildren = [builder!()];
-      } else if (children != null) {
-        actualChildren = children!;
-      }
-    } else {
-      print("⏸️ DCFScreen: Skipping render for placeholder screen '$name'");
-      // No children = empty screen container
+
+    if (builder != null) {
+      print("🏗️ DCFScreen: Rendering component for screen '$name'");
+      actualChildren = [builder!()];
+    } else if (children != null) {
+      actualChildren = children!;
     }
 
     return DCFElement(
@@ -138,14 +152,29 @@ class DCFScreen extends StatelessComponent
 
   @override
   List<Object?> get props => [
-        key, name, presentationStyle, tabConfig, modalConfig, pushConfig,
-        popoverConfig, overlayConfig, builder, renderChildren, children,
-        styleSheet, navigationCommand, events, onAppear, onDisappear,
-        onActivate, onDeactivate, onNavigationEvent, onReceiveParams,
-        onHeaderActionPress, navigationBarConfig,
+        key,
+        name,
+        presentationStyle,
+        tabConfig,
+        modalConfig,
+        pushConfig,
+        popoverConfig,
+        overlayConfig,
+        builder,
+        children,
+        styleSheet,
+        navigationCommand,
+        events,
+        onAppear,
+        onDisappear,
+        onActivate,
+        onDeactivate,
+        onNavigationEvent,
+        onReceiveParams,
+        onHeaderActionPress,
+        navigationBarConfig,
       ];
 }
-
 
 /// Configuration for navigation bar appearance and behavior (for tab screens)
 class DCFNavigationBarConfig extends Equatable {
@@ -207,6 +236,3 @@ class DCFNavigationBarConfig extends Equatable {
         suffixActions,
       ];
 }
-
-
-
