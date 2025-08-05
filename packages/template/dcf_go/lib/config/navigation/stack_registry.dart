@@ -15,13 +15,12 @@ class StackScreenRegistry extends StatefulComponent {
 
     return DCFFragment(
       children: [
+        // 🎯 HOME SCREEN - Always active (initial screen)
         DCFScreen(
-          renderChildren: true,
           name: "home_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Home",
-
             prefixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Animation",
@@ -38,7 +37,10 @@ class StackScreenRegistry extends StatefulComponent {
           },
           onHeaderActionPress: (data) {
             if (data['actionId'] == "anim_action") {
-              // Open drawer navigation
+              // 🎭 ACTIVATE the animated modal screen before navigation
+              DCFSuspensionManager.activate("animated_modal_screen", 
+                reason: "Navigation triggered from home");
+              
               animatedModalNavCommand.setState(
                 NavigationPresets.pushTo("animated_modal_screen", params: {
                   "title": "Animated Modal",
@@ -51,15 +53,13 @@ class StackScreenRegistry extends StatefulComponent {
           builder: () => HomeScreen(),
         ),
 
-        // 🎯 Profile screen with edit button
+        // 🎯 PROFILE SCREEN - Smart suspended
         DCFScreen(
-          renderChildren: profileNavigationCommand.state != null,
           name: "profile_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Profile",
             backButtonTitle: "Home",
-
             suffixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Settings",
@@ -73,23 +73,41 @@ class StackScreenRegistry extends StatefulComponent {
           onNavigationEvent: (data) {
             print("🚀 Profile navigation event: $data");
             profileNavigationCommand.setState(null);
+            
+            // 🎭 SUSPEND after navigation completes
+            if (data['action'] == 'pop') {
+              DCFSuspensionManager.suspend("profile_screen", 
+                reason: "User navigated away");
+            }
           },
           onHeaderActionPress: (data) {
-            print("🎯 Profile header action pressed: $data");
+            if (data['actionId'] == "settings_action") {
+              // 🎭 ACTIVATE settings before navigation
+              DCFSuspensionManager.activate("settings_screen", 
+                reason: "Settings button pressed");
+              
+              settingsNavigationCommand.setState(
+                NavigationPresets.pushTo("settings_screen")
+              );
+            }
           },
           onAppear: (data) => print("✅ Profile screen appeared: $data"),
-          builder: () => ProfileScreen(),
+          
+          // 🎭 SMART SUSPENSION: Use suspension view with memory mode
+          builder: () => DCFSuspensionManager.getStore("profile_screen").suspensionView(
+            mode: DCFSuspensionMode.memory, // Pre-rendered but suspended
+            reason: "Profile screen lazy loading",
+            children: [ProfileScreen()],
+          ),
         ),
 
-        // 🎯 Settings screen with cancel/done pattern
+        // 🎯 SETTINGS SCREEN - Smart suspended with placeholder
         DCFScreen(
-           renderChildren: settingsNavigationCommand.state != null,
           name: "settings_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Settings",
             backButtonTitle: "Back",
-            // Add cancel/done buttons
             prefixActions: [
               DCFPushHeaderActionConfig.withTextOnly(title: "Cancel"),
             ],
@@ -101,24 +119,55 @@ class StackScreenRegistry extends StatefulComponent {
           onNavigationEvent: (data) {
             print("🚀 Settings navigation event: $data");
             settingsNavigationCommand.setState(null);
+            
+            // 🎭 SUSPEND after navigation
+            if (data['action'] == 'pop') {
+              DCFSuspensionManager.suspend("settings_screen", 
+                reason: "User left settings");
+            }
           },
           onHeaderActionPress: (data) {
-            print("🎯 Settings header action pressed: $data");
+            if (data['actionId'] == "Cancel" || data['actionId'] == "Done") {
+              settingsNavigationCommand.setState(NavigationPresets.pop);
+            }
           },
           onAppear: (data) => print("✅ Settings screen appeared: $data"),
-          builder: () => SettingsScreen(),
+          
+          // 🎭 SMART SUSPENSION: Use placeholder mode for smoother UX
+          builder: () => DCFSuspensionManager.getStore("settings_screen").suspensionView(
+            mode: DCFSuspensionMode.placeholder,
+            reason: "Settings screen with placeholder",
+            placeholder: DCFView(
+              layout: LayoutProps(
+                flex: 1,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              children: [
+                DCFText(
+                  content: "Loading Settings...",
+                  textProps: DCFTextProps(fontSize: 16, color: Colors.grey),
+                ),
+              ],
+            ),
+            children: [SettingsScreen()],
+          ),
         ),
 
+        // 🎯 ANIMATED MODAL SCREEN - Full suspension for heavy animations
         DCFScreen(
           name: "animated_modal_screen",
           presentationStyle: DCFPresentationStyle.push,
-           renderChildren: animatedModalNavCommand.state != null,
-
           navigationCommand: animatedModalNavCommand.state,
           onNavigationEvent: (data) {
-            print("🚀 Detail navigation event: $data");
-            print("modal command: ${animatedModalNavigationCommand.state}");
+            print("🚀 Animated modal navigation event: $data");
             animatedModalNavigationCommand.setState(null);
+            
+            // 🎭 SUSPEND after navigation (heavy animations)
+            if (data['action'] == 'pop') {
+              DCFSuspensionManager.suspend("animated_modal_screen", 
+                reason: "Heavy animation screen cleanup");
+            }
           },
           onAppear: (data) => print("✅ Animated modal screen appeared: $data"),
           onDisappear: (data) => print("❌ Animated modal screen disappeared: $data"),
@@ -126,10 +175,57 @@ class StackScreenRegistry extends StatefulComponent {
           onDeactivate: (data) => print("❌ Animated modal screen deactivated: $data"),
           onReceiveParams: (data) => print("📬 Animated modal screen received params: $data"),
           
-          // renderChildren: animatedModalNavigationCommand != null,
-          builder: () => AnimatedModalScreen(),
+          // 🎭 SMART SUSPENSION: Full suspension for performance
+          builder: () => DCFSuspensionManager.getStore("animated_modal_screen").suspensionView(
+            mode: DCFSuspensionMode.full, // Completely suspended when not needed
+            reason: "Heavy animation performance optimization",
+           
+            children: [AnimatedModalScreen()],
+          ),
         ),
       ],
     );
+  }
+}
+
+// 🎯 SMART NAVIGATION HELPERS
+class SmartNavigationHelpers {
+  /// Navigate to profile with smart activation
+  static void navigateToProfile() {
+    print("Navigate to Profile pressed");
+    
+    // 🎭 ACTIVATE before navigation
+    DCFSuspensionManager.activate("profile_screen", 
+      reason: "User navigation request");
+    
+    profileNavigationCommand.setState(
+      NavigationPresets.pushTo("profile_screen")
+    );
+  }
+  
+  /// Navigate to settings with smart activation
+  static void navigateToSettings() {
+    print("Navigate to Settings pressed");
+    
+    // 🎭 ACTIVATE before navigation
+    DCFSuspensionManager.activate("settings_screen", 
+      reason: "User navigation request");
+    
+    settingsNavigationCommand.setState(
+      NavigationPresets.pushTo("settings_screen")
+    );
+  }
+  
+  /// Smart memory management - suspend all except active
+  static void optimizeMemory(String activeScreen) {
+    DCFSuspensionManager.suspendAllExcept(activeScreen);
+  }
+  
+  /// Print suspension statistics for debugging
+  static void printStats() {
+    final stats = DCFSuspensionManager.getStats();
+    print("🎭 Suspension Stats: ${stats['suspendedCount']} suspended, ${stats['activeCount']} active");
+    print("   Suspended: ${stats['suspended']}");
+    print("   Active: ${stats['active']}");
   }
 }
