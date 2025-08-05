@@ -171,11 +171,7 @@ class StackScreenRegistry extends StatefulComponent {
             print("🚀 Animated modal navigation event: $data");
             animatedModalNavigationCommand.setState(null);
             
-            if (data['action'] == 'pop') {
-              // Suspend immediately after navigation
-              DCFSuspensionManager.suspend("animated_modal_screen", 
-                reason: "Heavy animation screen cleanup");
-            }
+            print(data['action']);
           },
           onAppear: (data) {
             print("✅ Animated modal screen appeared: $data");
@@ -205,55 +201,3 @@ class StackScreenRegistry extends StatefulComponent {
   }
 }
 
-// 🎯 SMART NAVIGATION HELPERS
-class SmartNavigationHelpers {
-  /// Navigate to profile with smart activation
-  static void navigateToProfile() {
-    print("Navigate to Profile pressed");
-    
-    DCFSuspensionManager.activate("profile_screen", 
-      reason: "User navigation request");
-    
-    Future.delayed(Duration(milliseconds: 50), () {
-      profileNavigationCommand.setState(
-        NavigationPresets.pushTo("profile_screen")
-      );
-    });
-  }
-  
-  /// Navigate to settings with smart activation
-  static void navigateToSettings() {
-    print("Navigate to Settings pressed");
-    
-    DCFSuspensionManager.activate("settings_screen", 
-      reason: "User navigation request");
-    
-    Future.delayed(Duration(milliseconds: 50), () {
-      settingsNavigationCommand.setState(
-        NavigationPresets.pushTo("settings_screen")
-      );
-    });
-  }
-  
-  /// Navigate to animated modal with proper activation
-  static void navigateToAnimatedModal() {
-    print("Navigate to Animated Modal pressed");
-    
-    DCFSuspensionManager.activate("animated_modal_screen", 
-      reason: "Animation screen requested");
-    
-    Future.delayed(Duration(milliseconds: 100), () {
-      animatedModalNavigationCommand.setState(
-        NavigationPresets.pushTo("animated_modal_screen")
-      );
-    });
-  }
-  
-  /// Print suspension statistics for debugging
-  static void printStats() {
-    final stats = DCFSuspensionManager.getStats();
-    print("🎭 Suspension Stats: ${stats['suspendedCount']} suspended, ${stats['activeCount']} active");
-    print("   Suspended: ${stats['suspended']}");
-    print("   Active: ${stats['active']}");
-  }
-}
