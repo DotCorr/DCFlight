@@ -45,7 +45,7 @@ import Flutter
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         _ = YogaShadowTree.shared
         _ = DCFLayoutManager.shared
-
+        runInternalModules()
         setupSizeChangeDetection()
         
         DispatchQueue.main.async {
@@ -351,4 +351,10 @@ private func cleanupExistingTabControllers(from rootViewController: UIViewContro
     if removedCount > 0 {
         print("✅ Cleaned up \(removedCount) existing tab controller(s)")
     }
+}
+
+
+
+internal func runInternalModules(){
+    FrameworkComponentsReg.registerComponents()
 }

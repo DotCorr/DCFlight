@@ -15,6 +15,9 @@ export 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dar
 // Re-export the component classes from the new implementation
 export 'component/component.dart';
 export 'component/fragment.dart';
+// Re-export the extensions
+export 'component/suspension_extension/suspension.dart';
+export 'component/suspension_extension/engine.dart';
 // Re-export element and node classes
 export 'component/component_node.dart';
 export 'component/dcf_element.dart';
