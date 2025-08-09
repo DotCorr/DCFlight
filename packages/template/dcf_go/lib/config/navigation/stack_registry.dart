@@ -13,7 +13,7 @@ class StackScreenRegistry extends StatefulComponent {
     final settingsNavCommand = useStore(settingsNavigationCommand);
     final animatedModalNavCommand = useStore(animatedModalNavigationCommand);
 
-    return DCFFragment(
+    return DCFView(
       children: [
         DCFScreen(
           name: "home_screen",
@@ -51,15 +51,7 @@ class StackScreenRegistry extends StatefulComponent {
             }
           },
           onAppear: (data) => print("✅ Home screen appeared: $data"),
-          builder: () {
-            final isSuspended = homeNavCommand.state == null;
-            if (isSuspended) {
-              print("⏸️ Home screen is suspended - not rendering children");
-              return DCFFragment(children: []); // TRULY EMPTY
-            }
-            print("🏗️ Home screen is active - rendering children");
-            return HomeScreen();
-          },
+          builder: () => HomeScreen(),
         ),
 
         // 🎯 Profile screen with edit button
@@ -95,7 +87,7 @@ class StackScreenRegistry extends StatefulComponent {
             final isSuspended = profileNavCommand.state == null;
             if (isSuspended) {
               print("⏸️ Profile screen is suspended - not rendering children");
-              return DCFFragment(children: []); // TRULY EMPTY
+              return DCFView(children: []); // TRULY EMPTY
             }
             print("🏗️ Profile screen is active - rendering children");
             return ProfileScreen();
@@ -131,7 +123,7 @@ class StackScreenRegistry extends StatefulComponent {
             final isSuspended = settingsNavCommand.state == null;
             if (isSuspended) {
               print("⏸️ Settings screen is suspended - not rendering children");
-              return DCFFragment(
+              return DCFView(
                 children: [], // TRULY EMPTY
               );
             }
@@ -156,7 +148,7 @@ class StackScreenRegistry extends StatefulComponent {
               print(
                 "⏸️ Animated modal screen is suspended - not rendering children",
               );
-              return DCFFragment(children: []);
+              return DCFView(children: []);
             }
 
             return AnimatedModalScreen();

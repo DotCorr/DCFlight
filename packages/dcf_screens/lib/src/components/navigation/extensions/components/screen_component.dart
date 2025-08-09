@@ -105,14 +105,17 @@ class DCFScreen extends StatelessComponent
     if (onDisappear != null) eventMap['onDisappear'] = onDisappear!;
     if (onActivate != null) eventMap['onActivate'] = onActivate!;
     if (onDeactivate != null) eventMap['onDeactivate'] = onDeactivate!;
-    if (onNavigationEvent != null)
+    if (onNavigationEvent != null) {
       eventMap['onNavigationEvent'] = onNavigationEvent!;
-    if (navigationStateCleaner != null)
+    }
+    if (navigationStateCleaner != null) {
       eventMap['onNavigationEvent'] = onNavigationEventWithCleanup;
+    }
 
     if (onReceiveParams != null) eventMap['onReceiveParams'] = onReceiveParams!;
-    if (onHeaderActionPress != null)
+    if (onHeaderActionPress != null) {
       eventMap['onHeaderActionPress'] = onHeaderActionPress!;
+    }
 
     // Build props map (same as before)
     Map<String, dynamic> props = {

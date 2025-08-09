@@ -10,7 +10,6 @@ final settingsNavigationCommand = Store<ScreenNavigationCommand?>(null);
 final animatedModalNavigationCommand = Store<ScreenNavigationCommand?>(null);
 
 void main() {
-  initializeSuspensionSupport();
   setupDCFReanimated();
 
   DCFlight.start(app: MyStackApp());
