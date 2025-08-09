@@ -16,7 +16,6 @@ import Flutter
     }
     
     @objc public static func registerComponents() {
-        DCFComponentRegistry.shared.registerComponent(
-            "SuspensionView", componentClass: DCFSuspensionViewComponent.self)
+        // register the framework level components here
     }
 }
