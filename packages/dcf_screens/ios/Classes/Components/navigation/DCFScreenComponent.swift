@@ -734,6 +734,11 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return
         }
 
+        guard navigationController.viewControllers.count > 1 else {
+            print("ℹ️ DCFScreenComponent: Already at root, no need to pop")
+            return
+        }
+
         let rootViewController = navigationController.viewControllers.first
         var rootScreenName: String?
         
@@ -744,19 +749,39 @@ class DCFScreenComponent: NSObject, DCFComponent {
             }
         }
 
-        navigationController.popToRootViewController(animated: animated)
-
-        propagateEvent(
-            on: sourceContainer.contentView,
-            eventName: "onDisappear",
-            data: ["screenName": sourceContainer.name]
-        )
+        let allViewControllersExceptRoot = Array(navigationController.viewControllers.dropFirst())
         
-        propagateEvent(
-            on: sourceContainer.contentView,
-            eventName: "onDeactivate",
-            data: ["screenName": sourceContainer.name]
-        )
+        navigationController.popToRootViewController(animated: animated)
+        
+        for viewController in allViewControllersExceptRoot {
+            for (_, container) in DCFScreenComponent.screenRegistry {
+                if container.viewController == viewController {
+                    propagateEvent(
+                        on: container.contentView,
+                        eventName: "onDisappear",
+                        data: ["screenName": container.name]
+                    )
+                    
+                    propagateEvent(
+                        on: container.contentView,
+                        eventName: "onDeactivate",
+                        data: ["screenName": container.name]
+                    )
+                    
+                    propagateEvent(
+                        on: container.contentView,
+                        eventName: "onNavigationEvent",
+                        data: [
+                            "action": "popToRoot",
+                            "screenName": container.name,
+                            "targetScreen": rootScreenName as Any,
+                            "animated": animated
+                        ]
+                    )
+                    break
+                }
+            }
+        }
 
         if let rootName = rootScreenName {
             for (_, container) in DCFScreenComponent.screenRegistry {
@@ -777,18 +802,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
             }
         }
 
-        propagateEvent(
-            on: sourceContainer.contentView,
-            eventName: "onNavigationEvent",
-            data: [
-                "action": "popToRoot",
-                "animated": animated
-            ]
-        )
-
-        print("✅ DCFScreenComponent: Popped to root from '\(sourceContainer.name)'")
+        print("✅ DCFScreenComponent: Popped to root from '\(sourceContainer.name)' to '\(rootScreenName ?? "unknown")'")
     }
-
     private func replaceCurrentScreen(with screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         guard let navigationController = getCurrentActiveNavigationController() else {
             print("❌ DCFScreenComponent: No navigation controller found for replace")
