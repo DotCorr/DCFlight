@@ -7,13 +7,12 @@ import "package:dcflight/dcflight.dart";
 class StackScreenRegistry extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    // Use global navigation commands
     final homeNavCommand = useStore(homeNavigationCommand);
     final profileNavCommand = useStore(profileNavigationCommand);
     final settingsNavCommand = useStore(settingsNavigationCommand);
     final animatedModalNavCommand = useStore(animatedModalNavigationCommand);
 
-    return DCFFragment(
+    return DCFView(
       children: [
         DCFScreen(
           name: "home_screen",
@@ -24,7 +23,6 @@ class StackScreenRegistry extends StatefulComponent {
           },
           pushConfig: DCFPushConfig(
             title: "Home",
-
             prefixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Animation",
@@ -35,10 +33,8 @@ class StackScreenRegistry extends StatefulComponent {
             ],
           ),
           navigationCommand: homeNavCommand.state,
-
           onHeaderActionPress: (data) {
             if (data['actionId'] == "anim_action") {
-              // Open drawer navigation
               animatedModalNavCommand.setState(
                 NavigationPresets.pushTo(
                   "animated_modal_screen",
@@ -51,25 +47,15 @@ class StackScreenRegistry extends StatefulComponent {
             }
           },
           onAppear: (data) => print("✅ Home screen appeared: $data"),
-          builder: () {
-            final isSuspended = homeNavCommand.state == null;
-            if (isSuspended) {
-              print("⏸️ Home screen is suspended - not rendering children");
-              return DCFFragment(children: []); // TRULY EMPTY
-            }
-            print("🏗️ Home screen is active - rendering children");
-            return HomeScreen();
-          },
+          builder: () => HomeScreen(),
         ),
 
-        // 🎯 Profile screen with edit button
         DCFScreen(
           name: "profile_screen",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Profile",
             backButtonTitle: "Home",
-
             suffixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Settings",
@@ -86,6 +72,10 @@ class StackScreenRegistry extends StatefulComponent {
           },
           onNavigationEvent: (data) {
             print("🚀 Profile navigation event: $data");
+            final action = data['action'] as String?;
+            if (action == 'popToRoot') {
+              profileNavigationCommand.setState(null);
+            }
           },
           onHeaderActionPress: (data) {
             print("🎯 Profile header action pressed: $data");
@@ -95,14 +85,13 @@ class StackScreenRegistry extends StatefulComponent {
             final isSuspended = profileNavCommand.state == null;
             if (isSuspended) {
               print("⏸️ Profile screen is suspended - not rendering children");
-              return DCFFragment(children: []); // TRULY EMPTY
+              return DCFView(children: []);
             }
             print("🏗️ Profile screen is active - rendering children");
             return ProfileScreen();
           },
         ),
 
-        // 🎯 Settings screen with cancel/done pattern
         DCFScreen(
           navigationStateCleaner: (v) {
             settingsNavigationCommand.setState(null);
@@ -112,7 +101,6 @@ class StackScreenRegistry extends StatefulComponent {
           pushConfig: DCFPushConfig(
             title: "Settings",
             backButtonTitle: "Back",
-            // Add cancel/done buttons
             prefixActions: [
               DCFPushHeaderActionConfig.withTextOnly(title: "Cancel"),
             ],
@@ -121,18 +109,23 @@ class StackScreenRegistry extends StatefulComponent {
             ],
           ),
           navigationCommand: settingsNavCommand.state,
-
           onHeaderActionPress: (data) {
             print("🎯 Settings header action pressed: $data");
           },
           onAppear: (data) => print("✅ Settings screen appeared: $data"),
-
+          onNavigationEvent: (data) {
+            print("🚀 Settings navigation event: $data");
+            final action = data['action'] as String?;
+            if (action == 'popToRoot') {
+              settingsNavigationCommand.setState(null);
+            }
+          },
           builder: () {
             final isSuspended = settingsNavCommand.state == null;
             if (isSuspended) {
               print("⏸️ Settings screen is suspended - not rendering children");
-              return DCFFragment(
-                children: [], // TRULY EMPTY
+              return DCFView(
+                children: [],
               );
             }
             print("🏗️ Settings screen is active - rendering children");
@@ -143,22 +136,26 @@ class StackScreenRegistry extends StatefulComponent {
         DCFScreen(
           name: "animated_modal_screen",
           presentationStyle: DCFPresentationStyle.push,
-
           navigationCommand: animatedModalNavCommand.state,
           navigationStateCleaner: (v) {
             print("🧹 Cleaning up animated modal navigation state: $v");
             animatedModalNavigationCommand.setState(null);
           },
-
+          onNavigationEvent: (data) {
+            print("🚀 Animated modal navigation event: $data");
+            final action = data['action'] as String?;
+            if (action == 'popToRoot') {
+              animatedModalNavigationCommand.setState(null);
+            }
+          },
           builder: () {
             final isSuspended = animatedModalNavCommand.state == null;
             if (isSuspended) {
               print(
                 "⏸️ Animated modal screen is suspended - not rendering children",
               );
-              return DCFFragment(children: []);
+              return DCFView(children: []);
             }
-
             return AnimatedModalScreen();
           },
         ),
@@ -166,3 +163,4 @@ class StackScreenRegistry extends StatefulComponent {
     );
   }
 }
+
