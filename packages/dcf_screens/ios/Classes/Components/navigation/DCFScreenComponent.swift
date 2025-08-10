@@ -131,7 +131,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
             if let targetScreenName = pushToData["screenName"] as? String {
                 let animated = pushToData["animated"] as? Bool ?? true
                 let params = pushToData["params"] as? [String: Any]
-                pushToScreen(targetScreenName, animated: animated, params: params, from: screenContainer)
+                pushToScreenWithDelegates(targetScreenName, animated: animated, params: params, from: screenContainer)
+
             }
         }
 
@@ -140,7 +141,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 let animated = modalData["animated"] as? Bool ?? true
                 let params = modalData["params"] as? [String: Any]
                 let presentationStyle = modalData["presentationStyle"] as? String
-                presentModalScreen(targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, from: screenContainer)
+                presentModalWithDelegates(targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, from: screenContainer)
+
             }
         }
 
@@ -172,7 +174,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         if let popData = commandData["pop"] as? [String: Any] {
             let animated = popData["animated"] as? Bool ?? true
             let result = popData["result"] as? [String: Any]
-            popCurrentScreen(animated: animated, result: result, from: screenContainer)
+            popCurrentScreenWithDelegates(animated: animated, result: result, from: screenContainer)
         }
 
         if let popToData = commandData["popTo"] as? [String: Any] {
@@ -198,7 +200,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         if let dismissData = commandData["dismissModal"] as? [String: Any] {
             let animated = dismissData["animated"] as? Bool ?? true
             let result = dismissData["result"] as? [String: Any]
-            dismissModalScreen(animated: animated, result: result, from: screenContainer)
+            dismissModalWithDelegates(animated: animated, result: result, from: screenContainer)
         }
 
         if let dismissSheetData = commandData["dismissSheet"] as? [String: Any] {
@@ -2315,3 +2317,356 @@ class DCFHeaderActionHandler: NSObject {
         }
     }
 }
+
+
+
+// MARK: - Navigation Delegate Support
+extension DCFScreenComponent {
+    
+    /// Shared instance for delegate management
+    static let delegateManager = DCFScreenComponent()
+    
+    /// Track programmatic vs user navigation
+    static var isProgrammaticNavigation = false
+    
+    /// Setup navigation controller delegate when pushing
+    private func setupNavigationDelegate(_ navigationController: UINavigationController) {
+        if navigationController.delegate !== DCFScreenComponent.delegateManager {
+            navigationController.delegate = DCFScreenComponent.delegateManager
+            print("🎯 DCFScreenComponent: Set navigation controller delegate")
+        }
+        
+        if let interactivePopGestureRecognizer = navigationController.interactivePopGestureRecognizer {
+            interactivePopGestureRecognizer.delegate = DCFScreenComponent.delegateManager
+        }
+    }
+    
+    /// Setup modal presentation delegate when presenting
+    private func setupModalDelegate(_ viewController: UIViewController) {
+        if let presentationController = viewController.presentationController {
+            presentationController.delegate = DCFScreenComponent.delegateManager
+            print("🎯 DCFScreenComponent: Set modal presentation delegate")
+        }
+        
+        if #available(iOS 15.0, *) {
+            if let sheetController = viewController.sheetPresentationController {
+                sheetController.delegate = DCFScreenComponent.delegateManager
+                print("🎯 DCFScreenComponent: Set sheet presentation delegate")
+            }
+        }
+    }
+    
+    /// Modified pushToScreen to setup delegates
+    private func pushToScreenWithDelegates(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
+        print("📱 DCFScreenComponent: Executing push navigation to '\(screenName)'")
+
+        let pushContextKey = createContextKey(screenName: screenName, presentationStyle: "push")
+
+        let targetContainer: ScreenContainer
+        if let existing = DCFScreenComponent.screenRegistry[pushContextKey] {
+            targetContainer = existing
+            print("♻️ DCFScreenComponent: Reusing existing push container for '\(screenName)'")
+        } else {
+            targetContainer = ScreenContainer(name: screenName, presentationStyle: "push")
+            DCFScreenComponent.screenRegistry[pushContextKey] = targetContainer
+            print("✅ DCFScreenComponent: Created new push container for '\(screenName)'")
+        }
+
+        guard let navigationController = getCurrentActiveNavigationController() else {
+            print("❌ DCFScreenComponent: No active navigation controller found for push")
+            return
+        }
+
+        // Setup delegates to catch user-initiated navigation
+        setupNavigationDelegate(navigationController)
+
+        if navigationController.viewControllers.contains(targetContainer.viewController) {
+            print("⚠️ DCFScreenComponent: View controller for '\(screenName)' is already in navigation stack, skipping push")
+            return
+        }
+
+        configureScreenForPush(targetContainer)
+
+        targetContainer.contentView.isHidden = false
+        targetContainer.contentView.alpha = 1.0
+        targetContainer.contentView.backgroundColor = UIColor.systemBackground
+
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "source": sourceContainer.name]
+            )
+        }
+
+        // Mark as programmatic navigation
+        DCFScreenComponent.isProgrammaticNavigation = true
+        navigationController.pushViewController(targetContainer.viewController, animated: animated)
+
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onDisappear",
+            data: ["screenName": sourceContainer.name]
+        )
+        
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onDeactivate",
+            data: ["screenName": sourceContainer.name]
+        )
+        
+        propagateEvent(
+            on: targetContainer.contentView,
+            eventName: "onAppear",
+            data: ["screenName": screenName]
+        )
+        
+        propagateEvent(
+            on: targetContainer.contentView,
+            eventName: "onActivate",
+            data: ["screenName": screenName]
+        )
+
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onNavigationEvent",
+            data: [
+                "action": "pushTo",
+                "targetScreen": screenName,
+                "animated": animated
+            ]
+        )
+
+        print("✅ DCFScreenComponent: Successfully pushed container for '\(screenName)'")
+    }
+    
+    /// Modified presentModalScreen to setup delegates
+    private func presentModalWithDelegates(_ screenName: String, animated: Bool, params: [String: Any]?, presentationStyle: String?, from sourceContainer: ScreenContainer) {
+        print("📱 DCFScreenComponent: Executing modal presentation for '\(screenName)'")
+
+        let modalContextKey = createContextKey(screenName: screenName, presentationStyle: "modal")
+
+        let targetContainer: ScreenContainer
+        if let existing = DCFScreenComponent.screenRegistry[modalContextKey] {
+            targetContainer = existing
+            print("♻️ DCFScreenComponent: Reusing existing modal container for '\(screenName)'")
+        } else {
+            targetContainer = ScreenContainer(name: screenName, presentationStyle: "modal")
+            DCFScreenComponent.screenRegistry[modalContextKey] = targetContainer
+            print("✅ DCFScreenComponent: Created new modal container for '\(screenName)'")
+        }
+
+        guard let presentingViewController = getCurrentPresentingViewController() else {
+            print("❌ DCFScreenComponent: No suitable presenting view controller found")
+            return
+        }
+
+        targetContainer.contentView.isHidden = false
+        targetContainer.contentView.alpha = 1.0
+        targetContainer.contentView.backgroundColor = UIColor.systemBackground
+
+        configureModalPresentation(targetContainer: targetContainer, presentationStyle: presentationStyle)
+        
+        // Setup delegates to catch user-initiated dismissals
+        setupModalDelegate(targetContainer.viewController)
+
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "source": sourceContainer.name]
+            )
+        }
+
+        presentingViewController.present(targetContainer.viewController, animated: animated) {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onAppear",
+                data: ["screenName": screenName]
+            )
+            
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onActivate",
+                data: ["screenName": screenName]
+            )
+
+            propagateEvent(
+                on: sourceContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "presentModal",
+                    "targetScreen": screenName,
+                    "animated": animated
+                ]
+            )
+        }
+
+        print("✅ DCFScreenComponent: Successfully presented modal container for '\(screenName)'")
+    }
+    
+    /// Modified popCurrentScreen to mark as programmatic
+    private func popCurrentScreenWithDelegates(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
+        DCFScreenComponent.isProgrammaticNavigation = true
+        popCurrentScreen(animated: animated, result: result, from: sourceContainer)
+    }
+    
+    /// Modified dismissModalScreen to mark as programmatic
+    private func dismissModalWithDelegates(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
+        dismissModalScreen(animated: animated, result: result, from: sourceContainer)
+    }
+}
+
+// MARK: - UINavigationControllerDelegate
+extension DCFScreenComponent: UINavigationControllerDelegate {
+    
+    func navigationController(_ navigationController: UINavigationController,
+                            willShow viewController: UIViewController,
+                            animated: Bool) {
+        print("🎯 Navigation will show: \(viewController)")
+    }
+    
+    func navigationController(_ navigationController: UINavigationController,
+                            didShow viewController: UIViewController,
+                            animated: Bool) {
+        
+        let currentCount = navigationController.viewControllers.count
+        let previousCount = objc_getAssociatedObject(navigationController, "previousViewControllerCount") as? Int ?? currentCount
+        
+        objc_setAssociatedObject(navigationController, "previousViewControllerCount", currentCount, .OBJC_ASSOCIATION_RETAIN)
+        
+        guard let targetContainer = findScreenContainer(for: viewController) else {
+            print("⚠️ DCFScreenComponent: Could not find screen container for view controller")
+            return
+        }
+        
+        // Check if this was a user-initiated pop (stack got smaller and not programmatic)
+        if currentCount < previousCount && !DCFScreenComponent.isProgrammaticNavigation {
+            print("🎯 DCFScreenComponent: USER-INITIATED pop detected to '\(targetContainer.name)'")
+            
+            // Dispatch the same navigation event as programmatic pop
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "pop",
+                    "targetScreen": targetContainer.name,
+                    "animated": animated,
+                    "userInitiated": true
+                ]
+            )
+            
+            // Also trigger appear/activate events for the target screen
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onAppear",
+                data: ["screenName": targetContainer.name]
+            )
+            
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onActivate",
+                data: ["screenName": targetContainer.name]
+            )
+        }
+        
+        // Reset programmatic navigation flag
+        DCFScreenComponent.isProgrammaticNavigation = false
+        
+        print("✅ DCFScreenComponent: Navigation didShow completed for '\(targetContainer.name)'")
+    }
+    
+    private func findScreenContainer(for viewController: UIViewController) -> ScreenContainer? {
+        for (_, container) in DCFScreenComponent.screenRegistry {
+            if container.viewController == viewController {
+                return container
+            }
+        }
+        return nil
+    }
+}
+
+// MARK: - UIAdaptivePresentationControllerDelegate
+extension DCFScreenComponent: UIAdaptivePresentationControllerDelegate {
+    
+    func presentationControllerWillDismiss(_ presentationController: UIPresentationController) {
+        print("🎯 DCFScreenComponent: Modal will dismiss (user-initiated)")
+        
+        if let screenContainer = findScreenContainer(for: presentationController.presentedViewController) {
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onDisappear",
+                data: ["screenName": screenContainer.name]
+            )
+            
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onDeactivate",
+                data: ["screenName": screenContainer.name]
+            )
+        }
+    }
+    
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        print("🎯 DCFScreenComponent: Modal did dismiss (user-initiated)")
+        
+        // Find the dismissed screen
+        if let screenContainer = findScreenContainer(for: presentationController.presentedViewController) {
+            
+            // Dispatch the same event as programmatic dismissal but mark as user-initiated
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "dismissModal",
+                    "animated": true,
+                    "userInitiated": true
+                ]
+            )
+        }
+    }
+}
+
+
+
+// MARK: - UIGestureRecognizerDelegate
+extension DCFScreenComponent: UIGestureRecognizerDelegate {
+    
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Allow swipe-to-go-back gesture on navigation controllers
+        if let navigationController = getCurrentActiveNavigationController() {
+            return navigationController.viewControllers.count > 1
+        }
+        return true
+    }
+}
+
+// MARK: - UISheetPresentationControllerDelegate (iOS 15+)
+@available(iOS 15.0, *)
+extension DCFScreenComponent: UISheetPresentationControllerDelegate {
+    
+    func sheetPresentationControllerDidChangeSelectedDetentIdentifier(_ sheetPresentationController: UISheetPresentationController) {
+        print("🎯 DCFScreenComponent: Sheet detent changed")
+        
+        if let presentedViewController = sheetPresentationController.presentedViewController as? UIViewController,
+           let screenContainer = findScreenContainer(for: presentedViewController) {
+            
+            let detentId: String
+            if #available(iOS 16.0, *) {
+                detentId = sheetPresentationController.selectedDetentIdentifier?.rawValue ?? "unknown"
+            } else {
+                detentId = "detent_changed"
+            }
+            
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onSheetDetentChange",
+                data: [
+                    "detentIdentifier": detentId
+                ]
+            )
+        }
+    }
+}
+
+
