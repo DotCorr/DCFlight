@@ -132,7 +132,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 let animated = pushToData["animated"] as? Bool ?? true
                 let params = pushToData["params"] as? [String: Any]
                 pushToScreenWithDelegates(targetScreenName, animated: animated, params: params, from: screenContainer)
-
             }
         }
 
@@ -142,7 +141,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 let params = modalData["params"] as? [String: Any]
                 let presentationStyle = modalData["presentationStyle"] as? String
                 presentModalWithDelegates(targetScreenName, animated: animated, params: params, presentationStyle: presentationStyle, from: screenContainer)
-
             }
         }
 
@@ -150,7 +148,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
             if let targetScreenName = sheetData["screenName"] as? String {
                 let animated = sheetData["animated"] as? Bool ?? true
                 let params = sheetData["params"] as? [String: Any]
-                presentSheetScreen(targetScreenName, animated: animated, params: params, from: screenContainer)
+                presentSheetScreenWithDelegates(targetScreenName, animated: animated, params: params, from: screenContainer)
             }
         }
 
@@ -159,7 +157,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 let animated = popoverData["animated"] as? Bool ?? true
                 let params = popoverData["params"] as? [String: Any]
                 let sourceViewId = popoverData["sourceViewId"] as? String
-                presentPopoverScreen(targetScreenName, animated: animated, params: params, sourceViewId: sourceViewId, from: screenContainer)
+                presentPopoverScreenWithDelegates(targetScreenName, animated: animated, params: params, sourceViewId: sourceViewId, from: screenContainer)
             }
         }
 
@@ -206,13 +204,13 @@ class DCFScreenComponent: NSObject, DCFComponent {
         if let dismissSheetData = commandData["dismissSheet"] as? [String: Any] {
             let animated = dismissSheetData["animated"] as? Bool ?? true
             let result = dismissSheetData["result"] as? [String: Any]
-            dismissSheetScreen(animated: animated, result: result, from: screenContainer)
+            dismissSheetScreenWithDelegates(animated: animated, result: result, from: screenContainer)
         }
 
         if let dismissPopoverData = commandData["dismissPopover"] as? [String: Any] {
             let animated = dismissPopoverData["animated"] as? Bool ?? true
             let result = dismissPopoverData["result"] as? [String: Any]
-            dismissPopoverScreen(animated: animated, result: result, from: screenContainer)
+            dismissPopoverScreenWithDelegates(animated: animated, result: result, from: screenContainer)
         }
 
         if let dismissOverlayData = commandData["dismissOverlay"] as? [String: Any] {
@@ -221,7 +219,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
             dismissOverlayScreen(animated: animated, result: result, from: screenContainer)
         }
     }
-
     private func pushToScreen(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
         print("📱 DCFScreenComponent: Executing push navigation to '\(screenName)'")
 
@@ -2505,6 +2502,151 @@ extension DCFScreenComponent {
         print("✅ DCFScreenComponent: Successfully presented modal container for '\(screenName)'")
     }
     
+    private func presentSheetScreenWithDelegates(_ screenName: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
+        print("📱 DCFScreenComponent: Executing sheet presentation for '\(screenName)' with delegates")
+
+        let sheetContextKey = createContextKey(screenName: screenName, presentationStyle: "sheet")
+
+        let targetContainer: ScreenContainer
+        if let existing = DCFScreenComponent.screenRegistry[sheetContextKey] {
+            targetContainer = existing
+            print("♻️ DCFScreenComponent: Reusing existing sheet container for '\(screenName)'")
+        } else {
+            targetContainer = ScreenContainer(name: screenName, presentationStyle: "sheet")
+            DCFScreenComponent.screenRegistry[sheetContextKey] = targetContainer
+            print("✅ DCFScreenComponent: Created new sheet container for '\(screenName)'")
+        }
+
+        guard let presentingViewController = getCurrentPresentingViewController() else {
+            print("❌ DCFScreenComponent: No suitable presenting view controller found for sheet")
+            return
+        }
+
+        targetContainer.contentView.isHidden = false
+        targetContainer.contentView.alpha = 1.0
+        targetContainer.contentView.backgroundColor = UIColor.systemBackground
+
+        if #available(iOS 15.0, *) {
+            targetContainer.viewController.modalPresentationStyle = .pageSheet
+            if let sheet = targetContainer.viewController.sheetPresentationController {
+                configureSheetDetents(sheet: sheet, for: targetContainer)
+            }
+        } else {
+            targetContainer.viewController.modalPresentationStyle = .formSheet
+        }
+
+        setupModalDelegate(targetContainer.viewController)
+
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "source": sourceContainer.name]
+            )
+        }
+
+        presentingViewController.present(targetContainer.viewController, animated: animated) {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onAppear",
+                data: ["screenName": screenName]
+            )
+            
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onActivate",
+                data: ["screenName": screenName]
+            )
+
+            propagateEvent(
+                on: sourceContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "presentSheet",
+                    "targetScreen": screenName,
+                    "animated": animated
+                ]
+            )
+        }
+
+        print("✅ DCFScreenComponent: Successfully presented sheet container for '\(screenName)' with delegates")
+    }
+
+    private func presentPopoverScreenWithDelegates(_ screenName: String, animated: Bool, params: [String: Any]?, sourceViewId: String?, from sourceContainer: ScreenContainer) {
+        print("📱 DCFScreenComponent: Executing popover presentation for '\(screenName)' with delegates")
+
+        let popoverContextKey = createContextKey(screenName: screenName, presentationStyle: "popover")
+
+        let targetContainer: ScreenContainer
+        if let existing = DCFScreenComponent.screenRegistry[popoverContextKey] {
+            targetContainer = existing
+            print("♻️ DCFScreenComponent: Reusing existing popover container for '\(screenName)'")
+        } else {
+            targetContainer = ScreenContainer(name: screenName, presentationStyle: "popover")
+            DCFScreenComponent.screenRegistry[popoverContextKey] = targetContainer
+            print("✅ DCFScreenComponent: Created new popover container for '\(screenName)'")
+        }
+
+        guard let presentingViewController = getCurrentPresentingViewController() else {
+            print("❌ DCFScreenComponent: No suitable presenting view controller found for popover")
+            return
+        }
+
+        targetContainer.contentView.isHidden = false
+        targetContainer.contentView.alpha = 1.0
+        targetContainer.contentView.backgroundColor = UIColor.systemBackground
+
+        targetContainer.viewController.modalPresentationStyle = .popover
+
+        if let popoverController = targetContainer.viewController.popoverPresentationController {
+            configurePopoverController(popoverController, for: targetContainer, presentingViewController: presentingViewController)
+        }
+
+        setupModalDelegate(targetContainer.viewController)
+
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "source": sourceContainer.name]
+            )
+        }
+
+        presentingViewController.present(targetContainer.viewController, animated: animated) {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onAppear",
+                data: ["screenName": screenName]
+            )
+            
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onActivate",
+                data: ["screenName": screenName]
+            )
+
+            propagateEvent(
+                on: sourceContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "presentPopover",
+                    "targetScreen": screenName,
+                    "animated": animated
+                ]
+            )
+        }
+
+        print("✅ DCFScreenComponent: Successfully presented popover container for '\(screenName)' with delegates")
+    }
+
+    private func dismissSheetScreenWithDelegates(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
+        dismissSheetScreen(animated: animated, result: result, from: sourceContainer)
+    }
+
+    private func dismissPopoverScreenWithDelegates(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
+        dismissPopoverScreen(animated: animated, result: result, from: sourceContainer)
+    }
+    
     /// Modified popCurrentScreen to mark as programmatic
     private func popCurrentScreenWithDelegates(animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer) {
         DCFScreenComponent.isProgrammaticNavigation = true
@@ -2521,30 +2663,55 @@ extension DCFScreenComponent {
 extension DCFScreenComponent: UINavigationControllerDelegate {
     
     func navigationController(_ navigationController: UINavigationController,
-                            willShow viewController: UIViewController,
-                            animated: Bool) {
-        print("🎯 Navigation will show: \(viewController)")
-    }
-    
-    func navigationController(_ navigationController: UINavigationController,
                             didShow viewController: UIViewController,
                             animated: Bool) {
         
         let currentCount = navigationController.viewControllers.count
-        let previousCount = objc_getAssociatedObject(navigationController, "previousViewControllerCount") as? Int ?? currentCount
+        let previousCountKey = UnsafeRawPointer(bitPattern: "previousViewControllerCount".hashValue)!
+        let previousCount = objc_getAssociatedObject(navigationController, previousCountKey) as? Int ?? currentCount
         
-        objc_setAssociatedObject(navigationController, "previousViewControllerCount", currentCount, .OBJC_ASSOCIATION_RETAIN)
+        print("🔍 Navigation Debug: currentCount=\(currentCount), previousCount=\(previousCount), isProgrammatic=\(DCFScreenComponent.isProgrammaticNavigation)")
+        
+        objc_setAssociatedObject(navigationController, previousCountKey, currentCount, .OBJC_ASSOCIATION_RETAIN)
         
         guard let targetContainer = findScreenContainer(for: viewController) else {
             print("⚠️ DCFScreenComponent: Could not find screen container for view controller")
             return
         }
         
-        // Check if this was a user-initiated pop (stack got smaller and not programmatic)
         if currentCount < previousCount && !DCFScreenComponent.isProgrammaticNavigation {
             print("🎯 DCFScreenComponent: USER-INITIATED pop detected to '\(targetContainer.name)'")
             
-            // Dispatch the same navigation event as programmatic pop
+            // CORRECT: Get the actual navigation stack and find what was popped
+            let previousViewControllers = objc_getAssociatedObject(navigationController, "previousViewControllers") as? [UIViewController] ?? []
+            let currentViewControllers = navigationController.viewControllers
+            
+            // Find screens that were actually removed from the stack
+            let poppedViewControllers = previousViewControllers.filter { !currentViewControllers.contains($0) }
+            
+            // Clean up only the actually popped screens
+            for poppedViewController in poppedViewControllers {
+                for (_, container) in DCFScreenComponent.screenRegistry {
+                    if container.viewController == poppedViewController {
+                        propagateEvent(
+                            on: container.contentView,
+                            eventName: "onNavigationCleanup",
+                            data: [
+                                "action": "pop",
+                                "screenName": container.name,
+                                "userInitiated": true
+                            ]
+                        )
+                        print("🧹 Cleaned up actually popped screen: \(container.name)")
+                        break
+                    }
+                }
+            }
+            
+            objc_setAssociatedObject(navigationController, "previousViewControllers", currentViewControllers, .OBJC_ASSOCIATION_RETAIN)
+            objc_setAssociatedObject(navigationController, "previousViewControllers", navigationController.viewControllers, .OBJC_ASSOCIATION_RETAIN)
+            
+            // Send navigation event to destination screen
             propagateEvent(
                 on: targetContainer.contentView,
                 eventName: "onNavigationEvent",
@@ -2556,7 +2723,7 @@ extension DCFScreenComponent: UINavigationControllerDelegate {
                 ]
             )
             
-            // Also trigger appear/activate events for the target screen
+            // Trigger appear/activate events for the target screen
             propagateEvent(
                 on: targetContainer.contentView,
                 eventName: "onAppear",
@@ -2570,9 +2737,7 @@ extension DCFScreenComponent: UINavigationControllerDelegate {
             )
         }
         
-        // Reset programmatic navigation flag
         DCFScreenComponent.isProgrammaticNavigation = false
-        
         print("✅ DCFScreenComponent: Navigation didShow completed for '\(targetContainer.name)'")
     }
     

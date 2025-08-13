@@ -1,6 +1,7 @@
 import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/app.dart";
 import "package:dcf_go/main.dart";
+import "package:dcf_reanimated/dcf_reanimated.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
@@ -20,6 +21,11 @@ class StackScreenRegistry extends StatefulComponent {
           navigationStateCleaner: (v) {
             print("🧹 Cleaning up home navigation state: $v");
             homeNavigationCommand.setState(null);
+            // 
+              animatedModalNavigationCommand.setState(null);
+          },
+          onNavigationEvent: (data) {
+            print("🚀 Home navigation event: $data");
           },
           pushConfig: DCFPushConfig(
             title: "Home",
@@ -34,7 +40,9 @@ class StackScreenRegistry extends StatefulComponent {
           ),
           navigationCommand: homeNavCommand.state,
           onHeaderActionPress: (data) {
+            
             if (data['actionId'] == "anim_action") {
+               setupDCFReanimated();
               animatedModalNavCommand.setState(
                 NavigationPresets.pushTo(
                   "animated_modal_screen",
@@ -69,13 +77,10 @@ class StackScreenRegistry extends StatefulComponent {
           navigationStateCleaner: (v) {
             print("🧹 Cleaning up profile navigation state: $v");
             profileNavigationCommand.setState(null);
+              animatedModalNavigationCommand.setState(null);
           },
           onNavigationEvent: (data) {
             print("🚀 Profile navigation event: $data");
-            final action = data['action'] as String?;
-            if (action == 'popToRoot') {
-              profileNavigationCommand.setState(null);
-            }
           },
           onHeaderActionPress: (data) {
             print("🎯 Profile header action pressed: $data");
@@ -115,18 +120,12 @@ class StackScreenRegistry extends StatefulComponent {
           onAppear: (data) => print("✅ Settings screen appeared: $data"),
           onNavigationEvent: (data) {
             print("🚀 Settings navigation event: $data");
-            final action = data['action'] as String?;
-            if (action == 'popToRoot') {
-              settingsNavigationCommand.setState(null);
-            }
           },
           builder: () {
             final isSuspended = settingsNavCommand.state == null;
             if (isSuspended) {
               print("⏸️ Settings screen is suspended - not rendering children");
-              return DCFView(
-                children: [],
-              );
+              return DCFView(children: []);
             }
             print("🏗️ Settings screen is active - rendering children");
             return SettingsScreen();
@@ -143,10 +142,6 @@ class StackScreenRegistry extends StatefulComponent {
           },
           onNavigationEvent: (data) {
             print("🚀 Animated modal navigation event: $data");
-            final action = data['action'] as String?;
-            if (action == 'popToRoot') {
-              animatedModalNavigationCommand.setState(null);
-            }
           },
           builder: () {
             final isSuspended = animatedModalNavCommand.state == null;
@@ -163,4 +158,3 @@ class StackScreenRegistry extends StatefulComponent {
     );
   }
 }
-
