@@ -4,14 +4,31 @@ import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
+  late String animationController;
+  late String animationController2;
+  late String animationController3;
+
+  @override
+  componentDidMount() {
+   
+  }
+
+  @override
+  componentWillUnmount() {
+    animationController = '';
+    animationController2 = '';
+    animationController3 = '';
+  }
+
+
   @override
   DCFComponentNode render() {
+    @override
     final modalNavigationCommand = useStore(animatedModalNavigationCommand);
-
     // 🎬 ONE animation controller only
-    final animationController = useAnimationController();
-    final animationController2 = useAnimationController();
-    final animationController3 = useAnimationController();
+    animationController = useAnimationController();
+    animationController2 = useAnimationController();
+    animationController3 = useAnimationController();
 
     return DCFFragment(
       children: [
@@ -164,7 +181,7 @@ class AnimatedModalScreen extends StatefulComponent {
                 borderRadius: 25,
               ),
               onPress: (v) {
-                modalNavigationCommand.setState(NavigationPresets.dismissModal);
+                modalNavigationCommand.setState(NavigationPresets.pop);
               },
             ),
           ],
