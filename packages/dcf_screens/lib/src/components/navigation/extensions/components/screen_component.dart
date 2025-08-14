@@ -87,18 +87,27 @@ class DCFScreen extends StatelessComponent
 
   @override
   DCFComponentNode render() {
-    onNavigationEventWithCleanup(data) {
-      if (navigationStateCleaner != null) {
-        if (data['action'] == 'pop' ||
-            data['action'] == 'popToRoot' ||
-            data['action'] == 'popTo' ||
-            data['action'] == 'replaceWith') {
-          navigationStateCleaner!(data);
-        }
-      }
-      onNavigationEvent?.call(data);
+   void onNavigationEventWithCleanup(Map<dynamic, dynamic> data) {
+  // Only call navigationStateCleaner if this screen is LEAVING, not arriving
+  if (navigationStateCleaner != null) {
+    final action = data['action'] as String?;
+    final targetScreen = data['targetScreen'] as String?;
+    
+    // Only clean up if this screen is NOT the target (meaning we're leaving this screen)
+    if ((action == 'pop' || action == 'popToRoot' || action == 'popTo' || action == 'replaceWith') && 
+        targetScreen != name) {
+      navigationStateCleaner!(data);
     }
-
+    
+    // For dismiss actions, only clean up if we're the one being dismissed
+    if ((action == 'dismissModal' || action == 'dismissSheet' || 
+         action == 'dismissPopover' || action == 'dismissOverlay') &&
+        targetScreen == name) {
+      navigationStateCleaner!(data);
+    }
+  }
+  onNavigationEvent?.call(data);
+}
     Map<String, dynamic> eventMap = {};
     if (events != null) eventMap.addAll(events!);
     if (onAppear != null) eventMap['onAppear'] = onAppear!;
