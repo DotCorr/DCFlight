@@ -1,6 +1,4 @@
-// ============================================================================
-// 🎯 ROUTE NAVIGATION COMMANDS - Clean Route Architecture
-// ============================================================================
+
 
 /// Command to navigate to a route
 class NavigateToRouteCommand {
@@ -292,3 +290,4 @@ class RouteNavigation {
       RouteNavigationCommand(
           dismissModal: DismissModalRouteCommand(result: result));
 }
+

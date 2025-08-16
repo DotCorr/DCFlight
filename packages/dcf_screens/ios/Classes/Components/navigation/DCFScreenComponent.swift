@@ -127,10 +127,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
     }
 
     private func navigateToRoute(_ targetRoute: String, animated: Bool, params: [String: Any]?, from sourceContainer: ScreenContainer) {
-       
-
-        // Don't parse compound routes like "profile/settings"
-        // Just navigate directly to the target route if it exists in registry
+    
         if let targetContainer = DCFScreenComponent.routeRegistry[targetRoute] {
             print("✅ DCFScreenComponent: Found direct route '\(targetRoute)' in registry")
             

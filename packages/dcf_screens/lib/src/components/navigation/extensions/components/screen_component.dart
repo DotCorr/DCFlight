@@ -6,7 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import '../configs/screen_commands.dart';
+import '../configs/low_level/screen_commands.dart';
 import '../configs/tab_config.dart';
 import '../configs/modal_config.dart';
 import '../configs/push_header_config.dart';
@@ -48,7 +48,6 @@ class DCFScreen extends StatelessComponent
   final StyleSheet styleSheet;
   final RouteNavigationCommand? routeNavigationCommand;
   final Map<String, dynamic>? events;
-  final Function(Map<dynamic, dynamic>)? navigationStateCleaner;
   final Function(Map<dynamic, dynamic>)? onAppear;
   final Function(Map<dynamic, dynamic>)? onDisappear;
   final Function(Map<dynamic, dynamic>)? onActivate;
@@ -61,7 +60,7 @@ class DCFScreen extends StatelessComponent
   DCFScreen({
     super.key,
     required this.route,
-    required this.navigationStateCleaner,
+
     required this.presentationStyle,
     this.tabConfig,
     this.modalConfig,
@@ -86,25 +85,6 @@ class DCFScreen extends StatelessComponent
 
   @override
   DCFComponentNode render() {
-    void onNavigationEventWithCleanup(Map<dynamic, dynamic> data) {
-      if (navigationStateCleaner != null) {
-        final action = data['action'] as String?;
-        final targetRoute = data['targetRoute'] as String?;
-        
-        if ((action == 'pop' || action == 'popToRoot' || action == 'popToRoute' || action == 'replaceWithRoute') && 
-            targetRoute != route) {
-          navigationStateCleaner!(data);
-        }
-        
-        if ((action == 'dismissModal' || action == 'dismissSheet' || 
-             action == 'dismissPopover' || action == 'dismissOverlay') &&
-            targetRoute == route) {
-          navigationStateCleaner!(data);
-        }
-      }
-      onNavigationEvent?.call(data);
-    }
-
     Map<String, dynamic> eventMap = {};
     if (events != null) eventMap.addAll(events!);
     if (onAppear != null) eventMap['onAppear'] = onAppear!;
@@ -114,9 +94,7 @@ class DCFScreen extends StatelessComponent
     if (onNavigationEvent != null) {
       eventMap['onNavigationEvent'] = onNavigationEvent!;
     }
-    if (navigationStateCleaner != null) {
-      eventMap['onNavigationEvent'] = onNavigationEventWithCleanup;
-    }
+
 
     if (onReceiveParams != null) eventMap['onReceiveParams'] = onReceiveParams!;
     if (onHeaderActionPress != null) {
