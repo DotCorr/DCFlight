@@ -9,9 +9,7 @@ class AnimatedModalScreen extends StatefulComponent {
   late String animationController3;
 
   @override
-  componentDidMount() {
-   
-  }
+  componentDidMount() {}
 
   @override
   componentWillUnmount() {
@@ -20,11 +18,10 @@ class AnimatedModalScreen extends StatefulComponent {
     animationController3 = '';
   }
 
-
   @override
   DCFComponentNode render() {
     @override
-    final modalNavigationCommand = useStore(animatedModalNavigationCommand);
+    final modalNavigationCommand = useStore(animatedModalRouteNavigationCommand);
     // 🎬 ONE animation controller only
     animationController = useAnimationController();
     animationController2 = useAnimationController();
@@ -181,7 +178,9 @@ class AnimatedModalScreen extends StatefulComponent {
                 borderRadius: 25,
               ),
               onPress: (v) {
-                modalNavigationCommand.setState(NavigationPresets.pop);
+                modalNavigationCommand.setState(
+                  RouteNavigationCommand(pop: PopRouteCommand()),
+                );
               },
             ),
           ],

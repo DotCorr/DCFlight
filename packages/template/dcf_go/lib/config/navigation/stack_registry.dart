@@ -1,32 +1,23 @@
 import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/app.dart";
 import "package:dcf_go/main.dart";
-import "package:dcf_reanimated/dcf_reanimated.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class StackScreenRegistry extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final homeNavCommand = useStore(homeNavigationCommand);
-    final profileNavCommand = useStore(profileNavigationCommand);
-    final settingsNavCommand = useStore(settingsNavigationCommand);
-    final animatedModalNavCommand = useStore(animatedModalNavigationCommand);
+    final homeNavCommand = useStore(homeRouteNavigationCommand);
+    final profileNavCommand = useStore(profileRouteNavigationCommand);
+    final settingsNavCommand = useStore(settingsRouteNavigationCommand);
+    final animatedModalNavCommand = useStore(animatedModalRouteNavigationCommand);
 
-    return DCFView(
+    return DCFFragment(
       children: [
         DCFScreen(
-          name: "home_screen",
+          renderChildren: true,
+          route: "home",
           presentationStyle: DCFPresentationStyle.push,
-          navigationStateCleaner: (v) {
-            print("🧹 Cleaning up home navigation state: $v");
-            homeNavigationCommand.setState(null);
-            // 
-              animatedModalNavigationCommand.setState(null);
-          },
-          onNavigationEvent: (data) {
-            print("🚀 Home navigation event: $data");
-          },
           pushConfig: DCFPushConfig(
             title: "Home",
             prefixActions: [
@@ -38,28 +29,30 @@ class StackScreenRegistry extends StatefulComponent {
               ),
             ],
           ),
-          navigationCommand: homeNavCommand.state,
+          routeNavigationCommand: homeNavCommand.state,
+          navigationStateCleaner: (data) {
+            print("🧹 Home navigation cleanup: $data");
+          },
+          onNavigationEvent: (data) {
+            print("🚀 Home navigation event: $data");
+            homeRouteNavigationCommand.setState(null);
+          },
           onHeaderActionPress: (data) {
-            
             if (data['actionId'] == "anim_action") {
-               setupDCFReanimated();
-              animatedModalNavCommand.setState(
-                NavigationPresets.pushTo(
-                  "animated_modal_screen",
-                  params: {
-                    "title": "Animated Modal",
-                    "message": "This is an animated modal screen",
-                  },
-                ),
+              animatedModalRouteNavigationCommand.setState(
+                RouteNavigation.navigateToRoute("home/animated_modal", params: {
+                  "title": "Animated Modal",
+                  "message": "This is an animated modal screen"
+                }),
               );
             }
           },
-          onAppear: (data) => print("✅ Home screen appeared: $data"),
+          onAppear: (data) => print("✅ Home route appeared: $data"),
           builder: () => HomeScreen(),
         ),
 
         DCFScreen(
-          name: "profile_screen",
+          route: "profile",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Profile",
@@ -73,35 +66,27 @@ class StackScreenRegistry extends StatefulComponent {
               ),
             ],
           ),
-          navigationCommand: profileNavCommand.state,
-          navigationStateCleaner: (v) {
-            print("🧹 Cleaning up profile navigation state: $v");
-            profileNavigationCommand.setState(null);
-              animatedModalNavigationCommand.setState(null);
+          routeNavigationCommand: profileNavCommand.state,
+          navigationStateCleaner: (data) {
+            print("🧹 Profile navigation cleanup: $data");
           },
           onNavigationEvent: (data) {
             print("🚀 Profile navigation event: $data");
+            profileRouteNavigationCommand.setState(null);
           },
           onHeaderActionPress: (data) {
-            print("🎯 Profile header action pressed: $data");
-          },
-          onAppear: (data) => print("✅ Profile screen appeared: $data"),
-          builder: () {
-            final isSuspended = profileNavCommand.state == null;
-            if (isSuspended) {
-              print("⏸️ Profile screen is suspended - not rendering children");
-              return DCFView(children: []);
+            if (data['actionId'] == "settings_action") {
+              settingsRouteNavigationCommand.setState(
+                RouteNavigation.navigateToRoute("profile/settings"),
+              );
             }
-            print("🏗️ Profile screen is active - rendering children");
-            return ProfileScreen();
           },
+          onAppear: (data) => print("✅ Profile route appeared: $data"),
+          builder: () => ProfileScreen(),
         ),
 
         DCFScreen(
-          navigationStateCleaner: (v) {
-            settingsNavigationCommand.setState(null);
-          },
-          name: "settings_screen",
+          route: "profile/settings",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Settings",
@@ -113,46 +98,42 @@ class StackScreenRegistry extends StatefulComponent {
               DCFPushHeaderActionConfig.withTextOnly(title: "Done"),
             ],
           ),
-          navigationCommand: settingsNavCommand.state,
+          routeNavigationCommand: settingsNavCommand.state,
+          navigationStateCleaner: (data) {
+            print("🧹 Settings navigation cleanup: $data");
+          },
+          onNavigationEvent: (data) {
+            print("🚀 Settings navigation event: $data");
+            settingsRouteNavigationCommand.setState(null);
+          },
           onHeaderActionPress: (data) {
             print("🎯 Settings header action pressed: $data");
           },
-          onAppear: (data) => print("✅ Settings screen appeared: $data"),
-          onNavigationEvent: (data) {
-            print("🚀 Settings navigation event: $data");
-          },
-          builder: () {
-            final isSuspended = settingsNavCommand.state == null;
-            if (isSuspended) {
-              print("⏸️ Settings screen is suspended - not rendering children");
-              return DCFView(children: []);
-            }
-            print("🏗️ Settings screen is active - rendering children");
-            return SettingsScreen();
-          },
+          onAppear: (data) => print("✅ Settings route appeared: $data"),
+          builder: () => SettingsScreen(),
         ),
 
         DCFScreen(
-          name: "animated_modal_screen",
+          route: "home/animated_modal",
           presentationStyle: DCFPresentationStyle.push,
-          navigationCommand: animatedModalNavCommand.state,
-          navigationStateCleaner: (v) {
-            print("🧹 Cleaning up animated modal navigation state: $v");
-            animatedModalNavigationCommand.setState(null);
+          pushConfig: DCFPushConfig(
+            title: "Animated Modal",
+            backButtonTitle: "Home",
+          ),
+          routeNavigationCommand: animatedModalNavCommand.state,
+          navigationStateCleaner: (data) {
+            print("🧹 Animated modal navigation cleanup: $data");
           },
           onNavigationEvent: (data) {
             print("🚀 Animated modal navigation event: $data");
+            animatedModalRouteNavigationCommand.setState(null);
           },
-          builder: () {
-            final isSuspended = animatedModalNavCommand.state == null;
-            if (isSuspended) {
-              print(
-                "⏸️ Animated modal screen is suspended - not rendering children",
-              );
-              return DCFView(children: []);
-            }
-            return AnimatedModalScreen();
-          },
+          onAppear: (data) => print("✅ Animated modal route appeared: $data"),
+          onDisappear: (data) => print("❌ Animated modal route disappeared: $data"),
+          onActivate: (data) => print("✅ Animated modal route activated: $data"),
+          onDeactivate: (data) => print("❌ Animated modal route deactivated: $data"),
+          onReceiveParams: (data) => print("📬 Animated modal route received params: $data"),
+          builder: () => DCFView(),
         ),
       ],
     );

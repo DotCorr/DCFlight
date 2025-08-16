@@ -6,8 +6,8 @@ class HomeScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
     // Use global navigation commands
-    final profileCommand = useStore(profileNavigationCommand);
-    final settingsCommand = useStore(settingsNavigationCommand);
+    final profileCommand = useStore(profileRouteNavigationCommand);
+    final settingsCommand = useStore(settingsRouteNavigationCommand);
     
     return DCFView(
       layout: LayoutProps(
@@ -30,29 +30,31 @@ class HomeScreen extends StatefulComponent {
           layout: LayoutProps(marginBottom: 30),
         ),
 
-        // Navigate to profile
+        // Navigate to profile - FIXED: Use correct route name
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Profile"),
           onPress: (data) {
             print("Navigate to Profile pressed");
-            profileCommand.setState(NavigationPresets.pushTo("profile_screen"));
+            profileCommand.setState(RouteNavigationCommand(
+              navigateToRoute: NavigateToRouteCommand(route: "profile") // FIXED: Changed from "profile_screen" to "profile"
+            ));
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
 
-        // Navigate to settings
+        // Navigate to settings - FIXED: Use correct route name
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Settings"),
           onPress: (data) {
             print("Navigate to Settings pressed");
             settingsCommand.setState(
-              NavigationPresets.pushTo("settings_screen"),
+              RouteNavigationCommand(
+                navigateToRoute: NavigateToRouteCommand(route: "profile/settings") // FIXED: Changed from "settings_screen" to "profile/settings"
+              ),
             );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
-
-      
       ],
     );
   }
@@ -61,8 +63,8 @@ class HomeScreen extends StatefulComponent {
 class ProfileScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final settingsCommand = useStore(settingsNavigationCommand);
-    final profileCommand = useStore(profileNavigationCommand);
+    final settingsCommand = useStore(settingsRouteNavigationCommand);
+    final profileCommand = useStore(profileRouteNavigationCommand);
 
     return DCFView(
       layout: LayoutProps(
@@ -79,7 +81,7 @@ class ProfileScreen extends StatefulComponent {
         ),
 
         DCFText(
-          content: "Try the 'Edit' button in the navigation bar!",
+          content: "Try the 'Settings' button in the navigation bar!",
           textProps: DCFTextProps(fontSize: 16, textAlign: "center"),
           layout: LayoutProps(marginBottom: 30),
         ),
@@ -88,7 +90,9 @@ class ProfileScreen extends StatefulComponent {
           buttonProps: DCFButtonProps(title: "Go to Settings"),
           onPress: (data) {
             settingsCommand.setState(
-              NavigationPresets.pushTo("settings_screen"),
+              RouteNavigationCommand(
+                navigateToRoute: NavigateToRouteCommand(route: "profile/settings") // FIXED: Changed from "settings_screen" to "profile/settings"
+              ),
             );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
@@ -97,7 +101,11 @@ class ProfileScreen extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go Back"),
           onPress: (data) {
-            profileCommand.setState(NavigationPresets.pop);
+            profileCommand.setState(
+              RouteNavigationCommand(
+                pop: PopRouteCommand() // FIXED: Use proper pop command instead of navigating to "home_screen"
+              ),
+            );
           },
           layout: LayoutProps(width: "80%"),
         ),
@@ -109,7 +117,7 @@ class ProfileScreen extends StatefulComponent {
 class SettingsScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final settingsCommand = useStore(settingsNavigationCommand);
+    final settingsCommand = useStore(settingsRouteNavigationCommand);
 
     return DCFView(
       layout: LayoutProps(
@@ -134,11 +142,13 @@ class SettingsScreen extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(
             title: "Pop to Root",
-            // color: Colors.red,
-            // textColor: Colors.white,
           ),
           onPress: (data) {
-            settingsCommand.setState(NavigationPresets.popToRoot);
+            settingsCommand.setState(
+              RouteNavigationCommand(
+                popToRoot: PopToRootRouteCommand() // FIXED: Use proper pop to root command
+              )
+            );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
@@ -146,7 +156,11 @@ class SettingsScreen extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go Back"),
           onPress: (data) {
-            settingsCommand.setState(NavigationPresets.pop);
+            settingsCommand.setState(
+              RouteNavigationCommand(
+                pop: PopRouteCommand() // FIXED: Use proper pop command instead of navigating to "home_screen"
+              )
+            );
           },
           layout: LayoutProps(width: "80%"),
         ),
@@ -154,4 +168,3 @@ class SettingsScreen extends StatefulComponent {
     );
   }
 }
-

@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) Dotcorr Studio. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 import UIKit
 import dcflight
 import SVGKit
@@ -35,7 +42,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         
         DCFTabNavigatorComponent.tabNavigatorRegistry[navigatorId] = tabBarController
         DCFTabNavigatorComponent.navigatorState[navigatorId] = TabNavigatorState(
-            screens: props["screens"] as? [String] ?? [],
+            routes: props["screens"] as? [String] ?? [],
             selectedIndex: props["selectedIndex"] as? Int ?? 0
         )
         
@@ -95,17 +102,17 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     }
     
     private func configureTabBarController(_ tabBarController: UITabBarController, props: [String: Any], navigatorId: String) {
-        guard let screens = props["screens"] as? [String] else {
-            print("❌ DCFTabNavigatorComponent: No screens provided")
+        guard let routes = props["screens"] as? [String] else {
+            print("❌ DCFTabNavigatorComponent: No routes provided")
             return
         }
         
-        print("📱 DCFTabNavigatorComponent: Configuring tab bar with \(screens.count) screens")
+        print("📱 DCFTabNavigatorComponent: Configuring tab bar with \(routes.count) routes")
         
         var viewControllers: [UIViewController] = []
         
-        for (index, screenName) in screens.enumerated() {
-            if let screenContainer = DCFScreenComponent.getScreenContainer(name: screenName) {
+        for (index, route) in routes.enumerated() {
+            if let screenContainer = DCFScreenComponent.getScreenContainer(route: route) {
                 let navController = UINavigationController()
                 
                 let needsLargeTitles = checkIfScreenNeedsLargeTitles(screenContainer: screenContainer)
@@ -124,9 +131,9 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
                 
                 viewControllers.append(navController)
                 
-                print("✅ DCFTabNavigatorComponent: Added screen '\(screenName)' at index \(index)")
+                print("✅ DCFTabNavigatorComponent: Added route '\(route)' at index \(index)")
             } else {
-                print("⚠️ DCFTabNavigatorComponent: Screen '\(screenName)' not found, creating placeholder")
+                print("⚠️ DCFTabNavigatorComponent: Route '\(route)' not found, creating placeholder")
                 let placeholderVC = UIViewController()
                 placeholderVC.view.backgroundColor = UIColor.systemBackground
                 placeholderVC.title = "Screen \(index)"
@@ -402,19 +409,19 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             )
         }
         
-        if let screens = DCFTabNavigatorComponent.navigatorState[navigatorId]?.screens,
-           selectedIndex < screens.count {
-            let initialScreenName = screens[selectedIndex]
-            if let screenContainer = DCFScreenComponent.getScreenContainer(name: initialScreenName) {
+        if let routes = DCFTabNavigatorComponent.navigatorState[navigatorId]?.routes,
+           selectedIndex < routes.count {
+            let initialRoute = routes[selectedIndex]
+            if let screenContainer = DCFScreenComponent.getScreenContainer(route: initialRoute) {
                 propagateEvent(
                     on: screenContainer.contentView,
                     eventName: "onAppear",
-                    data: ["screenName": initialScreenName]
+                    data: ["route": initialRoute]
                 )
                 propagateEvent(
                     on: screenContainer.contentView,
                     eventName: "onActivate",
-                    data: ["screenName": initialScreenName]
+                    data: ["route": initialRoute]
                 )
             }
         }
@@ -451,11 +458,11 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     }
     
     class TabNavigatorState {
-        var screens: [String]
+        var routes: [String]
         var selectedIndex: Int
         
-        init(screens: [String], selectedIndex: Int) {
-            self.screens = screens
+        init(routes: [String], selectedIndex: Int) {
+            self.routes = routes
             self.selectedIndex = selectedIndex
         }
     }
@@ -473,34 +480,34 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
             
             DCFTabNavigatorComponent.navigatorState[navigatorId]?.selectedIndex = selectedIndex
             
-            if let screens = DCFTabNavigatorComponent.navigatorState[navigatorId]?.screens {
-                for (index, screenName) in screens.enumerated() {
-                    if let screenContainer = DCFScreenComponent.getScreenContainer(name: screenName) {
+            if let routes = DCFTabNavigatorComponent.navigatorState[navigatorId]?.routes {
+                for (index, route) in routes.enumerated() {
+                    if let screenContainer = DCFScreenComponent.getScreenContainer(route: route) {
                         let contentFrame = screenContainer.contentView.frame
                         let childCount = screenContainer.contentView.subviews.count
-                        print("🔍 TAB DEBUG: Screen '\(screenName)' at index \(index) - frame: \(contentFrame), children: \(childCount)")
+                        print("🔍 TAB DEBUG: Route '\(route)' at index \(index) - frame: \(contentFrame), children: \(childCount)")
                         
                         if index == selectedIndex {
                             propagateEvent(
                                 on: screenContainer.contentView,
                                 eventName: "onAppear",
-                                data: ["screenName": screenName]
+                                data: ["route": route]
                             )
                             propagateEvent(
                                 on: screenContainer.contentView,
                                 eventName: "onActivate",
-                                data: ["screenName": screenName]
+                                data: ["route": route]
                             )
                         } else {
                             propagateEvent(
                                 on: screenContainer.contentView,
                                 eventName: "onDisappear",
-                                data: ["screenName": screenName]
+                                data: ["route": route]
                             )
                             propagateEvent(
                                 on: screenContainer.contentView,
                                 eventName: "onDeactivate",
-                                data: ["screenName": screenName]
+                                data: ["route": route]
                             )
                         }
                     }
@@ -543,7 +550,6 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
     }
 }
 
-
 private func checkIfScreenNeedsLargeTitles(screenContainer: ScreenContainer) -> Bool {
     guard let navBarConfig = objc_getAssociatedObject(
         screenContainer.viewController,
@@ -554,7 +560,6 @@ private func checkIfScreenNeedsLargeTitles(screenContainer: ScreenContainer) -> 
     
     return navBarConfig["largeTitleDisplayMode"] as? Bool ?? false
 }
-
 
 extension DCFSvgComponent {
     private static var tabIconCache = [String: SVGKImage]()

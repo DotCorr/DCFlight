@@ -1,34 +1,34 @@
 // ============================================================================
-// 🎯 NAVIGATION COMMANDS - Standard Architecture
+// 🎯 ROUTE NAVIGATION COMMANDS - Clean Route Architecture
 // ============================================================================
 
-/// Command to push a screen onto the navigation stack
-class PushToCommand {
-  final String screenName;
+/// Command to navigate to a route
+class NavigateToRouteCommand {
+  final String route;
   final bool animated;
   final Map<String, dynamic>? params;
 
-  const PushToCommand({
-    required this.screenName,
+  const NavigateToRouteCommand({
+    required this.route,
     this.animated = true,
     this.params,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'screenName': screenName,
+      'route': route,
       'animated': animated,
       if (params != null) 'params': params,
     };
   }
 }
 
-/// Command to pop current screen from navigation stack
-class PopCommand {
+/// Command to pop current route from navigation stack
+class PopRouteCommand {
   final bool animated;
   final Map<String, dynamic>? result;
 
-  const PopCommand({
+  const PopRouteCommand({
     this.animated = true,
     this.result,
   });
@@ -41,29 +41,29 @@ class PopCommand {
   }
 }
 
-/// Command to pop to a specific screen in the stack
-class PopToCommand {
-  final String screenName;
+/// Command to pop to a specific route in the stack
+class PopToRouteCommand {
+  final String route;
   final bool animated;
 
-  const PopToCommand({
-    required this.screenName,
+  const PopToRouteCommand({
+    required this.route,
     this.animated = true,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'screenName': screenName,
+      'route': route,
       'animated': animated,
     };
   }
 }
 
-/// Command to pop to root screen
-class PopToRootCommand {
+/// Command to pop to root route
+class PopToRootRouteCommand {
   final bool animated;
 
-  const PopToRootCommand({this.animated = true});
+  const PopToRootRouteCommand({this.animated = true});
 
   Map<String, dynamic> toMap() {
     return {
@@ -72,36 +72,36 @@ class PopToRootCommand {
   }
 }
 
-/// Command to replace current screen with another
-class ReplaceWithCommand {
-  final String screenName;
+/// Command to replace current route with another
+class ReplaceWithRouteCommand {
+  final String route;
   final bool animated;
   final Map<String, dynamic>? params;
 
-  const ReplaceWithCommand({
-    required this.screenName,
+  const ReplaceWithRouteCommand({
+    required this.route,
     this.animated = true,
     this.params,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'screenName': screenName,
+      'route': route,
       'animated': animated,
       if (params != null) 'params': params,
     };
   }
 }
 
-/// Command to present screen modally
-class PresentModalCommand {
-  final String screenName;
+/// Command to present route modally
+class PresentModalRouteCommand {
+  final String route;
   final bool animated;
   final Map<String, dynamic>? params;
   final String? presentationStyle;
 
-  const PresentModalCommand({
-    required this.screenName,
+  const PresentModalRouteCommand({
+    required this.route,
     this.animated = true,
     this.params,
     this.presentationStyle,
@@ -109,7 +109,7 @@ class PresentModalCommand {
 
   Map<String, dynamic> toMap() {
     return {
-      'screenName': screenName,
+      'route': route,
       'animated': animated,
       if (params != null) 'params': params,
       if (presentationStyle != null) 'presentationStyle': presentationStyle,
@@ -118,11 +118,11 @@ class PresentModalCommand {
 }
 
 /// Command to dismiss current modal
-class DismissModalCommand {
+class DismissModalRouteCommand {
   final bool animated;
   final Map<String, dynamic>? result;
 
-  const DismissModalCommand({
+  const DismissModalRouteCommand({
     this.animated = true,
     this.result,
   });
@@ -135,161 +135,61 @@ class DismissModalCommand {
   }
 }
 
-/// Command to present screen as popover
-class PresentPopoverCommand {
-  final String screenName;
-  final bool animated;
-  final Map<String, dynamic>? params;
-  final String? sourceViewId;
+/// Composite command class for all route navigation actions
+class RouteNavigationCommand {
+  final NavigateToRouteCommand? navigateToRoute;
+  final PopRouteCommand? pop;
+  final PopToRouteCommand? popToRoute;
+  final PopToRootRouteCommand? popToRoot;
+  final ReplaceWithRouteCommand? replaceWithRoute;
+  final PresentModalRouteCommand? presentModalRoute;
+  final DismissModalRouteCommand? dismissModal;
 
-  const PresentPopoverCommand({
-    required this.screenName,
-    this.animated = true,
-    this.params,
-    this.sourceViewId,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'screenName': screenName,
-      'animated': animated,
-      if (params != null) 'params': params,
-      if (sourceViewId != null) 'sourceViewId': sourceViewId,
-    };
-  }
-}
-
-/// Command to dismiss current popover
-class DismissPopoverCommand {
-  final bool animated;
-  final Map<String, dynamic>? result;
-
-  const DismissPopoverCommand({
-    this.animated = true,
-    this.result,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'animated': animated,
-      if (result != null) 'result': result,
-    };
-  }
-}
-
-/// Command to present screen as overlay
-class PresentOverlayCommand {
-  final String screenName;
-  final bool animated;
-  final Map<String, dynamic>? params;
-
-  const PresentOverlayCommand({
-    required this.screenName,
-    this.animated = true,
-    this.params,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'screenName': screenName,
-      'animated': animated,
-      if (params != null) 'params': params,
-    };
-  }
-}
-
-/// Command to dismiss current overlay
-class DismissOverlayCommand {
-  final bool animated;
-  final Map<String, dynamic>? result;
-
-  const DismissOverlayCommand({
-    this.animated = true,
-    this.result,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'animated': animated,
-      if (result != null) 'result': result,
-    };
-  }
-}
-
-/// Composite command class for all screen navigation actions
-class ScreenNavigationCommand {
-  final PushToCommand? pushTo;
-  final PopCommand? pop;
-  final PopToCommand? popTo;
-  final PopToRootCommand? popToRoot;
-  final ReplaceWithCommand? replaceWith;
-  final PresentModalCommand? presentModal;
-  final DismissModalCommand? dismissModal;
-  final PresentPopoverCommand? presentPopover;
-  final DismissPopoverCommand? dismissPopover;
-  final PresentOverlayCommand? presentOverlay;
-  final DismissOverlayCommand? dismissOverlay;
-
-  const ScreenNavigationCommand({
-    this.pushTo,
+  const RouteNavigationCommand({
+    this.navigateToRoute,
     this.pop,
-    this.popTo,
+    this.popToRoute,
     this.popToRoot,
-    this.replaceWith,
-    this.presentModal,
+    this.replaceWithRoute,
+    this.presentModalRoute,
     this.dismissModal,
-    this.presentPopover,
-    this.dismissPopover,
-    this.presentOverlay,
-    this.dismissOverlay,
   });
 
   /// Convert command to props map for native consumption
   Map<String, dynamic> toMap() {
     final Map<String, dynamic> commandMap = {};
 
-    if (pushTo != null) {
-      commandMap['pushTo'] = pushTo!.toMap();
+    if (navigateToRoute != null) {
+      commandMap['navigateToRoute'] = navigateToRoute!.route;
+      commandMap['animated'] = navigateToRoute!.animated;
+      if (navigateToRoute!.params != null) {
+        commandMap['params'] = navigateToRoute!.params;
+      }
     }
 
     if (pop != null) {
       commandMap['pop'] = pop!.toMap();
     }
 
-    if (popTo != null) {
-      commandMap['popTo'] = popTo!.toMap();
+    if (popToRoute != null) {
+      commandMap['popToRoute'] = popToRoute!.route;
+      commandMap['animated'] = popToRoute!.animated;
     }
 
     if (popToRoot != null) {
       commandMap['popToRoot'] = popToRoot!.toMap();
     }
 
-    if (replaceWith != null) {
-      commandMap['replaceWith'] = replaceWith!.toMap();
+    if (replaceWithRoute != null) {
+      commandMap['replaceWithRoute'] = replaceWithRoute!.toMap();
     }
 
-    if (presentModal != null) {
-      commandMap['presentModal'] = presentModal!.toMap();
+    if (presentModalRoute != null) {
+      commandMap['presentModalRoute'] = presentModalRoute!.toMap();
     }
 
     if (dismissModal != null) {
       commandMap['dismissModal'] = dismissModal!.toMap();
-    }
-
-    if (presentPopover != null) {
-      commandMap['presentPopover'] = presentPopover!.toMap();
-    }
-
-    if (dismissPopover != null) {
-      commandMap['dismissPopover'] = dismissPopover!.toMap();
-    }
-
-    if (presentOverlay != null) {
-      commandMap['presentOverlay'] = presentOverlay!.toMap();
-    }
-
-    if (dismissOverlay != null) {
-      commandMap['dismissOverlay'] = dismissOverlay!.toMap();
     }
 
     return commandMap;
@@ -297,136 +197,98 @@ class ScreenNavigationCommand {
 
   /// Check if this command has any actions to execute
   bool get hasCommands {
-    return pushTo != null ||
+    return navigateToRoute != null ||
         pop != null ||
-        popTo != null ||
+        popToRoute != null ||
         popToRoot != null ||
-        replaceWith != null ||
-        presentModal != null ||
-        dismissModal != null ||
-        presentPopover != null ||
-        dismissPopover != null ||
-        presentOverlay != null ||
-        dismissOverlay != null;
+        replaceWithRoute != null ||
+        presentModalRoute != null ||
+        dismissModal != null;
   }
 }
 
 // ============================================================================
-// 🎯 NAVIGATION PRESETS - Clean API as Default
+// 🎯 ROUTE NAVIGATION PRESETS - Clean API
 // ============================================================================
 
-/// Navigation presets for common operations - USE THESE AS DEFAULT
-class NavigationPresets {
-  // PUSH NAVIGATION
+/// Route navigation presets for common operations
+class RouteNavigation {
+  // ROUTE NAVIGATION
 
-  /// Push to a screen
-  static ScreenNavigationCommand pushTo(String screenName,
+  /// Navigate to a route
+  static RouteNavigationCommand navigateToRoute(String route,
           {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          pushTo: PushToCommand(screenName: screenName, params: params));
+      RouteNavigationCommand(
+          navigateToRoute: NavigateToRouteCommand(route: route, params: params));
 
-  /// Push to a screen without animation
-  static ScreenNavigationCommand pushToInstant(String screenName,
+  /// Navigate to a route without animation
+  static RouteNavigationCommand navigateToRouteInstant(String route,
           {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          pushTo: PushToCommand(
-              screenName: screenName, animated: false, params: params));
+      RouteNavigationCommand(
+          navigateToRoute: NavigateToRouteCommand(
+              route: route, animated: false, params: params));
 
   // POP NAVIGATION
 
-  /// Pop current screen
-  static const ScreenNavigationCommand pop =
-      ScreenNavigationCommand(pop: PopCommand());
+  /// Pop current route
+  static const RouteNavigationCommand pop =
+      RouteNavigationCommand(pop: PopRouteCommand());
 
-  /// Pop current screen without animation
-  static const ScreenNavigationCommand popInstant =
-      ScreenNavigationCommand(pop: PopCommand(animated: false));
+  /// Pop current route without animation
+  static const RouteNavigationCommand popInstant =
+      RouteNavigationCommand(pop: PopRouteCommand(animated: false));
 
-  /// Pop to specific screen
-  static ScreenNavigationCommand popTo(String screenName) =>
-      ScreenNavigationCommand(popTo: PopToCommand(screenName: screenName));
+  /// Pop to specific route
+  static RouteNavigationCommand popToRoute(String route) =>
+      RouteNavigationCommand(popToRoute: PopToRouteCommand(route: route));
 
   /// Pop to root
-  static const ScreenNavigationCommand popToRoot =
-      ScreenNavigationCommand(popToRoot: PopToRootCommand());
+  static const RouteNavigationCommand popToRoot =
+      RouteNavigationCommand(popToRoot: PopToRootRouteCommand());
 
-  /// Replace current screen
-  static ScreenNavigationCommand replaceWith(String screenName,
+  /// Replace current route
+  static RouteNavigationCommand replaceWithRoute(String route,
           {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          replaceWith:
-              ReplaceWithCommand(screenName: screenName, params: params));
+      RouteNavigationCommand(
+          replaceWithRoute:
+              ReplaceWithRouteCommand(route: route, params: params));
 
   // MODAL NAVIGATION
 
-  /// Present modal
-  static ScreenNavigationCommand presentModal(String screenName,
+  /// Present modal route
+  static RouteNavigationCommand presentModalRoute(String route,
           {Map<String, dynamic>? params, String? style}) =>
-      ScreenNavigationCommand(
-          presentModal: PresentModalCommand(
-              screenName: screenName,
+      RouteNavigationCommand(
+          presentModalRoute: PresentModalRouteCommand(
+              route: route,
               params: params,
               presentationStyle: style));
 
-  /// Present full screen modal
-  static ScreenNavigationCommand presentFullScreenModal(String screenName,
+  /// Present full screen modal route
+  static RouteNavigationCommand presentFullScreenModalRoute(String route,
           {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          presentModal: PresentModalCommand(
-              screenName: screenName,
+      RouteNavigationCommand(
+          presentModalRoute: PresentModalRouteCommand(
+              route: route,
               params: params,
               presentationStyle: "fullScreen"));
 
-  /// Present page sheet modal
-  static ScreenNavigationCommand presentPageSheetModal(String screenName,
+  /// Present page sheet modal route
+  static RouteNavigationCommand presentPageSheetModalRoute(String route,
           {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          presentModal: PresentModalCommand(
-              screenName: screenName,
+      RouteNavigationCommand(
+          presentModalRoute: PresentModalRouteCommand(
+              route: route,
               params: params,
               presentationStyle: "pageSheet"));
 
   /// Dismiss modal
-  static const ScreenNavigationCommand dismissModal =
-      ScreenNavigationCommand(dismissModal: DismissModalCommand());
+  static const RouteNavigationCommand dismissModal =
+      RouteNavigationCommand(dismissModal: DismissModalRouteCommand());
 
   /// Dismiss modal with result
-  static ScreenNavigationCommand dismissModalWithResult(
+  static RouteNavigationCommand dismissModalWithResult(
           Map<String, dynamic> result) =>
-      ScreenNavigationCommand(
-          dismissModal: DismissModalCommand(result: result));
-
-  // POPOVER NAVIGATION
-
-  /// Present popover
-  static ScreenNavigationCommand presentPopover(String screenName,
-          {Map<String, dynamic>? params, String? sourceViewId}) =>
-      ScreenNavigationCommand(
-          presentPopover: PresentPopoverCommand(
-              screenName: screenName,
-              params: params,
-              sourceViewId: sourceViewId));
-
-  /// Dismiss popover
-  static const ScreenNavigationCommand dismissPopover =
-      ScreenNavigationCommand(dismissPopover: DismissPopoverCommand());
-
-  // OVERLAY NAVIGATION
-
-  /// Present overlay
-  static ScreenNavigationCommand presentOverlay(String screenName,
-          {Map<String, dynamic>? params}) =>
-      ScreenNavigationCommand(
-          presentOverlay:
-              PresentOverlayCommand(screenName: screenName, params: params));
-
-  /// Dismiss overlay
-  static const ScreenNavigationCommand dismissOverlay =
-      ScreenNavigationCommand(dismissOverlay: DismissOverlayCommand());
-
-  /// Dismiss overlay with result
-  static ScreenNavigationCommand dismissOverlayWithResult(
-          Map<String, dynamic> result) =>
-      ScreenNavigationCommand(
-          dismissOverlay: DismissOverlayCommand(result: result));
+      RouteNavigationCommand(
+          dismissModal: DismissModalRouteCommand(result: result));
 }
