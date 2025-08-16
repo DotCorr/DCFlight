@@ -1,4 +1,3 @@
-import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/app.dart";
 import "package:dcf_go/main.dart";
 import "package:dcf_screens/dcf_screens.dart";
@@ -7,13 +6,13 @@ import "package:dcflight/dcflight.dart";
 class StackScreenRegistry extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final homeNavCommand = useStore(homeRouteNavigationCommand);
-    final profileNavCommand = useStore(profileRouteNavigationCommand);
-    final settingsNavCommand = useStore(settingsRouteNavigationCommand);
-    final animatedModalNavCommand = useStore(animatedModalRouteNavigationCommand);
+    // 🎯 SMART NAVIGATION: Each screen checks if it should handle the command
+    final globalNavCommand = useStore(globalNavigationCommand);
+    final globalNavTarget = useStore(globalNavigationTarget);
 
     return DCFFragment(
       children: [
+        // 🏠 HOME SCREEN
         DCFScreen(
           renderChildren: true,
           route: "home",
@@ -29,21 +28,24 @@ class StackScreenRegistry extends StatefulComponent {
               ),
             ],
           ),
-          routeNavigationCommand: homeNavCommand.state,
-          navigationStateCleaner: (data) {
-            print("🧹 Home navigation cleanup: $data");
-          },
+          // 🎯 SMART: Only handle command if targeted to this screen or no target specified
+          routeNavigationCommand: _shouldHandleCommand("home", globalNavTarget.state) 
+              ? globalNavCommand.state 
+              : null,
           onNavigationEvent: (data) {
             print("🚀 Home navigation event: $data");
-            homeRouteNavigationCommand.setState(null);
+            AppNavigation.clearCommand();
           },
           onHeaderActionPress: (data) {
             if (data['actionId'] == "anim_action") {
-              animatedModalRouteNavigationCommand.setState(
-                RouteNavigation.navigateToRoute("home/animated_modal", params: {
+              print("🎬 Opening animated modal from home header action");
+              // 🎯 SPECIFY FROM SCREEN to prevent conflicts
+              AppNavigation.navigateTo("home/animated_modal", 
+                params: {
                   "title": "Animated Modal",
                   "message": "This is an animated modal screen"
-                }),
+                },
+                fromScreen: "home"
               );
             }
           },
@@ -51,6 +53,7 @@ class StackScreenRegistry extends StatefulComponent {
           builder: () => HomeScreen(),
         ),
 
+        // 👤 PROFILE SCREEN
         DCFScreen(
           route: "profile",
           presentationStyle: DCFPresentationStyle.push,
@@ -66,25 +69,24 @@ class StackScreenRegistry extends StatefulComponent {
               ),
             ],
           ),
-          routeNavigationCommand: profileNavCommand.state,
-          navigationStateCleaner: (data) {
-            print("🧹 Profile navigation cleanup: $data");
-          },
+          // 🎯 SMART: Only handle command if targeted to this screen or no target specified
+          routeNavigationCommand: _shouldHandleCommand("profile", globalNavTarget.state) 
+              ? globalNavCommand.state 
+              : null,
           onNavigationEvent: (data) {
             print("🚀 Profile navigation event: $data");
-            profileRouteNavigationCommand.setState(null);
+            AppNavigation.clearCommand();
           },
           onHeaderActionPress: (data) {
             if (data['actionId'] == "settings_action") {
-              settingsRouteNavigationCommand.setState(
-                RouteNavigation.navigateToRoute("profile/settings"),
-              );
+              AppNavigation.navigateTo("profile/settings", fromScreen: "profile");
             }
           },
           onAppear: (data) => print("✅ Profile route appeared: $data"),
           builder: () => ProfileScreen(),
         ),
 
+        // ⚙️ SETTINGS SCREEN
         DCFScreen(
           route: "profile/settings",
           presentationStyle: DCFPresentationStyle.push,
@@ -98,21 +100,29 @@ class StackScreenRegistry extends StatefulComponent {
               DCFPushHeaderActionConfig.withTextOnly(title: "Done"),
             ],
           ),
-          routeNavigationCommand: settingsNavCommand.state,
-          navigationStateCleaner: (data) {
-            print("🧹 Settings navigation cleanup: $data");
-          },
+          // 🎯 SMART: Only handle command if targeted to this screen or no target specified
+          routeNavigationCommand: _shouldHandleCommand("profile/settings", globalNavTarget.state) 
+              ? globalNavCommand.state 
+              : null,
           onNavigationEvent: (data) {
             print("🚀 Settings navigation event: $data");
-            settingsRouteNavigationCommand.setState(null);
+            AppNavigation.clearCommand();
           },
           onHeaderActionPress: (data) {
             print("🎯 Settings header action pressed: $data");
+            // Handle Cancel/Done buttons
+            if (data['title'] == "Cancel") {
+              AppNavigation.goBack(fromScreen: "profile/settings");
+            } else if (data['title'] == "Done") {
+              // Save settings and go back
+              AppNavigation.goBack(fromScreen: "profile/settings");
+            }
           },
           onAppear: (data) => print("✅ Settings route appeared: $data"),
           builder: () => SettingsScreen(),
         ),
 
+        // 🎬 ANIMATED MODAL SCREEN
         DCFScreen(
           route: "home/animated_modal",
           presentationStyle: DCFPresentationStyle.push,
@@ -120,22 +130,37 @@ class StackScreenRegistry extends StatefulComponent {
             title: "Animated Modal",
             backButtonTitle: "Home",
           ),
-          routeNavigationCommand: animatedModalNavCommand.state,
-          navigationStateCleaner: (data) {
-            print("🧹 Animated modal navigation cleanup: $data");
-          },
+          // 🎯 SMART: Only handle command if targeted to this screen or no target specified
+          routeNavigationCommand: _shouldHandleCommand("home/animated_modal", globalNavTarget.state) 
+              ? globalNavCommand.state 
+              : null,
           onNavigationEvent: (data) {
             print("🚀 Animated modal navigation event: $data");
-            animatedModalRouteNavigationCommand.setState(null);
+            AppNavigation.clearCommand();
           },
-          onAppear: (data) => print("✅ Animated modal route appeared: $data"),
-          onDisappear: (data) => print("❌ Animated modal route disappeared: $data"),
-          onActivate: (data) => print("✅ Animated modal route activated: $data"),
-          onDeactivate: (data) => print("❌ Animated modal route deactivated: $data"),
-          onReceiveParams: (data) => print("📬 Animated modal route received params: $data"),
-          builder: () => DCFView(),
+          onAppear: (data) => print("✅ Animated modal appeared: $data"),
+          builder: () => DCFView(
+            layout: LayoutProps(
+              flex: 1,
+              padding: 20,
+              justifyContent: YogaJustifyContent.center,
+              alignItems: YogaAlign.center,
+            ),
+            styleSheet: StyleSheet(
+              backgroundColor: Colors.amber,
+              borderRadius: 20,
+            ),
+          ),
         ),
       ],
     );
+  }
+
+  // 🎯 HELPER: Determine if this screen should handle the global navigation command
+  bool _shouldHandleCommand(String screenRoute, String? targetRoute) {
+    // If no target specified, any screen can handle (for backwards compatibility)
+    if (targetRoute == null) return true;
+
+    return screenRoute == targetRoute;
   }
 }
