@@ -1,29 +1,19 @@
-import "package:dcf_go/main.dart";
 import "package:dcf_reanimated/dcf_reanimated.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
-  late String animationController;
-  late String animationController2;
-  late String animationController3;
 
   @override
   componentDidMount() {}
 
-  @override
-  componentWillUnmount() {
-    animationController = '';
-    animationController2 = '';
-    animationController3 = '';
-  }
 
   @override
   DCFComponentNode render() {
     // 🎬 Animation controllers
-    animationController = useAnimationController();
-    animationController2 = useAnimationController();
-    animationController3 = useAnimationController();
+    final animationController = useAnimationController();
+    final animationController2 = useAnimationController();
+    final animationController3 = useAnimationController();
 
     return DCFFragment(
       children: [
