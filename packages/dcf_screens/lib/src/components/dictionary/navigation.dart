@@ -8,3 +8,4 @@ export '../navigation/extensions/configs/modal_config.dart';
 export '../navigation/extensions/configs/pop_over_config.dart';
 export '../navigation/extensions/configs/app_navigation_apis.dart';
 export '../navigation/extensions/components/dcf_lazy_suspense_nav_wrapper.dart';
+export '../navigation/extensions/components/smart_screen_component.dart';
