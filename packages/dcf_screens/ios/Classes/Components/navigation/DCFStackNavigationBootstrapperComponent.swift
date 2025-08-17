@@ -131,8 +131,8 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
         retryCount: Int,
         maxRetries: Int
     ) {
-        // Check if screen is available
-        if let initialScreenContainer = DCFScreenComponent.getScreenContainer(name: initialScreen) {
+        // Check if screen is available - FIXED: use correct method name
+        if let initialScreenContainer = DCFScreenComponent.getScreenContainer(route: initialScreen) {
             print(
                 "🎯 DCFStackNavigationBootstrapperComponent: Found initial screen '\(initialScreen)' on attempt \(retryCount + 1)"
             )
@@ -149,7 +149,7 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
                 "⏳ DCFStackNavigationBootstrapperComponent: Initial screen '\(initialScreen)' not found, retrying in \(delayMs)ms (attempt \(retryCount + 1)/\(maxRetries + 1))"
             )
             print(
-                "   Available screens: \(Array(DCFScreenComponent.getAllScreenContainers().keys))")
+                "   Available screens: \(Array(DCFScreenComponent.routeRegistry.keys))")
 
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(delayMs)) {
                 self.setupInitialScreenWithRetry(
@@ -161,7 +161,7 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
                 "❌ DCFStackNavigationBootstrapperComponent: Failed to find initial screen '\(initialScreen)' after \(maxRetries + 1) attempts"
             )
             print(
-                "   Available screens: \(Array(DCFScreenComponent.getAllScreenContainers().keys))")
+                "   Available screens: \(Array(DCFScreenComponent.routeRegistry.keys))")
 
             // Create a fallback screen
             createFallbackScreen(navigationController, initialScreen: initialScreen)
@@ -187,7 +187,7 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
 
         // 🎯 CRITICAL FIX: Configure header actions for initial screen
         if screenContainer.presentationStyle == "push" {
-            // Create a DCFScreenComponent instance to access the extension methods
+            // FIXED: Use the public method directly - it's available as public
             let screenComponent = DCFScreenComponent()
             screenComponent.configureScreenForPush(screenContainer)
             print(
@@ -203,13 +203,13 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
             propagateEvent(
                 on: screenContainer.contentView,
                 eventName: "onAppear",
-                data: ["screenName": screenName, "isInitial": true]
+                data: ["route": screenName, "isInitial": true]
             )
 
             propagateEvent(
                 on: screenContainer.contentView,
                 eventName: "onActivate",
-                data: ["screenName": screenName, "isInitial": true]
+                data: ["route": screenName, "isInitial": true]
             )
         }
 
@@ -256,7 +256,8 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
         fallbackVC: UIViewController
     ) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            if let screenContainer = DCFScreenComponent.getScreenContainer(name: initialScreen) {
+            // FIXED: use correct method name
+            if let screenContainer = DCFScreenComponent.getScreenContainer(route: initialScreen) {
                 print(
                     "🎉 DCFStackNavigationBootstrapperComponent: Found initial screen '\(initialScreen)' during background search!"
                 )

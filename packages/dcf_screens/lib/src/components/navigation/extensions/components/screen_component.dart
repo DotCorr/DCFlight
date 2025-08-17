@@ -6,25 +6,24 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import '../../../dictionary/navigation.dart';
+import '../configs/low_level/screen_commands.dart';
+import '../configs/tab_config.dart';
+import '../configs/modal_config.dart';
+import '../configs/push_header_config.dart';
+import '../configs/pop_over_config.dart';
 
 /// Presentation styles for screens
 enum DCFPresentationStyle {
   /// Tab presentation - screen appears as a tab in tab bar
   tab,
-
   /// Push presentation - screen appears pushed onto navigation stack
   push,
-
   /// Modal presentation - screen appears as a modal overlay
   modal,
-
   /// Sheet presentation - screen appears as a bottom sheet
   sheet,
-
   /// Popover presentation - screen appears as a popover (iPad)
   popover,
-
   /// Overlay presentation - screen appears as a custom overlay
   overlay,
 }
@@ -35,22 +34,20 @@ class DCFScreen extends StatelessComponent
   @override
   ComponentPriority get priority => ComponentPriority.high;
 
-  final String name;
+  final String route;
   final DCFPresentationStyle presentationStyle;
   final DCFTabConfig? tabConfig;
   final DCFModalConfig? modalConfig;
   final DCFPushConfig? pushConfig;
   final DCFPopoverConfig? popoverConfig;
   final DCFOverlayConfig? overlayConfig;
-
+  
   final DCFComponentNode Function()? builder;
-
+  final bool renderChildren;
   final List<DCFComponentNode>? children;
   final StyleSheet styleSheet;
-  final ScreenNavigationCommand? navigationCommand;
+  final RouteNavigationCommand? routeNavigationCommand;
   final Map<String, dynamic>? events;
-  // This is used to clean up navigation state when the screen is popped or navigated away
-  final Function(Map<dynamic, dynamic>)? navigationStateCleaner;
   final Function(Map<dynamic, dynamic>)? onAppear;
   final Function(Map<dynamic, dynamic>)? onDisappear;
   final Function(Map<dynamic, dynamic>)? onActivate;
@@ -62,8 +59,8 @@ class DCFScreen extends StatelessComponent
 
   DCFScreen({
     super.key,
-    required this.name,
-    required this.navigationStateCleaner,
+    required this.route,
+
     required this.presentationStyle,
     this.tabConfig,
     this.modalConfig,
@@ -71,9 +68,10 @@ class DCFScreen extends StatelessComponent
     this.popoverConfig,
     this.overlayConfig,
     this.builder,
+    this.renderChildren = true,
     this.children,
     this.styleSheet = const StyleSheet(),
-    this.navigationCommand,
+    this.routeNavigationCommand,
     this.events,
     this.onAppear,
     this.onDisappear,
@@ -87,27 +85,6 @@ class DCFScreen extends StatelessComponent
 
   @override
   DCFComponentNode render() {
-   void onNavigationEventWithCleanup(Map<dynamic, dynamic> data) {
-  // Only call navigationStateCleaner if this screen is LEAVING, not arriving
-  if (navigationStateCleaner != null) {
-    final action = data['action'] as String?;
-    final targetScreen = data['targetScreen'] as String?;
-    
-    // Only clean up if this screen is NOT the target (meaning we're leaving this screen)
-    if ((action == 'pop' || action == 'popToRoot' || action == 'popTo' || action == 'replaceWith') && 
-        targetScreen != name) {
-      navigationStateCleaner!(data);
-    }
-    
-    // For dismiss actions, only clean up if we're the one being dismissed
-    if ((action == 'dismissModal' || action == 'dismissSheet' || 
-         action == 'dismissPopover' || action == 'dismissOverlay') &&
-        targetScreen == name) {
-      navigationStateCleaner!(data);
-    }
-  }
-  onNavigationEvent?.call(data);
-}
     Map<String, dynamic> eventMap = {};
     if (events != null) eventMap.addAll(events!);
     if (onAppear != null) eventMap['onAppear'] = onAppear!;
@@ -117,18 +94,15 @@ class DCFScreen extends StatelessComponent
     if (onNavigationEvent != null) {
       eventMap['onNavigationEvent'] = onNavigationEvent!;
     }
-    if (navigationStateCleaner != null) {
-      eventMap['onNavigationEvent'] = onNavigationEventWithCleanup;
-    }
+
 
     if (onReceiveParams != null) eventMap['onReceiveParams'] = onReceiveParams!;
     if (onHeaderActionPress != null) {
       eventMap['onHeaderActionPress'] = onHeaderActionPress!;
     }
 
-    // Build props map (same as before)
     Map<String, dynamic> props = {
-      'name': name,
+      'route': route,
       'presentationStyle': presentationStyle.name,
       if (tabConfig != null) ...tabConfig!.toMap(),
       if (modalConfig != null) ...modalConfig!.toMap(),
@@ -142,17 +116,21 @@ class DCFScreen extends StatelessComponent
       ...eventMap,
     };
 
-    if (navigationCommand != null && navigationCommand!.hasCommands) {
-      props['navigationCommand'] = navigationCommand!.toMap();
+    if (routeNavigationCommand != null && routeNavigationCommand!.hasCommands) {
+      props['routeNavigationCommand'] = routeNavigationCommand!.toMap();
     }
 
     List<DCFComponentNode> actualChildren = [];
 
-    if (builder != null) {
-      print("🏗️ DCFScreen: Rendering component for screen '$name'");
-      actualChildren = [builder!()];
-    } else if (children != null) {
-      actualChildren = children!;
+    if (renderChildren) {
+      if (builder != null) {
+        print("🏗️ DCFScreen: Rendering component for route '$route'");
+        actualChildren = [builder!()];
+      } else if (children != null) {
+        actualChildren = children!;
+      }
+    } else {
+      print("⏸️ DCFScreen: Skipping render for placeholder route '$route'");
     }
 
     return DCFElement(
@@ -165,7 +143,7 @@ class DCFScreen extends StatelessComponent
   @override
   List<Object?> get props => [
         key,
-        name,
+        route,
         presentationStyle,
         tabConfig,
         modalConfig,
@@ -173,9 +151,10 @@ class DCFScreen extends StatelessComponent
         popoverConfig,
         overlayConfig,
         builder,
+        renderChildren,
         children,
         styleSheet,
-        navigationCommand,
+        routeNavigationCommand,
         events,
         onAppear,
         onDisappear,
@@ -248,3 +227,6 @@ class DCFNavigationBarConfig extends Equatable {
         suffixActions,
       ];
 }
+
+
+

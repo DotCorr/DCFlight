@@ -1,32 +1,18 @@
 import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/app.dart";
-import "package:dcf_go/main.dart";
-import "package:dcf_reanimated/dcf_reanimated.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
-class StackScreenRegistry extends StatefulComponent {
+class StackScreenRegistry extends StatelessComponent {
   @override
   DCFComponentNode render() {
-    final homeNavCommand = useStore(homeNavigationCommand);
-    final profileNavCommand = useStore(profileNavigationCommand);
-    final settingsNavCommand = useStore(settingsNavigationCommand);
-    final animatedModalNavCommand = useStore(animatedModalNavigationCommand);
-
-    return DCFView(
+    return DCFFragment(
       children: [
-        DCFScreen(
-          name: "home_screen",
+        // 🏠 HOME SCREEN - Always rendered, automatic handling
+        DCFEasyScreen(
+          route: "home",
           presentationStyle: DCFPresentationStyle.push,
-          navigationStateCleaner: (v) {
-            print("🧹 Cleaning up home navigation state: $v");
-            homeNavigationCommand.setState(null);
-            // 
-              animatedModalNavigationCommand.setState(null);
-          },
-          onNavigationEvent: (data) {
-            print("🚀 Home navigation event: $data");
-          },
+          alwaysRender: true, // Skip suspense for home
           pushConfig: DCFPushConfig(
             title: "Home",
             prefixActions: [
@@ -38,28 +24,24 @@ class StackScreenRegistry extends StatefulComponent {
               ),
             ],
           ),
-          navigationCommand: homeNavCommand.state,
           onHeaderActionPress: (data) {
-            
             if (data['actionId'] == "anim_action") {
-               setupDCFReanimated();
-              animatedModalNavCommand.setState(
-                NavigationPresets.pushTo(
-                  "animated_modal_screen",
-                  params: {
-                    "title": "Animated Modal",
-                    "message": "This is an animated modal screen",
-                  },
-                ),
+              print("🎬 Opening animated modal from home header action");
+              AppNavigation.navigateTo("home/animated_modal", 
+                params: {
+                  "title": "Animated Modal",
+                  "message": "This is an animated modal screen"
+                },
+                fromScreen: "home"
               );
             }
           },
-          onAppear: (data) => print("✅ Home screen appeared: $data"),
           builder: () => HomeScreen(),
         ),
 
-        DCFScreen(
-          name: "profile_screen",
+        // 👤 PROFILE SCREEN - Automatic suspense!
+        DCFEasyScreen(
+          route: "profile",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Profile",
@@ -73,35 +55,17 @@ class StackScreenRegistry extends StatefulComponent {
               ),
             ],
           ),
-          navigationCommand: profileNavCommand.state,
-          navigationStateCleaner: (v) {
-            print("🧹 Cleaning up profile navigation state: $v");
-            profileNavigationCommand.setState(null);
-              animatedModalNavigationCommand.setState(null);
-          },
-          onNavigationEvent: (data) {
-            print("🚀 Profile navigation event: $data");
-          },
           onHeaderActionPress: (data) {
-            print("🎯 Profile header action pressed: $data");
-          },
-          onAppear: (data) => print("✅ Profile screen appeared: $data"),
-          builder: () {
-            final isSuspended = profileNavCommand.state == null;
-            if (isSuspended) {
-              print("⏸️ Profile screen is suspended - not rendering children");
-              return DCFView(children: []);
+            if (data['actionId'] == "settings_action") {
+              AppNavigation.navigateTo("profile/settings", fromScreen: "profile");
             }
-            print("🏗️ Profile screen is active - rendering children");
-            return ProfileScreen();
           },
+          builder: () => ProfileScreen(),
         ),
 
-        DCFScreen(
-          navigationStateCleaner: (v) {
-            settingsNavigationCommand.setState(null);
-          },
-          name: "settings_screen",
+        // ⚙️ SETTINGS SCREEN - Automatic suspense!
+        DCFEasyScreen(
+          route: "profile/settings",
           presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Settings",
@@ -113,46 +77,26 @@ class StackScreenRegistry extends StatefulComponent {
               DCFPushHeaderActionConfig.withTextOnly(title: "Done"),
             ],
           ),
-          navigationCommand: settingsNavCommand.state,
           onHeaderActionPress: (data) {
             print("🎯 Settings header action pressed: $data");
-          },
-          onAppear: (data) => print("✅ Settings screen appeared: $data"),
-          onNavigationEvent: (data) {
-            print("🚀 Settings navigation event: $data");
-          },
-          builder: () {
-            final isSuspended = settingsNavCommand.state == null;
-            if (isSuspended) {
-              print("⏸️ Settings screen is suspended - not rendering children");
-              return DCFView(children: []);
+            if (data['title'] == "Cancel") {
+              AppNavigation.goBack(fromScreen: "profile/settings");
+            } else if (data['title'] == "Done") {
+              AppNavigation.goBack(fromScreen: "profile/settings");
             }
-            print("🏗️ Settings screen is active - rendering children");
-            return SettingsScreen();
           },
+          builder: () => SettingsScreen(),
         ),
 
-        DCFScreen(
-          name: "animated_modal_screen",
+        // 🎬 ANIMATED MODAL SCREEN - The key fix!
+        DCFEasyScreen(
+          route: "home/animated_modal",
           presentationStyle: DCFPresentationStyle.push,
-          navigationCommand: animatedModalNavCommand.state,
-          navigationStateCleaner: (v) {
-            print("🧹 Cleaning up animated modal navigation state: $v");
-            animatedModalNavigationCommand.setState(null);
-          },
-          onNavigationEvent: (data) {
-            print("🚀 Animated modal navigation event: $data");
-          },
-          builder: () {
-            final isSuspended = animatedModalNavCommand.state == null;
-            if (isSuspended) {
-              print(
-                "⏸️ Animated modal screen is suspended - not rendering children",
-              );
-              return DCFView(children: []);
-            }
-            return AnimatedModalScreen();
-          },
+          pushConfig: DCFPushConfig(
+            title: "Animated Modal",
+            backButtonTitle: "Home",
+          ),
+          builder: () => AnimatedModalScreen(), // Only creates when actually navigated to!
         ),
       ],
     );
