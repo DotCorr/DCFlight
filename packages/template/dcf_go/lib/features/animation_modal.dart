@@ -9,9 +9,7 @@ class AnimatedModalScreen extends StatefulComponent {
   late String animationController3;
 
   @override
-  componentDidMount() {
-   
-  }
+  componentDidMount() {}
 
   @override
   componentWillUnmount() {
@@ -20,12 +18,9 @@ class AnimatedModalScreen extends StatefulComponent {
     animationController3 = '';
   }
 
-
   @override
   DCFComponentNode render() {
-    @override
-    final modalNavigationCommand = useStore(animatedModalNavigationCommand);
-    // 🎬 ONE animation controller only
+    // 🎬 Animation controllers
     animationController = useAnimationController();
     animationController2 = useAnimationController();
     animationController3 = useAnimationController();
@@ -57,17 +52,17 @@ class AnimatedModalScreen extends StatefulComponent {
             absoluteLayout: AbsoluteLayout.centeredVertically(),
           ),
           children: [
-            // 🎯 Simple animated box
+            // 🎯 Animated box 1
             DCFAnimatedView(
               nativeAnimationId: animationController,
               command: AnimateCommand(
-                toScale: 1.2, // Scale UP by 20%
-                toOpacity: 0.8, // Fade to 80% opacity
-                toTranslateX: 50, // Move 50px to the right
-                toRotation: 0.5, // Rotate slightly
-                duration: 2.0, // 2 second animation
-                curve: 'easeIn', // Smooth curve
-                repeat: true, // Keep repeating
+                toScale: 1.2,
+                toOpacity: 0.8,
+                toTranslateX: 50,
+                toRotation: 0.5,
+                duration: 2.0,
+                curve: 'easeIn',
+                repeat: true,
               ),
               layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
               styleSheet: StyleSheet(
@@ -93,16 +88,17 @@ class AnimatedModalScreen extends StatefulComponent {
               ],
             ),
 
+            // 🎯 Animated box 2
             DCFAnimatedView(
               nativeAnimationId: animationController2,
               command: AnimateCommand(
-                toScale: 1.2, // Scale UP by 20%
-                toOpacity: 0.8, // Fade to 80% opacity
-                toTranslateX: 50, // Move 50px to the right
-                toRotation: -20, // Rotate slightly
-                duration: 2.0, // 2 second animation
-                curve: 'easeInOut', // Smooth curve
-                repeat: true, // Keep repeating
+                toScale: 1.2,
+                toOpacity: 0.8,
+                toTranslateX: 50,
+                toRotation: -20,
+                duration: 2.0,
+                curve: 'easeInOut',
+                repeat: true,
               ),
               layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
               styleSheet: StyleSheet(
@@ -127,16 +123,18 @@ class AnimatedModalScreen extends StatefulComponent {
                 ),
               ],
             ),
+
+            // 🎯 Animated box 3
             DCFAnimatedView(
               nativeAnimationId: animationController3,
               command: AnimateCommand(
-                toScale: 1.2, // Scale UP by 20%
-                toOpacity: 0.8, // Fade to 80% opacity
-                toTranslateX: 50, // Move 50px to the right
-                toRotation: 0.5, // Rotate slightly
-                duration: 2.0, // 2 second animation
-                curve: 'easeOut', // Smooth curve
-                repeat: true, // Keep repeating
+                toScale: 1.2,
+                toOpacity: 0.8,
+                toTranslateX: 50,
+                toRotation: 0.5,
+                duration: 2.0,
+                curve: 'easeOut',
+                repeat: true,
               ),
               layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
               styleSheet: StyleSheet(
@@ -161,9 +159,10 @@ class AnimatedModalScreen extends StatefulComponent {
                 ),
               ],
             ),
-            // Simple text (NOT animated)
+
+            // Info text
             DCFText(
-              content: "Watch the blue box animate!",
+              content: "Watch the animated boxes! 🎬",
               textProps: DCFTextProps(
                 fontSize: 18,
                 color: Colors.black,
@@ -172,16 +171,42 @@ class AnimatedModalScreen extends StatefulComponent {
               layout: LayoutProps(marginBottom: 30),
             ),
 
-            // Non-animated dismiss button
+            // 🎯 UPDATED: Use AppNavigation helper for dismiss button
             DCFButton(
               buttonProps: DCFButtonProps(title: "Dismiss Modal"),
-              layout: LayoutProps(height: 50, width: 200),
+              layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
               styleSheet: StyleSheet(
                 backgroundColor: Colors.red,
                 borderRadius: 25,
               ),
               onPress: (v) {
-                modalNavigationCommand.setState(NavigationPresets.pop);
+                print("Dismissing animated modal");
+                AppNavigation.goBack();
+              },
+            ),
+
+            // 🎯 NEW: Additional navigation buttons for testing
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Go to Profile"),
+              layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.blue,
+                borderRadius: 25,
+              ),
+              onPress: (v) {
+                AppNavigation.navigateTo("profile");
+              },
+            ),
+
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "Go to Settings"),
+              layout: LayoutProps(height: 50, width: 200),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.purple,
+                borderRadius: 25,
+              ),
+              onPress: (v) {
+                AppNavigation.navigateTo("profile/settings");
               },
             ),
           ],

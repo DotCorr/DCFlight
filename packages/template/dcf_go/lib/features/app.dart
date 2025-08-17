@@ -1,14 +1,10 @@
-import 'package:dcf_go/main.dart';
+
 import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
 class HomeScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    // Use global navigation commands
-    final profileCommand = useStore(profileNavigationCommand);
-    final settingsCommand = useStore(settingsNavigationCommand);
-    
     return DCFView(
       layout: LayoutProps(
         flex: 1,
@@ -30,29 +26,54 @@ class HomeScreen extends StatefulComponent {
           layout: LayoutProps(marginBottom: 30),
         ),
 
-        // Navigate to profile
+        // 🎯 TARGETED NAVIGATION: Specify fromScreen to prevent conflicts
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Profile"),
           onPress: (data) {
             print("Navigate to Profile pressed");
-            profileCommand.setState(NavigationPresets.pushTo("profile_screen"));
+            AppNavigation.navigateTo("profile", fromScreen: "home");
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
 
-        // Navigate to settings
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Settings"),
           onPress: (data) {
             print("Navigate to Settings pressed");
-            settingsCommand.setState(
-              NavigationPresets.pushTo("settings_screen"),
+            AppNavigation.navigateTo("profile/settings", fromScreen: "home");
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Open Animation Modal"),
+          onPress: (data) {
+            print("Navigate to Animation Modal pressed");
+            AppNavigation.navigateTo("home/animated_modal", 
+              params: {
+                "title": "Animated Modal from Button",
+                "message": "This modal was opened from a button!"
+              },
+              fromScreen: "home"
             );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
 
-      
+        // 🎯 FIXED: Present modal with proper targeting
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Present Modal"),
+          onPress: (data) {
+            AppNavigation.presentModal("home/animated_modal", 
+              params: {
+                "title": "Presented as Modal",
+                "message": "This was presented modally!"
+              },
+              fromScreen: "home"
+            );
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
       ],
     );
   }
@@ -61,9 +82,6 @@ class HomeScreen extends StatefulComponent {
 class ProfileScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final settingsCommand = useStore(settingsNavigationCommand);
-    final profileCommand = useStore(profileNavigationCommand);
-
     return DCFView(
       layout: LayoutProps(
         flex: 1,
@@ -79,17 +97,16 @@ class ProfileScreen extends StatefulComponent {
         ),
 
         DCFText(
-          content: "Try the 'Edit' button in the navigation bar!",
+          content: "Try the 'Settings' button in the navigation bar!",
           textProps: DCFTextProps(fontSize: 16, textAlign: "center"),
           layout: LayoutProps(marginBottom: 30),
         ),
 
+        // 🎯 TARGETED NAVIGATION
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Settings"),
           onPress: (data) {
-            settingsCommand.setState(
-              NavigationPresets.pushTo("settings_screen"),
-            );
+            AppNavigation.navigateTo("profile/settings", fromScreen: "profile");
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
@@ -97,7 +114,35 @@ class ProfileScreen extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go Back"),
           onPress: (data) {
-            profileCommand.setState(NavigationPresets.pop);
+            AppNavigation.goBack(fromScreen: "profile");
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Animation Modal from Profile"),
+          onPress: (data) {
+            AppNavigation.navigateTo("home/animated_modal", 
+              params: {
+                "title": "Modal from Profile",
+                "message": "This works from any screen now!"
+              },
+              fromScreen: "profile"
+            );
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Replace with Settings"),
+          onPress: (data) {
+            AppNavigation.replace("profile/settings", 
+              params: {
+                "replaced": true,
+                "message": "This screen was replaced!"
+              },
+              fromScreen: "profile"
+            );
           },
           layout: LayoutProps(width: "80%"),
         ),
@@ -109,8 +154,6 @@ class ProfileScreen extends StatefulComponent {
 class SettingsScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final settingsCommand = useStore(settingsNavigationCommand);
-
     return DCFView(
       layout: LayoutProps(
         flex: 1,
@@ -131,14 +174,13 @@ class SettingsScreen extends StatefulComponent {
           layout: LayoutProps(marginBottom: 30),
         ),
 
+        // 🎯 TARGETED NAVIGATION
         DCFButton(
           buttonProps: DCFButtonProps(
             title: "Pop to Root",
-            // color: Colors.red,
-            // textColor: Colors.white,
           ),
           onPress: (data) {
-            settingsCommand.setState(NavigationPresets.popToRoot);
+            AppNavigation.goToRoot(fromScreen: "profile/settings");
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
@@ -146,7 +188,42 @@ class SettingsScreen extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go Back"),
           onPress: (data) {
-            settingsCommand.setState(NavigationPresets.pop);
+            AppNavigation.goBack(fromScreen: "profile/settings");
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+
+        // 🎯 FIXED: This was the problematic case!
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Animation Modal from Settings"),
+          onPress: (data) {
+            AppNavigation.navigateTo("home/animated_modal", 
+              params: {
+                "title": "Modal from Settings",
+                "message": "This was the problematic case - now fixed!"
+              },
+              fromScreen: "profile/settings"
+            );
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Go Back with Result"),
+          onPress: (data) {
+            AppNavigation.goBackWithResult({
+              "settingsSaved": true,
+              "timestamp": DateTime.now().toIso8601String(),
+              "changes": ["theme", "notifications", "privacy"]
+            }, fromScreen: "profile/settings");
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Pop to Profile"),
+          onPress: (data) {
+            AppNavigation.popToRoute("profile", fromScreen: "profile/settings");
           },
           layout: LayoutProps(width: "80%"),
         ),
@@ -154,4 +231,3 @@ class SettingsScreen extends StatefulComponent {
     );
   }
 }
-
