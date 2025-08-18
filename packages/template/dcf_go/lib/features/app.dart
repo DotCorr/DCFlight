@@ -2,7 +2,7 @@
 import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
-class HomeScreen extends StatefulComponent {
+class HomeScreen extends StatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
@@ -231,3 +231,4 @@ class SettingsScreen extends StatefulComponent {
     );
   }
 }
+
