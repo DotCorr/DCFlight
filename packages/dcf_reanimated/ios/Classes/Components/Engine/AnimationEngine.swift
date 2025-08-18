@@ -8,7 +8,82 @@ import UIKit
 import dcflight
 
 // ============================================================================
-// ANIMATION ENGINE - UI Thread CADisplayLink System
+// ANIMATED VIEW CLASS
+// ============================================================================
+
+public class AnimatedView: UIView {
+    private var controllerId: String?
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupView()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupView()
+    }
+    
+    private func setupView() {
+        clipsToBounds = true
+    }
+    
+    func setControllerId(_ id: String) {
+        self.controllerId = id
+    }
+    
+    func resetToInitialState() {
+        print("🔄 AnimatedView: Resetting to initial state")
+        layer.removeAllAnimations()
+        transform = CGAffineTransform.identity
+        alpha = 1.0
+    }
+    
+    deinit {
+        if let controllerId = controllerId {
+            DCFAnimationEngine.shared.removeController(controllerId)
+            print("🗑️ AnimatedView: Cleaned up controller \(controllerId)")
+        }
+    }
+}
+
+// ============================================================================
+// ANIMATION GROUP
+// ============================================================================
+
+public class AnimationGroup {
+    let id: String
+    let debugName: String
+    let autoStart: Bool
+    private var controllerIds: Set<String> = []
+    
+    init(id: String, autoStart: Bool = true, debugName: String) {
+        self.id = id
+        self.autoStart = autoStart
+        self.debugName = debugName
+    }
+    
+    func addController(_ controllerId: String) {
+        controllerIds.insert(controllerId)
+        print("📝 AnimationGroup[\(debugName)]: Added controller \(controllerId) (total: \(controllerIds.count))")
+    }
+    
+    func removeController(_ controllerId: String) {
+        controllerIds.remove(controllerId)
+        print("🗑️ AnimationGroup[\(debugName)]: Removed controller \(controllerId) (remaining: \(controllerIds.count))")
+    }
+    
+    func getAllControllerIds() -> Set<String> {
+        return controllerIds
+    }
+    
+    func isEmpty() -> Bool {
+        return controllerIds.isEmpty
+    }
+}
+
+// ============================================================================
+// ANIMATION ENGINE - FIXED VERSION
 // ============================================================================
 
 public class DCFAnimationEngine {
@@ -16,13 +91,196 @@ public class DCFAnimationEngine {
     
     private var displayLink: CADisplayLink?
     private var activeAnimations: [String: AnimationController] = [:]
+    private var animationGroups: [String: AnimationGroup] = [:]
+    private var pendingGroupRegistrations: [String: [String]] = [:] // NEW: Handle timing issues
     private var isRunning = false
     
     private init() {}
     
-    // Register a view for UI thread animation
+    // MARK: - Group Management - FIXED
+    
+    func registerAnimationGroup(_ groupId: String, autoStart: Bool = true, debugName: String? = nil) {
+        print("🎬 DCFAnimationEngine: Registering group '\(groupId)' (autoStart: \(autoStart))")
+        
+        animationGroups[groupId] = AnimationGroup(
+            id: groupId,
+            autoStart: autoStart,
+            debugName: debugName ?? groupId
+        )
+        
+        // FIXED: Process any pending controller registrations for this group
+        if let pendingControllers = pendingGroupRegistrations[groupId] {
+            print("🔄 DCFAnimationEngine: Adding \(pendingControllers.count) pending controllers to group '\(groupId)'")
+            for controllerId in pendingControllers {
+                animationGroups[groupId]?.addController(controllerId)
+            }
+            pendingGroupRegistrations.removeValue(forKey: groupId)
+            print("✅ DCFAnimationEngine: All pending controllers added to group '\(groupId)'")
+        }
+    }
+    
+    func addControllerToGroup(_ groupId: String, controllerId: String) {
+        if let group = animationGroups[groupId] {
+            // Group exists, add immediately
+            group.addController(controllerId)
+            print("📝 DCFAnimationEngine: Added controller '\(controllerId)' to existing group '\(groupId)'")
+        } else {
+            // FIXED: Group doesn't exist yet, store for later
+            print("⏳ DCFAnimationEngine: Group '\(groupId)' not ready yet, storing controller '\(controllerId)' for later")
+            if pendingGroupRegistrations[groupId] == nil {
+                pendingGroupRegistrations[groupId] = []
+            }
+            pendingGroupRegistrations[groupId]?.append(controllerId)
+        }
+    }
+    
+    func executeGroupCommand(_ groupId: String, command: [String: Any]) {
+        guard let group = animationGroups[groupId] else {
+            print("⚠️ DCFAnimationEngine: Group '\(groupId)' not found for command")
+            return
+        }
+        
+        let commandType = command["type"] as? String ?? ""
+        print("🎮 DCFAnimationEngine: Executing '\(commandType)' on group '\(groupId)' with \(group.getAllControllerIds().count) controllers")
+        
+        switch commandType {
+        case "startAll":
+            executeStartAllCommand(group: group, command: command)
+        case "stopAll":
+            executeStopAllCommand(group: group, command: command)
+        case "pauseAll":
+            executePauseAllCommand(group: group)
+        case "resumeAll":
+            executeResumeAllCommand(group: group)
+        case "resetAll":
+            executeResetAllCommand(group: group, command: command)
+        case "dispose":
+            disposeAnimationGroup(groupId)
+        default:
+            print("⚠️ DCFAnimationEngine: Unknown group command '\(commandType)'")
+        }
+    }
+    
+    func disposeAnimationGroup(_ groupId: String) {
+        guard let group = animationGroups[groupId] else {
+            print("⚠️ DCFAnimationEngine: Group '\(groupId)' not found for disposal")
+            return
+        }
+        
+        print("🗑️ DCFAnimationEngine: Disposing group '\(groupId)' with \(group.getAllControllerIds().count) controllers")
+        
+        // Stop and remove all controllers in the group
+        for controllerId in group.getAllControllerIds() {
+            if let controller = activeAnimations[controllerId] {
+                controller.executeCommand(["type": "stop"])
+            }
+            activeAnimations.removeValue(forKey: controllerId)
+            print("🗑️ DCFAnimationEngine: Removed controller \(controllerId) from group")
+        }
+        
+        // Remove the group
+        animationGroups.removeValue(forKey: groupId)
+        
+        // Clean up any pending registrations for this group
+        pendingGroupRegistrations.removeValue(forKey: groupId)
+        
+        // Stop display link if no active animations
+        if activeAnimations.isEmpty && isRunning {
+            displayLink?.invalidate()
+            displayLink = nil
+            isRunning = false
+            print("🛑 DCFAnimationEngine: Stopped UI thread animation loop (no active animations)")
+        }
+        
+        print("✅ DCFAnimationEngine: Successfully disposed group '\(groupId)'")
+    }
+    
+    // MARK: - Group Command Implementations
+    
+    private func executeStartAllCommand(group: AnimationGroup, command: [String: Any]) {
+        let staggered = command["staggered"] as? Bool ?? false
+        let staggerInterval = Double(command["staggerInterval"] as? Int ?? 0) / 1000.0
+        let delay = Double(command["delay"] as? Int ?? 0) / 1000.0
+        
+        let controllerIds = Array(group.getAllControllerIds())
+        
+        if staggered && staggerInterval > 0 {
+            for (index, controllerId) in controllerIds.enumerated() {
+                let totalDelay = delay + (Double(index) * staggerInterval)
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + totalDelay) {
+                    if let controller = self.activeAnimations[controllerId] {
+                        controller.executeCommand(["type": "resume"])
+                    }
+                }
+            }
+            print("🎬 DCFAnimationEngine: Started \(controllerIds.count) animations with stagger interval \(staggerInterval)s")
+        } else {
+            if delay > 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    self.startAllControllersInGroup(group)
+                }
+            } else {
+                startAllControllersInGroup(group)
+            }
+            print("🎬 DCFAnimationEngine: Started \(controllerIds.count) animations simultaneously")
+        }
+    }
+    
+    private func startAllControllersInGroup(_ group: AnimationGroup) {
+        for controllerId in group.getAllControllerIds() {
+            if let controller = activeAnimations[controllerId] {
+                controller.executeCommand(["type": "resume"])
+            }
+        }
+    }
+    
+    private func executeStopAllCommand(group: AnimationGroup, command: [String: Any]) {
+        let immediate = command["immediate"] as? Bool ?? true
+        
+        for controllerId in group.getAllControllerIds() {
+            if let controller = activeAnimations[controllerId] {
+                controller.executeCommand(["type": immediate ? "stop" : "pause"])
+            }
+        }
+        print("🛑 DCFAnimationEngine: Stopped \(group.getAllControllerIds().count) animations (immediate: \(immediate))")
+    }
+    
+    private func executePauseAllCommand(group: AnimationGroup) {
+        for controllerId in group.getAllControllerIds() {
+            if let controller = activeAnimations[controllerId] {
+                controller.executeCommand(["type": "pause"])
+            }
+        }
+        print("⏸️ DCFAnimationEngine: Paused \(group.getAllControllerIds().count) animations")
+    }
+    
+    private func executeResumeAllCommand(group: AnimationGroup) {
+        for controllerId in group.getAllControllerIds() {
+            if let controller = activeAnimations[controllerId] {
+                controller.executeCommand(["type": "resume"])
+            }
+        }
+        print("▶️ DCFAnimationEngine: Resumed \(group.getAllControllerIds().count) animations")
+    }
+    
+    private func executeResetAllCommand(group: AnimationGroup, command: [String: Any]) {
+        let animated = command["animated"] as? Bool ?? false
+        
+        for controllerId in group.getAllControllerIds() {
+            if let controller = activeAnimations[controllerId] {
+                controller.executeCommand([
+                    "type": "reset",
+                    "animated": animated
+                ])
+            }
+        }
+        print("🔄 DCFAnimationEngine: Reset \(group.getAllControllerIds().count) animations (animated: \(animated))")
+    }
+    
+    // MARK: - Individual Controller Management
+    
     func registerAnimationController(_ controllerId: String, view: AnimatedView) {
-        // Clean up existing controller if it exists
         if let existingController = activeAnimations[controllerId] {
             print("🔄 DCFAnimationEngine: Replacing existing controller \(controllerId)")
         }
@@ -32,7 +290,6 @@ public class DCFAnimationEngine {
         print("🎬 DCFAnimationEngine: Registered controller \(controllerId)")
     }
     
-    // Execute command on UI thread
     func executeCommand(_ controllerId: String, command: [String: Any]) {
         guard let controller = activeAnimations[controllerId] else {
             print("⚠️ DCFAnimationEngine: Controller \(controllerId) not found")
@@ -54,22 +311,18 @@ public class DCFAnimationEngine {
         let currentTime = CACurrentMediaTime()
         var hasActiveAnimations = false
         
-        // Update all active animations
         for (controllerId, controller) in activeAnimations {
             if controller.updateFrame(currentTime: currentTime) {
                 hasActiveAnimations = true
             } else {
-                // Animation finished and not repeating - remove it
                 print("✅ DCFAnimationEngine: Animation \(controllerId) completed")
             }
         }
         
-        // Clean up completed animations
         activeAnimations = activeAnimations.filter { _, controller in
             controller.updateFrame(currentTime: currentTime)
         }
         
-        // Stop display link if no animations
         if activeAnimations.isEmpty && isRunning {
             displayLink?.invalidate()
             displayLink = nil
@@ -78,10 +331,8 @@ public class DCFAnimationEngine {
         }
     }
     
-    // Clean up controller when view is removed
     func removeController(_ controllerId: String) {
         if let controller = activeAnimations[controllerId] {
-            // Stop the animation
             controller.executeCommand(["type": "stop"])
         }
         activeAnimations.removeValue(forKey: controllerId)
@@ -90,7 +341,7 @@ public class DCFAnimationEngine {
 }
 
 // ============================================================================
-// ANIMATION CONTROLLER - Per-View Animation State
+// ANIMATION CONTROLLER
 // ============================================================================
 
 class AnimationController {
@@ -127,10 +378,8 @@ class AnimationController {
     private func startDirectAnimation(_ command: [String: Any]) {
         guard let view = view else { return }
         
-        // Stop any existing animation
         currentAnimation = nil
         
-        // Create new direct animation
         currentAnimation = DirectAnimation(
             view: view,
             command: command,
@@ -140,14 +389,14 @@ class AnimationController {
         print("🎬 AnimationController: Started direct UI thread animation")
     }
     
-    // Returns true if animation is active
     func updateFrame(currentTime: CFTimeInterval) -> Bool {
         guard let animation = currentAnimation else { return false }
         return animation.updateFrame(currentTime: currentTime)
     }
 }
+
 // ============================================================================
-// DIRECT ANIMATION - Frame-by-Frame UI Thread Animation
+// DIRECT ANIMATION
 // ============================================================================
 
 class DirectAnimation {
@@ -165,7 +414,6 @@ class DirectAnimation {
         self.view = view
         self.startTime = startTime
         
-        // Extract animation parameters
         if let durationMs = command["duration"] as? Int {
             self.duration = TimeInterval(durationMs) / 1000.0
         } else if let durationSec = command["duration"] as? Double {
@@ -174,26 +422,19 @@ class DirectAnimation {
             self.duration = 0.3
         }
         
-        // Extract repeat flag
         self.repeatAnimation = command["repeat"] as? Bool ?? false
         
-        // Convert curve string to function
         let curveString = command["curve"] as? String ?? "easeInOut"
         self.curve = Self.getCurveFunction(curveString)
         
-        // Capture current values as starting point
         self.fromValues = Self.captureCurrentValues(view)
-        
-        // Extract target values
         self.toValues = Self.extractTargetValues(command)
         
         print("🎯 DirectAnimation: Created with duration \(duration)s, repeat: \(repeatAnimation)")
         
-        // Fire animation start event
         fireAnimationStartEvent(view: view)
     }
     
-    // Returns true if animation should continue
     func updateFrame(currentTime: CFTimeInterval) -> Bool {
         guard let view = view, !isPaused else { return true }
         
@@ -201,40 +442,31 @@ class DirectAnimation {
         let progress = min(1.0, elapsed / duration)
         let easedProgress = curve(progress)
         
-        // Calculate and apply current values
         applyCurrentValues(view: view, progress: easedProgress)
         
-        // Check if animation is complete
         if progress >= 1.0 {
-            // Trigger completion callback
             fireAnimationEndEvent(view: view)
             
-            // Handle repeat - SIMPLE AND WORKING
             if repeatAnimation {
                 print("🔄 DirectAnimation: Restarting animation cycle")
                 
-                // Reset start time for new cycle
                 self.startTime = currentTime
-                
-                // Reset view to initial state
                 resetViewToInitial(view: view)
                 
-                // Small delay to make the reset visible
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                     self?.fireAnimationStartEvent(view: view)
                 }
                 
-                return true // Continue for next cycle
+                return true
             }
             
-            return false // Animation complete
+            return false
         }
         
-        return true // Continue current cycle
+        return true
     }
     
     private func resetViewToInitial(view: AnimatedView) {
-        // Reset to identity transform
         view.transform = CGAffineTransform.identity
         view.alpha = 1.0
         
@@ -245,14 +477,12 @@ class DirectAnimation {
         var transform = CGAffineTransform.identity
         var hasTransform = false
         
-        // Apply scale
         if let toScale = toValues["scale"] {
             let currentScale = 1.0 + (toScale - 1.0) * CGFloat(progress)
             transform = transform.scaledBy(x: currentScale, y: currentScale)
             hasTransform = true
         }
         
-        // Apply translation
         if let toTranslateX = toValues["translateX"] {
             let currentTranslateX = toTranslateX * CGFloat(progress)
             transform = transform.translatedBy(x: currentTranslateX, y: 0)
@@ -265,19 +495,16 @@ class DirectAnimation {
             hasTransform = true
         }
         
-        // Apply rotation
         if let toRotation = toValues["rotation"] {
             let currentRotation = toRotation * CGFloat(progress)
             transform = transform.rotated(by: currentRotation)
             hasTransform = true
         }
         
-        // Apply transform
         if hasTransform {
             view.transform = transform
         }
         
-        // Apply opacity
         if let toOpacity = toValues["opacity"] {
             let currentOpacity = 1.0 + (toOpacity - 1.0) * CGFloat(progress)
             view.alpha = currentOpacity
@@ -292,18 +519,15 @@ class DirectAnimation {
         propagateEvent(on: view, eventName: "onAnimationEnd", data: [:])
     }
     
-    // Static helper methods
     static func captureCurrentValues(_ view: AnimatedView) -> [String: CGFloat] {
         var values: [String: CGFloat] = [:]
         
-        // Capture current transform components
         let transform = view.transform
         values["scale"] = sqrt(transform.a * transform.a + transform.c * transform.c)
         values["translateX"] = transform.tx
         values["translateY"] = transform.ty
         values["rotation"] = atan2(transform.b, transform.a)
         
-        // Capture opacity
         values["opacity"] = view.alpha
         
         return values

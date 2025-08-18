@@ -7,13 +7,21 @@ class AnimatedModalScreen extends StatefulComponent {
   @override
   componentDidMount() {}
 
+  @override
+  componentWillUnmount() {
+    // No setState - that doesn't exist! 
+    // We need to use hooks properly
+  }
 
   @override
   DCFComponentNode render() {
-    // 🎬 Animation controllers
-    final animationController = useAnimationController();
-    final animationController2 = useAnimationController();
-    final animationController3 = useAnimationController();
+    // 🎬 Animation controllers - generate unique IDs (no hooks needed!)
+    final animationController = AnimationControllerIds.generate();
+    final animationController2 = AnimationControllerIds.generate();
+    final animationController3 = AnimationControllerIds.generate();
+
+    // Use hook for disposal command
+    final groupCommand = useState<GroupAnimationCommand?>(null, 'groupCommand');
 
     return DCFFragment(
       children: [
@@ -42,110 +50,122 @@ class AnimatedModalScreen extends StatefulComponent {
             absoluteLayout: AbsoluteLayout.centeredVertically(),
           ),
           children: [
-            // 🎯 Animated box 1
-            DCFAnimatedView(
-              nativeAnimationId: animationController,
-              command: AnimateCommand(
-                toScale: 1.2,
-                toOpacity: 0.8,
-                toTranslateX: 50,
-                toRotation: 0.5,
-                duration: 2.0,
-                curve: 'easeIn',
-                repeat: true,
-              ),
-              layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
-              styleSheet: StyleSheet(
-                backgroundColor: Colors.blue,
-                borderRadius: 20,
-              ),
-              onAnimationStart: (data) {
-                print("🚀 Animation STARTED!");
-              },
-              onAnimationEnd: (data) {
-                print("🎉 Animation ENDED!");
-              },
+            // 🎬 Animation Manager - Controls all animations as a group!
+            DCFAnimationManager(
+              groupId: "modal_animations",
+              debugName: "Modal Animation Group",
+              autoStart: true,
+              command: groupCommand.state, // Use hook state for command
               children: [
-                DCFText(
-                  content: "BOX 1",
-                  textProps: DCFTextProps(
-                    fontSize: 16,
-                    fontWeight: DCFFontWeight.bold,
-                    color: Colors.white,
-                    textAlign: "center",
+                // 🎯 Animated box 1
+                DCFAnimatedView(
+                  nativeAnimationId: animationController,
+                  groupId: "modal_animations", // Register with the group
+                  command: AnimateCommand(
+                    toScale: 1.2,
+                    toOpacity: 0.8,
+                    toTranslateX: 50,
+                    toRotation: 0.5,
+                    duration: 2.0,
+                    curve: 'easeIn',
+                    repeat: true,
                   ),
+                  layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.blue,
+                    borderRadius: 20,
+                  ),
+                  onAnimationStart: (data) {
+                    print("🚀 Box 1 Animation STARTED!");
+                  },
+                  onAnimationEnd: (data) {
+                    print("🎉 Box 1 Animation ENDED!");
+                  },
+                  children: [
+                    DCFText(
+                      content: "BOX 1",
+                      textProps: DCFTextProps(
+                        fontSize: 16,
+                        fontWeight: DCFFontWeight.bold,
+                        color: Colors.white,
+                        textAlign: "center",
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
 
-            // 🎯 Animated box 2
-            DCFAnimatedView(
-              nativeAnimationId: animationController2,
-              command: AnimateCommand(
-                toScale: 1.2,
-                toOpacity: 0.8,
-                toTranslateX: 50,
-                toRotation: -20,
-                duration: 2.0,
-                curve: 'easeInOut',
-                repeat: true,
-              ),
-              layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
-              styleSheet: StyleSheet(
-                backgroundColor: Colors.pink,
-                borderRadius: 20,
-              ),
-              onAnimationStart: (data) {
-                print("🚀 Animation STARTED!");
-              },
-              onAnimationEnd: (data) {
-                print("🎉 Animation ENDED!");
-              },
-              children: [
-                DCFText(
-                  content: "BOX 2",
-                  textProps: DCFTextProps(
-                    fontSize: 16,
-                    fontWeight: DCFFontWeight.bold,
-                    color: Colors.white,
-                    textAlign: "center",
+                // 🎯 Animated box 2
+                DCFAnimatedView(
+                  nativeAnimationId: animationController2,
+                  groupId: "modal_animations", // Register with the group
+                  command: AnimateCommand(
+                    toScale: 1.2,
+                    toOpacity: 0.8,
+                    toTranslateX: 50,
+                    toRotation: -20,
+                    duration: 2.0,
+                    curve: 'easeInOut',
+                    repeat: true,
                   ),
+                  layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.pink,
+                    borderRadius: 20,
+                  ),
+                  onAnimationStart: (data) {
+                    print("🚀 Box 2 Animation STARTED!");
+                  },
+                  onAnimationEnd: (data) {
+                    print("🎉 Box 2 Animation ENDED!");
+                  },
+                  children: [
+                    DCFText(
+                      content: "BOX 2",
+                      textProps: DCFTextProps(
+                        fontSize: 16,
+                        fontWeight: DCFFontWeight.bold,
+                        color: Colors.white,
+                        textAlign: "center",
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
 
-            // 🎯 Animated box 3
-            DCFAnimatedView(
-              nativeAnimationId: animationController3,
-              command: AnimateCommand(
-                toScale: 1.2,
-                toOpacity: 0.8,
-                toTranslateX: 50,
-                toRotation: 0.5,
-                duration: 2.0,
-                curve: 'easeOut',
-                repeat: true,
-              ),
-              layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
-              styleSheet: StyleSheet(
-                backgroundColor: Colors.green,
-                borderRadius: 20,
-              ),
-              onAnimationStart: (data) {
-                print("🚀 Animation STARTED!");
-              },
-              onAnimationEnd: (data) {
-                print("🎉 Animation ENDED!");
-              },
-              children: [
-                DCFText(
-                  content: "BOX 3",
-                  textProps: DCFTextProps(
-                    fontSize: 16,
-                    fontWeight: DCFFontWeight.bold,
-                    color: Colors.white,
-                    textAlign: "center",
+                // 🎯 Animated box 3
+                DCFAnimatedView(
+                  nativeAnimationId: animationController3,
+                  groupId: "modal_animations", // Register with the group
+                  command: AnimateCommand(
+                    toScale: 1.2,
+                    toOpacity: 0.8,
+                    toTranslateX: 50,
+                    toRotation: 0.5,
+                    duration: 2.0,
+                    curve: 'easeOut',
+                    repeat: true,
                   ),
+                  layout: LayoutProps(height: 65, width: 150, marginBottom: 30),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.green,
+                    borderRadius: 20,
+                  ),
+                  onAnimationStart: (data) {
+                    print("🚀 Box 3 Animation STARTED!");
+                  },
+                  onAnimationEnd: (data) {
+                    print("🎉 Box 3 Animation ENDED!");
+                  },
+                  children: [
+                    DCFText(
+                      content: "BOX 3",
+                      textProps: DCFTextProps(
+                        fontSize: 16,
+                        fontWeight: DCFFontWeight.bold,
+                        color: Colors.white,
+                        textAlign: "center",
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -170,8 +190,10 @@ class AnimatedModalScreen extends StatefulComponent {
                 borderRadius: 25,
               ),
               onPress: (v) {
-                print("Dismissing animated modal");
-                AppNavigation.goBack();
+                
+                print("Dismissing animated modal - sending dispose command!");
+                groupCommand.setState(GroupAnimationCommand.dispose);
+                // AppNavigation.goBack();
               },
             ),
 
@@ -205,3 +227,4 @@ class AnimatedModalScreen extends StatefulComponent {
     );
   }
 }
+

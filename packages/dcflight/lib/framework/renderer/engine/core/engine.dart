@@ -2528,7 +2528,7 @@ class DCFEngine {
       changes.add({'action': 'updateProps', 'diff': propsDiff});
     }
 
-    // Compare children
+    // Compare children 
     final oldChildren = oldTree['children'] as List<dynamic>? ?? [];
     final newChildren = newTree['children'] as List<dynamic>? ?? [];
 
@@ -2740,3 +2740,4 @@ class DCFEngine {
     return suggestions;
   }
 }
+
