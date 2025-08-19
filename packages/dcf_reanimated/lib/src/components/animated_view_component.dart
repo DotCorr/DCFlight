@@ -463,36 +463,7 @@ class AnimationBuilderContext {
     );
   }
   
-  /// Quick animated box builder
-  DCFAnimatedView box({
-    required String name,
-    required String text,
-    required Color color,
-    required AnimateCommand animation,
-    LayoutProps? layout,
-    void Function(Map<String, dynamic>)? onStart,
-    void Function(Map<String, dynamic>)? onEnd,
-  }) {
-    return animated(
-      name: name,
-      command: animation,
-      layout: layout ?? LayoutProps(height: 65, width: 150, marginBottom: 30),
-      styleSheet: StyleSheet(backgroundColor: color, borderRadius: 20),
-      onAnimationStart: onStart,
-      onAnimationEnd: onEnd,
-      children: [
-        DCFText(
-          content: text,
-          textProps: DCFTextProps(
-            fontSize: 16,
-            fontWeight: DCFFontWeight.bold,
-            color: Colors.white,
-            textAlign: "center",
-          ),
-        ),
-      ],
-    );
-  }
+ 
   
   // ========================================================================
   // GROUP CONTROL METHODS - Direct access to animation commands
@@ -574,6 +545,9 @@ class SuperDCFAnimationManager extends StatefulComponent {
     final animatedChildren = builder(context);
     
     return DCFView(
+      layout: LayoutProps(
+        flex: 1,
+      ),
       children: [
         DCFAnimationManager(
           groupId: groupId,

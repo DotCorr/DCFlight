@@ -121,8 +121,11 @@ class DCFEngine {
         final sendPort = await receivePort.first as SendPort;
         _workerPorts.add(sendPort);
       }
+      // This must be set to true before using this feature
+      // But this is not ready. It would be delegated to app layer if developers want
+      // _concurrentEnabled = true;
+      _concurrentEnabled = false;
 
-      _concurrentEnabled = true;
       EngineDebugLogger.log('VDOM_CONCURRENT',
           'Concurrent processing enabled with $_maxWorkers workers');
     } catch (e) {

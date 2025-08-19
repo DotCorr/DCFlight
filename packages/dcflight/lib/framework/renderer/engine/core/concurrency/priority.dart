@@ -117,3 +117,4 @@ class PriorityUtils {
     return newPriority.weight < currentPriority.weight;
   }
 }
+
