@@ -1,5 +1,5 @@
-# DEV Status - ARCHIVED (paused)
-Currently took a break from mobile dev due to changing global dynamics. I have decided to focus on AI projects for internal or private use and commercial use.
+# DEV Status - Resumed
+Currently took a break from mobile dev due to changing global dynamics. I have decided to focus on AI projects for internal or private use and commercial use. As of 19th August 2025, i have resumed this project but as a side project.
 
 ### DCFlight was a Side Project which means if this is public rn you can contribute. Fully validated and works but not completed. Contribitions are welcomed.
 
