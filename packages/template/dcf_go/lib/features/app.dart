@@ -35,6 +35,14 @@ class HomeScreen extends StatelessComponent {
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Go to Website"),
+          onPress: (data) {
+            print("Navigate to Website pressed");
+            AppNavigation.presentModal("home/website", fromScreen: "home");
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
 
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Settings"),
