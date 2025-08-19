@@ -65,7 +65,7 @@ public class AnimationGroup {
     
     func addController(_ controllerId: String) {
         controllerIds.insert(controllerId)
-        print("📝 AnimationGroup[\(debugName)]: Added controller \(controllerId) (total: \(controllerIds.count))")
+        print("🔗 AnimationGroup[\(debugName)]: Added controller \(controllerId) (total: \(controllerIds.count))")
     }
     
     func removeController(_ controllerId: String) {
@@ -102,6 +102,12 @@ public class DCFAnimationEngine {
     func registerAnimationGroup(_ groupId: String, autoStart: Bool = true, debugName: String? = nil) {
         print("🎬 DCFAnimationEngine: Registering group '\(groupId)' (autoStart: \(autoStart))")
         
+        // ✅ FIX: Don't re-register if already exists
+        if animationGroups[groupId] != nil {
+            print("♻️ DCFAnimationEngine: Group '\(groupId)' already exists, skipping registration")
+            return
+        }
+        
         animationGroups[groupId] = AnimationGroup(
             id: groupId,
             autoStart: autoStart,
@@ -120,10 +126,15 @@ public class DCFAnimationEngine {
     }
     
     func addControllerToGroup(_ groupId: String, controllerId: String) {
+        print("🔗 DCFAnimationEngine: Attempting to add controller '\(controllerId)' to group '\(groupId)'")
+        
         if let group = animationGroups[groupId] {
             // Group exists, add immediately
             group.addController(controllerId)
-            print("📝 DCFAnimationEngine: Added controller '\(controllerId)' to existing group '\(groupId)'")
+            print("✅ DCFAnimationEngine: Successfully added controller '\(controllerId)' to existing group '\(groupId)'")
+            
+            // Debug: Print current group state
+            print("📊 DCFAnimationEngine: Group '\(groupId)' now has \(group.getAllControllerIds().count) controllers: \(group.getAllControllerIds())")
         } else {
             // FIXED: Group doesn't exist yet, store for later
             print("⏳ DCFAnimationEngine: Group '\(groupId)' not ready yet, storing controller '\(controllerId)' for later")
@@ -131,17 +142,35 @@ public class DCFAnimationEngine {
                 pendingGroupRegistrations[groupId] = []
             }
             pendingGroupRegistrations[groupId]?.append(controllerId)
+            print("📊 DCFAnimationEngine: Pending controllers for group '\(groupId)': \(pendingGroupRegistrations[groupId] ?? [])")
         }
     }
     
     func executeGroupCommand(_ groupId: String, command: [String: Any]) {
+        // ✅ EXECUTE IMMEDIATELY - NO QUEUING
+        let commandType = command["type"] as? String ?? ""
+        print("🎮 DCFAnimationEngine: IMMEDIATELY executing '\(commandType)' on group '\(groupId)'")
+        
+        // ✅ Handle individual commands first
+        if commandType == "individual" {
+            if let controllerId = command["controllerId"] as? String,
+               let individualCommand = command["command"] as? [String: Any] {
+                print("🎯 DCFAnimationEngine: Executing individual command on controller '\(controllerId)'")
+                executeCommand(controllerId, command: individualCommand)
+                return
+            }
+        }
+        
+        // ✅ Handle group commands
         guard let group = animationGroups[groupId] else {
             print("⚠️ DCFAnimationEngine: Group '\(groupId)' not found for command")
+            print("📊 DCFAnimationEngine: Available groups: \(Array(animationGroups.keys))")
             return
         }
         
-        let commandType = command["type"] as? String ?? ""
-        print("🎮 DCFAnimationEngine: Executing '\(commandType)' on group '\(groupId)' with \(group.getAllControllerIds().count) controllers")
+        let controllerIds = group.getAllControllerIds()
+        print("📊 DCFAnimationEngine: Group controllers: \(controllerIds)")
+        print("📊 DCFAnimationEngine: Active animations: \(Array(activeAnimations.keys))")
         
         switch commandType {
         case "startAll":
@@ -238,35 +267,40 @@ public class DCFAnimationEngine {
     private func executeStopAllCommand(group: AnimationGroup, command: [String: Any]) {
         let immediate = command["immediate"] as? Bool ?? true
         
+        // ✅ CRITICAL FIX: Stop all animations IMMEDIATELY
         for controllerId in group.getAllControllerIds() {
             if let controller = activeAnimations[controllerId] {
-                controller.executeCommand(["type": immediate ? "stop" : "pause"])
+                let stopCommand = ["type": immediate ? "stop" : "pause"]
+                controller.executeCommand(stopCommand)
             }
         }
-        print("🛑 DCFAnimationEngine: Stopped \(group.getAllControllerIds().count) animations (immediate: \(immediate))")
+        print("🛑 DCFAnimationEngine: IMMEDIATELY stopped \(group.getAllControllerIds().count) animations (immediate: \(immediate))")
     }
     
     private func executePauseAllCommand(group: AnimationGroup) {
+        // ✅ IMMEDIATE pause execution
         for controllerId in group.getAllControllerIds() {
             if let controller = activeAnimations[controllerId] {
                 controller.executeCommand(["type": "pause"])
             }
         }
-        print("⏸️ DCFAnimationEngine: Paused \(group.getAllControllerIds().count) animations")
+        print("⏸️ DCFAnimationEngine: IMMEDIATELY paused \(group.getAllControllerIds().count) animations")
     }
     
     private func executeResumeAllCommand(group: AnimationGroup) {
+        // ✅ IMMEDIATE resume execution
         for controllerId in group.getAllControllerIds() {
             if let controller = activeAnimations[controllerId] {
                 controller.executeCommand(["type": "resume"])
             }
         }
-        print("▶️ DCFAnimationEngine: Resumed \(group.getAllControllerIds().count) animations")
+        print("▶️ DCFAnimationEngine: IMMEDIATELY resumed \(group.getAllControllerIds().count) animations")
     }
     
     private func executeResetAllCommand(group: AnimationGroup, command: [String: Any]) {
         let animated = command["animated"] as? Bool ?? false
         
+        // ✅ IMMEDIATE reset execution
         for controllerId in group.getAllControllerIds() {
             if let controller = activeAnimations[controllerId] {
                 controller.executeCommand([
@@ -275,7 +309,7 @@ public class DCFAnimationEngine {
                 ])
             }
         }
-        print("🔄 DCFAnimationEngine: Reset \(group.getAllControllerIds().count) animations (animated: \(animated))")
+        print("🔄 DCFAnimationEngine: IMMEDIATELY reset \(group.getAllControllerIds().count) animations (animated: \(animated))")
     }
     
     // MARK: - Individual Controller Management
@@ -291,6 +325,7 @@ public class DCFAnimationEngine {
     }
     
     func executeCommand(_ controllerId: String, command: [String: Any]) {
+        // ✅ EXECUTE IMMEDIATELY - NO QUEUING
         guard let controller = activeAnimations[controllerId] else {
             print("⚠️ DCFAnimationEngine: Controller \(controllerId) not found")
             return
@@ -357,19 +392,34 @@ class AnimationController {
         
         let commandType = command["type"] as? String ?? ""
         
+        // ✅ EXECUTE IMMEDIATELY - NO DELAYS, NO QUEUING
         switch commandType {
         case "animate":
             startDirectAnimation(command)
         case "reset":
-            view.resetToInitialState()
+            // ✅ IMMEDIATE reset - kill animation NOW
+            currentAnimation?.interrupt()
             currentAnimation = nil
+            view.resetToInitialState()
+            print("🔄 AnimationController: IMMEDIATE reset executed")
         case "pause":
-            currentAnimation?.isPaused = true
+            // ✅ IMMEDIATE pause with proper timing
+            if let animation = currentAnimation {
+                animation.pause()
+                print("⏸️ AnimationController: IMMEDIATE pause executed")
+            }
         case "resume":
-            currentAnimation?.isPaused = false
+            // ✅ IMMEDIATE resume with proper timing
+            if let animation = currentAnimation {
+                animation.resume()
+                print("▶️ AnimationController: IMMEDIATE resume executed")
+            }
         case "stop":
+            // ✅ IMMEDIATE stop - kill animation NOW
+            currentAnimation?.interrupt()
             currentAnimation = nil
             view.resetToInitialState()
+            print("🛑 AnimationController: IMMEDIATE stop executed")
         default:
             break
         }
@@ -409,6 +459,7 @@ class DirectAnimation {
     private let repeatAnimation: Bool
     var isPaused = false
     private var pausedTime: CFTimeInterval = 0
+    private var isInterrupted = false // ✅ NEW: Interruption flag
     
     init(view: AnimatedView, command: [String: Any], startTime: CFTimeInterval) {
         self.view = view
@@ -435,8 +486,40 @@ class DirectAnimation {
         fireAnimationStartEvent(view: view)
     }
     
+    // ✅ NEW: Proper pause method with timing
+    func pause() {
+        if !isPaused {
+            isPaused = true
+            pausedTime = CACurrentMediaTime() - startTime
+            print("⏸️ DirectAnimation: Paused at time \(pausedTime)")
+        }
+    }
+    
+    // ✅ NEW: Proper resume method with timing
+    func resume() {
+        if isPaused {
+            isPaused = false
+            startTime = CACurrentMediaTime() - pausedTime
+            print("▶️ DirectAnimation: Resumed from time \(pausedTime)")
+        }
+    }
+    
+    // ✅ NEW: Interrupt method for immediate stopping
+    func interrupt() {
+        isInterrupted = true
+        print("🛑 DirectAnimation: Animation interrupted immediately")
+    }
+    
     func updateFrame(currentTime: CFTimeInterval) -> Bool {
-        guard let view = view, !isPaused else { return true }
+        guard let view = view, !isInterrupted else {
+            return false // ✅ Exit immediately if interrupted
+        }
+        
+        // ✅ CRITICAL FIX: Handle pause separately - don't exit the function
+        if isPaused {
+            print("⏸️ DirectAnimation: Animation is paused, skipping frame")
+            return true // Stay alive but don't animate
+        }
         
         let elapsed = currentTime - startTime - pausedTime
         let progress = min(1.0, elapsed / duration)
@@ -447,14 +530,18 @@ class DirectAnimation {
         if progress >= 1.0 {
             fireAnimationEndEvent(view: view)
             
-            if repeatAnimation {
+            // ✅ CRITICAL FIX: Check pause AND interruption before repeating
+            if repeatAnimation && !isInterrupted && !isPaused {
                 print("🔄 DirectAnimation: Restarting animation cycle")
                 
                 self.startTime = currentTime
                 resetViewToInitial(view: view)
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                    self?.fireAnimationStartEvent(view: view)
+                    // ✅ Check pause again before firing start event
+                    if let self = self, !self.isPaused {
+                        self.fireAnimationStartEvent(view: view)
+                    }
                 }
                 
                 return true

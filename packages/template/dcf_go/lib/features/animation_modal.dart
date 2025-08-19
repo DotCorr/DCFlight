@@ -53,7 +53,8 @@ class AnimatedModalScreen extends StatefulComponent {
               autoStart: true,
               onCommand: (cmd) => print("🎮 Executed: ${cmd.type}"),
               builder:
-                  (context) => [
+                  (context) {
+                    return [
                     // 🎯 Box 1 - Auto controller generation!
                     context.animated(
                       name: "box1",
@@ -78,10 +79,11 @@ class AnimatedModalScreen extends StatefulComponent {
                       command: Animations.complex(
                         scale: 1.2,
                         opacity: 0.8,
-                        translateX: 50,
+                        translateX: 100,
                         rotation: 0.5,
                         duration: 2.0,
                         curve: 'easeIn',
+                        repeat: false
                       ),
                     ),
 
@@ -98,6 +100,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           ),
                         ),
                       ],
+                    
                       styleSheet: StyleSheet(backgroundColor: Colors.red),
                       layout: LayoutProps(
                         height: 100,
@@ -109,10 +112,12 @@ class AnimatedModalScreen extends StatefulComponent {
                       command: Animations.complex(
                         scale: 1.2,
                         opacity: 0.8,
-                        translateX: 50,
+                        translateX: 120,
                         rotation: 0.5,
                         duration: 2.0,
                         curve: 'easeOut',
+                        repeat:false,
+
                       ),
                     ),
 
@@ -144,11 +149,14 @@ class AnimatedModalScreen extends StatefulComponent {
                         rotation: 0.5,
                         duration: 2.0,
                         curve: 'easeIn',
+                        repeat:false,
+                        
                       ),
                     ),
 
                     // 🎯 Custom animated text
                     context.animated(
+                      
                       name: "info_text",
                       command: Animations.fade(opacity: 0.0, duration: 1.0),
                       layout: LayoutProps(
@@ -287,7 +295,7 @@ class AnimatedModalScreen extends StatefulComponent {
                         ),
                       ],
                     ),
-                  ],
+          ];},
             ),
           ],
         ),

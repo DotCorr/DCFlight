@@ -463,8 +463,6 @@ class AnimationBuilderContext {
     );
   }
   
- 
-  
   // ========================================================================
   // GROUP CONTROL METHODS - Direct access to animation commands
   // ========================================================================
