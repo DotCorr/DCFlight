@@ -1,65 +1,10 @@
 /*
- * DCF Reanimated - Animation Manager System
+ * DCF Reanimated - Complete Clean Animation System
  * Copyright (c) Dotcorr Studio. and affiliates.
  * Licensed under the MIT license
  */
 
 import 'package:dcflight/dcflight.dart';
-
-// ============================================================================
-// ANIMATION MANAGER COMPONENT - Group Animation Controller
-// ============================================================================
-
-/// Animation Manager for controlling multiple animations as a group
-class DCFAnimationManager extends StatelessComponent with EquatableMixin {
-  /// Unique identifier for this animation group
-  final String groupId;
-  
-  /// Command to execute on the entire animation group
-  final GroupAnimationCommand? command;
-  
-  /// Child components (typically DCFAnimatedViews)
-  final List<DCFComponentNode> children;
-  
-  /// Whether to auto-start animations when manager mounts
-  final bool autoStart;
-  
-  /// Debug name for logging
-  final String? debugName;
-
-   DCFAnimationManager({
-    required this.groupId,
-    this.command,
-    this.children = const [],
-    this.autoStart = true,
-    this.debugName,
-    super.key,
-  });
-
-  @override
-  DCFComponentNode render() {
-    // Build props for the native animation manager
-    Map<String, dynamic> props = {
-      'groupId': groupId,
-      'autoStart': autoStart,
-      'debugName': debugName ?? groupId,
-    };
-
-    // Add command if provided
-    if (command != null) {
-      props['command'] = command!.toMap();
-    }
-
-    return DCFElement(
-      type: 'AnimationManager',
-      props: props,
-      children: children,
-    );
-  }
-
-  @override
-  List<Object?> get props => [groupId, command, children, autoStart, debugName, key];
-}
 
 // ============================================================================
 // GROUP ANIMATION COMMANDS - Control Multiple Animations
@@ -177,21 +122,203 @@ class GroupDisposalCommand extends GroupAnimationCommand {
 }
 
 // ============================================================================
-// ANIMATION CONTROLLER ID GENERATOR - No Hooks, Just Utility
+// ANIMATION COMMANDS - Individual Animation Control
 // ============================================================================
 
-/// Simple utility class to generate unique animation controller IDs
-class AnimationControllerIds {
-  static String generate() {
-    return 'anim_${DateTime.now().millisecondsSinceEpoch}_${(DateTime.now().microsecond % 1000).toString().padLeft(3, '0')}';
+/// Base class for animation commands
+abstract class AnimatedViewCommand {
+  const AnimatedViewCommand();
+  Map<String, dynamic> toMap();
+  String get type;
+}
+
+/// Command to start an animation with specified parameters
+class AnimateCommand extends AnimatedViewCommand {
+  final double? duration;
+  final String? curve;
+  final double? toScale;
+  final double? toOpacity;
+  final double? toTranslateX;
+  final double? toTranslateY;
+  final double? toRotation;
+  final bool? repeat;
+  final double? delay;
+
+  const AnimateCommand({
+    this.duration,
+    this.curve,
+    this.toScale,
+    this.toOpacity,
+    this.toTranslateX,
+    this.toTranslateY,
+    this.toRotation,
+    this.repeat,
+    this.delay,
+  });
+
+  @override
+  String get type => 'animate';
+
+  @override
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{'type': type};
+    if (duration != null) map['duration'] = (duration! * 1000).round();
+    if (curve != null) map['curve'] = curve;
+    if (toScale != null) map['toScale'] = toScale;
+    if (toOpacity != null) map['toOpacity'] = toOpacity;
+    if (toTranslateX != null) map['toTranslateX'] = toTranslateX;
+    if (toTranslateY != null) map['toTranslateY'] = toTranslateY;
+    if (toRotation != null) map['toRotation'] = toRotation;
+    if (repeat != null) map['repeat'] = repeat;
+    if (delay != null) map['delay'] = (delay! * 1000).round();
+    return map;
   }
 }
 
 // ============================================================================
-// ENHANCED ANIMATED VIEW - With Group Registration
+// ANIMATION PRESETS - Common Animation Patterns
 // ============================================================================
 
-/// Enhanced DCFAnimatedView that can auto-register with animation groups
+class Animations {
+  /// Bouncing scale animation
+  static AnimateCommand bounce({
+    double scale = 1.2,
+    double duration = 2.0,
+    String curve = 'easeInOut',
+    bool repeat = true,
+  }) => AnimateCommand(
+    toScale: scale,
+    toTranslateY: -20,
+    duration: duration,
+    curve: curve,
+    repeat: repeat,
+  );
+  
+  /// Sliding animation
+  static AnimateCommand slide({
+    double translateX = 50,
+    double opacity = 0.8,
+    double duration = 2.0,
+    String curve = 'easeInOut',
+    bool repeat = true,
+  }) => AnimateCommand(
+    toTranslateX: translateX,
+    toOpacity: opacity,
+    duration: duration,
+    curve: curve,
+    repeat: repeat,
+  );
+  
+  /// Rotation animation
+  static AnimateCommand rotate({
+    double rotation = 0.5,
+    double scale = 1.1,
+    double duration = 2.0,
+    String curve = 'easeInOut', 
+    bool repeat = true,
+  }) => AnimateCommand(
+    toRotation: rotation,
+    toScale: scale,
+    duration: duration,
+    curve: curve,
+    repeat: repeat,
+  );
+  
+  /// Fade animation
+  static AnimateCommand fade({
+    double opacity = 0.5,
+    double duration = 1.5,
+    String curve = 'easeInOut',
+    bool repeat = true,
+  }) => AnimateCommand(
+    toOpacity: opacity,
+    duration: duration,
+    curve: curve,
+    repeat: repeat,
+  );
+  
+  /// Complex multi-property animation
+  static AnimateCommand complex({
+    double? scale,
+    double? opacity,
+    double? translateX,
+    double? translateY,
+    double? rotation,
+    double duration = 2.0,
+    String curve = 'easeInOut',
+    bool repeat = true,
+  }) => AnimateCommand(
+    toScale: scale,
+    toOpacity: opacity,
+    toTranslateX: translateX,
+    toTranslateY: translateY,
+    toRotation: rotation,
+    duration: duration,
+    curve: curve,
+    repeat: repeat,
+  );
+}
+
+// ============================================================================
+// ANIMATION MANAGER COMPONENT - Low-level Group Controller
+// ============================================================================
+
+/// Animation Manager for controlling multiple animations as a group (internal use)
+class DCFAnimationManager extends StatelessComponent with EquatableMixin {
+  /// Unique identifier for this animation group
+  final String groupId;
+  
+  /// Command to execute on the entire animation group
+  final GroupAnimationCommand? command;
+  
+  /// Child components (typically DCFAnimatedViews)
+  final List<DCFComponentNode> children;
+  
+  /// Whether to auto-start animations when manager mounts
+  final bool autoStart;
+  
+  /// Debug name for logging
+  final String? debugName;
+
+   DCFAnimationManager({
+    required this.groupId,
+    this.command,
+    this.children = const [],
+    this.autoStart = true,
+    this.debugName,
+    super.key,
+  });
+
+  @override
+  DCFComponentNode render() {
+    // Build props for the native animation manager
+    Map<String, dynamic> props = {
+      'groupId': groupId,
+      'autoStart': autoStart,
+      'debugName': debugName ?? groupId,
+    };
+
+    // Add command if provided
+    if (command != null) {
+      props['command'] = command!.toMap();
+    }
+
+    return DCFElement(
+      type: 'AnimationManager',
+      props: props,
+      children: children,
+    );
+  }
+
+  @override
+  List<Object?> get props => [groupId, command, children, autoStart, debugName, key];
+}
+
+// ============================================================================
+// ANIMATED VIEW COMPONENT - Low-level Individual Animation
+// ============================================================================
+
+/// Enhanced DCFAnimatedView that can auto-register with animation groups (internal use)
 class DCFAnimatedView extends StatelessComponent with EquatableMixin implements ComponentPriorityInterface {
   
   @override
@@ -295,56 +422,168 @@ class DCFAnimatedView extends StatelessComponent with EquatableMixin implements 
 }
 
 // ============================================================================
-// ANIMATION COMMANDS
+// ANIMATION BUILDER CONTEXT - Auto-generates Controllers
 // ============================================================================
 
-/// Base class for animation commands
-abstract class AnimatedViewCommand {
-  const AnimatedViewCommand();
-  Map<String, dynamic> toMap();
-  String get type;
+/// Context provided to animation builder - handles all controller management
+class AnimationBuilderContext {
+  final String groupId;
+  final Map<String, String> _controllers = {};
+  final void Function(GroupAnimationCommand) _executeCommand;
+  
+  AnimationBuilderContext._(this.groupId, this._executeCommand);
+  
+  /// Auto-generate controller ID for named animation
+  String _getController(String name) {
+    if (!_controllers.containsKey(name)) {
+      _controllers[name] = 'anim_${DateTime.now().millisecondsSinceEpoch}_${name}_${_controllers.length}';
+    }
+    return _controllers[name]!;
+  }
+  
+  /// Create animated view with auto-generated controller
+  DCFAnimatedView animated({
+    required String name,
+    required AnimateCommand command,
+    required List<DCFComponentNode> children,
+    LayoutProps layout = const LayoutProps(),
+    StyleSheet styleSheet = const StyleSheet(),
+    void Function(Map<String, dynamic>)? onAnimationStart,
+    void Function(Map<String, dynamic>)? onAnimationEnd,
+  }) {
+    return DCFAnimatedView(
+      nativeAnimationId: _getController(name),
+      groupId: groupId,
+      command: command,
+      layout: layout,
+      styleSheet: styleSheet,
+      children: children,
+      onAnimationStart: onAnimationStart,
+      onAnimationEnd: onAnimationEnd,
+    );
+  }
+  
+  /// Quick animated box builder
+  DCFAnimatedView box({
+    required String name,
+    required String text,
+    required Color color,
+    required AnimateCommand animation,
+    LayoutProps? layout,
+    void Function(Map<String, dynamic>)? onStart,
+    void Function(Map<String, dynamic>)? onEnd,
+  }) {
+    return animated(
+      name: name,
+      command: animation,
+      layout: layout ?? LayoutProps(height: 65, width: 150, marginBottom: 30),
+      styleSheet: StyleSheet(backgroundColor: color, borderRadius: 20),
+      onAnimationStart: onStart,
+      onAnimationEnd: onEnd,
+      children: [
+        DCFText(
+          content: text,
+          textProps: DCFTextProps(
+            fontSize: 16,
+            fontWeight: DCFFontWeight.bold,
+            color: Colors.white,
+            textAlign: "center",
+          ),
+        ),
+      ],
+    );
+  }
+  
+  // ========================================================================
+  // GROUP CONTROL METHODS - Direct access to animation commands
+  // ========================================================================
+  
+  void startAll({double? delay, bool staggered = false, double? staggerInterval}) {
+    _executeCommand(StartAllCommand(
+      delay: delay,
+      staggered: staggered,
+      staggerInterval: staggerInterval,
+    ));
+  }
+  
+  void stopAll({bool immediate = true}) {
+    _executeCommand(StopAllCommand(immediate: immediate));
+  }
+  
+  void pauseAll() {
+    _executeCommand(GroupAnimationCommand.pauseAll);
+  }
+  
+  void resumeAll() {
+    _executeCommand(GroupAnimationCommand.resumeAll);
+  }
+  
+  void resetAll({bool animated = false}) {
+    _executeCommand(ResetAllCommand(animated: animated));
+  }
+  
+  void dispose() {
+    _executeCommand(GroupAnimationCommand.dispose);
+  }
 }
 
-/// Command to start an animation with specified parameters
-class AnimateCommand extends AnimatedViewCommand {
-  final double? duration;
-  final String? curve;
-  final double? toScale;
-  final double? toOpacity;
-  final double? toTranslateX;
-  final double? toTranslateY;
-  final double? toRotation;
-  final bool? repeat;
-  final double? delay;
+// ============================================================================
+// SUPER ANIMATION MANAGER - The Central Animation Sandbox
+// ============================================================================
 
-  const AnimateCommand({
-    this.duration,
-    this.curve,
-    this.toScale,
-    this.toOpacity,
-    this.toTranslateX,
-    this.toTranslateY,
-    this.toRotation,
-    this.repeat,
-    this.delay,
+/// SuperDCFAnimationManager - Central animation control with builder pattern
+/// This is the main API - eliminates need for manual controller ID management
+class SuperDCFAnimationManager extends StatefulComponent {
+  /// Unique group identifier
+  final String groupId;
+  
+  /// Builder function - receives context with auto-generated controllers
+  final List<DCFComponentNode> Function(AnimationBuilderContext context) builder;
+  
+  /// Auto-start animations when mounted
+  final bool autoStart;
+  
+  /// Debug name for logging
+  final String? debugName;
+  
+  /// Callback when group commands are executed
+  final void Function(GroupAnimationCommand)? onCommand;
+
+   SuperDCFAnimationManager({
+    required this.groupId,
+    required this.builder,
+    this.autoStart = true,
+    this.debugName,
+    this.onCommand,
+    super.key,
   });
 
   @override
-  String get type => 'animate';
-
-  @override
-  Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{'type': type};
-    if (duration != null) map['duration'] = (duration! * 1000).round();
-    if (curve != null) map['curve'] = curve;
-    if (toScale != null) map['toScale'] = toScale;
-    if (toOpacity != null) map['toOpacity'] = toOpacity;
-    if (toTranslateX != null) map['toTranslateX'] = toTranslateX;
-    if (toTranslateY != null) map['toTranslateY'] = toTranslateY;
-    if (toRotation != null) map['toRotation'] = toRotation;
-    if (repeat != null) map['repeat'] = repeat;
-    if (delay != null) map['delay'] = (delay! * 1000).round();
-    return map;
+  DCFComponentNode render() {
+    // Group command state hook
+    final groupCommand = useState<GroupAnimationCommand?>(null, 'cmd_$groupId');
+    
+    // Create animation context with command executor
+    final context = AnimationBuilderContext._(groupId, (command) {
+      groupCommand.setState(command);
+      onCommand?.call(command);
+      print("🎮 SuperManager[$groupId]: Executing ${command.type}");
+    });
+    
+    // Build all animated views using the context
+    final animatedChildren = builder(context);
+    
+    return DCFView(
+      children: [
+        DCFAnimationManager(
+          groupId: groupId,
+          debugName: debugName ?? "SuperManager-$groupId",
+          autoStart: autoStart,
+          command: groupCommand.state,
+          children: animatedChildren,
+        ),
+      ],
+    );
   }
 }
 
