@@ -3,7 +3,6 @@ import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
-
   @override
   componentDidMount() {}
 
@@ -16,12 +15,11 @@ class AnimatedModalScreen extends StatefulComponent {
   DCFComponentNode render() {
     // ✅ NO MORE MANUAL CONTROLLER IDs!
     // ❌ final animationController = AnimationControllerIds.generate();
-    // ❌ final animationController2 = AnimationControllerIds.generate(); 
+    // ❌ final animationController2 = AnimationControllerIds.generate();
     // ❌ final animationController3 = AnimationControllerIds.generate();
     // ❌ final groupCommand = useState<GroupAnimationCommand?>(null, 'groupCommand');
 
     return DCFView(
-      
       children: [
         DCFImage(
           imageProps: DCFImageProps(
@@ -54,176 +52,242 @@ class AnimatedModalScreen extends StatefulComponent {
               debugName: "Modal Animation Group",
               autoStart: true,
               onCommand: (cmd) => print("🎮 Executed: ${cmd.type}"),
-              builder: (context) => [
-                // 🎯 Box 1 - Auto controller generation!
-                context.box(
-                  name: "box1", // Just a name - controller auto-generated
-                  text: "BOX 1",
-                  layout: LayoutProps(
-                    height:100,
-                    width:100,
-                    padding: 10,
-                    justifyContent: YogaJustifyContent.center,
-                    alignItems: YogaAlign.center,
-                  ),
-                  color: Colors.blue,
-                  animation: Animations.complex(
-                    scale: 1.2,
-                    opacity: 0.8,
-                    translateX: 50,
-                    rotation: 0.5,
-                    duration: 2.0,
-                    curve: 'easeIn',
-                  ),
-                  onStart: (data) => print("🚀 Box 1 Animation STARTED!"),
-                  onEnd: (data) => print("🎉 Box 1 Animation ENDED!"),
-                ),
-
-                // 🎯 Box 2 - Auto controller generation!
-                context.box(
-                  name: "box2", // Just a name - controller auto-generated
-                  text: "BOX 2", 
-                  layout: LayoutProps(
-                    height:100,
-                    width:100,
-                    padding: 10,
-                    justifyContent: YogaJustifyContent.center,
-                    alignItems: YogaAlign.center,
-                  ),
-                  color: Colors.pink,
-                  animation: Animations.complex(
-                    scale: 1.2,
-                    opacity: 0.8,
-                    translateX: 50,
-                    rotation: -20,
-                    duration: 2.0,
-                    curve: 'easeInOut',
-                  ),
-                  onStart: (data) => print("🚀 Box 2 Animation STARTED!"),
-                  onEnd: (data) => print("🎉 Box 2 Animation ENDED!"),
-                ),
-
-                // 🎯 Box 3 - Auto controller generation!
-                context.box(
-                  name: "box3", // Just a name - controller auto-generated
-                  text: "BOX 3",
-                  layout: LayoutProps(
-                    height:100,
-                    width:100,
-                    padding: 10,
-                    justifyContent: YogaJustifyContent.center,
-                    alignItems: YogaAlign.center,
-                  ),
-                  color: Colors.green,
-                  animation: Animations.complex(
-                    scale: 1.2,
-                    opacity: 0.8,
-                    translateX: 50,
-                    rotation: 0.5,
-                    duration: 2.0,
-                    curve: 'easeOut',
-                  ),
-                  onStart: (data) => print("🚀 Box 3 Animation STARTED!"),
-                  onEnd: (data) => print("🎉 Box 3 Animation ENDED!"),
-                ),
-
-                // 🎯 Custom animated text
-                context.animated(
-                  name: "info_text",
-                  command: Animations.fade(opacity: 0.9, duration: 1.0),
-                 layout: LayoutProps(
-                    height:100,
-                    width:"300",
-                    padding: 10,
-                    justifyContent: YogaJustifyContent.center,
-                    alignItems: YogaAlign.center,
-                  ),
-                  children: [
-                    DCFText(
-                      content: "Watch the animated boxes! 🎬",
-                      textProps: DCFTextProps(
-                        fontSize: 18,
-                        color: Colors.black,
-                        textAlign: "center",
+              builder:
+                  (context) => [
+                    // 🎯 Box 1 - Auto controller generation!
+                    context.animated(
+                      name: "box1",
+                      children: [
+                        DCFText(
+                          content: "BOX 1",
+                          textProps: DCFTextProps(
+                            fontSize: 16,
+                            color: Colors.white,
+                            textAlign: "center",
+                          ),
+                        ),
+                      ],
+                      styleSheet: StyleSheet(backgroundColor: Colors.blue),
+                      layout: LayoutProps(
+                        height: 100,
+                        width: 100,
+                        padding: 10,
+                        justifyContent: YogaJustifyContent.center,
+                        alignItems: YogaAlign.center,
+                      ),
+                      command: Animations.complex(
+                        scale: 1.2,
+                        opacity: 0.8,
+                        translateX: 50,
+                        rotation: 0.5,
+                        duration: 2.0,
+                        curve: 'easeIn',
                       ),
                     ),
-                  ],
-                ),
 
-                // 🎯 Control buttons with context access
-                context.animated(
-                  name: "buttons",
-                  command: Animations.slide(translateX: 0, duration: 0.5, repeat: false),
-                  children: [
-                    // 🎯 Dismiss with direct context disposal
-                    DCFButton(
-                      buttonProps: DCFButtonProps(title: "Dismiss Modal"),
-                      layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
-                      styleSheet: StyleSheet(
-                        backgroundColor: Colors.red,
-                        borderRadius: 25,
+                    // 🎯 Box 2 - Auto controller generation!
+                    context.animated(
+                      name: "box2",
+                      children: [
+                        DCFText(
+                          content: "BOX 2",
+                          textProps: DCFTextProps(
+                            fontSize: 16,
+                            color: Colors.white,
+                            textAlign: "center",
+                          ),
+                        ),
+                      ],
+                      styleSheet: StyleSheet(backgroundColor: Colors.red),
+                      layout: LayoutProps(
+                        height: 100,
+                        width: 100,
+                        padding: 10,
+                        justifyContent: YogaJustifyContent.center,
+                        alignItems: YogaAlign.center,
                       ),
-                      onPress: (v) {
-                        print("Dismissing animated modal - sending dispose command!");
-                        context.dispose(); // 🎯 Central disposal!
-                        AppNavigation.goBack();
-                      },
+                      command: Animations.complex(
+                        scale: 1.2,
+                        opacity: 0.8,
+                        translateX: 50,
+                        rotation: 0.5,
+                        duration: 2.0,
+                        curve: 'easeOut',
+                      ),
                     ),
 
-                    // 🎯 Animation control buttons
-                    DCFButton(
-                      buttonProps: DCFButtonProps(title: "Pause All"),
-                      layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
-                      styleSheet: StyleSheet(
-                        backgroundColor: Colors.orange,
-                        borderRadius: 25,
+                    // 🎯 Box 3 - Auto controller generation!
+                    context.animated(
+                      name: "box3",
+                      children: [
+                        DCFText(
+                          content: "BOX 3",
+                          textProps: DCFTextProps(
+                            fontSize: 16,
+                            color: Colors.white,
+                            textAlign: "center",
+                          ),
+                        ),
+                      ],
+                      styleSheet: StyleSheet(backgroundColor: Colors.green),
+                      layout: LayoutProps(
+                        height: 100,
+                        width: 100,
+                        padding: 10,
+                        justifyContent: YogaJustifyContent.center,
+                        alignItems: YogaAlign.center,
                       ),
-                      onPress: (v) => context.pauseAll(), // 🎯 Easy control!
+                      command: Animations.complex(
+                        scale: 1.2,
+                        opacity: 0.8,
+                        translateX: 50,
+                        rotation: 0.5,
+                        duration: 2.0,
+                        curve: 'easeIn',
+                      ),
                     ),
 
-                    DCFButton(
-                      buttonProps: DCFButtonProps(title: "Resume All"),
-                      layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
+                    // 🎯 Custom animated text
+                    context.animated(
+                      name: "info_text",
+                      command: Animations.fade(opacity: 0.0, duration: 1.0),
+                      layout: LayoutProps(
+                        height: 100,
+                        width: "300",
+                        padding: 10,
+                        justifyContent: YogaJustifyContent.center,
+                        alignItems: YogaAlign.center,
+                      ),
+                      children: [
+                        DCFText(
+                          content: "Watch the animated boxes! 🎬",
+                          textProps: DCFTextProps(
+                            fontSize: 18,
+                            color: Colors.black,
+                            textAlign: "center",
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // 🎯 Control buttons with context access
+                    context.animated(
+                      layout: LayoutProps(
+                        height: 400,
+                        width: 200,
+                        marginBottom: 16,
+                        justifyContent: YogaJustifyContent.center,
+                        alignItems: YogaAlign.center,
+                      ),
                       styleSheet: StyleSheet(
                         backgroundColor: Colors.green,
-                        borderRadius: 25,
+                        borderRadius: 20,
                       ),
-                      onPress: (v) => context.resumeAll(), // 🎯 Easy control!
-                    ),
+                      name: "buttons",
+                      command: Animations.rotate(
+                        duration: 100,
+                        repeat: false,
+                        rotation: 10,
+                      ),
+                      children: [
+                        // 🎯 Dismiss with direct context disposal
+                        DCFButton(
+                          buttonProps: DCFButtonProps(title: "Dismiss Modal"),
+                          layout: LayoutProps(
+                            height: 50,
+                            width: 200,
+                            marginBottom: 16,
+                          ),
+                          styleSheet: StyleSheet(
+                            backgroundColor: Colors.red,
+                            borderRadius: 25,
+                          ),
+                          onPress: (v) {
+                            print(
+                              "Dismissing animated modal - sending dispose command!",
+                            );
 
-                    DCFButton(
-                      buttonProps: DCFButtonProps(title: "Reset All"),
-                      layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
-                      styleSheet: StyleSheet(
-                        backgroundColor: Colors.purple,
-                        borderRadius: 25,
-                      ),
-                      onPress: (v) => context.resetAll(animated: true), // 🎯 Easy control!
-                    ),
+                            AppNavigation.goBack();
+                          },
+                        ),
 
-                    // Navigation buttons
-                    DCFButton(
-                      buttonProps: DCFButtonProps(title: "Go to Profile"),
-                      layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
-                      styleSheet: StyleSheet(
-                        backgroundColor: Colors.blue,
-                        borderRadius: 25,
-                      ),
-                      onPress: (v) => AppNavigation.navigateTo("profile"),
-                    ),
+                        // 🎯 Animation control buttons
+                        DCFButton(
+                          buttonProps: DCFButtonProps(title: "Pause All"),
+                          layout: LayoutProps(
+                            height: 50,
+                            width: 200,
+                            marginBottom: 16,
+                          ),
+                          styleSheet: StyleSheet(
+                            backgroundColor: Colors.orange,
+                            borderRadius: 25,
+                          ),
+                          onPress:
+                              (v) => context.pauseAll(), // 🎯 Easy control!
+                        ),
 
-                    DCFButton(
-                      buttonProps: DCFButtonProps(title: "Go to Settings"),
-                      layout: LayoutProps(height: 50, width: 200),
-                      styleSheet: StyleSheet(
-                        backgroundColor: Colors.purple,
-                        borderRadius: 25,
-                      ),
-                      onPress: (v) => AppNavigation.navigateTo("profile/settings"),
+                        DCFButton(
+                          buttonProps: DCFButtonProps(title: "Resume All"),
+                          layout: LayoutProps(
+                            height: 50,
+                            width: 200,
+                            marginBottom: 16,
+                          ),
+                          styleSheet: StyleSheet(
+                            backgroundColor: Colors.green,
+                            borderRadius: 25,
+                          ),
+                          onPress:
+                              (v) => context.resumeAll(), // 🎯 Easy control!
+                        ),
+
+                        DCFButton(
+                          buttonProps: DCFButtonProps(title: "Reset All"),
+                          layout: LayoutProps(
+                            height: 50,
+                            width: 200,
+                            marginBottom: 16,
+                          ),
+                          styleSheet: StyleSheet(
+                            backgroundColor: Colors.purple,
+                            borderRadius: 25,
+                          ),
+                          onPress:
+                              (v) => context.resetAll(
+                                animated: true,
+                              ), // 🎯 Easy control!
+                        ),
+
+                        // Navigation buttons
+                        DCFButton(
+                          buttonProps: DCFButtonProps(title: "Go to Profile"),
+                          layout: LayoutProps(
+                            height: 50,
+                            width: 200,
+                            marginBottom: 16,
+                          ),
+                          styleSheet: StyleSheet(
+                            backgroundColor: Colors.blue,
+                            borderRadius: 25,
+                          ),
+                          onPress: (v) => AppNavigation.navigateTo("profile"),
+                        ),
+
+                        DCFButton(
+                          buttonProps: DCFButtonProps(title: "Go to Settings"),
+                          layout: LayoutProps(height: 50, width: 200),
+                          styleSheet: StyleSheet(
+                            backgroundColor: Colors.purple,
+                            borderRadius: 25,
+                          ),
+                          onPress:
+                              (v) =>
+                                  AppNavigation.navigateTo("profile/settings"),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
             ),
           ],
         ),
