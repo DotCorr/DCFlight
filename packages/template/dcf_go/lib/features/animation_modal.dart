@@ -23,7 +23,7 @@ class AnimatedModalScreen extends StatefulComponent {
     // Use hook for disposal command
     final groupCommand = useState<GroupAnimationCommand?>(null, 'groupCommand');
 
-    return DCFFragment(
+    return DCFView(
       children: [
         DCFImage(
           imageProps: DCFImageProps(
@@ -193,7 +193,7 @@ class AnimatedModalScreen extends StatefulComponent {
                 
                 print("Dismissing animated modal - sending dispose command!");
                 groupCommand.setState(GroupAnimationCommand.dispose);
-                // AppNavigation.goBack();
+                AppNavigation.goBack();
               },
             ),
 
