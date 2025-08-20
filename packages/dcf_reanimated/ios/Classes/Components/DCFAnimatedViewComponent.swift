@@ -40,16 +40,57 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
             
             if let groupId = props["groupId"] as? String {
                 DCFAnimationEngine.shared.addControllerToGroup(groupId, controllerId: nativeAnimationId)
-                print("📝 DCFAnimatedViewComponent: Added \(nativeAnimationId) to group \(groupId)")
-            }
-            
-            if let commandData = props["command"] as? [String: Any] {
-                DCFAnimationEngine.shared.executeCommand(nativeAnimationId, command: commandData)
             }
         }
         
         view.applyStyles(props: props)
+        return true
+    }
+    
+     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        print("🚇 DCFAnimatedViewComponent.handleTunnelMethod called with method: \(method)")
         
+        switch method {
+        case "registerController":
+            print("🚇 Calling handleRegisterController")
+            return handleRegisterController(params)
+        case "executeIndividualCommand":
+            print("🚇 Calling handleExecuteIndividualCommand")
+            return handleExecuteIndividualCommand(params)
+        case "startAnimation":
+            print("🚇 Calling handleStartAnimation")
+            return handleStartAnimation(params)
+        default:
+            print("🚇 Unknown method: \(method)")
+            return nil
+        }
+    }
+    
+    private static func handleRegisterController(_ params: [String: Any]) -> Any? {
+        guard let controllerId = params["controllerId"] as? String else { return false }
+        
+        let groupId = params["groupId"] as? String
+        
+        if let groupId = groupId {
+            DCFAnimationEngine.shared.addControllerToGroup(groupId, controllerId: controllerId)
+        }
+        
+        return true
+    }
+    
+    private static func handleExecuteIndividualCommand(_ params: [String: Any]) -> Any? {
+        guard let controllerId = params["controllerId"] as? String,
+              let command = params["command"] as? [String: Any] else { return false }
+        
+        DCFAnimationEngine.shared.executeCommand(controllerId, command: command)
+        return true
+    }
+    
+    private static func handleStartAnimation(_ params: [String: Any]) -> Any? {
+        guard let controllerId = params["controllerId"] as? String,
+              let config = params["config"] as? [String: Any] else { return false }
+        
+        DCFAnimationEngine.shared.executeCommand(controllerId, command: config)
         return true
     }
     
