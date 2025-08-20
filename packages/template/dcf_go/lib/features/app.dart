@@ -2,7 +2,7 @@
 import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
-class HomeScreen extends StatefulComponent {
+class HomeScreen extends StatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
@@ -32,6 +32,14 @@ class HomeScreen extends StatefulComponent {
           onPress: (data) {
             print("Navigate to Profile pressed");
             AppNavigation.navigateTo("profile", fromScreen: "home");
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Go to Website"),
+          onPress: (data) {
+            print("Navigate to Website pressed");
+            AppNavigation.presentModal("home/website", fromScreen: "home");
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
@@ -231,3 +239,4 @@ class SettingsScreen extends StatefulComponent {
     );
   }
 }
+

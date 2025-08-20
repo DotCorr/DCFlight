@@ -111,6 +111,41 @@ class DCMauiBridgeMethodChannel: NSObject {
             
         // REMOVED: callComponentMethod - replaced with prop-based commands
         // Components now handle imperative operations through command props
+        // Some calls don't need to involve VDOM, use tunnel
+        case "tunnel":
+            if let args = args {
+                handleTunnel(args, result: result)
+            } else {
+                result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
+            }
+
+    // Universal tunnel handler
+     func handleTunnel(_ args: [String: Any], result: @escaping FlutterResult) {
+        guard let componentType = args["componentType"] as? String,
+              let method = args["method"] as? String,
+              let params = args["params"] as? [String: Any] else {
+            result(FlutterError(code: "TUNNEL_ERROR", message: "Invalid tunnel parameters", details: nil))
+            return
+        }
+        
+        print("🚇 iOS Bridge: Tunneling \(method) to \(componentType)")
+        
+        // Execute on main thread
+        DispatchQueue.main.async {
+            // ✅ Use component registry to find component class
+            guard let componentClass = DCFComponentRegistry.shared.getComponent(componentType) else {
+                result(FlutterError(code: "COMPONENT_NOT_FOUND", message: "Component \(componentType) not registered", details: nil))
+                return
+            }
+            
+            // ✅ Call tunnel method on component class
+            if let response = componentClass.handleTunnelMethod(method, params: params) {
+                result(response)
+            } else {
+                result(FlutterError(code: "METHOD_NOT_FOUND", message: "Method \(method) not found on \(componentType)", details: nil))
+            }
+        }
+    }
             
         default:
             result(FlutterMethodNotImplemented)
@@ -138,14 +173,12 @@ class DCMauiBridgeMethodChannel: NSObject {
             return
         }
         
-        
         // Convert props to JSON
         guard let propsData = try? JSONSerialization.data(withJSONObject: props),
               let propsJson = String(data: propsData, encoding: .utf8) else {
             result(FlutterError(code: "JSON_ERROR", message: "Failed to serialize props", details: nil))
             return
         }
-        
         
         // Execute on main thread
         DispatchQueue.main.async {
@@ -287,7 +320,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
     }
     
-
     /// Handle hot restart detection method calls
     func handleHotRestartMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         
@@ -330,7 +362,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         DCFLayoutManager.shared.clearAll()
         
     }
-    
     
     /// Helper to get a view by ID
     func getViewById(_ viewId: String) -> UIView? {
@@ -396,5 +427,4 @@ extension DCFLayoutManager {
         }
     }
 }
-
 

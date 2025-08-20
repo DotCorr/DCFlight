@@ -5,12 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import UIKit
 
 /// Registry for all component types
 public class DCFComponentRegistry {
-   public static let shared = DCFComponentRegistry()
+    public static let shared = DCFComponentRegistry()
     
     internal var componentTypes: [String: DCFComponent.Type] = [:]
     
@@ -29,8 +28,14 @@ public class DCFComponentRegistry {
         return componentTypes[type]
     }
     
+    /// Get the component class for tunnel calls (bridge compatibility)
+    func getComponent(_ type: String) -> DCFComponent.Type? {
+        return componentTypes[type]
+    }
+    
     /// Get all registered component types
     var registeredTypes: [String] {
         return Array(componentTypes.keys)
     }
 }
+
