@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'dart:async';
 import 'package:dcflight/framework/renderer/interface/interface_util.dart';
 import 'package:flutter/foundation.dart';
@@ -297,6 +296,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
         }
         return;
       } catch (e) {
+        print(e);
       }
     }
     
@@ -305,7 +305,24 @@ class PlatformInterfaceImpl implements PlatformInterface {
       try {
         _eventHandler!(viewId, eventType, eventData);
       } catch (e) {
+        print(e);
       }
     }
   }
+   @override
+  Future<dynamic> tunnel(String componentType, String method, Map<String, dynamic> params) async {
+    try {
+      final result = await bridgeChannel.invokeMethod('tunnel', {
+        'componentType': componentType,
+        'method': method,
+        'params': params,
+      });
+      print("🚇 Tunnel: Called $method on $componentType - Success");
+      return result;
+    } catch (e) {
+      print("❌ Tunnel: Failed to call $method on $componentType - Error: $e");
+      return null;
+    }
+  }
 }
+
