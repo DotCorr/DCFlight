@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
-
 import UIKit
 import Flutter
 import dcflight
@@ -17,8 +15,9 @@ import dcflight
     }
     
     @objc public static func registerComponents() {
-        DCFComponentRegistry.shared.registerComponent("AnimatedView", componentClass: DCFAnimatedViewComponent.self as any DCFComponent.Type)
-        DCFComponentRegistry.shared.registerComponent("AnimationManager", componentClass: DCFAnimationManagerComponent.self as any DCFComponent.Type)
+DCFComponentRegistry.shared.registerComponent("AnimatedView", componentClass: DCFAnimatedViewComponent.self)
+    DCFComponentRegistry.shared.registerComponent("AnimationManager", componentClass: DCFAnimationManagerComponent.self)
     }
     
 }
+

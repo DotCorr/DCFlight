@@ -24,37 +24,50 @@ class DCFAnimationManagerComponent: NSObject, DCFComponent {
             
             DCFAnimationEngine.shared.registerAnimationGroup(groupId, autoStart: autoStart, debugName: debugName)
             registeredGroups.insert(groupId)
-            print("🎬 DCFAnimationManagerComponent: Registered group \(groupId)")
         }
         
         return containerView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-    print("🔧 DCFAnimationManagerComponent.updateView called with props: \(props.keys)")
+        return true
+    }
     
-    if let groupId = props["groupId"] as? String,
-       let commandData = props["command"] as? [String: Any] {
+     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        print("🚇 DCFAnimationManagerComponent.handleTunnelMethod called with method: \(method)")
         
-        let commandType = commandData["type"] as? String ?? ""
-        print("🎮 Received command: \(commandType)")
-        
-        if commandType == "dispose" {
-            // Handle disposal command
-            DCFAnimationEngine.shared.disposeAnimationGroup(groupId)
-            registeredGroups.remove(groupId)
-            print("🗑️ DCFAnimationManagerComponent: Disposed group \(groupId) via command")
-        } else {
-            DCFAnimationEngine.shared.executeGroupCommand(groupId, command: commandData)
-            print("🎮 DCFAnimationManagerComponent: Executed command \(commandType) on group \(groupId)")
+        switch method {
+        case "registerGroup":
+            print("🚇 Calling handleRegisterGroup")
+            return handleRegisterGroup(params)
+        case "executeGroupCommand":
+            print("🚇 Calling handleExecuteGroupCommand")
+            return handleExecuteGroupCommand(params)
+        default:
+            print("🚇 Unknown method: \(method)")
+            return nil
         }
     }
     
-    return true
-}
+    private static func handleRegisterGroup(_ params: [String: Any]) -> Any? {
+        guard let groupId = params["groupId"] as? String else { return false }
+        
+        let autoStart = params["autoStart"] as? Bool ?? true
+        let debugName = params["debugName"] as? String
+        
+        DCFAnimationEngine.shared.registerAnimationGroup(groupId, autoStart: autoStart, debugName: debugName)
+        return true
+    }
     
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeIdre yo: String) {
-        // Nothing needed here
+    private static func handleExecuteGroupCommand(_ params: [String: Any]) -> Any? {
+        guard let groupId = params["groupId"] as? String,
+              let command = params["command"] as? [String: Any] else { return false }
+        
+        DCFAnimationEngine.shared.executeGroupCommand(groupId, command: command)
+        return true
+    }
+    
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
@@ -73,8 +86,6 @@ class DCFAnimationManagerComponent: NSObject, DCFComponent {
     deinit {
         for groupId in registeredGroups {
             DCFAnimationEngine.shared.disposeAnimationGroup(groupId)
-            print("🗑️ DCFAnimationManagerComponent: Disposed group \(groupId) on deinit")
         }
     }
 }
-

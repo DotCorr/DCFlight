@@ -73,6 +73,7 @@ import 'framework/renderer/engine/engine_api.dart';
 import 'framework/renderer/interface/interface.dart';
 import 'framework/utilities/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
+export 'framework/renderer/interface/tunnel.dart';
 import 'framework/devtools/hot_restart.dart';
 import 'package:flutter/material.dart';
 export 'package:equatable/equatable.dart';
@@ -125,3 +126,4 @@ class DCFlight {
     });
   }
 }
+
