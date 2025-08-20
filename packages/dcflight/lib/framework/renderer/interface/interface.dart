@@ -4,10 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
-
 import 'dart:async';
-
 import 'package:dcflight/framework/renderer/interface/interface_impl.dart';
 
 /// Interface for platform-specific native bridge operations
@@ -20,7 +17,7 @@ abstract class PlatformInterface {
     _instance ??= NativeBridgeFactory.create();
     return _instance!;
   }
-  
+
   /// Initialize the bridge with native code
   Future<bool> initialize();
 
@@ -71,6 +68,10 @@ abstract class PlatformInterface {
 
   /// Handle an event from native code
   void handleNativeEvent(String viewId, String eventType, Map<String, dynamic> eventData);
+
+  /// ✅ NEW: Universal tunnel for direct component method calls
+  /// Bypasses VDOM and calls component methods directly on native side
+  Future<dynamic> tunnel(String componentType, String method, Map<String, dynamic> params);
 }
 
 /// Factory for creating platform-specific native bridges
@@ -79,3 +80,4 @@ class NativeBridgeFactory {
     return PlatformInterfaceImpl();
   }
 }
+

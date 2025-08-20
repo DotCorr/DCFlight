@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import UIKit
 import yoga
 
@@ -30,8 +29,10 @@ public protocol DCFComponent {
     
     /// Called when a view is registered with the shadow tree
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)
+    /// Handle tunnel method calls from Dart
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any?
+    
 }
-
 
 /// Layout information from a Yoga node
 public struct YGNodeLayout {
@@ -67,6 +68,11 @@ public extension DCFComponent {
                                nodeId, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
+    /// Default implementation for tunnel method
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        print("⚠️ Component \(String(describing: self)) does not implement tunnel method: \(method)")
+        return nil
+    }
 }
 
 // MARK: - 🚀 GLOBAL EVENT PROPAGATION SYSTEM
@@ -82,7 +88,6 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
     // Execute optional native-side action first (for any native processing needed)
     nativeAction?(view, eventData)
     
-    
     // Get the stored event callback for this view (set up by the framework automatically)
     guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
             as? (String, String, [String: Any]) -> Void else {
@@ -96,7 +101,6 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
     guard let eventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] else {
         return
     }
-    
     
     // Check if this event type is registered - try both exact match and normalized versions
     let normalizedEventName = normalizeEventNameForPropagation(eventName)
@@ -139,5 +143,4 @@ private func normalizeEventNameForPropagation(_ name: String) -> String {
 public func fireEvent(on view: UIView, _ eventName: String, _ eventData: [String: Any] = [:]) {
     propagateEvent(on: view, eventName: eventName, data: eventData)
 }
-
 
