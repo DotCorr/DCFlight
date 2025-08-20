@@ -104,33 +104,35 @@ class DCFEngine {
 
   /// Initialize concurrent processing capabilities
   Future<void> _initializeConcurrentProcessing() async {
-    try {
-      // Try to create worker isolates
-      for (int i = 0; i < _maxWorkers; i++) {
-        final receivePort = ReceivePort();
-        final isolate = await Isolate.spawn(
-          _workerIsolateEntry,
-          receivePort.sendPort,
-          debugName: 'VDomWorker-$i',
-        );
+    // This must be set to true before using this feature
+      // But this is not ready. It would be delegated to app layer if developers
+    // try {
+    //   // Try to create worker isolates
+    //   for (int i = 0; i < _maxWorkers; i++) {
+    //     final receivePort = ReceivePort();
+    //     final isolate = await Isolate.spawn(
+    //       _workerIsolateEntry,
+    //       receivePort.sendPort,
+    //       debugName: 'VDomWorker-$i',
+    //     );
 
-        _workerIsolates.add(isolate);
-        _workerAvailable.add(true);
+    //     _workerIsolates.add(isolate);
+    //     _workerAvailable.add(true);
 
-        // Get the worker's send port
-        final sendPort = await receivePort.first as SendPort;
-        _workerPorts.add(sendPort);
-      }
-
-      _concurrentEnabled = true;
-      EngineDebugLogger.log('VDOM_CONCURRENT',
-          'Concurrent processing enabled with $_maxWorkers workers');
-    } catch (e) {
-      EngineDebugLogger.log('VDOM_CONCURRENT_ERROR',
-          'Failed to initialize concurrent processing: $e');
-      _concurrentEnabled = false;
-      // Continue without concurrent processing
-    }
+    //     // Get the worker's send port
+    //     final sendPort = await receivePort.first as SendPort;
+    //     _workerPorts.add(sendPort);
+    //   }
+      
+    //   _concurrentEnabled = true;
+    //   EngineDebugLogger.log('VDOM_CONCURRENT',
+    //       'Concurrent processing enabled with $_maxWorkers workers');
+    // } catch (e) {
+    //   EngineDebugLogger.log('VDOM_CONCURRENT_ERROR',
+    //       'Failed to initialize concurrent processing: $e');
+    //   _concurrentEnabled = false;
+    //   // Continue without concurrent processing
+    // }
   }
 
   Future<void> get isReady => _readyCompleter.future;
@@ -2528,7 +2530,7 @@ class DCFEngine {
       changes.add({'action': 'updateProps', 'diff': propsDiff});
     }
 
-    // Compare children
+    // Compare children 
     final oldChildren = oldTree['children'] as List<dynamic>? ?? [];
     final newChildren = newTree['children'] as List<dynamic>? ?? [];
 
@@ -2740,3 +2742,4 @@ class DCFEngine {
     return suggestions;
   }
 }
+

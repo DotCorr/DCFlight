@@ -1,5 +1,6 @@
 import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/app.dart";
+import "package:dcf_go/features/website_screen.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
@@ -98,7 +99,20 @@ class StackScreenRegistry extends StatelessComponent {
           ),
           builder: () => AnimatedModalScreen(), // Only creates when actually navigated to!
         ),
+
+         DCFEasyScreen(
+          route: "home/website",
+          presentationStyle: DCFPresentationStyle.modal,
+          modalConfig: DCFModalConfig(
+          allowsBackgroundDismiss: true,
+           detents: [DCFModalDetent.large, DCFModalDetent.medium],
+           selectedDetentIndex: 0,
+           showDragIndicator: true,
+          ),
+          builder: () => WebsiteScreen(), 
+        ),
       ],
     );
   }
 }
+
