@@ -282,6 +282,11 @@ public class DCFAnimationEngine {
         print("🎯 Display link started")
     }
     
+    // ✅ NEW: Public method to restart display link when animations start
+    func ensureDisplayLinkRunning() {
+        startDisplayLinkIfNeeded()
+    }
+    
     // ✅ CRITICAL FIX: Only stop display link manually, don't auto-stop based on animations
     private func stopDisplayLink() {
         guard isRunning else { return }
@@ -392,6 +397,9 @@ class AnimationController {
             command: command,
             startTime: CACurrentMediaTime()
         )
+        
+        // ✅ CRITICAL FIX: Restart display link when animation starts
+        DCFAnimationEngine.shared.ensureDisplayLinkRunning()
     }
     
     // ✅ CRITICAL FIX: Return true if animation is running, false if finished/not running
