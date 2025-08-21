@@ -95,7 +95,11 @@ abstract class StatefulComponent extends DCFComponentNode {
     // This is a safety net in case hooks didn't clean up properly
     try {
       // Note: StoreManager cleanup will be handled by individual hooks
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error during component unmount cleanup: $e');
+      }
+    }
 
     _isMounted = false;
   }
@@ -433,12 +437,11 @@ abstract class StatelessComponent extends DCFComponentNode {
     throw UnsupportedError("Stateless components cannot be cloned directly.");
   }
 
-  @override
-  bool equals(DCFComponentNode other) {
-    if (other is! StatelessComponent) return false;
-    // Components are equal if they're the same type with the same key
-    return runtimeType == other.runtimeType && key == other.key;
-  }
+@override
+bool equals(DCFComponentNode other) {
+  // Delegate to == operator which uses EquatableMixin if available
+  return this == other;
+}
 
   @override
   void mount(DCFComponentNode? parent) {
@@ -468,3 +471,4 @@ abstract class StatelessComponent extends DCFComponentNode {
     return '${runtimeType.toString()}($instanceId)';
   }
 }
+
