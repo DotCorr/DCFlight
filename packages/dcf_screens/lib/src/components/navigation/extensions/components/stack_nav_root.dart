@@ -59,6 +59,17 @@ class DCFStackNavigationRoot extends StatelessComponent {
       ],
     );
   }
+  
+  @override
+  List<Object?> get props => [
+        initialScreen,
+        screenRegistryComponents,
+        navigationBarStyle,
+        hideNavigationBar,
+        animationDuration,
+        onNavigationChange,
+        onBackPressed,
+      ];
 }
 
 /// Internal component that sets up the initial navigation controller
@@ -188,3 +199,4 @@ class DCFNavigationBarStyle extends Equatable {
         hideBorder,
       ];
 }
+

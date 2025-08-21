@@ -45,4 +45,17 @@ class DCFNestedNavigationRoot extends StatelessComponent {
       ),
     ]);
   }
+  
+  @override
+  List<Object?> get props => [
+        animationDuration,
+        selectedIndex,
+        tabBarStyle,
+        onTabChange,
+        onTabPress,
+        tabRoutes,
+        tabRoutesRegistryComponents,
+        subRoutesRegistryComponents,
+      ];
 }
+

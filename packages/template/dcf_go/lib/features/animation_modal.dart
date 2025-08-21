@@ -1,7 +1,7 @@
 /*
  * COMPONENT RE-RENDER TEST
  * Testing if ALL components re-render on state changes
- * Using the RECOMMENDED developer pattern with EquatableMixin
+ * NO animations - pure component testing
  */
 
 import "package:dcflight/dcflight.dart";
@@ -11,17 +11,7 @@ class ComponentRerenderTest extends StatefulComponent {
   DCFComponentNode render() {
     final counterState = useState(0);
 
-    // 🔍 DEBUG TEST: Create two identical components and test equality
-    final test1 = TestComponent1(componentId: "test", key: "test");
-    final test2 = TestComponent1(componentId: "test", key: "test");
-    
-    print("🔍 DEBUG: test1 == test2: ${test1 == test2}");
-    print("🔍 DEBUG: test1.props: ${test1.props}");
-    print("🔍 DEBUG: test2.props: ${test2.props}");
-    print("🔍 DEBUG: test1.runtimeType == test2.runtimeType: ${test1.runtimeType == test2.runtimeType}");
-    print("🔍 DEBUG: test1.key == test2.key: ${test1.key == test2.key}");
-
-    return DCFSafeArea(
+    return DCFView(
       children: [
         // Test button that changes state
         DCFButton(
@@ -35,10 +25,16 @@ class ComponentRerenderTest extends StatefulComponent {
           },
         ),
 
-        // Test Components using developer pattern
+        // Test Component 1 - Should NOT re-render when counter changes
         TestComponent1(componentId: "component_1"),
+
+        // Test Component 2 - Should NOT re-render when counter changes  
         TestComponent2(componentId: "component_2"),
+
+        // Test Component 3 - SHOULD re-render because it uses counter state
         TestComponent3(componentId: "component_3", counter: counterState.state),
+
+        // Test Component 4 - Should NOT re-render when counter changes
         TestComponent4(componentId: "component_4"),
       ],
     );
@@ -46,11 +42,11 @@ class ComponentRerenderTest extends StatefulComponent {
 }
 
 // ============================================================================
-// TEST COMPONENTS - Using EquatableMixin (Recommended Developer Pattern)
+// TEST COMPONENTS - Each should log when they render/update
 // ============================================================================
 
 /// Test Component 1 - Static, no dependencies
-class TestComponent1 extends StatelessComponent with EquatableMixin {
+class TestComponent1 extends StatelessComponent {
   final String componentId;
 
   TestComponent1({required this.componentId, super.key});
@@ -86,13 +82,12 @@ class TestComponent1 extends StatelessComponent with EquatableMixin {
     );
   }
 
-  // ✅ Developer pattern: Just list the props that affect rendering
   @override
   List<Object?> get props => [componentId, key];
 }
 
 /// Test Component 2 - Static, different color to track independently
-class TestComponent2 extends StatelessComponent with EquatableMixin {
+class TestComponent2 extends StatelessComponent {
   final String componentId;
 
   TestComponent2({required this.componentId, super.key});
@@ -128,13 +123,12 @@ class TestComponent2 extends StatelessComponent with EquatableMixin {
     );
   }
 
-  // ✅ Developer pattern: Just list the props that affect rendering
   @override
   List<Object?> get props => [componentId, key];
 }
 
 /// Test Component 3 - SHOULD re-render because it depends on counter
-class TestComponent3 extends StatelessComponent with EquatableMixin {
+class TestComponent3 extends StatelessComponent {
   final String componentId;
   final int counter;
 
@@ -171,7 +165,6 @@ class TestComponent3 extends StatelessComponent with EquatableMixin {
     );
   }
 
-  // ✅ Developer pattern: Include counter since it affects rendering
   @override
   List<Object?> get props => [componentId, counter, key];
 }
@@ -223,5 +216,30 @@ class TestComponent4 extends StatefulComponent {
       ),
     );
   }
+
 }
 
+// ============================================================================
+// EXPECTED BEHAVIOR TEST
+// ============================================================================
+
+/*
+ * EXPECTED LOGS when counter button is pressed:
+ * 
+ * ✅ CORRECT BEHAVIOR:
+ * 🔥 COUNTER BUTTON PRESSED - Setting state to 1
+ * 🔥 STATE UPDATE COMPLETE
+ * 🟪 TestComponent3 (component_3) RENDERED with counter: 1  // Only this should re-render
+ * 
+ * ❌ INCORRECT BEHAVIOR (architectural issue):
+ * 🔥 COUNTER BUTTON PRESSED - Setting state to 1
+ * 🔥 STATE UPDATE COMPLETE
+ * 🟦 TestComponent1 (component_1) RENDERED  // Should NOT re-render
+ * 🟩 TestComponent2 (component_2) RENDERED  // Should NOT re-render
+ * 🟪 TestComponent3 (component_3) RENDERED with counter: 1  // Should re-render
+ * 🟨 TestComponent4 (component_4) RENDERED  // Should NOT re-render
+ * 
+ * If ALL components re-render on state changes, we have an architectural issue.
+ * If only TestComponent3 re-renders, the architecture is correct and the animation
+ * restart issue is specific to the animation system.
+ */

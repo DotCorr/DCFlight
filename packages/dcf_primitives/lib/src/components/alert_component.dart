@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
 
 /// Alert text field configuration with full parity to DCFTextInput
@@ -305,7 +304,6 @@ class DCFAlert extends StatelessComponent {
   /// Whether to use adaptive theming
   final bool adaptive;
   
-
    DCFAlert({
     super.key,
     required this.visible,
@@ -598,4 +596,14 @@ class DCFAlert extends StatelessComponent {
       },
     );
   }
+  
+  @override
+  List<Object?> get props => [
+        title,
+        message,
+        actions,
+        onActionPress,
+        onTextFieldChange,
+      ];
 }
+
