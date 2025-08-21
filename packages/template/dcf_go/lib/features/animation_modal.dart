@@ -9,9 +9,13 @@ import "package:dcflight/dcflight.dart";
 class ComponentRerenderTest extends StatefulComponent {
   @override
   DCFComponentNode render() {
+     print("🔴 ComponentRerenderTest.render() called");
     final counterState = useState(0);
 
-    return DCFView(
+    return DCFView(layout: LayoutProps(
+      flex:1,
+      paddingTop: 100
+    ),
       children: [
         // Test button that changes state
         DCFButton(
@@ -218,28 +222,3 @@ class TestComponent4 extends StatefulComponent {
   }
 
 }
-
-// ============================================================================
-// EXPECTED BEHAVIOR TEST
-// ============================================================================
-
-/*
- * EXPECTED LOGS when counter button is pressed:
- * 
- * ✅ CORRECT BEHAVIOR:
- * 🔥 COUNTER BUTTON PRESSED - Setting state to 1
- * 🔥 STATE UPDATE COMPLETE
- * 🟪 TestComponent3 (component_3) RENDERED with counter: 1  // Only this should re-render
- * 
- * ❌ INCORRECT BEHAVIOR (architectural issue):
- * 🔥 COUNTER BUTTON PRESSED - Setting state to 1
- * 🔥 STATE UPDATE COMPLETE
- * 🟦 TestComponent1 (component_1) RENDERED  // Should NOT re-render
- * 🟩 TestComponent2 (component_2) RENDERED  // Should NOT re-render
- * 🟪 TestComponent3 (component_3) RENDERED with counter: 1  // Should re-render
- * 🟨 TestComponent4 (component_4) RENDERED  // Should NOT re-render
- * 
- * If ALL components re-render on state changes, we have an architectural issue.
- * If only TestComponent3 re-renders, the architecture is correct and the animation
- * restart issue is specific to the animation system.
- */
