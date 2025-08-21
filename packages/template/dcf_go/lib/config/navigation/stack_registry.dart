@@ -12,7 +12,6 @@ class StackScreenRegistry extends StatelessComponent {
         // 🏠 HOME SCREEN - Always rendered, automatic handling
         DCFEasyScreen(
           route: "home",
-          presentationStyle: DCFPresentationStyle.push,
           alwaysRender: true, // Skip suspense for home
           pushConfig: DCFPushConfig(
             title: "Home",
@@ -43,7 +42,7 @@ class StackScreenRegistry extends StatelessComponent {
         // 👤 PROFILE SCREEN - Automatic suspense!
         DCFEasyScreen(
           route: "profile",
-          presentationStyle: DCFPresentationStyle.push,
+          // presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Profile",
             backButtonTitle: "Home",
@@ -67,7 +66,6 @@ class StackScreenRegistry extends StatelessComponent {
         // ⚙️ SETTINGS SCREEN - Automatic suspense!
         DCFEasyScreen(
           route: "profile/settings",
-          presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Settings",
             backButtonTitle: "Back",
@@ -89,10 +87,8 @@ class StackScreenRegistry extends StatelessComponent {
           builder: () => SettingsScreen(),
         ),
 
-        // 🎬 ANIMATED MODAL SCREEN - The key fix!
         DCFEasyScreen(
           route: "home/animated_modal",
-          presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Animated Modal",
             backButtonTitle: "Home",
@@ -102,7 +98,6 @@ class StackScreenRegistry extends StatelessComponent {
 
          DCFEasyScreen(
           route: "home/website",
-          presentationStyle: DCFPresentationStyle.modal,
           modalConfig: DCFModalConfig(
           allowsBackgroundDismiss: true,
            detents: [DCFModalDetent.large, DCFModalDetent.medium],

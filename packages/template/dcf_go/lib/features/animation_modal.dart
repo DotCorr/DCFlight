@@ -3,9 +3,17 @@ import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
+
+  // Store context reference for button callbacks
+  AnimationBuilderContext? _animationContext;
+  
+  AnimationBuilderContext? _getAnimationContext() => _animationContext;
+
   @override
-  componentDidMount() {
-    // Start animations after component mounts
+  DCFComponentNode render() {
+
+    useLayoutEffect((){
+       // Start animations after component mounts
     Future.delayed(Duration(milliseconds: 100), () {
       // Access context and start individual animations via tunnel
       final context = _getAnimationContext();
@@ -49,20 +57,9 @@ class AnimatedModalScreen extends StatefulComponent {
         ));
       }
     });
-  }
+      return null;
+    },dependencies: []);
 
-  @override
-  componentWillUnmount() {
-    // Cleanup handled automatically by SuperDCFAnimationManager
-  }
-
-  // Store context reference for button callbacks
-  AnimationBuilderContext? _animationContext;
-  
-  AnimationBuilderContext? _getAnimationContext() => _animationContext;
-
-  @override
-  DCFComponentNode render() {
     return DCFView(
       children: [
         DCFImage(
