@@ -263,43 +263,33 @@ class DCFEngine {
 
   /// O(props count) - Check if two components are semantically equal
 bool _componentsAreEqual(DCFComponentNode oldComponent, DCFComponentNode newComponent) {
-  // print("🔍 _componentsAreEqual called:");
-  // print("  oldComponent: ${oldComponent.runtimeType}");
-  // print("  newComponent: ${newComponent.runtimeType}");
+  // print("🔍 Comparing: ${oldComponent.runtimeType} vs ${newComponent.runtimeType}");
   
-  // Different types = definitely not equal
   if (oldComponent.runtimeType != newComponent.runtimeType) {
-    // print("  result: false (different types)");
+    // print("  → Different types");
     return false;
   }
   
-  // Different keys = definitely not equal  
   if (oldComponent.key != newComponent.key) {
-    // print("  result: false (different keys)");
+    // print("  → Different keys");
     return false;
   }
   
-  // For StatelessComponents, use the == operator (which uses EquatableMixin)
   if (oldComponent is StatelessComponent && newComponent is StatelessComponent) {
-    // print("  comparing StatelessComponents");
-    // print("  oldComponent.instanceId: ${oldComponent.instanceId}");
-    // print("  newComponent.instanceId: ${newComponent.instanceId}");
-    
-    // ✅ Use == operator which triggers EquatableMixin comparison
     final result = oldComponent == newComponent;
-    // print("  oldComponent == newComponent: $result");
+    // print("  → StatelessComponent equality: $result");
     return result;
   }
+  // Same component type + same key + same position = same component instance
+if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
+  // Compare by type, key, and constructor parameters
+  final result = oldComponent.runtimeType == newComponent.runtimeType && 
+                 oldComponent.key == newComponent.key;
+  // print("  → StatefulComponent equality: $result");
+  return result;
+}
   
-  // For StatefulComponents, they should control their own re-rendering
-  // Only re-render if instance ID is different (same component instance)
-  if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
-    final result = oldComponent.instanceId == newComponent.instanceId;
-    // print("  StatefulComponent result: $result");
-    return result;
-  }
-  
-  // print("  result: false (fallback)");
+  // print("  → Fallback: false");
   return false;
 }
 
