@@ -81,11 +81,21 @@ public class DCFAnimationEngine {
     
     private init() {}
     
+    // ✅ NEW: Method to check if controller exists
+    func hasController(_ controllerId: String) -> Bool {
+        let exists = activeAnimations[controllerId] != nil
+        print("🔍 Checking controller \(controllerId): \(exists ? "EXISTS" : "NOT FOUND")")
+        print("🔍 Active controllers: \(Array(activeAnimations.keys))")
+        return exists
+    }
+    
     func registerAnimationGroup(_ groupId: String, autoStart: Bool = true, debugName: String? = nil) {
         if animationGroups[groupId] != nil {
+            print("⚠️ Animation group \(groupId) already exists")
             return
         }
         
+        print("🎯 Registering animation group: \(groupId)")
         animationGroups[groupId] = AnimationGroup(
             id: groupId,
             autoStart: autoStart,
@@ -103,16 +113,19 @@ public class DCFAnimationEngine {
     func addControllerToGroup(_ groupId: String, controllerId: String) {
         if let group = animationGroups[groupId] {
             group.addController(controllerId)
+            print("🎯 Added controller \(controllerId) to existing group \(groupId)")
         } else {
             if pendingGroupRegistrations[groupId] == nil {
                 pendingGroupRegistrations[groupId] = []
             }
             pendingGroupRegistrations[groupId]?.append(controllerId)
+            print("🎯 Queued controller \(controllerId) for pending group \(groupId)")
         }
     }
     
     func executeGroupCommand(_ groupId: String, command: [String: Any]) {
         let commandType = command["type"] as? String ?? ""
+        print("🎯 executeGroupCommand: \(groupId) - \(commandType)")
         
         if commandType == "individual" {
             if let controllerId = command["controllerId"] as? String,
@@ -122,7 +135,10 @@ public class DCFAnimationEngine {
             }
         }
         
-        guard let group = animationGroups[groupId] else { return }
+        guard let group = animationGroups[groupId] else {
+            print("❌ Animation group \(groupId) not found")
+            return
+        }
         
         switch commandType {
         case "startAll":
@@ -138,12 +154,15 @@ public class DCFAnimationEngine {
         case "dispose":
             disposeAnimationGroup(groupId)
         default:
+            print("❌ Unknown group command: \(commandType)")
             break
         }
     }
     
     func disposeAnimationGroup(_ groupId: String) {
         guard let group = animationGroups[groupId] else { return }
+        
+        print("🗑️ Disposing animation group: \(groupId)")
         
         for controllerId in group.getAllControllerIds() {
             if let controller = activeAnimations[controllerId] {
@@ -155,10 +174,9 @@ public class DCFAnimationEngine {
         animationGroups.removeValue(forKey: groupId)
         pendingGroupRegistrations.removeValue(forKey: groupId)
         
+        // ✅ CRITICAL FIX: Only stop display link if NO controllers exist at all
         if activeAnimations.isEmpty && isRunning {
-            displayLink?.invalidate()
-            displayLink = nil
-            isRunning = false
+            stopDisplayLink()
         }
     }
     
@@ -239,12 +257,19 @@ public class DCFAnimationEngine {
     }
     
     func registerAnimationController(_ controllerId: String, view: AnimatedView) {
+        print("🎯 registerAnimationController: \(controllerId)")
         activeAnimations[controllerId] = AnimationController(view: view)
+        view.setControllerId(controllerId)
         startDisplayLinkIfNeeded()
+        print("🎯 Active controllers after registration: \(Array(activeAnimations.keys))")
     }
     
     func executeCommand(_ controllerId: String, command: [String: Any]) {
-        guard let controller = activeAnimations[controllerId] else { return }
+        print("🎯 executeCommand: \(controllerId) with \(command)")
+        guard let controller = activeAnimations[controllerId] else {
+            print("❌ Controller \(controllerId) not found for command execution")
+            return
+        }
         controller.executeCommand(command)
     }
     
@@ -254,20 +279,42 @@ public class DCFAnimationEngine {
         displayLink = CADisplayLink(target: self, selector: #selector(updateFrame))
         displayLink?.add(to: .main, forMode: .common)
         isRunning = true
+        print("🎯 Display link started")
+    }
+    
+    // ✅ CRITICAL FIX: Only stop display link manually, don't auto-stop based on animations
+    private func stopDisplayLink() {
+        guard isRunning else { return }
+        
+        displayLink?.invalidate()
+        displayLink = nil
+        isRunning = false
+        print("🎯 Display link stopped manually")
     }
     
     @objc private func updateFrame() {
         let currentTime = CACurrentMediaTime()
         
-        activeAnimations = activeAnimations.filter { _, controller in
-            controller.updateFrame(currentTime: currentTime)
+        // ✅ CRITICAL FIX: Track running animations separately, don't remove controllers
+        var runningAnimations: [String: AnimationController] = [:]
+        
+        for (controllerId, controller) in activeAnimations {
+            let isStillRunning = controller.updateFrame(currentTime: currentTime)
+            
+            // Keep controller in activeAnimations regardless of animation state
+            // Only track which ones are currently animating
+            if isStillRunning {
+                runningAnimations[controllerId] = controller
+            }
         }
         
-        if activeAnimations.isEmpty && isRunning {
-            displayLink?.invalidate()
-            displayLink = nil
-            isRunning = false
+        // ✅ CRITICAL FIX: Only stop display link if no animations are running
+        // BUT keep all controllers registered
+        if runningAnimations.isEmpty && isRunning {
+            stopDisplayLink()
         }
+        
+        print("🎯 Update frame - Active controllers: \(activeAnimations.count), Running animations: \(runningAnimations.count)")
     }
     
     func removeController(_ controllerId: String) {
@@ -275,6 +322,12 @@ public class DCFAnimationEngine {
             controller.executeCommand(["type": "stop"])
         }
         activeAnimations.removeValue(forKey: controllerId)
+        print("🎯 Removed controller: \(controllerId)")
+        
+        // Stop display link if no controllers remain
+        if activeAnimations.isEmpty && isRunning {
+            stopDisplayLink()
+        }
     }
 }
 
@@ -290,6 +343,7 @@ class AnimationController {
         guard let view = view else { return }
         
         let commandType = command["type"] as? String ?? ""
+        print("🎯 AnimationController.executeCommand: \(commandType)")
         
         switch commandType {
         case "animate":
@@ -323,6 +377,7 @@ class AnimationController {
                 animation.forceStopRepeat()
             }
         default:
+            print("❌ Unknown animation command: \(commandType)")
             break
         }
     }
@@ -330,6 +385,7 @@ class AnimationController {
     private func startDirectAnimation(_ command: [String: Any]) {
         guard let view = view else { return }
         
+        print("🎬 Starting direct animation with command: \(command)")
         currentAnimation = nil
         currentAnimation = DirectAnimation(
             view: view,
@@ -338,8 +394,11 @@ class AnimationController {
         )
     }
     
+    // ✅ CRITICAL FIX: Return true if animation is running, false if finished/not running
     func updateFrame(currentTime: CFTimeInterval) -> Bool {
-        guard let animation = currentAnimation else { return false }
+        guard let animation = currentAnimation else {
+            return false // No animation running
+        }
         return animation.updateFrame(currentTime: currentTime)
     }
 }
@@ -377,6 +436,9 @@ class DirectAnimation {
         
         self.fromValues = Self.captureCurrentValues(view)
         self.toValues = Self.extractTargetValues(command)
+        
+        print("🎬 DirectAnimation initialized - duration: \(duration), repeat: \(repeatAnimation)")
+        print("🎬 Target values: \(toValues)")
         
         fireAnimationStartEvent(view: view)
     }

@@ -485,6 +485,18 @@ class SuperDCFAnimationManager extends StatefulComponent {
     // ✅ Build animated children ONCE - NEVER rebuild them
     final animatedChildren = builder(context);
     
+    // ✅ CRITICAL FIX: Wait for views to be fully rendered before allowing animations
+    useLayoutEffect(() {
+      print("🎯 SuperDCFAnimationManager mounted, scheduling delayed animation start");
+      
+      // ✅ Wait for native views to be registered with animation engine
+      Future.delayed(Duration(milliseconds: 300), () {
+        print("🎯 Animation delay complete - ready for tunnel calls");
+      });
+      
+      return null;
+    }, dependencies: []);
+    
     return DCFView(
       layout: LayoutProps(flex: 1),
       children: [

@@ -36,6 +36,7 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         guard let animatedView = view as? AnimatedView else { return false }
         
         if let nativeAnimationId = props["nativeAnimationId"] as? String {
+            print("🎯 Registering animation controller: \(nativeAnimationId)")
             DCFAnimationEngine.shared.registerAnimationController(nativeAnimationId, view: animatedView)
             
             if let groupId = props["groupId"] as? String {
@@ -47,18 +48,16 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         return true
     }
     
-     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
         print("🚇 DCFAnimatedViewComponent.handleTunnelMethod called with method: \(method)")
+        print("🚇 Params: \(params)")
         
         switch method {
         case "registerController":
-            print("🚇 Calling handleRegisterController")
             return handleRegisterController(params)
         case "executeIndividualCommand":
-            print("🚇 Calling handleExecuteIndividualCommand")
             return handleExecuteIndividualCommand(params)
         case "startAnimation":
-            print("🚇 Calling handleStartAnimation")
             return handleStartAnimation(params)
         default:
             print("🚇 Unknown method: \(method)")
@@ -67,12 +66,18 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     }
     
     private static func handleRegisterController(_ params: [String: Any]) -> Any? {
-        guard let controllerId = params["controllerId"] as? String else { return false }
+        guard let controllerId = params["controllerId"] as? String else {
+            print("❌ registerController: Missing controllerId")
+            return false
+        }
+        
+        print("🎯 handleRegisterController: \(controllerId)")
         
         let groupId = params["groupId"] as? String
         
         if let groupId = groupId {
             DCFAnimationEngine.shared.addControllerToGroup(groupId, controllerId: controllerId)
+            print("🎯 Added controller \(controllerId) to group \(groupId)")
         }
         
         return true
@@ -80,7 +85,18 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     
     private static func handleExecuteIndividualCommand(_ params: [String: Any]) -> Any? {
         guard let controllerId = params["controllerId"] as? String,
-              let command = params["command"] as? [String: Any] else { return false }
+              let command = params["command"] as? [String: Any] else {
+            print("❌ executeIndividualCommand: Missing controllerId or command")
+            return false
+        }
+        
+        print("🎯 handleExecuteIndividualCommand: \(controllerId) with command: \(command)")
+        
+        // Check if controller exists
+        if !DCFAnimationEngine.shared.hasController(controllerId) {
+            print("❌ Controller \(controllerId) not found in engine")
+            return false
+        }
         
         DCFAnimationEngine.shared.executeCommand(controllerId, command: command)
         return true
@@ -88,9 +104,30 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     
     private static func handleStartAnimation(_ params: [String: Any]) -> Any? {
         guard let controllerId = params["controllerId"] as? String,
-              let config = params["config"] as? [String: Any] else { return false }
+              let config = params["config"] as? [String: Any] else {
+            print("❌ startAnimation: Missing controllerId or config")
+            return false
+        }
         
-        DCFAnimationEngine.shared.executeCommand(controllerId, command: config)
+        print("🎯 handleStartAnimation: \(controllerId)")
+        print("🎯 Animation config: \(config)")
+        
+        // ✅ CRITICAL FIX: Check if controller exists before trying to animate
+        if !DCFAnimationEngine.shared.hasController(controllerId) {
+            print("❌ Controller \(controllerId) not registered yet - cannot start animation")
+            return false
+        }
+        
+        // ✅ CRITICAL FIX: Ensure the config has the correct structure
+        var animationCommand = config
+        
+        // The config should already have 'type': 'animate' from Dart, but let's make sure
+        if animationCommand["type"] == nil {
+            animationCommand["type"] = "animate"
+        }
+        
+        print("🎯 Executing animation command: \(animationCommand)")
+        DCFAnimationEngine.shared.executeCommand(controllerId, command: animationCommand)
         return true
     }
     

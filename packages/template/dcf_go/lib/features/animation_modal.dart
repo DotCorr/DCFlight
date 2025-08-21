@@ -3,62 +3,71 @@ import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
-
   // Store context reference for button callbacks
   AnimationBuilderContext? _animationContext;
-  
+
   AnimationBuilderContext? _getAnimationContext() => _animationContext;
 
   @override
   DCFComponentNode render() {
+    useLayoutEffect(() {
+      // Start animations after component mounts
+      Future.delayed(Duration(milliseconds: 500), () {
+        // Access context and start individual animations via tunnel
+        final context = _getAnimationContext();
+        if (context != null) {
+          context.startAnimation(
+            "box1",
+            Animations.complex(
+              scale: 1.2,
+              opacity: 0.8,
+              translateX: 100,
+              rotation: 0.5,
+              duration: 2.0,
+              curve: 'easeIn',
+              repeat: false,
+            ),
+          );
 
-    useLayoutEffect((){
-       // Start animations after component mounts
-    Future.delayed(Duration(milliseconds: 100), () {
-      // Access context and start individual animations via tunnel
-      final context = _getAnimationContext();
-      if (context != null) {
-        context.startAnimation("box1", Animations.complex(
-          scale: 1.2,
-          opacity: 0.8,
-          translateX: 100,
-          rotation: 0.5,
-          duration: 2.0,
-          curve: 'easeIn',
-          repeat: false
-        ));
-        
-        context.startAnimation("box2", Animations.complex(
-          scale: 1.2,
-          opacity: 0.8,
-          translateX: 120,
-          rotation: 0.5,
-          duration: 2.0,
-          curve: 'easeOut',
-          repeat: false,
-        ));
-        
-        context.startAnimation("box3", Animations.complex(
-          scale: 1.2,
-          opacity: 0.8,
-          translateX: 50,
-          rotation: 0.5,
-          duration: 2.0,
-          curve: 'easeIn',
-          repeat: false,
-        ));
-        
-        context.startAnimation("info_text", Animations.fade(opacity: 0.0, duration: 1.0));
-        
-        context.startAnimation("buttons", Animations.rotate(
-          duration: 100,
-          repeat: false,
-          rotation: 10,
-        ));
-      }
-    });
+          context.startAnimation(
+            "box2",
+            Animations.complex(
+              scale: 1.2,
+              opacity: 0.8,
+              translateX: 120,
+              rotation: 0.5,
+              duration: 2.0,
+              curve: 'easeOut',
+              repeat: false,
+            ),
+          );
+
+          context.startAnimation(
+            "box3",
+            Animations.complex(
+              scale: 1.2,
+              opacity: 0.8,
+              translateX: 50,
+              rotation: 0.5,
+              duration: 2.0,
+              curve: 'easeIn',
+              repeat: false,
+            ),
+          );
+
+          context.startAnimation(
+            "info_text",
+            Animations.fade(opacity: 0.0, duration: 1.0),
+          );
+
+          context.startAnimation(
+            "buttons",
+            Animations.rotate(duration: 100, repeat: false, rotation: 10),
+          );
+        }
+      });
       return null;
-    },dependencies: []);
+    }, dependencies: []);
 
     return DCFView(
       children: [
@@ -87,6 +96,17 @@ class AnimatedModalScreen extends StatefulComponent {
             absoluteLayout: AbsoluteLayout.centeredVertically(),
           ),
           children: [
+            DCFButton(
+              onPress: (v) {
+                // Handle button press
+                // if this page is loaded as a modal, dismiss it (if this is not a modal, native side would ignore)
+                AppNavigation.dismissModal();
+                // else go back in the stack
+                AppNavigation.goBack();
+
+              },
+              buttonProps: DCFButtonProps(title: "pop"),
+            ),
             // Animation Manager - tunnel-based, no command props
             SuperDCFAnimationManager(
               groupId: "modal_animations",
@@ -95,7 +115,7 @@ class AnimatedModalScreen extends StatefulComponent {
               builder: (context) {
                 // Store context reference for button callbacks
                 _animationContext = context;
-                
+
                 return [
                   // Box 1 - no command prop, animations started via tunnel
                   context.animated(
@@ -216,7 +236,9 @@ class AnimatedModalScreen extends StatefulComponent {
                           borderRadius: 25,
                         ),
                         onPress: (v) {
-                          print("Dismissing animated modal - sending dispose command!");
+                          print(
+                            "Dismissing animated modal - sending dispose command!",
+                          );
                           context.dispose();
                           AppNavigation.goBack();
                         },
@@ -306,7 +328,8 @@ class AnimatedModalScreen extends StatefulComponent {
                           backgroundColor: Colors.purple,
                           borderRadius: 25,
                         ),
-                        onPress: (v) => AppNavigation.navigateTo("profile/settings"),
+                        onPress:
+                            (v) => AppNavigation.navigateTo("profile/settings"),
                       ),
                     ],
                   ),
