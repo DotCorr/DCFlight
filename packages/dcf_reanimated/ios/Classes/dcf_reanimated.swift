@@ -15,8 +15,10 @@ import dcflight
     }
     
     @objc public static func registerComponents() {
-DCFComponentRegistry.shared.registerComponent("AnimatedView", componentClass: DCFAnimatedViewComponent.self)
-    DCFComponentRegistry.shared.registerComponent("AnimationManager", componentClass: DCFAnimationManagerComponent.self)
+        DCFComponentRegistry.shared.registerComponent(
+                   "ReanimatedView",
+                   componentClass: PureReanimatedViewComponent.self
+               )
     }
     
 }
