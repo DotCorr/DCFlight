@@ -115,5 +115,8 @@ class StackScreenRegistry extends StatelessComponent {
       ],
     );
   }
+  
+  @override
+  List<Object?> get props => [];
 }
 

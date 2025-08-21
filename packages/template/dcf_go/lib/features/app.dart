@@ -85,6 +85,9 @@ class HomeScreen extends StatelessComponent {
       ],
     );
   }
+  
+  @override
+  List<Object?> get props => [];
 }
 
 class ProfileScreen extends StatefulComponent {
