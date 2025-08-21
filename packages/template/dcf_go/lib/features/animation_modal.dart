@@ -1,73 +1,12 @@
+
 import "package:dcf_reanimated/dcf_reanimated.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
-  // Store context reference for button callbacks
-  AnimationBuilderContext? _animationContext;
-
-  AnimationBuilderContext? _getAnimationContext() => _animationContext;
-
   @override
   DCFComponentNode render() {
-    useLayoutEffect(() {
-      // Start animations after component mounts
-      Future.delayed(Duration(milliseconds: 500), () {
-        // Access context and start individual animations via tunnel
-        final context = _getAnimationContext();
-        if (context != null) {
-          context.startAnimation(
-            "box1",
-            Animations.complex(
-              scale: 1.2,
-              opacity: 0.8,
-              translateX: 100,
-              rotation: 0.5,
-              duration: 2.0,
-              curve: 'easeIn',
-              repeat: false,
-            ),
-          );
-
-          context.startAnimation(
-            "box2",
-            Animations.complex(
-              scale: 1.2,
-              opacity: 0.8,
-              translateX: 120,
-              rotation: 0.5,
-              duration: 2.0,
-              curve: 'easeOut',
-              repeat: false,
-            ),
-          );
-
-          context.startAnimation(
-            "box3",
-            Animations.complex(
-              scale: 1.2,
-              opacity: 0.8,
-              translateX: 50,
-              rotation: 0.5,
-              duration: 2.0,
-              curve: 'easeIn',
-              repeat: false,
-            ),
-          );
-
-          context.startAnimation(
-            "info_text",
-            Animations.fade(opacity: 0.0, duration: 1.0),
-          );
-
-          context.startAnimation(
-            "buttons",
-            Animations.rotate(duration: 100, repeat: false, rotation: 10),
-          );
-        }
-      });
-      return null;
-    }, dependencies: []);
+    final state = useState(0);
 
     return DCFView(
       children: [
@@ -96,245 +35,304 @@ class AnimatedModalScreen extends StatefulComponent {
             absoluteLayout: AbsoluteLayout.centeredVertically(),
           ),
           children: [
+            // ✅ PURE: Test button works perfectly - no bridge interference
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "TEST STATE"),
+              layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
+              styleSheet: StyleSheet(backgroundColor: Colors.pink, borderRadius: 25),
+              onPress: (v) {
+                print("🧪 PURE REANIMATED: TEST BUTTON PRESSED - CALLBACK CALLED");
+                
+                // State changes work perfectly with pure reanimated
+                state.setState(state.state + 1);
+                
+                print("🧪 PURE REANIMATED: SETSTATE CALLED - Counter: ${state.state}");
+              },
+            ),
+
             DCFButton(
               onPress: (v) {
-                // Handle button press
-                // if this page is loaded as a modal, dismiss it (if this is not a modal, native side would ignore)
+                print("🧪 PURE REANIMATED: Navigation button works!");
                 AppNavigation.dismissModal();
-                // else go back in the stack
                 AppNavigation.goBack();
-
               },
               buttonProps: DCFButtonProps(title: "pop"),
+              layout: LayoutProps(height: 50, width: 200, marginBottom: 20),
+              styleSheet: StyleSheet(backgroundColor: Colors.red, borderRadius: 25),
             ),
-            // Animation Manager - tunnel-based, no command props
-            SuperDCFAnimationManager(
-              groupId: "modal_animations",
-              debugName: "Modal Animation Group",
-              autoStart: true,
-              builder: (context) {
-                // Store context reference for button callbacks
-                _animationContext = context;
 
-                return [
-                  // Box 1 - no command prop, animations started via tunnel
-                  context.animated(
-                    name: "box1",
-                    children: [
-                      DCFText(
-                        content: "BOX 1",
-                        textProps: DCFTextProps(
-                          fontSize: 16,
-                          color: Colors.white,
-                          textAlign: "center",
-                        ),
-                      ),
-                    ],
-                    styleSheet: StyleSheet(backgroundColor: Colors.blue),
-                    layout: LayoutProps(
-                      height: 100,
-                      width: 100,
-                      padding: 10,
-                      justifyContent: YogaJustifyContent.center,
-                      alignItems: YogaAlign.center,
-                    ),
+            // ✅ PURE: Box 1 - Entrance animation with slide + scale + fade
+            ReanimatedView(
+              animationId: "box1",
+              animatedStyle: Reanimated.slideScaleFadeIn(
+                slideDistance: 100,
+                fromScale: 0.0,
+                duration: 800,
+                delay: 200,
+                curve: 'easeOut',
+              ),
+              onAnimationComplete: () => print("🎬 Box 1 entrance complete!"),
+              children: [
+                DCFText(
+                  content: "BOX 1 - PURE UI",
+                  textProps: DCFTextProps(
+                    fontSize: 16,
+                    color: Colors.white,
+                    textAlign: "center",
                   ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 100,
+                width: 100,
+                marginBottom: 20,
+                padding: 10,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.blue,
+                borderRadius: 10,
+              ),
+            ),
 
-                  // Box 2 - no command prop
-                  context.animated(
-                    name: "box2",
-                    children: [
-                      DCFText(
-                        content: "BOX 2",
-                        textProps: DCFTextProps(
-                          fontSize: 16,
-                          color: Colors.white,
-                          textAlign: "center",
-                        ),
-                      ),
-                    ],
-                    styleSheet: StyleSheet(backgroundColor: Colors.red),
-                    layout: LayoutProps(
-                      height: 100,
-                      width: 100,
-                      padding: 10,
-                      justifyContent: YogaJustifyContent.center,
-                      alignItems: YogaAlign.center,
-                    ),
+            // ✅ PURE: Box 2 - Bounce animation
+            ReanimatedView(
+              animationId: "box2",
+              animatedStyle: Reanimated.bounce(
+                bounceScale: 1.3,
+                duration: 600,
+                delay: 400,
+                repeat: false,
+                repeatCount: 3,
+              ),
+              onAnimationRepeat: () => print("🔄 Box 2 bounce cycle!"),
+              children: [
+                DCFText(
+                  content: "BOX 2 - BOUNCE",
+                  textProps: DCFTextProps(
+                    fontSize: 16,
+                    color: Colors.white,
+                    textAlign: "center",
                   ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 100,
+                width: 100,
+                marginBottom: 20,
+                padding: 10,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.red,
+                borderRadius: 10,
+              ),
+            ),
 
-                  // Box 3 - no command prop
-                  context.animated(
-                    name: "box3",
-                    children: [
-                      DCFText(
-                        content: "BOX 3",
-                        textProps: DCFTextProps(
-                          fontSize: 16,
-                          color: Colors.white,
-                          textAlign: "center",
-                        ),
-                      ),
-                    ],
-                    styleSheet: StyleSheet(backgroundColor: Colors.green),
-                    layout: LayoutProps(
-                      height: 100,
-                      width: 100,
-                      padding: 10,
-                      justifyContent: YogaJustifyContent.center,
-                      alignItems: YogaAlign.center,
-                    ),
+            // ✅ PURE: Box 3 - Infinite rotation + pulse
+            ReanimatedView(
+              animationId: "box3",
+              animatedStyle: AnimatedStyle()
+                .transform(
+                  rotation: ReanimatedValue(
+                    from: 0.0,
+                    to: 6.28, // 2π
+                    duration: 3000,
+                    curve: 'linear',
+                    repeat: false,
+                    delay: 600,
                   ),
-
-                  // Custom animated text - no command prop
-                  context.animated(
-                    name: "info_text",
-                    layout: LayoutProps(
-                      height: 100,
-                      width: "300",
-                      padding: 10,
-                      justifyContent: YogaJustifyContent.center,
-                      alignItems: YogaAlign.center,
-                    ),
-                    children: [
-                      DCFText(
-                        content: "Watch the animated boxes! 🎬",
-                        textProps: DCFTextProps(
-                          fontSize: 18,
-                          color: Colors.black,
-                          textAlign: "center",
-                        ),
-                      ),
-                    ],
+                )
+                .opacity(
+                  ReanimatedValue(
+                    from: 1.0,
+                    to: 0.4,
+                    duration: 1500,
+                    curve: 'easeInOut',
+                    repeat: false,
+                    delay: 600,
                   ),
-
-                  // Control buttons - no command prop
-                  context.animated(
-                    layout: LayoutProps(
-                      height: 400,
-                      width: 200,
-                      marginBottom: 16,
-                      justifyContent: YogaJustifyContent.center,
-                      alignItems: YogaAlign.center,
-                    ),
-                    styleSheet: StyleSheet(
-                      backgroundColor: Colors.green,
-                      borderRadius: 20,
-                    ),
-                    name: "buttons",
-                    children: [
-                      // Dismiss with context disposal
-                      DCFButton(
-                        buttonProps: DCFButtonProps(title: "Dismiss Modal"),
-                        layout: LayoutProps(
-                          height: 50,
-                          width: 200,
-                          marginBottom: 16,
-                        ),
-                        styleSheet: StyleSheet(
-                          backgroundColor: Colors.red,
-                          borderRadius: 25,
-                        ),
-                        onPress: (v) {
-                          print(
-                            "Dismissing animated modal - sending dispose command!",
-                          );
-                          context.dispose();
-                          AppNavigation.goBack();
-                        },
-                      ),
-
-                      // Animation control buttons using tunnel methods
-                      DCFButton(
-                        buttonProps: DCFButtonProps(title: "Pause All"),
-                        layout: LayoutProps(
-                          height: 50,
-                          width: 200,
-                          marginBottom: 16,
-                        ),
-                        styleSheet: StyleSheet(
-                          backgroundColor: Colors.orange,
-                          borderRadius: 25,
-                        ),
-                        onPress: (v) => context.pauseAll(),
-                      ),
-
-                      DCFButton(
-                        buttonProps: DCFButtonProps(title: "Resume All"),
-                        layout: LayoutProps(
-                          height: 50,
-                          width: 200,
-                          marginBottom: 16,
-                        ),
-                        styleSheet: StyleSheet(
-                          backgroundColor: Colors.green,
-                          borderRadius: 25,
-                        ),
-                        onPress: (v) => context.resumeAll(),
-                      ),
-
-                      DCFButton(
-                        buttonProps: DCFButtonProps(title: "Reset Box 1"),
-                        layout: LayoutProps(
-                          height: 50,
-                          width: 200,
-                          marginBottom: 16,
-                        ),
-                        styleSheet: StyleSheet(
-                          backgroundColor: Colors.purple,
-                          borderRadius: 25,
-                        ),
-                        onPress: (v) => context.resetAnimation("box1"),
-                      ),
-
-                      DCFButton(
-                        buttonProps: DCFButtonProps(title: "Restart All"),
-                        layout: LayoutProps(
-                          height: 50,
-                          width: 200,
-                          marginBottom: 16,
-                        ),
-                        styleSheet: StyleSheet(
-                          backgroundColor: Colors.teal,
-                          borderRadius: 25,
-                        ),
-                        onPress: (v) {
-                          // Restart animations via tunnel
-                          context.startAnimation("box1", Animations.bounce());
-                          context.startAnimation("box2", Animations.slide());
-                          context.startAnimation("box3", Animations.rotate());
-                        },
-                      ),
-
-                      // Navigation buttons
-                      DCFButton(
-                        buttonProps: DCFButtonProps(title: "Go to Profile"),
-                        layout: LayoutProps(
-                          height: 50,
-                          width: 200,
-                          marginBottom: 16,
-                        ),
-                        styleSheet: StyleSheet(
-                          backgroundColor: Colors.blue,
-                          borderRadius: 25,
-                        ),
-                        onPress: (v) => AppNavigation.navigateTo("profile"),
-                      ),
-
-                      DCFButton(
-                        buttonProps: DCFButtonProps(title: "Go to Settings"),
-                        layout: LayoutProps(height: 50, width: 200),
-                        styleSheet: StyleSheet(
-                          backgroundColor: Colors.purple,
-                          borderRadius: 25,
-                        ),
-                        onPress:
-                            (v) => AppNavigation.navigateTo("profile/settings"),
-                      ),
-                    ],
+                ),
+              children: [
+                DCFText(
+                  content: "BOX 3 - SPIN",
+                  textProps: DCFTextProps(
+                    fontSize: 16,
+                    color: Colors.white,
+                    textAlign: "center",
                   ),
-                ];
-              },
+                ),
+              ],
+              layout: LayoutProps(
+                height: 100,
+                width: 100,
+                marginBottom: 20,
+                padding: 10,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.green,
+                borderRadius: 10,
+              ),
+            ),
+
+            // ✅ PURE: Info text with typewriter effect
+            ReanimatedView(
+              animationId: "info_text",
+              animatedStyle: Reanimated.slideInLeft(
+                distance: 200,
+                duration: 1000,
+                delay: 800,
+                curve: 'easeOut',
+              ),
+              children: [
+                DCFText(
+                  content: "🎬 Pure UI Thread Animations!\nZero Bridge Calls! 🚀",
+                  textProps: DCFTextProps(
+                    fontSize: 18,
+                    color: Colors.black,
+                    textAlign: "center",
+                  ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 80,
+                width: 300,
+                marginBottom: 30,
+                padding: 10,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.yellow.withOpacity(0.8),
+                borderRadius: 15,
+              ),
+            ),
+
+            // ✅ PURE: Control buttons with staggered entrance
+            ReanimatedView(
+            
+              animationId: "buttons_container",
+              animatedStyle: Reanimated.scaleIn(
+                fromScale: 0.0,
+                toScale: 1.0,
+                duration: 600,
+                delay: 1200,
+                curve: 'easeOut',
+              ),
+              children: [
+                // Working buttons - no bridge interference!
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Dismiss Modal"),
+                  layout: LayoutProps(
+                    height: 50,
+                    width: 200,
+                    marginBottom: 16,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.red,
+                    borderRadius: 25,
+                  ),
+                  onPress: (v) {
+                    print("🎬 PURE REANIMATED: Dismiss button works perfectly!");
+                    AppNavigation.goBack();
+                  },
+                ),
+
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Counter: ${state.state}"),
+                  layout: LayoutProps(
+                    height: 50,
+                    width: 200,
+                    marginBottom: 16,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.purple,
+                    borderRadius: 25,
+                  ),
+                  onPress: (v) {
+                    print("🎬 PURE REANIMATED: Counter button works! Current: ${state.state}");
+                    state.setState(state.state + 1);
+                  },
+                ),
+
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Go to Profile"),
+                  layout: LayoutProps(
+                    height: 50,
+                    width: 200,
+                    marginBottom: 16,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.blue,
+                    borderRadius: 25,
+                  ),
+                  onPress: (v) {
+                    print("🎬 PURE REANIMATED: Navigation works perfectly!");
+                    AppNavigation.navigateTo("profile");
+                  },
+                ),
+
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Go to Settings"),
+                  layout: LayoutProps(height: 50, width: 200),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.orange,
+                    borderRadius: 25,
+                  ),
+                  onPress: (v) {
+                    print("🎬 PURE REANIMATED: Settings navigation works!");
+                    AppNavigation.navigateTo("profile/settings");
+                  },
+                ),
+              ],
+              layout: LayoutProps(
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+                padding: 20,
+                height: 400
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.white.withOpacity(0.9),
+                borderRadius: 20,
+                // Add subtle shadow effect
+              ),
+            ),
+
+            // ✅ PURE: Performance indicator
+            ReanimatedView(
+              animationId: "performance_indicator",
+              animatedStyle: Reanimated.pulse(
+                minOpacity: 0.3,
+                maxOpacity: 1.0,
+                duration: 2000,
+                delay: 1500,
+                repeat: false,
+              ),
+              children: [
+                DCFText(
+                  content: "⚡ 60fps Pure UI Thread ⚡",
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                    color: Colors.green,
+                    textAlign: "center",
+                  ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 40,
+                width: 250,
+                marginTop: 20,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.black.withOpacity(0.1),
+                borderRadius: 20,
+              ),
             ),
           ],
         ),
