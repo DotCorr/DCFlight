@@ -27,12 +27,13 @@ class StackScreenRegistry extends StatelessComponent {
           onHeaderActionPress: (data) {
             if (data['actionId'] == "anim_action") {
               print("🎬 Opening animated modal from home header action");
-              AppNavigation.navigateTo("home/animated_modal", 
+              AppNavigation.navigateTo(
+                "home/animated_modal",
                 params: {
                   "title": "Animated Modal",
-                  "message": "This is an animated modal screen"
+                  "message": "This is an animated modal screen",
                 },
-                fromScreen: "home"
+                fromScreen: "home",
               );
             }
           },
@@ -57,7 +58,10 @@ class StackScreenRegistry extends StatelessComponent {
           ),
           onHeaderActionPress: (data) {
             if (data['actionId'] == "settings_action") {
-              AppNavigation.navigateTo("profile/settings", fromScreen: "profile");
+              AppNavigation.navigateTo(
+                "profile/settings",
+                fromScreen: "profile",
+              );
             }
           },
           builder: () => ProfileScreen(),
@@ -93,18 +97,20 @@ class StackScreenRegistry extends StatelessComponent {
             title: "Animated Modal",
             backButtonTitle: "Home",
           ),
-          builder: () => AnimatedModalScreen(), // Only creates when actually navigated to!
+          builder:
+              () =>
+                  AnimatedModalScreen(), // Only creates when actually navigated to!
         ),
 
-         DCFEasyScreen(
+        DCFEasyScreen(
           route: "home/website",
           modalConfig: DCFModalConfig(
-          allowsBackgroundDismiss: true,
-           detents: [DCFModalDetent.large, DCFModalDetent.medium],
-           selectedDetentIndex: 0,
-           showDragIndicator: true,
+            allowsBackgroundDismiss: true,
+            detents: [DCFModalDetent.large, DCFModalDetent.medium],
+            selectedDetentIndex: 0,
+            showDragIndicator: true,
           ),
-          builder: () => WebsiteScreen(), 
+          builder: () => WebsiteScreen(),
         ),
       ],
     );
