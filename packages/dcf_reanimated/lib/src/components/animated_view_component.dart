@@ -70,7 +70,7 @@ class Animations {
     double scale = 1.2,
     double duration = 2.0,
     String curve = 'easeInOut',
-    bool repeat = true,
+    bool repeat = false,
   }) => AnimateCommand(
     toScale: scale,
     toTranslateY: -20,
@@ -85,7 +85,7 @@ class Animations {
     double opacity = 0.8,
     double duration = 2.0,
     String curve = 'easeInOut',
-    bool repeat = true,
+    bool repeat = false,
   }) => AnimateCommand(
     toTranslateX: translateX,
     toOpacity: opacity,
@@ -100,7 +100,7 @@ class Animations {
     double scale = 1.1,
     double duration = 2.0,
     String curve = 'easeInOut', 
-    bool repeat = true,
+    bool repeat = false,
   }) => AnimateCommand(
     toRotation: rotation,
     toScale: scale,
@@ -114,7 +114,7 @@ class Animations {
     double opacity = 0.5,
     double duration = 1.5,
     String curve = 'easeInOut',
-    bool repeat = true,
+    bool repeat = false,
   }) => AnimateCommand(
     toOpacity: opacity,
     duration: duration,
@@ -131,7 +131,7 @@ class Animations {
     double? rotation,
     double duration = 2.0,
     String curve = 'easeInOut',
-    bool repeat = true,
+    bool repeat = false,
   }) => AnimateCommand(
     toScale: scale,
     toOpacity: opacity,
