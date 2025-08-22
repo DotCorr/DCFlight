@@ -1660,6 +1660,8 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
     int changedCount = 0;
     int removedCount = 0;
 
+    
+
     // O(new props count) - Find added or changed props
     for (final entry in newProps.entries) {
       final key = entry.key;
@@ -1700,7 +1702,14 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
           'Removed': removedCount,
           'Total': changedProps.length
         });
-
+  // ✅ ADD: Don't re-send animation props if animationId is the same
+  if (oldProps['animationId'] == newProps['animationId'] && 
+      oldProps['animationId'] != null) {
+    // Remove animation-related props from the update
+    changedProps.remove('animatedStyle');
+    changedProps.remove('autoStart');
+    changedProps.remove('animationId');
+  }
     return changedProps;
   }
 
