@@ -259,6 +259,7 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
     // Generate stable ID only once
     final effectiveAnimationId =
         animationId ?? 'anim_${key?.toString() ?? hashCode}';
+    
     // Prepare event handlers
     Map<String, dynamic> eventHandlers = events ?? {};
 
@@ -272,24 +273,24 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
       eventHandlers['onAnimationRepeat'] = onAnimationRepeat;
     }
 
-    // ✅ PURE: All animation config via props - NO BRIDGE CALLS
+    // ✅ FIXED: All animation config via props - MATCHING SWIFT EXPECTATIONS
     Map<String, dynamic> props = {
-      'animationId': effectiveAnimationId,
+      'animationId': effectiveAnimationId,        // ✅ FIXED: Swift expects 'animationId'
       'autoStart': autoStart,
       'startDelay': startDelay,
-      'isPureReanimated': true, // Flag for native to use pure mode
+      'isPureReanimated': true,                   // ✅ Flag for native to use pure mode
       ...layout.toMap(),
       ...styleSheet.toMap(),
       ...eventHandlers,
     };
 
-    // ✅ PURE: Pass animation configuration directly via props
+    // ✅ FIXED: Pass animation configuration directly via props
     if (animatedStyle != null) {
       props['animatedStyle'] = animatedStyle!.toMap();
     }
 
     return DCFElement(
-      type: 'ReanimatedView',
+      type: 'ReanimatedView',                     // ✅ FIXED: Matches registration name
       props: props,
       children: children,
     );
@@ -583,55 +584,3 @@ class StaggeredAnimation {
   }
 }
 
-// ============================================================================
-// USAGE EXAMPLES
-// ============================================================================
-
-/*
-// EXAMPLE 1: Simple fade in
-ReanimatedView(
-  animatedStyle: Reanimated.fadeIn(duration: 500),
-  children: [DCFText(content: "Hello World")],
-)
-
-// EXAMPLE 2: Using shared values
-class AnimatedScreen extends StatefulComponent {
-  @override
-  DCFComponentNode render() {
-    final scale = useSharedValue(1.0);
-    final opacity = useSharedValue(1.0);
-    
-    final animatedStyle = useAnimatedStyle(() {
-      return AnimatedStyle()
-        .transform(scale: scale.withTiming(toValue: 1.2, duration: 300))
-        .opacity(opacity.withTiming(toValue: 0.8, duration: 300));
-    });
-
-    return ReanimatedView(
-      animatedStyle: animatedStyle,
-      onAnimationComplete: () => print("Animation done!"),
-      children: [DCFText(content: "Animated!")],
-    );
-  }
-}
-
-// EXAMPLE 3: Complex entrance animation
-ReanimatedView(
-  animatedStyle: Reanimated.slideScaleFadeIn(
-    slideDistance: 100,
-    duration: 600,
-    curve: 'easeOut',
-  ),
-  children: [DCFText(content: "Smooth entrance!")],
-)
-
-// EXAMPLE 4: Infinite pulse
-ReanimatedView(
-  animatedStyle: Reanimated.pulse(
-    minOpacity: 0.3,
-    duration: 1000,
-    repeat: true,
-  ),
-  children: [DCFIcon(icon: "heart")],
-)
-*/

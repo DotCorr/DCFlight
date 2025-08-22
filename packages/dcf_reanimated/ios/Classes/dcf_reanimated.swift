@@ -15,11 +15,12 @@ import dcflight
     }
     
     @objc public static func registerComponents() {
+        // ✅ FIXED: Register the CORRECT component that handles pure reanimated system
         DCFComponentRegistry.shared.registerComponent(
-                   "ReanimatedView",
-                   componentClass: PureReanimatedViewComponent.self
-               )
+            "ReanimatedView",
+            componentClass: DCFAnimatedViewComponent.self
+        )
+        
+        print("🎯 DCF REANIMATED: Registered pure UI thread components")
     }
-    
 }
-

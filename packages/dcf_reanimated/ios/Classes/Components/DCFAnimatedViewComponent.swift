@@ -9,10 +9,10 @@ import UIKit
 import dcflight
 
 // ============================================================================
-// PURE REANIMATED COMPONENT - ZERO BRIDGE CALLS
+// PURE REANIMATED COMPONENT - ZERO BRIDGE CALLS DURING ANIMATION
 // ============================================================================
 
-class PureReanimatedViewComponent: NSObject, DCFComponent {
+class DCFAnimatedViewComponent: NSObject, DCFComponent {
     required override init() {
         super.init()
     }
@@ -86,12 +86,6 @@ class PureReanimatedViewComponent: NSObject, DCFComponent {
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
     }
-    
-    // ✅ PURE: No tunnel methods needed - everything via props
-    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
-        print("⚠️ PURE REANIMATED: Tunnel method \(method) not supported - use pure props API")
-        return nil
-    }
 }
 
 // ============================================================================
@@ -150,7 +144,7 @@ class PureReanimatedView: UIView {
         }
     }
     
-    /// Update animation configuration - PURE (Fixed method name)
+    /// Update animation configuration - PURE
     func updateAnimationConfig(_ animatedStyle: [String: Any]) {
         // Stop current animation
         stopPureAnimation()
@@ -457,26 +451,6 @@ class PureAnimationState {
 }
 
 // ============================================================================
-// COMPONENT REGISTRATION
-// ============================================================================
-
-@objc public class PureDcfReanimated: NSObject {
-    @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
-        registerComponents()
-    }
-    
-    @objc public static func registerComponents() {
-        // ✅ PURE: Register pure reanimated component - NO TUNNELS
-        DCFComponentRegistry.shared.registerComponent(
-            "ReanimatedView",
-            componentClass: PureReanimatedViewComponent.self
-        )
-        
-        print("🎯 PURE DCF REANIMATED: Registered pure UI thread components")
-    }
-}
-
-// ============================================================================
 // PURE ANIMATION UTILITIES
 // ============================================================================
 
@@ -489,4 +463,3 @@ extension UIView {
         alpha = 1.0
     }
 }
-
