@@ -99,7 +99,7 @@ class StackScreenRegistry extends StatelessComponent {
           ),
           builder:
               () =>
-                  ComponentRerenderTest(), // Only creates when actually navigated to!
+                  AnimatedModalScreen(), // Only creates when actually navigated to!
         ),
 
         DCFEasyScreen(

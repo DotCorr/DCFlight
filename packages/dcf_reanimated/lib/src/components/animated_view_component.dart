@@ -32,14 +32,14 @@ class ReanimatedValue {
   });
 
   Map<String, dynamic> toMap() => {
-    'from': from,
-    'to': to,
-    'duration': duration,
-    'curve': curve,
-    'delay': delay,
-    'repeat': repeat,
-    if (repeatCount != null) 'repeatCount': repeatCount,
-  };
+        'from': from,
+        'to': to,
+        'duration': duration,
+        'curve': curve,
+        'delay': delay,
+        'repeat': repeat,
+        if (repeatCount != null) 'repeatCount': repeatCount,
+      };
 }
 
 /// Shared value that runs purely on UI thread
@@ -51,7 +51,8 @@ class SharedValue {
 
   factory SharedValue(double initialValue) {
     final id = 'shared_${DateTime.now().microsecondsSinceEpoch}';
-    return SharedValue._(id, ReanimatedValue(from: initialValue, to: initialValue));
+    return SharedValue._(
+        id, ReanimatedValue(from: initialValue, to: initialValue));
   }
 
   String get id => _id;
@@ -185,16 +186,17 @@ extension PureReanimatedHooks on StatefulComponent {
   /// Create a shared value that runs purely on UI thread
   SharedValue useSharedValue(double initialValue) {
     final ref = useRef<SharedValue?>(null);
-    
+
     if (ref.current == null) {
       ref.current = SharedValue(initialValue);
     }
-    
+
     return ref.current!;
   }
 
   /// Create animated style that runs purely on UI thread
-  AnimatedStyle useAnimatedStyle(AnimatedStyle Function() styleFactory, {
+  AnimatedStyle useAnimatedStyle(
+    AnimatedStyle Function() styleFactory, {
     List<dynamic> dependencies = const [],
   }) {
     return useMemo(() => styleFactory(), dependencies: dependencies);
@@ -233,7 +235,7 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
   final void Function()? onAnimationRepeat;
   final Map<String, dynamic>? events;
 
-   ReanimatedView({
+  ReanimatedView({
     required this.children,
     this.animatedStyle,
     this.layout = const LayoutProps(),
@@ -250,12 +252,12 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
 
   @override
   DCFComponentNode render() {
-    // Generate unique animation ID if not provided
-    final effectiveAnimationId = animationId ?? 'anim_${key?.toString() ?? DateTime.now().microsecondsSinceEpoch}';
-
+    // Generate stable ID only once
+    final effectiveAnimationId =
+        animationId ?? 'anim_${key?.toString() ?? hashCode}';
     // Prepare event handlers
     Map<String, dynamic> eventHandlers = events ?? {};
-    
+
     if (onAnimationStart != null) {
       eventHandlers['onAnimationStart'] = onAnimationStart;
     }
@@ -291,19 +293,19 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
 
   @override
   List<Object?> get props => [
-    children,
-    animatedStyle,
-    layout,
-    styleSheet,
-    animationId,
-    autoStart,
-    startDelay,
-    onAnimationStart,
-    onAnimationComplete,
-    onAnimationRepeat,
-    events,
-    key,
-  ];
+        children,
+        animatedStyle,
+        layout,
+        styleSheet,
+        animationId,
+        autoStart,
+        startDelay,
+        onAnimationStart,
+        onAnimationComplete,
+        onAnimationRepeat,
+        events,
+        key,
+      ];
 }
 
 // ============================================================================
@@ -497,31 +499,31 @@ class Reanimated {
     String curve = 'easeOut',
   }) {
     return AnimatedStyle()
-      .transform(
-        translateY: ReanimatedValue(
-          from: slideDistance,
-          to: 0.0,
-          duration: duration,
-          delay: delay,
-          curve: curve,
-        ),
-        scale: ReanimatedValue(
-          from: fromScale,
-          to: toScale,
-          duration: duration,
-          delay: delay,
-          curve: curve,
-        ),
-      )
-      .opacity(
-        ReanimatedValue(
-          from: fromOpacity,
-          to: toOpacity,
-          duration: duration,
-          delay: delay,
-          curve: curve,
-        ),
-      );
+        .transform(
+          translateY: ReanimatedValue(
+            from: slideDistance,
+            to: 0.0,
+            duration: duration,
+            delay: delay,
+            curve: curve,
+          ),
+          scale: ReanimatedValue(
+            from: fromScale,
+            to: toScale,
+            duration: duration,
+            delay: delay,
+            curve: curve,
+          ),
+        )
+        .opacity(
+          ReanimatedValue(
+            from: fromOpacity,
+            to: toOpacity,
+            duration: duration,
+            delay: delay,
+            curve: curve,
+          ),
+        );
   }
 }
 
@@ -629,4 +631,3 @@ ReanimatedView(
   children: [DCFIcon(icon: "heart")],
 )
 */
-

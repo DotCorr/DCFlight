@@ -1,224 +1,343 @@
-/*
- * COMPONENT RE-RENDER TEST
- * Testing if ALL components re-render on state changes
- * NO animations - pure component testing
- */
 
+import "package:dcf_reanimated/dcf_reanimated.dart";
+import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
-class ComponentRerenderTest extends StatefulComponent {
+class AnimatedModalScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
-     print("🔴 ComponentRerenderTest.render() called");
-    final counterState = useState(0);
-
-    return DCFView(layout: LayoutProps(
-      flex:1,
-      paddingTop: 100
-    ),
-      children: [
-        // Test button that changes state
-        DCFButton(
-          buttonProps: DCFButtonProps(title: "Increment Counter: ${counterState.state}"),
-          layout: LayoutProps(height: 50, width: 300, marginBottom: 20),
-          styleSheet: StyleSheet(backgroundColor: Colors.pink, borderRadius: 25),
-          onPress: (v) {
-            print("🔥 COUNTER BUTTON PRESSED - Setting state to ${counterState.state + 1}");
-            counterState.setState(counterState.state + 1);
-            print("🔥 STATE UPDATE COMPLETE");
-          },
-        ),
-
-        // Test Component 1 - Should NOT re-render when counter changes
-        TestComponent1(componentId: "component_1"),
-
-        // Test Component 2 - Should NOT re-render when counter changes  
-        TestComponent2(componentId: "component_2"),
-
-        // Test Component 3 - SHOULD re-render because it uses counter state
-        TestComponent3(componentId: "component_3", counter: counterState.state),
-
-        // Test Component 4 - Should NOT re-render when counter changes
-        TestComponent4(componentId: "component_4"),
-      ],
-    );
-  }
-}
-
-// ============================================================================
-// TEST COMPONENTS - Each should log when they render/update
-// ============================================================================
-
-/// Test Component 1 - Static, no dependencies
-class TestComponent1 extends StatelessComponent {
-  final String componentId;
-
-  TestComponent1({required this.componentId, super.key});
-
-  @override
-  DCFComponentNode render() {
-    // This should NOT log when counter changes
-    print("🟦 TestComponent1 ($componentId) RENDERED");
+    final state = useState(0);
 
     return DCFView(
       children: [
-        DCFText(
-          content: "Component 1 - Static",
-          textProps: DCFTextProps(
-            fontSize: 16,
-            color: Colors.white,
-            textAlign: "center",
+        DCFImage(
+          imageProps: DCFImageProps(
+            source:
+                "https://images.pexels.com/photos/2832382/pexels-photo-2832382.jpeg?_gl=1*18awrhp*_ga*MTE2MzEwOTgwOS4xNzUzMjYyOTQ5*_ga_8JE65Q40S6*czE3NTMyNjI5NDkkbzEkZzEkdDE3NTMyNjI5NzkkajMwJGwwJGgw",
+          ),
+          layout: LayoutProps(
+            flex: 1,
+            padding: 20,
+            justifyContent: YogaJustifyContent.center,
+            alignItems: YogaAlign.center,
           ),
         ),
-      ],
-      layout: LayoutProps(
-        height: 60,
-        width: 200,
-        marginBottom: 10,
-        padding: 10,
-        justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
-      ),
-      styleSheet: StyleSheet(
-        backgroundColor: Colors.blue,
-        borderRadius: 10,
-      ),
-    );
-  }
 
-  @override
-  List<Object?> get props => [componentId, key];
-}
-
-/// Test Component 2 - Static, different color to track independently
-class TestComponent2 extends StatelessComponent {
-  final String componentId;
-
-  TestComponent2({required this.componentId, super.key});
-
-  @override
-  DCFComponentNode render() {
-    // This should NOT log when counter changes
-    print("🟩 TestComponent2 ($componentId) RENDERED");
-
-    return DCFView(
-      children: [
-        DCFText(
-          content: "Component 2 - Static",
-          textProps: DCFTextProps(
-            fontSize: 16,
-            color: Colors.white,
-            textAlign: "center",
+        DCFScrollView(
+          styleSheet: StyleSheet(backgroundColor: Colors.transparent),
+          layout: LayoutProps(
+            height: "100%",
+            width: "100%",
+            padding: 20,
+            justifyContent: YogaJustifyContent.center,
+            alignItems: YogaAlign.center,
+            position: YogaPositionType.absolute,
+            absoluteLayout: AbsoluteLayout.centeredVertically(),
           ),
+          children: [
+            // ✅ PURE: Test button works perfectly - no bridge interference
+            DCFButton(
+              buttonProps: DCFButtonProps(title: "TEST STATE"),
+              layout: LayoutProps(height: 50, width: 200, marginBottom: 16),
+              styleSheet: StyleSheet(backgroundColor: Colors.pink, borderRadius: 25),
+              onPress: (v) {
+                print("🧪 PURE REANIMATED: TEST BUTTON PRESSED - CALLBACK CALLED");
+                
+                // State changes work perfectly with pure reanimated
+                state.setState(state.state + 1);
+                
+                print("🧪 PURE REANIMATED: SETSTATE CALLED - Counter: ${state.state}");
+              },
+            ),
+
+            DCFButton(
+              onPress: (v) {
+                print("🧪 PURE REANIMATED: Navigation button works!");
+                AppNavigation.dismissModal();
+                AppNavigation.goBack();
+              },
+              buttonProps: DCFButtonProps(title: "pop"),
+              layout: LayoutProps(height: 50, width: 200, marginBottom: 20),
+              styleSheet: StyleSheet(backgroundColor: Colors.red, borderRadius: 25),
+            ),
+
+            // ✅ PURE: Box 1 - Entrance animation with slide + scale + fade
+            ReanimatedView(
+              animationId: "box1",
+              animatedStyle: Reanimated.slideScaleFadeIn(
+                slideDistance: 100,
+                fromScale: 0.0,
+                duration: 800,
+                delay: 200,
+                curve: 'easeOut',
+              ),
+              onAnimationComplete: () => print("🎬 Box 1 entrance complete!"),
+              children: [
+                DCFText(
+                  content: "BOX 1 - PURE UI",
+                  textProps: DCFTextProps(
+                    fontSize: 16,
+                    color: Colors.white,
+                    textAlign: "center",
+                  ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 100,
+                width: 100,
+                marginBottom: 20,
+                padding: 10,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.blue,
+                borderRadius: 10,
+              ),
+            ),
+
+            // ✅ PURE: Box 2 - Bounce animation
+            ReanimatedView(
+              animationId: "box2",
+              animatedStyle: Reanimated.bounce(
+                bounceScale: 1.3,
+                duration: 600,
+                delay: 400,
+                repeat: false,
+                repeatCount: 3,
+              ),
+              onAnimationRepeat: () => print("🔄 Box 2 bounce cycle!"),
+              children: [
+                DCFText(
+                  content: "BOX 2 - BOUNCE",
+                  textProps: DCFTextProps(
+                    fontSize: 16,
+                    color: Colors.white,
+                    textAlign: "center",
+                  ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 100,
+                width: 100,
+                marginBottom: 20,
+                padding: 10,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.red,
+                borderRadius: 10,
+              ),
+            ),
+
+            // ✅ PURE: Box 3 - Infinite rotation + pulse
+            ReanimatedView(
+              animationId: "box3",
+              animatedStyle: AnimatedStyle()
+                .transform(
+                  rotation: ReanimatedValue(
+                    from: 0.0,
+                    to: 6.28, // 2π
+                    duration: 3000,
+                    curve: 'linear',
+                    repeat: false,
+                    delay: 600,
+                  ),
+                )
+                .opacity(
+                  ReanimatedValue(
+                    from: 1.0,
+                    to: 0.4,
+                    duration: 1500,
+                    curve: 'easeInOut',
+                    repeat: false,
+                    delay: 600,
+                  ),
+                ),
+              children: [
+                DCFText(
+                  content: "BOX 3 - SPIN",
+                  textProps: DCFTextProps(
+                    fontSize: 16,
+                    color: Colors.white,
+                    textAlign: "center",
+                  ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 100,
+                width: 100,
+                marginBottom: 20,
+                padding: 10,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.green,
+                borderRadius: 10,
+              ),
+            ),
+
+            // ✅ PURE: Info text with typewriter effect
+            ReanimatedView(
+              animationId: "info_text",
+              animatedStyle: Reanimated.slideInLeft(
+                distance: 200,
+                duration: 1000,
+                delay: 800,
+                curve: 'easeOut',
+              ),
+              children: [
+                DCFText(
+                  content: "🎬 Pure UI Thread Animations!\nZero Bridge Calls! 🚀",
+                  textProps: DCFTextProps(
+                    fontSize: 18,
+                    color: Colors.black,
+                    textAlign: "center",
+                  ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 80,
+                width: 300,
+                marginBottom: 30,
+                padding: 10,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.yellow.withOpacity(0.8),
+                borderRadius: 15,
+              ),
+            ),
+
+            // ✅ PURE: Control buttons with staggered entrance
+            ReanimatedView(
+            
+              animationId: "buttons_container",
+              animatedStyle: Reanimated.scaleIn(
+                fromScale: 0.0,
+                toScale: 1.0,
+                duration: 600,
+                delay: 1200,
+                curve: 'easeOut',
+              ),
+              children: [
+                // Working buttons - no bridge interference!
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Dismiss Modal"),
+                  layout: LayoutProps(
+                    height: 50,
+                    width: 200,
+                    marginBottom: 16,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.red,
+                    borderRadius: 25,
+                  ),
+                  onPress: (v) {
+                    print("🎬 PURE REANIMATED: Dismiss button works perfectly!");
+                    AppNavigation.goBack();
+                  },
+                ),
+
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Counter: ${state.state}"),
+                  layout: LayoutProps(
+                    height: 50,
+                    width: 200,
+                    marginBottom: 16,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.purple,
+                    borderRadius: 25,
+                  ),
+                  onPress: (v) {
+                    print("🎬 PURE REANIMATED: Counter button works! Current: ${state.state}");
+                    state.setState(state.state + 1);
+                  },
+                ),
+
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Go to Profile"),
+                  layout: LayoutProps(
+                    height: 50,
+                    width: 200,
+                    marginBottom: 16,
+                  ),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.blue,
+                    borderRadius: 25,
+                  ),
+                  onPress: (v) {
+                    print("🎬 PURE REANIMATED: Navigation works perfectly!");
+                    AppNavigation.navigateTo("profile");
+                  },
+                ),
+
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Go to Settings"),
+                  layout: LayoutProps(height: 50, width: 200),
+                  styleSheet: StyleSheet(
+                    backgroundColor: Colors.orange,
+                    borderRadius: 25,
+                  ),
+                  onPress: (v) {
+                    print("🎬 PURE REANIMATED: Settings navigation works!");
+                    AppNavigation.navigateTo("profile/settings");
+                  },
+                ),
+              ],
+              layout: LayoutProps(
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+                padding: 20,
+                height: 400
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.white.withOpacity(0.9),
+                borderRadius: 20,
+                // Add subtle shadow effect
+              ),
+            ),
+
+            // ✅ PURE: Performance indicator
+            ReanimatedView(
+              animationId: "performance_indicator",
+              animatedStyle: Reanimated.pulse(
+                minOpacity: 0.3,
+                maxOpacity: 1.0,
+                duration: 2000,
+                delay: 1500,
+                repeat: false,
+              ),
+              children: [
+                DCFText(
+                  content: "⚡ 60fps Pure UI Thread ⚡",
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                    color: Colors.green,
+                    textAlign: "center",
+                  ),
+                ),
+              ],
+              layout: LayoutProps(
+                height: 40,
+                width: 250,
+                marginTop: 20,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              styleSheet: StyleSheet(
+                backgroundColor: Colors.black.withOpacity(0.1),
+                borderRadius: 20,
+              ),
+            ),
+          ],
         ),
       ],
-      layout: LayoutProps(
-        height: 60,
-        width: 200,
-        marginBottom: 10,
-        padding: 10,
-        justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
-      ),
-      styleSheet: StyleSheet(
-        backgroundColor: Colors.green,
-        borderRadius: 10,
-      ),
     );
   }
-
-  @override
-  List<Object?> get props => [componentId, key];
 }
 
-/// Test Component 3 - SHOULD re-render because it depends on counter
-class TestComponent3 extends StatelessComponent {
-  final String componentId;
-  final int counter;
-
-  TestComponent3({required this.componentId, required this.counter, super.key});
-
-  @override
-  DCFComponentNode render() {
-    // This SHOULD log when counter changes
-    print("🟪 TestComponent3 ($componentId) RENDERED with counter: $counter");
-
-    return DCFView(
-      children: [
-        DCFText(
-          content: "Component 3 - Counter: $counter",
-          textProps: DCFTextProps(
-            fontSize: 16,
-            color: Colors.white,
-            textAlign: "center",
-          ),
-        ),
-      ],
-      layout: LayoutProps(
-        height: 60,
-        width: 200,
-        marginBottom: 10,
-        padding: 10,
-        justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
-      ),
-      styleSheet: StyleSheet(
-        backgroundColor: Colors.purple,
-        borderRadius: 10,
-      ),
-    );
-  }
-
-  @override
-  List<Object?> get props => [componentId, counter, key];
-}
-
-/// Test Component 4 - Stateful component to test stateful behavior
-class TestComponent4 extends StatefulComponent {
-  final String componentId;
-
-  TestComponent4({required this.componentId, super.key});
-
-  @override
-  DCFComponentNode render() {
-    // This should NOT log when parent counter changes
-    print("🟨 TestComponent4 ($componentId) RENDERED");
-
-    final internalState = useState(0);
-
-    return DCFView(
-      children: [
-        DCFText(
-          content: "Component 4 - Internal: ${internalState.state}",
-          textProps: DCFTextProps(
-            fontSize: 16,
-            color: Colors.black,
-            textAlign: "center",
-          ),
-        ),
-        DCFButton(
-          buttonProps: DCFButtonProps(title: "+"),
-          layout: LayoutProps(height: 30, width: 40, marginTop: 5),
-          styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 5),
-          onPress: (v) {
-            print("🟨 TestComponent4 internal button pressed");
-            internalState.setState(internalState.state + 1);
-          },
-        ),
-      ],
-      layout: LayoutProps(
-        height: 100,
-        width: 200,
-        marginBottom: 10,
-        padding: 10,
-        justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
-      ),
-      styleSheet: StyleSheet(
-        backgroundColor: Colors.yellow,
-        borderRadius: 10,
-      ),
-    );
-  }
-
-}
