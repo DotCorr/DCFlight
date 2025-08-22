@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'package:dcf_reanimated/src/helper/init.dart';
 import 'package:dcflight/dcflight.dart';
 
 // ============================================================================
@@ -248,7 +249,10 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
     this.onAnimationRepeat,
     this.events,
     super.key,
-  });
+    
+  }){
+      ReanimatedInit.ensureInitialized();
+  }
 
   @override
   DCFComponentNode render() {

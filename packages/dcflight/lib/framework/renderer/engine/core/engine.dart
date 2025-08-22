@@ -105,7 +105,7 @@ class DCFEngine {
   /// Initialize concurrent processing capabilities
   Future<void> _initializeConcurrentProcessing() async {
     // This must be set to true before using this feature
-      // But this is not ready. It would be delegated to app layer if developers
+    // But this is not ready. It would be delegated to app layer if developers
     // try {
     //   // Try to create worker isolates
     //   for (int i = 0; i < _maxWorkers; i++) {
@@ -123,7 +123,7 @@ class DCFEngine {
     //     final sendPort = await receivePort.first as SendPort;
     //     _workerPorts.add(sendPort);
     //   }
-      
+
     //   _concurrentEnabled = true;
     //   EngineDebugLogger.log('VDOM_CONCURRENT',
     //       'Concurrent processing enabled with $_maxWorkers workers');
@@ -262,36 +262,39 @@ class DCFEngine {
   }
 
   /// O(props count) - Check if two components are semantically equal
-bool _componentsAreEqual(DCFComponentNode oldComponent, DCFComponentNode newComponent) {
-  // print("🔍 Comparing: ${oldComponent.runtimeType} vs ${newComponent.runtimeType}");
-  
-  if (oldComponent.runtimeType != newComponent.runtimeType) {
-    // print("  → Different types");
+  bool _componentsAreEqual(
+      DCFComponentNode oldComponent, DCFComponentNode newComponent) {
+    // print("🔍 Comparing: ${oldComponent.runtimeType} vs ${newComponent.runtimeType}");
+
+    if (oldComponent.runtimeType != newComponent.runtimeType) {
+      // print("  → Different types");
+      return false;
+    }
+
+    if (oldComponent.key != newComponent.key) {
+      // print("  → Different keys");
+      return false;
+    }
+
+    if (oldComponent is StatelessComponent &&
+        newComponent is StatelessComponent) {
+      final result = oldComponent == newComponent;
+      // print("  → StatelessComponent equality: $result");
+      return result;
+    }
+    // Same component type + same key + same position = same component instance
+    if (oldComponent is StatefulComponent &&
+        newComponent is StatefulComponent) {
+      // Compare by type, key, and constructor parameters
+      final result = oldComponent.runtimeType == newComponent.runtimeType &&
+          oldComponent.key == newComponent.key;
+      // print("  → StatefulComponent equality: $result");
+      return result;
+    }
+
+    // print("  → Fallback: false");
     return false;
   }
-  
-  if (oldComponent.key != newComponent.key) {
-    // print("  → Different keys");
-    return false;
-  }
-  
-  if (oldComponent is StatelessComponent && newComponent is StatelessComponent) {
-    final result = oldComponent == newComponent;
-    // print("  → StatelessComponent equality: $result");
-    return result;
-  }
-  // Same component type + same key + same position = same component instance
-if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
-  // Compare by type, key, and constructor parameters
-  final result = oldComponent.runtimeType == newComponent.runtimeType && 
-                 oldComponent.key == newComponent.key;
-  // print("  → StatefulComponent equality: $result");
-  return result;
-}
-  
-  // print("  → Fallback: false");
-  return false;
-}
 
   /// O(1) - Schedule a component update with priority handling
   void _scheduleComponentUpdate(StatefulComponent component) {
@@ -1104,17 +1107,18 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
       if (_componentsAreEqual(oldNode, newNode)) {
         EngineDebugLogger.logReconcile('SKIP_STATEFUL_EQUAL', oldNode, newNode,
             reason: 'StatefulComponents are equal - skipping reconciliation');
-        
+
         // Transfer essential properties without triggering re-render
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
         newNode.parent = oldNode.parent;
-        newNode.renderedNode = oldNode.renderedNode; // ✅ Keep existing rendered content
-        
+        newNode.renderedNode =
+            oldNode.renderedNode; // ✅ Keep existing rendered content
+
         // Update tracking but preserve the component state
         _statefulComponents[newNode.instanceId] = newNode;
         newNode.scheduleUpdate = () => _scheduleComponentUpdate(newNode);
-        
+
         return; // ✅ EARLY EXIT - No reconciliation needed
       }
 
@@ -1139,45 +1143,46 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
     // Handle stateless components
-  else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
-  // print("🔍 StatelessComponent reconciliation:");
-  // print("  oldNode: ${oldNode.runtimeType}");
-  // print("  newNode: ${newNode.runtimeType}");
-  
-  // ✅ Use _componentsAreEqual FIRST before any transfers
-  if (_componentsAreEqual(oldNode, newNode)) {
-    // print("  🟢 SKIPPING reconciliation - components are equal");
-    EngineDebugLogger.logReconcile('SKIP_STATELESS_EQUAL', oldNode, newNode,
-        reason: 'StatelessComponents are equal - skipping reconciliation');
-    
-    // Transfer essential properties without triggering re-render
-    newNode.nativeViewId = oldNode.nativeViewId;
-    newNode.contentViewId = oldNode.contentViewId;
-    newNode.parent = oldNode.parent;
-    newNode.renderedNode = oldNode.renderedNode; // ✅ Reuse existing rendered content
-    
-    // Update tracking but preserve the component state
-    _statelessComponents[newNode.instanceId] = newNode;
-    
-    return; // ✅ EARLY EXIT - No reconciliation needed
-  }
+    else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
+      // print("🔍 StatelessComponent reconciliation:");
+      // print("  oldNode: ${oldNode.runtimeType}");
+      // print("  newNode: ${newNode.runtimeType}");
 
-  // print("  🔴 CONTINUING reconciliation - components are different");
-  EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
-      reason: 'StatelessComponent needs reconciliation - props changed');
+      // ✅ Use _componentsAreEqual FIRST before any transfers
+      if (_componentsAreEqual(oldNode, newNode)) {
+        // print("  🟢 SKIPPING reconciliation - components are equal");
+        EngineDebugLogger.logReconcile('SKIP_STATELESS_EQUAL', oldNode, newNode,
+            reason: 'StatelessComponents are equal - skipping reconciliation');
 
-  // Transfer IDs for reconciliation
-  newNode.nativeViewId = oldNode.nativeViewId;
-  newNode.contentViewId = oldNode.contentViewId;
+        // Transfer essential properties without triggering re-render
+        newNode.nativeViewId = oldNode.nativeViewId;
+        newNode.contentViewId = oldNode.contentViewId;
+        newNode.parent = oldNode.parent;
+        newNode.renderedNode =
+            oldNode.renderedNode; // ✅ Reuse existing rendered content
 
-  // Update component tracking
-  _statelessComponents[newNode.instanceId] = newNode;
+        // Update tracking but preserve the component state
+        _statelessComponents[newNode.instanceId] = newNode;
 
-  // Handle reconciliation of the rendered trees
-  final oldRenderedNode = oldNode.renderedNode;
-  final newRenderedNode = newNode.renderedNode;
-  await _reconcile(oldRenderedNode, newRenderedNode);
-}
+        return; // ✅ EARLY EXIT - No reconciliation needed
+      }
+
+      // print("  🔴 CONTINUING reconciliation - components are different");
+      EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
+          reason: 'StatelessComponent needs reconciliation - props changed');
+
+      // Transfer IDs for reconciliation
+      newNode.nativeViewId = oldNode.nativeViewId;
+      newNode.contentViewId = oldNode.contentViewId;
+
+      // Update component tracking
+      _statelessComponents[newNode.instanceId] = newNode;
+
+      // Handle reconciliation of the rendered trees
+      final oldRenderedNode = oldNode.renderedNode;
+      final newRenderedNode = newNode.renderedNode;
+      await _reconcile(oldRenderedNode, newRenderedNode);
+    }
 
     // O(fragment children reconciliation) - Handle Fragment nodes
     else if (oldNode is DCFFragment && newNode is DCFFragment) {
@@ -1626,7 +1631,7 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
       }
 
       // O(props count) - Find changed props using proper diffing algorithm
-      final changedProps = _diffProps(oldElement.props, newElement.props);
+      final changedProps = _diffProps(oldElement.type, oldElement.props, newElement.props);
 
       // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
@@ -1653,14 +1658,12 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
   }
 
   /// O(props count) - Compute differences between two prop maps
-  Map<String, dynamic> _diffProps(
+  Map<String, dynamic> _diffProps(String elementType,
       Map<String, dynamic> oldProps, Map<String, dynamic> newProps) {
-    final changedProps = <String, dynamic>{};
+    var changedProps = <String, dynamic>{};
     int addedCount = 0;
     int changedCount = 0;
     int removedCount = 0;
-
-    
 
     // O(new props count) - Find added or changed props
     for (final entry in newProps.entries) {
@@ -1702,14 +1705,17 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
           'Removed': removedCount,
           'Total': changedProps.length
         });
-  // ✅ ADD: Don't re-send animation props if animationId is the same
-  if (oldProps['animationId'] == newProps['animationId'] && 
-      oldProps['animationId'] != null) {
-    // Remove animation-related props from the update
-    changedProps.remove('animatedStyle');
-    changedProps.remove('autoStart');
-    changedProps.remove('animationId');
-  }
+
+    // ✅ GENERIC: Check for registered prop diff interceptors
+    final interceptors =
+        VDomExtensionRegistry.instance.getPropDiffInterceptors();
+    for (final interceptor in interceptors) {
+      if (interceptor.shouldHandle(elementType, oldProps, newProps)) {
+        changedProps = interceptor.interceptPropDiff(
+            elementType, oldProps, newProps, changedProps);
+      }
+    }
+
     return changedProps;
   }
 
@@ -2420,7 +2426,7 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
       changes.add({'action': 'updateProps', 'diff': propsDiff});
     }
 
-    // Compare children 
+    // Compare children
     final oldChildren = oldTree['children'] as List<dynamic>? ?? [];
     final newChildren = newTree['children'] as List<dynamic>? ?? [];
 
@@ -2632,4 +2638,3 @@ if (oldComponent is StatefulComponent && newComponent is StatefulComponent) {
     return suggestions;
   }
 }
-
