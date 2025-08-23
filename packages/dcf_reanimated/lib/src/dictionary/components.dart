@@ -5,5 +5,5 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-export '../animated_view_component.dart';
-
+export '../components/animated_view_component.dart';
+export '../helper/prop_differ_extension.dart';

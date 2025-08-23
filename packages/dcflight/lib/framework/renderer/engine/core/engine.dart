@@ -105,7 +105,7 @@ class DCFEngine {
   /// Initialize concurrent processing capabilities
   Future<void> _initializeConcurrentProcessing() async {
     // This must be set to true before using this feature
-      // But this is not ready. It would be delegated to app layer if developers
+    // But this is not ready. It would be delegated to app layer if developers
     // try {
     //   // Try to create worker isolates
     //   for (int i = 0; i < _maxWorkers; i++) {
@@ -123,7 +123,7 @@ class DCFEngine {
     //     final sendPort = await receivePort.first as SendPort;
     //     _workerPorts.add(sendPort);
     //   }
-      
+
     //   _concurrentEnabled = true;
     //   EngineDebugLogger.log('VDOM_CONCURRENT',
     //       'Concurrent processing enabled with $_maxWorkers workers');
@@ -259,6 +259,41 @@ class DCFEngine {
       throw Exception(
           'Failed to execute event handler for $handler with data $eventData: $e');
     }
+  }
+
+  /// O(props count) - Check if two components are semantically equal
+  bool _componentsAreEqual(
+      DCFComponentNode oldComponent, DCFComponentNode newComponent) {
+    // print("🔍 Comparing: ${oldComponent.runtimeType} vs ${newComponent.runtimeType}");
+
+    if (oldComponent.runtimeType != newComponent.runtimeType) {
+      // print("  → Different types");
+      return false;
+    }
+
+    if (oldComponent.key != newComponent.key) {
+      // print("  → Different keys");
+      return false;
+    }
+
+    if (oldComponent is StatelessComponent &&
+        newComponent is StatelessComponent) {
+      final result = oldComponent == newComponent;
+      // print("  → StatelessComponent equality: $result");
+      return result;
+    }
+    // Same component type + same key + same position = same component instance
+    if (oldComponent is StatefulComponent &&
+        newComponent is StatefulComponent) {
+      // Compare by type, key, and constructor parameters
+      final result = oldComponent.runtimeType == newComponent.runtimeType &&
+          oldComponent.key == newComponent.key;
+      // print("  → StatefulComponent equality: $result");
+      return result;
+    }
+
+    // print("  → Fallback: false");
+    return false;
   }
 
   /// O(1) - Schedule a component update with priority handling
@@ -1068,6 +1103,25 @@ class DCFEngine {
     }
     // O(component reconciliation complexity) - Handle component nodes
     else if (oldNode is StatefulComponent && newNode is StatefulComponent) {
+      // ✅ ADD EQUALITY CHECK BEFORE RECONCILIATION
+      if (_componentsAreEqual(oldNode, newNode)) {
+        EngineDebugLogger.logReconcile('SKIP_STATEFUL_EQUAL', oldNode, newNode,
+            reason: 'StatefulComponents are equal - skipping reconciliation');
+
+        // Transfer essential properties without triggering re-render
+        newNode.nativeViewId = oldNode.nativeViewId;
+        newNode.contentViewId = oldNode.contentViewId;
+        newNode.parent = oldNode.parent;
+        newNode.renderedNode =
+            oldNode.renderedNode; // ✅ Keep existing rendered content
+
+        // Update tracking but preserve the component state
+        _statefulComponents[newNode.instanceId] = newNode;
+        newNode.scheduleUpdate = () => _scheduleComponentUpdate(newNode);
+
+        return; // ✅ EARLY EXIT - No reconciliation needed
+      }
+
       EngineDebugLogger.logReconcile('UPDATE_STATEFUL', oldNode, newNode,
           reason: 'Reconciling StatefulComponent');
 
@@ -1088,34 +1142,48 @@ class DCFEngine {
 
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
-    // O(component reconciliation complexity) - Handle stateless components
+    // Handle stateless components
     else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
-      EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
-          reason: 'Reconciling StatelessComponent');
+      // print("🔍 StatelessComponent reconciliation:");
+      // print("  oldNode: ${oldNode.runtimeType}");
+      // print("  newNode: ${newNode.runtimeType}");
 
-      // O(1) - Transfer IDs
+      // ✅ Use _componentsAreEqual FIRST before any transfers
+      if (_componentsAreEqual(oldNode, newNode)) {
+        // print("  🟢 SKIPPING reconciliation - components are equal");
+        EngineDebugLogger.logReconcile('SKIP_STATELESS_EQUAL', oldNode, newNode,
+            reason: 'StatelessComponents are equal - skipping reconciliation');
+
+        // Transfer essential properties without triggering re-render
+        newNode.nativeViewId = oldNode.nativeViewId;
+        newNode.contentViewId = oldNode.contentViewId;
+        newNode.parent = oldNode.parent;
+        newNode.renderedNode =
+            oldNode.renderedNode; // ✅ Reuse existing rendered content
+
+        // Update tracking but preserve the component state
+        _statelessComponents[newNode.instanceId] = newNode;
+
+        return; // ✅ EARLY EXIT - No reconciliation needed
+      }
+
+      // print("  🔴 CONTINUING reconciliation - components are different");
+      EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
+          reason: 'StatelessComponent needs reconciliation - props changed');
+
+      // Transfer IDs for reconciliation
       newNode.nativeViewId = oldNode.nativeViewId;
       newNode.contentViewId = oldNode.contentViewId;
 
-      // O(1) - Framework-level optimization: skip if semantically equal
-      if (oldNode == newNode) {
-        EngineDebugLogger.logReconcile('SKIP_STATELESS', oldNode, newNode,
-            reason: 'Stateless components are semantically equal');
+      // Update component tracking
+      _statelessComponents[newNode.instanceId] = newNode;
 
-        // O(rendered tree size) - Still reconcile the rendered content
-        final oldRenderedNode = oldNode.renderedNode;
-        final newRenderedNode = newNode.renderedNode;
-        await _reconcile(oldRenderedNode, newRenderedNode);
-
-        return; // Component instance optimization preserved
-      }
-
-      // O(rendered tree size) - Handle reconciliation of the rendered trees
+      // Handle reconciliation of the rendered trees
       final oldRenderedNode = oldNode.renderedNode;
       final newRenderedNode = newNode.renderedNode;
-
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
+
     // O(fragment children reconciliation) - Handle Fragment nodes
     else if (oldNode is DCFFragment && newNode is DCFFragment) {
       EngineDebugLogger.logReconcile('UPDATE_FRAGMENT', oldNode, newNode,
@@ -1488,190 +1556,6 @@ class DCFEngine {
     return "root"; // Default to root if no parent found
   }
 
-  /// O(siblings count) - Find a node's index in its parent's children
-  Future<void> _reconcileStatefulComponent(
-      StatefulComponent oldComponent, StatefulComponent newComponent) async {
-    EngineDebugLogger.logReconcile(
-        'UPDATE_STATEFUL', oldComponent, newComponent,
-        reason: 'Reconciling StatefulComponent');
-
-    // Transfer critical properties
-    newComponent.nativeViewId = oldComponent.nativeViewId;
-    newComponent.contentViewId = oldComponent.contentViewId;
-    newComponent.parent = oldComponent.parent;
-
-    // Update component tracking
-    _statefulComponents[newComponent.instanceId] = newComponent;
-    newComponent.scheduleUpdate = () => _scheduleComponentUpdate(newComponent);
-    registerComponent(newComponent);
-
-    // Get the rendered content
-    final oldRenderedNode = oldComponent.renderedNode;
-    final newRenderedNode = newComponent.renderedNode;
-
-    if (oldRenderedNode == null && newRenderedNode == null) {
-      return; // Both null, nothing to do
-    }
-
-    if (oldRenderedNode == null) {
-      // First render - create from scratch
-      final parentViewId = _findParentViewId(newComponent) ?? "root";
-      final newViewId =
-          await renderToNative(newRenderedNode, parentViewId: parentViewId);
-      newComponent.contentViewId = newViewId;
-      return;
-    }
-
-    if (newRenderedNode == null) {
-      // Component now renders null - remove old content
-      await _disposeOldComponent(oldRenderedNode);
-      newComponent.contentViewId = null;
-      return;
-    }
-
-    // Both exist - check if root node types are different
-    if (oldRenderedNode.runtimeType != newRenderedNode.runtimeType) {
-      EngineDebugLogger.log(
-          'COMPONENT_ROOT_TYPE_CHANGE', 'Component root node type changed',
-          extra: {
-            'OldType': oldRenderedNode.runtimeType.toString(),
-            'NewType': newRenderedNode.runtimeType.toString(),
-            'ComponentId': newComponent.instanceId
-          });
-
-      // ROOT TYPE CHANGE FIX: Handle this as a component-level replacement
-      await _handleComponentRootReplacement(
-          oldComponent, newComponent, oldRenderedNode, newRenderedNode);
-    } else {
-      // Same root type - normal reconciliation
-      newRenderedNode.parent = newComponent;
-      await _reconcile(oldRenderedNode, newRenderedNode);
-
-      // Update content view ID
-      if (oldRenderedNode.effectiveNativeViewId != null) {
-        newComponent.contentViewId = oldRenderedNode.effectiveNativeViewId;
-      }
-    }
-  }
-
-  /// Handle component root node replacement (the real fix for ternary operators)
-  Future<void> _handleComponentRootReplacement(
-      StatefulComponent oldComponent,
-      StatefulComponent newComponent,
-      DCFComponentNode oldRenderedNode,
-      DCFComponentNode newRenderedNode) async {
-    EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_START',
-        'Handling component root replacement');
-
-    try {
-      // Step 1: Find where this component is placed in its parent
-      final parentViewId = _findParentViewId(oldComponent);
-      final componentIndex = _findNodeIndexInParent(oldComponent);
-
-      if (parentViewId == null) {
-        EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_NO_PARENT',
-            'No parent found for component root replacement');
-        return;
-      }
-
-      EngineDebugLogger.log(
-          'COMPONENT_ROOT_REPLACEMENT_PLACEMENT', 'Found placement info',
-          extra: {
-            'ParentViewId': parentViewId,
-            'ComponentIndex': componentIndex
-          });
-
-      // Step 2: Remove the old rendered content
-      await _removeComponentRenderedContent(oldRenderedNode);
-
-      // Step 3: Create the new rendered content in the same location
-      newRenderedNode.parent = newComponent;
-      final newViewId = await renderToNative(newRenderedNode,
-          parentViewId: parentViewId, index: componentIndex);
-
-      // Step 4: Update component's content view ID
-      newComponent.contentViewId = newViewId;
-
-      EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_SUCCESS',
-          'Component root replacement completed',
-          extra: {'NewViewId': newViewId});
-    } catch (e, stackTrace) {
-      EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_ERROR',
-          'Component root replacement failed',
-          extra: {'Error': e.toString(), 'StackTrace': stackTrace.toString()});
-
-      // Fallback: try to at least render the new content
-      try {
-        final parentViewId = _findParentViewId(newComponent) ?? "root";
-        newRenderedNode.parent = newComponent;
-        final fallbackViewId =
-            await renderToNative(newRenderedNode, parentViewId: parentViewId);
-        newComponent.contentViewId = fallbackViewId;
-      } catch (fallbackError) {
-        EngineDebugLogger.log('COMPONENT_ROOT_REPLACEMENT_FALLBACK_FAILED',
-            'Fallback also failed: $fallbackError');
-      }
-    }
-  }
-
-  /// Remove component's rendered content properly
-  Future<void> _removeComponentRenderedContent(
-      DCFComponentNode renderedNode) async {
-    try {
-      // Collect all view IDs that need to be removed
-      final viewIdsToRemove = <String>[];
-      _collectViewIdsRecursively(renderedNode, viewIdsToRemove);
-
-      // Remove from tracking maps
-      for (final viewId in viewIdsToRemove) {
-        _nodesByViewId.remove(viewId);
-      }
-
-      // Delete the views from native layer
-      for (final viewId in viewIdsToRemove) {
-        try {
-          await _nativeBridge.deleteView(viewId);
-        } catch (e) {
-          EngineDebugLogger.log(
-              'DELETE_VIEW_ERROR', 'Failed to delete view: $viewId, error: $e');
-        }
-      }
-
-      EngineDebugLogger.log(
-          'COMPONENT_CONTENT_REMOVED', 'Removed component rendered content',
-          extra: {
-            'ViewsRemoved': viewIdsToRemove.length,
-            'ViewIds': viewIdsToRemove
-          });
-    } catch (e) {
-      EngineDebugLogger.log('COMPONENT_CONTENT_REMOVAL_ERROR',
-          'Failed to remove component content: $e');
-    }
-  }
-
-  /// Recursively collect all view IDs in a component tree
-  void _collectViewIdsRecursively(DCFComponentNode node, List<String> viewIds) {
-    // Add this node's view ID if it exists
-    if (node.effectiveNativeViewId != null) {
-      viewIds.add(node.effectiveNativeViewId!);
-    }
-
-    // Recursively collect from children
-    if (node is DCFElement) {
-      for (final child in node.children) {
-        _collectViewIdsRecursively(child, viewIds);
-      }
-    } else if (node is DCFFragment) {
-      for (final child in node.children) {
-        _collectViewIdsRecursively(child, viewIds);
-      }
-    } else if (node is StatefulComponent || node is StatelessComponent) {
-      if (node.renderedNode != null) {
-        _collectViewIdsRecursively(node.renderedNode!, viewIds);
-      }
-    }
-  }
-
   /// Enhanced find node index that works for components too
   int _findNodeIndexInParent(DCFComponentNode node) {
     if (node.parent == null) {
@@ -1747,7 +1631,7 @@ class DCFEngine {
       }
 
       // O(props count) - Find changed props using proper diffing algorithm
-      final changedProps = _diffProps(oldElement.props, newElement.props);
+      final changedProps = _diffProps(oldElement.type, oldElement.props, newElement.props);
 
       // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
@@ -1774,9 +1658,9 @@ class DCFEngine {
   }
 
   /// O(props count) - Compute differences between two prop maps
-  Map<String, dynamic> _diffProps(
+  Map<String, dynamic> _diffProps(String elementType,
       Map<String, dynamic> oldProps, Map<String, dynamic> newProps) {
-    final changedProps = <String, dynamic>{};
+    var changedProps = <String, dynamic>{};
     int addedCount = 0;
     int changedCount = 0;
     int removedCount = 0;
@@ -1821,6 +1705,16 @@ class DCFEngine {
           'Removed': removedCount,
           'Total': changedProps.length
         });
+
+    // ✅ GENERIC: Check for registered prop diff interceptors
+    final interceptors =
+        VDomExtensionRegistry.instance.getPropDiffInterceptors();
+    for (final interceptor in interceptors) {
+      if (interceptor.shouldHandle(elementType, oldProps, newProps)) {
+        changedProps = interceptor.interceptPropDiff(
+            elementType, oldProps, newProps, changedProps);
+      }
+    }
 
     return changedProps;
   }
@@ -2437,6 +2331,8 @@ class DCFEngine {
   }
 
   /// Worker isolate entry point - handles real concurrent processing
+  /// ? Experimental --dead for now
+  // ignore: unused_element
   static void _workerIsolateEntry(SendPort mainSendPort) {
     final receivePort = ReceivePort();
     mainSendPort.send(receivePort.sendPort);
@@ -2530,7 +2426,7 @@ class DCFEngine {
       changes.add({'action': 'updateProps', 'diff': propsDiff});
     }
 
-    // Compare children 
+    // Compare children
     final oldChildren = oldTree['children'] as List<dynamic>? ?? [];
     final newChildren = newTree['children'] as List<dynamic>? ?? [];
 
@@ -2742,4 +2638,3 @@ class DCFEngine {
     return suggestions;
   }
 }
-

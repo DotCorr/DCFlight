@@ -12,7 +12,7 @@ import "package:dcflight/dcflight.dart";
 /// while keeping your existing working pattern
 class DCFEasyScreen extends StatefulComponent with EquatableMixin {
   final String route;
-  final DCFPresentationStyle presentationStyle;
+  final DCFPresentationStyle? presentationStyle;
   final DCFComponentNode Function() builder;
   final DCFPushConfig? pushConfig;
   final DCFTabConfig? tabConfig;
@@ -41,7 +41,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
    DCFEasyScreen({
     super.key,
     required this.route,
-    required this.presentationStyle,
+     this.presentationStyle,
     required this.builder,
     this.pushConfig,
     this.tabConfig,
@@ -72,7 +72,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
 
     return DCFScreen(
       route: route,
-      presentationStyle: presentationStyle,
+      presentationStyle: presentationStyle ?? DCFPresentationStyle.push,
       pushConfig: pushConfig,
       tabConfig: tabConfig,
       modalConfig: modalConfig,
@@ -224,3 +224,4 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         onReceiveParams, onHeaderActionPress, customEvents,
       ];
 }
+

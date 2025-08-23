@@ -114,6 +114,21 @@ class DCFToggle extends StatelessComponent
       children: [],
     );
   }
+  
+  @override
+  List<Object?> get props => [
+        value,
+        disabled,
+        adaptive,
+        activeTrackColor,
+        inactiveTrackColor,
+        activeThumbColor,
+        inactiveThumbColor,
+        size,
+        layout,
+        styleSheet,
+        events,
+      ];
 }
 
 /// Toggle size constants
@@ -122,3 +137,4 @@ class DCFToggleSize {
   static const String medium = 'medium';
   static const String large = 'large';
 }
+

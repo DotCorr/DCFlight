@@ -63,7 +63,7 @@ class DCFScrollView extends StatelessComponent
   DCFScrollView({
     required this.children,
     this.horizontal = false,
-    this.layout = const LayoutProps(padding: 8),
+      this.layout = const LayoutProps(height: "100%", width: "100%" ),
     this.styleSheet = const StyleSheet(),
     this.showsScrollIndicator = true,
     this.contentContainerStyle = const StyleSheet(),

@@ -32,3 +32,5 @@ export 'component/hooks/state_hook.dart';
 // Re-export portal system
 export 'portal/enhanced_portal_manager.dart';
 export 'portal/dcf_portal.dart';
+// Re-export prop diff interceptors
+export 'core/mutator/prop_diff_interceptor.dart';

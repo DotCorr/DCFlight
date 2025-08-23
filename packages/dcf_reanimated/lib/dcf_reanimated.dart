@@ -9,7 +9,7 @@
 library;
 
 // Export component-based primitives
-export 'src/components/dictionary/components.dart';
+export 'src/dictionary/components.dart';
 
 // Export the plugin class
 export 'src/dcf_reanimated_plugin.dart';
