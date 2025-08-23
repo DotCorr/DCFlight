@@ -977,3 +977,140 @@ class YogaShadowTree {
                 }
             }
         }
+
+extension YogaShadowTree {
+    
+    /// Recalculate layout for a specific node and its children (for animations)
+    func recalculateLayoutForNode(nodeId: String) {
+        syncQueue.async {
+            guard let node = self.nodes[nodeId] else {
+                print("⚠️ YogaShadowTree: Cannot recalculate layout for unknown node '\(nodeId)'")
+                return
+            }
+            
+            // Skip if reconciliation is in progress
+            if self.isReconciling {
+                print("⏸️ YogaShadowTree: Layout recalculation deferred for '\(nodeId)' - reconciliation in progress")
+                return
+            }
+            
+            self.isLayoutCalculating = true
+            defer { self.isLayoutCalculating = false }
+            
+            print("🔄 YogaShadowTree: Recalculating layout for node '\(nodeId)'")
+            
+            // Find the root node for this calculation
+            let rootNode = self.findRootForNode(nodeId: nodeId)
+            
+            // Get current screen dimensions
+            let screenBounds = UIScreen.main.bounds
+            
+            do {
+                try {
+                    // Recalculate layout from the root
+                    YGNodeCalculateLayout(rootNode, Float(screenBounds.width), Float(screenBounds.height), YGDirection.LTR)
+                }()
+                print("✅ YogaShadowTree: Layout recalculated for '\(nodeId)' and children")
+            } catch {
+                print("❌ YogaShadowTree: Layout recalculation failed for '\(nodeId)': \(error)")
+                return
+            }
+            
+            // Apply the updated layout to affected views
+            DispatchQueue.main.async {
+                self.applyLayoutForSubtree(nodeId: nodeId)
+            }
+        }
+    }
+    
+    /// Find the root node for a given node (could be main root or screen root)
+    private func findRootForNode(nodeId: String) -> YGNodeRef {
+        // Check if this node is itself a screen root
+        if screenRootIds.contains(nodeId) {
+            return nodes[nodeId]!
+        }
+        
+        // Walk up the parent chain to find the root
+        var currentId = nodeId
+        while let parentId = nodeParents[currentId] {
+            // If parent is a screen root, that's our root
+            if screenRootIds.contains(parentId) {
+                return nodes[parentId]!
+            }
+            currentId = parentId
+        }
+        
+        // Default to main root
+        return nodes["root"]!
+    }
+    
+    /// Apply layout updates to a subtree starting from a specific node
+    private func applyLayoutForSubtree(nodeId: String) {
+        guard let node = nodes[nodeId] else { return }
+        
+        // Apply layout to this node
+        if let layout = getNodeLayout(nodeId: nodeId) {
+            applyLayoutToView(viewId: nodeId, frame: layout)
+        }
+        
+        // Recursively apply to all children
+        let childCount = YGNodeGetChildCount(node)
+        for i in 0..<childCount {
+            if let childNode = YGNodeGetChild(node, i) {
+                // Find the child's ID
+                for (childId, nodeRef) in nodes {
+                    if nodeRef == childNode {
+                        applyLayoutForSubtree(nodeId: childId)
+                        break
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Update a specific Yoga node property (for animations)
+    func updateNodeProperty(nodeId: String, property: String, value: Float) {
+        syncQueue.async {
+            guard let node = self.nodes[nodeId] else {
+                print("⚠️ YogaShadowTree: Cannot update property for unknown node '\(nodeId)'")
+                return
+            }
+            
+            print("🔧 YogaShadowTree: Updating '\(property)' to \(value) for node '\(nodeId)'")
+            
+            // Apply the property change
+            switch property {
+            case "width":
+                YGNodeStyleSetWidth(node, value)
+            case "height":
+                YGNodeStyleSetHeight(node, value)
+            case "top":
+                YGNodeStyleSetPosition(node, YGEdge.top, value)
+            case "left":
+                YGNodeStyleSetPosition(node, YGEdge.left, value)
+            case "right":
+                YGNodeStyleSetPosition(node, YGEdge.right, value)
+            case "bottom":
+                YGNodeStyleSetPosition(node, YGEdge.bottom, value)
+            default:
+                print("⚠️ YogaShadowTree: Unknown property '\(property)'")
+                return
+            }
+            
+            print("✅ YogaShadowTree: Updated '\(property)' for node '\(nodeId)'")
+        }
+    }
+}
+
+extension DCFLayoutManager {
+    
+    /// Update a Yoga property for animation (delegating to YogaShadowTree)
+    func updateYogaProperty(nodeId: String, property: String, value: Float) {
+        YogaShadowTree.shared.updateNodeProperty(nodeId: nodeId, property: property, value: value)
+    }
+    
+    /// Trigger layout calculation for a specific node (for animations)
+    func triggerLayoutForNode(_ nodeId: String) {
+        YogaShadowTree.shared.recalculateLayoutForNode(nodeId: nodeId)
+    }
+}
