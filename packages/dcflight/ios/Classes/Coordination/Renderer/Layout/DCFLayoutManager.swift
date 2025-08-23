@@ -195,12 +195,6 @@ public class DCFLayoutManager {
     
     // Direct layout application helper
     private func applyLayoutDirectly(to view: UIView, frame: CGRect) {
-//        
-//        if frame.origin.y > 1000 {
-//            print("🚨 BLOCKING off-screen layout: viewId=\(viewRegistry.first(where: { $0.value == view })?.key ?? "unknown"), frame=\(frame)")
-//            return
-//        }
-//        
         // 🔥 HOT RESTART COMPREHENSIVE SAFETY: Multiple validation layers
         
         // Level 1: Check if view is nil or in invalid state
@@ -325,10 +319,11 @@ public class DCFLayoutManager {
             }
         }
     }
+    
 }
 
+// MARK: - Extensions
 
-//consoidate in the main class later
 extension DCFLayoutManager {
     // Register view with layout system
     func registerView(_ view: UIView, withNodeId nodeId: String, componentType: String, componentInstance: DCFComponent) {
@@ -394,7 +389,7 @@ extension DCFLayoutManager {
             
             // CRASH FIX: Use the synchronized calculateAndApplyLayout method
             let success = YogaShadowTree.shared.calculateAndApplyLayout(
-                width: screenBounds.width, 
+                width: screenBounds.width,
                 height: screenBounds.height
             )
             
