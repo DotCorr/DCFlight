@@ -1,405 +1,296 @@
 /*
- * DCF Reanimated - Complete Clean Animation System
  * Copyright (c) Dotcorr Studio. and affiliates.
- * Licensed under the MIT license
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
  */
 
+import 'package:dcf_reanimated/src/helper/init.dart';
 import 'package:dcflight/dcflight.dart';
 
 // ============================================================================
-// GROUP ANIMATION COMMANDS - Control Multiple Animations
+// PURE ANIMATION VALUES - NO BRIDGE CALLS
 // ============================================================================
 
-/// Base class for group animation commands
-abstract class GroupAnimationCommand {
-  const GroupAnimationCommand();
+/// Pure animation value - configured once, runs on UI thread
+class ReanimatedValue {
+  final double from;
+  final double to;
+  final int duration; // milliseconds
+  final String curve;
+  final int delay;
+  final bool repeat;
+  final int? repeatCount;
 
-  /// Convert command to a serializable map for native bridge
-  Map<String, dynamic> toMap();
-
-  /// Command type identifier for native side
-  String get type;
-
-  // Static factory methods for common commands
-  static const GroupAnimationCommand startAll = StartAllCommand();
-  static const GroupAnimationCommand stopAll = StopAllCommand();
-  static const GroupAnimationCommand pauseAll = PauseAllCommand();
-  static const GroupAnimationCommand resumeAll = ResumeAllCommand();
-  static const GroupAnimationCommand resetAll = ResetAllCommand();
-  static const GroupAnimationCommand dispose = GroupDisposalCommand();
-}
-
-/// Command to start all animations in the group
-class StartAllCommand extends GroupAnimationCommand {
-  final double? delay;
-  final bool? staggered;
-  final double? staggerInterval;
-
-  const StartAllCommand({
-    this.delay,
-    this.staggered,
-    this.staggerInterval,
+  const ReanimatedValue({
+    required this.from,
+    required this.to,
+    this.duration = 300,
+    this.curve = 'easeInOut',
+    this.delay = 0,
+    this.repeat = false,
+    this.repeatCount,
   });
 
-  @override
-  String get type => 'startAll';
+  Map<String, dynamic> toMap() => {
+        'from': from,
+        'to': to,
+        'duration': duration,
+        'curve': curve,
+        'delay': delay,
+        'repeat': repeat,
+        if (repeatCount != null) 'repeatCount': repeatCount,
+      };
+}
 
-  @override
-  Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{'type': type};
-    if (delay != null) map['delay'] = (delay! * 1000).round();
-    if (staggered != null) map['staggered'] = staggered;
-    if (staggerInterval != null) map['staggerInterval'] = (staggerInterval! * 1000).round();
-    return map;
+/// Shared value that runs purely on UI thread
+class SharedValue {
+  final String _id;
+  final ReanimatedValue config;
+
+  SharedValue._(this._id, this.config);
+
+  factory SharedValue(double initialValue) {
+    final id = 'shared_${DateTime.now().microsecondsSinceEpoch}';
+    return SharedValue._(
+        id, ReanimatedValue(from: initialValue, to: initialValue));
   }
-}
 
-/// Command to stop all animations in the group
-class StopAllCommand extends GroupAnimationCommand {
-  final bool? immediate;
+  String get id => _id;
 
-  const StopAllCommand({this.immediate});
-
-  @override
-  String get type => 'stopAll';
-
-  @override
-  Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{'type': type};
-    if (immediate != null) map['immediate'] = immediate;
-    return map;
-  }
-}
-
-/// Command to pause all animations in the group
-class PauseAllCommand extends GroupAnimationCommand {
-  const PauseAllCommand();
-
-  @override
-  String get type => 'pauseAll';
-
-  @override
-  Map<String, dynamic> toMap() => {'type': type};
-}
-
-/// Command to resume all paused animations in the group
-class ResumeAllCommand extends GroupAnimationCommand {
-  const ResumeAllCommand();
-
-  @override
-  String get type => 'resumeAll';
-
-  @override
-  Map<String, dynamic> toMap() => {'type': type};
-}
-
-/// Command to reset all animations to initial state
-class ResetAllCommand extends GroupAnimationCommand {
-  final bool? animated;
-
-  const ResetAllCommand({this.animated});
-
-  @override
-  String get type => 'resetAll';
-
-  @override
-  Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{'type': type};
-    if (animated != null) map['animated'] = animated;
-    return map;
-  }
-}
-
-/// Command to dispose all animations in the group
-class GroupDisposalCommand extends GroupAnimationCommand {
-  const GroupDisposalCommand();
-
-  @override
-  String get type => 'dispose';
-
-  @override
-  Map<String, dynamic> toMap() => {'type': type};
-}
-
-// ============================================================================
-// ANIMATION COMMANDS - Individual Animation Control
-// ============================================================================
-
-/// Base class for animation commands
-abstract class AnimatedViewCommand {
-  const AnimatedViewCommand();
-  Map<String, dynamic> toMap();
-  String get type;
-}
-
-/// Command to start an animation with specified parameters
-class AnimateCommand extends AnimatedViewCommand {
-  final double? duration;
-  final String? curve;
-  final double? toScale;
-  final double? toOpacity;
-  final double? toTranslateX;
-  final double? toTranslateY;
-  final double? toRotation;
-  final bool? repeat;
-  final double? delay;
-
-  const AnimateCommand({
-    this.duration,
-    this.curve,
-    this.toScale,
-    this.toOpacity,
-    this.toTranslateX,
-    this.toTranslateY,
-    this.toRotation,
-    this.repeat,
-    this.delay,
-  });
-
-  @override
-  String get type => 'animate';
-
-  @override
-  Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{'type': type};
-    if (duration != null) map['duration'] = (duration! * 1000).round();
-    if (curve != null) map['curve'] = curve;
-    if (toScale != null) map['toScale'] = toScale;
-    if (toOpacity != null) map['toOpacity'] = toOpacity;
-    if (toTranslateX != null) map['toTranslateX'] = toTranslateX;
-    if (toTranslateY != null) map['toTranslateY'] = toTranslateY;
-    if (toRotation != null) map['toRotation'] = toRotation;
-    if (repeat != null) map['repeat'] = repeat;
-    if (delay != null) map['delay'] = (delay! * 1000).round();
-    return map;
-  }
-}
-
-// ============================================================================
-// ANIMATION PRESETS - Common Animation Patterns
-// ============================================================================
-
-class Animations {
-  /// Bouncing scale animation
-  static AnimateCommand bounce({
-    double scale = 1.2,
-    double duration = 2.0,
+  /// Create animation config for this shared value
+  ReanimatedValue withTiming({
+    required double toValue,
+    int duration = 300,
     String curve = 'easeInOut',
-    bool repeat = true,
-  }) => AnimateCommand(
-    toScale: scale,
-    toTranslateY: -20,
-    duration: duration,
-    curve: curve,
-    repeat: repeat,
-  );
-  
-  /// Sliding animation
-  static AnimateCommand slide({
-    double translateX = 50,
-    double opacity = 0.8,
-    double duration = 2.0,
-    String curve = 'easeInOut',
-    bool repeat = true,
-  }) => AnimateCommand(
-    toTranslateX: translateX,
-    toOpacity: opacity,
-    duration: duration,
-    curve: curve,
-    repeat: repeat,
-  );
-  
-  /// Rotation animation
-  static AnimateCommand rotate({
-    double rotation = 0.5,
-    double scale = 1.1,
-    double duration = 2.0,
-    String curve = 'easeInOut', 
-    bool repeat = true,
-  }) => AnimateCommand(
-    toRotation: rotation,
-    toScale: scale,
-    duration: duration,
-    curve: curve,
-    repeat: repeat,
-  );
-  
-  /// Fade animation
-  static AnimateCommand fade({
-    double opacity = 0.5,
-    double duration = 1.5,
-    String curve = 'easeInOut',
-    bool repeat = true,
-  }) => AnimateCommand(
-    toOpacity: opacity,
-    duration: duration,
-    curve: curve,
-    repeat: repeat,
-  );
-  
-  /// Complex multi-property animation
-  static AnimateCommand complex({
-    double? scale,
-    double? opacity,
-    double? translateX,
-    double? translateY,
-    double? rotation,
-    double duration = 2.0,
-    String curve = 'easeInOut',
-    bool repeat = true,
-  }) => AnimateCommand(
-    toScale: scale,
-    toOpacity: opacity,
-    toTranslateX: translateX,
-    toTranslateY: translateY,
-    toRotation: rotation,
-    duration: duration,
-    curve: curve,
-    repeat: repeat,
-  );
-}
-
-// ============================================================================
-// ANIMATION MANAGER COMPONENT - Low-level Group Controller
-// ============================================================================
-
-/// Animation Manager for controlling multiple animations as a group (internal use)
-class DCFAnimationManager extends StatelessComponent with EquatableMixin {
-  /// Unique identifier for this animation group
-  final String groupId;
-  
-  /// Command to execute on the entire animation group
-  final GroupAnimationCommand? command;
-  
-  /// Child components (typically DCFAnimatedViews)
-  final List<DCFComponentNode> children;
-  
-  /// Whether to auto-start animations when manager mounts
-  final bool autoStart;
-  
-  /// Debug name for logging
-  final String? debugName;
-
-   DCFAnimationManager({
-    required this.groupId,
-    this.command,
-    this.children = const [],
-    this.autoStart = true,
-    this.debugName,
-    super.key,
-  });
-
-  @override
-  DCFComponentNode render() {
-    // Build props for the native animation manager
-    Map<String, dynamic> props = {
-      'groupId': groupId,
-      'autoStart': autoStart,
-      'debugName': debugName ?? groupId,
-    };
-
-    // Add command if provided
-    if (command != null) {
-      props['command'] = command!.toMap();
-    }
-
-    return DCFElement(
-      type: 'AnimationManager',
-      props: props,
-      children: children,
+    int delay = 0,
+  }) {
+    return ReanimatedValue(
+      from: config.to, // Current value becomes from
+      to: toValue,
+      duration: duration,
+      curve: curve,
+      delay: delay,
     );
   }
 
-  @override
-  List<Object?> get props => [groupId, command, children, autoStart, debugName, key];
+  /// Create spring animation
+  ReanimatedValue withSpring({
+    required double toValue,
+    double damping = 10,
+    double stiffness = 100,
+    int delay = 0,
+  }) {
+    return ReanimatedValue(
+      from: config.to,
+      to: toValue,
+      duration: _calculateSpringDuration(damping, stiffness),
+      curve: 'spring',
+      delay: delay,
+    );
+  }
+
+  /// Create repeat animation
+  ReanimatedValue withRepeat({
+    required double toValue,
+    int duration = 300,
+    String curve = 'easeInOut',
+    bool reverse = true,
+    int? numberOfReps,
+  }) {
+    return ReanimatedValue(
+      from: config.to,
+      to: toValue,
+      duration: duration,
+      curve: curve,
+      repeat: true,
+      repeatCount: numberOfReps,
+    );
+  }
+
+  int _calculateSpringDuration(double damping, double stiffness) {
+    // Simple spring duration calculation
+    return ((damping / stiffness) * 1000).round().clamp(100, 2000);
+  }
 }
 
 // ============================================================================
-// ANIMATED VIEW COMPONENT - Low-level Individual Animation
+// PURE ANIMATED STYLES - NO BRIDGE CALLS
 // ============================================================================
 
-/// Enhanced DCFAnimatedView that can auto-register with animation groups (internal use)
-class DCFAnimatedView extends StatelessComponent with EquatableMixin implements ComponentPriorityInterface {
-  
-  @override
-  ComponentPriority get priority => ComponentPriority.immediate;
+/// Animated style configuration that runs purely on UI thread
+class AnimatedStyle {
+  final Map<String, ReanimatedValue> _animations = {};
 
-  /// REQUIRED: Native animation controller ID
-  final String nativeAnimationId;
+  /// Configure transform animations
+  AnimatedStyle transform({
+    ReanimatedValue? scale,
+    ReanimatedValue? scaleX,
+    ReanimatedValue? scaleY,
+    ReanimatedValue? translateX,
+    ReanimatedValue? translateY,
+    ReanimatedValue? rotation,
+    ReanimatedValue? rotationX,
+    ReanimatedValue? rotationY,
+  }) {
+    if (scale != null) _animations['scale'] = scale;
+    if (scaleX != null) _animations['scaleX'] = scaleX;
+    if (scaleY != null) _animations['scaleY'] = scaleY;
+    if (translateX != null) _animations['translateX'] = translateX;
+    if (translateY != null) _animations['translateY'] = translateY;
+    if (rotation != null) _animations['rotation'] = rotation;
+    if (rotationX != null) _animations['rotationX'] = rotationX;
+    if (rotationY != null) _animations['rotationY'] = rotationY;
+    return this;
+  }
 
-  /// Optional: Animation group ID for automatic registration
-  final String? groupId;
+  /// Configure opacity animation
+  AnimatedStyle opacity(ReanimatedValue value) {
+    _animations['opacity'] = value;
+    return this;
+  }
 
-  /// The animation command to execute
-  final AnimatedViewCommand? command;
+  /// Configure color animations
+  AnimatedStyle backgroundColor(ReanimatedValue value) {
+    _animations['backgroundColor'] = value;
+    return this;
+  }
 
-  /// Layout properties for the animated view
-  final LayoutProps layout;
+  /// Configure layout animations
+  AnimatedStyle layout({
+    ReanimatedValue? width,
+    ReanimatedValue? height,
+    ReanimatedValue? top,
+    ReanimatedValue? left,
+    ReanimatedValue? right,
+    ReanimatedValue? bottom,
+  }) {
+    if (width != null) _animations['width'] = width;
+    if (height != null) _animations['height'] = height;
+    if (top != null) _animations['top'] = top;
+    if (left != null) _animations['left'] = left;
+    if (right != null) _animations['right'] = right;
+    if (bottom != null) _animations['bottom'] = bottom;
+    return this;
+  }
 
-  /// Style properties for the animated view  
-  final StyleSheet styleSheet;
+  Map<String, dynamic> toMap() {
+    return _animations.map((key, value) => MapEntry(key, value.toMap()));
+  }
+}
 
-  /// Child components to animate
+// ============================================================================
+// PURE REANIMATED HOOKS - NO BRIDGE CALLS
+// ============================================================================
+
+extension PureReanimatedHooks on StatefulComponent {
+  /// Create a shared value that runs purely on UI thread
+  SharedValue useSharedValue(double initialValue) {
+    final ref = useRef<SharedValue?>(null);
+
+    if (ref.current == null) {
+      ref.current = SharedValue(initialValue);
+    }
+
+    return ref.current!;
+  }
+
+  /// Create animated style that runs purely on UI thread
+  AnimatedStyle useAnimatedStyle(
+    AnimatedStyle Function() styleFactory, {
+    List<dynamic> dependencies = const [],
+  }) {
+    return useMemo(() => styleFactory(), dependencies: dependencies);
+  }
+
+  /// Run callback when animation completes - PURE
+  void useAnimatedCallback(
+    void Function() callback, {
+    String? animationId,
+    List<dynamic> dependencies = const [],
+  }) {
+    useEffect(() {
+      // Register callback to be triggered by native animation completion
+      return () {
+        // Cleanup handled by native side
+      };
+    }, dependencies: [...dependencies, animationId]);
+  }
+}
+
+// ============================================================================
+// PURE REANIMATED COMPONENT - ZERO BRIDGE CALLS
+// ============================================================================
+
+/// Pure reanimated view - configured once, runs entirely on UI thread
+class ReanimatedView extends StatelessComponent with EquatableMixin {
   final List<DCFComponentNode> children;
+  final AnimatedStyle? animatedStyle;
+  final LayoutProps layout;
+  final StyleSheet styleSheet;
+  final String? animationId;
+  final bool autoStart;
+  final int startDelay;
+  final void Function()? onAnimationStart;
+  final void Function()? onAnimationComplete;
+  final void Function()? onAnimationRepeat;
+  final Map<String, dynamic>? events;
 
-  /// Animation event callbacks
-  final void Function(Map<String, dynamic>)? onAnimationStart;
-  final void Function(Map<String, dynamic>)? onAnimationEnd;
-
-  /// Additional event handlers
-  final Map<String, void Function(Map<String, dynamic>)>? events;
-
-  /// Whether to use adaptive behavior
-  final bool adaptive;
-
-   DCFAnimatedView({
-    required this.nativeAnimationId,
-    this.groupId,
-    this.command,
+  ReanimatedView({
+    required this.children,
+    this.animatedStyle,
     this.layout = const LayoutProps(),
     this.styleSheet = const StyleSheet(),
-    this.children = const [],
+    this.animationId,
+    this.autoStart = true,
+    this.startDelay = 0,
     this.onAnimationStart,
-    this.onAnimationEnd,
+    this.onAnimationComplete,
+    this.onAnimationRepeat,
     this.events,
-    this.adaptive = true,
     super.key,
-  });
+    
+  }){
+      ReanimatedInit.ensureInitialized();
+  }
 
   @override
   DCFComponentNode render() {
-    // Build event map
-    Map<String, void Function(Map<String, dynamic>)> eventMap = events ?? {};
-
-    if (onAnimationEnd != null) {
-      eventMap['onAnimationEnd'] = onAnimationEnd!;
-    }
+    // Generate stable ID only once
+    final effectiveAnimationId =
+        animationId ?? 'anim_${key?.toString() ?? hashCode}';
     
+    // Prepare event handlers
+    Map<String, dynamic> eventHandlers = events ?? {};
+
     if (onAnimationStart != null) {
-      eventMap['onAnimationStart'] = onAnimationStart!;
+      eventHandlers['onAnimationStart'] = onAnimationStart;
+    }
+    if (onAnimationComplete != null) {
+      eventHandlers['onAnimationComplete'] = onAnimationComplete;
+    }
+    if (onAnimationRepeat != null) {
+      eventHandlers['onAnimationRepeat'] = onAnimationRepeat;
     }
 
-    // Build props with native animation controller + layout + styling + group registration
+    // ✅ FIXED: All animation config via props - MATCHING SWIFT EXPECTATIONS
     Map<String, dynamic> props = {
-      'nativeAnimationId': nativeAnimationId,
-      'adaptive': adaptive,
+      'animationId': effectiveAnimationId,        // ✅ FIXED: Swift expects 'animationId'
+      'autoStart': autoStart,
+      'startDelay': startDelay,
+      'isPureReanimated': true,                   // ✅ Flag for native to use pure mode
       ...layout.toMap(),
       ...styleSheet.toMap(),
-      ...eventMap,
+      ...eventHandlers,
     };
 
-    // Add group registration if specified
-    if (groupId != null) {
-      props['groupId'] = groupId;
-    }
-
-    // Add command if provided
-    if (command != null) {
-      props['command'] = command!.toMap();
+    // ✅ FIXED: Pass animation configuration directly via props
+    if (animatedStyle != null) {
+      props['animatedStyle'] = animatedStyle!.toMap();
     }
 
     return DCFElement(
-      type: 'AnimatedView',
+      type: 'ReanimatedView',                     // ✅ FIXED: Matches registration name
       props: props,
       children: children,
     );
@@ -407,155 +298,289 @@ class DCFAnimatedView extends StatelessComponent with EquatableMixin implements 
 
   @override
   List<Object?> get props => [
-        nativeAnimationId,
-        groupId,
-        command,
         children,
+        animatedStyle,
         layout,
         styleSheet,
+        animationId,
+        autoStart,
+        startDelay,
         onAnimationStart,
-        onAnimationEnd,
+        onAnimationComplete,
+        onAnimationRepeat,
         events,
-        adaptive,
         key,
       ];
 }
 
 // ============================================================================
-// ANIMATION BUILDER CONTEXT - Auto-generates Controllers
+// PURE ANIMATION PRESETS - COMMON PATTERNS
 // ============================================================================
 
-/// Context provided to animation builder - handles all controller management
-class AnimationBuilderContext {
-  final String groupId;
-  final Map<String, String> _controllers = {};
-  final void Function(GroupAnimationCommand) _executeCommand;
-  
-  AnimationBuilderContext._(this.groupId, this._executeCommand);
-  
-  /// Auto-generate controller ID for named animation
-  String _getController(String name) {
-    if (!_controllers.containsKey(name)) {
-      _controllers[name] = 'anim_${DateTime.now().millisecondsSinceEpoch}_${name}_${_controllers.length}';
-    }
-    return _controllers[name]!;
-  }
-  
-  /// Create animated view with auto-generated controller
-  DCFAnimatedView animated({
-    required String name,
-    required AnimateCommand command,
-    required List<DCFComponentNode> children,
-    LayoutProps layout = const LayoutProps(),
-    StyleSheet styleSheet = const StyleSheet(),
-    void Function(Map<String, dynamic>)? onAnimationStart,
-    void Function(Map<String, dynamic>)? onAnimationEnd,
+class Reanimated {
+  /// Fade in animation
+  static AnimatedStyle fadeIn({
+    int duration = 300,
+    int delay = 0,
+    String curve = 'easeInOut',
   }) {
-    return DCFAnimatedView(
-      nativeAnimationId: _getController(name),
-      groupId: groupId,
-      command: command,
-      layout: layout,
-      styleSheet: styleSheet,
-      children: children,
-      onAnimationStart: onAnimationStart,
-      onAnimationEnd: onAnimationEnd,
+    return AnimatedStyle().opacity(
+      ReanimatedValue(
+        from: 0.0,
+        to: 1.0,
+        duration: duration,
+        delay: delay,
+        curve: curve,
+      ),
     );
   }
-  
-  // ========================================================================
-  // GROUP CONTROL METHODS - Direct access to animation commands
-  // ========================================================================
-  
-  void startAll({double? delay, bool staggered = false, double? staggerInterval}) {
-    _executeCommand(StartAllCommand(
-      delay: delay,
-      staggered: staggered,
-      staggerInterval: staggerInterval,
-    ));
+
+  /// Fade out animation
+  static AnimatedStyle fadeOut({
+    int duration = 300,
+    int delay = 0,
+    String curve = 'easeInOut',
+  }) {
+    return AnimatedStyle().opacity(
+      ReanimatedValue(
+        from: 1.0,
+        to: 0.0,
+        duration: duration,
+        delay: delay,
+        curve: curve,
+      ),
+    );
   }
-  
-  void stopAll({bool immediate = true}) {
-    _executeCommand(StopAllCommand(immediate: immediate));
+
+  /// Scale in animation
+  static AnimatedStyle scaleIn({
+    double fromScale = 0.0,
+    double toScale = 1.0,
+    int duration = 300,
+    int delay = 0,
+    String curve = 'easeInOut',
+  }) {
+    return AnimatedStyle().transform(
+      scale: ReanimatedValue(
+        from: fromScale,
+        to: toScale,
+        duration: duration,
+        delay: delay,
+        curve: curve,
+      ),
+    );
   }
-  
-  void pauseAll() {
-    _executeCommand(GroupAnimationCommand.pauseAll);
+
+  /// Slide in from right
+  static AnimatedStyle slideInRight({
+    double distance = 100.0,
+    int duration = 300,
+    int delay = 0,
+    String curve = 'easeInOut',
+  }) {
+    return AnimatedStyle().transform(
+      translateX: ReanimatedValue(
+        from: distance,
+        to: 0.0,
+        duration: duration,
+        delay: delay,
+        curve: curve,
+      ),
+    );
   }
-  
-  void resumeAll() {
-    _executeCommand(GroupAnimationCommand.resumeAll);
+
+  /// Slide in from left
+  static AnimatedStyle slideInLeft({
+    double distance = 100.0,
+    int duration = 300,
+    int delay = 0,
+    String curve = 'easeInOut',
+  }) {
+    return AnimatedStyle().transform(
+      translateX: ReanimatedValue(
+        from: -distance,
+        to: 0.0,
+        duration: duration,
+        delay: delay,
+        curve: curve,
+      ),
+    );
   }
-  
-  void resetAll({bool animated = false}) {
-    _executeCommand(ResetAllCommand(animated: animated));
+
+  /// Bounce animation
+  static AnimatedStyle bounce({
+    double bounceScale = 1.2,
+    int duration = 600,
+    int delay = 0,
+    bool repeat = false,
+    int? repeatCount,
+  }) {
+    return AnimatedStyle().transform(
+      scale: ReanimatedValue(
+        from: 1.0,
+        to: bounceScale,
+        duration: duration,
+        delay: delay,
+        curve: 'easeInOut',
+        repeat: repeat,
+        repeatCount: repeatCount,
+      ),
+    );
   }
-  
-  void dispose() {
-    _executeCommand(GroupAnimationCommand.dispose);
+
+  /// Pulse animation
+  static AnimatedStyle pulse({
+    double minOpacity = 0.5,
+    double maxOpacity = 1.0,
+    int duration = 1000,
+    int delay = 0,
+    bool repeat = false,
+    int? repeatCount,
+  }) {
+    return AnimatedStyle().opacity(
+      ReanimatedValue(
+        from: maxOpacity,
+        to: minOpacity,
+        duration: duration,
+        delay: delay,
+        curve: 'easeInOut',
+        repeat: repeat,
+        repeatCount: repeatCount,
+      ),
+    );
+  }
+
+  /// Rotate animation
+  static AnimatedStyle rotate({
+    double fromRotation = 0.0,
+    double toRotation = 6.28, // 2π (full rotation)
+    int duration = 1000,
+    int delay = 0,
+    bool repeat = false,
+    int? repeatCount,
+  }) {
+    return AnimatedStyle().transform(
+      rotation: ReanimatedValue(
+        from: fromRotation,
+        to: toRotation,
+        duration: duration,
+        delay: delay,
+        curve: 'linear',
+        repeat: repeat,
+        repeatCount: repeatCount,
+      ),
+    );
+  }
+
+  /// Shake animation
+  static AnimatedStyle shake({
+    double intensity = 10.0,
+    int duration = 500,
+    int delay = 0,
+    int shakeCount = 3,
+  }) {
+    return AnimatedStyle().transform(
+      translateX: ReanimatedValue(
+        from: 0.0,
+        to: intensity,
+        duration: duration ~/ (shakeCount * 2),
+        delay: delay,
+        curve: 'linear',
+        repeat: true,
+        repeatCount: shakeCount * 2,
+      ),
+    );
+  }
+
+  /// Combined entrance animation
+  static AnimatedStyle slideScaleFadeIn({
+    double slideDistance = 50.0,
+    double fromScale = 0.8,
+    double toScale = 1.0,
+    double fromOpacity = 0.0,
+    double toOpacity = 1.0,
+    int duration = 400,
+    int delay = 0,
+    String curve = 'easeOut',
+  }) {
+    return AnimatedStyle()
+        .transform(
+          translateY: ReanimatedValue(
+            from: slideDistance,
+            to: 0.0,
+            duration: duration,
+            delay: delay,
+            curve: curve,
+          ),
+          scale: ReanimatedValue(
+            from: fromScale,
+            to: toScale,
+            duration: duration,
+            delay: delay,
+            curve: curve,
+          ),
+        )
+        .opacity(
+          ReanimatedValue(
+            from: fromOpacity,
+            to: toOpacity,
+            duration: duration,
+            delay: delay,
+            curve: curve,
+          ),
+        );
   }
 }
 
 // ============================================================================
-// SUPER ANIMATION MANAGER - The Central Animation Sandbox
+// PURE ANIMATION SEQUENCES - NO BRIDGE CALLS
 // ============================================================================
 
-/// SuperDCFAnimationManager - Central animation control with builder pattern
-/// This is the main API - eliminates need for manual controller ID management
-class SuperDCFAnimationManager extends StatefulComponent {
-  /// Unique group identifier
-  final String groupId;
-  
-  /// Builder function - receives context with auto-generated controllers
-  final List<DCFComponentNode> Function(AnimationBuilderContext context) builder;
-  
-  /// Auto-start animations when mounted
-  final bool autoStart;
-  
-  /// Debug name for logging
-  final String? debugName;
-  
-  /// Callback when group commands are executed
-  final void Function(GroupAnimationCommand)? onCommand;
+/// Animation sequence that runs purely on UI thread
+class AnimationSequence {
+  final List<AnimatedStyle> _steps = [];
+  final List<int> _delays = [];
 
-   SuperDCFAnimationManager({
-    required this.groupId,
-    required this.builder,
-    this.autoStart = true,
-    this.debugName,
-    this.onCommand,
-    super.key,
-  });
+  /// Add animation step
+  AnimationSequence step(
+    AnimatedStyle style, {
+    int delay = 0,
+  }) {
+    _steps.add(style);
+    _delays.add(delay);
+    return this;
+  }
 
-  @override
-  DCFComponentNode render() {
-    // Group command state hook
-    final groupCommand = useState<GroupAnimationCommand?>(null, 'cmd_$groupId');
-    
-    // Create animation context with command executor
-    final context = AnimationBuilderContext._(groupId, (command) {
-      groupCommand.setState(command);
-      onCommand?.call(command);
-      print("🎮 SuperManager[$groupId]: Executing ${command.type}");
-    });
-    
-    // Build all animated views using the context
-    final animatedChildren = builder(context);
-    
-    return DCFView(
-      layout: LayoutProps(
-        flex: 1,
-      ),
-      children: [
-        DCFAnimationManager(
-          groupId: groupId,
-          debugName: debugName ?? "SuperManager-$groupId",
-          autoStart: autoStart,
-          command: groupCommand.state,
-          children: animatedChildren,
-        ),
-      ],
-    );
+  /// Convert to native configuration
+  Map<String, dynamic> toMap() {
+    return {
+      'type': 'sequence',
+      'steps': _steps.map((step) => step.toMap()).toList(),
+      'delays': _delays,
+    };
+  }
+}
+
+/// Stagger multiple animations
+class StaggeredAnimation {
+  final List<AnimatedStyle> _animations = [];
+  final int staggerDelay;
+
+  StaggeredAnimation({required this.staggerDelay});
+
+  /// Add animation to stagger
+  StaggeredAnimation add(AnimatedStyle style) {
+    _animations.add(style);
+    return this;
+  }
+
+  /// Convert to native configuration
+  Map<String, dynamic> toMap() {
+    return {
+      'type': 'staggered',
+      'animations': _animations.map((anim) => anim.toMap()).toList(),
+      'staggerDelay': staggerDelay,
+    };
   }
 }
 

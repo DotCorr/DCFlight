@@ -12,7 +12,6 @@ class StackScreenRegistry extends StatelessComponent {
         // 🏠 HOME SCREEN - Always rendered, automatic handling
         DCFEasyScreen(
           route: "home",
-          presentationStyle: DCFPresentationStyle.push,
           alwaysRender: true, // Skip suspense for home
           pushConfig: DCFPushConfig(
             title: "Home",
@@ -28,12 +27,13 @@ class StackScreenRegistry extends StatelessComponent {
           onHeaderActionPress: (data) {
             if (data['actionId'] == "anim_action") {
               print("🎬 Opening animated modal from home header action");
-              AppNavigation.navigateTo("home/animated_modal", 
+              AppNavigation.navigateTo(
+                "home/animated_modal",
                 params: {
                   "title": "Animated Modal",
-                  "message": "This is an animated modal screen"
+                  "message": "This is an animated modal screen",
                 },
-                fromScreen: "home"
+                fromScreen: "home",
               );
             }
           },
@@ -43,7 +43,7 @@ class StackScreenRegistry extends StatelessComponent {
         // 👤 PROFILE SCREEN - Automatic suspense!
         DCFEasyScreen(
           route: "profile",
-          presentationStyle: DCFPresentationStyle.push,
+          // presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Profile",
             backButtonTitle: "Home",
@@ -58,7 +58,10 @@ class StackScreenRegistry extends StatelessComponent {
           ),
           onHeaderActionPress: (data) {
             if (data['actionId'] == "settings_action") {
-              AppNavigation.navigateTo("profile/settings", fromScreen: "profile");
+              AppNavigation.navigateTo(
+                "profile/settings",
+                fromScreen: "profile",
+              );
             }
           },
           builder: () => ProfileScreen(),
@@ -67,7 +70,6 @@ class StackScreenRegistry extends StatelessComponent {
         // ⚙️ SETTINGS SCREEN - Automatic suspense!
         DCFEasyScreen(
           route: "profile/settings",
-          presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Settings",
             backButtonTitle: "Back",
@@ -89,30 +91,32 @@ class StackScreenRegistry extends StatelessComponent {
           builder: () => SettingsScreen(),
         ),
 
-        // 🎬 ANIMATED MODAL SCREEN - The key fix!
         DCFEasyScreen(
           route: "home/animated_modal",
-          presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Animated Modal",
             backButtonTitle: "Home",
           ),
-          builder: () => AnimatedModalScreen(), // Only creates when actually navigated to!
+          builder:
+              () =>
+                  AnimatedModalScreen(), // Only creates when actually navigated to!
         ),
 
-         DCFEasyScreen(
+        DCFEasyScreen(
           route: "home/website",
-          presentationStyle: DCFPresentationStyle.modal,
           modalConfig: DCFModalConfig(
-          allowsBackgroundDismiss: true,
-           detents: [DCFModalDetent.large, DCFModalDetent.medium],
-           selectedDetentIndex: 0,
-           showDragIndicator: true,
+            allowsBackgroundDismiss: true,
+            detents: [DCFModalDetent.large, DCFModalDetent.medium],
+            selectedDetentIndex: 0,
+            showDragIndicator: true,
           ),
-          builder: () => WebsiteScreen(), 
+          builder: () => WebsiteScreen(),
         ),
       ],
     );
   }
+  
+  @override
+  List<Object?> get props => [];
 }
 

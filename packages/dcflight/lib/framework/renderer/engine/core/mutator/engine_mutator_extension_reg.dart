@@ -8,6 +8,7 @@
 import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
 import 'package:dcflight/framework/renderer/engine/component/component.dart';
 import 'package:dcflight/framework/renderer/engine/component/hooks/state_hook.dart';
+import 'package:dcflight/framework/renderer/engine/core/mutator/prop_diff_interceptor.dart';
 
 /// VDOM Extension Registry - allows module devs to hook into VDOM internals
 class VDomExtensionRegistry {
@@ -26,6 +27,25 @@ class VDomExtensionRegistry {
 
   /// Custom hook factories
   final Map<String, VDomHookFactory> _hookFactories = {};
+
+
+ final List<PropDiffInterceptor> _propDiffInterceptors = [];
+  
+  /// Register a prop diff interceptor
+  void registerPropDiffInterceptor(PropDiffInterceptor interceptor) {
+    _propDiffInterceptors.add(interceptor);
+  }
+  
+  /// Get all registered prop diff interceptors
+  List<PropDiffInterceptor> getPropDiffInterceptors() {
+    return List.unmodifiable(_propDiffInterceptors);
+  }
+  
+  /// Unregister a prop diff interceptor
+  void unregisterPropDiffInterceptor(PropDiffInterceptor interceptor) {
+    _propDiffInterceptors.remove(interceptor);
+  }
+
 
   /// Register custom reconciliation for a component type
   void registerReconciliationHandler<T extends DCFComponentNode>(
