@@ -8,138 +8,136 @@
 import UIKit
 import yoga
 
-/// Shadow tree for layout calculations using Yoga
 class YogaShadowTree {
-    // Singleton instance
     static let shared = YogaShadowTree()
     
-    // Root node of the shadow tree
     private var rootNode: YGNodeRef?
-    
-    // Map of node IDs to yoga nodes
     internal var nodes = [String: YGNodeRef]()
-    
-    // Map of child-parent relationships
     internal var nodeParents = [String: String]()
-    
-    // Map for storing component types
     private var nodeTypes = [String: String]()
-    
-    // CRITICAL FIX: Map of screen IDs to their individual Yoga roots
     private var screenRoots = [String: YGNodeRef]()
-    
-    // CRITICAL FIX: Track which nodes are screen roots vs regular nodes
     private var screenRootIds = Set<String>()
     
-    // CRASH FIX: Add synchronization and state tracking
     private let syncQueue = DispatchQueue(label: "YogaShadowTree.sync", qos: .userInitiated)
     private var isLayoutCalculating = false
     private var isReconciling = false
     
-    // Private initializer for singleton
     private init() {
-        // Create root node
         rootNode = YGNodeNew()
         
-        // Configure default root properties
         if let root = rootNode {
             YGNodeStyleSetDirection(root, YGDirection.LTR)
             YGNodeStyleSetFlexDirection(root, YGFlexDirection.column)
             YGNodeStyleSetWidth(root, Float(UIScreen.main.bounds.width))
             YGNodeStyleSetHeight(root, Float(UIScreen.main.bounds.height))
             
-            // Store root node
             nodes["root"] = root
             nodeTypes["root"] = "View"
         }
     }
     
-    // CRASH FIX: Safe node creation with synchronization
     func createNode(id: String, componentType: String) {
         syncQueue.sync {
-            print("🏗️ YogaShadowTree: Creating regular node '\(id)' of type '\(componentType)'")
-            
-            // Create new node
             let node = YGNodeNew()
             
             if let node = node {
-                // Initialize node context to empty dictionary for translations
-                let emptyContext = [String: Any]()
-                YGNodeSetContext(node, Unmanaged.passRetained(emptyContext as NSDictionary).toOpaque())
+                let context: [String: Any] = [
+                    "nodeId": id,
+                    "componentType": componentType,
+                    "props": [:]
+                ]
+                YGNodeSetContext(node, Unmanaged.passRetained(context as NSDictionary).toOpaque())
                 
-                // Store node
                 nodes[id] = node
                 nodeTypes[id] = componentType
                 
-                print("✅ YogaShadowTree: Created regular node '\(id)'")
-            } else {
-                print("❌ YogaShadowTree: Failed to create node '\(id)'")
+                setupMeasureFunction(nodeId: id, node: node)
             }
         }
     }
     
-    // CRITICAL FIX: Create a separate Yoga root for a screen
     func createScreenRoot(id: String, componentType: String) {
         syncQueue.sync {
-            print("🏗️ YogaShadowTree: Creating separate Yoga root for screen '\(id)'")
-            
-            // Create new root node for this screen
             let screenRoot = YGNodeNew()
             
             if let screenRoot = screenRoot {
-                // Configure as a root node (similar to main root)
                 YGNodeStyleSetDirection(screenRoot, YGDirection.LTR)
                 YGNodeStyleSetFlexDirection(screenRoot, YGFlexDirection.column)
-                
-                // CRITICAL: Set screen dimensions to full screen
                 YGNodeStyleSetWidth(screenRoot, Float(UIScreen.main.bounds.width))
                 YGNodeStyleSetHeight(screenRoot, Float(UIScreen.main.bounds.height))
-                
-                // Position at (0,0) within its presentation container
                 YGNodeStyleSetPosition(screenRoot, YGEdge.left, 0)
                 YGNodeStyleSetPosition(screenRoot, YGEdge.top, 0)
                 YGNodeStyleSetPositionType(screenRoot, YGPositionType.absolute)
                 
-                // Initialize context
-                let emptyContext = [String: Any]()
-                YGNodeSetContext(screenRoot, Unmanaged.passRetained(emptyContext as NSDictionary).toOpaque())
+                let context: [String: Any] = [
+                    "nodeId": id,
+                    "componentType": componentType,
+                    "props": [:]
+                ]
+                YGNodeSetContext(screenRoot, Unmanaged.passRetained(context as NSDictionary).toOpaque())
                 
-                // Store as both regular node AND screen root
                 nodes[id] = screenRoot
                 screenRoots[id] = screenRoot
                 screenRootIds.insert(id)
                 nodeTypes[id] = componentType
-                
-                print("✅ YogaShadowTree: Created screen root '\(id)' at (0,0) with size \(UIScreen.main.bounds.size)")
-            } else {
-                print("❌ YogaShadowTree: Failed to create screen root '\(id)'")
             }
         }
     }
     
-    // CRITICAL FIX: Modified addChildNode to handle screen roots
+    private func setupMeasureFunction(nodeId: String, node: YGNodeRef) {
+        let childCount = YGNodeGetChildCount(node)
+        
+        if childCount == 0 {
+            YGNodeSetMeasureFunc(node) { (yogaNode, width, widthMode, height, heightMode) -> YGSize in
+                guard let context = YGNodeGetContext(yogaNode),
+                      let contextDict = Unmanaged<NSDictionary>.fromOpaque(context).takeUnretainedValue() as? [String: Any],
+                      let nodeId = contextDict["nodeId"] as? String,
+                      let componentType = contextDict["componentType"] as? String,
+                      let view = DCFLayoutManager.shared.getView(withId: nodeId) else {
+                    return YGSize(width: 0, height: 0)
+                }
+                
+                let constraintSize = CGSize(
+                    width: widthMode == YGMeasureMode.undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(width),
+                    height: heightMode == YGMeasureMode.undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(height)
+                )
+                
+                let props = contextDict["props"] as? [String: Any] ?? [:]
+                
+                guard let componentClass = DCFComponentRegistry.shared.getComponent(componentType) else {
+                    return YGSize(width: Float(constraintSize.width), height: Float(constraintSize.height))
+                }
+                
+                let componentInstance = componentClass.init()
+                let intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: props)
+                
+                let finalWidth = widthMode == YGMeasureMode.undefined ? intrinsicSize.width : min(intrinsicSize.width, constraintSize.width)
+                let finalHeight = heightMode == YGMeasureMode.undefined ? intrinsicSize.height : min(intrinsicSize.height, constraintSize.height)
+                
+                return YGSize(width: Float(finalWidth), height: Float(finalHeight))
+            }
+        } else {
+            YGNodeSetMeasureFunc(node, nil)
+        }
+    }
+    
     func addChildNode(parentId: String, childId: String, index: Int? = nil) {
         syncQueue.sync {
             guard let parentNode = nodes[parentId], let childNode = nodes[childId] else {
-                print("❌ YogaShadowTree: Cannot add child - parent '\(parentId)' or child '\(childId)' not found")
                 return
             }
             
-            // CRITICAL FIX: If parent is a screen root, child goes into that screen's Yoga tree
-            // If child is a screen root, it should NOT be added as a child (it's independent)
             if screenRootIds.contains(childId) {
-                print("🚫 YogaShadowTree: Skipping addChild for screen root '\(childId)' - screens are independent")
                 return
             }
             
-            print("🔗 YogaShadowTree: Adding child '\(childId)' to parent '\(parentId)'")
-            
-            // Remove child from any existing parent first
             if let oldParentId = nodeParents[childId], let oldParentNode = nodes[oldParentId] {
                 safeRemoveChildFromParent(parentNode: oldParentNode, childNode: childNode, childId: childId)
+                setupMeasureFunction(nodeId: oldParentId, node: oldParentNode)
             }
             
-            // Add to new parent
+            YGNodeSetMeasureFunc(parentNode, nil)
+            
             if let index = index {
                 let childCount = Int(YGNodeGetChildCount(parentNode))
                 let safeIndex = min(max(0, index), childCount)
@@ -149,22 +147,18 @@ class YogaShadowTree {
                 YGNodeInsertChild(parentNode, childNode, Int(Int32(childCount)))
             }
             
-            // Update parent reference
             nodeParents[childId] = parentId
             
-            print("✅ YogaShadowTree: Successfully added child '\(childId)' to parent '\(parentId)'")
+            setupMeasureFunction(nodeId: childId, node: childNode)
         }
     }
     
-    // CRASH FIX: Safe node removal with synchronization
     func removeNode(nodeId: String) {
         syncQueue.sync {
-            // Signal that reconciliation is in progress
             isReconciling = true
             
-            // Wait for any active layout calculation to complete
             while isLayoutCalculating {
-                usleep(1000) // 1ms sleep
+                usleep(1000)
             }
             
             guard let node = nodes[nodeId] else {
@@ -172,48 +166,34 @@ class YogaShadowTree {
                 return
             }
             
-            print("🗑️ YogaShadowTree: Removing node '\(nodeId)'")
-            
-            // If this is a screen root, remove it from screen roots tracking
             if screenRootIds.contains(nodeId) {
                 screenRoots.removeValue(forKey: nodeId)
                 screenRootIds.remove(nodeId)
-                print("🗑️ YogaShadowTree: Removed screen root '\(nodeId)'")
             } else {
-                // For regular nodes, remove from parent
                 if let parentId = nodeParents[nodeId], let parentNode = nodes[parentId] {
                     safeRemoveChildFromParent(parentNode: parentNode, childNode: node, childId: nodeId)
+                    setupMeasureFunction(nodeId: parentId, node: parentNode)
                 }
             }
             
-            // CRITICAL: Safely remove all children with bounds checking
             safeRemoveAllChildren(from: node, nodeId: nodeId)
-            
-            // Free Yoga node memory
             YGNodeFree(node)
             
-            // Clean up references
             nodes.removeValue(forKey: nodeId)
             nodeParents.removeValue(forKey: nodeId)
             nodeTypes.removeValue(forKey: nodeId)
             
-            // Signal reconciliation complete
             isReconciling = false
-            
-            print("✅ YogaShadowTree: Successfully removed node '\(nodeId)'")
         }
     }
     
-    // CRASH FIX: Helper method to safely remove child from parent with bounds checking
     private func safeRemoveChildFromParent(parentNode: YGNodeRef, childNode: YGNodeRef, childId: String) {
         let childCount = YGNodeGetChildCount(parentNode)
         
-        // Bounds check to prevent vector access issues
         guard childCount > 0 else {
             return
         }
         
-        // Find and remove the child safely
         for i in 0..<childCount {
             if let child = YGNodeGetChild(parentNode, i), child == childNode {
                 YGNodeRemoveChild(parentNode, childNode)
@@ -222,24 +202,18 @@ class YogaShadowTree {
         }
     }
     
-    // CRASH FIX: Helper method to safely remove all children with bounds checking
     private func safeRemoveAllChildren(from node: YGNodeRef, nodeId: String) {
         var childCount = YGNodeGetChildCount(node)
         
-        // Reverse iteration to avoid index shifting issues during removal
         while childCount > 0 {
-            // Always get the last child to avoid index shifting
             let lastIndex = childCount - 1
             
-            // Bounds check before accessing
             guard let childNode = YGNodeGetChild(node, lastIndex) else {
                 break
             }
             
-            // Remove the child
             YGNodeRemoveChild(node, childNode)
             
-            // Update count and check for infinite loop protection
             let newChildCount = YGNodeGetChildCount(node)
             if newChildCount >= childCount {
                 break
@@ -249,41 +223,36 @@ class YogaShadowTree {
         }
     }
     
-    // Update a node's layout properties
     func updateNodeLayoutProps(nodeId: String, props: [String: Any]) {
         guard let node = nodes[nodeId] else {
-            print("❌ YogaShadowTree: Node '\(nodeId)' not found for layout props update")
             return
         }
         
-        print("📐 YogaShadowTree: Updating layout props for '\(nodeId)'")
+        if let context = YGNodeGetContext(node) {
+            if var contextDict = Unmanaged<NSDictionary>.fromOpaque(context).takeUnretainedValue() as? [String: Any] {
+                contextDict["props"] = props
+                YGNodeSetContext(node, Unmanaged.passRetained(contextDict as NSDictionary).toOpaque())
+            }
+        }
         
-        // Process each property
         for (key, value) in props {
             applyLayoutProp(node: node, key: key, value: value)
         }
         
-        // Validate layout configuration to prevent crashes
         validateNodeLayoutConfig(nodeId: nodeId)
     }
     
-    // CRITICAL FIX: Modified layout calculation to handle multiple screen roots
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
         return syncQueue.sync {
             
             if isReconciling {
-                print("⏸️ YogaShadowTree: Layout calculation deferred - reconciliation in progress")
                 return false
             }
             
             isLayoutCalculating = true
             defer { isLayoutCalculating = false }
             
-            print("📏 YogaShadowTree: Calculating layout for main root + \(screenRoots.count) screen roots")
-            
-            // Calculate layout for main root (non-screen components)
             guard let mainRoot = nodes["root"] else {
-                print("❌ YogaShadowTree: Main root not found")
                 return false
             }
             
@@ -294,17 +263,11 @@ class YogaShadowTree {
                 try {
                     YGNodeCalculateLayout(mainRoot, Float(width), Float(height), YGDirection.LTR)
                 }()
-                print("✅ YogaShadowTree: Main root layout calculated")
             } catch {
-                print("❌ YogaShadowTree: Main root layout calculation failed: \(error)")
                 return false
             }
             
-            // Calculate layout for each screen root independently
             for (screenId, screenRoot) in screenRoots {
-                print("📏 YogaShadowTree: Calculating layout for screen root '\(screenId)'")
-                
-                // Update screen dimensions (in case of orientation change)
                 YGNodeStyleSetWidth(screenRoot, Float(width))
                 YGNodeStyleSetHeight(screenRoot, Float(height))
                 
@@ -312,49 +275,37 @@ class YogaShadowTree {
                     try {
                         YGNodeCalculateLayout(screenRoot, Float(width), Float(height), YGDirection.LTR)
                     }()
-                    print("✅ YogaShadowTree: Screen root '\(screenId)' layout calculated")
                 } catch {
-                    print("❌ YogaShadowTree: Screen root '\(screenId)' layout calculation failed: \(error)")
-                    // Continue with other screens even if one fails
                     continue
                 }
             }
             
-            // Apply layout to all nodes (both main root and screen roots)
             for (nodeId, _) in nodes {
                 if let layout = getNodeLayout(nodeId: nodeId) {
                     applyLayoutToView(viewId: nodeId, frame: layout)
                 }
             }
             
-            print("🎯 YogaShadowTree: Layout calculation complete - main root + \(screenRoots.count) screen roots")
             return true
         }
     }
     
-    // CRITICAL FIX: Update screen root dimensions on orientation change
     func updateScreenRootDimensions(width: CGFloat, height: CGFloat) {
         syncQueue.sync {
-            print("📐 YogaShadowTree: Updating screen root dimensions to \(width)x\(height)")
-            
             for (screenId, screenRoot) in screenRoots {
                 YGNodeStyleSetWidth(screenRoot, Float(width))
                 YGNodeStyleSetHeight(screenRoot, Float(height))
-                print("✅ YogaShadowTree: Updated screen root '\(screenId)' dimensions")
             }
         }
     }
     
-    // CRITICAL FIX: Check if a node is a screen root
     func isScreenRoot(_ nodeId: String) -> Bool {
         return screenRootIds.contains(nodeId)
     }
     
-    // Get layout for a node
     func getNodeLayout(nodeId: String) -> CGRect? {
         guard let node = nodes[nodeId] else { return nil }
         
-        // Get layout values
         let left = CGFloat(YGNodeLayoutGetLeft(node))
         let top = CGFloat(YGNodeLayoutGetTop(node))
         let width = CGFloat(YGNodeLayoutGetWidth(node))
@@ -363,21 +314,15 @@ class YogaShadowTree {
         return CGRect(x: left, y: top, width: width, height: height)
     }
     
-    // Check and fix any invalid layout configuration issues
     private func validateNodeLayoutConfig(nodeId: String) {
         guard let node = nodes[nodeId] else { return }
         
-        // Check if height is undefined and node has children
         if YGNodeGetChildCount(node) > 0 &&
            YGNodeStyleGetHeight(node).unit == YGUnit.undefined {
-            
-            // Prevent "availableHeight is indefinite" error by setting height sizing mode
-            // to YGMeasureModeAtMost when necessary
             YGNodeStyleSetHeightAuto(node)
         }
     }
     
-    // Apply a layout property to a node
     private func applyLayoutProp(node: YGNodeRef, key: String, value: Any) {
         switch key {
         case "translateX":
@@ -689,216 +634,155 @@ class YogaShadowTree {
                 }
             }
         case "direction":
-                    if let direction = value as? String {
-                        switch direction {
-                        case "inherit":
-                            YGNodeStyleSetDirection(node, YGDirection.inherit)
-                        case "ltr":
-                            YGNodeStyleSetDirection(node, YGDirection.LTR)
-                        case "rtl":
-                            YGNodeStyleSetDirection(node, YGDirection.RTL)
-                        default:
-                            break
-                        }
-                    }
-                case "borderWidth":
-                    if let borderWidth = convertToFloat(value) {
-                        YGNodeStyleSetBorder(node, YGEdge.all, borderWidth)
-                    }
-                case "aspectRatio":
-                    if let aspectRatio = convertToFloat(value) {
-                        YGNodeStyleSetAspectRatio(node, aspectRatio)
-                    }
-                case "gap":
-                    if let gap = convertToFloat(value) {
-                        YGNodeStyleSetGap(node, YGGutter.all, gap)
-                    }
-                case "rowGap":
-                    if let rowGap = convertToFloat(value) {
-                        YGNodeStyleSetGap(node, YGGutter.row, rowGap)
-                    }
-                case "columnGap":
-                    if let columnGap = convertToFloat(value) {
-                        YGNodeStyleSetGap(node, YGGutter.column, columnGap)
-                    }
+            if let direction = value as? String {
+                switch direction {
+                case "inherit":
+                    YGNodeStyleSetDirection(node, YGDirection.inherit)
+                case "ltr":
+                    YGNodeStyleSetDirection(node, YGDirection.LTR)
+                case "rtl":
+                    YGNodeStyleSetDirection(node, YGDirection.RTL)
                 default:
                     break
                 }
             }
-            
-            // Fix common layout errors that cause crashes
-            private func fixLayoutErrors() {
-                
-                for (nodeId, node) in nodes {
-                    // Fix 1: Set auto height for nodes with children but undefined height
-                    if YGNodeGetChildCount(node) > 0 && YGNodeStyleGetHeight(node).unit == YGUnit.undefined {
-                        YGNodeStyleSetHeightAuto(node)
-                    }
-                    
-                    // Fix 2: If a leaf node with no width/height, set reasonable defaults
-                    if YGNodeGetChildCount(node) == 0 &&
-                       YGNodeStyleGetHeight(node).unit == YGUnit.undefined &&
-                       YGNodeStyleGetWidth(node).unit == YGUnit.undefined {
-                        YGNodeStyleSetMinHeight(node, 1)
-                        YGNodeStyleSetMinWidth(node, 1)
-                    }
-                    
-                    // Fix 3: If node has flex but no defined dimensions, set flex basis auto
-                    if YGNodeStyleGetFlex(node) != 0 &&
-                       YGNodeStyleGetHeight(node).unit == YGUnit.undefined &&
-                       YGNodeStyleGetWidth(node).unit == YGUnit.undefined {
-                        YGNodeStyleSetFlexBasisAuto(node)
-                    }
-                    
-                    // Fix 4: For rows with undefined height, set height:auto
-                    if YGNodeStyleGetFlexDirection(node) == YGFlexDirection.row &&
-                       YGNodeStyleGetHeight(node).unit == YGUnit.undefined {
-                        YGNodeStyleSetHeightAuto(node)
-                    }
-                }
+        case "borderWidth":
+            if let borderWidth = convertToFloat(value) {
+                YGNodeStyleSetBorder(node, YGEdge.all, borderWidth)
             }
-
-            // Helper to convert input values to Float
-            private func convertToFloat(_ value: Any) -> Float? {
-                if let num = value as? Float {
-                    return num
-                } else if let num = value as? Double {
-                    return Float(num)
-                } else if let num = value as? Int {
-                    return Float(num)
-                } else if let num = value as? CGFloat {
-                    return Float(num)
-                } else if let str = value as? String, let num = Float(str) {
-                    return num
-                }
-                return nil
+        case "aspectRatio":
+            if let aspectRatio = convertToFloat(value) {
+                YGNodeStyleSetAspectRatio(node, aspectRatio)
             }
-            
-            // Safe transform context management to prevent memory leaks and crashes
-            private func updateNodeTransformContext(node: YGNodeRef, key: String, value: Any) {
-                // Get existing context dictionary or create new one
-                var contextDict: [String: Any] = [:]
-                
-                // Safely get existing context without releasing it yet
-                if let existingContextPtr = YGNodeGetContext(node) {
-                    if let existingContext = Unmanaged<NSDictionary>.fromOpaque(existingContextPtr).takeUnretainedValue() as? [String: Any] {
-                        contextDict = existingContext
-                    }
+        case "gap":
+            if let gap = convertToFloat(value) {
+                YGNodeStyleSetGap(node, YGGutter.all, gap)
+            }
+        case "rowGap":
+            if let rowGap = convertToFloat(value) {
+                YGNodeStyleSetGap(node, YGGutter.row, rowGap)
+            }
+        case "columnGap":
+            if let columnGap = convertToFloat(value) {
+                YGNodeStyleSetGap(node, YGGutter.column, columnGap)
+            }
+        default:
+            break
+        }
+    }
+    
+    private func convertToFloat(_ value: Any) -> Float? {
+        if let num = value as? Float {
+            return num
+        } else if let num = value as? Double {
+            return Float(num)
+        } else if let num = value as? Int {
+            return Float(num)
+        } else if let num = value as? CGFloat {
+            return Float(num)
+        } else if let str = value as? String, let num = Float(str) {
+            return num
+        }
+        return nil
+    }
+    
+    private func updateNodeTransformContext(node: YGNodeRef, key: String, value: Any) {
+        var contextDict: [String: Any] = [:]
+        
+        if let existingContextPtr = YGNodeGetContext(node) {
+            if let existingContext = Unmanaged<NSDictionary>.fromOpaque(existingContextPtr).takeUnretainedValue() as? [String: Any] {
+                contextDict = existingContext
+            }
+        }
+        
+        switch key {
+        case "translateX":
+            if let translateX = convertToFloat(value) {
+                contextDict["translateX"] = translateX
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                contextDict["translateXPercent"] = percentValue
+            }
+        case "translateY":
+            if let translateY = convertToFloat(value) {
+                contextDict["translateY"] = translateY
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                contextDict["translateYPercent"] = percentValue
+            }
+        default:
+            if let floatValue = value as? Float {
+                contextDict[key] = floatValue
+            }
+        }
+        
+        if let existingContextPtr = YGNodeGetContext(node) {
+            Unmanaged<NSDictionary>.fromOpaque(existingContextPtr).release()
                 }
                 
-                // Update the specific property based on key and value
-                switch key {
-                case "translateX":
-                    if let translateX = convertToFloat(value) {
-                        contextDict["translateX"] = translateX
-                    } else if let strValue = value as? String, strValue.hasSuffix("%"),
-                             let percentValue = Float(strValue.dropLast()) {
-                        contextDict["translateXPercent"] = percentValue
-                    }
-                case "translateY":
-                    if let translateY = convertToFloat(value) {
-                        contextDict["translateY"] = translateY
-                    } else if let strValue = value as? String, strValue.hasSuffix("%"),
-                             let percentValue = Float(strValue.dropLast()) {
-                        contextDict["translateYPercent"] = percentValue
-                    }
-                default:
-                    // For rotate, scale, scaleX, scaleY - direct value assignment
-                    if let floatValue = value as? Float {
-                        contextDict[key] = floatValue
-                    }
-                }
-                
-                // Release old context if it exists before setting new one
-                if let existingContextPtr = YGNodeGetContext(node) {
-                    Unmanaged<NSDictionary>.fromOpaque(existingContextPtr).release()
-                }
-                
-                // Set the new context
                 YGNodeSetContext(node, Unmanaged.passRetained(contextDict as NSDictionary).toOpaque())
             }
             
-            // Set a custom measure function for nodes that need to self-measure
             func setCustomMeasureFunction(nodeId: String, measureFunc: @escaping YGMeasureFunc) {
                 guard let node = nodes[nodeId] else { return }
                 
-                // Make sure node has no children before setting measure function
                 if YGNodeGetChildCount(node) == 0 {
                     YGNodeSetMeasureFunc(node, measureFunc)
                 }
             }
             
-            // Apply layout to a view
             private func applyLayoutToView(viewId: String, frame: CGRect) {
-                // Get the view from the layout manager
                 guard let view = DCFLayoutManager.shared.getView(withId: viewId),
                       let node = nodes[viewId] else {
                     return
                 }
                 
-                // Get original frame
                 var finalFrame = frame
                 
-                // Apply transforms if any
                 if let contextPtr = YGNodeGetContext(node),
                    let contextDict = Unmanaged<NSDictionary>.fromOpaque(contextPtr).takeUnretainedValue() as? [String: Any] {
                     
-                    // Create transform matrices
                     var transform = CGAffineTransform.identity
-                    
-                    // Handle translation
                     var translationX: CGFloat = 0
                     var translationY: CGFloat = 0
                     
-                    // Handle translateX (absolute value)
                     if let translateX = contextDict["translateX"] as? Float {
                         translationX += CGFloat(translateX)
                     }
                     
-                    // Handle translateX (percentage)
                     if let translateXPercent = contextDict["translateXPercent"] as? Float {
                         let parentWidth = finalFrame.width
                         translationX += CGFloat(translateXPercent * Float(parentWidth) / 100.0)
                     }
                     
-                    // Handle translateY (absolute value)
                     if let translateY = contextDict["translateY"] as? Float {
                         translationY += CGFloat(translateY)
                     }
                     
-                    // Handle translateY (percentage)
                     if let translateYPercent = contextDict["translateYPercent"] as? Float {
                         let parentHeight = finalFrame.height
                         translationY += CGFloat(translateYPercent * Float(parentHeight) / 100.0)
                     }
                     
-                    // Apply translations to the frame position
                     finalFrame.origin.x += translationX
                     finalFrame.origin.y += translationY
                     
-                    // Handle scaling and rotation (these will be applied as transforms to the view itself)
                     var hasTransform = false
                     
-                    // Get center point for transforms
                     let centerX = finalFrame.width / 2.0
                     let centerY = finalFrame.height / 2.0
                     
-                    // Center transform around the view's center
                     transform = transform.translatedBy(x: centerX, y: centerY)
                     
-                    // Apply rotation if specified
                     if let rotation = contextDict["rotate"] as? Float {
                         transform = transform.rotated(by: CGFloat(rotation))
                         hasTransform = true
                     }
                     
-                    // Apply uniform scaling if specified
                     if let scale = contextDict["scale"] as? Float {
                         transform = transform.scaledBy(x: CGFloat(scale), y: CGFloat(scale))
                         hasTransform = true
-                    }
-                    // Otherwise apply individual axis scaling if specified
-                    else {
+                    } else {
                         var scaleXValue: CGFloat = 1.0
                         var scaleYValue: CGFloat = 1.0
                         
@@ -917,13 +801,10 @@ class YogaShadowTree {
                         }
                     }
                     
-                    // Translate back to original position
                     transform = transform.translatedBy(x: -centerX, y: -centerY)
                     
-                    // Store the transform for later application to the view
                     if hasTransform {
-                        DispatchQueue.main.async { [weak self] in
-                            // 🔥 HOT RESTART SAFETY: Check if view is still valid before applying transform
+                        DispatchQueue.main.async {
                             guard let view = DCFLayoutManager.shared.getView(withId: viewId),
                                   view.superview != nil || view.window != nil else {
                                 return
@@ -933,26 +814,23 @@ class YogaShadowTree {
                     }
                 }
                 
-                // Apply layout using layout manager
-                DispatchQueue.main.async { [weak self] in
-                    // 🔥 HOT RESTART SAFETY: Comprehensive view validation before applying layout
-                    guard let self = self,
-                          let view = DCFLayoutManager.shared.getView(withId: viewId) else {
+                DispatchQueue.main.async {
+                    guard let view = DCFLayoutManager.shared.getView(withId: viewId) else {
                         return
                     }
                     
-                    // Multi-level safety check
                     guard view.superview != nil || view.window != nil,
                           view.layer != nil,
                           !view.isEqual(nil) else {
                         return
                     }
                     
-                    // Additional frame validation
                     guard finalFrame.width.isFinite && finalFrame.height.isFinite &&
                           finalFrame.origin.x.isFinite && finalFrame.origin.y.isFinite else {
                         return
                     }
+                    
+                    let wasUserInteractionEnabled = view.isUserInteractionEnabled
                     
                     DCFLayoutManager.shared.applyLayout(
                         to: viewId,
@@ -961,17 +839,18 @@ class YogaShadowTree {
                         width: finalFrame.width,
                         height: finalFrame.height
                     )
+                    
+                    view.isUserInteractionEnabled = wasUserInteractionEnabled
+                    view.setNeedsLayout()
+                    view.layoutIfNeeded()
                 }
             }
             
-            // Cleanup
             deinit {
-                // Free all nodes
                 for (_, node) in nodes {
                     YGNodeFree(node)
                 }
                 
-                // Free all screen roots
                 for (_, screenRoot) in screenRoots {
                     YGNodeFree(screenRoot)
                 }
