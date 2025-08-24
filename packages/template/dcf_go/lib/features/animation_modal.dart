@@ -6,25 +6,27 @@ class AnimatedModalScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
     // Animation value state that drives all animations
-    final animationValue = useState<double>(0.2);
+    final animationValue = useState<double>(1.0); // Start at full scale (100%)
     
     // Which demo to show: 0 = Transform, 1 = Opacity, 2 = Drawer
     final selectedDemoState = useState<int>(0);
 
     // Create animated styles for smooth continuous updates (no bouncing)
     final transformStyle = useAnimatedStyle(() {
-      final currentWidth = animationValue.state*100; // 10% → 100%
+      // Animate width from 60px to 300px based on slider (0.0 → 1.0)
+      final pixelWidth = 60 + (animationValue.state * 240); // 60px → 300px
       return AnimatedStyle()
         .layout(width: ReanimatedValue(
-          from: currentWidth, // Always start from current position
-          to: currentWidth,   // Always end at current position
+          from: pixelWidth, // Always start from current width
+          to: pixelWidth,   // Always end at current width
           duration: 1, // Instant for real-time tracking
           curve: 'linear',
         ));
     }, dependencies: [animationValue.state]);
 
     final opacityStyle = useAnimatedStyle(() {
-      final currentOpacity = animationValue.state;
+      // Scale from 0.0 to 1.0 opacity based on slider (0.0 → 1.0)
+      final currentOpacity = animationValue.state; // Direct 0.0 → 1.0 mapping
       return AnimatedStyle()
         .opacity(ReanimatedValue(
           from: currentOpacity, // Always start from current opacity
@@ -67,6 +69,8 @@ class AnimatedModalScreen extends StatefulComponent {
           onSelectionChange: (v) {
             try {
               selectedDemoState.setState(v['selectedIndex']);
+
+
             } catch (_) {}
           },
         ),
@@ -188,7 +192,7 @@ class AnimatedModalScreen extends StatefulComponent {
               onPress: (v) {
                 try {
                   // Use proper ReanimatedValue for smooth UI thread animation
-                  animationValue.setState(0.2);
+                  animationValue.setState(1.0); // Reset to full scale
                 } catch (_) {}
               },
             ),
