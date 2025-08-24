@@ -90,7 +90,7 @@ class AnimatedModalScreen extends StatefulComponent {
 
         // Demo area - shows different animated behaviours driven by `sharedValue`.
         DCFScrollView(
-          layout: LayoutProps(gap: 12,height:400), 
+          layout: LayoutProps(gap: 5,height:"400"), 
           children: [
             // Transform demo: translateX based on sharedValue
             if (selectedDemoState.state == 0)
@@ -137,7 +137,7 @@ class AnimatedModalScreen extends StatefulComponent {
             // Drawer demo: a panel whose width is controlled by the slider
             if (selectedDemoState.state == 2)
               DCFView(
-                layout: LayoutProps(width: "100%", height: 220),
+                layout: LayoutProps(width: "100%", height: "100%"),
                 children: [
                   DCFText(
                     content: "Drawer demo (controlled by slider)", 
@@ -148,7 +148,7 @@ class AnimatedModalScreen extends StatefulComponent {
                     layout: LayoutProps(
                       position: YogaPositionType.absolute, 
                       absoluteLayout: AbsoluteLayout(left: 0, top: 40), 
-                      height: 160, 
+                      
                       padding: 12
                     ),
                     styleSheet: StyleSheet(
@@ -176,11 +176,10 @@ class AnimatedModalScreen extends StatefulComponent {
           ]
         ),
 
-        // Helper actions with wrap to prevent overflow
         DCFView(
           layout: LayoutProps(
             flexDirection: YogaFlexDirection.row, 
-            flexWrap: YogaWrap.wrap, // This prevents overflow
+            flexWrap: YogaWrap.wrap,
             gap: 8
           ), 
           children: [
