@@ -13,7 +13,7 @@ class AnimatedModalScreen extends StatefulComponent {
 
     // Create animated styles for smooth continuous updates (no bouncing)
     final transformStyle = useAnimatedStyle(() {
-      final currentWidth = animationValue.state * 80 + 10;
+      final currentWidth = animationValue.state*100; // 10% → 100%
       return AnimatedStyle()
         .layout(width: ReanimatedValue(
           from: currentWidth, // Always start from current position
@@ -35,7 +35,7 @@ class AnimatedModalScreen extends StatefulComponent {
     }, dependencies: [animationValue.state]);
 
     final drawerStyle = useAnimatedStyle(() {
-      final currentWidth = animationValue.state * 70 + 20;
+      final currentWidth = animationValue.state * 80 + 20; // 20% → 100%
       return AnimatedStyle()
         .layout(width: ReanimatedValue(
           from: currentWidth, // Always start from current position
@@ -44,21 +44,6 @@ class AnimatedModalScreen extends StatefulComponent {
           curve: 'linear',
         ));
     }, dependencies: [animationValue.state]);
-
-    // Helper function for smooth animated transitions to target values
-    void animateToValue(double targetValue) {
-      // Create intermediate steps for smooth animation
-      final steps = 10;
-      final currentVal = animationValue.state;
-      final stepSize = (targetValue - currentVal) / steps;
-      
-      for (int i = 0; i < steps; i++) {
-        Future.delayed(Duration(milliseconds: i * 30), () {
-          final newValue = currentVal + (stepSize * (i + 1));
-          animationValue.setState(newValue.clamp(0.0, 1.0));
-        });
-      }
-    }
 
     return DCFView(
       layout: LayoutProps(
@@ -118,11 +103,13 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   // Pure UI thread animated box using ReanimatedView
                   ReanimatedView(
-                    layout: LayoutProps(height: 60),
+                    layout: LayoutProps(height: 60,), // Width controlled by animation
                     styleSheet: StyleSheet(backgroundColor: Colors.blueAccent),
                     animatedStyle: transformStyle,
                     autoStart: true,
-                    children: [],
+                    children: [
+                      DCFText(content: "I am a pure UI thread animated box"),
+                    ],
                   ),
                 ],
               ),
@@ -177,8 +164,8 @@ class AnimatedModalScreen extends StatefulComponent {
                         buttonProps: DCFButtonProps(title: "Close"),
                         onPress: (v) {
                           try {
-                            // Smooth animate to closed state
-                            animateToValue(0.0);
+                            // Use proper ReanimatedValue for smooth UI thread animation
+                            animationValue.setState(0.0);
                           } catch (_) {}
                         },
                       ),
@@ -201,8 +188,8 @@ class AnimatedModalScreen extends StatefulComponent {
               buttonProps: DCFButtonProps(title: "Reset"),
               onPress: (v) {
                 try {
-                  // Smooth animate to reset value
-                  animateToValue(0.2);
+                  // Use proper ReanimatedValue for smooth UI thread animation
+                  animationValue.setState(0.2);
                 } catch (_) {}
               },
             ),
