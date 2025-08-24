@@ -7,16 +7,17 @@
 
 1. [Overview](#overview)
 2. [Installation](#installation)
-3. [Core Concepts](#core-concepts)
+3. [Core Concepts](#core-concepts)  
 4. [API Reference](#api-reference)
 5. [Components](#components)
 6. [Animation Values](#animation-values)
 7. [Animated Styles](#animated-styles)
 8. [Hooks](#hooks)
 9. [Presets](#presets)
-10. [Examples](#examples)
-11. [Performance](#performance)
-12. [Migration Guide](#migration-guide)
+10. [Simplified API](#simplified-api)
+11. [Examples](#examples)
+12. [Performance](#performance)
+13. [Migration Guide](#migration-guide)
 
 ## Overview
 
@@ -30,6 +31,8 @@ DCF Reanimated is a high-performance animation library built specifically for DC
 - 🔧 **Zero Setup** - No babel plugins or worklets required
 - 📱 **Cross Platform** - iOS and Android support
 - 🎨 **Rich Animation Types** - Transform, opacity, layout, and color animations
+- ✨ **Simplified API** - Easy shared value animations with `.widthValue()`, `.opacityValue()`, etc.
+- 🎪 **Rich Presets** - 15+ pre-built animations for common patterns
 
 ### How It Works
 
@@ -288,7 +291,7 @@ useAnimatedCallback(
 
 ## Presets
 
-DCF Reanimated includes common animation presets via the `Reanimated` class.
+DCF Reanimated includes comprehensive animation presets via the `Reanimated` class. All presets are fully implemented and tested.
 
 ### Entrance Animations
 
@@ -317,7 +320,7 @@ ReanimatedView(
 )
 ```
 
-#### slideInRight() / slideInLeft()
+#### slideInRight() / slideInLeft() / slideInTop() / slideInBottom()
 ```dart
 ReanimatedView(
   animatedStyle: Reanimated.slideInRight(
@@ -337,6 +340,18 @@ ReanimatedView(
   animatedStyle: Reanimated.fadeOut(
     duration: 300,
     curve: 'easeInOut',
+  ),
+  children: [/* ... */],
+)
+```
+
+#### scaleOut()
+```dart
+ReanimatedView(
+  animatedStyle: Reanimated.scaleOut(
+    fromScale: 1.0,
+    toScale: 0.0,
+    duration: 300,
   ),
   children: [/* ... */],
 )
@@ -383,7 +398,19 @@ ReanimatedView(
 )
 ```
 
-### Complex Animations
+#### wiggle()
+```dart
+ReanimatedView(
+  animatedStyle: Reanimated.wiggle(
+    wiggleAngle: 0.05, // ~3 degrees
+    duration: 100,
+    repeatCount: 4,
+  ),
+  children: [/* ... */],
+)
+```
+
+### Complex Combined Animations
 
 #### slideScaleFadeIn()
 ```dart
@@ -399,6 +426,47 @@ ReanimatedView(
   ),
   children: [/* ... */],
 )
+```
+
+## Simplified API
+
+DCF Reanimated now includes simplified methods for real-time animations driven by shared values, eliminating boilerplate code.
+
+### Available Simplified Methods
+
+```dart
+AnimatedStyle()
+  .opacityValue(sharedValue)                    // Direct opacity from 0.0→1.0
+  .widthValue(pixels)                           // Direct width in pixels
+  .widthValue(percentage, asPercentage: true)   // Width as percentage 0.0→1.0
+  .heightValue(pixels)                          // Direct height in pixels
+  .scaleValue(scale)                            // Direct scale factor
+  .translateXValue(pixels)                      // Direct X translation
+  .translateYValue(pixels)                      // Direct Y translation
+```
+
+### Simplified vs Original API
+
+**Before (Complex)**:
+```dart
+final animatedStyle = useAnimatedStyle(() {
+  final currentWidth = sharedValue.state * 300;
+  return AnimatedStyle()
+    .layout(width: ReanimatedValue(
+      from: currentWidth,
+      to: currentWidth, 
+      duration: 1,
+      curve: 'linear',
+    ));
+}, dependencies: [sharedValue.state]);
+```
+
+**After (Simple)**:
+```dart
+final animatedStyle = useAnimatedStyle(() {
+  return AnimatedStyle()
+    .widthValue(sharedValue.state * 300);
+}, dependencies: [sharedValue.state]);
 ```
 
 ## Examples
