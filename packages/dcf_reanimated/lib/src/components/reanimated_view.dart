@@ -27,7 +27,6 @@ import '../helper/init.dart';
 /// Example:
 /// ```dart
 /// ReanimatedView(
-///   animationId: "my-fade-in",
 ///   animatedStyle: Reanimated.fadeIn(duration: 500),
 ///   onAnimationComplete: () => print("Fade complete!"),
 ///   children: [
@@ -47,9 +46,6 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
   
   /// Static styling properties (non-animated)
   final StyleSheet styleSheet;
-  
-  /// Unique identifier for this animation (auto-generated if null)
-  final String? animationId;
   
   /// Whether to start animation automatically when component mounts
   final bool autoStart;
@@ -78,7 +74,6 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
     this.animatedStyle,
     this.layout = const LayoutProps(),
     this.styleSheet = const StyleSheet(),
-    this.animationId,
     this.autoStart = true,
     this.startDelay = 0,
     this.onAnimationStart,
@@ -93,10 +88,6 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
 
   @override
   DCFComponentNode render() {
-    // Generate stable animation ID if none provided
-    final effectiveAnimationId =
-        animationId ?? 'anim_${key?.toString() ?? hashCode}';
-    
     // Prepare event handlers map
     Map<String, dynamic> eventHandlers = events ?? {};
 
@@ -114,7 +105,6 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
     // Build props map for native bridge communication
     Map<String, dynamic> props = {
       // Animation configuration
-      'animationId': effectiveAnimationId,
       'autoStart': autoStart,
       'startDelay': startDelay,
       'isPureReanimated': true, // Flag for native to use pure animation mode
@@ -147,7 +137,6 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
         animatedStyle,
         layout,
         styleSheet,
-        animationId,
         autoStart,
         startDelay,
         onAnimationStart,
