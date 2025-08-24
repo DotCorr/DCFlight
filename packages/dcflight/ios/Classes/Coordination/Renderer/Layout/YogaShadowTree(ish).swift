@@ -22,6 +22,9 @@ class YogaShadowTree {
     private var isLayoutCalculating = false
     private var isReconciling = false
     
+    // ENHANCEMENT: Web defaults configuration
+    private var useWebDefaults = false
+    
     private init() {
         rootNode = YGNodeNew()
         
@@ -41,6 +44,9 @@ class YogaShadowTree {
             let node = YGNodeNew()
             
             if let node = node {
+                // Apply default styles based on configuration
+                applyDefaultNodeStyles(to: node)
+                
                 let context: [String: Any] = [
                     "nodeId": id,
                     "componentType": componentType,
@@ -465,37 +471,55 @@ class YogaShadowTree {
                     YGNodeStyleSetPositionType(node, YGPositionType.absolute)
                 case "relative":
                     YGNodeStyleSetPositionType(node, YGPositionType.relative)
+                case "static":
+                    // ENHANCEMENT: Static position support
+                    // Static behaves like relative but ignores insets and doesn't form containing blocks
+                    YGNodeStyleSetPositionType(node, YGPositionType.static)
+                    // Mark this node as static for special handling
+                    updateNodeTransformContext(node: node, key: "positionType", value: "static")
                 default:
                     break
                 }
             }
         case "left":
-            if let left = convertToFloat(value) {
-                YGNodeStyleSetPosition(node, YGEdge.left, left)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"),
-                     let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPositionPercent(node, YGEdge.left, percentValue)
+            // ENHANCEMENT: Static position ignores insets
+            if !isStaticPositioned(node: node) {
+                if let left = convertToFloat(value) {
+                    YGNodeStyleSetPosition(node, YGEdge.left, left)
+                } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                         let percentValue = Float(strValue.dropLast()) {
+                    YGNodeStyleSetPositionPercent(node, YGEdge.left, percentValue)
+                }
             }
         case "top":
-            if let top = convertToFloat(value) {
-                YGNodeStyleSetPosition(node, YGEdge.top, top)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"),
-                     let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPositionPercent(node, YGEdge.top, percentValue)
+            // ENHANCEMENT: Static position ignores insets
+            if !isStaticPositioned(node: node) {
+                if let top = convertToFloat(value) {
+                    YGNodeStyleSetPosition(node, YGEdge.top, top)
+                } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                         let percentValue = Float(strValue.dropLast()) {
+                    YGNodeStyleSetPositionPercent(node, YGEdge.top, percentValue)
+                }
             }
         case "right":
-            if let right = convertToFloat(value) {
-                YGNodeStyleSetPosition(node, YGEdge.right, right)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"),
-                     let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPositionPercent(node, YGEdge.right, percentValue)
+            // ENHANCEMENT: Static position ignores insets
+            if !isStaticPositioned(node: node) {
+                if let right = convertToFloat(value) {
+                    YGNodeStyleSetPosition(node, YGEdge.right, right)
+                } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                         let percentValue = Float(strValue.dropLast()) {
+                    YGNodeStyleSetPositionPercent(node, YGEdge.right, percentValue)
+                }
             }
         case "bottom":
-            if let bottom = convertToFloat(value) {
-                YGNodeStyleSetPosition(node, YGEdge.bottom, bottom)
-            } else if let strValue = value as? String, strValue.hasSuffix("%"),
-                     let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPositionPercent(node, YGEdge.bottom, percentValue)
+            // ENHANCEMENT: Static position ignores insets
+            if !isStaticPositioned(node: node) {
+                if let bottom = convertToFloat(value) {
+                    YGNodeStyleSetPosition(node, YGEdge.bottom, bottom)
+                } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                         let percentValue = Float(strValue.dropLast()) {
+                    YGNodeStyleSetPositionPercent(node, YGEdge.bottom, percentValue)
+                }
             }
         case "flexDirection":
             if let direction = value as? String {
@@ -844,6 +868,63 @@ class YogaShadowTree {
                     view.setNeedsLayout()
                     view.layoutIfNeeded()
                 }
+            }
+            
+            // MARK: - Web Defaults Support
+            
+            /// Apply web defaults for cross-platform compatibility
+            /// Web defaults: flex-direction: row, align-content: stretch, flex-shrink: 1
+            func applyWebDefaults() {
+                syncQueue.sync {
+                    useWebDefaults = true
+                    
+                    // Apply web defaults to root node
+                    if let root = rootNode {
+                        // Web default: flex-direction: row (instead of column)
+                        YGNodeStyleSetFlexDirection(root, YGFlexDirection.row)
+                        // Web default: align-content: stretch (instead of flex-start)
+                        YGNodeStyleSetAlignContent(root, YGAlign.stretch)
+                        // Web default: flex-shrink: 1 (instead of 0)
+                        YGNodeStyleSetFlexShrink(root, 1.0)
+                        
+                        print("✅ YogaShadowTree: Applied web defaults to root node")
+                    }
+                    
+                    // Apply web defaults to all screen roots
+                    for (_, screenRoot) in screenRoots {
+                        YGNodeStyleSetFlexDirection(screenRoot, YGFlexDirection.row)
+                        YGNodeStyleSetAlignContent(screenRoot, YGAlign.stretch) 
+                        YGNodeStyleSetFlexShrink(screenRoot, 1.0)
+                    }
+                    
+                    print("✅ YogaShadowTree: Applied web defaults to \(screenRoots.count) screen roots")
+                }
+            }
+            
+            /// Apply default node styles based on configuration
+            private func applyDefaultNodeStyles(to node: YGNodeRef) {
+                if useWebDefaults {
+                    // Web defaults
+                    YGNodeStyleSetFlexDirection(node, YGFlexDirection.row)
+                    YGNodeStyleSetAlignContent(node, YGAlign.stretch)
+                    YGNodeStyleSetFlexShrink(node, 1.0)
+                    // Note: position defaults to relative (not static) for compatibility
+                } else {
+                    // Yoga native defaults
+                    YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
+                    YGNodeStyleSetAlignContent(node, YGAlign.flexStart)
+                    YGNodeStyleSetFlexShrink(node, 0.0)
+                }
+            }
+            
+            /// Check if a node is positioned as static
+            private func isStaticPositioned(node: YGNodeRef) -> Bool {
+                guard let context = YGNodeGetContext(node),
+                      let contextDict = Unmanaged<NSDictionary>.fromOpaque(context).takeUnretainedValue() as? [String: Any],
+                      let positionType = contextDict["positionType"] as? String else {
+                    return false
+                }
+                return positionType == "static"
             }
             
             deinit {
