@@ -42,11 +42,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
                     reanimatedView.startPureAnimation()
                 }
             }
-            
-            // Set animation ID for callbacks
-            if let animationId = props["animationId"] as? String {
-                reanimatedView.animationId = animationId
-            }
         }
         
         // Apply styles
@@ -104,7 +99,6 @@ class PureReanimatedView: UIView {
     private var currentAnimations: [String: PureAnimationState] = [:]
     
     // Identifiers for callbacks
-    var animationId: String?
     var nodeId: String?
     
     override init(frame: CGRect) {
@@ -254,7 +248,6 @@ class PureReanimatedView: UIView {
             on: self,
             eventName: eventType,
             data: [
-                "animationId": animationId ?? "",
                 "timestamp": CACurrentMediaTime()
             ]
         )

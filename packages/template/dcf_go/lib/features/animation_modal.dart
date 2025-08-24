@@ -191,7 +191,6 @@ class AnimatedModalScreen extends StatefulComponent {
                     children: [
                       // Fade In
                       ReanimatedView(
-                        animationId: "fade-in-demo",
                         animatedStyle: Reanimated.fadeIn(duration: 800, delay: 0),
                         layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
@@ -202,7 +201,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Scale In
                       ReanimatedView(
-                        animationId: "scale-in-demo", 
                         animatedStyle: Reanimated.scaleIn(fromScale: 0.0, toScale: 1.0, duration: 600, delay: 200),
                         layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.green, borderRadius: 8),
@@ -213,7 +211,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Slide In Right
                       ReanimatedView(
-                        animationId: "slide-right-demo",
                         animatedStyle: Reanimated.slideInRight(distance: 100.0, duration: 700, delay: 400),
                         layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.purple, borderRadius: 8),
@@ -224,7 +221,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Slide In Left  
                       ReanimatedView(
-                        animationId: "slide-left-demo",
                         animatedStyle: Reanimated.slideInLeft(distance: 100.0, duration: 700, delay: 600),
                         layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 8),
@@ -242,7 +238,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   
                   ReanimatedView(
-                    animationId: "slide-scale-fade-demo",
                     animatedStyle: Reanimated.slideScaleFadeIn(
                       slideDistance: 80.0,
                       fromScale: 0.7,
@@ -279,7 +274,6 @@ class AnimatedModalScreen extends StatefulComponent {
                     children: [
                       // Rotating Spinner
                       ReanimatedView(
-                        animationId: "rotate-demo",
                         animatedStyle: Reanimated.rotate(
                           toRotation: 6.28, // Full 360° rotation
                           duration: 2000,
@@ -294,7 +288,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Pulsing Heart
                       ReanimatedView(
-                        animationId: "pulse-demo",
                         animatedStyle: Reanimated.pulse(
                           minOpacity: 0.3,
                           maxOpacity: 1.0,
@@ -310,7 +303,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Bouncing Ball
                       ReanimatedView(
-                        animationId: "bounce-demo",
                         animatedStyle: Reanimated.bounce(
                           bounceScale: 1.4,
                           duration: 500,
@@ -333,7 +325,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   
                   ReanimatedView(
-                    animationId: "wiggle-demo",
                     animatedStyle: Reanimated.wiggle(
                       wiggleAngle: 0.15, // ~8 degrees
                       duration: 80,
@@ -366,7 +357,6 @@ class AnimatedModalScreen extends StatefulComponent {
                     children: [
                       // Item 1
                       ReanimatedView(
-                        animationId: "stagger-1",
                         animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2200),
                         layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.teal.shade100, borderRadius: 4),
@@ -377,7 +367,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Item 2
                       ReanimatedView(
-                        animationId: "stagger-2", 
                         animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2350),
                         layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.teal.shade200, borderRadius: 4),
@@ -388,7 +377,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Item 3
                       ReanimatedView(
-                        animationId: "stagger-3",
                         animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2500),
                         layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.teal.shade300, borderRadius: 4),
@@ -406,7 +394,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   
                   ReanimatedView(
-                    animationId: "fade-out-demo",
                     animatedStyle: Reanimated.fadeOut(duration: 1000, delay: 3000),
                     layout: LayoutProps(width: "70%", height: 60, alignSelf: YogaAlign.center, padding: 12),
                     styleSheet: StyleSheet(backgroundColor: Colors.grey.shade300, borderRadius: 8),
