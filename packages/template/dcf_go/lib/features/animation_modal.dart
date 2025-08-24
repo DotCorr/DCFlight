@@ -11,36 +11,54 @@ class AnimatedModalScreen extends StatefulComponent {
     // Which demo to show: 0 = Transform, 1 = Opacity, 2 = Drawer
     final selectedDemoState = useState<int>(0);
 
-    // Create animated styles for each demo type
+    // Create animated styles for smooth continuous updates (no bouncing)
     final transformStyle = useAnimatedStyle(() {
+      final currentWidth = animationValue.state * 80 + 10;
       return AnimatedStyle()
         .layout(width: ReanimatedValue(
-          from: 10,
-          to: animationValue.state * 80 + 10,
-          duration: 300,
-          curve: 'easeOut',
+          from: currentWidth, // Always start from current position
+          to: currentWidth,   // Always end at current position
+          duration: 1, // Instant for real-time tracking
+          curve: 'linear',
         ));
     }, dependencies: [animationValue.state]);
 
     final opacityStyle = useAnimatedStyle(() {
+      final currentOpacity = animationValue.state;
       return AnimatedStyle()
         .opacity(ReanimatedValue(
-          from: 0.1,
-          to: animationValue.state,
-          duration: 300,
-          curve: 'easeInOut',
+          from: currentOpacity, // Always start from current opacity
+          to: currentOpacity,   // Always end at current opacity
+          duration: 1, // Instant for real-time tracking
+          curve: 'linear',
         ));
     }, dependencies: [animationValue.state]);
 
     final drawerStyle = useAnimatedStyle(() {
+      final currentWidth = animationValue.state * 70 + 20;
       return AnimatedStyle()
         .layout(width: ReanimatedValue(
-          from: 20,
-          to: animationValue.state * 70 + 20,
-          duration: 300,
-          curve: 'easeOut',
+          from: currentWidth, // Always start from current position
+          to: currentWidth,   // Always end at current position
+          duration: 1, // Instant for real-time tracking
+          curve: 'linear',
         ));
     }, dependencies: [animationValue.state]);
+
+    // Helper function for smooth animated transitions to target values
+    void animateToValue(double targetValue) {
+      // Create intermediate steps for smooth animation
+      final steps = 10;
+      final currentVal = animationValue.state;
+      final stepSize = (targetValue - currentVal) / steps;
+      
+      for (int i = 0; i < steps; i++) {
+        Future.delayed(Duration(milliseconds: i * 30), () {
+          final newValue = currentVal + (stepSize * (i + 1));
+          animationValue.setState(newValue.clamp(0.0, 1.0));
+        });
+      }
+    }
 
     return DCFView(
       layout: LayoutProps(
@@ -159,8 +177,8 @@ class AnimatedModalScreen extends StatefulComponent {
                         buttonProps: DCFButtonProps(title: "Close"),
                         onPress: (v) {
                           try {
-                            // Animate to closed state
-                            animationValue.setState(0.0);
+                            // Smooth animate to closed state
+                            animateToValue(0.0);
                           } catch (_) {}
                         },
                       ),
@@ -183,8 +201,8 @@ class AnimatedModalScreen extends StatefulComponent {
               buttonProps: DCFButtonProps(title: "Reset"),
               onPress: (v) {
                 try {
-                  // Reset to initial value
-                  animationValue.setState(0.2);
+                  // Smooth animate to reset value
+                  animateToValue(0.2);
                 } catch (_) {}
               },
             ),
