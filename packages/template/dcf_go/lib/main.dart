@@ -3,6 +3,7 @@ import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() {
+  LayoutConfig.enableWebDefaults();
   DCFlight.start(app: MyStackApp());
 }
 
