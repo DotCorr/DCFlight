@@ -16,35 +16,20 @@ class AnimatedModalScreen extends StatefulComponent {
       // Animate width from 60px to 300px based on slider (0.0 → 1.0)
       final pixelWidth = 60 + (animationValue.state * 240); // 60px → 300px
       return AnimatedStyle()
-        .layout(width: ReanimatedValue(
-          from: pixelWidth, // Always start from current width
-          to: pixelWidth,   // Always end at current width
-          duration: 1, // Instant for real-time tracking
-          curve: 'linear',
-        ));
+        .widthValue(pixelWidth); // Simplified API - no manual ReanimatedValue!
     }, dependencies: [animationValue.state]);
 
     final opacityStyle = useAnimatedStyle(() {
-      // Scale from 0.0 to 1.0 opacity based on slider (0.0 → 1.0)
-      final currentOpacity = animationValue.state; // Direct 0.0 → 1.0 mapping
+      // Direct opacity mapping (0.0 → 1.0)
       return AnimatedStyle()
-        .opacity(ReanimatedValue(
-          from: currentOpacity, // Always start from current opacity
-          to: currentOpacity,   // Always end at current opacity
-          duration: 1, // Instant for real-time tracking
-          curve: 'linear',
-        ));
+        .opacityValue(animationValue.state); // Simplified API!
     }, dependencies: [animationValue.state]);
 
     final drawerStyle = useAnimatedStyle(() {
-      final currentWidth = animationValue.state * 80 + 20; // 20% → 100%
+      // Animate drawer width from 60px to 300px
+      final drawerWidth = 60 + (animationValue.state * 240); // 60px → 300px
       return AnimatedStyle()
-        .layout(width: ReanimatedValue(
-          from: currentWidth, // Always start from current position
-          to: currentWidth,   // Always end at current position
-          duration: 1, // Instant for real-time tracking
-          curve: 'linear',
-        ));
+        .widthValue(drawerWidth); // Simplified API!
     }, dependencies: [animationValue.state]);
 
     return DCFView(
