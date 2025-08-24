@@ -103,7 +103,6 @@ class AnimatedModalScreen extends StatefulComponent {
                         layout: LayoutProps(height: 60), // Width controlled by animation
                         styleSheet: StyleSheet(backgroundColor: Colors.blueAccent),
                         animatedStyle: transformStyle,
-                        autoStart: true,
                         children: [
                           DCFText(content: "I animate from 0 to full width!"),
                         ],
@@ -127,7 +126,6 @@ class AnimatedModalScreen extends StatefulComponent {
                     layout: LayoutProps(width: "50%", height: 80),
                     styleSheet: StyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
-                    autoStart: true,
                     children: [],
                   ),
                 ],
@@ -156,7 +154,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       borderWidth: 1
                     ),
                     animatedStyle: drawerStyle,
-                    autoStart: true,
                     children: [
                       DCFText(content: "I am a pure UI thread animated drawer"),
                       DCFButton(
