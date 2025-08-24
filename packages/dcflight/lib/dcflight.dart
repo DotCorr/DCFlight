@@ -62,6 +62,7 @@ export 'framework/constants/style/color_utils.dart';
 
 // Utilities
 export 'framework/utilities/screen_utilities.dart';
+export 'framework/utils/dcf_logger.dart';
 
 // DevTools (debug mode only)
 export 'framework/devtools/hot_restart.dart';
@@ -76,11 +77,20 @@ import 'framework/utilities/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
 export 'framework/renderer/interface/tunnel.dart';
 import 'framework/devtools/hot_restart.dart';
+import 'framework/utils/dcf_logger.dart';
 import 'package:flutter/material.dart';
 export 'package:equatable/equatable.dart';
 
 /// DCFlight Framework entry points
 class DCFlight {
+  /// Set the global log level for DCFlight framework
+  static void setLogLevel(DCFLogLevel level) {
+    DCFLogger.setLevel(level);
+  }
+  
+  /// Get the current log level
+  static DCFLogLevel get logLevel => DCFLogger.currentLevel;
+
   /// Initialize the DCFlight framework
   static Future<bool> _initialize() async {
     WidgetsFlutterBinding.ensureInitialized();
