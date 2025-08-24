@@ -177,6 +177,80 @@ class AnimatedStyle {
   Map<String, dynamic> toMap() {
     return _animations.map((key, value) => MapEntry(key, value.toMap()));
   }
+
+  // ============================================================================
+  // SIMPLIFIED SHARED VALUE API - NO MANUAL ReanimatedValue CONSTRUCTION
+  // ============================================================================
+  
+  /// Simple opacity animation from shared value
+  /// Automatically handles real-time updates without manual ReanimatedValue construction
+  AnimatedStyle opacityValue(double sharedValue) {
+    _animations['opacity'] = ReanimatedValue(
+      from: sharedValue,
+      to: sharedValue,
+      duration: 1, // Instant for real-time tracking
+      curve: 'linear',
+    );
+    return this;
+  }
+  
+  /// Simple width animation with automatic pixel/percentage handling
+  /// Supports: pixels (e.g., 150.0), percentages (0.0→1.0 becomes 0%→100%)
+  AnimatedStyle widthValue(double sharedValue, {bool asPercentage = false}) {
+    final finalValue = asPercentage ? sharedValue * 100 : sharedValue;
+    _animations['width'] = ReanimatedValue(
+      from: finalValue,
+      to: finalValue,
+      duration: 1, // Instant for real-time tracking  
+      curve: 'linear',
+    );
+    return this;
+  }
+  
+  /// Simple height animation with automatic pixel/percentage handling
+  AnimatedStyle heightValue(double sharedValue, {bool asPercentage = false}) {
+    final finalValue = asPercentage ? sharedValue * 100 : sharedValue;
+    _animations['height'] = ReanimatedValue(
+      from: finalValue,
+      to: finalValue,
+      duration: 1, // Instant for real-time tracking
+      curve: 'linear',
+    );
+    return this;
+  }
+  
+  /// Simple scale animation from shared value
+  AnimatedStyle scaleValue(double sharedValue) {
+    _animations['scale'] = ReanimatedValue(
+      from: sharedValue,
+      to: sharedValue,
+      duration: 1, // Instant for real-time tracking
+      curve: 'linear',
+    );
+    return this;
+  }
+  
+  /// Simple translateX animation from shared value
+  AnimatedStyle translateXValue(double sharedValue) {
+    _animations['translateX'] = ReanimatedValue(
+      from: sharedValue,
+      to: sharedValue,
+      duration: 1, // Instant for real-time tracking
+      curve: 'linear',
+    );
+    return this;
+  }
+  
+  /// Simple translateY animation from shared value
+  AnimatedStyle translateYValue(double sharedValue) {
+    _animations['translateY'] = ReanimatedValue(
+      from: sharedValue,
+      to: sharedValue,
+      duration: 1, // Instant for real-time tracking
+      curve: 'linear',
+    );
+    return this;
+  }
 }
 
 // ============================================================================
