@@ -48,14 +48,13 @@ class AnimatedModalScreen extends StatefulComponent {
               DCFSegmentItem(title: "Transform"),
               DCFSegmentItem(title: "Opacity"), 
               DCFSegmentItem(title: "Drawer"),
+              DCFSegmentItem(title: "Complex"), // NEW: Complex preset animations
             ],
             selectedIndex: selectedDemoState.state,
           ),
           onSelectionChange: (v) {
             try {
               selectedDemoState.setState(v['selectedIndex']);
-
-
             } catch (_) {}
           },
         ),
@@ -168,6 +167,257 @@ class AnimatedModalScreen extends StatefulComponent {
                             animationValue.setState(0.0);
                           } catch (_) {}
                         },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+            // Complex preset animations demo - showcases ALL DCF Reanimated APIs
+            if (selectedDemoState.state == 3)
+              DCFScrollView(
+                layout: LayoutProps(width: "100%", height: "100%", gap: 16, padding: 12),
+                children: [
+                  DCFText(
+                    content: "Complex Preset Animations - API Showcase", 
+                    textProps: DCFTextProps(fontSize: 16, fontWeight: DCFFontWeight.bold)
+                  ),
+                  
+                  // Entrance Animations Section
+                  DCFText(
+                    content: "🚀 Entrance Animations", 
+                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                  ),
+                  
+                  DCFView(
+                    layout: LayoutProps(flexDirection: YogaFlexDirection.row, gap: 8, flexWrap: YogaWrap.wrap),
+                    children: [
+                      // Fade In
+                      ReanimatedView(
+                        animationId: "fade-in-demo",
+                        animatedStyle: Reanimated.fadeIn(duration: 800, delay: 0),
+                        layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
+                        styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
+                        children: [
+                          DCFText(content: "Fade", textProps: DCFTextProps(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                      
+                      // Scale In
+                      ReanimatedView(
+                        animationId: "scale-in-demo", 
+                        animatedStyle: Reanimated.scaleIn(fromScale: 0.0, toScale: 1.0, duration: 600, delay: 200),
+                        layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
+                        styleSheet: StyleSheet(backgroundColor: Colors.green, borderRadius: 8),
+                        children: [
+                          DCFText(content: "Scale", textProps: DCFTextProps(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                      
+                      // Slide In Right
+                      ReanimatedView(
+                        animationId: "slide-right-demo",
+                        animatedStyle: Reanimated.slideInRight(distance: 100.0, duration: 700, delay: 400),
+                        layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
+                        styleSheet: StyleSheet(backgroundColor: Colors.purple, borderRadius: 8),
+                        children: [
+                          DCFText(content: "→ Slide", textProps: DCFTextProps(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                      
+                      // Slide In Left  
+                      ReanimatedView(
+                        animationId: "slide-left-demo",
+                        animatedStyle: Reanimated.slideInLeft(distance: 100.0, duration: 700, delay: 600),
+                        layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
+                        styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 8),
+                        children: [
+                          DCFText(content: "← Slide", textProps: DCFTextProps(color: Colors.white, fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  
+                  // Complex Combined Animation
+                  DCFText(
+                    content: "✨ Complex Combined Animation", 
+                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                  ),
+                  
+                  ReanimatedView(
+                    animationId: "slide-scale-fade-demo",
+                    animatedStyle: Reanimated.slideScaleFadeIn(
+                      slideDistance: 80.0,
+                      fromScale: 0.7,
+                      toScale: 1.1, // Overshoot for premium effect
+                      duration: 900,
+                      delay: 800,
+                      curve: 'easeOut',
+                    ),
+                    layout: LayoutProps(width: "90%", height: 100, alignSelf: YogaAlign.center, padding: 16),
+                    styleSheet: StyleSheet(
+                      backgroundColor: Colors.indigo,
+                      borderRadius: 12,
+                    ),
+                    children: [
+                      DCFText(
+                        content: "🎯 Premium Combined Animation", 
+                        textProps: DCFTextProps(color: Colors.white, fontSize: 14, fontWeight: DCFFontWeight.bold)
+                      ),
+                      DCFText(
+                        content: "Slide + Scale + Fade with overshoot", 
+                        textProps: DCFTextProps(color: Colors.white, fontSize: 12)
+                      ),
+                    ],
+                  ),
+                  
+                  // Continuous Animations Section
+                  DCFText(
+                    content: "🔄 Continuous Animations", 
+                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                  ),
+                  
+                  DCFView(
+                    layout: LayoutProps(flexDirection: YogaFlexDirection.row, gap: 12, justifyContent: YogaJustifyContent.spaceEvenly),
+                    children: [
+                      // Rotating Spinner
+                      ReanimatedView(
+                        animationId: "rotate-demo",
+                        animatedStyle: Reanimated.rotate(
+                          toRotation: 6.28, // Full 360° rotation
+                          duration: 2000,
+                          delay: 1000,
+                        ),
+                        layout: LayoutProps(width: 60, height: 60),
+                        styleSheet: StyleSheet(backgroundColor: Colors.red, borderRadius: 30),
+                        children: [
+                          DCFText(content: "🌀", textProps: DCFTextProps(fontSize: 24)),
+                        ],
+                      ),
+                      
+                      // Pulsing Heart
+                      ReanimatedView(
+                        animationId: "pulse-demo",
+                        animatedStyle: Reanimated.pulse(
+                          minOpacity: 0.3,
+                          maxOpacity: 1.0,
+                          duration: 1200,
+                          delay: 1200,
+                        ),
+                        layout: LayoutProps(width: 60, height: 60),
+                        styleSheet: StyleSheet(backgroundColor: Colors.pink, borderRadius: 30),
+                        children: [
+                          DCFText(content: "💖", textProps: DCFTextProps(fontSize: 24)),
+                        ],
+                      ),
+                      
+                      // Bouncing Ball
+                      ReanimatedView(
+                        animationId: "bounce-demo",
+                        animatedStyle: Reanimated.bounce(
+                          bounceScale: 1.4,
+                          duration: 500,
+                          delay: 1400,
+                          repeatCount: 4,
+                        ),
+                        layout: LayoutProps(width: 60, height: 60),
+                        styleSheet: StyleSheet(backgroundColor: Colors.yellow, borderRadius: 30),
+                        children: [
+                          DCFText(content: "⚽", textProps: DCFTextProps(fontSize: 24)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  
+                  // Error State Animation
+                  DCFText(
+                    content: "⚠️ Error State Animation", 
+                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                  ),
+                  
+                  ReanimatedView(
+                    animationId: "wiggle-demo",
+                    animatedStyle: Reanimated.wiggle(
+                      wiggleAngle: 0.15, // ~8 degrees
+                      duration: 80,
+                      delay: 1800,
+                      repeatCount: 6,
+                    ),
+                    layout: LayoutProps(width: "80%", height: 50, alignSelf: YogaAlign.center, padding: 12),
+                    styleSheet: StyleSheet(
+                      backgroundColor: Colors.red.shade100,
+                      borderColor: Colors.red,
+                      borderWidth: 2,
+                      borderRadius: 8,
+                    ),
+                    children: [
+                      DCFText(
+                        content: "❌ This field has an error - watch me wiggle!", 
+                        textProps: DCFTextProps(color: Colors.red, fontSize: 12)
+                      ),
+                    ],
+                  ),
+                  
+                  // Staggered Animation Sequence
+                  DCFText(
+                    content: "🎬 Staggered Animation Sequence", 
+                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                  ),
+                  
+                  DCFView(
+                    layout: LayoutProps(gap: 4),
+                    children: [
+                      // Item 1
+                      ReanimatedView(
+                        animationId: "stagger-1",
+                        animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2200),
+                        layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
+                        styleSheet: StyleSheet(backgroundColor: Colors.teal.shade100, borderRadius: 4),
+                        children: [
+                          DCFText(content: "📋 List Item 1", textProps: DCFTextProps(fontSize: 12)),
+                        ],
+                      ),
+                      
+                      // Item 2
+                      ReanimatedView(
+                        animationId: "stagger-2", 
+                        animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2350),
+                        layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
+                        styleSheet: StyleSheet(backgroundColor: Colors.teal.shade200, borderRadius: 4),
+                        children: [
+                          DCFText(content: "📋 List Item 2", textProps: DCFTextProps(fontSize: 12)),
+                        ],
+                      ),
+                      
+                      // Item 3
+                      ReanimatedView(
+                        animationId: "stagger-3",
+                        animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2500),
+                        layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
+                        styleSheet: StyleSheet(backgroundColor: Colors.teal.shade300, borderRadius: 4),
+                        children: [
+                          DCFText(content: "📋 List Item 3", textProps: DCFTextProps(fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  
+                  // Exit Animation Demo
+                  DCFText(
+                    content: "👋 Exit Animation", 
+                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                  ),
+                  
+                  ReanimatedView(
+                    animationId: "fade-out-demo",
+                    animatedStyle: Reanimated.fadeOut(duration: 1000, delay: 3000),
+                    layout: LayoutProps(width: "70%", height: 60, alignSelf: YogaAlign.center, padding: 12),
+                    styleSheet: StyleSheet(backgroundColor: Colors.grey.shade300, borderRadius: 8),
+                    onAnimationComplete: () => print("🎉 Exit animation completed!"),
+                    children: [
+                      DCFText(
+                        content: "👻 I will disappear after 3 seconds", 
+                        textProps: DCFTextProps(fontSize: 12, textAlign: "center")
                       ),
                     ],
                   ),
