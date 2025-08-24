@@ -5,14 +5,42 @@ import "package:dcflight/dcflight.dart";
 class AnimatedModalScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    // Shared interactive value (use hook so component re-renders)
-    final shared = useState<double>(0.2);
-
+    // Animation value state that drives all animations
+    final animationValue = useState<double>(0.2);
+    
     // Which demo to show: 0 = Transform, 1 = Opacity, 2 = Drawer
     final selectedDemoState = useState<int>(0);
 
-    // Drawer width expressed as percent string so the Yoga layout can handle it
-    final drawerPercent = "${(shared.state * 70 + 20).toStringAsFixed(0)}%"; // range 20%..90%
+    // Create animated styles for each demo type
+    final transformStyle = useAnimatedStyle(() {
+      return AnimatedStyle()
+        .layout(width: ReanimatedValue(
+          from: 10,
+          to: animationValue.state * 80 + 10,
+          duration: 300,
+          curve: 'easeOut',
+        ));
+    }, dependencies: [animationValue.state]);
+
+    final opacityStyle = useAnimatedStyle(() {
+      return AnimatedStyle()
+        .opacity(ReanimatedValue(
+          from: 0.1,
+          to: animationValue.state,
+          duration: 300,
+          curve: 'easeInOut',
+        ));
+    }, dependencies: [animationValue.state]);
+
+    final drawerStyle = useAnimatedStyle(() {
+      return AnimatedStyle()
+        .layout(width: ReanimatedValue(
+          from: 20,
+          to: animationValue.state * 70 + 20,
+          duration: 300,
+          curve: 'easeOut',
+        ));
+    }, dependencies: [animationValue.state]);
 
     return DCFView(
       layout: LayoutProps(
@@ -40,16 +68,17 @@ class AnimatedModalScreen extends StatefulComponent {
           },
         ),
 
-        // Slider that drives a "shared" animation value used across demos.
+        // Slider that drives a shared animation value used across demos
         DCFView(
           layout: LayoutProps(gap: 8, flex: 1), 
           children: [
-            DCFText(content: "Shared value: ${shared.state.toStringAsFixed(2)}"),
+            DCFText(content: "Animation value: ${animationValue.state.toStringAsFixed(2)}"),
             DCFSlider(
-              value: shared.state,
+              value: animationValue.state,
               onValueChange: (v) {
                 try {
-                  shared.setState(v['value']);
+                  final newValue = v['value'] as double;
+                  animationValue.setState(newValue);
                 } catch (_) {}
               },
             ),
@@ -69,13 +98,13 @@ class AnimatedModalScreen extends StatefulComponent {
                     content: "Transform demo (translateX)", 
                     textProps: DCFTextProps(fontSize: 14)
                   ),
-                  // A simple colored box whose left offset is driven by sharedValue percentage
-                  DCFView(
-                    layout: LayoutProps(
-                      width: "${(shared.state * 80 + 10).toStringAsFixed(0)}%",
-                      height: 60,
-                    ),
+                  // Pure UI thread animated box using ReanimatedView
+                  ReanimatedView(
+                    layout: LayoutProps(height: 60),
                     styleSheet: StyleSheet(backgroundColor: Colors.blueAccent),
+                    animatedStyle: transformStyle,
+                    autoStart: true,
+                    children: [],
                   ),
                 ],
               ),
@@ -89,11 +118,13 @@ class AnimatedModalScreen extends StatefulComponent {
                     content: "Opacity demo", 
                     textProps: DCFTextProps(fontSize: 14)
                   ),
-                  DCFView(
+                  // Pure UI thread opacity animation using ReanimatedView
+                  ReanimatedView(
                     layout: LayoutProps(width: "50%", height: 80),
-                    styleSheet: StyleSheet(
-                      backgroundColor: Colors.red.withOpacity(shared.state)
-                    ),
+                    styleSheet: StyleSheet(backgroundColor: Colors.red),
+                    animatedStyle: opacityStyle,
+                    autoStart: true,
+                    children: [],
                   ),
                 ],
               ),
@@ -107,12 +138,11 @@ class AnimatedModalScreen extends StatefulComponent {
                     content: "Drawer demo (controlled by slider)", 
                     textProps: DCFTextProps(fontSize: 14)
                   ),
-                  // Drawer container uses absolute positioning to emulate an overlay drawer
-                  DCFView(
+                  // Pure UI thread animated drawer using ReanimatedView
+                  ReanimatedView(
                     layout: LayoutProps(
                       position: YogaPositionType.absolute, 
                       absoluteLayout: AbsoluteLayout(left: 0, top: 40), 
-                      width: drawerPercent, 
                       height: 160, 
                       padding: 12
                     ),
@@ -121,13 +151,16 @@ class AnimatedModalScreen extends StatefulComponent {
                       borderColor: Colors.grey.shade300, 
                       borderWidth: 1
                     ),
+                    animatedStyle: drawerStyle,
+                    autoStart: true,
                     children: [
-                      DCFText(content: "I am a drawer — width = $drawerPercent"),
+                      DCFText(content: "I am a pure UI thread animated drawer"),
                       DCFButton(
                         buttonProps: DCFButtonProps(title: "Close"),
                         onPress: (v) {
                           try {
-                            shared.setState(0.0); // animate closed via slider programmatically
+                            // Animate to closed state
+                            animationValue.setState(0.0);
                           } catch (_) {}
                         },
                       ),
@@ -150,7 +183,8 @@ class AnimatedModalScreen extends StatefulComponent {
               buttonProps: DCFButtonProps(title: "Reset"),
               onPress: (v) {
                 try {
-                  shared.setState(0.2);
+                  // Reset to initial value
+                  animationValue.setState(0.2);
                 } catch (_) {}
               },
             ),
