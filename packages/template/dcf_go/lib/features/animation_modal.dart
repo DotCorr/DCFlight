@@ -13,10 +13,10 @@ class AnimatedModalScreen extends StatefulComponent {
 
     // Create animated styles for smooth continuous updates (no bouncing)
     final transformStyle = useAnimatedStyle(() {
-      // Animate width from 60px to 300px based on slider (0.0 → 1.0)
-      final pixelWidth = 60 + (animationValue.state * 240); // 60px → 300px
+      // Animate from 0px to ~350px width (full container width minus padding)
+      final width = animationValue.state * 350; // 0px → 350px
       return AnimatedStyle()
-        .widthValue(pixelWidth); // Simplified API - no manual ReanimatedValue!
+        .widthValue(width); // Simplified API!
     }, dependencies: [animationValue.state]);
 
     final opacityStyle = useAnimatedStyle(() {
@@ -26,10 +26,10 @@ class AnimatedModalScreen extends StatefulComponent {
     }, dependencies: [animationValue.state]);
 
     final drawerStyle = useAnimatedStyle(() {
-      // Animate drawer width from 60px to 300px
-      final drawerWidth = 60 + (animationValue.state * 240); // 60px → 300px
+      // Animate drawer from 0px to ~350px width
+      final width = animationValue.state * 350; // 0px → 350px
       return AnimatedStyle()
-        .widthValue(drawerWidth); // Simplified API!
+        .widthValue(width); // Simplified API!
     }, dependencies: [animationValue.state]);
 
     return DCFView(
@@ -84,20 +84,31 @@ class AnimatedModalScreen extends StatefulComponent {
             // Transform demo: translateX based on sharedValue
             if (selectedDemoState.state == 0)
               DCFView(
-                layout: LayoutProps(width: "100%", height: 140, padding: 12),
+                layout: LayoutProps(width: "100%", height: 140),
                 children: [
-                  DCFText(
-                    content: "Transform demo (translateX)", 
-                    textProps: DCFTextProps(fontSize: 14)
-                  ),
-                  // Pure UI thread animated box using ReanimatedView
-                  ReanimatedView(
-                    layout: LayoutProps(height: 60,), // Width controlled by animation
-                    styleSheet: StyleSheet(backgroundColor: Colors.blueAccent),
-                    animatedStyle: transformStyle,
-                    autoStart: true,
+                  DCFView(
+                    layout: LayoutProps(padding: 12),
                     children: [
-                      DCFText(content: "I am a pure UI thread animated box"),
+                      DCFText(
+                        content: "Transform demo (width)", 
+                        textProps: DCFTextProps(fontSize: 14)
+                      ),
+                    ],
+                  ),
+                  // Container with no padding for full width animation
+                  DCFView(
+                    layout: LayoutProps(paddingLeft: 12, paddingRight: 12),
+                    children: [
+                      // Pure UI thread animated box using ReanimatedView
+                      ReanimatedView(
+                        layout: LayoutProps(height: 60), // Width controlled by animation
+                        styleSheet: StyleSheet(backgroundColor: Colors.blueAccent),
+                        animatedStyle: transformStyle,
+                        autoStart: true,
+                        children: [
+                          DCFText(content: "I animate from 0 to full width!"),
+                        ],
+                      ),
                     ],
                   ),
                 ],
