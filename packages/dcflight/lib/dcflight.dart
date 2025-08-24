@@ -55,6 +55,7 @@ export 'framework/renderer/interface/interface_impl.dart';
 // Core Constants and Properties - explicitly exported for component developers
 export 'framework/constants/layout/yoga_enums.dart';
 export 'framework/constants/layout/layout_properties.dart';
+export 'framework/constants/layout/layout_config.dart'; 
 export 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 export 'framework/constants/style/style_properties.dart';
 export 'framework/constants/style/color_utils.dart';
