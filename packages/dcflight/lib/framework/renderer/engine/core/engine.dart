@@ -302,36 +302,38 @@ class DCFEngine {
     return false;
   }
 
-  /// O(props comparison) - Check if two elements with same type have incompatible stateful props
-  /// that require component replacement rather than reconciliation
-  bool _shouldReplaceForIncompatibleState(DCFElement oldElement, DCFElement newElement) {
-    // Only check for specific component types that have stateful issues
-    if (oldElement.type == 'ReanimatedView') {
-      final oldAnimatedStyle = oldElement.props['animatedStyle'] as Map<String, dynamic>?;
-      final newAnimatedStyle = newElement.props['animatedStyle'] as Map<String, dynamic>?;
+  /// O(1) - Check if two components at same position should be replaced (for conditional rendering)
+  bool _shouldReplaceAtSamePosition(DCFComponentNode oldChild, DCFComponentNode newChild) {
+    // Different component types at same position = likely conditional rendering
+    if (oldChild.runtimeType != newChild.runtimeType) {
+      return true;
+    }
+    
+    // Same component type but different rendered content = conditional rendering pattern
+    if (oldChild is StatefulComponent && newChild is StatefulComponent) {
+      final oldRendered = oldChild.renderedNode;
+      final newRendered = newChild.renderedNode;
       
-      // If both have animated styles, check if they have different animation types
-      if (oldAnimatedStyle != null && newAnimatedStyle != null) {
-        final oldAnimations = oldAnimatedStyle['animations'] as Map<String, dynamic>?;
-        final newAnimations = newAnimatedStyle['animations'] as Map<String, dynamic>?;
-        
-        if (oldAnimations != null && newAnimations != null) {
-          // Check if they animate different properties (e.g., width vs opacity)
-          final oldProperties = oldAnimations.keys.toSet();
-          final newProperties = newAnimations.keys.toSet();
-          
-          // If the animated properties are completely different, replace the component
-          if (oldProperties.intersection(newProperties).isEmpty) {
-            EngineDebugLogger.log('INCOMPATIBLE_ANIMATION_STATE', 
-                'Old props: $oldProperties, New props: $newProperties');
-            return true;
-          }
-        }
+      // Different element types being rendered = conditional pattern
+      if (oldRendered is DCFElement && newRendered is DCFElement) {
+        return oldRendered.type != newRendered.type;
       }
+      // Different component types being rendered
+      return oldRendered.runtimeType != newRendered.runtimeType;
+    }
+    
+    // Same type elements but significantly different props structure = conditional branches
+    if (oldChild is DCFElement && newChild is DCFElement && oldChild.type == newChild.type) {
+      final oldPropKeys = oldChild.props.keys.toSet();
+      final newPropKeys = newChild.props.keys.toSet();
       
-      // One has animated style, other doesn't - replace
-      if ((oldAnimatedStyle == null) != (newAnimatedStyle == null)) {
-        return true;
+      // If prop structures are very different (< 50% overlap), likely different conditional branches
+      if (oldPropKeys.isNotEmpty && newPropKeys.isNotEmpty) {
+        final commonProps = oldPropKeys.intersection(newPropKeys);
+        final totalUniqueProps = oldPropKeys.union(newPropKeys);
+        final overlapPercentage = commonProps.length / totalUniqueProps.length;
+        
+        return overlapPercentage < 0.5; // Less than 50% prop overlap = replace
       }
     }
     
@@ -1136,10 +1138,6 @@ class DCFEngine {
       if (oldNode.type != newNode.type) {
         EngineDebugLogger.logReconcile('REPLACE_ELEMENT_TYPE', oldNode, newNode,
             reason: 'Different element types');
-        await _replaceNode(oldNode, newNode);
-      } else if (_shouldReplaceForIncompatibleState(oldNode, newNode)) {
-        EngineDebugLogger.logReconcile('REPLACE_INCOMPATIBLE_STATE', oldNode, newNode,
-            reason: 'Same element type but incompatible stateful props');
         await _replaceNode(oldNode, newNode);
       } else {
         EngineDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
@@ -1974,9 +1972,17 @@ class DCFEngine {
       EngineDebugLogger.log(
           'RECONCILE_SIMPLE_UPDATE', 'Updating child at index $i');
 
-      await _reconcile(oldChild, newChild);
+      // Smart conditional rendering: if same position but very different components,
+      // replace instead of reconcile to prevent state bleeding
+      if (_shouldReplaceAtSamePosition(oldChild, newChild)) {
+        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE', 
+            'Replacing child at index $i due to conditional rendering pattern');
+        await _replaceNode(oldChild, newChild);
+      } else {
+        await _reconcile(oldChild, newChild);
+      }
 
-      final childViewId = oldChild.effectiveNativeViewId;
+      final childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
       if (childViewId != null) {
         updatedChildIds.add(childViewId);
       }
