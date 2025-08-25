@@ -144,6 +144,21 @@ class DCFEngine {
     return viewId;
   }
 
+  /// O(1) - Get node key with automatic fallback to instanceId
+  String _getNodeKey(DCFComponentNode node, int index) {
+    if (node.key != null) {
+      return node.key!;
+    }
+
+    if (node is StatefulComponent) {
+      return node.instanceId;
+    } else if (node is StatelessComponent) {
+      return node.instanceId;
+    }
+
+    return 'index_$index';
+  }
+
   /// O(1) - Register a component in the VDOM
   void registerComponent(DCFComponentNode component) {
     EngineDebugLogger.logMount(component, context: 'registerComponent');
@@ -263,29 +278,29 @@ class DCFEngine {
 
   /// O(props count) - Check if two components are semantically equal
   bool _componentsAreEqual(
-    DCFComponentNode oldComponent, DCFComponentNode newComponent) {
-  if (oldComponent.runtimeType != newComponent.runtimeType) {
+      DCFComponentNode oldComponent, DCFComponentNode newComponent) {
+    if (oldComponent.runtimeType != newComponent.runtimeType) {
+      return false;
+    }
+
+    if (oldComponent.key != newComponent.key) {
+      return false;
+    }
+
+    if (oldComponent is StatelessComponent &&
+        newComponent is StatelessComponent) {
+      // MORE STRICT: Only reuse if they're actually equal AND same instanceId
+      return oldComponent == newComponent &&
+          oldComponent.instanceId == newComponent.instanceId;
+    }
+
+    if (oldComponent is StatefulComponent &&
+        newComponent is StatefulComponent) {
+      return identical(oldComponent, newComponent);
+    }
+
     return false;
   }
-
-  if (oldComponent.key != newComponent.key) {
-    return false;
-  }
-
-  if (oldComponent is StatelessComponent &&
-      newComponent is StatelessComponent) {
-    final result = oldComponent == newComponent;
-    return result;
-  }
-
-  // For StatefulComponents, only reuse if it's the SAME INSTANCE
-  if (oldComponent is StatefulComponent &&
-      newComponent is StatefulComponent) {
-    return identical(oldComponent, newComponent);
-  }
-
-  return false;
-}
 
   /// O(1) - Schedule a component update with priority handling
   void _scheduleComponentUpdate(StatefulComponent component) {
@@ -1622,7 +1637,8 @@ class DCFEngine {
       }
 
       // O(props count) - Find changed props using proper diffing algorithm
-      final changedProps = _diffProps(oldElement.type, oldElement.props, newElement.props);
+      final changedProps =
+          _diffProps(oldElement.type, oldElement.props, newElement.props);
 
       // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
@@ -1747,16 +1763,17 @@ class DCFEngine {
   }
 
   /// O(children count) - Check if any children have explicit keys
-bool _childrenHaveKeys(List<DCFComponentNode> children) {
-  if (children.isEmpty) return false;
+  bool _childrenHaveKeys(List<DCFComponentNode> children) {
+    if (children.isEmpty) return false;
 
-  // Only use keyed reconciliation if ALL children have keys
-  for (var child in children) {
-    if (child.key == null) return false;
+    // Only use keyed reconciliation if ALL children have keys
+    for (var child in children) {
+      if (child.key == null) return false;
+    }
+
+    return true;
   }
 
-  return true;
-}
   /// O(children reconciliation complexity) - Reconcile fragment children directly without a container element
   Future<void> _reconcileFragmentChildren(
       String parentViewId,
@@ -1797,7 +1814,7 @@ bool _childrenHaveKeys(List<DCFComponentNode> children) {
     final oldChildOrderByKey = <String?, int>{};
     for (int i = 0; i < oldChildren.length; i++) {
       final oldChild = oldChildren[i];
-      final key = oldChild.key ?? i.toString();
+      final key = _getNodeKey(oldChild, i);
       oldChildrenMap[key] = oldChild;
       oldChildOrderByKey[key] = i;
     }
@@ -1812,7 +1829,7 @@ bool _childrenHaveKeys(List<DCFComponentNode> children) {
     // O(new children count * reconciliation complexity) - Process each new child
     for (int i = 0; i < newChildren.length; i++) {
       final newChild = newChildren[i];
-      final key = newChild.key ?? i.toString();
+      final key = _getNodeKey(newChild, i);
       final oldChild = oldChildrenMap[key];
 
       String? childViewId;
