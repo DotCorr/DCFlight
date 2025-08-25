@@ -7,6 +7,9 @@
 
 library dcf_reanimated;
 
+// Type-safe enums for animation configuration
+export 'src/enums/animation_enums.dart';
+
 // Core animation values and configuration
 export 'src/values/animation_values.dart';
 

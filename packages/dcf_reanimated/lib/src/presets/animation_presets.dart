@@ -9,6 +9,7 @@ library dcf_reanimated.presets;
 
 import '../values/animation_values.dart';
 import '../styles/animated_style.dart';
+import '../enums/animation_enums.dart';
 
 /// Pre-configured animation presets for common UI patterns.
 /// 
@@ -49,7 +50,7 @@ class Reanimated {
   static AnimatedStyle fadeIn({
     int duration = 300,
     int delay = 0,
-    String curve = 'easeInOut',
+    AnimationCurve curve = AnimationCurve.easeInOut,
   }) {
     return AnimatedStyle().opacity(ReanimatedValue(
       from: 0.0,
@@ -77,7 +78,7 @@ class Reanimated {
     double toScale = 1.0,
     int duration = 300,
     int delay = 0,
-    String curve = 'easeOut',
+    AnimationCurve curve = AnimationCurve.easeOut,
   }) {
     return AnimatedStyle().transform(
       scale: ReanimatedValue(
@@ -106,7 +107,7 @@ class Reanimated {
     double distance = 100.0,
     int duration = 300,
     int delay = 0,
-    String curve = 'easeOut',
+    AnimationCurve curve = AnimationCurve.easeOut,
   }) {
     return AnimatedStyle().transform(
       translateX: ReanimatedValue(
@@ -135,7 +136,7 @@ class Reanimated {
     double distance = 100.0,
     int duration = 300,
     int delay = 0,
-    String curve = 'easeOut',
+    AnimationCurve curve = AnimationCurve.easeOut,
   }) {
     return AnimatedStyle().transform(
       translateX: ReanimatedValue(
@@ -164,7 +165,7 @@ class Reanimated {
     double distance = 100.0,
     int duration = 300,
     int delay = 0,
-    String curve = 'easeOut',
+    AnimationCurve curve = AnimationCurve.easeOut,
   }) {
     return AnimatedStyle().transform(
       translateY: ReanimatedValue(
@@ -193,7 +194,7 @@ class Reanimated {
     double distance = 100.0,
     int duration = 300,
     int delay = 0,
-    String curve = 'easeOut',
+    AnimationCurve curve = AnimationCurve.easeOut,
   }) {
     return AnimatedStyle().transform(
       translateY: ReanimatedValue(
@@ -225,7 +226,7 @@ class Reanimated {
   static AnimatedStyle fadeOut({
     int duration = 300,
     int delay = 0,
-    String curve = 'easeInOut',
+    AnimationCurve curve = AnimationCurve.easeInOut,
   }) {
     return AnimatedStyle().opacity(ReanimatedValue(
       from: 1.0,
@@ -253,7 +254,7 @@ class Reanimated {
     double toScale = 0.0,
     int duration = 300,
     int delay = 0,
-    String curve = 'easeIn',
+    AnimationCurve curve = AnimationCurve.easeIn,
   }) {
     return AnimatedStyle().transform(
       scale: ReanimatedValue(
@@ -298,7 +299,7 @@ class Reanimated {
         to: bounceScale,
         duration: duration,
         delay: delay,
-        curve: 'easeInOut',
+        curve: AnimationCurve.easeInOut,
         repeat: repeat,
         repeatCount: repeatCount,
       ),
@@ -330,7 +331,7 @@ class Reanimated {
       to: minOpacity,
       duration: duration,
       delay: delay,
-      curve: 'easeInOut',
+      curve: AnimationCurve.easeInOut,
       repeat: repeat,
       repeatCount: repeatCount,
     ));
@@ -367,7 +368,7 @@ class Reanimated {
         to: toRotation,
         duration: duration,
         delay: delay,
-        curve: 'linear', // Linear for smooth continuous rotation
+        curve: AnimationCurve.linear, // Linear for smooth continuous rotation
         repeat: repeat,
         repeatCount: repeatCount,
       ),
@@ -406,7 +407,7 @@ class Reanimated {
     double toOpacity = 1.0,
     int duration = 400,
     int delay = 0,
-    String curve = 'easeOut',
+    AnimationCurve curve = AnimationCurve.easeOut,
   }) {
     return AnimatedStyle()
         .transform(
@@ -462,7 +463,7 @@ class Reanimated {
         to: wiggleAngle,
         duration: duration,
         delay: delay,
-        curve: 'easeInOut',
+        curve: AnimationCurve.easeInOut,
         repeat: repeat,
         repeatCount: repeatCount,
       ),

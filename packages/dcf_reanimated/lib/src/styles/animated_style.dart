@@ -8,6 +8,7 @@
 library dcf_reanimated.styles;
 
 import '../values/animation_values.dart';
+import '../enums/animation_enums.dart';
 
 /// Container for multiple property animations that run on the UI thread.
 /// 
@@ -144,7 +145,7 @@ class AnimatedStyle {
       from: sharedValue,
       to: sharedValue,
       duration: 1, // Instant for real-time tracking
-      curve: 'linear',
+      curve: AnimationCurve.linear,
     );
     return this;
   }
@@ -169,7 +170,7 @@ class AnimatedStyle {
       from: finalValue,
       to: finalValue,
       duration: 1, // Instant for real-time tracking  
-      curve: 'linear',
+      curve: AnimationCurve.linear,
     );
     return this;
   }
@@ -188,7 +189,7 @@ class AnimatedStyle {
       from: finalValue,
       to: finalValue,
       duration: 1, // Instant for real-time tracking
-      curve: 'linear',
+      curve: AnimationCurve.linear,
     );
     return this;
   }
@@ -209,7 +210,7 @@ class AnimatedStyle {
       from: sharedValue,
       to: sharedValue,
       duration: 1, // Instant for real-time tracking
-      curve: 'linear',
+      curve: AnimationCurve.linear,
     );
     return this;
   }
@@ -227,7 +228,7 @@ class AnimatedStyle {
       from: sharedValue,
       to: sharedValue,
       duration: 1, // Instant for real-time tracking
-      curve: 'linear',
+      curve: AnimationCurve.linear,
     );
     return this;
   }
@@ -245,7 +246,7 @@ class AnimatedStyle {
       from: sharedValue,
       to: sharedValue,
       duration: 1, // Instant for real-time tracking
-      curve: 'linear',
+      curve: AnimationCurve.linear,
     );
     return this;
   }
