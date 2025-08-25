@@ -32,14 +32,15 @@ class AnimatedModalScreen extends StatefulComponent {
         .widthValue(width); // Simplified API!
     }, dependencies: [animationValue.state]);
 
-    return DCFView(
+    return DCFScrollView(
       layout: LayoutProps(
-        padding: 20,
+        // padding: 20,
         flex: 1,
-        paddingTop: 120,
+        // paddingTop: 120,
         gap: 16,
         paddingBottom:120
       ),
+      styleSheet: StyleSheet(backgroundColor: Colors.red.shade100),
       children: [
         // Segmented control to pick demo
         DCFSegmentedControl(
@@ -61,7 +62,7 @@ class AnimatedModalScreen extends StatefulComponent {
 
         // Slider that drives a shared animation value used across demos
         DCFView(
-          layout: LayoutProps(gap: 8, flex: 1), 
+          layout: LayoutProps(gap: 8, flex: 1,height: 50), 
           children: [
             DCFText(content: "Animation value: ${animationValue.state.toStringAsFixed(2)}"),
             DCFSlider(
@@ -244,7 +245,7 @@ class AnimatedModalScreen extends StatefulComponent {
                       toScale: 1.1, // Overshoot for premium effect
                       duration: 900,
                       delay: 800,
-                      curve: 'easeOut',
+                      curve: AnimationCurve.elasticOut,
                     ),
                     layout: LayoutProps(width: "90%", height: 100, alignSelf: YogaAlign.center, padding: 16),
                     styleSheet: StyleSheet(
@@ -414,6 +415,7 @@ class AnimatedModalScreen extends StatefulComponent {
           layout: LayoutProps(
             flexDirection: YogaFlexDirection.row, 
             flexWrap: YogaWrap.wrap,
+            height: 110,
             gap: 8
           ), 
           children: [

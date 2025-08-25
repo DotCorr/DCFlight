@@ -8,6 +8,7 @@
 library dcf_reanimated.values;
 
 import 'dart:math' as math;
+import '../enums/animation_enums.dart';
 
 /// Core animation values for DCF Reanimated
 
@@ -35,15 +36,15 @@ class ReanimatedValue {
   /// Animation duration in milliseconds
   final int duration;
   
-  /// Animation easing curve
+  /// Easing curve that defines animation progression
   /// 
-  /// Supported curves:
-  /// - 'linear': Constant speed
-  /// - 'easeIn': Slow start, fast end
-  /// - 'easeOut': Fast start, slow end
-  /// - 'easeInOut': Slow start and end
-  /// - 'spring': Natural spring motion
-  final String curve;
+  /// Use [AnimationCurve] enum for type safety:
+  /// - [AnimationCurve.linear]: Constant speed
+  /// - [AnimationCurve.easeIn]: Slow start, fast end  
+  /// - [AnimationCurve.easeOut]: Fast start, slow end
+  /// - [AnimationCurve.easeInOut]: Slow start and end
+  /// - [AnimationCurve.spring]: Natural spring motion
+  final AnimationCurve curve;
   
   /// Delay before animation starts in milliseconds
   final int delay;
@@ -61,7 +62,7 @@ class ReanimatedValue {
     required this.from,
     required this.to,
     this.duration = 300,
-    this.curve = 'easeInOut',
+    this.curve = AnimationCurve.easeInOut,
     this.delay = 0,
     this.repeat = false,
     this.repeatCount,
@@ -72,14 +73,14 @@ class ReanimatedValue {
         'from': from,
         'to': to,
         'duration': duration,
-        'curve': curve,
+        'curve': curve.value,
         'delay': delay,
         'repeat': repeat,
         if (repeatCount != null) 'repeatCount': repeatCount,
       };
 }
 
-/// A reactive value that can be animated over time on the UI thread.
+/// A reactive animation value that can be animated on the pure UI thread.
 /// 
 /// [SharedValue] provides a way to create animations that respond to
 /// state changes and can be smoothly interpolated between values.
@@ -117,12 +118,12 @@ class SharedValue {
   /// 
   /// Example:
   /// ```dart
-  /// scale.withTiming(toValue: 1.2, duration: 200, curve: 'easeOut')
+  /// scale.withTiming(toValue: 1.2, duration: 200, curve: AnimationCurve.easeOut)
   /// ```
   ReanimatedValue withTiming({
     required double toValue,
     int duration = 300,
-    String curve = 'easeInOut',
+    AnimationCurve curve = AnimationCurve.easeInOut,
     int delay = 0,
   }) {
     return ReanimatedValue(
@@ -156,7 +157,7 @@ class SharedValue {
       from: _config.to,
       to: toValue,
       duration: _calculateSpringDuration(damping, stiffness),
-      curve: 'spring',
+      curve: AnimationCurve.spring,
       delay: delay,
     );
   }
@@ -177,7 +178,7 @@ class SharedValue {
   ReanimatedValue withRepeat({
     required double toValue,
     int duration = 300,
-    String curve = 'easeInOut',
+    AnimationCurve curve = AnimationCurve.easeInOut,
     bool reverse = true,
     int? numberOfReps,
   }) {
