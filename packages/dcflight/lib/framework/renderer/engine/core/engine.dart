@@ -302,6 +302,37 @@ class DCFEngine {
     return false;
   }
 
+  /// O(1) - Determine if reconciliation should be prevented to avoid animation state transfer
+  /// This is a targeted fix specifically for animation components
+  bool _shouldPreventReconciliation(
+      DCFComponentNode oldComponent, DCFComponentNode newComponent) {
+    // Only prevent reconciliation in very specific cases to avoid breaking normal UI updates
+
+    // If components have different keys and one involves animation, prevent reconciliation
+    if (oldComponent.key != newComponent.key) {
+      final oldIsAnimated = oldComponent.runtimeType.toString().contains('ReanimatedView') || 
+                           oldComponent.runtimeType.toString().contains('Animated');
+      final newIsAnimated = newComponent.runtimeType.toString().contains('ReanimatedView') || 
+                           newComponent.runtimeType.toString().contains('Animated');
+      
+      // If either component is animated and keys differ, prevent reconciliation
+      if (oldIsAnimated || newIsAnimated) {
+        return true;
+      }
+    }
+
+    // If both components are ReanimatedView but have different keys, prevent reconciliation
+    final oldIsReanimated = oldComponent.runtimeType.toString().contains('ReanimatedView');
+    final newIsReanimated = newComponent.runtimeType.toString().contains('ReanimatedView');
+    
+    if (oldIsReanimated && newIsReanimated && oldComponent.key != newComponent.key) {
+      return true;
+    }
+
+    // For all other cases, allow normal reconciliation
+    return false;
+  }
+
   /// O(1) - Schedule a component update with priority handling
   void _scheduleComponentUpdate(StatefulComponent component) {
     EngineDebugLogger.logUpdate(component, 'State change triggered update');
@@ -1926,7 +1957,7 @@ class DCFEngine {
     final commonLength = math.min(oldChildren.length, newChildren.length);
     bool hasStructuralChanges = false;
 
-    // O(common length * reconciliation complexity) - Update common children
+    // O(common length * reconciliation complexity) - Update common children with intelligent component identity checking
     for (int i = 0; i < commonLength; i++) {
       final oldChild = oldChildren[i];
       final newChild = newChildren[i];
@@ -1934,12 +1965,61 @@ class DCFEngine {
       EngineDebugLogger.log(
           'RECONCILE_SIMPLE_UPDATE', 'Updating child at index $i');
 
-      await _reconcile(oldChild, newChild);
+        // ✅ INTELLIGENT RECONCILIATION: Check if components are actually compatible for reconciliation
+        // Only prevent reconciliation for animation components with different keys
+        if (_shouldPreventReconciliation(oldChild, newChild)) {
+          hasStructuralChanges = true;
+          EngineDebugLogger.log(
+              'RECONCILE_SIMPLE_REPLACE', 'Preventing reconciliation - incompatible components',
+              extra: {
+                'OldType': oldChild.runtimeType.toString(),
+                'NewType': newChild.runtimeType.toString(),
+                'OldKey': oldChild.key,
+                'NewKey': newChild.key,
+                'Position': i
+              });
 
-      final childViewId = oldChild.effectiveNativeViewId;
-      if (childViewId != null) {
-        updatedChildIds.add(childViewId);
-      }
+          // Unmount the old child
+          try {
+            oldChild.componentWillUnmount();
+            EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
+                'Called componentWillUnmount for replaced child');
+          } catch (e) {
+            EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
+                'Error in componentWillUnmount for replaced child',
+                extra: {'Error': e.toString()});
+          }
+
+          final oldViewId = oldChild.effectiveNativeViewId;
+          if (oldViewId != null) {
+            EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
+            await _nativeBridge.deleteView(oldViewId);
+            _nodesByViewId.remove(oldViewId);
+          }
+
+          // Create the new child
+          final childViewId = await renderToNative(newChild,
+              parentViewId: parentViewId, index: i);
+
+          if (childViewId != null) {
+            updatedChildIds.add(childViewId);
+          }
+        } else {
+          // Normal reconciliation
+          EngineDebugLogger.log(
+              'RECONCILE_SIMPLE_NORMAL', 'Normal reconciliation',
+              extra: {
+                'OldType': oldChild.runtimeType.toString(),
+                'NewType': newChild.runtimeType.toString(),
+                'Position': i
+              });
+          
+          await _reconcile(oldChild, newChild);
+          final childViewId = oldChild.effectiveNativeViewId;
+          if (childViewId != null) {
+            updatedChildIds.add(childViewId);
+          }
+        }
     }
 
     // O((new - common) * render complexity) - Handle length differences
