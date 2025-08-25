@@ -106,6 +106,9 @@ class HomeScreen extends StatelessComponent {
 
 class ProfileScreen extends StatefulComponent {
   @override
+  List<Object?> get props => [];
+
+  @override
   DCFComponentNode render() {
     return DCFView(
       layout: LayoutProps(
@@ -177,6 +180,9 @@ class ProfileScreen extends StatefulComponent {
 }
 
 class SettingsScreen extends StatefulComponent {
+  @override
+  List<Object?> get props => [];
+
   @override
   DCFComponentNode render() {
     return DCFView(

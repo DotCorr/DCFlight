@@ -276,7 +276,7 @@ class DCFEngine {
     }
   }
 
-  /// O(props count) - Check if two components are semantically equal
+  /// O(1) - Check if two components are semantically equal using unified EquatableMixin
   bool _componentsAreEqual(
       DCFComponentNode oldComponent, DCFComponentNode newComponent) {
     if (oldComponent.runtimeType != newComponent.runtimeType) {
@@ -287,19 +287,8 @@ class DCFEngine {
       return false;
     }
 
-    if (oldComponent is StatelessComponent &&
-        newComponent is StatelessComponent) {
-      // MORE STRICT: Only reuse if they're actually equal AND same instanceId
-      return oldComponent == newComponent &&
-          oldComponent.instanceId == newComponent.instanceId;
-    }
-
-    if (oldComponent is StatefulComponent &&
-        newComponent is StatefulComponent) {
-      return identical(oldComponent, newComponent);
-    }
-
-    return false;
+    // Unified approach: Both StatefulComponent and StatelessComponent use EquatableMixin
+    return oldComponent == newComponent;
   }
 
   /// O(1) - Check if two components at same position should be replaced (for conditional rendering)
@@ -320,21 +309,6 @@ class DCFEngine {
       }
       // Different component types being rendered
       return oldRendered.runtimeType != newRendered.runtimeType;
-    }
-    
-    // Same type elements but significantly different props structure = conditional branches
-    if (oldChild is DCFElement && newChild is DCFElement && oldChild.type == newChild.type) {
-      final oldPropKeys = oldChild.props.keys.toSet();
-      final newPropKeys = newChild.props.keys.toSet();
-      
-      // If prop structures are very different (< 50% overlap), likely different conditional branches
-      if (oldPropKeys.isNotEmpty && newPropKeys.isNotEmpty) {
-        final commonProps = oldPropKeys.intersection(newPropKeys);
-        final totalUniqueProps = oldPropKeys.union(newPropKeys);
-        final overlapPercentage = commonProps.length / totalUniqueProps.length;
-        
-        return overlapPercentage < 0.5; // Less than 50% prop overlap = replace
-      }
     }
     
     return false;
@@ -605,8 +579,7 @@ class DCFEngine {
         'Starting update for component: $componentId');
 
     // O(1) - Component lookup
-    final component =
-        _statefulComponents[componentId] ?? _statelessComponents[componentId];
+    final component = (_statefulComponents[componentId] ?? _statelessComponents[componentId]) as DCFComponentNode?;
     if (component == null) {
       EngineDebugLogger.log(
           'COMPONENT_UPDATE_NOT_FOUND', 'Component not found: $componentId');

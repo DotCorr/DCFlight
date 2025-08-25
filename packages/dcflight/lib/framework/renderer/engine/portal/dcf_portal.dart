@@ -29,6 +29,16 @@ class DCFPortal extends StatefulComponent
   final Function(String portalId)? onMount;
   final Function(String portalId)? onUnmount;
 
+  @override
+  List<Object?> get props => [
+        targetId,
+        children,
+        metadata,
+        createTargetIfMissing,
+        onMount,
+        onUnmount,
+      ];
+
   DCFPortal({
     required this.targetId,
     required this.children,
@@ -116,6 +126,13 @@ class DCFPortalTarget extends StatefulComponent
   final String targetId;
   final Map<String, dynamic>? metadata;
   final List<DCFComponentNode> children;
+
+  @override
+  List<Object?> get props => [
+        targetId,
+        metadata,
+        children,
+      ];
 
   DCFPortalTarget({
     required this.targetId,
