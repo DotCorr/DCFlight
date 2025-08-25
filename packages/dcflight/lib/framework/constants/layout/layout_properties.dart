@@ -83,7 +83,7 @@ class LayoutProps extends Equatable {
   const LayoutProps({
     // these defauts are just for visibiity reasons. 
     this.width = '100%', // Default to 100% width for proper nesting
-    this.height = 50, // Default to 50 height for visibility
+    this.height = 60, // Default to 100 height for visibility
     this.minWidth,
     this.maxWidth,
     this.minHeight,
@@ -109,17 +109,17 @@ class LayoutProps extends Equatable {
     this.scaleX,
     this.scaleY,
     this.flexDirection = YogaFlexDirection.column,
-    this.justifyContent,
-    this.alignItems = YogaAlign.flexStart,
+    this.justifyContent = YogaJustifyContent.center,
+    this.alignItems = YogaAlign.center,
     this.alignSelf,
-    this.alignContent = YogaAlign.flexStart,
+    this.alignContent = YogaAlign.center,
     this.flexWrap = YogaWrap.nowrap,
     this.flex,
     this.flexGrow,
     this.flexShrink,
     this.flexBasis,
     this.display = YogaDisplay.flex,
-    this.overflow = YogaOverflow.hidden,
+    this.overflow,
     this.direction,
     this.aspectRatio,
     this.gap,

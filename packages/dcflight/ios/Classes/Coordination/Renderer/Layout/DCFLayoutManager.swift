@@ -32,7 +32,30 @@ public class DCFLayoutManager {
     // ADDED: Dedicated queue for layout operations
     private let layoutQueue = DispatchQueue(label: "com.dcmaui.layoutQueue", qos: .userInitiated)
     
+    // ENHANCEMENT: Web defaults configuration for cross-platform compatibility
+    private var useWebDefaults = false
+    
     private init() {}
+    
+    // MARK: - Web Defaults Configuration
+    
+    /// Configure web defaults for cross-platform compatibility
+    /// When enabled, aligns with CSS defaults: flex-direction: row, align-content: stretch, flex-shrink: 1
+    public func setUseWebDefaults(_ enabled: Bool) {
+        useWebDefaults = enabled
+        
+        // Apply web defaults to the root node if it exists
+        if enabled {
+            YogaShadowTree.shared.applyWebDefaults()
+        }
+        
+        print("✅ DCFLayoutManager: UseWebDefaults set to \(enabled)")
+    }
+    
+    /// Get current web defaults configuration
+    public func getUseWebDefaults() -> Bool {
+        return useWebDefaults
+    }
     
     // MARK: - Automatic Layout Calculation
     

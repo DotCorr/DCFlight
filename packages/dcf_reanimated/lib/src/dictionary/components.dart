@@ -5,5 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-export '../components/animated_view_component.dart';
+// Export all DCF Reanimated components for DCFlight registration
+export '../components/reanimated_view.dart';
 export '../helper/prop_differ_extension.dart';
