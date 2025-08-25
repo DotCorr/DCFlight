@@ -263,38 +263,29 @@ class DCFEngine {
 
   /// O(props count) - Check if two components are semantically equal
   bool _componentsAreEqual(
-      DCFComponentNode oldComponent, DCFComponentNode newComponent) {
-    // print("🔍 Comparing: ${oldComponent.runtimeType} vs ${newComponent.runtimeType}");
-
-    if (oldComponent.runtimeType != newComponent.runtimeType) {
-      // print("  → Different types");
-      return false;
-    }
-
-    if (oldComponent.key != newComponent.key) {
-      // print("  → Different keys");
-      return false;
-    }
-
-    if (oldComponent is StatelessComponent &&
-        newComponent is StatelessComponent) {
-      final result = oldComponent == newComponent;
-      // print("  → StatelessComponent equality: $result");
-      return result;
-    }
-    // Same component type + same key + same position = same component instance
-    if (oldComponent is StatefulComponent &&
-        newComponent is StatefulComponent) {
-      // Compare by type, key, and constructor parameters
-      final result = oldComponent.runtimeType == newComponent.runtimeType &&
-          oldComponent.key == newComponent.key;
-      // print("  → StatefulComponent equality: $result");
-      return result;
-    }
-
-    // print("  → Fallback: false");
+    DCFComponentNode oldComponent, DCFComponentNode newComponent) {
+  if (oldComponent.runtimeType != newComponent.runtimeType) {
     return false;
   }
+
+  if (oldComponent.key != newComponent.key) {
+    return false;
+  }
+
+  if (oldComponent is StatelessComponent &&
+      newComponent is StatelessComponent) {
+    final result = oldComponent == newComponent;
+    return result;
+  }
+
+  // For StatefulComponents, only reuse if it's the SAME INSTANCE
+  if (oldComponent is StatefulComponent &&
+      newComponent is StatefulComponent) {
+    return identical(oldComponent, newComponent);
+  }
+
+  return false;
+}
 
   /// O(1) - Schedule a component update with priority handling
   void _scheduleComponentUpdate(StatefulComponent component) {
@@ -1756,16 +1747,16 @@ class DCFEngine {
   }
 
   /// O(children count) - Check if any children have explicit keys
-  bool _childrenHaveKeys(List<DCFComponentNode> children) {
-    if (children.isEmpty) return false;
+bool _childrenHaveKeys(List<DCFComponentNode> children) {
+  if (children.isEmpty) return false;
 
-    for (var child in children) {
-      if (child.key != null) return true;
-    }
-
-    return false;
+  // Only use keyed reconciliation if ALL children have keys
+  for (var child in children) {
+    if (child.key == null) return false;
   }
 
+  return true;
+}
   /// O(children reconciliation complexity) - Reconcile fragment children directly without a container element
   Future<void> _reconcileFragmentChildren(
       String parentViewId,
