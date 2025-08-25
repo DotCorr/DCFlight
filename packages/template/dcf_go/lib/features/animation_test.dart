@@ -74,7 +74,6 @@ class AnimationTestScreen extends StatefulComponent {
                 children: [
                   DCFText(content: "🟢 Transform Demo", textProps: DCFTextProps(fontWeight: DCFFontWeight.bold)),
                   ReanimatedView(
-                    key: "transform-box",
                     layout: LayoutProps(height: 60),
                     styleSheet: StyleSheet(backgroundColor: Colors.blue),
                     animatedStyle: transformStyle,
@@ -92,7 +91,6 @@ class AnimationTestScreen extends StatefulComponent {
                 children: [
                   DCFText(content: "🔴 Opacity Demo", textProps: DCFTextProps(fontWeight: DCFFontWeight.bold)),
                   ReanimatedView(
-                    key: "opacity-box",
                     layout: LayoutProps(width: 200, height: 60),
                     styleSheet: StyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
