@@ -97,10 +97,12 @@ enum YogaDisplay {
 ///
 /// - [relative]: Positioned relative to its normal position.
 /// - [absolute]: Positioned absolutely within its parent.
+/// - [static]: Positioned according to normal flow, ignores insets and doesn't form containing blocks.
 /// Position type options
 enum YogaPositionType {
   relative,
   absolute,
+  static, // ENHANCEMENT: Added static position support
 }
 
 /// Controls how content is clipped or scrolled when it overflows its container.

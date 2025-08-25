@@ -38,6 +38,9 @@ public class DCMauiLayoutMethodHandler: NSObject {
         case "getScreenDimensions":
             handleGetScreenDimensions(result: result)
             
+        case "setUseWebDefaults":
+            handleSetUseWebDefaults(call: call, result: result)
+            
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -54,5 +57,20 @@ public class DCMauiLayoutMethodHandler: NSObject {
         ]
         
         result(dimensions)
+    }
+    
+    // Handle setUseWebDefaults method call
+    private func handleSetUseWebDefaults(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let args = call.arguments as? [String: Any],
+              let enabled = args["enabled"] as? Bool else {
+            result(FlutterError(code: "INVALID_ARGUMENTS", 
+                              message: "setUseWebDefaults requires 'enabled' boolean parameter", 
+                              details: nil))
+            return
+        }
+        
+        // Call DCFLayoutManager to set web defaults
+        DCFLayoutManager.shared.setUseWebDefaults(enabled)
+        result(true)
     }
 }
