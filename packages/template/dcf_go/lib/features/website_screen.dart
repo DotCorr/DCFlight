@@ -3,6 +3,9 @@ import 'package:dcflight/dcflight.dart';
 
 class WebsiteScreen extends StatefulComponent {
   @override
+  List<Object?> get props => [];
+
+  @override
   DCFComponentNode render() {
     final selectedIndexWeb = useState(0);
     return DCFSafeArea(

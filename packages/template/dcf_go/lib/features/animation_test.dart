@@ -5,6 +5,9 @@ class AnimationTestScreen extends StatefulComponent {
   AnimationTestScreen({super.key});
   
   @override
+  List<Object?> get props => [];
+  
+  @override
   DCFComponentNode render() {
     final selectedDemo = useState<int>(0);
     final animationValue = useState<double>(1.0);

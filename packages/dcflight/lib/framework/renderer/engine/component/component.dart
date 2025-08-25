@@ -15,7 +15,7 @@ import 'package:equatable/equatable.dart';
 import 'hooks/state_hook.dart';
 
 // ignore: must_be_immutable
-abstract class StatefulComponent extends DCFComponentNode {
+abstract class StatefulComponent extends DCFComponentNode with EquatableMixin {
   final String instanceId;
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
@@ -29,6 +29,10 @@ abstract class StatefulComponent extends DCFComponentNode {
             '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}' {
     scheduleUpdate = _defaultScheduleUpdate;
   }
+
+  /// Abstract props getter - StatefulComponents must implement this for Equatable
+  @override
+  List<Object?> get props;
 
   void _defaultScheduleUpdate() {}
 
@@ -270,8 +274,7 @@ abstract class StatefulComponent extends DCFComponentNode {
 
   @override
   bool equals(DCFComponentNode other) {
-    if (other is! StatefulComponent) return false;
-    return runtimeType == other.runtimeType && key == other.key;
+    return this == other; // Uses EquatableMixin just like StatelessComponent
   }
 
   @override

@@ -4,6 +4,9 @@ import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
   @override
+  List<Object?> get props => [];
+
+  @override
   DCFComponentNode render() {
     // Animation value state that drives all animations
     final animationValue = useState<double>(1.0); // Start at full scale (100%)
