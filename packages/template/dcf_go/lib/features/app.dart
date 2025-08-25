@@ -68,6 +68,20 @@ class HomeScreen extends StatelessComponent {
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
 
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "🧪 Test Animation Fix"),
+          onPress: (data) {
+            print("Navigate to Animation Test pressed");
+            AppNavigation.presentModal("home/animation_test", 
+              params: {
+                "title": "Animation Reconciliation Test",
+              },
+              fromScreen: "home"
+            );
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+
         // 🎯 FIXED: Present modal with proper targeting
         DCFButton(
           buttonProps: DCFButtonProps(title: "Present Modal"),

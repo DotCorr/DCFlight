@@ -3,10 +3,8 @@ import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
-  AnimatedModalScreen({super.key});
-  
   @override
-  DCFComponentNode render() {    
+  DCFComponentNode render() {
     // Animation value state that drives all animations
     final animationValue = useState<double>(1.0); // Start at full scale (100%)
     
@@ -81,13 +79,11 @@ class AnimatedModalScreen extends StatefulComponent {
 
         // Demo area - shows different animated behaviours driven by `sharedValue`.
         DCFScrollView(
-          layout: LayoutProps(gap: 5, height: "400"), 
+          layout: LayoutProps(gap: 5,height:"400"), 
           children: [
-            // Debug: Add explicit logging for each condition
-            if (selectedDemoState.state == 0) ...[
-              DCFText(content: "🟢 SHOWING TRANSFORM DEMO"),
+            // Transform demo: translateX based on sharedValue
+            if (selectedDemoState.state == 0)
               DCFView(
-                key: "transform-demo",
                 layout: LayoutProps(width: "100%", height: 140),
                 children: [
                   DCFView(
@@ -105,7 +101,6 @@ class AnimatedModalScreen extends StatefulComponent {
                     children: [
                       // Pure UI thread animated box using ReanimatedView
                       ReanimatedView(
-                        key: "transform-animated-box", // UNIQUE key for transform
                         layout: LayoutProps(height: 60), // Width controlled by animation
                         styleSheet: StyleSheet(backgroundColor: Colors.blueAccent),
                         animatedStyle: transformStyle,
@@ -117,13 +112,10 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                 ],
               ),
-            ],
 
             // Opacity demo: box fades in/out
-            if (selectedDemoState.state == 1) ...[
-              DCFText(content: "🔴 SHOWING OPACITY DEMO"),
+            if (selectedDemoState.state == 1)
               DCFView(
-                key: "opacity-demo",
                 layout: LayoutProps(width: "100%", height: 140, padding: 12),
                 children: [
                   DCFText(
@@ -132,7 +124,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   // Pure UI thread opacity animation using ReanimatedView
                   ReanimatedView(
-                    key: "opacity-red-box", // UNIQUE key for red opacity box
                     layout: LayoutProps(width: "50%", height: 80),
                     styleSheet: StyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
@@ -140,13 +131,10 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                 ],
               ),
-            ],
 
             // Drawer demo: a panel whose width is controlled by the slider
-            if (selectedDemoState.state == 2) ...[
-              DCFText(content: "🟡 SHOWING DRAWER DEMO"),
+            if (selectedDemoState.state == 2)
               DCFView(
-                key: "drawer-demo",
                 layout: LayoutProps(width: "100%", height: "100%"),
                 children: [
                   DCFText(
@@ -155,7 +143,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   // Pure UI thread animated drawer using ReanimatedView
                   ReanimatedView(
-                    key: "drawer-white-panel", // UNIQUE key for white drawer
                     layout: LayoutProps(
                       position: YogaPositionType.absolute, 
                       absoluteLayout: AbsoluteLayout(left: 0, top: 40), 
@@ -183,13 +170,10 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                 ],
               ),
-            ],
 
             // Complex preset animations demo - showcases ALL DCF Reanimated APIs
-            if (selectedDemoState.state == 3) ...[
-              DCFText(content: "🟣 SHOWING COMPLEX DEMO"),
+            if (selectedDemoState.state == 3)
               DCFScrollView(
-                key: "complex-demo",
                 layout: LayoutProps(width: "100%", height: "100%", gap: 16, padding: 12),
                 children: [
                   DCFText(
@@ -208,7 +192,6 @@ class AnimatedModalScreen extends StatefulComponent {
                     children: [
                       // Fade In
                       ReanimatedView(
-                        key: "fade-in-demo", // FIXED: Add unique key
                         animatedStyle: Reanimated.fadeIn(duration: 800, delay: 0),
                         layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
@@ -219,7 +202,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Scale In
                       ReanimatedView(
-                        key: "scale-in-demo", // FIXED: Add unique key
                         animatedStyle: Reanimated.scaleIn(fromScale: 0.0, toScale: 1.0, duration: 600, delay: 200),
                         layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.green, borderRadius: 8),
@@ -230,7 +212,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Slide In Right
                       ReanimatedView(
-                        key: "slide-right-demo", // FIXED: Add unique key
                         animatedStyle: Reanimated.slideInRight(distance: 100.0, duration: 700, delay: 400),
                         layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.purple, borderRadius: 8),
@@ -241,7 +222,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Slide In Left  
                       ReanimatedView(
-                        key: "slide-left-demo", // FIXED: Add unique key
                         animatedStyle: Reanimated.slideInLeft(distance: 100.0, duration: 700, delay: 600),
                         layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 8),
@@ -259,7 +239,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   
                   ReanimatedView(
-                    key: "combined-demo", // FIXED: Add unique key
                     animatedStyle: Reanimated.slideScaleFadeIn(
                       slideDistance: 80.0,
                       fromScale: 0.7,
@@ -296,7 +275,6 @@ class AnimatedModalScreen extends StatefulComponent {
                     children: [
                       // Rotating Spinner
                       ReanimatedView(
-                        key: "rotate-demo", // FIXED: Add unique key
                         animatedStyle: Reanimated.rotate(
                           toRotation: 6.28, // Full 360° rotation
                           duration: 2000,
@@ -311,7 +289,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Pulsing Heart
                       ReanimatedView(
-                        key: "pulse-demo", // FIXED: Add unique key
                         animatedStyle: Reanimated.pulse(
                           minOpacity: 0.3,
                           maxOpacity: 1.0,
@@ -327,7 +304,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Bouncing Ball
                       ReanimatedView(
-                        key: "bounce-demo", // FIXED: Add unique key
                         animatedStyle: Reanimated.bounce(
                           bounceScale: 1.4,
                           duration: 500,
@@ -350,7 +326,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   
                   ReanimatedView(
-                    key: "wiggle-demo", // FIXED: Add unique key
                     animatedStyle: Reanimated.wiggle(
                       wiggleAngle: 0.15, // ~8 degrees
                       duration: 80,
@@ -383,7 +358,6 @@ class AnimatedModalScreen extends StatefulComponent {
                     children: [
                       // Item 1
                       ReanimatedView(
-                        key: "stagger-1", // FIXED: Add unique key
                         animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2200),
                         layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.teal.shade100, borderRadius: 4),
@@ -394,7 +368,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Item 2
                       ReanimatedView(
-                        key: "stagger-2", // FIXED: Add unique key
                         animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2350),
                         layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.teal.shade200, borderRadius: 4),
@@ -405,7 +378,6 @@ class AnimatedModalScreen extends StatefulComponent {
                       
                       // Item 3
                       ReanimatedView(
-                        key: "stagger-3", // FIXED: Add unique key
                         animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2500),
                         layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
                         styleSheet: StyleSheet(backgroundColor: Colors.teal.shade300, borderRadius: 4),
@@ -423,7 +395,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   
                   ReanimatedView(
-                    key: "exit-demo", // FIXED: Add unique key
                     animatedStyle: Reanimated.fadeOut(duration: 1000, delay: 3000),
                     layout: LayoutProps(width: "70%", height: 60, alignSelf: YogaAlign.center, padding: 12),
                     styleSheet: StyleSheet(backgroundColor: Colors.grey.shade300, borderRadius: 8),
@@ -437,11 +408,6 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                 ],
               ),
-            ],
-
-            // Debug fallback
-            if (selectedDemoState.state < 0 || selectedDemoState.state > 3)
-              DCFText(content: "❌ INVALID STATE: ${selectedDemoState.state}"),
           ]
         ),
 
