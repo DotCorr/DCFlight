@@ -101,6 +101,7 @@ class AnimatedModalScreen extends StatefulComponent {
                     children: [
                       // Pure UI thread animated box using ReanimatedView
                       ReanimatedView(
+                        key: "transform-animated-box", // ✅ UNIQUE KEY
                         layout: LayoutProps(height: 60), // Width controlled by animation
                         styleSheet: StyleSheet(backgroundColor: Colors.blueAccent),
                         animatedStyle: transformStyle,
@@ -124,6 +125,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   // Pure UI thread opacity animation using ReanimatedView
                   ReanimatedView(
+                    key: "opacity-red-box", // ✅ UNIQUE KEY
                     layout: LayoutProps(width: "50%", height: 80),
                     styleSheet: StyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
@@ -143,6 +145,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   // Pure UI thread animated drawer using ReanimatedView
                   ReanimatedView(
+                    key: "drawer-white-panel", // ✅ UNIQUE KEY
                     layout: LayoutProps(
                       position: YogaPositionType.absolute, 
                       absoluteLayout: AbsoluteLayout(left: 0, top: 40), 
