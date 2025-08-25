@@ -110,7 +110,7 @@ class DCFSafeArea extends StatefulComponent {
 
     return DCFElement(
       type: 'View',
-      props: {
+      elementProps: {
         ...enhancedLayout.toMap(),
         ...styleSheet.toMap(),
         ...(events ?? {}),

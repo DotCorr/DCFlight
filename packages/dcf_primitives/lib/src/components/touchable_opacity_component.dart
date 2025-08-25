@@ -101,7 +101,7 @@
 
 //     return DCFElement(
 //       type: 'TouchableOpacity',
-//       props: props,
+//       elementProps: props,
 //       children: children,
 //     );
 //   }

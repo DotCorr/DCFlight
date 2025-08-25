@@ -5,12 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'component_node.dart';
+import 'package:equatable/equatable.dart';
 
 /// Fragment component that renders its children without creating a wrapper element
 /// Similar to React.Fragment - useful for grouping elements without adding extra DOM nodes
-class DCFFragment extends DCFComponentNode {
+class DCFFragment extends DCFComponentNode with EquatableMixin {
   /// Children to be rendered directly to the parent
   final List<DCFComponentNode> children;
   
@@ -29,6 +29,10 @@ class DCFFragment extends DCFComponentNode {
     super.key,
   });
 
+  /// EquatableMixin props for equality comparison
+  @override
+  List<Object?> get props => [children, metadata, key];
+
   /// Whether this fragment is mounted
   bool get isMounted => _isMounted;
 
@@ -39,19 +43,6 @@ class DCFFragment extends DCFComponentNode {
       metadata: metadata,
       key: key,
     );
-  }
-
-  @override
-  bool equals(DCFComponentNode other) {
-    if (other is! DCFFragment) return false;
-    if (children.length != other.children.length) return false;
-    if (metadata != other.metadata) return false;
-    
-    for (int i = 0; i < children.length; i++) {
-      if (!children[i].equals(other.children[i])) return false;
-    }
-    
-    return key == other.key;
   }
 
   @override

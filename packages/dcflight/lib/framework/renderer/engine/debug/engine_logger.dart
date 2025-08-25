@@ -125,11 +125,11 @@ class EngineDebugLogger {
       
       // Log important props
       final props = <String>[];
-      if (node.props.containsKey('selectedValue')) {
-        props.add('selectedValue:${node.props['selectedValue']}');
+      if (node.elementProps.containsKey('selectedValue')) {
+        props.add('selectedValue:${node.elementProps['selectedValue']}');
       }
-      if (node.props.containsKey('visible')) {
-        props.add('visible:${node.props['visible']}');
+      if (node.elementProps.containsKey('visible')) {
+        props.add('visible:${node.elementProps['visible']}');
       }
       if (props.isNotEmpty) {
         desc += ', ${props.join(', ')}';
