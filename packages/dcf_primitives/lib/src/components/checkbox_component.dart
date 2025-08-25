@@ -107,7 +107,7 @@ class DCFCheckbox extends StatelessComponent
 
     return DCFElement(
       type: 'Checkbox',
-      props: props,
+      elementProps: props,
       children: [],
     );
   }

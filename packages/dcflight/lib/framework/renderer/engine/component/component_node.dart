@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dart';
+import 'package:equatable/equatable.dart';
 
 /// Base class for all Virtual DOM nodes
 abstract class DCFComponentNode {
@@ -45,9 +46,6 @@ abstract class DCFComponentNode {
   /// Clone this node
   DCFComponentNode clone();
 
-  /// Whether this node is equal to another
-  bool equals(DCFComponentNode other);
-
   void mount(DCFComponentNode? parent);
   void unmount();
 
@@ -85,14 +83,14 @@ abstract class DCFComponentNode {
 }
 
 /// Represents absence of a node - useful for conditional rendering
-class EmptyVDomNode extends DCFComponentNode {
+class EmptyVDomNode extends DCFComponentNode with EquatableMixin {
   EmptyVDomNode() : super(key: null);
 
   @override
-  DCFComponentNode clone() => EmptyVDomNode();
+  List<Object?> get props => []; // Empty node has no props
 
   @override
-  bool equals(DCFComponentNode other) => other is EmptyVDomNode;
+  DCFComponentNode clone() => EmptyVDomNode();
 
   @override
   String toString() => 'EmptyVDomNode()';

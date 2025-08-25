@@ -107,7 +107,7 @@ class DCFIcon extends StatelessComponent
 
     return DCFElement(
       type: 'DCFIcon',
-      props: {
+      elementProps: {
         ...iconProps.toMap(),
         ...layout.toMap(),
         ...styleSheet.toMap(),

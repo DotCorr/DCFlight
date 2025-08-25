@@ -95,7 +95,7 @@ class DCFButton extends StatelessComponent with EquatableMixin {
 
     return DCFElement(
       type: 'Button',
-      props: props,
+      elementProps: props,
       children: [],
     );
   }

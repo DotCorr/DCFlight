@@ -207,7 +207,7 @@ class DCFPortalTarget extends StatefulComponent
     // Create the element that will be our portal target
     final element = DCFElement(
       type: 'View', // Use View component to create a native container
-      props: {
+      elementProps: {
         'isPortalTarget': true,
         'targetId': targetId,
         'backgroundColor': 'transparent',

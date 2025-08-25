@@ -126,7 +126,7 @@ class DCFStackNavigationBootstrapper extends StatelessComponent
 
     return DCFElement(
       type: 'StackNavigationBootstrapper',
-      props: props,
+      elementProps: props,
       children: [], // No children - just sets up navigation
     );
   }

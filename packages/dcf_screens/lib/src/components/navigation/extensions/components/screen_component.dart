@@ -135,7 +135,7 @@ class DCFScreen extends StatelessComponent
 
     return DCFElement(
       type: 'Screen',
-      props: props,
+      elementProps: props,
       children: actualChildren,
     );
   }

@@ -161,7 +161,7 @@ class DCFTabNavigator extends StatelessComponent
 
     return DCFElement(
       type: 'TabNavigator',
-      props: props,
+      elementProps: props,
       children: [], // Tab navigator doesn't have direct children - it coordinates screens
     );
   }

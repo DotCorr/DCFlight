@@ -154,7 +154,7 @@ class DCFText extends StatelessComponent
 
     return DCFElement(
       type: 'Text',
-      props: props,
+      elementProps: props,
       children: [],
     );
   }

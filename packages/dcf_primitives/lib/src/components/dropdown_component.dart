@@ -203,7 +203,7 @@ class DCFDropdown extends StatelessComponent
     return DCFElement(
       type: 'Dropdown',
       key: key,
-      props: {
+      elementProps: {
         ...dropdownProps.toMap(),
         ...layout.toMap(),
         ...styleSheet.toMap(),

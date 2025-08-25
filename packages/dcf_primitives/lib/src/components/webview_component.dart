@@ -210,7 +210,7 @@ class DCFWebView extends StatelessComponent
 
     return DCFElement(
       type: 'WebView',
-      props: {
+      elementProps: {
         ...webViewProps.toMap(),
         ...layout.toMap(),
         ...styleSheet.toMap(),
