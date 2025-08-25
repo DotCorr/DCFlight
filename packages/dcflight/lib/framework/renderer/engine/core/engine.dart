@@ -277,20 +277,6 @@ class DCFEngine {
   }
 
   /// O(1) - Check if two components are semantically equal using unified EquatableMixin
-  bool _componentsAreEqual(
-      DCFComponentNode oldComponent, DCFComponentNode newComponent) {
-    if (oldComponent.runtimeType != newComponent.runtimeType) {
-      return false;
-    }
-
-    if (oldComponent.key != newComponent.key) {
-      return false;
-    }
-
-    // Unified approach: Both StatefulComponent and StatelessComponent use EquatableMixin
-    return oldComponent == newComponent;
-  }
-
   /// O(1) - Check if two components at same position should be replaced (for conditional rendering)
   bool _shouldReplaceAtSamePosition(DCFComponentNode oldChild, DCFComponentNode newChild) {
     // Different component types at same position = likely conditional rendering
@@ -1120,23 +1106,16 @@ class DCFEngine {
     }
     // O(component reconciliation complexity) - Handle component nodes
     else if (oldNode is StatefulComponent && newNode is StatefulComponent) {
-      // ✅ ADD EQUALITY CHECK BEFORE RECONCILIATION
-      if (_componentsAreEqual(oldNode, newNode)) {
-        EngineDebugLogger.logReconcile('SKIP_STATEFUL_EQUAL', oldNode, newNode,
-            reason: 'StatefulComponents are equal - skipping reconciliation');
-
-        // Transfer essential properties without triggering re-render
+      if (oldNode == newNode) {
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
         newNode.parent = oldNode.parent;
-        newNode.renderedNode =
-            oldNode.renderedNode; // ✅ Keep existing rendered content
+        newNode.renderedNode = oldNode.renderedNode;
 
-        // Update tracking but preserve the component state
         _statefulComponents[newNode.instanceId] = newNode;
         newNode.scheduleUpdate = () => _scheduleComponentUpdate(newNode);
 
-        return; // ✅ EARLY EXIT - No reconciliation needed
+        return;
       }
 
       EngineDebugLogger.logReconcile('UPDATE_STATEFUL', oldNode, newNode,
@@ -1161,24 +1140,12 @@ class DCFEngine {
     }
     // Handle stateless components
     else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
-      // print("🔍 StatelessComponent reconciliation:");
-      // print("  oldNode: ${oldNode.runtimeType}");
-      // print("  newNode: ${newNode.runtimeType}");
-
-      // ✅ Use _componentsAreEqual FIRST before any transfers
-      if (_componentsAreEqual(oldNode, newNode)) {
-        // print("  🟢 SKIPPING reconciliation - components are equal");
-        EngineDebugLogger.logReconcile('SKIP_STATELESS_EQUAL', oldNode, newNode,
-            reason: 'StatelessComponents are equal - skipping reconciliation');
-
-        // Transfer essential properties without triggering re-render
+      if (oldNode == newNode) {
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
         newNode.parent = oldNode.parent;
-        newNode.renderedNode =
-            oldNode.renderedNode; // ✅ Reuse existing rendered content
+        newNode.renderedNode = oldNode.renderedNode;
 
-        // Update tracking but preserve the component state
         _statelessComponents[newNode.instanceId] = newNode;
 
         return; // ✅ EARLY EXIT - No reconciliation needed

@@ -5,10 +5,6 @@ import 'package:dcflight/dcflight.dart';
 void main() async {
   // Enable debug logging to see UseWebDefaults in action
   DCFlight.setLogLevel(DCFLogLevel.debug);
-  
-  // Enable web defaults for CSS-compatible layout behavior
-  await LayoutConfig.enableWebDefaults();
-  
   // Start the app
   await DCFlight.start(app: MyStackApp());
 }
