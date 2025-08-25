@@ -302,6 +302,42 @@ class DCFEngine {
     return false;
   }
 
+  /// O(props comparison) - Check if two elements with same type have incompatible stateful props
+  /// that require component replacement rather than reconciliation
+  bool _shouldReplaceForIncompatibleState(DCFElement oldElement, DCFElement newElement) {
+    // Only check for specific component types that have stateful issues
+    if (oldElement.type == 'ReanimatedView') {
+      final oldAnimatedStyle = oldElement.props['animatedStyle'] as Map<String, dynamic>?;
+      final newAnimatedStyle = newElement.props['animatedStyle'] as Map<String, dynamic>?;
+      
+      // If both have animated styles, check if they have different animation types
+      if (oldAnimatedStyle != null && newAnimatedStyle != null) {
+        final oldAnimations = oldAnimatedStyle['animations'] as Map<String, dynamic>?;
+        final newAnimations = newAnimatedStyle['animations'] as Map<String, dynamic>?;
+        
+        if (oldAnimations != null && newAnimations != null) {
+          // Check if they animate different properties (e.g., width vs opacity)
+          final oldProperties = oldAnimations.keys.toSet();
+          final newProperties = newAnimations.keys.toSet();
+          
+          // If the animated properties are completely different, replace the component
+          if (oldProperties.intersection(newProperties).isEmpty) {
+            EngineDebugLogger.log('INCOMPATIBLE_ANIMATION_STATE', 
+                'Old props: $oldProperties, New props: $newProperties');
+            return true;
+          }
+        }
+      }
+      
+      // One has animated style, other doesn't - replace
+      if ((oldAnimatedStyle == null) != (newAnimatedStyle == null)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
   /// O(1) - Schedule a component update with priority handling
   void _scheduleComponentUpdate(StatefulComponent component) {
     EngineDebugLogger.logUpdate(component, 'State change triggered update');
@@ -1100,6 +1136,10 @@ class DCFEngine {
       if (oldNode.type != newNode.type) {
         EngineDebugLogger.logReconcile('REPLACE_ELEMENT_TYPE', oldNode, newNode,
             reason: 'Different element types');
+        await _replaceNode(oldNode, newNode);
+      } else if (_shouldReplaceForIncompatibleState(oldNode, newNode)) {
+        EngineDebugLogger.logReconcile('REPLACE_INCOMPATIBLE_STATE', oldNode, newNode,
+            reason: 'Same element type but incompatible stateful props');
         await _replaceNode(oldNode, newNode);
       } else {
         EngineDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
