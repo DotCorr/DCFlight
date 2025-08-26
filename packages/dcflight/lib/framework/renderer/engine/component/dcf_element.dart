@@ -6,7 +6,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
 
 /// Represents an element in the Virtual DOM tree
 class DCFElement extends DCFComponentNode with EquatableMixin {
@@ -104,3 +103,4 @@ class DCFElement extends DCFComponentNode with EquatableMixin {
     }
   }
 }
+
