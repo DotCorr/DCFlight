@@ -118,7 +118,7 @@ class DCFTextInput extends StatelessComponent
     return DCFElement(
       type: 'TextInput',
       key: key,
-      props: {
+      elementProps: {
         'value': value,
         'defaultValue': defaultValue,
         'placeholder': placeholder,

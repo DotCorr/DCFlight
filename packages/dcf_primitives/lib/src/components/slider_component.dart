@@ -132,7 +132,7 @@ class DCFSlider extends StatelessComponent
 
     return DCFElement(
       type: 'Slider',
-      props: props,
+      elementProps: props,
       children: [],
     );
   }

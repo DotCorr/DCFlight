@@ -553,3 +553,4 @@ class LayoutProps extends Equatable {
         borderWidth,
       ];
 }
+

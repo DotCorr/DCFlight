@@ -1,4 +1,5 @@
 import "package:dcf_go/features/animation_modal.dart";
+import "package:dcf_go/features/animation_test.dart";
 import "package:dcf_go/features/app.dart";
 import "package:dcf_go/features/website_screen.dart";
 import "package:dcf_screens/dcf_screens.dart";
@@ -111,6 +112,18 @@ class StackScreenRegistry extends StatelessComponent {
             showDragIndicator: true,
           ),
           builder: () => WebsiteScreen(),
+        ),
+
+        // 🧪 ANIMATION TEST - Test reconciliation fix
+        DCFEasyScreen(
+          route: "home/animation_test",
+          modalConfig: DCFModalConfig(
+            allowsBackgroundDismiss: true,
+            detents: [DCFModalDetent.large],
+            selectedDetentIndex: 0,
+            showDragIndicator: true,
+          ),
+          builder: () => AnimationTestScreen(),
         ),
       ],
     );

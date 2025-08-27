@@ -114,7 +114,7 @@ class DCFImage extends StatelessComponent
 
     return DCFElement(
       type: 'Image',
-      props: props,
+      elementProps: props,
       children: [],
     );
   }

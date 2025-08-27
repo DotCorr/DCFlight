@@ -75,7 +75,7 @@ class DCFSpinner extends StatelessComponent
 
     return DCFElement(
       type: 'Spinner',
-      props: props,
+      elementProps: props,
       children: [],
     );
   }

@@ -371,7 +371,7 @@ class DCFAlert extends StatelessComponent {
     
     return DCFElement(
       type: 'Alert',
-      props: props,
+      elementProps: props,
       children: const [], // Alerts don't support children anymore - use textFields instead
     );
   }

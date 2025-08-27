@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'dart:math';
 import 'package:dcflight/framework/renderer/engine/component/hooks/memo_hook.dart';
 import 'package:dcflight/framework/renderer/engine/component/hooks/store.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
@@ -15,7 +14,8 @@ import 'package:equatable/equatable.dart';
 import 'hooks/state_hook.dart';
 
 // ignore: must_be_immutable
-abstract class StatefulComponent extends DCFComponentNode {
+abstract class StatefulComponent extends DCFComponentNode with EquatableMixin {
+  // Keep instanceId for internal tracking only (not for reconciliation)
   final String instanceId;
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
@@ -25,10 +25,13 @@ abstract class StatefulComponent extends DCFComponentNode {
   Function() scheduleUpdate = () {};
 
   StatefulComponent({super.key})
-      : instanceId =
-            '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}' {
+      : instanceId = '${DateTime.now().millisecondsSinceEpoch}_${Object().hashCode}' {
     scheduleUpdate = _defaultScheduleUpdate;
   }
+
+  /// Abstract props getter - StatefulComponents must implement this for Equatable
+  @override
+  List<Object?> get props;
 
   void _defaultScheduleUpdate() {}
 
@@ -178,7 +181,7 @@ abstract class StatefulComponent extends DCFComponentNode {
             _isUpdating = false;
           });
         }
-      }, instanceId, runtimeType.toString());
+      }, '${runtimeType}_${key ?? hashCode}', runtimeType.toString());
       _hooks.add(hook);
     }
 
@@ -194,7 +197,7 @@ abstract class StatefulComponent extends DCFComponentNode {
             _isUpdating = false;
           });
         }
-      }, instanceId, runtimeType.toString());
+      }, '${runtimeType}_${key ?? hashCode}', runtimeType.toString());
       _hooks[_hookIndex] = newHook;
       _hookIndex++;
       return newHook;
@@ -269,12 +272,6 @@ abstract class StatefulComponent extends DCFComponentNode {
   }
 
   @override
-  bool equals(DCFComponentNode other) {
-    if (other is! StatefulComponent) return false;
-    return runtimeType == other.runtimeType && key == other.key;
-  }
-
-  @override
   void mount(DCFComponentNode? parent) {
     this.parent = parent;
     final node = renderedNode;
@@ -292,19 +289,16 @@ abstract class StatefulComponent extends DCFComponentNode {
 
   @override
   String toString() {
-    return '${runtimeType.toString()}($instanceId)';
+    return '${runtimeType.toString()}(${key ?? hashCode})';
   }
 }
 
 // ignore: must_be_immutable
 abstract class StatelessComponent extends DCFComponentNode with EquatableMixin {
-  final String instanceId;
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
 
-  StatelessComponent({super.key})
-      : instanceId =
-            '${DateTime.now().millisecondsSinceEpoch}.${Random().nextDouble()}';
+  StatelessComponent({super.key});
 
   @override
   List<Object?> get props;
@@ -348,11 +342,6 @@ abstract class StatelessComponent extends DCFComponentNode with EquatableMixin {
   }
 
   @override
-  bool equals(DCFComponentNode other) {
-    return this == other;
-  }
-
-  @override
   void mount(DCFComponentNode? parent) {
     this.parent = parent;
     final node = renderedNode;
@@ -370,7 +359,7 @@ abstract class StatelessComponent extends DCFComponentNode with EquatableMixin {
 
   @override
   String toString() {
-    return '${runtimeType.toString()}($instanceId)';
+    return '${runtimeType.toString()}(${key ?? hashCode})';
   }
 }
 

@@ -88,7 +88,6 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
       
       // 🎯 AUTOMATIC: Event handling with automatic state updates
       onAppear: (data) {
-        print("✅ $route route appeared: $data");
         activeScreenTracker.setState(route);
         
         // Call user handler if provided
@@ -96,22 +95,18 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
       },
       
       onDisappear: (data) {
-        print("❌ $route route disappeared: $data");
         if (onDisappear != null) onDisappear!(data);
       },
       
       onActivate: (data) {
-        print("✅ $route route activated: $data");
         if (onActivate != null) onActivate!(data);
       },
       
       onDeactivate: (data) {
-        print("❌ $route route deactivated: $data");
         if (onDeactivate != null) onDeactivate!(data);
       },
       
       onNavigationEvent: (data) {
-        print("🚀 $route navigation event: $data");
         _handleNavigationEvents(route, data);
         AppNavigation.clearCommand();
         
@@ -120,12 +115,10 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
       },
       
       onReceiveParams: (data) {
-        print("📬 $route received params: $data");
         if (onReceiveParams != null) onReceiveParams!(data);
       },
       
       onHeaderActionPress: (data) {
-        print("🎯 $route header action pressed: $data");
         if (onHeaderActionPress != null) onHeaderActionPress!(data);
       },
       
@@ -137,7 +130,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
           return builder();
         }
         
-        return DCFSuspense(
+        return DCFSuspense(layout: LayoutProps(flex: 1),
           shouldRender: _shouldRenderScreen(route, activeScreen.state, navStack.state),
           debugName: route,
           children: builder,
@@ -171,8 +164,6 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
   void _handleNavigationEvents(String screenRoute, Map<dynamic, dynamic> data) {
     final action = data['action'] as String?;
     final targetRoute = data['targetRoute'] as String?;
-    
-    print("🔍 Navigation event for $screenRoute: action=$action, target=$targetRoute");
     
     // Update active screen and navigation stack based on events
     switch (action) {

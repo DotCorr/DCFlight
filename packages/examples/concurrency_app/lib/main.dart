@@ -16,6 +16,9 @@ void main() {
 
 class ComplexDashboardHome extends StatefulComponent {
   @override
+  List<Object?> get props => [];
+
+  @override
   DCFComponentNode render() {
     // 🎯 STATE HOOKS - When these update, VDom will have LOTS of work
     final selectedTab = useState<int>(0, 'selectedTab');

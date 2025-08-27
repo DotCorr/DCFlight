@@ -141,7 +141,7 @@ class DCFSegmentedControl extends StatelessComponent
 
     return DCFElement(
       type: 'SegmentedControl',
-      props: {
+      elementProps: {
         ...segmentedControlProps.toMap(),
         ...layout.toMap(),
         ...styleSheet.toMap(),

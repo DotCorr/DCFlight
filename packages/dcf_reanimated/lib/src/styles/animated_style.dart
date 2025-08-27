@@ -7,6 +7,7 @@
 
 library dcf_reanimated.styles;
 
+import 'package:equatable/equatable.dart';
 import '../values/animation_values.dart';
 import '../enums/animation_enums.dart';
 
@@ -23,8 +24,11 @@ import '../enums/animation_enums.dart';
 ///   .opacity(ReanimatedValue(from: 0, to: 1))
 ///   .backgroundColor(ReanimatedValue(from: 0, to: 1));
 /// ```
-class AnimatedStyle {
+class AnimatedStyle with EquatableMixin {
   final Map<String, ReanimatedValue> _animations = {};
+
+  @override
+  List<Object?> get props => [_animations];
 
   /// Configures transform animations (scale, translate, rotate).
   /// 
