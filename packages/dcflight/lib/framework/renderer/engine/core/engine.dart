@@ -277,13 +277,20 @@ class DCFEngine {
       return true;
     }
     
-    // Rule 3: EquatableMixin check - if they're not equal, replace
-    // This handles conditional rendering like ReanimatedView with different props  
-    if (oldChild != newChild) {
-      return true;
+    // Rule 3: EFFICIENT UPDATE - Only replace for major structural changes
+    // For StatelessComponent and StatefulComponent, always try to update first
+    // Only replace if reconciliation actually fails or there are critical differences
+    
+    // For Elements, check if it's a completely different element type/structure
+    if (oldChild is DCFElement && newChild is DCFElement) {
+      // Different element types should replace
+      if (oldChild.type != newChild.type) {
+        return true;
+      }
     }
     
-    // Same type + same key + equal props = update
+    // Default: Try to update efficiently instead of replacing
+    // This preserves component state and avoids unnecessary re-renders
     return false;
   }
 
@@ -1117,25 +1124,22 @@ class DCFEngine {
     }
     // Handle stateless components (React functional components - no internal tracking needed)
     else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
-      if (oldNode == newNode) {
-        // Same props - reuse existing render
-        newNode.nativeViewId = oldNode.nativeViewId;
-        newNode.contentViewId = oldNode.contentViewId;
-        newNode.parent = oldNode.parent;
-        newNode.renderedNode = oldNode.renderedNode;
-        return; // ✅ EARLY EXIT - No reconciliation needed
-      }
-
       EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
-          reason: 'StatelessComponent props changed - reconciling rendered content');
+          reason: 'StatelessComponent reconciliation - always check rendered content');
 
-      // Transfer IDs for reconciliation
+      // O(1) - Transfer important properties between nodes
       newNode.nativeViewId = oldNode.nativeViewId;
       newNode.contentViewId = oldNode.contentViewId;
 
-      // No internal tracking needed - just reconcile rendered content
+      // O(1) - Register the new component instance
+      registerComponent(newNode);
+
+      // ✅ ALWAYS reconcile rendered content to ensure prop updates are applied efficiently
+      // Don't early exit based on component equality - let the rendered tree reconciliation
+      // handle the efficient diffing of actual changes
       final oldRenderedNode = oldNode.renderedNode;
       final newRenderedNode = newNode.renderedNode;
+
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
 
@@ -2598,3 +2602,4 @@ class DCFEngine {
     return suggestions;
   }
 }
+
