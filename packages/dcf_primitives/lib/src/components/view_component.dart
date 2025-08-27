@@ -52,7 +52,7 @@ class DCFView extends StatelessComponent
 
     return DCFElement(
       type: 'View',
-      props: {
+      elementProps: {
         ...layout.toMap(),
         ...styleSheet.toMap(),
         'adaptive': adaptive,

@@ -4,6 +4,9 @@ import "package:dcflight/dcflight.dart";
 
 class AnimatedModalScreen extends StatefulComponent {
   @override
+  List<Object?> get props => [];
+
+  @override
   DCFComponentNode render() {
     // Animation value state that drives all animations
     final animationValue = useState<double>(1.0); // Start at full scale (100%)
@@ -124,6 +127,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   // Pure UI thread opacity animation using ReanimatedView
                   ReanimatedView(
+                    key: "opacity_box",
                     layout: LayoutProps(width: "50%", height: 80),
                     styleSheet: StyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
@@ -143,6 +147,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   // Pure UI thread animated drawer using ReanimatedView
                   ReanimatedView(
+                    key: "drawer_panel",
                     layout: LayoutProps(
                       position: YogaPositionType.absolute, 
                       absoluteLayout: AbsoluteLayout(left: 0, top: 40), 

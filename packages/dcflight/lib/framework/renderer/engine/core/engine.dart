@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_type_check
+
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
@@ -34,14 +36,13 @@ class DCFEngine {
   /// Map of view IDs to their associated VDomNodes - O(1) lookup
   final Map<String, DCFComponentNode> _nodesByViewId = {};
 
-  /// Component tracking maps - O(1) access
+  /// Component tracking maps - React-like
   final Map<String, StatefulComponent> _statefulComponents = {};
-  final Map<String, StatelessComponent> _statelessComponents = {};
   final Map<String, DCFComponentNode> _previousRenderedNodes = {};
 
-  /// Priority-based update system
-  final Set<String> _pendingUpdates = {}; // O(1) add/remove
-  final Map<String, ComponentPriority> _componentPriorities = {}; // O(1) lookup
+  /// Priority-based update system  
+  final Set<String> _pendingUpdates = {};
+  final Map<String, ComponentPriority> _componentPriorities = {};
   Timer? _updateTimer;
   bool _isUpdateScheduled = false;
   bool _batchUpdateInProgress = false;
@@ -144,20 +145,23 @@ class DCFEngine {
     return viewId;
   }
 
-  /// O(1) - Register a component in the VDOM
+  /// React-like key generation: key prop or position+type
+  String _getNodeKey(DCFComponentNode node, int index) {
+    return node.key ?? '$index:${node.runtimeType}';
+  }
+
+  /// Register a component in the VDOM (React-like)
   void registerComponent(DCFComponentNode component) {
     EngineDebugLogger.logMount(component, context: 'registerComponent');
 
     if (component is StatefulComponent) {
+      // StatefulComponents need tracking for hooks and updates
       _statefulComponents[component.instanceId] = component;
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
       EngineDebugLogger.log('COMPONENT_REGISTER',
           'Registered StatefulComponent: ${component.instanceId}');
-    } else if (component is StatelessComponent) {
-      _statelessComponents[component.instanceId] = component;
-      EngineDebugLogger.log('COMPONENT_REGISTER',
-          'Registered StatelessComponent: ${component.instanceId}');
     }
+    // StatelessComponents don't need tracking - they're purely functional
 
     if (component is ErrorBoundary) {
       _errorBoundaries[component.instanceId] = component;
@@ -190,17 +194,17 @@ class DCFEngine {
       ];
 
       for (final key in eventHandlerKeys) {
-        if (node.props.containsKey(key) && node.props[key] is Function) {
+        if (node.elementProps.containsKey(key) && node.elementProps[key] is Function) {
           EngineDebugLogger.log('EVENT_HANDLER_FOUND',
               'Found handler for $eventType using key: $key');
-          _executeEventHandler(node.props[key], eventData);
+          _executeEventHandler(node.elementProps[key], eventData);
           return;
         }
       }
 
       EngineDebugLogger.log(
           'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
-          extra: {'AvailableProps': node.props.keys.toList()});
+          extra: {'AvailableProps': node.elementProps.keys.toList()});
     }
   }
 
@@ -261,38 +265,32 @@ class DCFEngine {
     }
   }
 
-  /// O(props count) - Check if two components are semantically equal
-  bool _componentsAreEqual(
-      DCFComponentNode oldComponent, DCFComponentNode newComponent) {
-    // print("🔍 Comparing: ${oldComponent.runtimeType} vs ${newComponent.runtimeType}");
-
-    if (oldComponent.runtimeType != newComponent.runtimeType) {
-      // print("  → Different types");
-      return false;
+  /// React reconciliation: when to replace vs update at same position  
+  bool _shouldReplaceAtSamePosition(DCFComponentNode oldChild, DCFComponentNode newChild) {
+    // Rule 1: Different types = replace
+    if (oldChild.runtimeType != newChild.runtimeType) {
+      return true;
     }
-
-    if (oldComponent.key != newComponent.key) {
-      // print("  → Different keys");
-      return false;
+    
+    // Rule 2: Different keys = replace  
+    if (oldChild.key != newChild.key) {
+      return true;
     }
-
-    if (oldComponent is StatelessComponent &&
-        newComponent is StatelessComponent) {
-      final result = oldComponent == newComponent;
-      // print("  → StatelessComponent equality: $result");
-      return result;
+    
+    // Rule 3: EFFICIENT UPDATE - Only replace for major structural changes
+    // For StatelessComponent and StatefulComponent, always try to update first
+    // Only replace if reconciliation actually fails or there are critical differences
+    
+    // For Elements, check if it's a completely different element type/structure
+    if (oldChild is DCFElement && newChild is DCFElement) {
+      // Different element types should replace
+      if (oldChild.type != newChild.type) {
+        return true;
+      }
     }
-    // Same component type + same key + same position = same component instance
-    if (oldComponent is StatefulComponent &&
-        newComponent is StatefulComponent) {
-      // Compare by type, key, and constructor parameters
-      final result = oldComponent.runtimeType == newComponent.runtimeType &&
-          oldComponent.key == newComponent.key;
-      // print("  → StatefulComponent equality: $result");
-      return result;
-    }
-
-    // print("  → Fallback: false");
+    
+    // Default: Try to update efficiently instead of replacing
+    // This preserves component state and avoids unnecessary re-renders
     return false;
   }
 
@@ -560,12 +558,11 @@ class DCFEngine {
     EngineDebugLogger.log('COMPONENT_UPDATE_START',
         'Starting update for component: $componentId');
 
-    // O(1) - Component lookup
-    final component =
-        _statefulComponents[componentId] ?? _statelessComponents[componentId];
+    // Component lookup - only StatefulComponents can be updated
+    final component = _statefulComponents[componentId];
     if (component == null) {
       EngineDebugLogger.log(
-          'COMPONENT_UPDATE_NOT_FOUND', 'Component not found: $componentId');
+          'COMPONENT_UPDATE_NOT_FOUND', 'StatefulComponent not found: $componentId');
       return;
     }
 
@@ -578,7 +575,7 @@ class DCFEngine {
             'LIFECYCLE_INTERCEPTOR', 'Calling beforeUpdate interceptor');
         final context = VDomLifecycleContext(
           scheduleUpdate: () =>
-              _scheduleComponentUpdateInternal(component as StatefulComponent),
+              _scheduleComponentUpdateInternal(component),
           forceUpdate: (node) => _partialUpdateNode(node),
           vdomState: {'isUpdating': true},
         );
@@ -597,19 +594,11 @@ class DCFEngine {
       EngineDebugLogger.log('COMPONENT_OLD_NODE', 'Stored old rendered node',
           extra: {'HasOldNode': oldRenderedNode != null});
 
-      if (oldRenderedNode != null) {
-        _previousRenderedNodes[componentId] = oldRenderedNode;
-      }
-
+      _previousRenderedNodes[componentId] = oldRenderedNode;
+    
       // O(component render complexity) - Force re-render by clearing cached rendered node
       component.renderedNode = null;
       final newRenderedNode = component.renderedNode;
-
-      if (newRenderedNode == null) {
-        EngineDebugLogger.log('COMPONENT_UPDATE_NULL',
-            'Component rendered null, skipping update');
-        return;
-      }
 
       EngineDebugLogger.log('COMPONENT_NEW_NODE', 'Generated new rendered node',
           component: newRenderedNode.runtimeType.toString());
@@ -666,35 +655,33 @@ class DCFEngine {
       }
 
       // O(hooks count) - Run lifecycle methods with phased effects
-      if (component is StatefulComponent) {
+      EngineDebugLogger.log(
+          'LIFECYCLE_DID_UPDATE', 'Calling componentDidUpdate');
+      component.componentDidUpdate({});
+
+      EngineDebugLogger.log(
+          'LIFECYCLE_EFFECTS_IMMEDIATE', 'Running immediate effects');
+      component.runEffectsAfterRender();
+
+      if (_isTreeComplete) {
         EngineDebugLogger.log(
-            'LIFECYCLE_DID_UPDATE', 'Calling componentDidUpdate');
-        component.componentDidUpdate({});
-
-        EngineDebugLogger.log(
-            'LIFECYCLE_EFFECTS_IMMEDIATE', 'Running immediate effects');
-        component.runEffectsAfterRender();
-
-        if (_isTreeComplete) {
-          EngineDebugLogger.log(
-              'LIFECYCLE_EFFECTS_LAYOUT', 'Running layout effects');
-          component.runLayoutEffects();
-        }
-
-        if (_isTreeComplete) {
-          EngineDebugLogger.log(
-              'LIFECYCLE_EFFECTS_INSERTION', 'Running insertion effects');
-          component.runInsertionEffects();
-        }
+            'LIFECYCLE_EFFECTS_LAYOUT', 'Running layout effects');
+        component.runLayoutEffects();
       }
 
+      if (_isTreeComplete) {
+        EngineDebugLogger.log(
+            'LIFECYCLE_EFFECTS_INSERTION', 'Running insertion effects');
+        component.runInsertionEffects();
+      }
+    
       // O(1) - Call lifecycle interceptor after update
       if (lifecycleInterceptor != null) {
         EngineDebugLogger.log(
             'LIFECYCLE_INTERCEPTOR', 'Calling afterUpdate interceptor');
         final context = VDomLifecycleContext(
           scheduleUpdate: () =>
-              _scheduleComponentUpdateInternal(component as StatefulComponent),
+              _scheduleComponentUpdateInternal(component),
           forceUpdate: (node) => _partialUpdateNode(node),
           vdomState: {'isUpdating': false},
         );
@@ -992,10 +979,10 @@ class DCFEngine {
     // O(1) - Create the view
     EngineDebugLogger.logBridge('CREATE_VIEW', viewId, data: {
       'ElementType': element.type,
-      'Props': element.props.keys.toList()
+      'Props': element.elementProps.keys.toList()
     });
     final success =
-        await _nativeBridge.createView(viewId, element.type, element.props);
+        await _nativeBridge.createView(viewId, element.type, element.elementProps);
     if (!success) {
       EngineDebugLogger.log(
           'ELEMENT_CREATE_FAILED', 'Failed to create native view',
@@ -1103,23 +1090,16 @@ class DCFEngine {
     }
     // O(component reconciliation complexity) - Handle component nodes
     else if (oldNode is StatefulComponent && newNode is StatefulComponent) {
-      // ✅ ADD EQUALITY CHECK BEFORE RECONCILIATION
-      if (_componentsAreEqual(oldNode, newNode)) {
-        EngineDebugLogger.logReconcile('SKIP_STATEFUL_EQUAL', oldNode, newNode,
-            reason: 'StatefulComponents are equal - skipping reconciliation');
-
-        // Transfer essential properties without triggering re-render
+      if (oldNode == newNode) {
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
         newNode.parent = oldNode.parent;
-        newNode.renderedNode =
-            oldNode.renderedNode; // ✅ Keep existing rendered content
+        newNode.renderedNode = oldNode.renderedNode;
 
-        // Update tracking but preserve the component state
         _statefulComponents[newNode.instanceId] = newNode;
         newNode.scheduleUpdate = () => _scheduleComponentUpdate(newNode);
 
-        return; // ✅ EARLY EXIT - No reconciliation needed
+        return;
       }
 
       EngineDebugLogger.logReconcile('UPDATE_STATEFUL', oldNode, newNode,
@@ -1142,45 +1122,24 @@ class DCFEngine {
 
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
-    // Handle stateless components
+    // Handle stateless components (React functional components - no internal tracking needed)
     else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
-      // print("🔍 StatelessComponent reconciliation:");
-      // print("  oldNode: ${oldNode.runtimeType}");
-      // print("  newNode: ${newNode.runtimeType}");
-
-      // ✅ Use _componentsAreEqual FIRST before any transfers
-      if (_componentsAreEqual(oldNode, newNode)) {
-        // print("  🟢 SKIPPING reconciliation - components are equal");
-        EngineDebugLogger.logReconcile('SKIP_STATELESS_EQUAL', oldNode, newNode,
-            reason: 'StatelessComponents are equal - skipping reconciliation');
-
-        // Transfer essential properties without triggering re-render
-        newNode.nativeViewId = oldNode.nativeViewId;
-        newNode.contentViewId = oldNode.contentViewId;
-        newNode.parent = oldNode.parent;
-        newNode.renderedNode =
-            oldNode.renderedNode; // ✅ Reuse existing rendered content
-
-        // Update tracking but preserve the component state
-        _statelessComponents[newNode.instanceId] = newNode;
-
-        return; // ✅ EARLY EXIT - No reconciliation needed
-      }
-
-      // print("  🔴 CONTINUING reconciliation - components are different");
       EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
-          reason: 'StatelessComponent needs reconciliation - props changed');
+          reason: 'StatelessComponent reconciliation - always check rendered content');
 
-      // Transfer IDs for reconciliation
+      // O(1) - Transfer important properties between nodes
       newNode.nativeViewId = oldNode.nativeViewId;
       newNode.contentViewId = oldNode.contentViewId;
 
-      // Update component tracking
-      _statelessComponents[newNode.instanceId] = newNode;
+      // O(1) - Register the new component instance
+      registerComponent(newNode);
 
-      // Handle reconciliation of the rendered trees
+      // ✅ ALWAYS reconcile rendered content to ensure prop updates are applied efficiently
+      // Don't early exit based on component equality - let the rendered tree reconciliation
+      // handle the efficient diffing of actual changes
       final oldRenderedNode = oldNode.renderedNode;
       final newRenderedNode = newNode.renderedNode;
+
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
 
@@ -1420,16 +1379,15 @@ class DCFEngine {
         // O(rendered tree size) - Recursively dispose rendered content
         await _disposeOldComponent(oldNode.renderedNode);
       }
-      // O(1) - Handle StatelessComponent disposal
+      // Handle StatelessComponent disposal (React functional components)
       else if (oldNode is StatelessComponent) {
         EngineDebugLogger.log(
             'DISPOSE_STATELESS', 'Disposing StatelessComponent',
-            extra: {'InstanceId': oldNode.instanceId});
+            extra: {'ComponentType': oldNode.runtimeType.toString()});
 
-        // O(1) - Remove from component tracking
-        _statelessComponents.remove(oldNode.instanceId);
+        // No internal tracking to remove - StatelessComponents are stateless
 
-        // O(1) - Call lifecycle cleanup
+        // Call lifecycle cleanup
         try {
           oldNode.componentWillUnmount();
           EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
@@ -1495,9 +1453,8 @@ class DCFEngine {
 
       await _disposeOldComponent(rootComponent!);
 
-      // O(n) - Clear all VDOM tracking maps
+      // Clear all VDOM tracking maps
       _statefulComponents.clear();
-      _statelessComponents.clear();
       _nodesByViewId.clear();
       _previousRenderedNodes.clear();
       _pendingUpdates.clear();
@@ -1631,7 +1588,8 @@ class DCFEngine {
       }
 
       // O(props count) - Find changed props using proper diffing algorithm
-      final changedProps = _diffProps(oldElement.type, oldElement.props, newElement.props);
+      final changedProps =
+          _diffProps(oldElement.type, oldElement.elementProps, newElement.elementProps);
 
       // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
@@ -1759,11 +1717,12 @@ class DCFEngine {
   bool _childrenHaveKeys(List<DCFComponentNode> children) {
     if (children.isEmpty) return false;
 
+    // Only use keyed reconciliation if ALL children have keys
     for (var child in children) {
-      if (child.key != null) return true;
+      if (child.key == null) return false;
     }
 
-    return false;
+    return true;
   }
 
   /// O(children reconciliation complexity) - Reconcile fragment children directly without a container element
@@ -1806,7 +1765,7 @@ class DCFEngine {
     final oldChildOrderByKey = <String?, int>{};
     for (int i = 0; i < oldChildren.length; i++) {
       final oldChild = oldChildren[i];
-      final key = oldChild.key ?? i.toString();
+      final key = _getNodeKey(oldChild, i);
       oldChildrenMap[key] = oldChild;
       oldChildOrderByKey[key] = i;
     }
@@ -1821,7 +1780,7 @@ class DCFEngine {
     // O(new children count * reconciliation complexity) - Process each new child
     for (int i = 0; i < newChildren.length; i++) {
       final newChild = newChildren[i];
-      final key = newChild.key ?? i.toString();
+      final key = _getNodeKey(newChild, i);
       final oldChild = oldChildrenMap[key];
 
       String? childViewId;
@@ -1926,15 +1885,21 @@ class DCFEngine {
       EngineDebugLogger.log(
           'RECONCILE_SIMPLE_UPDATE', 'Updating child at index $i');
 
-      await _reconcile(oldChild, newChild);
+      // Smart conditional rendering: if same position but very different components,
+      // replace instead of reconcile to prevent state bleeding
+      if (_shouldReplaceAtSamePosition(oldChild, newChild)) {
+        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE', 
+            'Replacing child at index $i due to conditional rendering pattern');
+        await _replaceNode(oldChild, newChild);
+      } else {
+        await _reconcile(oldChild, newChild);
+      }
 
-      final childViewId = oldChild.effectiveNativeViewId;
+      final childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
       if (childViewId != null) {
         updatedChildIds.add(childViewId);
       }
-    }
-
-    // O((new - common) * render complexity) - Handle length differences
+    }    // O((new - common) * render complexity) - Handle length differences
     if (newChildren.length > oldChildren.length) {
       hasStructuralChanges = true;
       EngineDebugLogger.log('RECONCILE_SIMPLE_ADD',
@@ -2119,9 +2084,8 @@ class DCFEngine {
   void printDebugStats() {
     EngineDebugLogger.printStats();
 
-    EngineDebugLogger.log('VDOM_STATS', 'Current enhanced VDOM state', extra: {
+    EngineDebugLogger.log('VDOM_STATS', 'Current VDOM state', extra: {
       'StatefulComponents': _statefulComponents.length,
-      'StatelessComponents': _statelessComponents.length,
       'NodesByViewId': _nodesByViewId.length,
       'PendingUpdates': _pendingUpdates.length,
       'ComponentPriorities': _componentPriorities.length,
@@ -2638,3 +2602,4 @@ class DCFEngine {
     return suggestions;
   }
 }
+

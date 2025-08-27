@@ -125,7 +125,7 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
     // Create DCF element that will be rendered by native component
     return DCFElement(
       type: 'ReanimatedView', // Must match native component registration
-      props: props,
+      elementProps: props,
       children: children,
     );
   }

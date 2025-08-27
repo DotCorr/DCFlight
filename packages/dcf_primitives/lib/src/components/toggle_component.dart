@@ -110,7 +110,7 @@ class DCFToggle extends StatelessComponent
 
     return DCFElement(
       type: 'Toggle',
-      props: props,
+      elementProps: props,
       children: [],
     );
   }

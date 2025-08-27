@@ -143,11 +143,37 @@ class PureReanimatedView: UIView {
         // Stop current animation
         stopPureAnimation()
         
+        // Reset properties that are NOT in the new animation config
+        resetUnusedProperties(newAnimationConfig: animatedStyle)
+        
         // Reconfigure
         configurePureAnimation(animatedStyle)
         
         // Restart
         startPureAnimation()
+    }
+    
+    /// Reset visual properties that are not being used by the new animation
+    private func resetUnusedProperties(newAnimationConfig: [String: Any]) {
+        // Reset alpha only if opacity is not in the new config
+        if !newAnimationConfig.keys.contains("opacity") {
+            self.alpha = 1.0
+        }
+        
+        // Reset transform only if no transform properties in new config
+        let transformProps = ["scale", "scaleX", "scaleY", "translateX", "translateY", "rotation", "rotationX", "rotationY"]
+        let hasTransform = transformProps.contains { newAnimationConfig.keys.contains($0) }
+        if !hasTransform {
+            self.transform = CGAffineTransform.identity
+        }
+        
+        // Reset width constraint if width is not being animated
+        if !newAnimationConfig.keys.contains("width") {
+            // Remove any width constraints that might have been set by previous animations
+            if let widthConstraint = self.constraints.first(where: { $0.firstAttribute == .width }) {
+                self.removeConstraint(widthConstraint)
+            }
+        }
     }
     
     /// Start pure UI thread animation - NO BRIDGE CALLS

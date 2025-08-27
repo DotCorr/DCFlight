@@ -146,7 +146,7 @@ class DCFScrollView extends StatelessComponent
 
     return DCFElement(
       type: 'ScrollView', // Use the correct registered component name
-      props: props,
+      elementProps: props,
       children: children,
     );
   }

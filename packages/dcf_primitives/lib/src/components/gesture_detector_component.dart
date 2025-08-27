@@ -125,7 +125,7 @@ class DCFGestureDetector extends StatelessComponent
 
     return DCFElement(
       type: 'GestureDetector',
-      props: props,
+      elementProps: props,
       children: children,
     );
   }
