@@ -22,17 +22,5 @@ class DCFlightCommandRunner extends CommandRunner<void> {
     addCommand(RunCommand());
     addCommand(StartCommand());
   }
-
-  @override
-  void printUsage() {
-    print('DCFlight CLI - Development tools for DCFlight framework\n');
-    print('Usage: dcf <command> [options]\n');
-    print('Available commands:');
-    print('  create    Create new DCFlight projects or modules');
-    print('  add       Add packages to your DCFlight project');
-    print('  go        Run DCFlight app with hot reload watcher');
-    print('  start     Start DCFlight app (alias for go)');
-    print('\nRun "dcf help <command>" for more information about a command.');
-  }
 }
 
