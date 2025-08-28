@@ -1,7 +1,13 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source code is licensed under the MIT license found in the
+ * This source c  /// Print stylish welcome header
+  Future<void> _printWelcomeHeader() async {
+    print('');
+    print('$_brightCyan$_bold🚀 DCFlight Hot Reload System$_reset');
+    print('$_dim   Powered by DCFlight Framework with Flutter Tooling$_reset');
+    print('');
+  }sed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
@@ -37,9 +43,6 @@ class HotReloadWatcher {
   static const String _boxTopRight = '╮';
   static const String _boxBottomLeft = '╰';
   static const String _boxBottomRight = '╯';
-  static const String _boxCross = '┼';
-  static const String _boxVerticalRight = '├';
-  static const String _boxVerticalLeft = '┤';
   static const String _boxHeavyHorizontal = '━';
   
   HotReloadWatcher({
@@ -84,12 +87,9 @@ class HotReloadWatcher {
 
   /// Setup split terminal layout
   Future<void> _setupSplitTerminal() async {
-    final width = 80;
-    final halfWidth = width ~/ 2;
-    
-    print('$_brightBlue$_bold$_boxTopLeft${_boxHorizontal * (halfWidth - 1)}$_boxCross${_boxHorizontal * (halfWidth - 2)}$_boxTopRight$_reset');
-    print('$_brightBlue$_bold$_boxVertical${' ' * (halfWidth - 20)}$_brightGreen${_bold}DCFApp (Flutter Tooling)$_reset$_boxVertical${' ' * (halfWidth - 9)}$_brightGreen${_bold}Watcher$_reset$_boxVertical$_reset');
-    print('$_brightBlue$_bold$_boxVerticalRight${_boxHorizontal * (halfWidth - 1)}$_boxCross${_boxHorizontal * (halfWidth - 2)}$_boxVerticalLeft$_reset');
+    print('$_brightBlue$_bold━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$_reset');
+    print('$_brightGreen$_bold  DCFApp (Flutter Tooling)$_reset                       $_brightCyan$_bold  Watcher$_reset');
+    print('$_brightBlue$_bold━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$_reset');
   }
 
   /// Start Flutter process with custom output handling
@@ -307,15 +307,14 @@ class HotReloadWatcher {
   /// Log DCFlight App output (left side)
   void _logFlutter(String icon, String message, [String color = '']) {
     final timestamp = _getTimestamp();
-    final prefix = '$_brightBlue$_boxVertical$_reset';
-    print('$prefix$color $icon $timestamp $message$_reset');
+    print('$color  $icon $timestamp $message$_reset');
   }
 
   /// Log watcher output (right side)
   void _logWatcher(String icon, String message, [String color = '']) {
     final timestamp = _getTimestamp();
-    final padding = ' ' * 42; // Align to right side of split
-    print('$padding$_brightBlue$_boxVertical$_reset$color $icon $timestamp $message$_reset');
+    final padding = ' ' * 50; // Align to right side
+    print('$padding$color$icon $timestamp $message$_reset');
   }
 
   /// Get formatted timestamp
