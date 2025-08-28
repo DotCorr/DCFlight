@@ -47,6 +47,8 @@ export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
 export 'dart:async';
 // Core Infrastructure
 export 'framework/renderer/engine/index.dart';
+// Developer tools
+export 'framework/devtools/hot_reload_listener.dart';
 
 // Native Bridge System
 export 'framework/renderer/interface/interface.dart';
@@ -78,6 +80,7 @@ import 'framework/protocol/plugin_protocol.dart';
 export 'framework/renderer/interface/tunnel.dart';
 import 'framework/devtools/hot_restart.dart';
 import 'framework/utils/dcf_logger.dart';
+import 'framework/devtools/hot_reload_listener.dart';
 import 'package:flutter/material.dart';
 export 'package:equatable/equatable.dart';
 
@@ -115,6 +118,11 @@ class DCFlight {
   /// Start the application with the given root component
   static Future<void> start({required DCFComponentNode app}) async {
     await _initialize();
+
+    // Start hot reload listener in debug mode
+    if (!const bool.fromEnvironment('dart.vm.product')) {
+      await HotReloadListener.start();
+    }
 
     // Check for hot restart and cleanup if needed (debug mode only)
     final wasHotRestart = await HotRestartDetector.detectAndCleanup();

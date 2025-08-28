@@ -171,14 +171,44 @@ class HotReloadWatcher {
     }
   }
 
-  /// Trigger hot reload by sending 'r' to Flutter process
+  /// Trigger hot reload by sending 'r' to Flutter process and HTTP request to DCFlight app
   Future<void> _triggerHotReload() async {
     try {
       _logWatcher('🔥', 'Triggering hot reload...', _magenta);
+      
+      // Send 'r' to Flutter process (for Flutter's own hot reload)
       _flutterProcess.stdin.writeln('r');
       await _flutterProcess.stdin.flush();
+      
+      // Also send HTTP request to DCFlight app for VDOM hot reload
+      await _triggerDCFlightHotReload();
+      
     } catch (e) {
       _logWatcher('❌', 'Failed to trigger hot reload: $e', _red);
+    }
+  }
+
+  /// Send HTTP request to DCFlight app to trigger VDOM hot reload
+  Future<void> _triggerDCFlightHotReload() async {
+    try {
+      final client = HttpClient();
+      final request = await client.postUrl(Uri.parse('http://localhost:8765/hot-reload'));
+      request.headers.set('Content-Type', 'application/json');
+      
+      // Send the request
+      final response = await request.close();
+      
+      if (response.statusCode == 200) {
+        _logWatcher('✅', 'DCFlight VDOM hot reload triggered', _green);
+      } else {
+        _logWatcher('⚠️', 'DCFlight app may not be running (${response.statusCode})', _yellow);
+      }
+      
+      client.close();
+    } catch (e) {
+      // This is expected if the app isn't running or doesn't have the listener
+      // Don't log as error since Flutter hot reload still works
+      _logWatcher('💡', 'DCFlight hot reload listener not available', _dim);
     }
   }
 

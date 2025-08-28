@@ -5,7 +5,8 @@ import 'package:dcflight/dcflight.dart';
 void main() async {
   // Enable debug logging to see UseWebDefaults in action
   DCFlight.setLogLevel(DCFLogLevel.debug);
-  // Start the app
+  
+  // Start the app (hot reload listener will be started automatically in debug mode)
   await DCFlight.start(app: MyStackApp());
 }
 
