@@ -28,7 +28,7 @@ class HotReloadTestScreen extends StatefulComponent {
       styleSheet: StyleSheet(backgroundColor: Colors.indigo),
       children: [
         DCFText(
-          content: "🔥 Hot Reload Test (Manual)",
+          content: "🔥 Hot Reload Test (AUTO WATCHER ACTIVE!)",
           textProps: DCFTextProps(
             fontSize: 28, 
             fontWeight: DCFFontWeight.bold,

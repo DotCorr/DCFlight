@@ -8,6 +8,7 @@
 import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:dcflight_cli/services/dcflight_runner.dart';
+import 'package:dcflight_cli/services/hot_reload_watcher.dart';
 
 class RunCommand extends Command {
   @override
@@ -23,6 +24,11 @@ class RunCommand extends Command {
         abbr: 'v',
         defaultsTo: false,
         help: 'Verbose output',
+      )
+      ..addFlag(
+        'hot-reload',
+        defaultsTo: true,
+        help: 'Enable stylish hot reload watcher (default: true)',
       )
       ..addMultiOption(
         'dcf-args',
@@ -42,6 +48,7 @@ class RunCommand extends Command {
 
   Future<void> _runDCFlightApp() async {
     final verbose = argResults!['verbose'];
+    final hotReload = argResults!['hot-reload'];
     final dcfArgs = argResults!['dcf-args'] as List<String>;
 
     print('🚀 Starting DCFlight app...');
@@ -49,20 +56,30 @@ class RunCommand extends Command {
     // Validate project structure
     await _validateProjectStructure();
 
-    // Start DCFlight app
-    print('🎯 Launching DCFlight runtime...');
-    final dcfRunner = DCFlightRunner(
-      additionalArgs: dcfArgs,
-      verbose: verbose,
-    );
+    if (hotReload) {
+      // Use the stylish hot reload watcher system
+      print('🔥 Starting with Hot Reload Watcher...');
+      final watcher = HotReloadWatcher(
+        additionalArgs: dcfArgs,
+        verbose: verbose,
+      );
+      await watcher.start();
+    } else {
+      // Use the original runner without hot reload
+      print('🎯 Launching DCFlight runtime...');
+      final dcfRunner = DCFlightRunner(
+        additionalArgs: dcfArgs,
+        verbose: verbose,
+      );
 
-    final dcfProcess = await dcfRunner.start();
+      final dcfProcess = await dcfRunner.start();
 
-    print('✅ DCFlight app launched successfully!');
-    print('💡 Make changes to your code and restart to see updates');
+      print('✅ DCFlight app launched successfully!');
+      print('💡 Make changes to your code and restart to see updates');
 
-    // Wait for the process to complete
-    await dcfProcess.exitCode;
+      // Wait for the process to complete
+      await dcfProcess.exitCode;
+    }
   }
 
   Future<void> _validateProjectStructure() async {
@@ -89,3 +106,4 @@ class RunCommand extends Command {
     print('✅ DCFlight project structure validated');
   }
 }
+

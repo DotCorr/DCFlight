@@ -6,7 +6,7 @@ class HomeScreen extends StatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      styleSheet: StyleSheet(backgroundColor: Colors.orange),
+      styleSheet: StyleSheet(backgroundColor: Colors.pink),
       layout: LayoutProps(
         flex: 1,
         padding: 20,
