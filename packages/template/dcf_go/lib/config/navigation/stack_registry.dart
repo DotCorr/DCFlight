@@ -1,6 +1,7 @@
 import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/animation_test.dart";
 import "package:dcf_go/features/app.dart";
+import "package:dcf_go/features/hot_reload_test.dart";
 import "package:dcf_go/features/website_screen.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
@@ -124,6 +125,16 @@ class StackScreenRegistry extends StatelessComponent {
             showDragIndicator: true,
           ),
           builder: () => AnimationTestScreen(),
+        ),
+
+        // 🔥 HOT RELOAD TEST - Test hot reload functionality
+        DCFEasyScreen(
+          route: "home/hot_reload_test",
+          pushConfig: DCFPushConfig(
+            title: "Hot Reload Test",
+            backButtonTitle: "Home",
+          ),
+          builder: () => HotReloadTestScreen(),
         ),
       ],
     );
