@@ -24,19 +24,23 @@ class HotReloadWatcher {
   static const String _green = '\x1B[32m';
   static const String _yellow = '\x1B[33m';
   static const String _red = '\x1B[31m';
-  static const String _blue = '\x1B[34m';
   static const String _magenta = '\x1B[35m';
+  static const String _white = '\x1B[37m';
+  static const String _brightBlue = '\x1B[94m';
+  static const String _brightGreen = '\x1B[92m';
+  static const String _brightCyan = '\x1B[96m';
   
-  // Box drawing characters
+  // Box drawing characters for beautiful UI
   static const String _boxHorizontal = '─';
   static const String _boxVertical = '│';
-  static const String _boxTopLeft = '┌';
-  static const String _boxTopRight = '┐';
-  static const String _boxBottomLeft = '└';
-  static const String _boxBottomRight = '┘';
+  static const String _boxTopLeft = '╭';
+  static const String _boxTopRight = '╮';
+  static const String _boxBottomLeft = '╰';
+  static const String _boxBottomRight = '╯';
   static const String _boxCross = '┼';
   static const String _boxVerticalRight = '├';
   static const String _boxVerticalLeft = '┤';
+  static const String _boxHeavyHorizontal = '━';
   
   HotReloadWatcher({
     this.additionalArgs = const [],
@@ -54,6 +58,9 @@ class HotReloadWatcher {
     // Start file watcher
     await _startFileWatcher();
     
+    // Start user input handler
+    _startUserInputHandler();
+    
     // Wait for Flutter process to complete
     final exitCode = await _flutterProcess.exitCode;
     
@@ -65,13 +72,13 @@ class HotReloadWatcher {
   /// Print stylish welcome header
   Future<void> _printWelcomeHeader() async {
     final width = 80;
-    final title = '🔥 DCFlight Hot Reload Watcher';
-    final subtitle = 'Powered by DCFlight Framework';
+    final title = '� DCFlight Hot Reload System';
+    final subtitle = 'Powered by DCFlight Framework with Flutter Tooling';
     
-    print('\n$_cyan$_bold$_boxTopLeft${_boxHorizontal * (width - 2)}$_boxTopRight$_reset');
-    print('$_cyan$_bold$_boxVertical${' ' * ((width - title.length) ~/ 2 - 1)}$title${' ' * ((width - title.length) ~/ 2 - 1)}$_boxVertical$_reset');
-    print('$_cyan$_bold$_boxVertical${' ' * ((width - subtitle.length) ~/ 2 - 1)}$_dim$subtitle$_reset${' ' * ((width - subtitle.length) ~/ 2 - 1)}$_cyan$_bold$_boxVertical$_reset');
-    print('$_cyan$_bold$_boxBottomLeft${_boxHorizontal * (width - 2)}$_boxBottomRight$_reset');
+    print('\n$_brightCyan$_bold$_boxTopLeft${_boxHeavyHorizontal * (width - 2)}$_boxTopRight$_reset');
+    print('$_brightCyan$_bold$_boxVertical${' ' * ((width - title.length) ~/ 2 - 1)}$_white$title$_reset${' ' * ((width - title.length) ~/ 2 - 1)}$_brightCyan$_bold$_boxVertical$_reset');
+    print('$_brightCyan$_bold$_boxVertical${' ' * ((width - subtitle.length) ~/ 2 - 1)}$_dim$subtitle$_reset${' ' * ((width - subtitle.length) ~/ 2 - 1)}$_brightCyan$_bold$_boxVertical$_reset');
+    print('$_brightCyan$_bold$_boxBottomLeft${_boxHeavyHorizontal * (width - 2)}$_boxBottomRight$_reset');
     print('');
   }
 
@@ -80,9 +87,9 @@ class HotReloadWatcher {
     final width = 80;
     final halfWidth = width ~/ 2;
     
-    print('$_blue$_bold$_boxTopLeft${_boxHorizontal * (halfWidth - 1)}$_boxCross${_boxHorizontal * (halfWidth - 2)}$_boxTopRight$_reset');
-    print('$_blue$_bold$_boxVertical${' ' * (halfWidth - 8)}Flutter$_boxVertical${' ' * (halfWidth - 9)}Watcher$_boxVertical$_reset');
-    print('$_blue$_bold$_boxVerticalRight${_boxHorizontal * (halfWidth - 1)}$_boxCross${_boxHorizontal * (halfWidth - 2)}$_boxVerticalLeft$_reset');
+    print('$_brightBlue$_bold$_boxTopLeft${_boxHorizontal * (halfWidth - 1)}$_boxCross${_boxHorizontal * (halfWidth - 2)}$_boxTopRight$_reset');
+    print('$_brightBlue$_bold$_boxVertical${' ' * (halfWidth - 20)}$_brightGreen${_bold}DCFApp (Flutter Tooling)$_reset$_boxVertical${' ' * (halfWidth - 9)}$_brightGreen${_bold}Watcher$_reset$_boxVertical$_reset');
+    print('$_brightBlue$_bold$_boxVerticalRight${_boxHorizontal * (halfWidth - 1)}$_boxCross${_boxHorizontal * (halfWidth - 2)}$_boxVerticalLeft$_reset');
   }
 
   /// Start Flutter process with custom output handling
@@ -98,7 +105,7 @@ class HotReloadWatcher {
         ...additionalArgs,
       ];
       
-      _logWatcher('🚀', 'Starting Flutter process...', _green);
+      _logWatcher('🚀', 'Starting DCFlight process...', _brightGreen);
       
       _flutterProcess = await Process.start(
         'flutter',
@@ -122,10 +129,10 @@ class HotReloadWatcher {
         _logFlutter('⚠️ ', line, _yellow);
       });
       
-      _logWatcher('✅', 'Flutter process started successfully', _green);
+      _logWatcher('✅', 'DCFlight process started successfully', _brightGreen);
       
     } catch (e) {
-      _logWatcher('❌', 'Failed to start Flutter: $e', _red);
+      _logWatcher('❌', 'Failed to start DCFlight: $e', _red);
       rethrow;
     }
   }
@@ -169,6 +176,63 @@ class HotReloadWatcher {
       _logWatcher('❌', 'Failed to start file watcher: $e', _red);
       rethrow;
     }
+  }
+
+  /// Start user input handler for Flutter commands
+  void _startUserInputHandler() {
+    _logWatcher('⌨️ ', 'User input handler active - press keys for Flutter commands', _brightCyan);
+    
+    // Listen to stdin in raw mode for immediate key detection
+    stdin.lineMode = false;
+    stdin.echoMode = false;
+    
+    stdin.listen((List<int> data) {
+      try {
+        final input = String.fromCharCodes(data).trim();
+        
+        // Handle Flutter commands
+        switch (input) {
+          case 'r':
+            _logWatcher('🔥', 'Manual hot reload triggered by user', _magenta);
+            _flutterProcess.stdin.writeln('r');
+            _flutterProcess.stdin.flush();
+            break;
+          case 'R':
+            _logWatcher('🔄', 'Hot restart triggered by user', _yellow);
+            _flutterProcess.stdin.writeln('R');
+            _flutterProcess.stdin.flush();
+            break;
+          case 'q':
+            _logWatcher('👋', 'Quit command sent by user', _red);
+            _flutterProcess.stdin.writeln('q');
+            _flutterProcess.stdin.flush();
+            break;
+          case 'h':
+            _logWatcher('❓', 'Help command sent by user', _cyan);
+            _flutterProcess.stdin.writeln('h');
+            _flutterProcess.stdin.flush();
+            break;
+          case 'd':
+            _logWatcher('🔌', 'Detach command sent by user', _yellow);
+            _flutterProcess.stdin.writeln('d');
+            _flutterProcess.stdin.flush();
+            break;
+          case 'c':
+            _logWatcher('🧹', 'Clear screen command sent by user', _cyan);
+            _flutterProcess.stdin.writeln('c');
+            _flutterProcess.stdin.flush();
+            break;
+          default:
+            // Pass through any other input
+            if (input.isNotEmpty && input != '\n' && input != '\r') {
+              _flutterProcess.stdin.writeln(input);
+              _flutterProcess.stdin.flush();
+            }
+        }
+      } catch (e) {
+        // Ignore input errors
+      }
+    });
   }
 
   /// Trigger hot reload by sending 'r' to Flutter process and HTTP request to DCFlight app
@@ -240,10 +304,10 @@ class HotReloadWatcher {
     return deviceId;
   }
 
-  /// Log Flutter output (left side)
+  /// Log DCFlight App output (left side)
   void _logFlutter(String icon, String message, [String color = '']) {
     final timestamp = _getTimestamp();
-    final prefix = '$_blue$_boxVertical$_reset';
+    final prefix = '$_brightBlue$_boxVertical$_reset';
     print('$prefix$color $icon $timestamp $message$_reset');
   }
 
@@ -251,7 +315,7 @@ class HotReloadWatcher {
   void _logWatcher(String icon, String message, [String color = '']) {
     final timestamp = _getTimestamp();
     final padding = ' ' * 42; // Align to right side of split
-    print('$padding$_blue$_boxVertical$_reset$color $icon $timestamp $message$_reset');
+    print('$padding$_brightBlue$_boxVertical$_reset$color $icon $timestamp $message$_reset');
   }
 
   /// Get formatted timestamp
@@ -262,15 +326,15 @@ class HotReloadWatcher {
 
   /// Print shutdown message
   Future<void> _printShutdownMessage(int exitCode) async {
-    print('\n$_blue$_bold$_boxBottomLeft${_boxHorizontal * 78}$_boxBottomRight$_reset');
+    print('\n$_brightBlue$_bold$_boxBottomLeft${_boxHorizontal * 78}$_boxBottomRight$_reset');
     
     if (exitCode == 0) {
-      print('$_green✅ DCFlight session completed successfully$_reset');
+      print('$_brightGreen✅ DCFlight session completed successfully$_reset');
     } else {
       print('$_red❌ DCFlight session ended with exit code: $exitCode$_reset');
     }
     
-    print('$_dim💡 Thanks for using DCFlight Hot Reload Watcher!$_reset\n');
+    print('$_dim💡 Thanks for using DCFlight Hot Reload System!$_reset\n');
   }
 }
 
