@@ -77,15 +77,29 @@ When files change, the watcher:
 
 ## Architecture
 
+## Architecture
+
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   File Watcher  │───▶│  Flutter Process │───▶│  DCFlight VDOM  │
-│                 │    │                  │    │                 │
-│ • Monitors lib/ │    │ • Receives 'r'   │    │ • Detects reload│
-│ • Detects chang │    │ • Triggers reload│    │ • Re-renders UI │
-│ • Sends command │    │ • Calls reassem  │    │ • Preserves sta │
+│   File Watcher  │───▶│   DCFlight App   │───▶│  DCFlight VDOM  │
+│   (CLI Process) │    │ (with Flutter    │    │   (Hot Reload)  │
+│                 │    │    Tooling)      │    │                 │
+│ • Monitors lib/ │    │ • HTTP Listener  │    │ • Re-renders UI │
+│ • Detects chang │    │ • Receives cmds  │    │ • Preserves sta │
+│ • Sends HTTP    │    │ • Calls trigger  │    │ • Updates VDOM  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
+
+## How it works:
+
+When files change, the watcher:
+
+1. **Detects the change** via file system events
+2. **Logs the event** in the watcher panel (right side)
+3. **Sends HTTP request** to DCFlight app on `localhost:8765`
+4. **DCFlight app receives request** and calls `triggerManualHotReload()`
+5. **VDOM re-renders** all components while preserving state
+6. **UI updates** instantly with code changes
 
 ## Error Handling
 

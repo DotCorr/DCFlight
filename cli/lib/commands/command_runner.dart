@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:args/command_runner.dart';
 import 'package:dcflight_cli/commands/create_command.dart';
 import 'package:dcflight_cli/commands/add_command.dart';
 import 'package:dcflight_cli/commands/run_command.dart';
+import 'package:dcflight_cli/commands/start_command.dart';
 
 class DCFlightCommandRunner extends CommandRunner<void> {
   DCFlightCommandRunner()
@@ -20,6 +20,7 @@ class DCFlightCommandRunner extends CommandRunner<void> {
     addCommand(CreateCommand());
     addCommand(AddCommand());
     addCommand(RunCommand());
+    addCommand(StartCommand());
   }
 
   @override
@@ -29,7 +30,9 @@ class DCFlightCommandRunner extends CommandRunner<void> {
     print('Available commands:');
     print('  create    Create new DCFlight projects or modules');
     print('  add       Add packages to your DCFlight project');
-    print('  run       Run DCFlight app');
+    print('  go        Run DCFlight app with hot reload watcher');
+    print('  start     Start DCFlight app (alias for go)');
     print('\nRun "dcf help <command>" for more information about a command.');
   }
 }
+

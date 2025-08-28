@@ -25,7 +25,7 @@ class HotReloadTestScreen extends StatefulComponent {
         alignItems: YogaAlign.center,
         gap: 20,
       ),
-      styleSheet: StyleSheet(backgroundColor: Colors.indigo),
+      styleSheet: StyleSheet(backgroundColor: Colors.grey.shade100),
       children: [
         DCFText(
           content: "🔥 Hot Reload Test (AUTO WATCHER ACTIVE!)",
