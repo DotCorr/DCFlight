@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'dart:async';
 
 import 'package:dcflight/framework/renderer/interface/interface.dart' show PlatformInterface;
@@ -90,4 +89,12 @@ class DCFEngineAPI {
     await isReady;
     await _vdom.deleteViews(viewIds);
   }
+
+  /// Force a complete re-render of the entire component tree for hot reload support
+  /// This preserves component state while re-executing all render() methods
+  Future<void> forceFullTreeReRender() async {
+    await isReady;
+    await _vdom.forceFullTreeReRender();
+  }
 }
+

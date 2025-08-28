@@ -22,7 +22,7 @@ class AnimationTestScreen extends StatefulComponent {
 
     return DCFScrollView(
       layout: LayoutProps(flex: 1, gap: 16, padding: 20),
-      styleSheet: StyleSheet(backgroundColor: Colors.grey.shade100),
+      styleSheet: StyleSheet(backgroundColor: Colors.green.shade100),
       children: [
         DCFText(
           content: "🧪 Animation Reconciliation Test", 
@@ -121,3 +121,4 @@ class AnimationTestScreen extends StatefulComponent {
     );
   }
 }
+

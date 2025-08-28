@@ -1490,6 +1490,33 @@ class DCFEngine {
     }
   }
 
+  /// Force a complete re-render of the entire component tree for hot reload support
+  /// This re-executes all render() methods while preserving navigation state
+  Future<void> forceFullTreeReRender() async {
+    if (rootComponent == null) {
+      EngineDebugLogger.log('HOT_RELOAD_ERROR', 'No root component to re-render');
+      return;
+    }
+
+    EngineDebugLogger.log('HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
+
+    try {
+      // Simply mark all stateful components as needing update
+      // This is exactly what happens during normal state changes
+      for (final component in _statefulComponents.values) {
+        _scheduleComponentUpdate(component);
+      }
+      
+      // Process all pending updates - this will naturally re-render everything
+      await _processPendingUpdates();
+      
+      EngineDebugLogger.log('HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
+    } catch (e) {
+      EngineDebugLogger.log('HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');
+      rethrow;
+    }
+  }
+
   /// O(tree depth) - Find a node's parent view ID
   String? _findParentViewId(DCFComponentNode node) {
     DCFComponentNode? current = node.parent;

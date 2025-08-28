@@ -27,12 +27,24 @@ class HomeScreen extends StatelessComponent {
           layout: LayoutProps(marginBottom: 30),
         ),
 
-        // 🎯 TARGETED NAVIGATION: Specify fromScreen to prevent conflicts
+                // 🎯 TARGETED NAVIGATION: Specify fromScreen to prevent conflicts
         DCFButton(
-          buttonProps: DCFButtonProps(title: "Go to Profile"),
+          buttonProps: DCFButtonProps(
+            title: "Go to Profile",
+          ),
           onPress: (data) {
-            print("Navigate to Profile pressed");
             AppNavigation.navigateTo("profile", fromScreen: "home");
+          },
+          layout: LayoutProps(marginBottom: 16, width: "80%"),
+        ),
+
+        DCFButton(
+          buttonProps: DCFButtonProps(
+            title: "🔥 Test Hot Reload",
+          ),
+          styleSheet: StyleSheet(backgroundColor: Colors.orange),
+          onPress: (data) {
+            AppNavigation.navigateTo("home/hot_reload_test", fromScreen: "home");
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
