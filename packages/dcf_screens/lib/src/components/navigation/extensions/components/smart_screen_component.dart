@@ -34,7 +34,6 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
   final Function(Map<dynamic, dynamic>)? onActivate;
   final Function(Map<dynamic, dynamic>)? onDeactivate;
   final Function(Map<dynamic, dynamic>)? onNavigationEvent;
-  final Function(Map<dynamic, dynamic>)? onNavigationCleanup;
   final Function(Map<dynamic, dynamic>)? onReceiveParams;
   final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
   final Map<String, dynamic>? customEvents;
@@ -58,7 +57,6 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
     this.onActivate,
     this.onDeactivate,
     this.onNavigationEvent,
-    this.onNavigationCleanup,
     this.onReceiveParams,
     this.onHeaderActionPress,
     this.customEvents,
@@ -109,31 +107,56 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
       },
       
       onNavigationEvent: (data) {
-        _handleNavigationEvents(route, data);
-        AppNavigation.clearCommand();
+        print("🔥 RECEIVED onNavigationEvent for route '$route': $data");
         
-        // Call user handler if provided
-        if (onNavigationEvent != null) onNavigationEvent!(data);
-      },
-      
-      // 🧹 CRITICAL: Handle navigation cleanup events from native gestures
-      onNavigationCleanup: (data) {
         final action = data['action'] as String?;
-        final targetRoute = data['route'] as String?;
+        final targetRoute = data['targetRoute'] as String?;
         final userInitiated = data['userInitiated'] as bool? ?? false;
         
-        if (userInitiated && targetRoute == route && action != null) {
-          print("🧹 DCFEasyScreen: Cleaning up route '$route' due to native gesture");
+        print("📱 Navigation event: action=$action, targetRoute=$targetRoute, userInitiated=$userInitiated, screenRoute=$route");
+        
+        // Handle user-initiated navigation events (swipe back, modal dismissal, etc.)
+        if (userInitiated) {
+          // CRITICAL: Clear any pending navigation commands to prevent loops
+          AppNavigation.clearCommand();
           
-          // Update navigation stores to trigger suspense
-          if (action == 'pop' || action == 'dismissModal') {
-            // Remove this route from navigation stack and deactivate
-            _handleNavigationCleanup(route, action);
+          switch (action) {
+            case 'pop':
+              // User swiped back or pressed back button
+              if (targetRoute != null) {
+                print("🔙 User-initiated pop to '$targetRoute'");
+                activeScreenTracker.setState(targetRoute);
+                
+                // Update navigation stack by removing routes after the target
+                final currentStack = List<String>.from(navigationStackTracker.state);
+                final targetIndex = currentStack.indexOf(targetRoute);
+                if (targetIndex >= 0) {
+                  final newStack = currentStack.sublist(0, targetIndex + 1);
+                  navigationStackTracker.setState(newStack);
+                  print("📚 Navigation stack updated after user pop: $newStack");
+                }
+              }
+              break;
+              
+            case 'dismissModal':
+              // User dismissed modal with swipe or gesture
+              print("🔙 User-initiated modal dismissal");
+              final currentStack = navigationStackTracker.state;
+              if (currentStack.isNotEmpty) {
+                final newActiveScreen = currentStack.last;
+                activeScreenTracker.setState(newActiveScreen);
+                print("📱 Active screen updated to '$newActiveScreen' after modal dismissal");
+              }
+              break;
           }
+        } else {
+          // Handle programmatic navigation events (use existing logic)
+          _handleNavigationEvents(route, data);
+          AppNavigation.clearCommand();
         }
         
         // Call user handler if provided
-        if (onNavigationCleanup != null) onNavigationCleanup!(data);
+        if (onNavigationEvent != null) onNavigationEvent!(data);
       },
       
       onReceiveParams: (data) {
@@ -172,13 +195,20 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
 
   bool _shouldRenderScreen(String route, String? activeScreen, List<String> navStack) {
     // Always render if it's the current active screen
-    if (activeScreen == route) return true;
+    if (activeScreen == route) {
+      return true;
+    }
     
-    // Always render if it's in the navigation stack (for back navigation)
-    if (navStack.contains(route)) return true;
+    // Always render if it's EXACTLY in the navigation stack (for back navigation)
+    if (navStack.contains(route)) {
+      return true;
+    }
     
-    // Always render home (it's the root)
-    if (route == "home") return true;
+    // For nested routes, be MORE restrictive - only render if it's the EXACT active screen
+    // Don't render all sibling routes just because they share a parent
+    if (route.contains("/")) {
+      return false;
+    }
     
     return false;
   }
@@ -203,41 +233,6 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         if (screenRoute == "home") {
           activeScreenTracker.setState("home");
           navigationStackTracker.setState(["home"]);
-        }
-        break;
-    }
-  }
-
-  // 🧹 CRITICAL: Handle navigation cleanup for native-initiated navigation
-  void _handleNavigationCleanup(String route, String action) {
-    print("🧹 DCFEasyScreen: Handling cleanup for route '$route' with action '$action'");
-    
-    final currentStack = List<String>.from(navigationStackTracker.state);
-    
-    switch (action) {
-      case 'pop':
-        // Remove the current route from the stack if present
-        if (currentStack.contains(route)) {
-          currentStack.remove(route);
-          
-          // Update the active screen to the last item in the stack
-          if (currentStack.isNotEmpty) {
-            final newActiveScreen = currentStack.last;
-            activeScreenTracker.setState(newActiveScreen);
-            navigationStackTracker.setState(currentStack);
-            print("🧹 Updated active screen to '$newActiveScreen' after native pop");
-          }
-        }
-        break;
-        
-      case 'dismissModal':
-        // For modal dismissal, just update the active screen
-        // The modal route shouldn't be in the main navigation stack
-        final currentStack = navigationStackTracker.state;
-        if (currentStack.isNotEmpty) {
-          final newActiveScreen = currentStack.last;
-          activeScreenTracker.setState(newActiveScreen);
-          print("🧹 Updated active screen to '$newActiveScreen' after modal dismissal");
         }
         break;
     }
@@ -269,7 +264,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         key, route, presentationStyle, builder, pushConfig, tabConfig, modalConfig,
         popoverConfig, overlayConfig, navigationBarConfig, styleSheet, alwaysRender,
         placeholder, onAppear, onDisappear, onActivate, onDeactivate, onNavigationEvent,
-        onNavigationCleanup, onReceiveParams, onHeaderActionPress, customEvents,
+        onReceiveParams, onHeaderActionPress, customEvents,
       ];
 }
 

@@ -152,6 +152,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 )
             }
             
+            // 🚨 CRITICAL: Set up navigation delegate to detect user gestures
+            setupNavigationDelegate(navigationController)
+            
             // 🚨 CRITICAL: Mark as programmatic navigation
             DCFScreenComponent.isProgrammaticNavigation = true
             
@@ -272,6 +275,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 )
             }
         }
+
+        // 🚨 CRITICAL: Set up navigation delegate to detect user gestures
+        setupNavigationDelegate(navigationController)
 
         // 🚨 CRITICAL: Mark as programmatic to prevent delegate from double-handling
         DCFScreenComponent.isProgrammaticNavigation = true
@@ -1656,32 +1662,24 @@ class DCFScreenComponent: NSObject, DCFComponent {
                             if container.viewController == poppedViewController {
                                 propagateEvent(
                                     on: container.contentView,
-                                    eventName: "onNavigationCleanup",
+                                    eventName: "onNavigationEvent",
                                     data: [
                                         "action": "pop",
-                                                                        "route": container.route,
-                                                                        "userInitiated": true
-                                                                    ]
-                                                                )
-                                                                print("🧹 Cleaned up actually popped route: \(container.route)")
-                                                                break
-                                                            }
-                                                        }
-                                                    }
+                                        "route": container.route,
+                                        "targetRoute": targetContainer.route,
+                                        "userInitiated": true,
+                                        "animated": true
+                                    ]
+                                )
+                                print("🧹 Sent navigation event for popped route: \(container.route)")
+                                break
+                            }
+                        }
+                    }
                                                     
                                                     objc_setAssociatedObject(navigationController, "previousViewControllers", currentViewControllers, .OBJC_ASSOCIATION_RETAIN)
                                                     
-                                                    propagateEvent(
-                                                        on: targetContainer.contentView,
-                                                        eventName: "onNavigationEvent",
-                                                        data: [
-                                                            "action": "pop",
-                                                            "targetRoute": targetContainer.route,
-                                                            "animated": animated,
-                                                            "userInitiated": true
-                                                        ]
-                                                    )
-                                                    
+                                                    // Send appear and activate events for the revealed screen
                                                     propagateEvent(
                                                         on: targetContainer.contentView,
                                                         eventName: "onAppear",
@@ -1733,28 +1731,18 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                                 print("🎯 DCFScreenComponent: Modal did dismiss (user-initiated)")
                                                 
                                                 if let screenContainer = findScreenContainer(for: presentationController.presentedViewController) {
-                                                    // Send cleanup event first for VDOM cleanup
-                                                    propagateEvent(
-                                                        on: screenContainer.contentView,
-                                                        eventName: "onNavigationCleanup",
-                                                        data: [
-                                                            "action": "dismissModal",
-                                                            "route": screenContainer.route,
-                                                            "userInitiated": true
-                                                        ]
-                                                    )
-                                                    print("🧹 Sent cleanup event for dismissed modal: \(screenContainer.route)")
-                                                    
-                                                    // Then send navigation event for other handlers
+                                                    // Send navigation event for VDOM cleanup and navigation handling
                                                     propagateEvent(
                                                         on: screenContainer.contentView,
                                                         eventName: "onNavigationEvent",
                                                         data: [
                                                             "action": "dismissModal",
+                                                            "route": screenContainer.route,
                                                             "animated": true,
                                                             "userInitiated": true
                                                         ]
                                                     )
+                                                    print("🧹 Sent navigation event for dismissed modal: \(screenContainer.route)")
                                                 }
                                             }
                                         }
