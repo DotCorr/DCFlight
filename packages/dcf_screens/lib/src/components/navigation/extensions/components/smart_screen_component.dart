@@ -11,7 +11,7 @@ import "package:dcflight/dcflight.dart";
 /// 🎯 DCFEasyScreen - Simple wrapper that reduces boilerplate 
 /// while keeping your existing working pattern
 class DCFEasyScreen extends StatefulComponent with EquatableMixin {
-  static bool _isHandlingUserNavigation = false;
+  static String? _lastExecutedCommand;
   
   final String route;
   final DCFPresentationStyle? presentationStyle;
@@ -72,6 +72,16 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
     final activeScreen = useStore(activeScreenTracker);
     final navStack = useStore(navigationStackTracker);
 
+    // Check if we should handle the command and if it's not a duplicate
+    final shouldHandle = _shouldHandleCommand(route, globalNavTarget.state);
+    final commandString = globalNavCommand.state?.toString();
+    final isDuplicate = commandString != null && commandString == DCFEasyScreen._lastExecutedCommand;
+    
+    // Store the command we're about to execute
+    if (shouldHandle && !isDuplicate && commandString != null) {
+      DCFEasyScreen._lastExecutedCommand = commandString;
+    }
+
     return DCFScreen(
       route: route,
       presentationStyle: presentationStyle ?? DCFPresentationStyle.push,
@@ -84,7 +94,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
       styleSheet: styleSheet,
       
       // 🎯 AUTOMATIC: Command routing
-      routeNavigationCommand: _shouldHandleCommand(route, globalNavTarget.state) && !DCFEasyScreen._isHandlingUserNavigation
+      routeNavigationCommand: shouldHandle && !isDuplicate
           ? globalNavCommand.state 
           : null,
       
@@ -119,11 +129,13 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         
         // Handle user-initiated navigation events (swipe back, modal dismissal, etc.)
         if (userInitiated) {
-          // CRITICAL: Set flag to prevent navigation command loops during user actions
-          DCFEasyScreen._isHandlingUserNavigation = true;
-          
-          // CRITICAL: Clear any pending navigation commands to prevent loops
+          // CRITICAL: Immediately clear ALL navigation state to prevent bouncing
           AppNavigation.clearCommand();
+          
+          // Clear the command cache to prevent duplicates
+          DCFEasyScreen._lastExecutedCommand = null;
+          
+          print("🚨 CLEARED all navigation commands for user-initiated action");
           
           switch (action) {
             case 'pop':
@@ -154,11 +166,6 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
               }
               break;
           }
-          
-          // Reset the flag after handling user-initiated navigation (with a small delay)
-          Future.delayed(const Duration(milliseconds: 100), () {
-            DCFEasyScreen._isHandlingUserNavigation = false;
-          });
         } else {
           // Handle programmatic navigation events (use existing logic)
           _handleNavigationEvents(route, data);
