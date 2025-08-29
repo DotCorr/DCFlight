@@ -53,6 +53,7 @@ class DCFScreen extends StatelessComponent
   final Function(Map<dynamic, dynamic>)? onActivate;
   final Function(Map<dynamic, dynamic>)? onDeactivate;
   final Function(Map<dynamic, dynamic>)? onNavigationEvent;
+  final Function(Map<dynamic, dynamic>)? onNavigationCleanup;
   final Function(Map<dynamic, dynamic>)? onReceiveParams;
   final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
   final DCFNavigationBarConfig? navigationBarConfig;
@@ -78,6 +79,7 @@ class DCFScreen extends StatelessComponent
     this.onActivate,
     this.onDeactivate,
     this.onNavigationEvent,
+    this.onNavigationCleanup,
     this.onReceiveParams,
     this.onHeaderActionPress,
     this.navigationBarConfig,
@@ -94,7 +96,9 @@ class DCFScreen extends StatelessComponent
     if (onNavigationEvent != null) {
       eventMap['onNavigationEvent'] = onNavigationEvent!;
     }
-
+    if (onNavigationCleanup != null) {
+      eventMap['onNavigationCleanup'] = onNavigationCleanup!;
+    }
 
     if (onReceiveParams != null) eventMap['onReceiveParams'] = onReceiveParams!;
     if (onHeaderActionPress != null) {
@@ -161,6 +165,7 @@ class DCFScreen extends StatelessComponent
         onActivate,
         onDeactivate,
         onNavigationEvent,
+        onNavigationCleanup,
         onReceiveParams,
         onHeaderActionPress,
         navigationBarConfig,
@@ -227,6 +232,4 @@ class DCFNavigationBarConfig extends Equatable {
         suffixActions,
       ];
 }
-
-
 

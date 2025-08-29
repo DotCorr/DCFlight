@@ -34,6 +34,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
   final Function(Map<dynamic, dynamic>)? onActivate;
   final Function(Map<dynamic, dynamic>)? onDeactivate;
   final Function(Map<dynamic, dynamic>)? onNavigationEvent;
+  final Function(Map<dynamic, dynamic>)? onNavigationCleanup;
   final Function(Map<dynamic, dynamic>)? onReceiveParams;
   final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
   final Map<String, dynamic>? customEvents;
@@ -57,6 +58,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
     this.onActivate,
     this.onDeactivate,
     this.onNavigationEvent,
+    this.onNavigationCleanup,
     this.onReceiveParams,
     this.onHeaderActionPress,
     this.customEvents,
@@ -112,6 +114,26 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         
         // Call user handler if provided
         if (onNavigationEvent != null) onNavigationEvent!(data);
+      },
+      
+      // 🧹 CRITICAL: Handle navigation cleanup events from native gestures
+      onNavigationCleanup: (data) {
+        final action = data['action'] as String?;
+        final targetRoute = data['route'] as String?;
+        final userInitiated = data['userInitiated'] as bool? ?? false;
+        
+        if (userInitiated && targetRoute == route && action != null) {
+          print("🧹 DCFEasyScreen: Cleaning up route '$route' due to native gesture");
+          
+          // Update navigation stores to trigger suspense
+          if (action == 'pop' || action == 'dismissModal') {
+            // Remove this route from navigation stack and deactivate
+            _handleNavigationCleanup(route, action);
+          }
+        }
+        
+        // Call user handler if provided
+        if (onNavigationCleanup != null) onNavigationCleanup!(data);
       },
       
       onReceiveParams: (data) {
@@ -186,6 +208,41 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
     }
   }
 
+  // 🧹 CRITICAL: Handle navigation cleanup for native-initiated navigation
+  void _handleNavigationCleanup(String route, String action) {
+    print("🧹 DCFEasyScreen: Handling cleanup for route '$route' with action '$action'");
+    
+    final currentStack = List<String>.from(navigationStackTracker.state);
+    
+    switch (action) {
+      case 'pop':
+        // Remove the current route from the stack if present
+        if (currentStack.contains(route)) {
+          currentStack.remove(route);
+          
+          // Update the active screen to the last item in the stack
+          if (currentStack.isNotEmpty) {
+            final newActiveScreen = currentStack.last;
+            activeScreenTracker.setState(newActiveScreen);
+            navigationStackTracker.setState(currentStack);
+            print("🧹 Updated active screen to '$newActiveScreen' after native pop");
+          }
+        }
+        break;
+        
+      case 'dismissModal':
+        // For modal dismissal, just update the active screen
+        // The modal route shouldn't be in the main navigation stack
+        final currentStack = navigationStackTracker.state;
+        if (currentStack.isNotEmpty) {
+          final newActiveScreen = currentStack.last;
+          activeScreenTracker.setState(newActiveScreen);
+          print("🧹 Updated active screen to '$newActiveScreen' after modal dismissal");
+        }
+        break;
+    }
+  }
+
   DCFComponentNode _createDefaultPlaceholder(String route) {
     return DCFView(
       layout: LayoutProps(
@@ -212,7 +269,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         key, route, presentationStyle, builder, pushConfig, tabConfig, modalConfig,
         popoverConfig, overlayConfig, navigationBarConfig, styleSheet, alwaysRender,
         placeholder, onAppear, onDisappear, onActivate, onDeactivate, onNavigationEvent,
-        onReceiveParams, onHeaderActionPress, customEvents,
+        onNavigationCleanup, onReceiveParams, onHeaderActionPress, customEvents,
       ];
 }
 

@@ -66,7 +66,7 @@ class AnimatedModalScreen extends StatefulComponent {
 
         // Slider that drives a shared animation value used across demos
         DCFSlider(
-          layout: LayoutProps(gap: 8, flex: 1, height: 50),
+          layout: LayoutProps(flex: 0, height: 50),
           value: animationValue.state,
           onValueChange: (v) {
             try {

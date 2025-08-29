@@ -152,6 +152,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 )
             }
             
+            // 🚨 CRITICAL: Mark as programmatic navigation
+            DCFScreenComponent.isProgrammaticNavigation = true
+            
             navigationController.pushViewController(targetContainer.viewController, animated: animated)
             updateRouteStack(navigationController)
             
@@ -269,6 +272,21 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 )
             }
         }
+
+        // 🚨 CRITICAL: Mark as programmatic to prevent delegate from double-handling
+        DCFScreenComponent.isProgrammaticNavigation = true
+        
+        // Send cleanup event for the source container that's being popped
+        propagateEvent(
+            on: sourceContainer.contentView,
+            eventName: "onNavigationCleanup",
+            data: [
+                "action": "pop",
+                "route": sourceContainer.route,
+                "userInitiated": false
+            ]
+        )
+        print("🧹 Sent cleanup event for programmatic pop: \(sourceContainer.route)")
 
         navigationController.popViewController(animated: animated)
 
@@ -397,6 +415,19 @@ class DCFScreenComponent: NSObject, DCFComponent {
         }
 
         sourceContainer.viewController.dismiss(animated: animated) {
+            // Send cleanup event for consistency with user-initiated dismissals
+            propagateEvent(
+                on: sourceContainer.contentView,
+                eventName: "onNavigationCleanup",
+                data: [
+                    "action": "dismissModal",
+                    "route": sourceContainer.route,
+                    "userInitiated": false
+                ]
+            )
+            print("🧹 Sent cleanup event for programmatic modal dismissal: \(sourceContainer.route)")
+            
+            // Send navigation event for other handlers
             propagateEvent(
                 on: sourceContainer.contentView,
                 eventName: "onNavigationEvent",
@@ -1702,6 +1733,19 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                                 print("🎯 DCFScreenComponent: Modal did dismiss (user-initiated)")
                                                 
                                                 if let screenContainer = findScreenContainer(for: presentationController.presentedViewController) {
+                                                    // Send cleanup event first for VDOM cleanup
+                                                    propagateEvent(
+                                                        on: screenContainer.contentView,
+                                                        eventName: "onNavigationCleanup",
+                                                        data: [
+                                                            "action": "dismissModal",
+                                                            "route": screenContainer.route,
+                                                            "userInitiated": true
+                                                        ]
+                                                    )
+                                                    print("🧹 Sent cleanup event for dismissed modal: \(screenContainer.route)")
+                                                    
+                                                    // Then send navigation event for other handlers
                                                     propagateEvent(
                                                         on: screenContainer.contentView,
                                                         eventName: "onNavigationEvent",
@@ -1992,3 +2036,4 @@ class DCFScreenComponent: NSObject, DCFComponent {
                                                 ]
                                             }
                                         }
+
