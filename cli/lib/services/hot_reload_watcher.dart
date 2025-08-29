@@ -3,9 +3,20 @@
  *
  * This source c  /// Print stylish welcome header
   Future<void> _printWelcomeHeader() async {
+    final width = _getTerminalWidth();
+    final title = '🚀 DCFlight Hot Reload System';
+    final subtitle = 'Powered by DCFlight Framework with Flutter Tooling';
+    
+    // Create responsive header
+    final headerLine = _boxHeavyHorizontal * (width - 2);
+    final titlePadding = ((width - title.length - 2) / 2).floor();
+    final subtitlePadding = ((width - subtitle.length - 2) / 2).floor();
+    
     print('');
-    print('$_brightCyan$_bold🚀 DCFlight Hot Reload System$_reset');
-    print('$_dim   Powered by DCFlight Framework with Flutter Tooling$_reset');
+    print('$_brightCyan$_bold$_boxTopLeft$headerLine$_boxTopRight$_reset');
+    print('$_brightCyan$_bold$_boxVertical${' ' * titlePadding}$title${' ' * (width - title.length - titlePadding - 2)}$_boxVertical$_reset');
+    print('$_dim$_boxVertical${' ' * subtitlePadding}$subtitle${' ' * (width - subtitle.length - subtitlePadding - 2)}$_boxVertical$_reset');
+    print('$_brightCyan$_bold$_boxBottomLeft$headerLine$_boxBottomRight$_reset');
     print('');
   }sed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -50,13 +61,40 @@ class HotReloadWatcher {
     this.verbose = false,
   });
 
+  /// Get terminal width, defaulting to 80 if unavailable
+  int _getTerminalWidth() {
+    try {
+      final width = stdout.terminalColumns;
+      if (verbose) {
+        print('📏 Terminal width detected: $width columns');
+      }
+      return width;
+    } catch (e) {
+      if (verbose) {
+        print('⚠️  Could not detect terminal width, using fallback: 80');
+      }
+      return 80; // Fallback width
+    }
+  }
+
+  /// Get responsive split position (60% for app output, 40% for watcher)
+  int _getSplitPosition() {
+    final width = _getTerminalWidth();
+    return (width * 0.6).floor();
+  }
+
   /// Start the stylish hot reload watcher system
   Future<void> start() async {
+    print('🚨 DEBUG: NEW DEVICE SELECTION CODE IS RUNNING!');
+    
+    // SELECT DEVICE FIRST - before any UI setup
+    final deviceId = await _selectDevice();
+    
     await _printWelcomeHeader();
     await _setupSplitTerminal();
     
-    // Start Flutter process with custom output handling
-    await _startFlutterProcess();
+    // Start Flutter process with the selected device
+    await _startFlutterProcess(deviceId);
     
     // Start file watcher
     await _startFileWatcher();
@@ -87,17 +125,24 @@ class HotReloadWatcher {
 
   /// Setup split terminal layout
   Future<void> _setupSplitTerminal() async {
-    print('$_brightBlue$_bold━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$_reset');
-    print('$_brightGreen$_bold  DCFApp (Flutter Tooling)$_reset                       $_brightCyan$_bold  Watcher$_reset');
-    print('$_brightBlue$_bold━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$_reset');
+    final width = _getTerminalWidth();
+    final splitPosition = _getSplitPosition();
+    final separatorLine = _boxHeavyHorizontal * (width - 2);
+    
+    // Create responsive column headers
+    final leftHeader = 'DCFApp (Flutter Tooling)';
+    final rightHeader = 'Watcher';
+    final leftPadding = (splitPosition - leftHeader.length) ~/ 2;
+    final rightPadding = (width - splitPosition - rightHeader.length - 2) ~/ 2;
+    
+    print('$_brightBlue$_bold$separatorLine$_reset');
+    print('$_brightGreen$_bold${' ' * leftPadding}$leftHeader${' ' * (splitPosition - leftHeader.length - leftPadding)}$_brightCyan$_bold${' ' * rightPadding}$rightHeader$_reset');
+    print('$_brightBlue$_bold$separatorLine$_reset');
   }
 
   /// Start Flutter process with custom output handling
-  Future<void> _startFlutterProcess() async {
+  Future<void> _startFlutterProcess(String deviceId) async {
     try {
-      // Get device ID
-      final deviceId = await _selectDevice();
-      
       final args = [
         'run',
         '-d', deviceId,
@@ -278,6 +323,10 @@ class HotReloadWatcher {
 
   /// Select device for Flutter
   Future<String> _selectDevice() async {
+    print('\n' + '=' * 60);
+    print('🔧 DEVICE SELECTION');
+    print('=' * 60);
+    
     final result = await Process.run('flutter', ['devices', '--machine']);
     if (result.exitCode != 0) {
       throw Exception('Failed to get Flutter devices');
@@ -286,20 +335,62 @@ class HotReloadWatcher {
     final devices = (jsonDecode(result.stdout) as List)
         .cast<Map<String, dynamic>>();
     
+    if (verbose) {
+      print('🔍 Debug: Found ${devices.length} devices');
+      for (int i = 0; i < devices.length; i++) {
+        final device = devices[i];
+        print('   Device $i: ${device['name']} (${device['id']})');
+      }
+    }
+    
     if (devices.isEmpty) {
       throw Exception('No Flutter devices available');
     }
     
-    // Prefer iOS Simulator or first available device
-    final preferredDevice = devices.firstWhere(
-      (device) => device['name'].toString().toLowerCase().contains('simulator'),
-      orElse: () => devices.first,
-    );
+    // Always show device selection menu
+    print('\n📱 Available devices:');
+    for (int i = 0; i < devices.length; i++) {
+      final device = devices[i];
+      final name = device['name'] ?? 'Unknown';
+      final platform = device['targetPlatform'] ?? 'Unknown';
+      final id = device['id'] ?? 'Unknown';
+      final isEmulator = device['emulator'] == true;
+      final status = !isEmulator ? '📱 Physical' : '🖥️  Simulator';
+      
+      print('  ${i + 1}. $name ($platform) - $status');
+      if (verbose) {
+        print('     ID: $id');
+      }
+    }
     
-    final deviceName = preferredDevice['name'];
-    final deviceId = preferredDevice['id'];
+    // Get user selection with clear prompt
+    print('\n' + '-' * 60);
+    stdout.write('👆 SELECT DEVICE (1-${devices.length}): ');
+    stdout.flush(); // Force output immediately
     
-    _logWatcher('📱', 'Selected device: $deviceName', _cyan);
+    final input = stdin.readLineSync();
+    
+    if (verbose) {
+      print('🔍 Debug: User input received: "$input"');
+    }
+    
+    if (input == null || input.trim().isEmpty) {
+      print('❌ No selection made. Exiting...');
+      exit(1);
+    }
+    
+    final selection = int.tryParse(input.trim());
+    if (selection == null || selection < 1 || selection > devices.length) {
+      print('❌ Invalid selection "$input". Please choose 1-${devices.length}');
+      exit(1);
+    }
+    
+    final selectedDevice = devices[selection - 1];
+    final deviceId = selectedDevice['id'] as String;
+    final deviceName = selectedDevice['name'] as String;
+    
+    print('✅ Selected: $deviceName');
+    print('=' * 60 + '\n');
     
     return deviceId;
   }
@@ -307,14 +398,37 @@ class HotReloadWatcher {
   /// Log DCFlight App output (left side)
   void _logFlutter(String icon, String message, [String color = '']) {
     final timestamp = _getTimestamp();
-    print('$color  $icon $timestamp $message$_reset');
+    final splitPosition = _getSplitPosition();
+    final maxMessageLength = splitPosition - icon.length - timestamp.length - 8; // Extra padding
+    
+    // Truncate message if too long
+    String displayMessage = message;
+    if (message.length > maxMessageLength && maxMessageLength > 10) {
+      displayMessage = '${message.substring(0, maxMessageLength - 3)}...';
+    }
+    
+    print('$color  $icon $timestamp $displayMessage$_reset');
   }
 
   /// Log watcher output (right side)
   void _logWatcher(String icon, String message, [String color = '']) {
     final timestamp = _getTimestamp();
-    final padding = ' ' * 50; // Align to right side
-    print('$padding$color$icon $timestamp $message$_reset');
+    final splitPosition = _getSplitPosition();
+    final width = _getTerminalWidth();
+    
+    // Calculate right column position and width
+    final rightColumnStart = splitPosition;
+    final rightColumnWidth = width - rightColumnStart;
+    final maxMessageLength = rightColumnWidth - icon.length - timestamp.length - 8; // Extra padding
+    
+    // Truncate message if too long
+    String displayMessage = message;
+    if (message.length > maxMessageLength && maxMessageLength > 10) {
+      displayMessage = '${message.substring(0, maxMessageLength - 3)}...';
+    }
+    
+    final padding = ' ' * rightColumnStart;
+    print('$padding$color$icon $timestamp $displayMessage$_reset');
   }
 
   /// Get formatted timestamp
@@ -325,7 +439,10 @@ class HotReloadWatcher {
 
   /// Print shutdown message
   Future<void> _printShutdownMessage(int exitCode) async {
-    print('\n$_brightBlue$_bold$_boxBottomLeft${_boxHorizontal * 78}$_boxBottomRight$_reset');
+    final width = _getTerminalWidth();
+    final separatorLine = _boxHorizontal * (width - 2);
+    
+    print('\n$_brightBlue$_bold$_boxBottomLeft$separatorLine$_boxBottomRight$_reset');
     
     if (exitCode == 0) {
       print('$_brightGreen✅ DCFlight session completed successfully$_reset');
