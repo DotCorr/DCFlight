@@ -5,7 +5,7 @@ import 'package:dcflight/dcflight.dart';
 class HomeScreen extends StatelessComponent {
   @override
   DCFComponentNode render() {
-    return DCFView(
+    return DCFSafeArea(
       styleSheet: StyleSheet(backgroundColor: Colors.amber),
       layout: LayoutProps(
         flex: 1,
@@ -14,20 +14,6 @@ class HomeScreen extends StatelessComponent {
         alignItems: YogaAlign.center,
       ),
       children: [
-        DCFText(
-          content: "Welcome to Stack Navigation!",
-          textProps: DCFTextProps(fontSize: 24, fontWeight: DCFFontWeight.bold),
-          layout: LayoutProps(marginBottom: 30),
-        ),
-
-        DCFText(
-          content:
-              "Header actions are working! Try the buttons in the navigation bar.",
-          textProps: DCFTextProps(fontSize: 16, textAlign: "center"),
-          layout: LayoutProps(marginBottom: 30),
-        ),
-
-                // 🎯 TARGETED NAVIGATION: Specify fromScreen to prevent conflicts
         DCFButton(
           buttonProps: DCFButtonProps(
             title: "Go to Profile",
