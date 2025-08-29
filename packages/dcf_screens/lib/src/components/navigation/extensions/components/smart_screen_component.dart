@@ -11,6 +11,8 @@ import "package:dcflight/dcflight.dart";
 /// 🎯 DCFEasyScreen - Simple wrapper that reduces boilerplate 
 /// while keeping your existing working pattern
 class DCFEasyScreen extends StatefulComponent with EquatableMixin {
+  static bool _isHandlingUserNavigation = false;
+  
   final String route;
   final DCFPresentationStyle? presentationStyle;
   final DCFComponentNode Function() builder;
@@ -82,7 +84,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
       styleSheet: styleSheet,
       
       // 🎯 AUTOMATIC: Command routing
-      routeNavigationCommand: _shouldHandleCommand(route, globalNavTarget.state) 
+      routeNavigationCommand: _shouldHandleCommand(route, globalNavTarget.state) && !DCFEasyScreen._isHandlingUserNavigation
           ? globalNavCommand.state 
           : null,
       
@@ -117,6 +119,9 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         
         // Handle user-initiated navigation events (swipe back, modal dismissal, etc.)
         if (userInitiated) {
+          // CRITICAL: Set flag to prevent navigation command loops during user actions
+          DCFEasyScreen._isHandlingUserNavigation = true;
+          
           // CRITICAL: Clear any pending navigation commands to prevent loops
           AppNavigation.clearCommand();
           
@@ -149,6 +154,11 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
               }
               break;
           }
+          
+          // Reset the flag after handling user-initiated navigation (with a small delay)
+          Future.delayed(const Duration(milliseconds: 100), () {
+            DCFEasyScreen._isHandlingUserNavigation = false;
+          });
         } else {
           // Handle programmatic navigation events (use existing logic)
           _handleNavigationEvents(route, data);
