@@ -11,8 +11,6 @@ import "package:dcflight/dcflight.dart";
 /// 🎯 DCFEasyScreen - Simple wrapper that reduces boilerplate 
 /// while keeping your existing working pattern
 class DCFEasyScreen extends StatefulComponent with EquatableMixin {
-  static String? _lastExecutedCommand;
-  
   final String route;
   final DCFPresentationStyle? presentationStyle;
   final DCFComponentNode Function() builder;
@@ -72,16 +70,6 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
     final activeScreen = useStore(activeScreenTracker);
     final navStack = useStore(navigationStackTracker);
 
-    // Check if we should handle the command and if it's not a duplicate
-    final shouldHandle = _shouldHandleCommand(route, globalNavTarget.state);
-    final commandString = globalNavCommand.state?.toString();
-    final isDuplicate = commandString != null && commandString == DCFEasyScreen._lastExecutedCommand;
-    
-    // Store the command we're about to execute
-    if (shouldHandle && !isDuplicate && commandString != null) {
-      DCFEasyScreen._lastExecutedCommand = commandString;
-    }
-
     return DCFScreen(
       route: route,
       presentationStyle: presentationStyle ?? DCFPresentationStyle.push,
@@ -94,7 +82,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
       styleSheet: styleSheet,
       
       // 🎯 AUTOMATIC: Command routing
-      routeNavigationCommand: shouldHandle && !isDuplicate
+      routeNavigationCommand: _shouldHandleCommand(route, globalNavTarget.state)
           ? globalNavCommand.state 
           : null,
       
@@ -131,9 +119,6 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         if (userInitiated) {
           // CRITICAL: Immediately clear ALL navigation state to prevent bouncing
           AppNavigation.clearCommand();
-          
-          // Clear the command cache to prevent duplicates
-          DCFEasyScreen._lastExecutedCommand = null;
           
           print("🚨 CLEARED all navigation commands for user-initiated action");
           
