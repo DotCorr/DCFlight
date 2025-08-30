@@ -95,30 +95,31 @@ class DCFScreenComponent: NSObject, DCFComponent {
         if let targetRoute = commandData["navigateToRoute"] as? String {
             let animated = commandData["animated"] as? Bool ?? true
             let params = commandData["params"] as? [String: Any]
-            navigateToRoute(targetRoute, animated: animated, params: params, from: screenContainer)
+            navigateToRouteWithDelegates(
+                targetRoute, animated: animated, params: params, from: screenContainer)
         }
 
         if let targetRoute = commandData["popToRoute"] as? String {
             let animated = commandData["animated"] as? Bool ?? true
-            popToRoute(targetRoute, animated: animated, from: screenContainer)
+            popToRouteWithDelegates(targetRoute, animated: animated, from: screenContainer)
         }
 
         if let popCommand = commandData["pop"] as? [String: Any] {
             let animated = popCommand["animated"] as? Bool ?? true
             let result = popCommand["result"] as? [String: Any]
-            popCurrentRoute(animated: animated, result: result, from: screenContainer)
+            popCurrentRouteWithDelegates(animated: animated, result: result, from: screenContainer)
         }
 
         if let popToRootCommand = commandData["popToRoot"] as? [String: Any] {
             let animated = popToRootCommand["animated"] as? Bool ?? true
-            popToRootRoute(animated: animated, from: screenContainer)
+            popToRootRouteWithDelegates(animated: animated, from: screenContainer)
         }
 
         if let replaceCommand = commandData["replaceWithRoute"] as? [String: Any] {
             if let targetRoute = replaceCommand["route"] as? String {
                 let animated = replaceCommand["animated"] as? Bool ?? true
                 let params = replaceCommand["params"] as? [String: Any]
-                replaceCurrentRoute(
+                replaceCurrentRouteWithDelegates(
                     with: targetRoute, animated: animated, params: params, from: screenContainer)
             }
         }
@@ -128,7 +129,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 let animated = modalCommand["animated"] as? Bool ?? true
                 let params = modalCommand["params"] as? [String: Any]
                 let presentationStyle = modalCommand["presentationStyle"] as? String
-                presentModalRoute(
+                presentModalRouteWithDelegates(
                     targetRoute, animated: animated, params: params,
                     presentationStyle: presentationStyle, from: screenContainer)
             }
@@ -137,7 +138,8 @@ class DCFScreenComponent: NSObject, DCFComponent {
         if let dismissModalCommand = commandData["dismissModal"] as? [String: Any] {
             let animated = dismissModalCommand["animated"] as? Bool ?? true
             let result = dismissModalCommand["result"] as? [String: Any]
-            dismissModalRoute(animated: animated, result: result, from: screenContainer)
+            dismissModalRouteWithDelegates(
+                animated: animated, result: result, from: screenContainer)
         }
     }
 
@@ -209,15 +211,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
         // Set up navigation delegate to handle user-initiated gestures
         setupNavigationDelegate(navigationController)
 
-        // Only push the final route if it exists
-        if let finalRoute = routes.last,
-            let finalContainer = DCFScreenComponent.routeRegistry[finalRoute]
-        {
+        // Create container for the full target route, not just the last segment
+        let finalContainer = getOrCreateScreenContainer(
+            for: targetRoute, presentationStyle: "push")
+
+        if let finalContainer = finalContainer {
 
             // Check if already in stack
             if navigationController.viewControllers.contains(finalContainer.viewController) {
                 print(
-                    "⚠️ DCFScreenComponent: View controller for '\(finalRoute)' is already in navigation stack"
+                    "⚠️ DCFScreenComponent: View controller for '\(targetRoute)' is already in navigation stack"
                 )
                 return
             }
@@ -607,14 +610,6 @@ class DCFScreenComponent: NSObject, DCFComponent {
     private func configureTabScreen(_ screenContainer: ScreenContainer, props: [String: Any]) {
         let viewController = screenContainer.viewController
 
-        if #available(iOS 11.0, *) {
-            viewController.extendedLayoutIncludesOpaqueBars = true
-            viewController.edgesForExtendedLayout = .all
-            viewController.automaticallyAdjustsScrollViewInsets = false
-        } else {
-            viewController.automaticallyAdjustsScrollViewInsets = false
-        }
-
         if let title = props["title"] as? String {
             viewController.title = title
             viewController.tabBarItem.title = title
@@ -633,6 +628,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
         if let index = props["index"] as? Int {
             viewController.tabBarItem.tag = index
+        }
+
+        // Set up tab delegate if this is within a tab bar controller
+        if let tabBarController = viewController.tabBarController {
+            setupTabDelegate(tabBarController)
+        }
+
+        // Set up tab delegate if this is within a tab bar controller
+        if let tabBarController = viewController.tabBarController {
+            setupTabDelegate(tabBarController)
         }
 
         configureNavigationBarForTabScreen(viewController, props: props)
@@ -733,6 +738,19 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
         print("🎯 Configuring modal presentation for '\(targetContainer.route)'")
 
+        // Set up delegates FIRST to ensure all user interactions are captured
+        if let presentationController = viewController.presentationController {
+            presentationController.delegate = DCFScreenComponent.delegateManager
+            print("🎯 DCFScreenComponent: Set modal presentation delegate during configuration")
+        }
+
+        if #available(iOS 15.0, *) {
+            if let sheetController = viewController.sheetPresentationController {
+                sheetController.delegate = DCFScreenComponent.delegateManager
+                print("🎯 DCFScreenComponent: Set sheet presentation delegate during configuration")
+            }
+        }
+
         if #available(iOS 13.0, *) {
             viewController.modalPresentationStyle = .pageSheet
         } else {
@@ -763,6 +781,10 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
                     sheet.prefersGrabberVisible = modalConfig["showDragIndicator"] as? Bool ?? true
 
+                    // Enable user interaction for swipe-to-dismiss
+                    viewController.isModalInPresentation =
+                        !(modalConfig["allowsBackgroundDismiss"] as? Bool ?? true)
+
                     if let cornerRadius = modalConfig["cornerRadius"] as? CGFloat,
                         #available(iOS 16.0, *)
                     {
@@ -773,6 +795,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
                     sheet.detents = [.large()]
                     sheet.selectedDetentIdentifier = .large
                     sheet.prefersGrabberVisible = true
+                    viewController.isModalInPresentation = false  // Allow dismissal by default
                 }
             }
         }
@@ -787,10 +810,19 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 }
             case "formsheet":
                 viewController.modalPresentationStyle = .formSheet
+            case "popover":
+                viewController.modalPresentationStyle = .popover
+                if let popoverController = viewController.popoverPresentationController {
+                    popoverController.delegate = DCFScreenComponent.delegateManager
+                    print("🎯 DCFScreenComponent: Set popover presentation delegate")
+                }
             default:
                 break
             }
         }
+
+        // Final delegate check - ensure we always have delegates set up
+        setupModalDelegate(viewController)
     }
 
     @available(iOS 15.0, *)
@@ -1758,6 +1790,32 @@ extension DCFScreenComponent: UINavigationControllerDelegate {
 
     func navigationController(
         _ navigationController: UINavigationController,
+        willShow viewController: UIViewController,
+        animated: Bool
+    ) {
+        print("🎯 DCFScreenComponent: Navigation willShow triggered!")
+
+        guard let targetContainer = findScreenContainer(for: viewController) else {
+            print("⚠️ DCFScreenComponent: Could not find screen container for willShow")
+            return
+        }
+
+        let currentCount = navigationController.viewControllers.count
+        let willShowCount = navigationController.viewControllers.count
+
+        // Store the fact that we're about to navigate
+        objc_setAssociatedObject(
+            navigationController,
+            &DCFScreenComponent.willNavigateToRouteKey,
+            targetContainer.route,
+            .OBJC_ASSOCIATION_RETAIN
+        )
+
+        print("🎯 DCFScreenComponent: Will navigate to '\(targetContainer.route)'")
+    }
+
+    func navigationController(
+        _ navigationController: UINavigationController,
         didShow viewController: UIViewController,
         animated: Bool
     ) {
@@ -1882,6 +1940,21 @@ extension DCFScreenComponent: UINavigationControllerDelegate {
         print("✅ DCFScreenComponent: Navigation didShow completed for '\(targetContainer.route)'")
     }
 
+    // Handle iOS 14+ long-press back button context menu selection
+    func navigationController(
+        _ navigationController: UINavigationController,
+        interactionControllerFor animationController: UIViewControllerAnimatedTransitioning
+    ) -> UIViewControllerInteractiveTransitioning? {
+        print(
+            "🎯 DCFScreenComponent: Interactive controller requested - likely context menu interaction"
+        )
+
+        // This indicates a user-initiated interactive transition (like context menu selection)
+        DCFScreenComponent.isProgrammaticNavigation = false
+
+        return nil  // Let the system handle the transition
+    }
+
     private func findScreenContainer(for viewController: UIViewController) -> ScreenContainer? {
         for (_, container) in DCFScreenComponent.routeRegistry {
             if container.viewController == viewController {
@@ -1975,6 +2048,163 @@ extension DCFScreenComponent: UISheetPresentationControllerDelegate {
     }
 }
 
+extension DCFScreenComponent: UIPopoverPresentationControllerDelegate {
+
+    func popoverPresentationControllerDidDismissPopover(
+        _ popoverPresentationController: UIPopoverPresentationController
+    ) {
+        print("🎯 DCFScreenComponent: Popover did dismiss (user-initiated)")
+
+        if let screenContainer = findScreenContainer(
+            for: popoverPresentationController.presentedViewController)
+        {
+            propagateEvent(
+                on: screenContainer.contentView,
+                eventName: "onNavigationEvent",
+                data: [
+                    "action": "dismissPopover",
+                    "animated": true,
+                    "userInitiated": true,
+                    "screenRoute": screenContainer.route,
+                ]
+            )
+        }
+    }
+
+    func popoverPresentationControllerShouldDismissPopover(
+        _ popoverPresentationController: UIPopoverPresentationController
+    ) -> Bool {
+        print("🎯 DCFScreenComponent: Popover should dismiss check")
+        return true  // Allow dismissal by default
+    }
+}
+
+@available(iOS 13.0, *)
+extension DCFScreenComponent: UIContextMenuInteractionDelegate {
+
+    func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        configurationForMenuAtLocation location: CGPoint
+    ) -> UIContextMenuConfiguration? {
+        print("🎯 DCFScreenComponent: Context menu interaction requested")
+
+        // Return nil to let the system handle context menus (like navigation back button)
+        return nil
+    }
+
+    func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willPerformPreviewActionForMenuWith configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionCommitAnimating
+    ) {
+        print("🎯 DCFScreenComponent: Context menu will perform preview action")
+
+        // This indicates a user selected an item from a context menu
+        DCFScreenComponent.isProgrammaticNavigation = false
+
+        animator.addCompletion {
+            print("🎯 DCFScreenComponent: Context menu action completed - user initiated")
+        }
+    }
+
+    func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willEndFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+    ) {
+        print("🎯 DCFScreenComponent: Context menu will end")
+
+        animator?.addCompletion {
+            print("🎯 DCFScreenComponent: Context menu ended")
+        }
+    }
+}
+
+extension DCFScreenComponent: UITabBarControllerDelegate {
+
+    func tabBarController(
+        _ tabBarController: UITabBarController, didSelect viewController: UIViewController
+    ) {
+        print("🎯 DCFScreenComponent: Tab selection changed")
+
+        guard let screenContainer = findScreenContainer(for: viewController) else {
+            print("⚠️ DCFScreenComponent: Could not find screen container for selected tab")
+            return
+        }
+
+        let selectedIndex = tabBarController.selectedIndex
+        let previousIndex =
+            tabBarController.viewControllers?.firstIndex { vc in
+                if let navController = vc as? UINavigationController {
+                    return navController.topViewController == viewController
+                }
+                return vc == viewController
+            } ?? selectedIndex
+
+        print("🎯 DCFScreenComponent: Tab changed from index \(previousIndex) to \(selectedIndex)")
+
+        // Send navigation event for tab selection
+        propagateEvent(
+            on: screenContainer.contentView,
+            eventName: "onNavigationEvent",
+            data: [
+                "action": "tabSelection",
+                "targetRoute": screenContainer.route,
+                "selectedIndex": selectedIndex,
+                "previousIndex": previousIndex,
+                "animated": false,
+                "userInitiated": true,
+                "screenRoute": screenContainer.route,
+            ]
+        )
+
+        // Send tab-specific events
+        propagateEvent(
+            on: screenContainer.contentView,
+            eventName: "onTabSelected",
+            data: [
+                "route": screenContainer.route,
+                "index": selectedIndex,
+            ]
+        )
+
+        // Send onAppear/onActivate to newly selected tab
+        propagateEvent(
+            on: screenContainer.contentView,
+            eventName: "onAppear",
+            data: ["route": screenContainer.route]
+        )
+
+        propagateEvent(
+            on: screenContainer.contentView,
+            eventName: "onActivate",
+            data: ["route": screenContainer.route]
+        )
+    }
+
+    func tabBarController(
+        _ tabBarController: UITabBarController, shouldSelect viewController: UIViewController
+    ) -> Bool {
+        print("🎯 DCFScreenComponent: Tab selection should select check")
+
+        guard let screenContainer = findScreenContainer(for: viewController) else {
+            return true
+        }
+
+        // Send willSelect event to allow Dart to potentially prevent tab selection
+        propagateEvent(
+            on: screenContainer.contentView,
+            eventName: "onTabWillSelect",
+            data: [
+                "route": screenContainer.route,
+                "index": tabBarController.selectedIndex,
+            ]
+        )
+
+        return true
+    }
+}
+
 extension DCFScreenComponent {
 
     static let delegateManager = DCFScreenComponent()
@@ -1983,6 +2213,7 @@ extension DCFScreenComponent {
 
     private static var previousViewControllersKey: UInt8 = 0
     private static var previousViewControllerCountKey: UInt8 = 0
+    private static var willNavigateToRouteKey: UInt8 = 0
 
     private func setupNavigationDelegate(_ navigationController: UINavigationController) {
         print("🔧 SETUP: setupNavigationDelegate called")
@@ -2007,7 +2238,21 @@ extension DCFScreenComponent {
             print("🔧 SETUP: No interactive pop gesture recognizer found")
         }
 
+        // iOS 13+ Context menu support for navigation bar
+        if #available(iOS 13.0, *) {
+            setupContextMenuForNavigationBar(navigationController.navigationBar)
+        }
+
         print("🔧 SETUP: Final delegate = \(String(describing: navigationController.delegate))")
+    }
+
+    @available(iOS 13.0, *)
+    private func setupContextMenuForNavigationBar(_ navigationBar: UINavigationBar) {
+        // Add context menu interaction to capture iOS 14+ long-press back button menu
+        let contextMenuInteraction = UIContextMenuInteraction(
+            delegate: DCFScreenComponent.delegateManager)
+        navigationBar.addInteraction(contextMenuInteraction)
+        print("🎯 DCFScreenComponent: Added context menu interaction to navigation bar")
     }
 
     private func setupModalDelegate(_ viewController: UIViewController) {
@@ -2022,6 +2267,31 @@ extension DCFScreenComponent {
                 print("🎯 DCFScreenComponent: Set sheet presentation delegate")
             }
         }
+
+        // Set up popover delegate if it's a popover presentation
+        if let popoverController = viewController.popoverPresentationController {
+            popoverController.delegate = DCFScreenComponent.delegateManager
+            print("🎯 DCFScreenComponent: Set popover presentation delegate in setupModalDelegate")
+        }
+
+        // iOS 13+ Context menu support for modal content
+        if #available(iOS 13.0, *) {
+            setupContextMenuForModalContent(viewController.view)
+        }
+    }
+
+    @available(iOS 13.0, *)
+    private func setupContextMenuForModalContent(_ view: UIView) {
+        // Add context menu interaction to modal views to capture any context menu interactions
+        let contextMenuInteraction = UIContextMenuInteraction(
+            delegate: DCFScreenComponent.delegateManager)
+        view.addInteraction(contextMenuInteraction)
+        print("🎯 DCFScreenComponent: Added context menu interaction to modal content")
+    }
+
+    private func setupTabDelegate(_ tabBarController: UITabBarController) {
+        tabBarController.delegate = DCFScreenComponent.delegateManager
+        print("🎯 DCFScreenComponent: Set tab bar controller delegate")
     }
 
     private func navigateToRouteWithDelegates(
@@ -2044,42 +2314,41 @@ extension DCFScreenComponent {
         setupNavigationDelegate(navigationController)
 
         let currentRouteStack = getCurrentRouteStack(from: navigationController)
-        let targetRouteStack = routes
-
-        let commonPrefixLength = findCommonPrefixLength(currentRouteStack, targetRouteStack)
-
-        if currentRouteStack.count > commonPrefixLength {
-            let routesToPop = currentRouteStack.count - commonPrefixLength
-            for _ in 0..<routesToPop {
-                navigationController.popViewController(animated: false)
-            }
+        // For simple navigation, just push the target route directly
+        guard
+            let targetContainer = getOrCreateScreenContainer(
+                for: targetRoute, presentationStyle: "push")
+        else {
+            print("❌ DCFScreenComponent: Could not create container for route '\(targetRoute)'")
+            return
         }
 
-        let routesToPush = Array(targetRouteStack.dropFirst(commonPrefixLength))
-        for (index, route) in routesToPush.enumerated() {
-            guard
-                let targetContainer = getOrCreateScreenContainer(
-                    for: route, presentationStyle: "push")
-            else {
-                print("❌ DCFScreenComponent: Could not create container for route '\(route)'")
-                continue
-            }
-
-            configureScreenForPush(targetContainer)
-
-            let isLastRoute = index == routesToPush.count - 1
-            if isLastRoute && params != nil {
-                propagateEvent(
-                    on: targetContainer.contentView,
-                    eventName: "onReceiveParams",
-                    data: ["params": params!, "sourceRoute": sourceContainer.route]
-                )
-            }
-
-            DCFScreenComponent.isProgrammaticNavigation = true
-            navigationController.pushViewController(
-                targetContainer.viewController, animated: isLastRoute ? animated : false)
+        // Check if already in stack
+        if navigationController.viewControllers.contains(targetContainer.viewController) {
+            print(
+                "⚠️ DCFScreenComponent: View controller for '\(targetRoute)' is already in navigation stack, skipping push"
+            )
+            return
         }
+
+        configureScreenForPush(targetContainer)
+
+        if let params = params {
+            propagateEvent(
+                on: targetContainer.contentView,
+                eventName: "onReceiveParams",
+                data: ["params": params, "sourceRoute": sourceContainer.route]
+            )
+        }
+
+        // Store current view controllers BEFORE navigation for user-initiated pop tracking
+        objc_setAssociatedObject(
+            navigationController, &DCFScreenComponent.previousViewControllersKey,
+            navigationController.viewControllers,
+            .OBJC_ASSOCIATION_RETAIN)
+
+        DCFScreenComponent.isProgrammaticNavigation = true
+        navigationController.pushViewController(targetContainer.viewController, animated: animated)
 
         updateRouteStack(navigationController)
 
@@ -2152,6 +2421,14 @@ extension DCFScreenComponent {
     private func popCurrentRouteWithDelegates(
         animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer
     ) {
+        print("📱 DCFScreenComponent: Executing pop current route")
+
+        guard let navigationController = getCurrentActiveNavigationController() else {
+            print("❌ DCFScreenComponent: No active navigation controller found for pop current")
+            return
+        }
+
+        setupNavigationDelegate(navigationController)
         DCFScreenComponent.isProgrammaticNavigation = true
         popCurrentRoute(animated: animated, result: result, from: sourceContainer)
     }
@@ -2159,7 +2436,62 @@ extension DCFScreenComponent {
     private func dismissModalRouteWithDelegates(
         animated: Bool, result: [String: Any]?, from sourceContainer: ScreenContainer
     ) {
+        print("📱 DCFScreenComponent: Executing modal route dismissal")
+
+        // For programmatic dismissal, we need to ensure delegates are set up
+        // to properly handle any user interaction during the dismissal process
+        if let presentedViewController = sourceContainer.viewController.presentedViewController {
+            setupModalDelegate(presentedViewController)
+        }
+
         dismissModalRoute(animated: animated, result: result, from: sourceContainer)
+    }
+
+    private func popToRouteWithDelegates(
+        _ targetRoute: String, animated: Bool, from sourceContainer: ScreenContainer
+    ) {
+        print("📱 DCFScreenComponent: Executing pop to route '\(targetRoute)'")
+
+        guard let navigationController = getCurrentActiveNavigationController() else {
+            print("❌ DCFScreenComponent: No active navigation controller found for pop to route")
+            return
+        }
+
+        setupNavigationDelegate(navigationController)
+        DCFScreenComponent.isProgrammaticNavigation = true
+        popToRoute(targetRoute, animated: animated, from: sourceContainer)
+    }
+
+    private func popToRootRouteWithDelegates(
+        animated: Bool, from sourceContainer: ScreenContainer
+    ) {
+        print("📱 DCFScreenComponent: Executing pop to root")
+
+        guard let navigationController = getCurrentActiveNavigationController() else {
+            print("❌ DCFScreenComponent: No active navigation controller found for pop to root")
+            return
+        }
+
+        setupNavigationDelegate(navigationController)
+        DCFScreenComponent.isProgrammaticNavigation = true
+        popToRootRoute(animated: animated, from: sourceContainer)
+    }
+
+    private func replaceCurrentRouteWithDelegates(
+        with targetRoute: String, animated: Bool, params: [String: Any]?,
+        from sourceContainer: ScreenContainer
+    ) {
+        print("📱 DCFScreenComponent: Executing replace current route with '\(targetRoute)'")
+
+        guard let navigationController = getCurrentActiveNavigationController() else {
+            print("❌ DCFScreenComponent: No active navigation controller found for replace route")
+            return
+        }
+
+        setupNavigationDelegate(navigationController)
+        DCFScreenComponent.isProgrammaticNavigation = true
+        replaceCurrentRoute(
+            with: targetRoute, animated: animated, params: params, from: sourceContainer)
     }
 }
 
