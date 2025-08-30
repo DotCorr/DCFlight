@@ -145,14 +145,12 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
 
             case 'dismissModal':
               // User dismissed modal with swipe or gesture
-              print("🔙 User-initiated modal dismissal");
-              final currentStack = navigationStackTracker.state;
-              if (currentStack.isNotEmpty) {
-                final newActiveScreen = currentStack.last;
-                activeScreenTracker.setState(newActiveScreen);
-                print(
-                    "📱 Active screen updated to '$newActiveScreen' after modal dismissal");
-              }
+              print("🔙 User-initiated modal dismissal from '$route'");
+
+              // Trigger programmatic dismissal to ensure all screens get the dismissal command
+              // This will cause the same flow as programmatic dismissal
+              print("🎯 Triggering programmatic dismissal to sync all screens");
+              AppNavigation.dismissModal(fromScreen: route);
               break;
           }
         } else {
