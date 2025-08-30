@@ -1,7 +1,6 @@
 name: dcf_go
 description: "A new DCFlight project."
-publish_to: 'none' 
-
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -11,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-# framework dependencies
+  # framework dependencies
   dcflight:
     path: ../../dcflight
 
@@ -24,17 +23,14 @@ dependencies:
   dcf_screens:
     path: ../../dcf_screens
 
-  # dcflight: ^0.0.1
-  # dcf_primitives: ^0.0.1
-
   icons_launcher: ^3.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-# setup icon for your app 
-# after updating the image_path, run 
-# ```flutter pub get dart run icons_launcher:create``` 
+# setup icon for your app
+# after updating the image_path, run
+# ```flutter pub get dart run icons_launcher:create```
 icons_launcher:
   image_path: "assets/dcf/dcf.png"
   platforms:
