@@ -21,7 +21,7 @@ class DCFGestureDetector extends StatelessComponent
   final LayoutProps layout;
 
   /// The styleSheet properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -60,7 +60,7 @@ class DCFGestureDetector extends StatelessComponent
   DCFGestureDetector({
     required this.children,
     this.layout = const LayoutProps(padding: 8, height: 50, width: 200),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onTap,
     this.onLongPress,
     this.onSwipeLeft,

@@ -20,7 +20,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
   final DCFPopoverConfig? popoverConfig;
   final DCFOverlayConfig? overlayConfig;
   final DCFNavigationBarConfig? navigationBarConfig;
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Whether to always render (skip suspense)
   final bool alwaysRender;
@@ -49,7 +49,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
     this.popoverConfig,
     this.overlayConfig,
     this.navigationBarConfig,
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.alwaysRender = false,
     this.placeholder,
     this.onAppear,

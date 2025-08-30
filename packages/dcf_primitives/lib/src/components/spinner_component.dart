@@ -36,7 +36,7 @@ class DCFSpinner extends StatelessComponent
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -49,7 +49,7 @@ class DCFSpinner extends StatelessComponent
     this.hidesWhenStopped = true,
     this.adaptive = true,
     this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.events,
   });
 

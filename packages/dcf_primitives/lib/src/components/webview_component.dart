@@ -138,7 +138,7 @@ class DCFWebView extends StatelessComponent
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -168,7 +168,7 @@ class DCFWebView extends StatelessComponent
       height: 400,
       width: 300,
     ),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onLoadStart,
     this.onLoadEnd,
     this.onLoadError,

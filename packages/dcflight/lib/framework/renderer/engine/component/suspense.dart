@@ -5,11 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
 
 /// 🎯 DCFSuspense - Conditional rendering component for lazy loading
-/// 
+///
 /// This component allows you to suspend rendering of expensive content
 /// until a condition is met, preventing unnecessary component creation
 /// and lifecycle execution.
@@ -31,12 +30,12 @@ class DCFSuspense extends StatelessComponent with EquatableMixin {
   final LayoutProps? layout;
 
   /// Style sheet for the container
-  final StyleSheet? styleSheet;
+  final DCFStyleSheet? styleSheet;
 
   /// Whether to show debug logs
   final bool enableDebugLogs;
 
-   DCFSuspense({
+  DCFSuspense({
     super.key,
     required this.shouldRender,
     required this.children,
@@ -50,39 +49,35 @@ class DCFSuspense extends StatelessComponent with EquatableMixin {
   @override
   DCFComponentNode render() {
     final name = debugName ?? 'Unknown';
-    
+
     if (shouldRender) {
       if (enableDebugLogs) {
         print("🏗️ DCFSuspense[$name]: Rendering children (active)");
       }
-      
+
       // Render the actual children
       return DCFView(
         layout: layout ?? LayoutProps(),
-        styleSheet: styleSheet ?? StyleSheet(),
+        styleSheet: styleSheet ?? DCFStyleSheet(),
         children: [children()],
       );
     } else {
       if (enableDebugLogs) {
         print("⏸️ DCFSuspense[$name]: Rendering fallback (suspended)");
       }
-      
+
       // Render fallback or empty view
       if (fallback != null) {
         return DCFView(
-          layout: layout ?? LayoutProps(
-            flex: 1
-          ),
-          styleSheet: styleSheet ?? StyleSheet(),
+          layout: layout ?? LayoutProps(flex: 1),
+          styleSheet: styleSheet ?? DCFStyleSheet(),
           children: [fallback!()],
         );
       } else {
         // Empty container - no children rendered
         return DCFView(
-          layout: layout ?? LayoutProps(
-            flex:1
-          ),
-          styleSheet: styleSheet ?? StyleSheet(),
+          layout: layout ?? LayoutProps(flex: 1),
+          styleSheet: styleSheet ?? DCFStyleSheet(),
           children: [],
         );
       }

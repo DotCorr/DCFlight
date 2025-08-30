@@ -127,7 +127,7 @@ class DCFText extends StatelessComponent
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -137,7 +137,7 @@ class DCFText extends StatelessComponent
     required this.content,
     this.textProps = const DCFTextProps(),
     this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.events,
     super.key,
   });

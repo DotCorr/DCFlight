@@ -1,4 +1,4 @@
-package com.example.dcf_go
+package com.dotcorr.dcf_go
 
 import io.flutter.embedding.android.FlutterActivity
 

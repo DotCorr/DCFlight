@@ -68,7 +68,7 @@ class DCFSVG extends StatelessComponent
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -77,7 +77,7 @@ class DCFSVG extends StatelessComponent
   DCFSVG({
     required this.svgProps,
     this.layout = const LayoutProps(height: 20, width: 20),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.events,
     super.key,
   });

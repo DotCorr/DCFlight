@@ -5,7 +5,7 @@ class HomeScreen extends StatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFSafeArea(
-      styleSheet: StyleSheet(backgroundColor: Colors.red),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
       layout: LayoutProps(
         flex: 1,
         padding: 20,
@@ -23,7 +23,7 @@ class HomeScreen extends StatelessComponent {
 
         DCFButton(
           buttonProps: DCFButtonProps(title: "🔥 Test Hot Reload"),
-          styleSheet: StyleSheet(backgroundColor: Colors.orange),
+          styleSheet: DCFStyleSheet(backgroundColor: Colors.orange),
           onPress: (data) {
             AppNavigation.navigateTo(
               "home/hot_reload_test",

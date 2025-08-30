@@ -18,7 +18,7 @@ class DCFView extends StatelessComponent
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Child nodes
   final List<DCFComponentNode> children;
@@ -34,8 +34,8 @@ class DCFView extends StatelessComponent
 
   /// Create a view component
   DCFView({
-    this.layout = const LayoutProps(height: "100%", width: "100%" ),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const LayoutProps(height: "100%", width: "100%"),
+    this.styleSheet = const DCFStyleSheet(),
     this.children = const [],
     this.events,
     this.adaptive = true,
@@ -73,4 +73,3 @@ class DCFView extends StatelessComponent
         key,
       ];
 }
-
