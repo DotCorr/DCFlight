@@ -1,4 +1,3 @@
-
 import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -6,7 +5,7 @@ class HomeScreen extends StatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFSafeArea(
-      styleSheet: StyleSheet(backgroundColor: Colors.amber),
+      styleSheet: StyleSheet(backgroundColor: Colors.red),
       layout: LayoutProps(
         flex: 1,
         padding: 20,
@@ -15,9 +14,7 @@ class HomeScreen extends StatelessComponent {
       ),
       children: [
         DCFButton(
-          buttonProps: DCFButtonProps(
-            title: "Go to Profile",
-          ),
+          buttonProps: DCFButtonProps(title: "Go to Profile"),
           onPress: (data) {
             AppNavigation.navigateTo("profile", fromScreen: "home");
           },
@@ -25,12 +22,13 @@ class HomeScreen extends StatelessComponent {
         ),
 
         DCFButton(
-          buttonProps: DCFButtonProps(
-            title: "🔥 Test Hot Reload",
-          ),
+          buttonProps: DCFButtonProps(title: "🔥 Test Hot Reload"),
           styleSheet: StyleSheet(backgroundColor: Colors.orange),
           onPress: (data) {
-            AppNavigation.navigateTo("home/hot_reload_test", fromScreen: "home");
+            AppNavigation.navigateTo(
+              "home/hot_reload_test",
+              fromScreen: "home",
+            );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
         ),
@@ -56,12 +54,13 @@ class HomeScreen extends StatelessComponent {
           buttonProps: DCFButtonProps(title: "Open Animation Modal"),
           onPress: (data) {
             print("Navigate to Animation Modal pressed");
-            AppNavigation.navigateTo("home/animated_modal", 
+            AppNavigation.navigateTo(
+              "home/animated_modal",
               params: {
                 "title": "Animated Modal from Button",
-                "message": "This modal was opened from a button!"
+                "message": "This modal was opened from a button!",
               },
-              fromScreen: "home"
+              fromScreen: "home",
             );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
@@ -71,11 +70,10 @@ class HomeScreen extends StatelessComponent {
           buttonProps: DCFButtonProps(title: "🧪 Test Animation Fix"),
           onPress: (data) {
             print("Navigate to Animation Test pressed");
-            AppNavigation.presentModal("home/animation_test", 
-              params: {
-                "title": "Animation Reconciliation Test",
-              },
-              fromScreen: "home"
+            AppNavigation.presentModal(
+              "home/animation_test",
+              params: {"title": "Animation Reconciliation Test"},
+              fromScreen: "home",
             );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
@@ -85,12 +83,13 @@ class HomeScreen extends StatelessComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Present Modal"),
           onPress: (data) {
-            AppNavigation.presentModal("home/animated_modal", 
+            AppNavigation.presentModal(
+              "home/animated_modal",
               params: {
                 "title": "Presented as Modal",
-                "message": "This was presented modally!"
+                "message": "This was presented modally!",
               },
-              fromScreen: "home"
+              fromScreen: "home",
             );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
@@ -98,7 +97,7 @@ class HomeScreen extends StatelessComponent {
       ],
     );
   }
-  
+
   @override
   List<Object?> get props => [];
 }
@@ -149,12 +148,13 @@ class ProfileScreen extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Animation Modal from Profile"),
           onPress: (data) {
-            AppNavigation.navigateTo("home/animated_modal", 
+            AppNavigation.navigateTo(
+              "home/animated_modal",
               params: {
                 "title": "Modal from Profile",
-                "message": "This works from any screen now!"
+                "message": "This works from any screen now!",
               },
-              fromScreen: "profile"
+              fromScreen: "profile",
             );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
@@ -163,12 +163,13 @@ class ProfileScreen extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Replace with Settings"),
           onPress: (data) {
-            AppNavigation.replace("profile/settings", 
+            AppNavigation.replace(
+              "profile/settings",
               params: {
                 "replaced": true,
-                "message": "This screen was replaced!"
+                "message": "This screen was replaced!",
               },
-              fromScreen: "profile"
+              fromScreen: "profile",
             );
           },
           layout: LayoutProps(width: "80%"),
@@ -206,9 +207,7 @@ class SettingsScreen extends StatefulComponent {
 
         // 🎯 TARGETED NAVIGATION
         DCFButton(
-          buttonProps: DCFButtonProps(
-            title: "Pop to Root",
-          ),
+          buttonProps: DCFButtonProps(title: "Pop to Root"),
           onPress: (data) {
             AppNavigation.goToRoot(fromScreen: "profile/settings");
           },
@@ -227,12 +226,13 @@ class SettingsScreen extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Animation Modal from Settings"),
           onPress: (data) {
-            AppNavigation.navigateTo("home/animated_modal", 
+            AppNavigation.navigateTo(
+              "home/animated_modal",
               params: {
                 "title": "Modal from Settings",
-                "message": "This was the problematic case - now fixed!"
+                "message": "This was the problematic case - now fixed!",
               },
-              fromScreen: "profile/settings"
+              fromScreen: "profile/settings",
             );
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
@@ -244,7 +244,7 @@ class SettingsScreen extends StatefulComponent {
             AppNavigation.goBackWithResult({
               "settingsSaved": true,
               "timestamp": DateTime.now().toIso8601String(),
-              "changes": ["theme", "notifications", "privacy"]
+              "changes": ["theme", "notifications", "privacy"],
             }, fromScreen: "profile/settings");
           },
           layout: LayoutProps(marginBottom: 16, width: "80%"),
@@ -261,4 +261,3 @@ class SettingsScreen extends StatefulComponent {
     );
   }
 }
-
