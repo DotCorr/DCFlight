@@ -74,7 +74,7 @@ class ComplexDashboardHome extends StatefulComponent {
     }
 
     return DCFScrollView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: "100%", // EXPLICIT WIDTH
         height: "100%", // EXPLICIT HEIGHT
         padding: 16,
@@ -110,7 +110,7 @@ class ComplexDashboardHome extends StatefulComponent {
   // 🎯 TAB SWITCHER - FIXED SIZING
   DCFComponentNode _buildTabSwitcher(StateHook<int> selectedTab) {
     return DCFSegmentedControl(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: "100%", // EXPLICIT WIDTH
         height: 44.0, // EXPLICIT HEIGHT
         marginBottom: 12,
@@ -138,7 +138,7 @@ class ComplexDashboardHome extends StatefulComponent {
     VoidCallback refreshCallback,
   ) {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: "100%", // EXPLICIT WIDTH
         height: 50.0, // EXPLICIT HEIGHT
         gap: 8,
@@ -151,7 +151,7 @@ class ComplexDashboardHome extends StatefulComponent {
         DCFTextInput(
           placeholder: "🔍 Search dashboard items...",
           value: filterText.state,
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 250.0, // EXPLICIT WIDTH instead of flex
             height: 40.0, // EXPLICIT HEIGHT
             padding: 8,
@@ -170,7 +170,7 @@ class ComplexDashboardHome extends StatefulComponent {
         // Sort Dropdown - FIXED SIZING
         DCFButton(
           buttonProps: DCFButtonProps(title: "Sort: ${sortMode.state}"),
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 120.0, // EXPLICIT WIDTH
             height: 40.0, // EXPLICIT HEIGHT
           ),
@@ -191,7 +191,7 @@ class ComplexDashboardHome extends StatefulComponent {
           buttonProps: DCFButtonProps(
             title: viewMode.state == 'grid' ? "📱" : "📄",
           ),
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 50.0, // EXPLICIT WIDTH
             height: 40.0, // EXPLICIT HEIGHT
           ),
@@ -207,7 +207,7 @@ class ComplexDashboardHome extends StatefulComponent {
         // Refresh Button - FIXED SIZING
         DCFButton(
           buttonProps: DCFButtonProps(title: "🔄 Refresh All"),
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 120.0, // EXPLICIT WIDTH
             height: 40.0, // EXPLICIT HEIGHT
           ),
@@ -226,7 +226,7 @@ class ComplexDashboardHome extends StatefulComponent {
     final stats = _calculateStats(data);
 
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: "100%", // EXPLICIT WIDTH
         height: 100.0, // EXPLICIT HEIGHT
         gap: 8,
@@ -251,7 +251,7 @@ class ComplexDashboardHome extends StatefulComponent {
 
   DCFComponentNode _buildStatCard(String title, String value, Color color) {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: 160.0, // EXPLICIT WIDTH
         height: 80.0, // EXPLICIT HEIGHT
         padding: 12,
@@ -265,12 +265,12 @@ class ComplexDashboardHome extends StatefulComponent {
       children: [
         DCFText(
           content: title,
-          layout: LayoutProps(height: 16.0), // EXPLICIT HEIGHT
+          layout: DCFLayout(height: 16.0), // EXPLICIT HEIGHT
           textProps: DCFTextProps(fontSize: 12, color: Colors.grey[600]),
         ),
         DCFText(
           content: value,
-          layout: LayoutProps(height: 24.0, marginTop: 8), // EXPLICIT HEIGHT
+          layout: DCFLayout(height: 24.0, marginTop: 8), // EXPLICIT HEIGHT
           textProps: DCFTextProps(
             fontSize: 18,
             fontWeight: DCFFontWeight.bold,
@@ -287,7 +287,7 @@ class ComplexDashboardHome extends StatefulComponent {
     int selectedTab,
   ) {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: "100%", // EXPLICIT WIDTH
         height: 220.0, // EXPLICIT HEIGHT
         gap: 12,
@@ -321,7 +321,7 @@ class ComplexDashboardHome extends StatefulComponent {
     List<DashboardItem> chartData,
   ) {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: 300.0, // EXPLICIT WIDTH instead of flex: 1
         height: 200.0, // EXPLICIT HEIGHT
         padding: 12,
@@ -335,7 +335,7 @@ class ComplexDashboardHome extends StatefulComponent {
       children: [
         DCFText(
           content: title,
-          layout: LayoutProps(height: 20.0), // EXPLICIT HEIGHT
+          layout: DCFLayout(height: 20.0), // EXPLICIT HEIGHT
           textProps: DCFTextProps(
             fontSize: 14,
             fontWeight: DCFFontWeight.bold,
@@ -344,7 +344,7 @@ class ComplexDashboardHome extends StatefulComponent {
         ),
         // Mock chart visualization
         DCFView(
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: "100%",
             height: 150.0, // EXPLICIT HEIGHT instead of flex: 1
             gap: 4,
@@ -354,7 +354,7 @@ class ComplexDashboardHome extends StatefulComponent {
               .take(5)
               .map(
                 (item) => DCFView(
-                  layout: LayoutProps(
+                  layout: DCFLayout(
                     height: 20.0, // EXPLICIT HEIGHT
                     width: "${(item.value / 100 * 80).toInt()}%",
                   ),
@@ -384,7 +384,7 @@ class ComplexDashboardHome extends StatefulComponent {
         (rows * itemHeight) + (rows * 8) + 50; // items + gaps + header
 
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: "100%", // EXPLICIT WIDTH
         height: contentHeight, // CALCULATED EXPLICIT HEIGHT
         gap: 8,
@@ -395,7 +395,7 @@ class ComplexDashboardHome extends StatefulComponent {
         DCFText(
           content:
               "📋 Dashboard Items (${items.length}) - ${viewMode.toUpperCase()} VIEW",
-          layout: LayoutProps(height: 24.0), // EXPLICIT HEIGHT
+          layout: DCFLayout(height: 24.0), // EXPLICIT HEIGHT
           textProps: DCFTextProps(
             fontSize: 16,
             fontWeight: DCFFontWeight.bold,
@@ -406,7 +406,7 @@ class ComplexDashboardHome extends StatefulComponent {
         // 🔥 THIS IS WHERE THE MAGIC HAPPENS!
         // 50+ components that update simultaneously
         DCFView(
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: "100%", // EXPLICIT WIDTH
             height: contentHeight - 40, // EXPLICIT HEIGHT minus header
             gap: viewMode == 'grid' ? 8 : 4,
@@ -427,7 +427,7 @@ class ComplexDashboardHome extends StatefulComponent {
     final isGrid = viewMode == 'grid';
 
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: isGrid ? 280.0 : "100%", // EXPLICIT WIDTH
         height: isGrid ? 120.0 : 60.0, // EXPLICIT HEIGHT
         padding: 12,
@@ -446,7 +446,7 @@ class ComplexDashboardHome extends StatefulComponent {
       children: [
         // Header Row
         DCFView(
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: "100%", // EXPLICIT WIDTH
             height: 20.0, // EXPLICIT HEIGHT
             flexDirection: YogaFlexDirection.row,
@@ -456,7 +456,7 @@ class ComplexDashboardHome extends StatefulComponent {
           children: [
             DCFText(
               content: item.title,
-              layout: LayoutProps(
+              layout: DCFLayout(
                 width: isGrid ? 220.0 : "85%", // EXPLICIT WIDTH
                 height: 18.0, // EXPLICIT HEIGHT
               ),
@@ -467,7 +467,7 @@ class ComplexDashboardHome extends StatefulComponent {
               ),
             ),
             DCFView(
-              layout: LayoutProps(
+              layout: DCFLayout(
                 width: 8.0, // EXPLICIT WIDTH
                 height: 8.0, // EXPLICIT HEIGHT
               ),
@@ -483,7 +483,7 @@ class ComplexDashboardHome extends StatefulComponent {
           // Grid view - more detailed info
           DCFText(
             content: item.description,
-            layout: LayoutProps(
+            layout: DCFLayout(
               width: "100%", // EXPLICIT WIDTH
               height: 32.0, // EXPLICIT HEIGHT
               marginTop: 4,
@@ -491,7 +491,7 @@ class ComplexDashboardHome extends StatefulComponent {
             textProps: DCFTextProps(fontSize: 12, color: Colors.grey[600]),
           ),
           DCFView(
-            layout: LayoutProps(
+            layout: DCFLayout(
               width: "100%", // EXPLICIT WIDTH
               height: 24.0, // EXPLICIT HEIGHT
               flexDirection: YogaFlexDirection.row,
@@ -502,7 +502,7 @@ class ComplexDashboardHome extends StatefulComponent {
             children: [
               DCFText(
                 content: "\$${item.value}",
-                layout: LayoutProps(
+                layout: DCFLayout(
                   width: 100.0, // EXPLICIT WIDTH
                   height: 20.0, // EXPLICIT HEIGHT
                 ),
@@ -514,7 +514,7 @@ class ComplexDashboardHome extends StatefulComponent {
               ),
               DCFText(
                 content: item.status,
-                layout: LayoutProps(
+                layout: DCFLayout(
                   width: 80.0, // EXPLICIT WIDTH
                   height: 16.0, // EXPLICIT HEIGHT
                 ),
@@ -528,7 +528,7 @@ class ComplexDashboardHome extends StatefulComponent {
         ] else ...[
           // List view - compact info
           DCFView(
-            layout: LayoutProps(
+            layout: DCFLayout(
               width: "100%", // EXPLICIT WIDTH
               height: 20.0, // EXPLICIT HEIGHT
               flexDirection: YogaFlexDirection.row,
@@ -539,7 +539,7 @@ class ComplexDashboardHome extends StatefulComponent {
             children: [
               DCFText(
                 content: "\$${item.value} • ${item.status}",
-                layout: LayoutProps(
+                layout: DCFLayout(
                   width: "100%", // EXPLICIT WIDTH
                   height: 16.0, // EXPLICIT HEIGHT
                 ),
@@ -559,7 +559,7 @@ class ComplexDashboardHome extends StatefulComponent {
     StateHook<int> selectedTab,
   ) {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: "100%", // EXPLICIT WIDTH
         height: 60.0, // EXPLICIT HEIGHT
         gap: 8,
@@ -571,7 +571,7 @@ class ComplexDashboardHome extends StatefulComponent {
         // Add Random Items - FIXED SIZING
         DCFButton(
           buttonProps: DCFButtonProps(title: "➕ Add 20 Items"),
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 140.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
@@ -601,7 +601,7 @@ class ComplexDashboardHome extends StatefulComponent {
         // Shuffle All - FIXED SIZING
         DCFButton(
           buttonProps: DCFButtonProps(title: "🎲 Shuffle All"),
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 120.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
@@ -619,7 +619,7 @@ class ComplexDashboardHome extends StatefulComponent {
         // Update Values - FIXED SIZING
         DCFButton(
           buttonProps: DCFButtonProps(title: "💰 Update Values"),
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 140.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
@@ -647,7 +647,7 @@ class ComplexDashboardHome extends StatefulComponent {
         // Clear All - FIXED SIZING
         DCFButton(
           buttonProps: DCFButtonProps(title: "🗑️ Clear All"),
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 100.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
@@ -663,7 +663,7 @@ class ComplexDashboardHome extends StatefulComponent {
         // Reset Demo - FIXED SIZING
         DCFButton(
           buttonProps: DCFButtonProps(title: "🔄 Reset Demo"),
-          layout: LayoutProps(
+          layout: DCFLayout(
             width: 120.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
@@ -680,7 +680,7 @@ class ComplexDashboardHome extends StatefulComponent {
   // 🔍 DEBUG SECTION - FIXED SIZING
   DCFComponentNode _buildDebugSection(int refreshKey) {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         width: "100%", // EXPLICIT WIDTH
         height: 120.0, // EXPLICIT HEIGHT
         padding: 12,
@@ -695,7 +695,7 @@ class ComplexDashboardHome extends StatefulComponent {
       children: [
         DCFText(
           content: "🔍 VDom Performance Debug",
-          layout: LayoutProps(height: 20.0), // EXPLICIT HEIGHT
+          layout: DCFLayout(height: 20.0), // EXPLICIT HEIGHT
           textProps: DCFTextProps(
             fontSize: 14,
             fontWeight: DCFFontWeight.bold,
@@ -705,13 +705,13 @@ class ComplexDashboardHome extends StatefulComponent {
         DCFText(
           content:
               "• Updates: #$refreshKey\n• Watch console for isolate logs\n• Try searching, sorting, or refreshing to trigger concurrent processing",
-          layout: LayoutProps(height: 50.0, marginTop: 8), // EXPLICIT HEIGHT
+          layout: DCFLayout(height: 50.0, marginTop: 8), // EXPLICIT HEIGHT
           textProps: DCFTextProps(fontSize: 12, color: Colors.grey[600]),
         ),
         DCFText(
           content:
               "🚀 When you see 5+ components updating simultaneously, VDom isolates kick in!",
-          layout: LayoutProps(height: 20.0, marginTop: 8), // EXPLICIT HEIGHT
+          layout: DCFLayout(height: 20.0, marginTop: 8), // EXPLICIT HEIGHT
           textProps: DCFTextProps(
             fontSize: 11,
             color: Colors.blue[600],

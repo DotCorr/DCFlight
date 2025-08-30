@@ -113,7 +113,7 @@ class DCFScreen extends StatelessComponent
       if (popoverConfig != null) ...popoverConfig!.toMap(),
       if (overlayConfig != null) ...overlayConfig!.toMap(),
       if (navigationBarConfig != null) ...navigationBarConfig!.toMap(),
-      ...LayoutProps(padding: 0, margin: 0, height: "100%", width: "100%")
+      ...DCFLayout(padding: 0, margin: 0, height: "100%", width: "100%")
           .toMap(),
       ...styleSheet.toMap(),
       ...eventMap,

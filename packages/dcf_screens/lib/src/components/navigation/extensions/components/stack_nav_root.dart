@@ -59,7 +59,7 @@ class DCFStackNavigationRoot extends StatelessComponent {
       ],
     );
   }
-  
+
   @override
   List<Object?> get props => [
         initialScreen,
@@ -120,7 +120,7 @@ class DCFStackNavigationBootstrapper extends StatelessComponent
 
       if (animationDuration != null) 'animationDuration': animationDuration,
 
-      ...LayoutProps(padding: 0, margin: 0, flex: 1).toMap(),
+      ...DCFLayout(padding: 0, margin: 0, flex: 1).toMap(),
       ...eventMap,
     };
 
@@ -199,4 +199,3 @@ class DCFNavigationBarStyle extends Equatable {
         hideBorder,
       ];
 }
-

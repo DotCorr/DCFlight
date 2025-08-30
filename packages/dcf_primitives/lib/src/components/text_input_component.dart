@@ -15,7 +15,7 @@ class DCFTextInput extends StatelessComponent
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.immediate;
-  final LayoutProps? layout;
+  final DCFLayout? layout;
   final DCFStyleSheet? styleSheet;
   final String? value;
   final String? defaultValue;
@@ -59,7 +59,7 @@ class DCFTextInput extends StatelessComponent
   DCFTextInput({
     super.key,
     this.styleSheet,
-    this.layout = const LayoutProps(height: 50, width: 200),
+    this.layout = const DCFLayout(height: 50, width: 200),
     this.value,
     this.defaultValue,
     this.placeholder,

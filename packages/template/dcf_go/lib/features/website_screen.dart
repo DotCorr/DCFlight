@@ -9,11 +9,11 @@ class WebsiteScreen extends StatefulComponent {
   DCFComponentNode render() {
     final selectedIndexWeb = useState(0);
     return DCFSafeArea(
-      layout: LayoutProps(flex: 1),
+      layout: DCFLayout(flex: 1),
 
       children: [
         DCFView(
-          layout: LayoutProps(
+          layout: DCFLayout(
             height: 50,
             width: "100%",
             flexDirection: YogaFlexDirection.row,
@@ -23,7 +23,7 @@ class WebsiteScreen extends StatefulComponent {
           ),
           children: [
             DCFSegmentedControl(
-              layout: LayoutProps(height: 40, width: "40%"),
+              layout: DCFLayout(height: 40, width: "40%"),
               segmentedControlProps: DCFSegmentedControlProps(
                 selectedIndex: selectedIndexWeb.state,
                 segments: [
@@ -38,7 +38,7 @@ class WebsiteScreen extends StatefulComponent {
             ),
 
             DCFGestureDetector(
-              layout: LayoutProps(height: 40, width: 40),
+              layout: DCFLayout(height: 40, width: 40),
 
               onTap: (v) {
                 AppNavigation.dismissModal();
@@ -46,7 +46,7 @@ class WebsiteScreen extends StatefulComponent {
               children: [
                 DCFIcon(
                   iconProps: DCFIconProps(name: DCFIcons.x, adaptive: false),
-                  layout: LayoutProps(height: 40, width: 40),
+                  layout: DCFLayout(height: 40, width: 40),
                 ),
               ],
             ),
@@ -63,7 +63,7 @@ class WebsiteScreen extends StatefulComponent {
                     : "https://www.dotcorr.com",
             loadMode: DCFWebViewLoadMode.url,
           ),
-          layout: LayoutProps(flex: 1),
+          layout: DCFLayout(flex: 1),
         ),
       ],
     );

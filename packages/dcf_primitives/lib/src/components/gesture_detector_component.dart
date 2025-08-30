@@ -18,7 +18,7 @@ class DCFGestureDetector extends StatelessComponent
   final List<DCFComponentNode> children;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The styleSheet properties
   final DCFStyleSheet styleSheet;
@@ -59,7 +59,7 @@ class DCFGestureDetector extends StatelessComponent
   /// Create a gesture detector component
   DCFGestureDetector({
     required this.children,
-    this.layout = const LayoutProps(padding: 8, height: 50, width: 200),
+    this.layout = const DCFLayout(padding: 8, height: 50, width: 200),
     this.styleSheet = const DCFStyleSheet(),
     this.onTap,
     this.onLongPress,

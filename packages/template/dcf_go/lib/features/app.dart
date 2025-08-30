@@ -6,7 +6,7 @@ class HomeScreen extends StatelessComponent {
   DCFComponentNode render() {
     return DCFSafeArea(
       styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
-      layout: LayoutProps(
+      layout: DCFLayout(
         flex: 1,
         padding: 20,
         justifyContent: YogaJustifyContent.center,
@@ -18,7 +18,7 @@ class HomeScreen extends StatelessComponent {
           onPress: (data) {
             AppNavigation.navigateTo("profile", fromScreen: "home");
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -30,7 +30,7 @@ class HomeScreen extends StatelessComponent {
               fromScreen: "home",
             );
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Website"),
@@ -38,7 +38,7 @@ class HomeScreen extends StatelessComponent {
             print("Navigate to Website pressed");
             AppNavigation.presentModal("home/website", fromScreen: "home");
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -47,7 +47,7 @@ class HomeScreen extends StatelessComponent {
             print("Navigate to Settings pressed");
             AppNavigation.navigateTo("profile/settings", fromScreen: "home");
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -63,7 +63,7 @@ class HomeScreen extends StatelessComponent {
               fromScreen: "home",
             );
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -76,7 +76,7 @@ class HomeScreen extends StatelessComponent {
               fromScreen: "home",
             );
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         // 🎯 FIXED: Present modal with proper targeting
@@ -92,7 +92,7 @@ class HomeScreen extends StatelessComponent {
               fromScreen: "home",
             );
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
       ],
     );
@@ -109,7 +109,7 @@ class ProfileScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         flex: 1,
         padding: 20,
         justifyContent: YogaJustifyContent.center,
@@ -119,13 +119,13 @@ class ProfileScreen extends StatefulComponent {
         DCFText(
           content: "Profile Screen",
           textProps: DCFTextProps(fontSize: 24, fontWeight: DCFFontWeight.bold),
-          layout: LayoutProps(marginBottom: 30),
+          layout: DCFLayout(marginBottom: 30),
         ),
 
         DCFText(
           content: "Try the 'Settings' button in the navigation bar!",
           textProps: DCFTextProps(fontSize: 16, textAlign: "center"),
-          layout: LayoutProps(marginBottom: 30),
+          layout: DCFLayout(marginBottom: 30),
         ),
 
         // 🎯 TARGETED NAVIGATION
@@ -134,7 +134,7 @@ class ProfileScreen extends StatefulComponent {
           onPress: (data) {
             AppNavigation.navigateTo("profile/settings", fromScreen: "profile");
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -142,7 +142,7 @@ class ProfileScreen extends StatefulComponent {
           onPress: (data) {
             AppNavigation.goBack(fromScreen: "profile");
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -157,7 +157,7 @@ class ProfileScreen extends StatefulComponent {
               fromScreen: "profile",
             );
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -172,7 +172,7 @@ class ProfileScreen extends StatefulComponent {
               fromScreen: "profile",
             );
           },
-          layout: LayoutProps(width: "80%"),
+          layout: DCFLayout(width: "80%"),
         ),
       ],
     );
@@ -186,7 +186,7 @@ class SettingsScreen extends StatefulComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         flex: 1,
         padding: 20,
         justifyContent: YogaJustifyContent.center,
@@ -196,13 +196,13 @@ class SettingsScreen extends StatefulComponent {
         DCFText(
           content: "Settings Screen",
           textProps: DCFTextProps(fontSize: 24, fontWeight: DCFFontWeight.bold),
-          layout: LayoutProps(marginBottom: 30),
+          layout: DCFLayout(marginBottom: 30),
         ),
 
         DCFText(
           content: "Try the 'Cancel' and 'Done' buttons in the navigation bar!",
           textProps: DCFTextProps(fontSize: 16, textAlign: "center"),
-          layout: LayoutProps(marginBottom: 30),
+          layout: DCFLayout(marginBottom: 30),
         ),
 
         // 🎯 TARGETED NAVIGATION
@@ -211,7 +211,7 @@ class SettingsScreen extends StatefulComponent {
           onPress: (data) {
             AppNavigation.goToRoot(fromScreen: "profile/settings");
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -219,7 +219,7 @@ class SettingsScreen extends StatefulComponent {
           onPress: (data) {
             AppNavigation.goBack(fromScreen: "profile/settings");
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         // 🎯 FIXED: This was the problematic case!
@@ -235,7 +235,7 @@ class SettingsScreen extends StatefulComponent {
               fromScreen: "profile/settings",
             );
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -247,7 +247,7 @@ class SettingsScreen extends StatefulComponent {
               "changes": ["theme", "notifications", "privacy"],
             }, fromScreen: "profile/settings");
           },
-          layout: LayoutProps(marginBottom: 16, width: "80%"),
+          layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
 
         DCFButton(
@@ -255,7 +255,7 @@ class SettingsScreen extends StatefulComponent {
           onPress: (data) {
             AppNavigation.popToRoute("profile", fromScreen: "profile/settings");
           },
-          layout: LayoutProps(width: "80%"),
+          layout: DCFLayout(width: "80%"),
         ),
       ],
     );

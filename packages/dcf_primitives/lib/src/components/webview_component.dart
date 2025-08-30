@@ -135,7 +135,7 @@ class DCFWebView extends StatelessComponent
   final DCFWebViewProps webViewProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
   final DCFStyleSheet styleSheet;
@@ -164,7 +164,7 @@ class DCFWebView extends StatelessComponent
   /// Create a webview component
   DCFWebView({
     required this.webViewProps,
-    this.layout = const LayoutProps(
+    this.layout = const DCFLayout(
       height: 400,
       width: 300,
     ),

@@ -22,7 +22,7 @@ class DCFScrollView extends StatelessComponent
   final bool horizontal;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
   final DCFStyleSheet styleSheet;
@@ -63,7 +63,7 @@ class DCFScrollView extends StatelessComponent
   DCFScrollView({
     required this.children,
     this.horizontal = false,
-    this.layout = const LayoutProps(flex: 1),
+    this.layout = const DCFLayout(flex: 1),
     this.styleSheet = const DCFStyleSheet(),
     this.showsScrollIndicator = true,
     this.contentContainerStyle = const DCFStyleSheet(),

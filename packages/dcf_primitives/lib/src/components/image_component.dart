@@ -66,7 +66,7 @@ class DCFImage extends StatelessComponent
   final DCFImageProps imageProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The styleSheet properties
   final DCFStyleSheet styleSheet;
@@ -83,7 +83,7 @@ class DCFImage extends StatelessComponent
   /// Create an image component
   DCFImage({
     required this.imageProps,
-    this.layout = const LayoutProps(height: 50, width: 200),
+    this.layout = const DCFLayout(height: 50, width: 200),
     this.styleSheet = const DCFStyleSheet(),
     this.onLoad,
     this.onError,

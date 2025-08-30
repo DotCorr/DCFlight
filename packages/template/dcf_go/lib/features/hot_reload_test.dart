@@ -18,7 +18,7 @@ class HotReloadTestScreen extends StatefulComponent {
     final counter = useState<int>(0);
 
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         flex: 1,
         padding: 20,
         justifyContent: YogaJustifyContent.center,
@@ -47,7 +47,7 @@ class HotReloadTestScreen extends StatefulComponent {
         ),
 
         DCFView(
-          layout: LayoutProps(height: 250, padding: 20, gap: 12),
+          layout: DCFLayout(height: 250, padding: 20, gap: 12),
           styleSheet: DCFStyleSheet(
             backgroundColor: Colors.white,
             borderRadius: 12,

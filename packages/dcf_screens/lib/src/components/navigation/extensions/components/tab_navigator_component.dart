@@ -154,7 +154,7 @@ class DCFTabNavigator extends StatelessComponent
 
       if (animationDuration != null) 'animationDuration': animationDuration,
 
-      ...LayoutProps(padding: 0, margin: 0, flex: 1).toMap(),
+      ...DCFLayout(padding: 0, margin: 0, flex: 1).toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
     };
