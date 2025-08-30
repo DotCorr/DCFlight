@@ -27,7 +27,7 @@ class DCFSuspense extends StatelessComponent with EquatableMixin {
   final String? debugName;
 
   /// Layout properties for the container
-  final LayoutProps? layout;
+  final DCFLayout? layout;
 
   /// Style sheet for the container
   final DCFStyleSheet? styleSheet;
@@ -57,7 +57,7 @@ class DCFSuspense extends StatelessComponent with EquatableMixin {
 
       // Render the actual children
       return DCFView(
-        layout: layout ?? LayoutProps(),
+        layout: layout ?? DCFLayout(),
         styleSheet: styleSheet ?? DCFStyleSheet(),
         children: [children()],
       );
@@ -69,14 +69,14 @@ class DCFSuspense extends StatelessComponent with EquatableMixin {
       // Render fallback or empty view
       if (fallback != null) {
         return DCFView(
-          layout: layout ?? LayoutProps(flex: 1),
+          layout: layout ?? DCFLayout(flex: 1),
           styleSheet: styleSheet ?? DCFStyleSheet(),
           children: [fallback!()],
         );
       } else {
         // Empty container - no children rendered
         return DCFView(
-          layout: layout ?? LayoutProps(flex: 1),
+          layout: layout ?? DCFLayout(flex: 1),
           styleSheet: styleSheet ?? DCFStyleSheet(),
           children: [],
         );

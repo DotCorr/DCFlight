@@ -15,7 +15,7 @@ class DCFView extends StatelessComponent
   ComponentPriority get priority => ComponentPriority.normal;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
   final DCFStyleSheet styleSheet;
@@ -34,7 +34,7 @@ class DCFView extends StatelessComponent
 
   /// Create a view component
   DCFView({
-    this.layout = const LayoutProps(height: "100%", width: "100%"),
+    this.layout = const DCFLayout(height: "100%", width: "100%"),
     this.styleSheet = const DCFStyleSheet(),
     this.children = const [],
     this.events,

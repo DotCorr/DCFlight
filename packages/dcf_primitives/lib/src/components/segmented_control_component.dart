@@ -106,7 +106,7 @@ class DCFSegmentedControl extends StatelessComponent
   final DCFSegmentedControlProps segmentedControlProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
   final DCFStyleSheet styleSheet;
@@ -120,7 +120,7 @@ class DCFSegmentedControl extends StatelessComponent
   /// Create a segmented control component
   DCFSegmentedControl({
     required this.segmentedControlProps,
-    this.layout = const LayoutProps(
+    this.layout = const DCFLayout(
       height: 32,
       width: 200,
     ),

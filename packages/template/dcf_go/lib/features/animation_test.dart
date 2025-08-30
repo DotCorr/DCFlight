@@ -21,7 +21,7 @@ class AnimationTestScreen extends StatefulComponent {
     }, dependencies: [animationValue.state]);
 
     return DCFScrollView(
-      layout: LayoutProps(flex: 1, gap: 16, padding: 20),
+      layout: DCFLayout(flex: 1, gap: 16, padding: 20),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.green.shade100),
       children: [
         DCFText(
@@ -51,7 +51,7 @@ class AnimationTestScreen extends StatefulComponent {
 
         // Animation value slider
         DCFView(
-          layout: LayoutProps(gap: 8),
+          layout: DCFLayout(gap: 8),
           children: [
             DCFText(
               content:
@@ -68,7 +68,7 @@ class AnimationTestScreen extends StatefulComponent {
 
         // Demo content area
         DCFView(
-          layout: LayoutProps(height: 200, width: "100%", padding: 16),
+          layout: DCFLayout(height: 200, width: "100%", padding: 16),
           styleSheet: DCFStyleSheet(
             backgroundColor: Colors.white,
             borderRadius: 8,
@@ -77,14 +77,14 @@ class AnimationTestScreen extends StatefulComponent {
             // Transform demo - should NOT inherit opacity animation state
             if (selectedDemo.state == 0)
               DCFView(
-                layout: LayoutProps(gap: 8),
+                layout: DCFLayout(gap: 8),
                 children: [
                   DCFText(
                     content: "🟢 Transform Demo",
                     textProps: DCFTextProps(fontWeight: DCFFontWeight.bold),
                   ),
                   ReanimatedView(
-                    layout: LayoutProps(height: 60),
+                    layout: DCFLayout(height: 60),
                     styleSheet: DCFStyleSheet(backgroundColor: Colors.blue),
                     animatedStyle: transformStyle,
                     children: [
@@ -100,14 +100,14 @@ class AnimationTestScreen extends StatefulComponent {
             // Opacity demo - should NOT inherit transform animation state
             if (selectedDemo.state == 1)
               DCFView(
-                layout: LayoutProps(gap: 8),
+                layout: DCFLayout(gap: 8),
                 children: [
                   DCFText(
                     content: "🔴 Opacity Demo",
                     textProps: DCFTextProps(fontWeight: DCFFontWeight.bold),
                   ),
                   ReanimatedView(
-                    layout: LayoutProps(width: 200, height: 60),
+                    layout: DCFLayout(width: 200, height: 60),
                     styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
                     children: [

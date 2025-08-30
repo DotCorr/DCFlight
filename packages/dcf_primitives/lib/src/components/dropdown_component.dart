@@ -134,7 +134,7 @@ class DCFDropdown extends StatelessComponent
   final DCFDropdownProps dropdownProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
   final DCFStyleSheet styleSheet;
@@ -157,7 +157,7 @@ class DCFDropdown extends StatelessComponent
   DCFDropdown({
     super.key,
     required this.dropdownProps,
-    this.layout = const LayoutProps(),
+    this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
     this.onValueChange,
     this.onMultiValueChange,

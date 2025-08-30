@@ -45,7 +45,7 @@ class DCFCheckbox extends StatelessComponent
   final String checkboxStyle;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
   final DCFStyleSheet styleSheet;
@@ -64,7 +64,7 @@ class DCFCheckbox extends StatelessComponent
     this.checkmarkColor,
     this.size = 'medium',
     this.checkboxStyle = 'default',
-    this.layout = const LayoutProps(),
+    this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(
         borderWidth: 2, borderColor: Colors.grey, borderRadius: 8),
     this.events,

@@ -54,7 +54,7 @@ class DCFSlider extends StatelessComponent
   final Color? thumbTintColor;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
   final DCFStyleSheet styleSheet;
@@ -76,7 +76,7 @@ class DCFSlider extends StatelessComponent
     this.minimumTrackTintColor,
     this.maximumTrackTintColor,
     this.thumbTintColor,
-    this.layout = const LayoutProps(),
+    this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
     this.events,
   });

@@ -180,7 +180,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
         }
 
         return DCFSuspense(
-          layout: LayoutProps(flex: 1),
+          layout: DCFLayout(flex: 1),
           shouldRender:
               _shouldRenderScreen(route, activeScreen.state, navStack.state),
           debugName: route,
@@ -247,7 +247,7 @@ class DCFEasyScreen extends StatefulComponent with EquatableMixin {
 
   DCFComponentNode _createDefaultPlaceholder(String route) {
     return DCFView(
-      layout: LayoutProps(
+      layout: DCFLayout(
         flex: 1,
         justifyContent: YogaJustifyContent.center,
         alignItems: YogaAlign.center,

@@ -67,7 +67,7 @@ class DCFIcon extends StatelessComponent
   final DCFIconProps iconProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The styleSheet properties
   final DCFStyleSheet styleSheet;
@@ -84,7 +84,7 @@ class DCFIcon extends StatelessComponent
   /// Create an icon component
   DCFIcon({
     required this.iconProps,
-    this.layout = const LayoutProps(height: 20, width: 20),
+    this.layout = const DCFLayout(height: 20, width: 20),
     this.styleSheet = const DCFStyleSheet(),
     this.onLoad,
     this.onError,

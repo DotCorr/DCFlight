@@ -42,7 +42,7 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
   final AnimatedStyle? animatedStyle;
 
   /// Layout properties for positioning and sizing
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// Static styling properties (non-animated)
   final DCFStyleSheet styleSheet;
@@ -72,7 +72,7 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
   ReanimatedView({
     required this.children,
     this.animatedStyle,
-    this.layout = const LayoutProps(),
+    this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
     this.autoStart = true,
     this.startDelay = 0,

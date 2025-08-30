@@ -9,7 +9,7 @@ import 'package:dcflight/framework/constants/layout/yoga_enums.dart';
 import 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 
 /// Layout properties for components
-class LayoutProps extends Equatable {
+class DCFLayout extends Equatable {
   // Width and height
   final dynamic width;
   final dynamic height;
@@ -38,15 +38,16 @@ class LayoutProps extends Equatable {
 
   // Position - use absoluteLayout for absolute positioning
   final YogaPositionType? position;
-  
+
   // Absolute positioning properties - grouped for better DX
   final AbsoluteLayout? absoluteLayout;
 
   // Transform properties - can be applied to any element, not just absolute positioned
-  final double? rotateInDegrees;  // Rotation in degrees (more intuitive than radians for most developers)
-  final double? scale;            // Uniform scale factor for both x and y axes
-  final double? scaleX;           // Scale factor for x axis only
-  final double? scaleY;           // Scale factor for y axis only
+  final double?
+      rotateInDegrees; // Rotation in degrees (more intuitive than radians for most developers)
+  final double? scale; // Uniform scale factor for both x and y axes
+  final double? scaleX; // Scale factor for x axis only
+  final double? scaleY; // Scale factor for y axis only
 
   // Flex properties
   final YogaFlexDirection? flexDirection;
@@ -56,7 +57,7 @@ class LayoutProps extends Equatable {
   final YogaAlign? alignContent;
   final YogaWrap? flexWrap;
   // Another reminder that module dev should be always be sure to set leaf nodes to have a default felx value of one
-  // Not doing this might possiby confuse developers as they expect leaf nodes to fill by default the available space from their parent 
+  // Not doing this might possiby confuse developers as they expect leaf nodes to fill by default the available space from their parent
   final double? flex;
   final double? flexGrow;
   final double? flexShrink;
@@ -75,13 +76,13 @@ class LayoutProps extends Equatable {
   final dynamic rowGap;
   final dynamic columnGap;
 
-@Deprecated("Use borderWidth from style instead")
+  @Deprecated("Use borderWidth from style instead")
   // Border (although visual, it affects layout)
   final dynamic borderWidth;
 
   /// Create layout props with the specified values
-  const LayoutProps({
-    // these defauts are just for visibiity reasons. 
+  const DCFLayout({
+    // these defauts are just for visibiity reasons.
     this.width = '100%', // Default to 100% width for proper nesting
     this.height = 60, // Default to 100 height for visibility
     this.minWidth,
@@ -222,7 +223,7 @@ class LayoutProps extends Equatable {
 
     // Add position properties
     if (position != null) map['position'] = position.toString().split('.').last;
-    
+
     // Add absolute layout properties if set
     if (absoluteLayout != null) {
       map.addAll(absoluteLayout!.toMap());
@@ -278,8 +279,8 @@ class LayoutProps extends Equatable {
   }
 
   /// Create a new LayoutProps object by merging this one with another
-  LayoutProps merge(LayoutProps other) {
-    return LayoutProps(
+  DCFLayout merge(DCFLayout other) {
+    return DCFLayout(
       width: other.width ?? width,
       height: other.height ?? height,
       minWidth: other.minWidth ?? minWidth,
@@ -328,7 +329,7 @@ class LayoutProps extends Equatable {
   }
 
   /// Create a copy of this LayoutProps with certain properties modified
-  LayoutProps copyWith({
+  DCFLayout copyWith({
     dynamic width,
     dynamic height,
     dynamic minWidth,
@@ -374,7 +375,7 @@ class LayoutProps extends Equatable {
     dynamic columnGap,
     dynamic borderWidth,
   }) {
-    return LayoutProps(
+    return DCFLayout(
       width: width ?? this.width,
       height: height ?? this.height,
       minWidth: minWidth ?? this.minWidth,
@@ -553,4 +554,3 @@ class LayoutProps extends Equatable {
         borderWidth,
       ];
 }
-

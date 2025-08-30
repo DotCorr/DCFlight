@@ -14,7 +14,7 @@ class DCFSafeArea extends StatefulComponent {
   final bool left;
   final bool right;
   final DCFStyleSheet styleSheet;
-  final LayoutProps layout;
+  final DCFLayout layout;
   final List<DCFComponentNode> children;
   final Map<String, dynamic>? events;
 
@@ -38,7 +38,7 @@ class DCFSafeArea extends StatefulComponent {
     this.left = true,
     this.right = true,
     this.styleSheet = const DCFStyleSheet(),
-    this.layout = const LayoutProps(),
+    this.layout = const DCFLayout(),
     this.children = const [],
     this.events,
     super.key,
@@ -77,7 +77,7 @@ class DCFSafeArea extends StatefulComponent {
     final double rightPadding = right ? screenUtils.safeAreaRight : 0.0;
 
     // CRITICAL FIX: Create layout that forces proper bounds
-    final enhancedLayout = LayoutProps(
+    final enhancedLayout = DCFLayout(
         flex: layout.flex ?? 1,
         width: layout.width ?? "100%",
         height: layout.height ?? "100%",

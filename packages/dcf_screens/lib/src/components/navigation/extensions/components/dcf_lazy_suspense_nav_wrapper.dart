@@ -21,7 +21,7 @@ class DCFLazySuspense extends StatefulComponent with EquatableMixin {
   final bool Function()? additionalCondition;
 
   /// Layout properties for the container
-  final LayoutProps? layout;
+  final DCFLayout? layout;
 
   /// Style sheet for the container
   final DCFStyleSheet? styleSheet;
@@ -61,7 +61,7 @@ class DCFLazySuspense extends StatefulComponent with EquatableMixin {
       }
 
       return DCFView(
-        layout: layout ?? LayoutProps(),
+        layout: layout ?? DCFLayout(),
         styleSheet: styleSheet ?? DCFStyleSheet(),
         children: [children()],
       );
@@ -73,13 +73,13 @@ class DCFLazySuspense extends StatefulComponent with EquatableMixin {
 
       if (fallback != null) {
         return DCFView(
-          layout: layout ?? LayoutProps(),
+          layout: layout ?? DCFLayout(),
           styleSheet: styleSheet ?? DCFStyleSheet(),
           children: [fallback!()],
         );
       } else {
         return DCFView(
-          layout: layout ?? LayoutProps(),
+          layout: layout ?? DCFLayout(),
           styleSheet: styleSheet ?? DCFStyleSheet(),
           children: [],
         );
@@ -109,7 +109,7 @@ extension StoreToSuspense<T> on Store<T> {
     DCFComponentNode Function() children, {
     DCFComponentNode Function()? fallback,
     String? debugName,
-    LayoutProps? layout,
+    DCFLayout? layout,
     DCFStyleSheet? styleSheet,
     bool enableDebugLogs = true,
   }) {
@@ -130,7 +130,7 @@ extension StoreToSuspense<T> on Store<T> {
     DCFComponentNode Function() children, {
     DCFComponentNode Function()? fallback,
     String? debugName,
-    LayoutProps? layout,
+    DCFLayout? layout,
     DCFStyleSheet? styleSheet,
     bool enableDebugLogs = true,
   }) {

@@ -35,7 +35,7 @@ class AnimatedModalScreen extends StatefulComponent {
     }, dependencies: [animationValue.state]);
 
     return DCFScrollView(
-      layout: LayoutProps(flex: 1, paddingTop: 60, gap: 16, paddingBottom: 120),
+      layout: DCFLayout(flex: 1, paddingTop: 60, gap: 16, paddingBottom: 120),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.red.shade100),
       children: [
         // Segmented control to pick demo
@@ -60,7 +60,7 @@ class AnimatedModalScreen extends StatefulComponent {
 
         // Slider that drives a shared animation value used across demos
         DCFSlider(
-          layout: LayoutProps(flex: 0, height: 50),
+          layout: DCFLayout(flex: 0, height: 50),
           value: animationValue.state,
           onValueChange: (v) {
             try {
@@ -72,15 +72,15 @@ class AnimatedModalScreen extends StatefulComponent {
 
         // Demo area - shows different animated behaviours driven by `sharedValue`.
         DCFScrollView(
-          layout: LayoutProps(gap: 5, height: "200"),
+          layout: DCFLayout(gap: 5, height: "200"),
           children: [
             // Transform demo: translateX based on sharedValue
             if (selectedDemoState.state == 0)
               DCFView(
-                layout: LayoutProps(width: "100%", height: 140),
+                layout: DCFLayout(width: "100%", height: 140),
                 children: [
                   DCFView(
-                    layout: LayoutProps(padding: 12),
+                    layout: DCFLayout(padding: 12),
                     children: [
                       DCFText(
                         content: "Transform demo (width)",
@@ -90,11 +90,11 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
                   // Container with no padding for full width animation
                   DCFView(
-                    layout: LayoutProps(paddingLeft: 12, paddingRight: 12),
+                    layout: DCFLayout(paddingLeft: 12, paddingRight: 12),
                     children: [
                       // Pure UI thread animated box using ReanimatedView
                       ReanimatedView(
-                        layout: LayoutProps(
+                        layout: DCFLayout(
                           height: 60,
                         ), // Width controlled by animation
                         styleSheet: DCFStyleSheet(
@@ -113,7 +113,7 @@ class AnimatedModalScreen extends StatefulComponent {
             // Opacity demo: box fades in/out
             if (selectedDemoState.state == 1)
               DCFView(
-                layout: LayoutProps(width: "100%", height: 140, padding: 12),
+                layout: DCFLayout(width: "100%", height: 140, padding: 12),
                 children: [
                   DCFText(
                     content: "Opacity demo",
@@ -122,7 +122,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   // Pure UI thread opacity animation using ReanimatedView
                   ReanimatedView(
                     key: "opacity_box",
-                    layout: LayoutProps(width: "50%", height: 80),
+                    layout: DCFLayout(width: "50%", height: 80),
                     styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
                     children: [],
@@ -133,7 +133,7 @@ class AnimatedModalScreen extends StatefulComponent {
             // Drawer demo: a panel whose width is controlled by the slider
             if (selectedDemoState.state == 2)
               DCFView(
-                layout: LayoutProps(width: "100%", height: "100%"),
+                layout: DCFLayout(width: "100%", height: "100%"),
                 children: [
                   DCFText(
                     content: "Drawer demo (controlled by slider)",
@@ -142,7 +142,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   // Pure UI thread animated drawer using ReanimatedView
                   ReanimatedView(
                     key: "drawer_panel",
-                    layout: LayoutProps(
+                    layout: DCFLayout(
                       position: YogaPositionType.absolute,
                       absoluteLayout: AbsoluteLayout(left: 0, top: 40),
 
@@ -173,7 +173,7 @@ class AnimatedModalScreen extends StatefulComponent {
             // Complex preset animations demo - showcases ALL DCF Reanimated APIs
             if (selectedDemoState.state == 3)
               DCFScrollView(
-                layout: LayoutProps(
+                layout: DCFLayout(
                   width: "100%",
                   height: "100%",
                   gap: 16,
@@ -198,7 +198,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
 
                   DCFView(
-                    layout: LayoutProps(
+                    layout: DCFLayout(
                       flexDirection: YogaFlexDirection.row,
                       gap: 8,
                       flexWrap: YogaWrap.wrap,
@@ -210,7 +210,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 800,
                           delay: 0,
                         ),
-                        layout: LayoutProps(
+                        layout: DCFLayout(
                           width: 80,
                           height: 80,
                           marginBottom: 8,
@@ -238,7 +238,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 600,
                           delay: 200,
                         ),
-                        layout: LayoutProps(
+                        layout: DCFLayout(
                           width: 80,
                           height: 80,
                           marginBottom: 8,
@@ -265,7 +265,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 700,
                           delay: 400,
                         ),
-                        layout: LayoutProps(
+                        layout: DCFLayout(
                           width: 80,
                           height: 80,
                           marginBottom: 8,
@@ -292,7 +292,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 700,
                           delay: 600,
                         ),
-                        layout: LayoutProps(
+                        layout: DCFLayout(
                           width: 80,
                           height: 80,
                           marginBottom: 8,
@@ -332,7 +332,7 @@ class AnimatedModalScreen extends StatefulComponent {
                       delay: 800,
                       curve: AnimationCurve.elasticOut,
                     ),
-                    layout: LayoutProps(
+                    layout: DCFLayout(
                       width: "90%",
                       height: 100,
                       alignSelf: YogaAlign.center,
@@ -371,7 +371,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
 
                   DCFView(
-                    layout: LayoutProps(
+                    layout: DCFLayout(
                       flexDirection: YogaFlexDirection.row,
                       gap: 12,
                       justifyContent: YogaJustifyContent.spaceEvenly,
@@ -384,7 +384,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 2000,
                           delay: 1000,
                         ),
-                        layout: LayoutProps(width: 60, height: 60),
+                        layout: DCFLayout(width: 60, height: 60),
                         styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.red,
                           borderRadius: 30,
@@ -405,7 +405,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 1200,
                           delay: 1200,
                         ),
-                        layout: LayoutProps(width: 60, height: 60),
+                        layout: DCFLayout(width: 60, height: 60),
                         styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.pink,
                           borderRadius: 30,
@@ -426,7 +426,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           delay: 1400,
                           repeatCount: 4,
                         ),
-                        layout: LayoutProps(width: 60, height: 60),
+                        layout: DCFLayout(width: 60, height: 60),
                         styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.yellow,
                           borderRadius: 30,
@@ -457,7 +457,7 @@ class AnimatedModalScreen extends StatefulComponent {
                       delay: 1800,
                       repeatCount: 6,
                     ),
-                    layout: LayoutProps(
+                    layout: DCFLayout(
                       width: "80%",
                       height: 50,
                       alignSelf: YogaAlign.center,
@@ -490,7 +490,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ),
 
                   DCFView(
-                    layout: LayoutProps(gap: 4),
+                    layout: DCFLayout(gap: 4),
                     children: [
                       // Item 1
                       ReanimatedView(
@@ -499,7 +499,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 400,
                           delay: 2200,
                         ),
-                        layout: LayoutProps(
+                        layout: DCFLayout(
                           height: 40,
                           marginBottom: 4,
                           padding: 8,
@@ -523,7 +523,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 400,
                           delay: 2350,
                         ),
-                        layout: LayoutProps(
+                        layout: DCFLayout(
                           height: 40,
                           marginBottom: 4,
                           padding: 8,
@@ -547,7 +547,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 400,
                           delay: 2500,
                         ),
-                        layout: LayoutProps(
+                        layout: DCFLayout(
                           height: 40,
                           marginBottom: 4,
                           padding: 8,
@@ -580,7 +580,7 @@ class AnimatedModalScreen extends StatefulComponent {
                       duration: 1000,
                       delay: 3000,
                     ),
-                    layout: LayoutProps(
+                    layout: DCFLayout(
                       width: "70%",
                       height: 60,
                       alignSelf: YogaAlign.center,
@@ -608,7 +608,7 @@ class AnimatedModalScreen extends StatefulComponent {
         ),
 
         DCFView(
-          layout: LayoutProps(
+          layout: DCFLayout(
             flexDirection: YogaFlexDirection.row,
             flexWrap: YogaWrap.wrap,
             height: 110,

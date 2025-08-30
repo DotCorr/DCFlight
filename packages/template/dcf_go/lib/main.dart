@@ -1,5 +1,3 @@
-import 'package:dcf_go/config/navigation/stack_registry.dart';
-import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() async {
@@ -13,7 +11,10 @@ void main() async {
 class MyStackApp extends StatelessComponent {
   @override
   DCFComponentNode render() {
-    return DCFView(styleSheet: DCFStyleSheet(backgroundColor: Colors.blue));
+    return DCFView(
+      layout: DCFLayout(flex: 1),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.blue),
+    );
   }
 
   @override
