@@ -154,6 +154,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
                 return
             }
 
+            // Set up navigation delegate to handle user-initiated gestures
+            setupNavigationDelegate(navigationController)
+
             // Check if this view controller is already in the navigation stack
             if navigationController.viewControllers.contains(targetContainer.viewController) {
                 print(
@@ -171,6 +174,12 @@ class DCFScreenComponent: NSObject, DCFComponent {
                     data: ["params": params, "sourceRoute": sourceContainer.route]
                 )
             }
+
+            // Store current view controllers BEFORE navigation for user-initiated pop tracking
+            objc_setAssociatedObject(
+                navigationController, &DCFScreenComponent.previousViewControllersKey,
+                navigationController.viewControllers,
+                .OBJC_ASSOCIATION_RETAIN)
 
             navigationController.pushViewController(
                 targetContainer.viewController, animated: animated)
@@ -197,6 +206,9 @@ class DCFScreenComponent: NSObject, DCFComponent {
             return
         }
 
+        // Set up navigation delegate to handle user-initiated gestures
+        setupNavigationDelegate(navigationController)
+
         // Only push the final route if it exists
         if let finalRoute = routes.last,
             let finalContainer = DCFScreenComponent.routeRegistry[finalRoute]
@@ -211,6 +223,13 @@ class DCFScreenComponent: NSObject, DCFComponent {
             }
 
             configureScreenForPush(finalContainer)
+
+            // Store current view controllers BEFORE navigation for user-initiated pop tracking
+            objc_setAssociatedObject(
+                navigationController, &DCFScreenComponent.previousViewControllersKey,
+                navigationController.viewControllers,
+                .OBJC_ASSOCIATION_RETAIN)
+
             navigationController.pushViewController(
                 finalContainer.viewController, animated: animated)
             updateRouteStack(navigationController)
@@ -1742,19 +1761,40 @@ extension DCFScreenComponent: UINavigationControllerDelegate {
         didShow viewController: UIViewController,
         animated: Bool
     ) {
+        print("🚨 NAVIGATION DELEGATE CALLED: didShow triggered!")
 
         let currentCount = navigationController.viewControllers.count
-        let previousCountKey = UnsafeRawPointer(
-            bitPattern: "previousViewControllerCount".hashValue)!
         let previousCount =
-            objc_getAssociatedObject(navigationController, previousCountKey) as? Int ?? currentCount
+            objc_getAssociatedObject(
+                navigationController, &DCFScreenComponent.previousViewControllerCountKey) as? Int
+            ?? currentCount
+
+        // Get the ACTUAL previous view controllers that were stored before this navigation
+        let previousViewControllers =
+            objc_getAssociatedObject(
+                navigationController, &DCFScreenComponent.previousViewControllersKey)
+            as? [UIViewController] ?? []
+
+        print("🔍 STORAGE DEBUG: NavigationController = \(navigationController)")
+        print(
+            "🔍 STORAGE DEBUG: Retrieved previousViewControllers count = \(previousViewControllers.count)"
+        )
+        if !previousViewControllers.isEmpty {
+            let routes = previousViewControllers.compactMap { vc in
+                findScreenContainer(for: vc)?.route
+            }
+            print("🔍 STORAGE DEBUG: Retrieved routes = \(routes)")
+        }
 
         print(
             "📍 Navigation Debug: currentCount=\(currentCount), previousCount=\(previousCount), isProgrammatic=\(DCFScreenComponent.isProgrammaticNavigation)"
         )
 
         objc_setAssociatedObject(
-            navigationController, previousCountKey, currentCount, .OBJC_ASSOCIATION_RETAIN)
+            navigationController, &DCFScreenComponent.previousViewControllerCountKey, currentCount,
+            .OBJC_ASSOCIATION_RETAIN)
+
+        let currentViewControllers = navigationController.viewControllers
 
         guard let targetContainer = findScreenContainer(for: viewController) else {
             print("⚠️ DCFScreenComponent: Could not find screen container for view controller")
@@ -1764,37 +1804,40 @@ extension DCFScreenComponent: UINavigationControllerDelegate {
         if currentCount < previousCount && !DCFScreenComponent.isProgrammaticNavigation {
             print("🎯 DCFScreenComponent: USER-INITIATED pop detected to '\(targetContainer.route)'")
 
-            let previousViewControllers =
-                objc_getAssociatedObject(navigationController, "previousViewControllers")
-                as? [UIViewController] ?? []
-            let currentViewControllers = navigationController.viewControllers
+            print(
+                "🔍 DEBUG: previousViewControllers count=\(previousViewControllers.count), currentViewControllers count=\(currentViewControllers.count)"
+            )
 
             let poppedViewControllers = previousViewControllers.filter {
                 !currentViewControllers.contains($0)
             }
 
+            print("🔥 DEBUG: Found \(poppedViewControllers.count) popped view controllers")
+
             for poppedViewController in poppedViewControllers {
                 for (_, container) in DCFScreenComponent.routeRegistry {
                     if container.viewController == poppedViewController {
+                        print("🧹 Sending navigation event for popped route: \(container.route)")
                         propagateEvent(
                             on: container.contentView,
-                            eventName: "onNavigationCleanup",
+                            eventName: "onNavigationEvent",
                             data: [
                                 "action": "pop",
-                                "route": container.route,
+                                "targetRoute": targetContainer.route,
+                                "animated": animated,
                                 "userInitiated": true,
+                                "screenRoute": container.route,
                             ]
                         )
-                        print("🧹 Cleaned up actually popped route: \(container.route)")
+                        print("🧹 Sent onNavigationEvent for popped route: \(container.route)")
                         break
                     }
                 }
             }
 
-            objc_setAssociatedObject(
-                navigationController, "previousViewControllers", currentViewControllers,
-                .OBJC_ASSOCIATION_RETAIN)
+            print("🔥 DEBUG: About to propagate events for user-initiated navigation to target")
 
+            print("🔥 Sending navigation event to target route: \(targetContainer.route)")
             propagateEvent(
                 on: targetContainer.contentView,
                 eventName: "onNavigationEvent",
@@ -1803,6 +1846,7 @@ extension DCFScreenComponent: UINavigationControllerDelegate {
                     "targetRoute": targetContainer.route,
                     "animated": animated,
                     "userInitiated": true,
+                    "screenRoute": targetContainer.route,
                 ]
             )
 
@@ -1818,6 +1862,21 @@ extension DCFScreenComponent: UINavigationControllerDelegate {
                 data: ["route": targetContainer.route]
             )
         }
+
+        // Store current view controllers for the NEXT navigation event (after processing current one)
+        let routes = currentViewControllers.compactMap { vc in
+            findScreenContainer(for: vc)?.route
+        }
+        print(
+            "🔍 STORAGE DEBUG: Storing currentViewControllers count = \(currentViewControllers.count)"
+        )
+        print("🔍 STORAGE DEBUG: Storing routes = \(routes)")
+        print("🔍 STORAGE DEBUG: NavigationController for storage = \(navigationController)")
+
+        objc_setAssociatedObject(
+            navigationController, &DCFScreenComponent.previousViewControllersKey,
+            currentViewControllers,
+            .OBJC_ASSOCIATION_RETAIN)
 
         DCFScreenComponent.isProgrammaticNavigation = false
         print("✅ DCFScreenComponent: Navigation didShow completed for '\(targetContainer.route)'")
@@ -1922,17 +1981,33 @@ extension DCFScreenComponent {
 
     static var isProgrammaticNavigation = false
 
+    private static var previousViewControllersKey: UInt8 = 0
+    private static var previousViewControllerCountKey: UInt8 = 0
+
     private func setupNavigationDelegate(_ navigationController: UINavigationController) {
+        print("🔧 SETUP: setupNavigationDelegate called")
+        print("🔧 SETUP: Current delegate = \(String(describing: navigationController.delegate))")
+        print(
+            "🔧 SETUP: Our delegate manager = \(String(describing: DCFScreenComponent.delegateManager))"
+        )
+
         if navigationController.delegate !== DCFScreenComponent.delegateManager {
             navigationController.delegate = DCFScreenComponent.delegateManager
             print("🎯 DCFScreenComponent: Set navigation controller delegate")
+        } else {
+            print("🔧 SETUP: Delegate already set correctly")
         }
 
         if let interactivePopGestureRecognizer = navigationController
             .interactivePopGestureRecognizer
         {
+            print("🔧 SETUP: Setting gesture recognizer delegate")
             interactivePopGestureRecognizer.delegate = DCFScreenComponent.delegateManager
+        } else {
+            print("🔧 SETUP: No interactive pop gesture recognizer found")
         }
+
+        print("🔧 SETUP: Final delegate = \(String(describing: navigationController.delegate))")
     }
 
     private func setupModalDelegate(_ viewController: UIViewController) {
