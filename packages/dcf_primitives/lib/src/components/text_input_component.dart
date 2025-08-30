@@ -16,7 +16,7 @@ class DCFTextInput extends StatelessComponent
   @override
   ComponentPriority get priority => ComponentPriority.immediate;
   final LayoutProps? layout;
-  final StyleSheet? styleSheet;
+  final DCFStyleSheet? styleSheet;
   final String? value;
   final String? defaultValue;
   final String? placeholder;

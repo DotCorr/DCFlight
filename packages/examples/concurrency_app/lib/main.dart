@@ -36,14 +36,13 @@ class ComplexDashboardHome extends StatefulComponent {
 
     // 🎭 FILTERED DATA - Changes cause cascade updates
     final filteredData = useMemo(() {
-      var data =
-          dashboardData.state
-              .where(
-                (item) => item.title.toLowerCase().contains(
+      var data = dashboardData.state
+          .where(
+            (item) => item.title.toLowerCase().contains(
                   filterText.state.toLowerCase(),
                 ),
-              )
-              .toList();
+          )
+          .toList();
 
       // Sort data
       switch (sortMode.state) {
@@ -81,7 +80,7 @@ class ComplexDashboardHome extends StatefulComponent {
         padding: 16,
         gap: 12,
       ),
-      styleSheet: StyleSheet(backgroundColor: Colors.grey[50]),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[50]),
       children: [
         // 📱 TOP CONTROLS - Tab Switcher
         _buildTabSwitcher(selectedTab),
@@ -157,7 +156,7 @@ class ComplexDashboardHome extends StatefulComponent {
             height: 40.0, // EXPLICIT HEIGHT
             padding: 8,
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             borderWidth: 1,
             borderColor: Colors.grey[300],
             borderRadius: 6,
@@ -175,7 +174,7 @@ class ComplexDashboardHome extends StatefulComponent {
             width: 120.0, // EXPLICIT WIDTH
             height: 40.0, // EXPLICIT HEIGHT
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.blue[100],
             borderRadius: 6,
           ),
@@ -196,7 +195,7 @@ class ComplexDashboardHome extends StatefulComponent {
             width: 50.0, // EXPLICIT WIDTH
             height: 40.0, // EXPLICIT HEIGHT
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.green[100],
             borderRadius: 6,
           ),
@@ -212,7 +211,7 @@ class ComplexDashboardHome extends StatefulComponent {
             width: 120.0, // EXPLICIT WIDTH
             height: 40.0, // EXPLICIT HEIGHT
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.orange[100],
             borderRadius: 6,
           ),
@@ -257,7 +256,7 @@ class ComplexDashboardHome extends StatefulComponent {
         height: 80.0, // EXPLICIT HEIGHT
         padding: 12,
       ),
-      styleSheet: StyleSheet(
+      styleSheet: DCFStyleSheet(
         backgroundColor: color.withOpacity(0.1),
         borderRadius: 8,
         borderWidth: 1,
@@ -327,7 +326,7 @@ class ComplexDashboardHome extends StatefulComponent {
         height: 200.0, // EXPLICIT HEIGHT
         padding: 12,
       ),
-      styleSheet: StyleSheet(
+      styleSheet: DCFStyleSheet(
         backgroundColor: Colors.white,
         borderRadius: 8,
         borderWidth: 1,
@@ -351,22 +350,21 @@ class ComplexDashboardHome extends StatefulComponent {
             gap: 4,
             marginTop: 8,
           ),
-          children:
-              chartData
-                  .take(5)
-                  .map(
-                    (item) => DCFView(
-                      layout: LayoutProps(
-                        height: 20.0, // EXPLICIT HEIGHT
-                        width: "${(item.value / 100 * 80).toInt()}%",
-                      ),
-                      styleSheet: StyleSheet(
-                        backgroundColor: color.withOpacity(0.6),
-                        borderRadius: 2,
-                      ),
-                    ),
-                  )
-                  .toList(),
+          children: chartData
+              .take(5)
+              .map(
+                (item) => DCFView(
+                  layout: LayoutProps(
+                    height: 20.0, // EXPLICIT HEIGHT
+                    width: "${(item.value / 100 * 80).toInt()}%",
+                  ),
+                  styleSheet: DCFStyleSheet(
+                    backgroundColor: color.withOpacity(0.6),
+                    borderRadius: 2,
+                  ),
+                ),
+              )
+              .toList(),
         ),
       ],
     );
@@ -412,10 +410,9 @@ class ComplexDashboardHome extends StatefulComponent {
             width: "100%", // EXPLICIT WIDTH
             height: contentHeight - 40, // EXPLICIT HEIGHT minus header
             gap: viewMode == 'grid' ? 8 : 4,
-            flexDirection:
-                viewMode == 'grid'
-                    ? YogaFlexDirection.row
-                    : YogaFlexDirection.column,
+            flexDirection: viewMode == 'grid'
+                ? YogaFlexDirection.row
+                : YogaFlexDirection.column,
             flexWrap: viewMode == 'grid' ? YogaWrap.wrap : YogaWrap.nowrap,
           ),
           children:
@@ -436,7 +433,7 @@ class ComplexDashboardHome extends StatefulComponent {
         padding: 12,
         marginBottom: isGrid ? 8.0 : 4.0, // EXPLICIT MARGIN
       ),
-      styleSheet: StyleSheet(
+      styleSheet: DCFStyleSheet(
         backgroundColor: Colors.white,
         borderRadius: 8,
         borderWidth: 1,
@@ -474,7 +471,7 @@ class ComplexDashboardHome extends StatefulComponent {
                 width: 8.0, // EXPLICIT WIDTH
                 height: 8.0, // EXPLICIT HEIGHT
               ),
-              styleSheet: StyleSheet(
+              styleSheet: DCFStyleSheet(
                 borderRadius: 4,
                 backgroundColor: _getStatusColor(item.status),
               ),
@@ -578,7 +575,7 @@ class ComplexDashboardHome extends StatefulComponent {
             width: 140.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.green[100],
             borderRadius: 6,
           ),
@@ -590,8 +587,11 @@ class ComplexDashboardHome extends StatefulComponent {
                 title: "New Item ${i + 1}",
                 description: "Added dynamically",
                 value: math.Random().nextInt(1000) + 100,
-                status:
-                    ['active', 'pending', 'inactive'][math.Random().nextInt(3)],
+                status: [
+                  'active',
+                  'pending',
+                  'inactive'
+                ][math.Random().nextInt(3)],
               ),
             );
             dashboardData.setState([...dashboardData.state, ...newItems]);
@@ -605,7 +605,7 @@ class ComplexDashboardHome extends StatefulComponent {
             width: 120.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.purple[100],
             borderRadius: 6,
           ),
@@ -623,25 +623,23 @@ class ComplexDashboardHome extends StatefulComponent {
             width: 140.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.orange[100],
             borderRadius: 6,
           ),
           onPress: (_) {
-            final updated =
-                dashboardData.state
-                    .map(
-                      (item) => DashboardItem(
-                        id: item.id,
-                        title: item.title,
-                        description: item.description,
-                        value:
-                            math.Random().nextInt(1000) +
-                            100, // New random value
-                        status: item.status,
-                      ),
-                    )
-                    .toList();
+            final updated = dashboardData.state
+                .map(
+                  (item) => DashboardItem(
+                    id: item.id,
+                    title: item.title,
+                    description: item.description,
+                    value:
+                        math.Random().nextInt(1000) + 100, // New random value
+                    status: item.status,
+                  ),
+                )
+                .toList();
             dashboardData.setState(updated);
           },
         ),
@@ -653,7 +651,7 @@ class ComplexDashboardHome extends StatefulComponent {
             width: 100.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.red[100],
             borderRadius: 6,
           ),
@@ -669,7 +667,7 @@ class ComplexDashboardHome extends StatefulComponent {
             width: 120.0, // EXPLICIT WIDTH
             height: 45.0, // EXPLICIT HEIGHT
           ),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.blue[100],
             borderRadius: 6,
           ),
@@ -688,7 +686,7 @@ class ComplexDashboardHome extends StatefulComponent {
         padding: 12,
         marginTop: 16,
       ),
-      styleSheet: StyleSheet(
+      styleSheet: DCFStyleSheet(
         backgroundColor: Colors.grey[100],
         borderRadius: 8,
         borderWidth: 1,

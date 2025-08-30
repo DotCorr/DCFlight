@@ -35,14 +35,8 @@ class AnimatedModalScreen extends StatefulComponent {
     }, dependencies: [animationValue.state]);
 
     return DCFScrollView(
-      layout: LayoutProps(
-       
-        flex: 1,
-        paddingTop: 60,
-        gap: 16,
-        paddingBottom: 120,
-      ),
-      styleSheet: StyleSheet(backgroundColor: Colors.red.shade100),
+      layout: LayoutProps(flex: 1, paddingTop: 60, gap: 16, paddingBottom: 120),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.red.shade100),
       children: [
         // Segmented control to pick demo
         DCFSegmentedControl(
@@ -103,7 +97,7 @@ class AnimatedModalScreen extends StatefulComponent {
                         layout: LayoutProps(
                           height: 60,
                         ), // Width controlled by animation
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.blueAccent,
                         ),
                         animatedStyle: transformStyle,
@@ -129,7 +123,7 @@ class AnimatedModalScreen extends StatefulComponent {
                   ReanimatedView(
                     key: "opacity_box",
                     layout: LayoutProps(width: "50%", height: 80),
-                    styleSheet: StyleSheet(backgroundColor: Colors.red),
+                    styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
                     children: [],
                   ),
@@ -154,7 +148,7 @@ class AnimatedModalScreen extends StatefulComponent {
 
                       padding: 12,
                     ),
-                    styleSheet: StyleSheet(
+                    styleSheet: DCFStyleSheet(
                       backgroundColor: Colors.white,
                       borderColor: Colors.grey.shade300,
                       borderWidth: 1,
@@ -221,7 +215,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           height: 80,
                           marginBottom: 8,
                         ),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.blue,
                           borderRadius: 8,
                         ),
@@ -249,7 +243,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           height: 80,
                           marginBottom: 8,
                         ),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.green,
                           borderRadius: 8,
                         ),
@@ -276,7 +270,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           height: 80,
                           marginBottom: 8,
                         ),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.purple,
                           borderRadius: 8,
                         ),
@@ -303,7 +297,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           height: 80,
                           marginBottom: 8,
                         ),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.orange,
                           borderRadius: 8,
                         ),
@@ -344,7 +338,7 @@ class AnimatedModalScreen extends StatefulComponent {
                       alignSelf: YogaAlign.center,
                       padding: 16,
                     ),
-                    styleSheet: StyleSheet(
+                    styleSheet: DCFStyleSheet(
                       backgroundColor: Colors.indigo,
                       borderRadius: 12,
                     ),
@@ -391,7 +385,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           delay: 1000,
                         ),
                         layout: LayoutProps(width: 60, height: 60),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.red,
                           borderRadius: 30,
                         ),
@@ -412,7 +406,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           delay: 1200,
                         ),
                         layout: LayoutProps(width: 60, height: 60),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.pink,
                           borderRadius: 30,
                         ),
@@ -433,7 +427,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           repeatCount: 4,
                         ),
                         layout: LayoutProps(width: 60, height: 60),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.yellow,
                           borderRadius: 30,
                         ),
@@ -469,7 +463,7 @@ class AnimatedModalScreen extends StatefulComponent {
                       alignSelf: YogaAlign.center,
                       padding: 12,
                     ),
-                    styleSheet: StyleSheet(
+                    styleSheet: DCFStyleSheet(
                       backgroundColor: Colors.red.shade100,
                       borderColor: Colors.red,
                       borderWidth: 2,
@@ -510,7 +504,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           marginBottom: 4,
                           padding: 8,
                         ),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.teal.shade100,
                           borderRadius: 4,
                         ),
@@ -534,7 +528,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           marginBottom: 4,
                           padding: 8,
                         ),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.teal.shade200,
                           borderRadius: 4,
                         ),
@@ -558,7 +552,7 @@ class AnimatedModalScreen extends StatefulComponent {
                           marginBottom: 4,
                           padding: 8,
                         ),
-                        styleSheet: StyleSheet(
+                        styleSheet: DCFStyleSheet(
                           backgroundColor: Colors.teal.shade300,
                           borderRadius: 4,
                         ),
@@ -592,7 +586,7 @@ class AnimatedModalScreen extends StatefulComponent {
                       alignSelf: YogaAlign.center,
                       padding: 12,
                     ),
-                    styleSheet: StyleSheet(
+                    styleSheet: DCFStyleSheet(
                       backgroundColor: Colors.grey.shade300,
                       borderRadius: 8,
                     ),
@@ -642,4 +636,3 @@ class AnimatedModalScreen extends StatefulComponent {
     );
   }
 }
-

@@ -109,7 +109,7 @@ class DCFSegmentedControl extends StatelessComponent
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -124,7 +124,7 @@ class DCFSegmentedControl extends StatelessComponent
       height: 32,
       width: 200,
     ),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onSelectionChange,
     this.events,
     super.key,

@@ -47,7 +47,7 @@ class DCFToggle extends StatelessComponent
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -64,7 +64,7 @@ class DCFToggle extends StatelessComponent
     this.inactiveThumbColor,
     this.size = 'medium',
     this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(backgroundColor: Colors.transparent),
+    this.styleSheet = const DCFStyleSheet(backgroundColor: Colors.transparent),
     this.events,
   });
 
@@ -114,7 +114,7 @@ class DCFToggle extends StatelessComponent
       children: [],
     );
   }
-  
+
   @override
   List<Object?> get props => [
         value,
@@ -137,4 +137,3 @@ class DCFToggleSize {
   static const String medium = 'medium';
   static const String large = 'large';
 }
-

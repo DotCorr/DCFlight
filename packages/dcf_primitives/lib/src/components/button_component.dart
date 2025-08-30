@@ -50,7 +50,7 @@ class DCFButton extends StatelessComponent with EquatableMixin {
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -65,7 +65,7 @@ class DCFButton extends StatelessComponent with EquatableMixin {
   DCFButton({
     required this.buttonProps,
     this.layout = const LayoutProps(height: 50, width: 200),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onPress,
     this.onLongPress,
     this.events,

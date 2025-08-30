@@ -24,7 +24,7 @@ class DCFTouchableOpacity extends StatelessComponent
   final LayoutProps layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Press event handler - receives Map<dynamic, dynamic> with press data
   final Function(Map<dynamic, dynamic>)? onPress;
@@ -55,7 +55,7 @@ class DCFTouchableOpacity extends StatelessComponent
     required this.children,
     this.activeOpacity = 0.2,
     this.layout = const LayoutProps(padding: 8, height: 50, width: 200),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onPress,
     this.onPressIn,
     this.onPressOut,

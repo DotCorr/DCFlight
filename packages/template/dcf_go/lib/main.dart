@@ -13,10 +13,7 @@ void main() async {
 class MyStackApp extends StatelessComponent {
   @override
   DCFComponentNode render() {
-    return DCFStackNavigationRoot(
-      initialScreen: "home",
-      screenRegistryComponents: StackScreenRegistry(),
-    );
+    return DCFView(styleSheet: DCFStyleSheet(backgroundColor: Colors.blue));
   }
 
   @override

@@ -23,10 +23,7 @@ class WebsiteScreen extends StatefulComponent {
           ),
           children: [
             DCFSegmentedControl(
-              layout: LayoutProps(
-                height: 40,
-                width: "40%",
-              ),
+              layout: LayoutProps(height: 40, width: "40%"),
               segmentedControlProps: DCFSegmentedControlProps(
                 selectedIndex: selectedIndexWeb.state,
                 segments: [
@@ -42,18 +39,21 @@ class WebsiteScreen extends StatefulComponent {
 
             DCFGestureDetector(
               layout: LayoutProps(height: 40, width: 40),
-              
+
               onTap: (v) {
-               AppNavigation.dismissModal();
+                AppNavigation.dismissModal();
               },
-              children: [DCFIcon(iconProps: DCFIconProps(name: DCFIcons.x,adaptive: false,),layout: LayoutProps(height: 40, width: 40),)],
+              children: [
+                DCFIcon(
+                  iconProps: DCFIconProps(name: DCFIcons.x, adaptive: false),
+                  layout: LayoutProps(height: 40, width: 40),
+                ),
+              ],
             ),
           ],
-          styleSheet: StyleSheet(backgroundColor: Colors.amber),
-          
+          styleSheet: DCFStyleSheet(backgroundColor: Colors.amber),
         ),
         DCFWebView(
-        
           webViewProps: DCFWebViewProps(
             source:
                 selectedIndexWeb.state == 0
@@ -69,4 +69,3 @@ class WebsiteScreen extends StatefulComponent {
     );
   }
 }
-

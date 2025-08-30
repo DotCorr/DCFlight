@@ -70,7 +70,7 @@ class DCFIcon extends StatelessComponent
   final LayoutProps layout;
 
   /// The styleSheet properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -85,7 +85,7 @@ class DCFIcon extends StatelessComponent
   DCFIcon({
     required this.iconProps,
     this.layout = const LayoutProps(height: 20, width: 20),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onLoad,
     this.onError,
     this.events,

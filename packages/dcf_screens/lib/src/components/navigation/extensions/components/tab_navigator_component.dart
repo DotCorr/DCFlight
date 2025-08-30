@@ -104,7 +104,7 @@ class DCFTabNavigator extends StatelessComponent
   final double? animationDuration;
 
   /// Style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -123,7 +123,7 @@ class DCFTabNavigator extends StatelessComponent
     this.isHidden = false,
     this.lazyLoad = true,
     this.animationDuration,
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.events,
     this.onTabChange,
     this.onTabPress,

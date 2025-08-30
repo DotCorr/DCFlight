@@ -10,7 +10,7 @@ import 'gradient.dart';
 import 'hit_slop.dart';
 
 /// StyleSheet for visual styling properties
-class StyleSheet extends Equatable {
+class DCFStyleSheet extends Equatable {
   // Border styles
   final dynamic borderRadius;
   final dynamic borderTopLeftRadius;
@@ -43,7 +43,7 @@ class StyleSheet extends Equatable {
   final String? pointerEvents;
 
   /// Create a style sheet with visual styling properties
-  const StyleSheet({
+  const DCFStyleSheet({
     this.borderRadius,
     this.borderTopLeftRadius,
     this.borderTopRightRadius,
@@ -147,8 +147,8 @@ class StyleSheet extends Equatable {
 
   /// Create a new StyleSheet by merging this one with another
   /// CRITICAL FIX: Ensure gradient takes precedence over backgroundColor when merging
-  StyleSheet merge(StyleSheet other) {
-    return StyleSheet(
+  DCFStyleSheet merge(DCFStyleSheet other) {
+    return DCFStyleSheet(
       borderRadius: other.borderRadius ?? borderRadius,
       borderTopLeftRadius: other.borderTopLeftRadius ?? borderTopLeftRadius,
       borderTopRightRadius: other.borderTopRightRadius ?? borderTopRightRadius,
@@ -176,7 +176,7 @@ class StyleSheet extends Equatable {
   }
 
   /// Create a copy of this StyleSheet with certain properties modified
-  StyleSheet copyWith({
+  DCFStyleSheet copyWith({
     dynamic borderRadius,
     dynamic borderTopLeftRadius,
     dynamic borderTopRightRadius,
@@ -199,7 +199,7 @@ class StyleSheet extends Equatable {
     String? testID,
     String? pointerEvents,
   }) {
-    return StyleSheet(
+    return DCFStyleSheet(
       borderRadius: borderRadius ?? this.borderRadius,
       borderTopLeftRadius: borderTopLeftRadius ?? this.borderTopLeftRadius,
       borderTopRightRadius: borderTopRightRadius ?? this.borderTopRightRadius,

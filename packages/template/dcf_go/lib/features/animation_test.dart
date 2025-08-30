@@ -3,10 +3,10 @@ import "package:dcflight/dcflight.dart";
 
 class AnimationTestScreen extends StatefulComponent {
   AnimationTestScreen({super.key});
-  
+
   @override
   List<Object?> get props => [];
-  
+
   @override
   DCFComponentNode render() {
     final selectedDemo = useState<int>(0);
@@ -22,16 +22,17 @@ class AnimationTestScreen extends StatefulComponent {
 
     return DCFScrollView(
       layout: LayoutProps(flex: 1, gap: 16, padding: 20),
-      styleSheet: StyleSheet(backgroundColor: Colors.green.shade100),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.green.shade100),
       children: [
         DCFText(
-          content: "🧪 Animation Reconciliation Test", 
-          textProps: DCFTextProps(fontSize: 18, fontWeight: DCFFontWeight.bold)
+          content: "🧪 Animation Reconciliation Test",
+          textProps: DCFTextProps(fontSize: 18, fontWeight: DCFFontWeight.bold),
         ),
-        
+
         DCFText(
-          content: "This tests if animation state transfers incorrectly between different component types.",
-          textProps: DCFTextProps(fontSize: 14)
+          content:
+              "This tests if animation state transfers incorrectly between different component types.",
+          textProps: DCFTextProps(fontSize: 14),
         ),
 
         // Segmented control
@@ -39,7 +40,7 @@ class AnimationTestScreen extends StatefulComponent {
           segmentedControlProps: DCFSegmentedControlProps(
             segments: [
               DCFSegmentItem(title: "Transform"),
-              DCFSegmentItem(title: "Opacity"), 
+              DCFSegmentItem(title: "Opacity"),
             ],
             selectedIndex: selectedDemo.state,
           ),
@@ -52,7 +53,10 @@ class AnimationTestScreen extends StatefulComponent {
         DCFView(
           layout: LayoutProps(gap: 8),
           children: [
-            DCFText(content: "Animation Value: ${animationValue.state.toStringAsFixed(2)}"),
+            DCFText(
+              content:
+                  "Animation Value: ${animationValue.state.toStringAsFixed(2)}",
+            ),
             DCFSlider(
               value: animationValue.state,
               onValueChange: (v) {
@@ -65,7 +69,7 @@ class AnimationTestScreen extends StatefulComponent {
         // Demo content area
         DCFView(
           layout: LayoutProps(height: 200, width: "100%", padding: 16),
-          styleSheet: StyleSheet(
+          styleSheet: DCFStyleSheet(
             backgroundColor: Colors.white,
             borderRadius: 8,
           ),
@@ -75,30 +79,42 @@ class AnimationTestScreen extends StatefulComponent {
               DCFView(
                 layout: LayoutProps(gap: 8),
                 children: [
-                  DCFText(content: "🟢 Transform Demo", textProps: DCFTextProps(fontWeight: DCFFontWeight.bold)),
+                  DCFText(
+                    content: "🟢 Transform Demo",
+                    textProps: DCFTextProps(fontWeight: DCFFontWeight.bold),
+                  ),
                   ReanimatedView(
                     layout: LayoutProps(height: 60),
-                    styleSheet: StyleSheet(backgroundColor: Colors.blue),
+                    styleSheet: DCFStyleSheet(backgroundColor: Colors.blue),
                     animatedStyle: transformStyle,
                     children: [
-                      DCFText(content: "Width animates", textProps: DCFTextProps(color: Colors.white)),
+                      DCFText(
+                        content: "Width animates",
+                        textProps: DCFTextProps(color: Colors.white),
+                      ),
                     ],
                   ),
                 ],
               ),
 
-            // Opacity demo - should NOT inherit transform animation state  
+            // Opacity demo - should NOT inherit transform animation state
             if (selectedDemo.state == 1)
               DCFView(
                 layout: LayoutProps(gap: 8),
                 children: [
-                  DCFText(content: "🔴 Opacity Demo", textProps: DCFTextProps(fontWeight: DCFFontWeight.bold)),
+                  DCFText(
+                    content: "🔴 Opacity Demo",
+                    textProps: DCFTextProps(fontWeight: DCFFontWeight.bold),
+                  ),
                   ReanimatedView(
                     layout: LayoutProps(width: 200, height: 60),
-                    styleSheet: StyleSheet(backgroundColor: Colors.red),
+                    styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
                     children: [
-                      DCFText(content: "Opacity animates", textProps: DCFTextProps(color: Colors.white)),
+                      DCFText(
+                        content: "Opacity animates",
+                        textProps: DCFTextProps(color: Colors.white),
+                      ),
                     ],
                   ),
                 ],
@@ -114,11 +130,11 @@ class AnimationTestScreen extends StatefulComponent {
         ),
 
         DCFText(
-          content: "✅ Expected: Switching demos should show clean animations\n❌ Bug: Animation state transfers between different components",
-          textProps: DCFTextProps(fontSize: 12, color: Colors.grey.shade600)
+          content:
+              "✅ Expected: Switching demos should show clean animations\n❌ Bug: Animation state transfers between different components",
+          textProps: DCFTextProps(fontSize: 12, color: Colors.grey.shade600),
         ),
       ],
     );
   }
 }
-
