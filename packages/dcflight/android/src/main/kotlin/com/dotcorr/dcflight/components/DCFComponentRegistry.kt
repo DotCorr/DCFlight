@@ -7,160 +7,219 @@
 
 package com.dotcorr.dcflight.components
 
+import android.content.Context
+import android.util.Log
+import android.view.View
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Registry for all component types
- * Following iOS DCFComponentRegistry pattern
+ * Registry for all DCFlight component types
+ * Manages component registration and creation
  */
 class DCFComponentRegistry private constructor() {
 
     companion object {
+        private const val TAG = "DCFComponentRegistry"
+
         @JvmField
         val shared = DCFComponentRegistry()
     }
 
-    // Thread-safe map of component types
-    private val componentTypes = ConcurrentHashMap<String, Class<out DCFComponent>>()
+    // Type alias for component factory function
+    typealias ComponentFactory = (props: Map<String, Any?>) -> DCFComponent
 
-    // Map for storing component instances (for singleton components if needed)
+    // Thread-safe map of component factories
+    private val componentFactories = ConcurrentHashMap<String, ComponentFactory>()
+
+    // Map for storing component instances by ID
     private val componentInstances = ConcurrentHashMap<String, DCFComponent>()
 
     /**
-     * Register a component type handler
+     * Initialize the component registry
+     */
+    fun initialize() {
+        // Clear any existing registrations
+        componentFactories.clear()
+        componentInstances.clear()
+        Log.d(TAG, "Component registry initialized")
+    }
+
+    /**
+     * Register a component type with a factory function
+     */
+    fun registerComponent(type: String, factory: ComponentFactory) {
+        componentFactories[type] = factory
+        Log.d(TAG, "Registered component type: $type")
+    }
+
+    /**
+     * Register a component type with a class (for backward compatibility)
      */
     fun registerComponent(type: String, componentClass: Class<out DCFComponent>) {
-        componentTypes[type] = componentClass
-        println("✅ DCFComponentRegistry: Registered component '$type'")
-    }
-
-    /**
-     * Register a component type handler (Kotlin reified version)
-     */
-    inline fun <reified T : DCFComponent> registerComponent(type: String) {
-        registerComponent(type, T::class.java)
-    }
-
-    /**
-     * Get the component handler for a specific type
-     */
-    fun getComponentType(type: String): Class<out DCFComponent>? {
-        return componentTypes[type]
-    }
-
-    /**
-     * Get the component class for tunnel calls (bridge compatibility)
-     */
-    fun getComponent(type: String): Class<out DCFComponent>? {
-        return componentTypes[type]
-    }
-
-    /**
-     * Create an instance of a component
-     */
-    fun createComponentInstance(type: String): DCFComponent? {
-        val componentClass = componentTypes[type] ?: run {
-            println("❌ DCFComponentRegistry: Component type '$type' not found")
-            return null
-        }
-
-        return try {
-            componentClass.getDeclaredConstructor().newInstance()
-        } catch (e: Exception) {
-            println("❌ DCFComponentRegistry: Failed to create instance of '$type': ${e.message}")
-            e.printStackTrace()
-            null
+        registerComponent(type) { props ->
+            try {
+                val constructor = componentClass.getConstructor(Map::class.java)
+                constructor.newInstance(props)
+            } catch (e: NoSuchMethodException) {
+                // Try no-arg constructor
+                val instance = componentClass.getDeclaredConstructor().newInstance()
+                instance.applyProperties(props)
+                instance
+            }
         }
     }
 
     /**
-     * Get or create a singleton instance of a component
+     * Unregister a component type
      */
-    fun getOrCreateComponentInstance(type: String): DCFComponent? {
-        // Check if we already have an instance
-        componentInstances[type]?.let { return it }
-
-        // Create a new instance
-        val instance = createComponentInstance(type)
-        if (instance != null) {
-            componentInstances[type] = instance
-        }
-        return instance
+    fun unregisterComponent(type: String) {
+        componentFactories.remove(type)
+        Log.d(TAG, "Unregistered component type: $type")
     }
 
     /**
-     * Get all registered component types
+     * Unregister all components
      */
-    val registeredTypes: List<String>
-        get() = componentTypes.keys().toList()
+    fun unregisterAllComponents() {
+        componentFactories.clear()
+        componentInstances.clear()
+        Log.d(TAG, "All components unregistered")
+    }
 
     /**
      * Check if a component type is registered
      */
     fun isComponentRegistered(type: String): Boolean {
-        return componentTypes.containsKey(type)
+        return componentFactories.containsKey(type)
     }
 
     /**
-     * Clear all registered components (useful for testing)
+     * Get the count of registered component types
      */
-    fun clearAll() {
-        componentTypes.clear()
-        componentInstances.clear()
-        println("🧹 DCFComponentRegistry: Cleared all registered components")
+    fun getRegisteredComponentCount(): Int {
+        return componentFactories.size
     }
 
     /**
-     * Handle tunnel method calls to components
-     * This is for direct component method calls from Dart that bypass the normal view lifecycle
+     * Get a list of all registered component type names
      */
-    fun handleTunnelMethod(componentType: String, method: String, params: Map<String, Any?>): Any? {
-        val componentClass = getComponent(componentType) ?: run {
-            println("❌ DCFComponentRegistry: Component '$componentType' not found for tunnel method")
+    fun getRegisteredComponentNames(): List<String> {
+        return componentFactories.keys.toList()
+    }
+
+    /**
+     * Create a component instance
+     */
+    fun createComponent(
+        type: String,
+        properties: Map<String, Any?>,
+        context: Context
+    ): View? {
+        Log.d(TAG, "Creating component of type: $type")
+
+        val factory = componentFactories[type]
+        if (factory == null) {
+            Log.e(TAG, "No factory registered for component type: $type")
             return null
         }
 
-        // Try to call the static/companion object method
         return try {
-            // Look for the companion object
-            val companionField = componentClass.getDeclaredField("Companion")
-            val companionObject = companionField.get(null)
+            val component = factory(properties)
 
-            // Get the handleTunnelMethod from companion
-            val tunnelMethod = companionObject::class.java.getMethod(
-                "handleTunnelMethod",
-                String::class.java,
-                Map::class.java
-            )
-
-            tunnelMethod.invoke(companionObject, method, params)
-        } catch (e: NoSuchFieldException) {
-            // No companion object, try static method directly
-            try {
-                val tunnelMethod = componentClass.getDeclaredMethod(
-                    "handleTunnelMethod",
-                    String::class.java,
-                    Map::class.java
-                )
-                tunnelMethod.invoke(null, method, params)
-            } catch (e2: Exception) {
-                println("⚠️ DCFComponentRegistry: Component '$componentType' does not implement tunnel method: $method")
-                null
+            // Store instance if it has an ID
+            val componentId = properties["id"] as? String
+            if (componentId != null) {
+                componentInstances[componentId] = component
             }
+
+            // Create and configure the view
+            val view = component.createView(context)
+            component.bindView(view)
+            component.applyProperties(properties)
+
+            Log.d(TAG, "Component created successfully: $type")
+            view
         } catch (e: Exception) {
-            println("❌ DCFComponentRegistry: Error calling tunnel method on '$componentType': ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "Failed to create component of type: $type", e)
             null
         }
     }
 
     /**
-     * Debug print all registered components
+     * Get a component instance by ID
      */
-    fun debugPrint() {
-        println("📋 DCFComponentRegistry: Registered components:")
-        componentTypes.forEach { (type, clazz) ->
-            println("  - $type: ${clazz.simpleName}")
+    fun getComponentById(id: String): DCFComponent? {
+        return componentInstances[id]
+    }
+
+    /**
+     * Update a component's properties
+     */
+    fun updateComponent(id: String, properties: Map<String, Any?>): Boolean {
+        val component = componentInstances[id]
+        if (component == null) {
+            Log.w(TAG, "Component not found with ID: $id")
+            return false
         }
+
+        try {
+            component.updateProperties(properties)
+            Log.d(TAG, "Component updated: $id")
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update component: $id", e)
+            return false
+        }
+    }
+
+    /**
+     * Remove a component instance
+     */
+    fun removeComponent(id: String): Boolean {
+        val component = componentInstances.remove(id)
+        if (component != null) {
+            component.cleanup()
+            Log.d(TAG, "Component removed: $id")
+            return true
+        }
+        return false
+    }
+
+    /**
+     * Remove all component instances
+     */
+    fun removeAllComponents() {
+        componentInstances.forEach { (_, component) ->
+            component.cleanup()
+        }
+        componentInstances.clear()
+        Log.d(TAG, "All component instances removed")
+    }
+
+    /**
+     * Get all component instances
+     */
+    fun getAllComponents(): Map<String, DCFComponent> {
+        return componentInstances.toMap()
+    }
+
+    /**
+     * Get component statistics for debugging
+     */
+    fun getStatistics(): Map<String, Any> {
+        return mapOf(
+            "registeredTypes" to componentFactories.size,
+            "activeInstances" to componentInstances.size,
+            "types" to getRegisteredComponentNames()
+        )
+    }
+
+    /**
+     * Cleanup the registry
+     */
+    fun cleanup() {
+        removeAllComponents()
+        unregisterAllComponents()
+        Log.d(TAG, "Component registry cleaned up")
     }
 }

@@ -18,7 +18,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.appcompat.widget.AppCompatEditText
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.styles.DCFStyleSheet
+import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -41,7 +41,7 @@ class DCFTextInputComponent : DCFComponent {
         updateView(editText, props)
 
         // Apply StyleSheet properties
-        DCFStyleSheet.applyStyles(editText, props)
+        editText.applyStyles(props)
 
         // Store component type
         editText.setTag(R.id.dcf_component_type, "TextInput")

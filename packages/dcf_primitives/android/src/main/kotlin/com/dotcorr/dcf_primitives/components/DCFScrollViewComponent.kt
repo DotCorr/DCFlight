@@ -14,7 +14,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ScrollView
 import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.styles.DCFStyleSheet
+import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -53,7 +53,7 @@ class DCFScrollViewComponent : DCFComponent {
         updateView(scrollView, props)
 
         // Apply StyleSheet properties
-        DCFStyleSheet.applyStyles(scrollView, props)
+        scrollView.applyStyles(props)
 
         // Store component type
         scrollView.setTag(R.id.dcf_component_type, "ScrollView")

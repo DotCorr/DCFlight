@@ -14,7 +14,7 @@ import android.graphics.PorterDuff
 import android.view.View
 import android.widget.SeekBar
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.styles.DCFStyleSheet
+import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -33,7 +33,7 @@ class DCFSliderComponent : DCFComponent {
         updateView(seekBar, props)
 
         // Apply StyleSheet properties
-        DCFStyleSheet.applyStyles(seekBar, props)
+        seekBar.applyStyles(props)
 
         return seekBar
     }

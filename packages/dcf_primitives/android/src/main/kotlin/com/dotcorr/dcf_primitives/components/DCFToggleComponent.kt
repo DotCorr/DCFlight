@@ -13,7 +13,7 @@ import android.graphics.Color
 import android.view.View
 import androidx.appcompat.widget.SwitchCompat
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.styles.DCFStyleSheet
+import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -39,7 +39,7 @@ class DCFToggleComponent : DCFComponent {
         updateView(switchControl, props)
 
         // Apply StyleSheet properties
-        DCFStyleSheet.applyStyles(switchControl, props)
+        switchControl.applyStyles(props)
 
         return switchControl
     }

@@ -22,6 +22,23 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 import kotlinx.coroutines.*
 
+// Import bridge handlers
+import com.dotcorr.dcflight.bridge.DCMauiBridgeImpl
+import com.dotcorr.dcflight.bridge.DCMauiBridgeMethodChannel
+import com.dotcorr.dcflight.bridge.DCMauiEventMethodHandler
+import com.dotcorr.dcflight.bridge.DCMauiLayoutMethodHandler
+
+// Import layout managers
+import com.dotcorr.dcflight.layout.YogaShadowTree
+import com.dotcorr.dcflight.layout.DCFLayoutManager
+
+// Import components
+import com.dotcorr.dcflight.components.FrameworkComponentsReg
+import com.dotcorr.dcflight.components.DCFComponentRegistry
+
+// Import utilities
+import com.dotcorr.dcflight.utils.DCFScreenUtilities
+
 object DCDivergerUtil {
     private const val TAG = "DCDivergerUtil"
     private const val ENGINE_ID = "io.dcflight.engine"
@@ -50,53 +67,37 @@ object DCDivergerUtil {
         // Initialize method channels
         initializeMethodChannels(flutterEngine.dartExecutor.binaryMessenger)
 
-        // Create native root view
-        setupNativeRootView(activity)
+        // Setup native container
+        setupNativeContainer(activity)
 
-        // Initialize DCF systems
-        setupDCF(activity)
+        // Initialize DCFlight systems
+        initializeDCFlightSystems(activity)
 
-        // Setup size change detection
-        setupSizeChangeDetection(activity)
+        // Register components
+        registerComponents()
 
-        Log.d(TAG, "DCFlight divergence complete")
+        Log.d(TAG, "DCFlight diverger initialized successfully")
     }
 
     private fun getOrCreateFlutterEngine(
         activity: Activity,
         pluginBinding: FlutterPlugin.FlutterPluginBinding?
     ): FlutterEngine? {
-        // Try to get from plugin binding first
+        // Try to get existing engine from plugin binding
         pluginBinding?.let {
-            Log.d(TAG, "Using Flutter engine from plugin binding")
             return it.flutterEngine
         }
 
-        // Try to get from cache
+        // Try to get cached engine
         var engine = FlutterEngineCache.getInstance().get(ENGINE_ID)
         if (engine != null) {
             Log.d(TAG, "Using cached Flutter engine")
             return engine
         }
 
-        // Try to get from FlutterActivity
-        if (activity is FlutterActivity) {
-            engine = activity.flutterEngine
-            if (engine != null) {
-                Log.d(TAG, "Using Flutter engine from FlutterActivity")
-                return engine
-            }
-        }
-
-        // Create new engine as last resort
+        // Create new engine
         Log.d(TAG, "Creating new Flutter engine")
-        engine = FlutterEngine(activity).apply {
-            dartExecutor.executeDartEntrypoint(
-                io.flutter.embedding.engine.dart.DartExecutor.DartEntrypoint.createDefault()
-            )
-        }
-
-        // Cache the new engine
+        engine = FlutterEngine(activity)
         FlutterEngineCache.getInstance().put(ENGINE_ID, engine)
 
         return engine
@@ -112,26 +113,31 @@ object DCDivergerUtil {
         Log.d(TAG, "Method channels initialized")
     }
 
-    private fun setupNativeRootView(activity: Activity) {
-        Log.d(TAG, "Setting up native root view")
+    private fun setupNativeContainer(activity: Activity) {
+        Log.d(TAG, "Setting up native container")
 
-        // Create root container
         rootView = FrameLayout(activity).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setBackgroundColor(Color.WHITE)
-            id = View.generateViewId()
+            setBackgroundColor(Color.TRANSPARENT)
+            visibility = View.GONE // Initially hidden
         }
 
-        // Replace activity content with our root view
-        activity.setContentView(rootView)
+        // Add the native container to the activity
+        val contentView = activity.window.decorView.findViewById<ViewGroup>(android.R.id.content)
+        contentView?.addView(rootView)
 
-        Log.d(TAG, "Native root view setup complete")
+        Log.d(TAG, "Native container setup complete")
     }
 
-    private fun setupDCF(context: Context) {
+    private fun initializeDCFlightSystems(activity: Activity) {
+        Log.d(TAG, "Initializing DCFlight systems")
+
+        // Initialize bridge implementation
+        DCMauiBridgeImpl.shared.initialize(activity)
+
         Log.d(TAG, "Setting up DCF systems")
 
         // Register root view with bridge
@@ -142,55 +148,50 @@ object DCDivergerUtil {
         // Initialize core systems
         YogaShadowTree.shared.initialize()
         DCFLayoutManager.shared.initialize()
-        DCFScreenUtilities.shared.initialize(null)
+        DCFScreenUtilities.shared.initialize(null, activity)
 
-        // Register framework components
-        runInternalModules()
-
-        // Update initial window size
-        mainScope.launch {
-            delay(100) // Small delay to ensure everything is ready
-            updateInitialWindowSize()
-        }
-
-        Log.d(TAG, "DCF systems setup complete")
-    }
-
-    private fun runInternalModules() {
-        Log.d(TAG, "Registering framework components")
-        FrameworkComponentsReg.registerComponents()
-    }
-
-    private fun setupSizeChangeDetection(activity: Activity) {
-        Log.d(TAG, "Setting up size change detection")
-
-        rootView?.addOnLayoutChangeListener { view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+        // Set up layout change listener
+        rootView?.addOnLayoutChangeListener { v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
             val width = right - left
             val height = bottom - top
-            val oldWidth = oldRight - oldLeft
-            val oldHeight = oldBottom - oldTop
-
-            if (width != oldWidth || height != oldHeight) {
-                Log.d(TAG, "Layout size changed: ${width}x${height} (was ${oldWidth}x${oldHeight})")
-                onSizeChanged(width, height)
+            if (width != oldRight - oldLeft || height != oldBottom - oldTop) {
+                handleSizeChange(width, height)
             }
         }
 
-        // Monitor configuration changes
-        activity.window.decorView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            rootView?.let { view ->
-                val width = view.width
-                val height = view.height
-                if (width > 0 && height > 0) {
-                    updateScreenDimensions(width, height)
-                }
-            }
-        }
-
-        Log.d(TAG, "Size change detection setup complete")
+        Log.d(TAG, "DCFlight systems initialized")
     }
 
-    private fun onSizeChanged(width: Int, height: Int) {
+    private fun registerComponents() {
+        Log.d(TAG, "Registering framework components")
+        FrameworkComponentsReg.registerComponents()
+        Log.d(TAG, "Framework components registered")
+    }
+
+    @JvmStatic
+    fun showNativeView() {
+        Log.d(TAG, "Showing native DCFlight view")
+        rootView?.visibility = View.VISIBLE
+        flutterView?.visibility = View.GONE
+    }
+
+    @JvmStatic
+    fun showFlutterView() {
+        Log.d(TAG, "Showing Flutter view")
+        flutterView?.visibility = View.VISIBLE
+        rootView?.visibility = View.GONE
+    }
+
+    @JvmStatic
+    fun toggleView() {
+        if (rootView?.visibility == View.VISIBLE) {
+            showFlutterView()
+        } else {
+            showNativeView()
+        }
+    }
+
+    private fun handleSizeChange(width: Int, height: Int) {
         Log.d(TAG, "Handling size change: ${width}x${height}")
 
         // Update screen dimensions
@@ -200,42 +201,77 @@ object DCDivergerUtil {
         YogaShadowTree.shared.calculateAndApplyLayout(width.toFloat(), height.toFloat())
     }
 
-    private fun updateInitialWindowSize() {
-        rootView?.let { view ->
-            val width = view.width
-            val height = view.height
+    @JvmStatic
+    fun createNativeComponent(
+        componentType: String,
+        properties: Map<String, Any>
+    ): View? {
+        Log.d(TAG, "Creating native component: $componentType")
 
-            if (width > 0 && height > 0) {
-                Log.d(TAG, "Initial window size: ${width}x${height}")
-                onSizeChanged(width, height)
-            } else {
-                Log.w(TAG, "Root view not ready, scheduling retry")
-                mainScope.launch {
-                    delay(100)
-                    updateInitialWindowSize()
-                }
-            }
+        return try {
+            val context = rootView?.context ?: return null
+            DCFComponentRegistry.shared.createComponent(componentType, properties, context)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create component: $componentType", e)
+            null
         }
     }
 
-    private fun updateScreenDimensions(width: Int, height: Int) {
+    @JvmStatic
+    fun updateDimensions(width: Float, height: Float) {
+        Log.d(TAG, "Updating dimensions: ${width}x${height}")
+
+        rootView?.layoutParams?.apply {
+            this.width = width.toInt()
+            this.height = height.toInt()
+        }
+        rootView?.requestLayout()
+
+        // Update layout system
         if (width > 0 && height > 0) {
-            DCFScreenUtilities.shared.updateScreenDimensions(width.toFloat(), height.toFloat())
-            YogaShadowTree.shared.calculateAndApplyLayout(width.toFloat(), height.toFloat())
+            DCFScreenUtilities.shared.updateScreenDimensions(width, height)
+            YogaShadowTree.shared.calculateAndApplyLayout(width, height)
         }
     }
 
+    @JvmStatic
     fun cleanup() {
-        Log.d(TAG, "Cleaning up DCDivergerUtil")
+        Log.d(TAG, "Cleaning up DCDiverger")
 
         mainScope.cancel()
 
-        flutterView?.detachFromFlutterEngine()
-        flutterView = null
+        // Remove native container from activity
+        rootView?.let { root ->
+            (root.parent as? ViewGroup)?.removeView(root)
+        }
 
-        rootView?.removeAllViews()
+        // Detach Flutter view
+        flutterView?.detachFromFlutterEngine()
+
+        // Clean up references
+        flutterView = null
         rootView = null
 
-        Log.d(TAG, "Cleanup complete")
+        // Clean up systems
+        DCMauiBridgeImpl.shared.cleanup()
+        YogaShadowTree.shared.cleanup()
+        DCFLayoutManager.shared.cleanup()
+        DCFScreenUtilities.shared.cleanup()
+
+        // Clean up channels
+        DCMauiBridgeMethodChannel.shared.cleanup()
+        DCMauiEventMethodHandler.shared.cleanup()
+        DCMauiLayoutMethodHandler.shared.cleanup()
+
+        Log.d(TAG, "DCDiverger cleanup complete")
     }
+
+    @JvmStatic
+    fun isInitialized(): Boolean = rootView != null
+
+    @JvmStatic
+    fun getRootContainer(): ViewGroup? = rootView
+
+    @JvmStatic
+    fun getFlutterView(): FlutterView? = flutterView
 }

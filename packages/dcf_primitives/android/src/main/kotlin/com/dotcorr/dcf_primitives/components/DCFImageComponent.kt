@@ -14,7 +14,7 @@ import android.graphics.drawable.Drawable
 import android.view.View
 import android.widget.ImageView
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.styles.DCFStyleSheet
+import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 import java.net.URL
 
@@ -33,7 +33,7 @@ class DCFImageComponent : DCFComponent {
         updateView(imageView, props)
 
         // Apply StyleSheet properties
-        DCFStyleSheet.applyStyles(imageView, props)
+        imageView.applyStyles(props)
 
         // Store component type for identification
         imageView.setTag(R.id.dcf_component_type, "Image")

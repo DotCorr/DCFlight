@@ -18,7 +18,7 @@ import android.view.View
 import android.widget.Button
 import androidx.appcompat.widget.AppCompatButton
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.styles.DCFStyleSheet
+import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -42,7 +42,7 @@ class DCFButtonComponent : DCFComponent {
         updateView(button, props)
 
         // Apply StyleSheet properties
-        DCFStyleSheet.applyStyles(button, props)
+        button.applyStyles(props)
 
         // Store component type for identification
         button.setTag(R.id.dcf_component_type, "Button")

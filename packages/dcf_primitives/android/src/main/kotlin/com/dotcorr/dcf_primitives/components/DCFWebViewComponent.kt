@@ -14,7 +14,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.styles.DCFStyleSheet
+import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -36,7 +36,7 @@ class DCFWebViewComponent : DCFComponent {
         updateView(webView, props)
 
         // Apply StyleSheet properties
-        DCFStyleSheet.applyStyles(webView, props)
+        webView.applyStyles(props)
 
         return webView
     }
