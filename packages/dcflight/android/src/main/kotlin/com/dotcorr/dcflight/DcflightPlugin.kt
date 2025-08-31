@@ -117,10 +117,7 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun initializeDCFlight() {
         Log.d(TAG, "Initializing DCFlight framework")
-
-        // Register internal modules
         FrameworkComponentsReg.registerComponents()
-
         // Initialize core systems
         YogaShadowTree.shared.initialize()
         DCFLayoutManager.shared.initialize()
