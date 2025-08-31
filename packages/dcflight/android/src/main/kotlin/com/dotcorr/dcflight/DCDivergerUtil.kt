@@ -163,7 +163,9 @@ object DCDivergerUtil {
     }
 
     private fun registerComponents() {
-        Log.d(TAG, "Registering framework components")
+        Log.d(TAG, "Registering framework components (not primitives)")
+        // Only register framework-level components
+        // Primitives register themselves as plugins
         FrameworkComponentsReg.registerComponents()
         Log.d(TAG, "Framework components registered")
     }
