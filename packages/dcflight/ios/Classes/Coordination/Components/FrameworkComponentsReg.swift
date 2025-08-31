@@ -5,16 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
-
-import UIKit
 import Flutter
+import UIKit
 
 @objc public class FrameworkComponentsReg: NSObject {
     @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
         registerComponents()
     }
-    
+
     @objc public static func registerComponents() {
         // register the framework level components here
     }

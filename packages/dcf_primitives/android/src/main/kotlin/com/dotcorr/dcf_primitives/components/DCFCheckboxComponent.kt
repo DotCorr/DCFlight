@@ -13,7 +13,7 @@ import android.graphics.Color
 import android.view.View
 import androidx.appcompat.widget.AppCompatCheckBox
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.styles.DCFStyleSheet
+import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -32,7 +32,7 @@ class DCFCheckboxComponent : DCFComponent {
         updateView(checkbox, props)
 
         // Apply StyleSheet properties
-        DCFStyleSheet.applyStyles(checkbox, props)
+        checkbox.applyStyles(props)
 
         return checkbox
     }

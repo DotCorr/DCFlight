@@ -25,33 +25,43 @@ object PrimitivesComponentsReg {
     fun registerComponents() {
         val registry = DCFComponentRegistry.shared
 
-        // Core components
+        // Core components - THESE ACTUALLY EXIST
         registry.registerComponent("View", DCFViewComponent::class.java)
         registry.registerComponent("Text", DCFTextComponent::class.java)
         registry.registerComponent("Image", DCFImageComponent::class.java)
         registry.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
 
-        // Input components
+        // Input components - THESE ACTUALLY EXIST
         registry.registerComponent("TextInput", DCFTextInputComponent::class.java)
         registry.registerComponent("Button", DCFButtonComponent::class.java)
         registry.registerComponent("Toggle", DCFToggleComponent::class.java)
         registry.registerComponent("Slider", DCFSliderComponent::class.java)
         registry.registerComponent("Checkbox", DCFCheckboxComponent::class.java)
-        registry.registerComponent("Dropdown", DCFDropdownComponent::class.java)
-        registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
 
-        // Interactive components
-        registry.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
-        registry.registerComponent("GestureDetector", DCFGestureDetectorComponent::class.java)
-
-        // Display components
+        // Display components - THESE ACTUALLY EXIST
         registry.registerComponent("Spinner", DCFSpinnerComponent::class.java)
-        registry.registerComponent("Alert", DCFAlertComponent::class.java)
-        registry.registerComponent("Icon", DCFIconComponent::class.java)
-        registry.registerComponent("Svg", DCFSvgComponent::class.java)
         registry.registerComponent("WebView", DCFWebViewComponent::class.java)
 
-        println("✅ PrimitivesComponentsReg: Registered all primitive components")
+        // TODO: Components that exist in iOS but NOT YET IMPLEMENTED in Android:
+        // - Alert (DCFAlertComponent)
+        // - Dropdown (DCFDropdownComponent)
+        // - SegmentedControl (DCFSegmentedControlComponent)
+        // - TouchableOpacity (DCFTouchableOpacityComponent)
+        // - GestureDetector (DCFGestureDetectorComponent)
+        // - Icon (DCFIconComponent)
+        // - Svg (DCFSvgComponent)
+
+        // DO NOT REGISTER THESE UNTIL THEY ARE ACTUALLY IMPLEMENTED:
+        // registry.registerComponent("Alert", DCFAlertComponent::class.java)
+        // registry.registerComponent("Dropdown", DCFDropdownComponent::class.java)
+        // registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
+        // registry.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
+        // registry.registerComponent("GestureDetector", DCFGestureDetectorComponent::class.java)
+        // registry.registerComponent("Icon", DCFIconComponent::class.java)
+        // registry.registerComponent("Svg", DCFSvgComponent::class.java)
+        // registry.registerComponent("DCFIcon", DCFIconComponent::class.java)
+
+        println("✅ PrimitivesComponentsReg: Registered ${getRegisteredComponentTypes().size} primitive components")
     }
 
     /**
@@ -60,26 +70,7 @@ object PrimitivesComponentsReg {
     @JvmStatic
     fun unregisterComponents() {
         val registry = DCFComponentRegistry.shared
-        val componentsToUnregister = listOf(
-            "View",
-            "Text",
-            "Image",
-            "ScrollView",
-            "TextInput",
-            "Button",
-            "Toggle",
-            "Slider",
-            "Checkbox",
-            "Dropdown",
-            "SegmentedControl",
-            "TouchableOpacity",
-            "GestureDetector",
-            "Spinner",
-            "Alert",
-            "Icon",
-            "Svg",
-            "WebView"
-        )
+        val componentsToUnregister = getRegisteredComponentTypes()
 
         componentsToUnregister.forEach { componentType ->
             // Note: This would require adding an unregister method to DCFComponentRegistry
@@ -93,27 +84,7 @@ object PrimitivesComponentsReg {
      */
     @JvmStatic
     fun verifyRegistration(): Boolean {
-        val expectedComponents = listOf(
-            "View",
-            "Text",
-            "Image",
-            "ScrollView",
-            "TextInput",
-            "Button",
-            "Toggle",
-            "Slider",
-            "Checkbox",
-            "Dropdown",
-            "SegmentedControl",
-            "TouchableOpacity",
-            "GestureDetector",
-            "Spinner",
-            "Alert",
-            "Icon",
-            "Svg",
-            "WebView"
-        )
-
+        val expectedComponents = getRegisteredComponentTypes()
         val registry = DCFComponentRegistry.shared
         var allRegistered = true
 
@@ -137,6 +108,7 @@ object PrimitivesComponentsReg {
 
     /**
      * Get list of all registered component types
+     * ONLY RETURN COMPONENTS THAT ACTUALLY EXIST
      */
     @JvmStatic
     fun getRegisteredComponentTypes(): List<String> {
@@ -150,15 +122,25 @@ object PrimitivesComponentsReg {
             "Toggle",
             "Slider",
             "Checkbox",
+            "Spinner",
+            "WebView"
+        )
+    }
+
+    /**
+     * Get list of components that need to be implemented for iOS parity
+     */
+    @JvmStatic
+    fun getMissingComponentTypes(): List<String> {
+        return listOf(
+            "Alert",
             "Dropdown",
             "SegmentedControl",
             "TouchableOpacity",
             "GestureDetector",
-            "Spinner",
-            "Alert",
             "Icon",
-            "Svg",
-            "WebView"
+            "DCFIcon",
+            "Svg"
         )
     }
 }
