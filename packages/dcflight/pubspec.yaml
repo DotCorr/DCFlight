@@ -12,12 +12,10 @@ dependencies:
   flutter:
     sdk: flutter
   # framework dependencies (prod)
-
-  # dcf_primitives: ^0.0.1
-  # framework dependencies (local)
-  dcf_primitives:
-    path: ../dcf_primitives
   equatable: ^2.0.7
+
+  # Note: dcflight does NOT depend on dcf_primitives
+  # The primitives are a separate plugin that depends on dcflight
 
 dev_dependencies:
   flutter_test:

@@ -35,4 +35,17 @@
     <!-- Hot reload support -->
     <item name="dcf_hot_reload_marker" type="id"/>
     <item name="dcf_session_token" type="id"/>
+
+    <!-- Shadow properties -->
+    <item name="dcf_shadow_color" type="id"/>
+    <item name="dcf_shadow_offset_x" type="id"/>
+    <item name="dcf_shadow_offset_y" type="id"/>
+
+    <!-- Gradient drawable -->
+    <item name="dcf_gradient_drawable" type="id"/>
+    <item name="dcf_gradient_corner_radii" type="id"/>
+    <item name="dcf_pending_gradient_data" type="id"/>
+    <item name="dcf_pending_gradient_radii" type="id"/>
+    <item name="dcf_pending_gradient_border_width" type="id"/>
+    <item name="dcf_pending_gradient_border_color" type="id"/>
 </resources>

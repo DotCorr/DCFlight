@@ -14,7 +14,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.components.R
+import com.dotcorr.dcflight.R
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -59,8 +59,55 @@ class DCFLayoutManager private constructor() {
     // Main thread handler for UI updates
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    /**
+     * Initialize the DCFLayoutManager
+     */
+    fun initialize() {
+        Log.d(TAG, "Initializing DCFLayoutManager")
+        // Clear any existing state
+        absoluteLayoutViews.clear()
+        viewRegistry.clear()
+        pendingLayouts.clear()
+        isLayoutUpdateScheduled.set(false)
+        needsLayoutCalculation.set(false)
+
+        // Initialize layout calculation timer
+        layoutCalculationTimer?.shutdown()
+        layoutCalculationTimer = Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "DCFLayoutCalculation").apply {
+                priority = Thread.MAX_PRIORITY - 2
+            }
+        }
+
+        Log.d(TAG, "DCFLayoutManager initialized")
+    }
+
     // Web defaults configuration for cross-platform compatibility
     private var useWebDefaults = false
+
+    /**
+     * Cleanup all resources
+     */
+    fun cleanup() {
+        Log.d(TAG, "Cleaning up DCFLayoutManager")
+
+        // Clear all collections
+        absoluteLayoutViews.clear()
+        viewRegistry.clear()
+        pendingLayouts.clear()
+
+        // Reset flags
+        isLayoutUpdateScheduled.set(false)
+        needsLayoutCalculation.set(false)
+
+        // Shutdown executors
+        layoutCalculationTimer?.shutdown()
+        layoutCalculationTimer = null
+
+        layoutExecutor.shutdown()
+
+        Log.d(TAG, "DCFLayoutManager cleanup complete")
+    }
 
     init {
         layoutCalculationTimer = Executors.newSingleThreadScheduledExecutor()

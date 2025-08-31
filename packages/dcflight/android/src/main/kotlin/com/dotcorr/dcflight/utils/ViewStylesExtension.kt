@@ -18,7 +18,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import androidx.core.view.ViewCompat
-import com.dotcorr.dcflight.components.R
+import com.dotcorr.dcflight.R
 import kotlin.math.max
 import kotlin.math.min
 

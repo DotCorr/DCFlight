@@ -223,8 +223,8 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
         try {
             Log.d(TAG, "Calculating layout for $componentId: ${width}x${height}")
 
-            YogaShadowTree.shared.calculateLayout(componentId, width, height)
-            DCFLayoutManager.shared.applyLayout(componentId)
+            YogaShadowTree.shared.calculateLayout(componentId)
+            DCFLayoutManager.shared.applyLayout(componentId, 0f, 0f, width, height)
 
             result.success(true)
         } catch (e: Exception) {
