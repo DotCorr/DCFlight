@@ -227,7 +227,7 @@ class YogaShadowTree private constructor() {
      */
     fun markDirty(nodeId: String) {
         syncLock.write {
-            nodes[nodeId]?.markDirty()
+            nodes[nodeId]?.dirty()
         }
     }
 

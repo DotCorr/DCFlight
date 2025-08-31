@@ -237,7 +237,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
         try {
             Log.d(TAG, "Updating layout for $componentId with props: $layoutProps")
 
-            DCFLayoutManager.shared.updateLayoutProperties(componentId, layoutProps)
+            YogaShadowTree.shared.updateLayoutProperties(componentId, layoutProps)
             YogaShadowTree.shared.markDirty(componentId)
 
             result.success(true)
@@ -249,7 +249,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
 
     private fun getLayout(componentId: String, result: Result) {
         try {
-            val layout = DCFLayoutManager.shared.getLayout(componentId)
+            val layout = YogaShadowTree.shared.getLayout(componentId)
             result.success(layout)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting layout", e)
@@ -262,7 +262,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
             Log.d(TAG, "Invalidating layout for $componentId")
 
             YogaShadowTree.shared.invalidate(componentId)
-            DCFLayoutManager.shared.requestLayout(componentId)
+            YogaShadowTree.shared.requestLayout(componentId)
 
             result.success(true)
         } catch (e: Exception) {
@@ -286,7 +286,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
             Log.d(TAG, "Applying layout changes")
 
             YogaShadowTree.shared.applyAllLayouts()
-            DCFLayoutManager.shared.flushLayoutQueue()
+            YogaShadowTree.shared.flushLayoutQueue()
 
             result.success(true)
         } catch (e: Exception) {
@@ -297,7 +297,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
 
     private fun setFlexDirection(componentId: String, direction: String, result: Result) {
         try {
-            DCFLayoutManager.shared.setFlexDirection(componentId, direction)
+            YogaShadowTree.shared.setFlexDirection(componentId, direction)
             result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting flex direction", e)
@@ -307,7 +307,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
 
     private fun setJustifyContent(componentId: String, justifyContent: String, result: Result) {
         try {
-            DCFLayoutManager.shared.setJustifyContent(componentId, justifyContent)
+            YogaShadowTree.shared.setJustifyContent(componentId, justifyContent)
             result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting justify content", e)
@@ -317,7 +317,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
 
     private fun setAlignItems(componentId: String, alignItems: String, result: Result) {
         try {
-            DCFLayoutManager.shared.setAlignItems(componentId, alignItems)
+            YogaShadowTree.shared.setAlignItems(componentId, alignItems)
             result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting align items", e)
@@ -334,7 +334,10 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
         result: Result
     ) {
         try {
-            DCFLayoutManager.shared.setPadding(componentId, top, right, bottom, left)
+            YogaShadowTree.shared.setPadding(componentId, "top", top ?: 0f)
+            YogaShadowTree.shared.setPadding(componentId, "right", right ?: 0f)
+            YogaShadowTree.shared.setPadding(componentId, "bottom", bottom ?: 0f)
+            YogaShadowTree.shared.setPadding(componentId, "left", left ?: 0f)
             result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting padding", e)
@@ -351,7 +354,10 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
         result: Result
     ) {
         try {
-            DCFLayoutManager.shared.setMargin(componentId, top, right, bottom, left)
+            YogaShadowTree.shared.setMargin(componentId, "top", top ?: 0f)
+            YogaShadowTree.shared.setMargin(componentId, "right", right ?: 0f)
+            YogaShadowTree.shared.setMargin(componentId, "bottom", bottom ?: 0f)
+            YogaShadowTree.shared.setMargin(componentId, "left", left ?: 0f)
             result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting margin", e)
@@ -361,7 +367,8 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
 
     private fun setPosition(componentId: String, x: Float, y: Float, result: Result) {
         try {
-            DCFLayoutManager.shared.setPosition(componentId, x, y)
+            YogaShadowTree.shared.setPosition(componentId, "left", x)
+            YogaShadowTree.shared.setPosition(componentId, "top", y)
             result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting position", e)
@@ -371,7 +378,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
 
     private fun setSize(componentId: String, width: Float?, height: Float?, result: Result) {
         try {
-            DCFLayoutManager.shared.setSize(componentId, width, height)
+            YogaShadowTree.shared.setSize(componentId, width, height)
             result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting size", e)
@@ -381,7 +388,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
 
     private fun setBorderRadius(componentId: String, radius: Float, result: Result) {
         try {
-            DCFLayoutManager.shared.setBorderRadius(componentId, radius)
+            YogaShadowTree.shared.setBorderRadius(componentId, radius)
             result.success(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting border radius", e)
@@ -391,7 +398,7 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
 
     private fun getScreenDimensions(result: Result) {
         try {
-            val dimensions = DCFLayoutManager.shared.getScreenDimensions()
+            val dimensions = YogaShadowTree.shared.getScreenDimensions()
             result.success(dimensions)
         } catch (e: Exception) {
             Log.e(TAG, "Error getting screen dimensions", e)
@@ -403,18 +410,18 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
         try {
             Log.d(TAG, "Performing batch update with ${updates.size} updates")
 
-            DCFLayoutManager.shared.beginBatchUpdate()
+            YogaShadowTree.shared.beginBatchUpdate()
 
             for (update in updates) {
                 val componentId = update["componentId"] as? String
                 val layoutProps = update["layoutProps"] as? Map<String, Any>
 
                 if (componentId != null && layoutProps != null) {
-                    DCFLayoutManager.shared.updateLayoutProperties(componentId, layoutProps)
+                    YogaShadowTree.shared.updateLayoutProperties(componentId, layoutProps)
                 }
             }
 
-            DCFLayoutManager.shared.endBatchUpdate()
+            YogaShadowTree.shared.endBatchUpdate()
 
             result.success(true)
         } catch (e: Exception) {
