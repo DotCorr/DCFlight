@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- DCF Primitives component-specific tag IDs -->
+    <!-- These IDs are used by primitive components, NOT by the framework layer -->
+
+    <!-- Gradient and styling (for View-based components) -->
+    <item name="dcf_gradient_drawable" type="id"/>
+    <item name="dcf_gradient_corner_radii" type="id"/>
+    <item name="dcf_pending_gradient_data" type="id"/>
+    <item name="dcf_pending_gradient_radii" type="id"/>
+    <item name="dcf_pending_gradient_border_width" type="id"/>
+    <item name="dcf_pending_gradient_border_color" type="id"/>
+
+    <!-- Shadow and transform (for View-based components) -->
+    <item name="dcf_shadow_color" type="id"/>
+    <item name="dcf_shadow_radius" type="id"/>
+    <item name="dcf_shadow_offset_x" type="id"/>
+    <item name="dcf_shadow_offset_y" type="id"/>
+    <item name="dcf_transform_data" type="id"/>
+
+    <!-- Animation (for animated components) -->
+    <item name="dcf_animation_data" type="id"/>
+    <item name="dcf_animation_listener" type="id"/>
+
+    <!-- Gesture handling (for touchable components) -->
+    <item name="dcf_gesture_recognizer" type="id"/>
+    <item name="dcf_touch_handler" type="id"/>
+
+    <!-- Text component specific -->
+    <item name="dcf_text_data" type="id"/>
+    <item name="dcf_text_selectable" type="id"/>
+    <item name="dcf_text_number_of_lines" type="id"/>
+
+    <!-- Image component specific -->
+    <item name="dcf_image_data" type="id"/>
+    <item name="dcf_image_source" type="id"/>
+    <item name="dcf_image_scale_type" type="id"/>
+    <item name="dcf_image_tint_color" type="id"/>
+    <item name="dcf_image_blur_radius" type="id"/>
+    <item name="dcf_image_aspect_ratio" type="id"/>
+    <item name="dcf_image_fade_duration" type="id"/>
+    <item name="dcf_image_progressive" type="id"/>
+    <item name="dcf_image_default_source" type="id"/>
+
+    <!-- ScrollView component specific -->
+    <item name="dcf_scroll_data" type="id"/>
+    <item name="dcf_scroll_listener" type="id"/>
+    <item name="dcf_scroll_horizontal" type="id"/>
+    <item name="dcf_scroll_content_offset" type="id"/>
+    <item name="dcf_scroll_bounces" type="id"/>
+    <item name="dcf_scroll_paging" type="id"/>
+    <item name="dcf_scroll_keyboard_dismiss" type="id"/>
+    <item name="dcf_scroll_bounce_vertical" type="id"/>
+    <item name="dcf_scroll_bounce_horizontal" type="id"/>
+    <item name="dcf_scroll_to_top" type="id"/>
+    <item name="dcf_scroll_directional_lock" type="id"/>
+    <item name="dcf_scroll_deceleration" type="id"/>
+    <item name="dcf_scroll_indicator_style" type="id"/>
+    <item name="dcf_scroll_max_zoom" type="id"/>
+    <item name="dcf_scroll_min_zoom" type="id"/>
+    <item name="dcf_scroll_zoom" type="id"/>
+    <item name="dcf_scroll_refresh_control" type="id"/>
+    <item name="dcf_scroll_content_size" type="id"/>
+    <item name="dcf_scroll_event_throttle" type="id"/>
+    <item name="dcf_scroll_begin_drag" type="id"/>
+    <item name="dcf_scroll_end_drag" type="id"/>
+    <item name="dcf_scroll_momentum_begin" type="id"/>
+    <item name="dcf_scroll_momentum_end" type="id"/>
+    <item name="dcf_scroll_remove_clipped" type="id"/>
+    <item name="dcf_scroll_sticky_headers" type="id"/>
+    <item name="dcf_scroll_snap_alignment" type="id"/>
+    <item name="dcf_scroll_snap_interval" type="id"/>
+    <item name="dcf_scroll_snap_offsets" type="id"/>
+    <item name="dcf_scroll_snap_start" type="id"/>
+    <item name="dcf_scroll_snap_end" type="id"/>
+
+    <!-- TextInput component specific -->
+    <item name="dcf_text_input_watcher" type="id"/>
+    <item name="dcf_text_input_focus_listener" type="id"/>
+    <item name="dcf_text_input_placeholder" type="id"/>
+    <item name="dcf_text_input_blur_on_submit" type="id"/>
+
+    <!-- Button component specific -->
+    <item name="dcf_button_click_listener" type="id"/>
+    <item name="dcf_button_pressed_state" type="id"/>
+    <item name="dcf_button_title" type="id"/>
+
+    <!-- WebView component specific -->
+    <item name="dcf_webview_client" type="id"/>
+    <item name="dcf_webview_chrome_client" type="id"/>
+    <item name="dcf_webview_js_interface" type="id"/>
+    <item name="dcf_webview_navigation_gestures" type="id"/>
+    <item name="dcf_webview_progress" type="id"/>
+
+    <!-- Slider component specific -->
+    <item name="dcf_slider_change_listener" type="id"/>
+    <item name="dcf_slider_min_value" type="id"/>
+    <item name="dcf_slider_max_value" type="id"/>
+
+    <!-- Toggle/Switch component specific -->
+    <item name="dcf_toggle_checked_listener" type="id"/>
+    <item name="dcf_toggle_checked_state" type="id"/>
+
+    <!-- Checkbox component specific -->
+    <item name="dcf_checkbox_checked_listener" type="id"/>
+    <item name="dcf_checkbox_checked_state" type="id"/>
+
+    <!-- Dropdown component specific -->
+    <item name="dcf_dropdown_adapter" type="id"/>
+    <item name="dcf_dropdown_selected_listener" type="id"/>
+    <item name="dcf_dropdown_items" type="id"/>
+
+    <!-- SegmentedControl component specific -->
+    <item name="dcf_segmented_selected_index" type="id"/>
+    <item name="dcf_segmented_change_listener" type="id"/>
+
+    <!-- Spinner component specific -->
+    <item name="dcf_spinner_animating" type="id"/>
+
+    <!-- Alert component specific -->
+    <item name="dcf_alert_dialog" type="id"/>
+    <item name="dcf_alert_buttons" type="id"/>
+
+    <!-- Icon component specific -->
+    <item name="dcf_icon_name" type="id"/>
+    <item name="dcf_icon_size" type="id"/>
+
+    <!-- SVG component specific -->
+    <item name="dcf_svg_source" type="id"/>
+    <item name="dcf_svg_renderer" type="id"/>
+
+    <!-- TouchableOpacity component specific -->
+    <item name="dcf_touchable_opacity_value" type="id"/>
+    <item name="dcf_touchable_active_opacity" type="id"/>
+
+    <!-- GestureDetector component specific -->
+    <item name="dcf_gesture_detector_listener" type="id"/>
+    <item name="dcf_gesture_detector_types" type="id"/>
+</resources>

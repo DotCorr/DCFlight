@@ -13,6 +13,7 @@ import com.dotcorr.dcf_primitives.components.*
 /**
  * Registration class for DCF primitive components
  * Following iOS FrameworkComponentsReg pattern
+ * All component names must match iOS exactly for cross-platform consistency
  */
 object PrimitivesComponentsReg {
 
@@ -22,28 +23,33 @@ object PrimitivesComponentsReg {
      */
     @JvmStatic
     fun registerComponents() {
-        // Register View component
-        DCFComponentRegistry.shared.registerComponent("View", DCFViewComponent::class.java)
+        val registry = DCFComponentRegistry.shared
 
-        // Register Text component
-        DCFComponentRegistry.shared.registerComponent("Text", DCFTextComponent::class.java)
+        // Core components
+        registry.registerComponent("View", DCFViewComponent::class.java)
+        registry.registerComponent("Text", DCFTextComponent::class.java)
+        registry.registerComponent("Image", DCFImageComponent::class.java)
+        registry.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
 
-        // Register Image component
-        DCFComponentRegistry.shared.registerComponent("Image", DCFImageComponent::class.java)
+        // Input components
+        registry.registerComponent("TextInput", DCFTextInputComponent::class.java)
+        registry.registerComponent("Button", DCFButtonComponent::class.java)
+        registry.registerComponent("Toggle", DCFToggleComponent::class.java)
+        registry.registerComponent("Slider", DCFSliderComponent::class.java)
+        registry.registerComponent("Checkbox", DCFCheckboxComponent::class.java)
+        registry.registerComponent("Dropdown", DCFDropdownComponent::class.java)
+        registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
 
-        // Register ScrollView component
-        DCFComponentRegistry.shared.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
+        // Interactive components
+        registry.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
+        registry.registerComponent("GestureDetector", DCFGestureDetectorComponent::class.java)
 
-        // Register Button component
-        DCFComponentRegistry.shared.registerComponent("Button", DCFButtonComponent::class.java)
-
-        // Register TextInput component
-        DCFComponentRegistry.shared.registerComponent("TextInput", DCFTextInputComponent::class.java)
-
-        // Register additional primitive components as needed
-        // DCFComponentRegistry.shared.registerComponent("Switch", DCFSwitchComponent::class.java)
-        // DCFComponentRegistry.shared.registerComponent("Slider", DCFSliderComponent::class.java)
-        // DCFComponentRegistry.shared.registerComponent("ActivityIndicator", DCFActivityIndicatorComponent::class.java)
+        // Display components
+        registry.registerComponent("Spinner", DCFSpinnerComponent::class.java)
+        registry.registerComponent("Alert", DCFAlertComponent::class.java)
+        registry.registerComponent("Icon", DCFIconComponent::class.java)
+        registry.registerComponent("Svg", DCFSvgComponent::class.java)
+        registry.registerComponent("WebView", DCFWebViewComponent::class.java)
 
         println("✅ PrimitivesComponentsReg: Registered all primitive components")
     }
@@ -53,9 +59,33 @@ object PrimitivesComponentsReg {
      */
     @JvmStatic
     fun unregisterComponents() {
-        // This would require adding an unregister method to DCFComponentRegistry
-        // For now, just log
-        println("🧹 PrimitivesComponentsReg: Unregistering components not yet implemented")
+        val registry = DCFComponentRegistry.shared
+        val componentsToUnregister = listOf(
+            "View",
+            "Text",
+            "Image",
+            "ScrollView",
+            "TextInput",
+            "Button",
+            "Toggle",
+            "Slider",
+            "Checkbox",
+            "Dropdown",
+            "SegmentedControl",
+            "TouchableOpacity",
+            "GestureDetector",
+            "Spinner",
+            "Alert",
+            "Icon",
+            "Svg",
+            "WebView"
+        )
+
+        componentsToUnregister.forEach { componentType ->
+            // Note: This would require adding an unregister method to DCFComponentRegistry
+            // For now, just log
+            println("🧹 PrimitivesComponentsReg: Unregistering $componentType")
+        }
     }
 
     /**
@@ -68,8 +98,20 @@ object PrimitivesComponentsReg {
             "Text",
             "Image",
             "ScrollView",
+            "TextInput",
             "Button",
-            "TextInput"
+            "Toggle",
+            "Slider",
+            "Checkbox",
+            "Dropdown",
+            "SegmentedControl",
+            "TouchableOpacity",
+            "GestureDetector",
+            "Spinner",
+            "Alert",
+            "Icon",
+            "Svg",
+            "WebView"
         )
 
         val registry = DCFComponentRegistry.shared
@@ -79,13 +121,44 @@ object PrimitivesComponentsReg {
             if (!registry.isComponentRegistered(componentType)) {
                 println("⚠️ PrimitivesComponentsReg: Component '$componentType' is not registered")
                 allRegistered = false
+            } else {
+                println("✓ PrimitivesComponentsReg: Component '$componentType' is registered")
             }
         }
 
         if (allRegistered) {
             println("✅ PrimitivesComponentsReg: All expected primitive components are registered")
+        } else {
+            println("❌ PrimitivesComponentsReg: Some components are missing")
         }
 
         return allRegistered
+    }
+
+    /**
+     * Get list of all registered component types
+     */
+    @JvmStatic
+    fun getRegisteredComponentTypes(): List<String> {
+        return listOf(
+            "View",
+            "Text",
+            "Image",
+            "ScrollView",
+            "TextInput",
+            "Button",
+            "Toggle",
+            "Slider",
+            "Checkbox",
+            "Dropdown",
+            "SegmentedControl",
+            "TouchableOpacity",
+            "GestureDetector",
+            "Spinner",
+            "Alert",
+            "Icon",
+            "Svg",
+            "WebView"
+        )
     }
 }
