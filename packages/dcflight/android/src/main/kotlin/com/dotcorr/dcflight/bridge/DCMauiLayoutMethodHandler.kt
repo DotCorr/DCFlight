@@ -13,204 +13,54 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.layout.YogaShadowTree
 
 /**
- * Handles layout method calls between Flutter and native Android for DCFlight
- * Manages layout calculations, updates, and component positioning
+ * CRITICAL FIX: Handles layout method channel interactions between Flutter and native Android
+ * Now matches iOS DCMauiLayoutMethodHandler exactly
  */
 class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
-    private var methodChannel: MethodChannel? = null
-    private var binaryMessenger: BinaryMessenger? = null
 
     companion object {
         private const val TAG = "DCMauiLayoutMethodHandler"
-        private const val CHANNEL_NAME = "com.dotcorr.dcflight/layout"
+        // CRITICAL FIX: Use EXACT iOS channel name
+        private const val CHANNEL_NAME = "com.dcmaui.layout"
 
         @JvmStatic
         val shared = DCMauiLayoutMethodHandler()
     }
 
-    fun initialize(messenger: BinaryMessenger) {
+    private var methodChannel: MethodChannel? = null
+
+    /**
+     * Initialize with Flutter binary messenger - EXACT iOS pattern
+     */
+    fun initialize(binaryMessenger: BinaryMessenger) {
         Log.d(TAG, "Initializing DCMauiLayoutMethodHandler")
 
-        binaryMessenger = messenger
-        methodChannel = MethodChannel(messenger, CHANNEL_NAME)
+        // Create method channel
+        methodChannel = MethodChannel(binaryMessenger, CHANNEL_NAME)
+
+        // Set up method handler
         methodChannel?.setMethodCallHandler(this)
 
         Log.d(TAG, "DCMauiLayoutMethodHandler initialized successfully")
     }
 
+    /**
+     * Handle method calls from Flutter - matches iOS methods exactly
+     */
     override fun onMethodCall(call: MethodCall, result: Result) {
-        Log.d(TAG, "onMethodCall: ${call.method}")
+        Log.d(TAG, "Layout method call: ${call.method}")
 
+        // Handle methods - layout channel supports both incoming and outgoing messages like iOS
         when (call.method) {
-            "calculateLayout" -> {
-                val componentId = call.argument<String>("componentId")
-                val width = call.argument<Double>("width")?.toFloat()
-                val height = call.argument<Double>("height")?.toFloat()
-
-                if (componentId != null && width != null && height != null) {
-                    calculateLayout(componentId, width, height, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId, width, and height required", null)
-                }
-            }
-
-            "updateLayout" -> {
-                val componentId = call.argument<String>("componentId")
-                val layoutProps = call.argument<Map<String, Any>>("layoutProps")
-
-                if (componentId != null && layoutProps != null) {
-                    updateLayout(componentId, layoutProps, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId and layoutProps required", null)
-                }
-            }
-
-            "getLayout" -> {
-                val componentId = call.argument<String>("componentId")
-
-                if (componentId != null) {
-                    getLayout(componentId, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId required", null)
-                }
-            }
-
-            "invalidateLayout" -> {
-                val componentId = call.argument<String>("componentId")
-
-                if (componentId != null) {
-                    invalidateLayout(componentId, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId required", null)
-                }
-            }
-
-            "markDirty" -> {
-                val componentId = call.argument<String>("componentId")
-
-                if (componentId != null) {
-                    markDirty(componentId, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId required", null)
-                }
-            }
-
-            "applyLayoutChanges" -> {
-                applyLayoutChanges(result)
-            }
-
-            "setFlexDirection" -> {
-                val componentId = call.argument<String>("componentId")
-                val direction = call.argument<String>("direction")
-
-                if (componentId != null && direction != null) {
-                    setFlexDirection(componentId, direction, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId and direction required", null)
-                }
-            }
-
-            "setJustifyContent" -> {
-                val componentId = call.argument<String>("componentId")
-                val justifyContent = call.argument<String>("justifyContent")
-
-                if (componentId != null && justifyContent != null) {
-                    setJustifyContent(componentId, justifyContent, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId and justifyContent required", null)
-                }
-            }
-
-            "setAlignItems" -> {
-                val componentId = call.argument<String>("componentId")
-                val alignItems = call.argument<String>("alignItems")
-
-                if (componentId != null && alignItems != null) {
-                    setAlignItems(componentId, alignItems, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId and alignItems required", null)
-                }
-            }
-
-            "setPadding" -> {
-                val componentId = call.argument<String>("componentId")
-                val top = call.argument<Double>("top")?.toFloat()
-                val right = call.argument<Double>("right")?.toFloat()
-                val bottom = call.argument<Double>("bottom")?.toFloat()
-                val left = call.argument<Double>("left")?.toFloat()
-
-                if (componentId != null) {
-                    setPadding(componentId, top, right, bottom, left, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId required", null)
-                }
-            }
-
-            "setMargin" -> {
-                val componentId = call.argument<String>("componentId")
-                val top = call.argument<Double>("top")?.toFloat()
-                val right = call.argument<Double>("right")?.toFloat()
-                val bottom = call.argument<Double>("bottom")?.toFloat()
-                val left = call.argument<Double>("left")?.toFloat()
-
-                if (componentId != null) {
-                    setMargin(componentId, top, right, bottom, left, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId required", null)
-                }
-            }
-
-            "setPosition" -> {
-                val componentId = call.argument<String>("componentId")
-                val x = call.argument<Double>("x")?.toFloat()
-                val y = call.argument<Double>("y")?.toFloat()
-
-                if (componentId != null && x != null && y != null) {
-                    setPosition(componentId, x, y, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId, x, and y required", null)
-                }
-            }
-
-            "setSize" -> {
-                val componentId = call.argument<String>("componentId")
-                val width = call.argument<Double>("width")?.toFloat()
-                val height = call.argument<Double>("height")?.toFloat()
-
-                if (componentId != null) {
-                    setSize(componentId, width, height, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId required", null)
-                }
-            }
-
-            "setBorderRadius" -> {
-                val componentId = call.argument<String>("componentId")
-                val radius = call.argument<Double>("radius")?.toFloat()
-
-                if (componentId != null && radius != null) {
-                    setBorderRadius(componentId, radius, result)
-                } else {
-                    result.error("INVALID_ARGS", "componentId and radius required", null)
-                }
-            }
-
             "getScreenDimensions" -> {
-                getScreenDimensions(result)
+                handleGetScreenDimensions(result)
             }
 
-            "performBatchUpdate" -> {
-                val updates = call.argument<List<Map<String, Any>>>("updates")
-
-                if (updates != null) {
-                    performBatchUpdate(updates, result)
-                } else {
-                    result.error("INVALID_ARGS", "updates required", null)
-                }
+            "setUseWebDefaults" -> {
+                handleSetUseWebDefaults(call, result)
             }
 
             else -> {
@@ -219,229 +69,53 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
         }
     }
 
-    private fun calculateLayout(componentId: String, width: Float, height: Float, result: Result) {
-        try {
-            Log.d(TAG, "Calculating layout for $componentId: ${width}x${height}")
+    /**
+     * Get screen dimensions - EXACT iOS implementation
+     */
+    private fun handleGetScreenDimensions(result: Result) {
+        val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+        val dimensions = mapOf(
+            "width" to displayMetrics.widthPixels.toDouble(),
+            "height" to displayMetrics.heightPixels.toDouble(), 
+            "scale" to displayMetrics.density.toDouble(),
+            "statusBarHeight" to getStatusBarHeight().toDouble()
+        )
 
-            YogaShadowTree.shared.calculateLayout(componentId)
-            DCFLayoutManager.shared.applyLayout(componentId, 0f, 0f, width, height)
-
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error calculating layout", e)
-            result.error("LAYOUT_ERROR", "Failed to calculate layout: ${e.message}", null)
-        }
-    }
-
-    private fun updateLayout(componentId: String, layoutProps: Map<String, Any>, result: Result) {
-        try {
-            Log.d(TAG, "Updating layout for $componentId with props: $layoutProps")
-
-            YogaShadowTree.shared.updateLayoutProperties(componentId, layoutProps)
-            YogaShadowTree.shared.markDirty(componentId)
-
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating layout", e)
-            result.error("LAYOUT_ERROR", "Failed to update layout: ${e.message}", null)
-        }
-    }
-
-    private fun getLayout(componentId: String, result: Result) {
-        try {
-            val layout = YogaShadowTree.shared.getLayout(componentId)
-            result.success(layout)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting layout", e)
-            result.error("LAYOUT_ERROR", "Failed to get layout: ${e.message}", null)
-        }
-    }
-
-    private fun invalidateLayout(componentId: String, result: Result) {
-        try {
-            Log.d(TAG, "Invalidating layout for $componentId")
-
-            YogaShadowTree.shared.invalidate(componentId)
-            YogaShadowTree.shared.requestLayout(componentId)
-
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error invalidating layout", e)
-            result.error("LAYOUT_ERROR", "Failed to invalidate layout: ${e.message}", null)
-        }
-    }
-
-    private fun markDirty(componentId: String, result: Result) {
-        try {
-            YogaShadowTree.shared.markDirty(componentId)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error marking component dirty", e)
-            result.error("LAYOUT_ERROR", "Failed to mark dirty: ${e.message}", null)
-        }
-    }
-
-    private fun applyLayoutChanges(result: Result) {
-        try {
-            Log.d(TAG, "Applying layout changes")
-
-            YogaShadowTree.shared.applyAllLayouts()
-            YogaShadowTree.shared.flushLayoutQueue()
-
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error applying layout changes", e)
-            result.error("LAYOUT_ERROR", "Failed to apply layout changes: ${e.message}", null)
-        }
-    }
-
-    private fun setFlexDirection(componentId: String, direction: String, result: Result) {
-        try {
-            YogaShadowTree.shared.setFlexDirection(componentId, direction)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting flex direction", e)
-            result.error("LAYOUT_ERROR", "Failed to set flex direction: ${e.message}", null)
-        }
-    }
-
-    private fun setJustifyContent(componentId: String, justifyContent: String, result: Result) {
-        try {
-            YogaShadowTree.shared.setJustifyContent(componentId, justifyContent)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting justify content", e)
-            result.error("LAYOUT_ERROR", "Failed to set justify content: ${e.message}", null)
-        }
-    }
-
-    private fun setAlignItems(componentId: String, alignItems: String, result: Result) {
-        try {
-            YogaShadowTree.shared.setAlignItems(componentId, alignItems)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting align items", e)
-            result.error("LAYOUT_ERROR", "Failed to set align items: ${e.message}", null)
-        }
-    }
-
-    private fun setPadding(
-        componentId: String,
-        top: Float?,
-        right: Float?,
-        bottom: Float?,
-        left: Float?,
-        result: Result
-    ) {
-        try {
-            YogaShadowTree.shared.setPadding(componentId, "top", top ?: 0f)
-            YogaShadowTree.shared.setPadding(componentId, "right", right ?: 0f)
-            YogaShadowTree.shared.setPadding(componentId, "bottom", bottom ?: 0f)
-            YogaShadowTree.shared.setPadding(componentId, "left", left ?: 0f)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting padding", e)
-            result.error("LAYOUT_ERROR", "Failed to set padding: ${e.message}", null)
-        }
-    }
-
-    private fun setMargin(
-        componentId: String,
-        top: Float?,
-        right: Float?,
-        bottom: Float?,
-        left: Float?,
-        result: Result
-    ) {
-        try {
-            YogaShadowTree.shared.setMargin(componentId, "top", top ?: 0f)
-            YogaShadowTree.shared.setMargin(componentId, "right", right ?: 0f)
-            YogaShadowTree.shared.setMargin(componentId, "bottom", bottom ?: 0f)
-            YogaShadowTree.shared.setMargin(componentId, "left", left ?: 0f)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting margin", e)
-            result.error("LAYOUT_ERROR", "Failed to set margin: ${e.message}", null)
-        }
-    }
-
-    private fun setPosition(componentId: String, x: Float, y: Float, result: Result) {
-        try {
-            YogaShadowTree.shared.setPosition(componentId, "left", x)
-            YogaShadowTree.shared.setPosition(componentId, "top", y)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting position", e)
-            result.error("LAYOUT_ERROR", "Failed to set position: ${e.message}", null)
-        }
-    }
-
-    private fun setSize(componentId: String, width: Float?, height: Float?, result: Result) {
-        try {
-            YogaShadowTree.shared.setSize(componentId, width, height)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting size", e)
-            result.error("LAYOUT_ERROR", "Failed to set size: ${e.message}", null)
-        }
-    }
-
-    private fun setBorderRadius(componentId: String, radius: Float, result: Result) {
-        try {
-            YogaShadowTree.shared.setBorderRadius(componentId, radius)
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting border radius", e)
-            result.error("LAYOUT_ERROR", "Failed to set border radius: ${e.message}", null)
-        }
-    }
-
-    private fun getScreenDimensions(result: Result) {
-        try {
-            val dimensions = YogaShadowTree.shared.getScreenDimensions()
-            result.success(dimensions)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting screen dimensions", e)
-            result.error("LAYOUT_ERROR", "Failed to get screen dimensions: ${e.message}", null)
-        }
-    }
-
-    private fun performBatchUpdate(updates: List<Map<String, Any>>, result: Result) {
-        try {
-            Log.d(TAG, "Performing batch update with ${updates.size} updates")
-
-            YogaShadowTree.shared.beginBatchUpdate()
-
-            for (update in updates) {
-                val componentId = update["componentId"] as? String
-                val layoutProps = update["layoutProps"] as? Map<String, Any>
-
-                if (componentId != null && layoutProps != null) {
-                    YogaShadowTree.shared.updateLayoutProperties(componentId, layoutProps)
-                }
-            }
-
-            YogaShadowTree.shared.endBatchUpdate()
-
-            result.success(true)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error performing batch update", e)
-            result.error("LAYOUT_ERROR", "Failed to perform batch update: ${e.message}", null)
-        }
+        result.success(dimensions)
     }
 
     /**
-     * Send layout update notification to Flutter
+     * Handle setUseWebDefaults method call - EXACT iOS implementation
      */
-    fun notifyLayoutUpdate(componentId: String, layout: Map<String, Any>) {
-        Log.d(TAG, "Notifying layout update for $componentId")
+    private fun handleSetUseWebDefaults(call: MethodCall, result: Result) {
+        val args = call.arguments as? Map<String, Any>
+        val enabled = args?.get("enabled") as? Boolean
 
-        methodChannel?.invokeMethod(
-            "onLayoutUpdate", mapOf(
-                "componentId" to componentId,
-                "layout" to layout
+        if (enabled == null) {
+            result.error(
+                "INVALID_ARGUMENTS",
+                "setUseWebDefaults requires 'enabled' boolean parameter",
+                null
             )
-        )
+            return
+        }
+
+        // Call YogaShadowTree to set web defaults like iOS
+        YogaShadowTree.shared.setUseWebDefaults(enabled)
+        result.success(true)
+    }
+
+    /**
+     * Get status bar height for Android
+     */
+    private fun getStatusBarHeight(): Int {
+        val resources = android.content.res.Resources.getSystem()
+        val resourceId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resourceId > 0) {
+            resources.getDimensionPixelSize(resourceId)
+        } else {
+            0
+        }
     }
 
     /**
@@ -449,11 +123,9 @@ class DCMauiLayoutMethodHandler private constructor() : MethodCallHandler {
      */
     fun cleanup() {
         Log.d(TAG, "Cleaning up DCMauiLayoutMethodHandler")
-
         methodChannel?.setMethodCallHandler(null)
         methodChannel = null
-        binaryMessenger = null
-
-        Log.d(TAG, "DCMauiLayoutMethodHandler cleaned up")
+        Log.d(TAG, "DCMauiLayoutMethodHandler cleanup complete")
     }
 }
+

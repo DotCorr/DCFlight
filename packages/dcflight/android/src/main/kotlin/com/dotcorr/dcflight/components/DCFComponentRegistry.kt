@@ -13,13 +13,9 @@ import android.view.View
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Registry for all DCFlight component types
- * Manages component registration and creation
+ * CRITICAL FIX: Registry for all DCFlight component types
+ * Now matches iOS DCFComponentRegistry exactly with proper tunnel method support
  */
-
-// Type alias for component factory function - must be at top level
-typealias ComponentFactory = (props: Map<String, Any?>) -> DCFComponent
-
 class DCFComponentRegistry private constructor() {
 
     companion object {
@@ -29,101 +25,79 @@ class DCFComponentRegistry private constructor() {
         val shared = DCFComponentRegistry()
     }
 
-    // Thread-safe map of component factories
-    private val componentFactories = ConcurrentHashMap<String, ComponentFactory>()
+    // CRITICAL FIX: Thread-safe map of component CLASSES not factories
+    // This matches iOS pattern: componentTypes: [String: DCFComponent.Type] = [:]
+    private val componentTypes = ConcurrentHashMap<String, Class<out DCFComponent>>()
 
     // Map for storing component instances by ID
     private val componentInstances = ConcurrentHashMap<String, DCFComponent>()
 
     /**
-     * Initialize the component registry
+     * CRITICAL FIX: Register a component type handler - EXACT iOS signature
      */
-    fun initialize() {
-        // Clear any existing registrations
-        componentFactories.clear()
-        componentInstances.clear()
-        Log.d(TAG, "Component registry initialized")
-    }
-
-    /**
-     * Register a component type with a factory function
-     */
-    fun registerComponent(type: String, factory: ComponentFactory) {
-        componentFactories[type] = factory
+    fun registerComponent(type: String, componentClass: Class<out DCFComponent>) {
+        componentTypes[type] = componentClass
         Log.d(TAG, "Registered component type: $type")
     }
 
     /**
-     * Register a component type with a class (for backward compatibility)
+     * CRITICAL FIX: Get the component handler for a specific type - EXACT iOS pattern
      */
-    fun registerComponent(type: String, componentClass: Class<out DCFComponent>) {
-        registerComponent(type) { props ->
-            try {
-                val constructor = componentClass.getConstructor(Map::class.java)
-                constructor.newInstance(props)
-            } catch (e: NoSuchMethodException) {
-                // Try no-arg constructor
-                val instance = componentClass.getDeclaredConstructor().newInstance()
-                instance.applyProperties(props)
-                instance
-            }
+    fun getComponentType(type: String): Class<out DCFComponent>? {
+        return componentTypes[type]
+    }
+
+    /**
+     * CRITICAL FIX: Get the component class for tunnel calls (bridge compatibility) - EXACT iOS method
+     */
+    fun getComponent(type: String): Class<out DCFComponent>? {
+        return componentTypes[type]
+    }
+
+    /**
+     * Get all registered component types - iOS compatibility
+     */
+    val registeredTypes: List<String>
+        get() = componentTypes.keys.toList()
+
+    /**
+     * CRITICAL FIX: Create a component instance - simplified like iOS
+     */
+    fun createComponentInstance(type: String): DCFComponent? {
+        val componentClass = componentTypes[type]
+        if (componentClass == null) {
+            Log.e(TAG, "No component registered for type: $type")
+            return null
         }
-    }
 
-    /**
-     * Unregister a component type
-     */
-    fun unregisterComponent(type: String) {
-        componentFactories.remove(type)
-        Log.d(TAG, "Unregistered component type: $type")
-    }
-
-    /**
-     * Unregister all components
-     */
-    fun unregisterAllComponents() {
-        componentFactories.clear()
-        componentInstances.clear()
-        Log.d(TAG, "All components unregistered")
+        return try {
+            // Try no-arg constructor first like iOS pattern
+            componentClass.getDeclaredConstructor().newInstance()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create component instance of type: $type", e)
+            null
+        }
     }
 
     /**
      * Check if a component type is registered
      */
     fun isComponentRegistered(type: String): Boolean {
-        return componentFactories.containsKey(type)
+        return componentTypes.containsKey(type)
     }
 
     /**
      * Get the count of registered component types
      */
     fun getRegisteredComponentCount(): Int {
-        return componentFactories.size
+        return componentTypes.size
     }
 
     /**
      * Get a list of all registered component type names
      */
     fun getRegisteredComponentNames(): List<String> {
-        return componentFactories.keys.toList()
-    }
-
-    /**
-     * Create a component instance
-     */
-    fun createComponentInstance(type: String): DCFComponent? {
-        val factory = componentFactories[type]
-        if (factory == null) {
-            Log.e(TAG, "No factory registered for component type: $type")
-            return null
-        }
-
-        return try {
-            factory(emptyMap())
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to create component instance of type: $type", e)
-            null
-        }
+        return componentTypes.keys.toList()
     }
 
     /**
@@ -136,14 +110,14 @@ class DCFComponentRegistry private constructor() {
     ): View? {
         Log.d(TAG, "Creating component of type: $type")
 
-        val factory = componentFactories[type]
-        if (factory == null) {
-            Log.e(TAG, "No factory registered for component type: $type")
+        val componentClass = componentTypes[type]
+        if (componentClass == null) {
+            Log.e(TAG, "No component registered for type: $type")
             return null
         }
 
         return try {
-            val component = factory(properties)
+            val component = componentClass.getDeclaredConstructor().newInstance()
 
             // Store instance if it has an ID
             val componentId = properties["id"] as? String
@@ -152,7 +126,7 @@ class DCFComponentRegistry private constructor() {
             }
 
             // Create and configure the view
-            val view = component.createView(context)
+            val view = component.createView(context, properties)
             component.bindView(view)
             component.applyProperties(properties)
 
@@ -227,7 +201,7 @@ class DCFComponentRegistry private constructor() {
      */
     fun getStatistics(): Map<String, Any> {
         return mapOf(
-            "registeredTypes" to componentFactories.size,
+            "registeredTypes" to componentTypes.size,
             "activeInstances" to componentInstances.size,
             "types" to getRegisteredComponentNames()
         )
@@ -238,7 +212,8 @@ class DCFComponentRegistry private constructor() {
      */
     fun cleanup() {
         removeAllComponents()
-        unregisterAllComponents()
+        componentTypes.clear()
         Log.d(TAG, "Component registry cleaned up")
     }
 }
+

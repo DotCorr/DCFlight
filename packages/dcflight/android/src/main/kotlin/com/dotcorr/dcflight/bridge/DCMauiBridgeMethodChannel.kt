@@ -8,80 +8,130 @@
 package com.dotcorr.dcflight.bridge
 
 import android.util.Log
-import com.dotcorr.dcflight.layout.YogaShadowTree
-import com.dotcorr.dcflight.utils.DCFScreenUtilities
+import com.dotcorr.dcflight.components.DCFComponentRegistry
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import kotlinx.coroutines.*
-import java.util.concurrent.ConcurrentHashMap
+import org.json.JSONObject
+import org.json.JSONArray
 
 class DCMauiBridgeMethodChannel private constructor() : MethodCallHandler {
-    private var channel: MethodChannel? = null
-    private val mainScope = MainScope()
-    private val sessionToken = System.currentTimeMillis().toString()
-    private var isInitialized = false
 
     companion object {
         private const val TAG = "DCMauiBridge"
-        private const val CHANNEL_NAME = "dcflight/bridge"
+        // CRITICAL FIX: Match iOS channel names exactly
+        private const val CHANNEL_NAME = "com.dcmaui.bridge"
+        private const val HOT_RESTART_CHANNEL = "dcflight/hot_restart"
 
         @JvmStatic
         val shared = DCMauiBridgeMethodChannel()
 
-        // Command queue for batching
-        private val commandQueue = mutableListOf<Map<String, Any?>>()
-        private var queueJob: Job? = null
+        // CRITICAL FIX: Add session token for hot restart detection like iOS
+        @Volatile
+        private var sessionToken: String? = null
     }
+
+    private var methodChannel: MethodChannel? = null
+    private var hotRestartChannel: MethodChannel? = null
+
+    // CRITICAL FIX: Add views dictionary for compatibility with iOS
+    val views = mutableMapOf<String, android.view.View>()
 
     fun initialize(messenger: BinaryMessenger) {
-        if (isInitialized) {
-            Log.w(TAG, "Already initialized, checking for hot restart")
-            detectHotRestart(messenger)
-            return
-        }
-
         Log.d(TAG, "Initializing bridge method channel")
 
-        channel = MethodChannel(messenger, CHANNEL_NAME)
-        channel?.setMethodCallHandler(this)
+        // Create method channel - EXACT iOS channel name
+        methodChannel = MethodChannel(messenger, CHANNEL_NAME)
+        methodChannel?.setMethodCallHandler(this)
 
-        isInitialized = true
-
-        // Send initial session token
-        sendSessionToken()
+        // Create hot restart detection channel - EXACT iOS channel name  
+        hotRestartChannel = MethodChannel(messenger, HOT_RESTART_CHANNEL)
+        hotRestartChannel?.setMethodCallHandler { call, result ->
+            handleHotRestartMethodCall(call, result)
+        }
 
         Log.d(TAG, "Bridge method channel initialized")
-    }
-
-    private fun detectHotRestart(messenger: BinaryMessenger) {
-        // Re-initialize channel for hot restart
-        channel?.setMethodCallHandler(null)
-        channel = MethodChannel(messenger, CHANNEL_NAME)
-        channel?.setMethodCallHandler(this)
-
-        // Check session token to detect hot restart
-        channel?.invokeMethod("checkSessionToken", sessionToken)
-    }
-
-    private fun sendSessionToken() {
-        channel?.invokeMethod("setSessionToken", sessionToken)
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         Log.d(TAG, "Received method call: ${call.method}")
 
+        // Get the arguments - EXACT iOS pattern
+        val args = call.arguments as? Map<String, Any>
+
+        // Handle methods - EXACT same method names as iOS
         when (call.method) {
-            "createView" -> handleCreateView(call, result)
-            "updateView" -> handleUpdateView(call, result)
-            "removeView" -> handleRemoveView(call, result)
-            "batchUpdate" -> handleBatchUpdate(call, result)
-            "measureText" -> handleMeasureText(call, result)
-            "getScreenDimensions" -> handleGetScreenDimensions(result)
-            "hotRestartDetected" -> handleHotRestart(result)
-            "ping" -> result.success("pong")
+            "initialize" -> {
+                handleInitialize(result)
+            }
+
+            "createView" -> {
+                if (args != null) {
+                    handleCreateView(args, result)
+                } else {
+                    result.error("ARGS_ERROR", "Arguments cannot be null", null)
+                }
+            }
+
+            "updateView" -> {
+                if (args != null) {
+                    handleUpdateView(args, result)
+                } else {
+                    result.error("ARGS_ERROR", "Arguments cannot be null", null)
+                }
+            }
+
+            "deleteView" -> {
+                if (args != null) {
+                    handleDeleteView(args, result)
+                } else {
+                    result.error("ARGS_ERROR", "Arguments cannot be null", null)
+                }
+            }
+
+            "attachView" -> {
+                if (args != null) {
+                    handleAttachView(args, result)
+                } else {
+                    result.error("ARGS_ERROR", "Arguments cannot be null", null)
+                }
+            }
+
+            "detachView" -> {
+                if (args != null) {
+                    handleDetachView(args, result)
+                } else {
+                    result.error("ARGS_ERROR", "Arguments cannot be null", null)
+                }
+            }
+
+            "setChildren" -> {
+                if (args != null) {
+                    handleSetChildren(args, result)
+                } else {
+                    result.error("ARGS_ERROR", "Arguments cannot be null", null)
+                }
+            }
+
+            "commitBatchUpdate" -> {
+                if (args != null) {
+                    handleCommitBatchUpdate(args, result)
+                } else {
+                    result.error("ARGS_ERROR", "Arguments cannot be null", null)
+                }
+            }
+
+            // CRITICAL FIX: Add missing tunnel method like iOS
+            "tunnel" -> {
+                if (args != null) {
+                    handleTunnel(args, result)
+                } else {
+                    result.error("ARGS_ERROR", "Arguments cannot be null", null)
+                }
+            }
+
             else -> {
                 Log.w(TAG, "Unknown method: ${call.method}")
                 result.notImplemented()
@@ -89,227 +139,296 @@ class DCMauiBridgeMethodChannel private constructor() : MethodCallHandler {
         }
     }
 
-    private fun handleCreateView(call: MethodCall, result: Result) {
-        val viewId = call.argument<String>("viewId")
-        val viewType = call.argument<String>("viewType")
-        val props = call.argument<Map<String, Any?>>("props")
+    // CRITICAL FIX: Add tunnel handler exactly like iOS
+    private fun handleTunnel(args: Map<String, Any>, result: Result) {
+        val componentType = args["componentType"] as? String
+        val method = args["method"] as? String
+        val params = args["params"] as? Map<String, Any>
 
-        if (viewId == null || viewType == null) {
-            result.error("INVALID_ARGS", "viewId and viewType are required", null)
+        if (componentType == null || method == null || params == null) {
+            result.error("TUNNEL_ERROR", "Invalid tunnel parameters", null)
             return
         }
 
-        Log.d(TAG, "Creating view: $viewId of type: $viewType")
+        Log.d(TAG, "🚇 Android Bridge: Tunneling $method to $componentType")
 
-        mainScope.launch {
-            try {
-                val created = DCMauiBridgeImpl.shared.createView(viewId, viewType, props ?: emptyMap())
-                withContext(Dispatchers.Main) {
-                    result.success(created)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error creating view", e)
-                withContext(Dispatchers.Main) {
-                    result.error("CREATE_ERROR", e.message, null)
-                }
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            // Use component registry to find component class
+            val componentClass = DCFComponentRegistry.shared.getComponent(componentType)
+            if (componentClass == null) {
+                result.error("COMPONENT_NOT_FOUND", "Component $componentType not registered", null)
+                return@post
+            }
+
+            // Call tunnel method on component class
+            val response = componentClass.handleTunnelMethod(method, params)
+            if (response != null) {
+                result.success(response)
+            } else {
+                result.error("METHOD_NOT_FOUND", "Method $method not found on $componentType", null)
             }
         }
     }
 
-    private fun handleUpdateView(call: MethodCall, result: Result) {
-        val viewId = call.argument<String>("viewId")
-        val props = call.argument<Map<String, Any?>>("props")
+    // Initialize the bridge
+    private fun handleInitialize(result: Result) {
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            // Initialize components and systems
+            val success = DCMauiBridgeImpl.shared.initialize()
+            result.success(success)
+        }
+    }
+
+    // Create a view - EXACT iOS signature and JSON handling
+    private fun handleCreateView(args: Map<String, Any>, result: Result) {
+        val viewId = args["viewId"] as? String
+        val viewType = args["viewType"] as? String
+        val props = args["props"] as? Map<String, Any>
+
+        if (viewId == null || viewType == null || props == null) {
+            result.error("CREATE_ERROR", "Invalid view creation parameters", null)
+            return
+        }
+
+        // CRITICAL FIX: Convert props to JSON like iOS
+        val propsJson = try {
+            JSONObject(props).toString()
+        } catch (e: Exception) {
+            result.error("JSON_ERROR", "Failed to serialize props", null)
+            return
+        }
+
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val success = DCMauiBridgeImpl.shared.createView(viewId, viewType, propsJson)
+            result.success(success)
+        }
+    }
+
+    // Update a view - EXACT iOS signature and JSON handling
+    private fun handleUpdateView(args: Map<String, Any>, result: Result) {
+        val viewId = args["viewId"] as? String
+        val props = args["props"] as? Map<String, Any>
+
+        if (viewId == null || props == null) {
+            result.error("UPDATE_ERROR", "Invalid view update parameters", null)
+            return
+        }
+
+        // CRITICAL FIX: Convert props to JSON like iOS
+        val propsJson = try {
+            JSONObject(props).toString()
+        } catch (e: Exception) {
+            result.error("JSON_ERROR", "Failed to serialize props", null)
+            return
+        }
+
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val success = DCMauiBridgeImpl.shared.updateView(viewId, propsJson)
+            result.success(success)
+        }
+    }
+
+    // Delete a view - EXACT iOS pattern
+    private fun handleDeleteView(args: Map<String, Any>, result: Result) {
+        val viewId = args["viewId"] as? String
 
         if (viewId == null) {
-            result.error("INVALID_ARGS", "viewId is required", null)
+            result.error("DELETE_ERROR", "Invalid view ID", null)
             return
         }
 
-        Log.d(TAG, "Updating view: $viewId")
-
-        // Queue the update for batching
-        queueCommand(mapOf(
-            "action" to "update",
-            "viewId" to viewId,
-            "props" to props
-        ))
-
-        result.success(true)
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val success = DCMauiBridgeImpl.shared.deleteView(viewId)
+            result.success(success)
+        }
     }
 
-    private fun handleRemoveView(call: MethodCall, result: Result) {
-        val viewId = call.argument<String>("viewId")
+    // CRITICAL FIX: Add missing attachView method like iOS
+    private fun handleAttachView(args: Map<String, Any>, result: Result) {
+        val childId = args["childId"] as? String
+        val parentId = args["parentId"] as? String
+        val index = args["index"] as? Int
+
+        if (childId == null || parentId == null || index == null) {
+            result.error("ATTACH_ERROR", "Invalid view attachment parameters", null)
+            return
+        }
+
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val success = DCMauiBridgeImpl.shared.attachView(childId, parentId, index)
+            result.success(success)
+        }
+    }
+
+    // CRITICAL FIX: Add missing detachView method like iOS
+    private fun handleDetachView(args: Map<String, Any>, result: Result) {
+        val viewId = args["viewId"] as? String
 
         if (viewId == null) {
-            result.error("INVALID_ARGS", "viewId is required", null)
+            result.error("DETACH_ERROR", "Invalid view ID", null)
             return
         }
 
-        Log.d(TAG, "Removing view: $viewId")
-
-        mainScope.launch {
-            try {
-                val removed = DCMauiBridgeImpl.shared.removeView(viewId)
-                withContext(Dispatchers.Main) {
-                    result.success(removed)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error removing view", e)
-                withContext(Dispatchers.Main) {
-                    result.error("REMOVE_ERROR", e.message, null)
-                }
-            }
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val success = DCMauiBridgeImpl.shared.detachView(viewId)
+            result.success(success)
         }
     }
 
-    private fun handleBatchUpdate(call: MethodCall, result: Result) {
-        val commands = call.argument<List<Map<String, Any?>>>("commands")
+    // CRITICAL FIX: Add missing setChildren method like iOS
+    private fun handleSetChildren(args: Map<String, Any>, result: Result) {
+        val viewId = args["viewId"] as? String
+        val childrenIds = args["childrenIds"] as? List<String>
 
-        if (commands == null) {
-            result.error("INVALID_ARGS", "commands are required", null)
+        if (viewId == null || childrenIds == null) {
+            result.error("CHILDREN_ERROR", "Invalid children parameters", null)
             return
         }
 
-        Log.d(TAG, "Processing batch update with ${commands.size} commands")
+        // Convert children to JSON like iOS
+        val childrenJson = try {
+            JSONArray(childrenIds).toString()
+        } catch (e: Exception) {
+            result.error("JSON_ERROR", "Failed to serialize children", null)
+            return
+        }
 
-        mainScope.launch {
-            try {
-                processBatchCommands(commands)
-                withContext(Dispatchers.Main) {
-                    result.success(true)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error processing batch", e)
-                withContext(Dispatchers.Main) {
-                    result.error("BATCH_ERROR", e.message, null)
-                }
-            }
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val success = DCMauiBridgeImpl.shared.setChildren(viewId, childrenJson)
+            result.success(success)
         }
     }
 
-    private fun handleMeasureText(call: MethodCall, result: Result) {
-        val text = call.argument<String>("text") ?: ""
-        val fontSize = call.argument<Double>("fontSize") ?: 14.0
-        val fontWeight = call.argument<String>("fontWeight") ?: "normal"
-        val maxWidth = call.argument<Double>("maxWidth")
+    // CRITICAL FIX: Add missing commitBatchUpdate method like iOS
+    private fun handleCommitBatchUpdate(args: Map<String, Any>, result: Result) {
+        val updates = args["updates"] as? List<Map<String, Any>>
 
-        Log.d(TAG, "Measuring text: '$text'")
-
-        mainScope.launch {
-            try {
-                val measurements = DCMauiBridgeImpl.shared.measureText(
-                    text,
-                    fontSize.toFloat(),
-                    fontWeight,
-                    maxWidth?.toFloat()
-                )
-                withContext(Dispatchers.Main) {
-                    result.success(measurements)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error measuring text", e)
-                withContext(Dispatchers.Main) {
-                    result.error("MEASURE_ERROR", e.message, null)
-                }
-            }
-        }
-    }
-
-    private fun handleGetScreenDimensions(result: Result) {
-        val dimensions = DCFScreenUtilities.shared.getScreenDimensions()
-        result.success(dimensions)
-    }
-
-    private fun handleHotRestart(result: Result) {
-        Log.d(TAG, "Hot restart detected, cleaning up native views")
-
-        mainScope.launch {
-            try {
-                // Clean up all native views
-                DCMauiBridgeImpl.shared.cleanup()
-
-                // Reinitialize systems
-                YogaShadowTree.shared.cleanup()
-                YogaShadowTree.shared.initialize()
-
-                withContext(Dispatchers.Main) {
-                    result.success(true)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error handling hot restart", e)
-                withContext(Dispatchers.Main) {
-                    result.error("HOTRESTART_ERROR", e.message, null)
-                }
-            }
-        }
-    }
-
-    private fun queueCommand(command: Map<String, Any?>) {
-        synchronized(commandQueue) {
-            commandQueue.add(command)
+        if (updates == null) {
+            result.error("BATCH_ERROR", "Invalid batch update parameters", null)
+            return
         }
 
-        // Cancel existing job and start new one with delay for batching
-        queueJob?.cancel()
-        queueJob = mainScope.launch {
-            delay(16) // ~60fps
-            flushCommandQueue()
-        }
-    }
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            var allSucceeded = true
 
-    private suspend fun flushCommandQueue() {
-        val commands = synchronized(commandQueue) {
-            val copy = commandQueue.toList()
-            commandQueue.clear()
-            copy
-        }
+            for (update in updates) {
+                val operation = update["operation"] as? String ?: continue
 
-        if (commands.isNotEmpty()) {
-            Log.d(TAG, "Flushing ${commands.size} queued commands")
-            processBatchCommands(commands)
-        }
-    }
+                when (operation) {
+                    "createView" -> {
+                        val viewId = update["viewId"] as? String ?: continue
+                        val viewType = update["viewType"] as? String ?: continue
+                        val props = update["props"] as? Map<String, Any> ?: emptyMap()
 
-    private suspend fun processBatchCommands(commands: List<Map<String, Any?>>) {
-        withContext(Dispatchers.Main) {
-            commands.forEach { command ->
-                when (command["action"]) {
-                    "update" -> {
-                        val viewId = command["viewId"] as? String
-                        val props = command["props"] as? Map<String, Any?>
-                        if (viewId != null) {
-                            DCMauiBridgeImpl.shared.updateView(viewId, props ?: emptyMap())
+                        val propsJson = try {
+                            JSONObject(props).toString()
+                        } catch (e: Exception) {
+                            allSucceeded = false
+                            continue
+                        }
+
+                        val success = DCMauiBridgeImpl.shared.createView(viewId, viewType, propsJson)
+                        if (!success) {
+                            allSucceeded = false
                         }
                     }
-                    "create" -> {
-                        val viewId = command["viewId"] as? String
-                        val viewType = command["viewType"] as? String
-                        val props = command["props"] as? Map<String, Any?>
-                        if (viewId != null && viewType != null) {
-                            DCMauiBridgeImpl.shared.createView(viewId, viewType, props ?: emptyMap())
+
+                    "updateView" -> {
+                        val viewId = update["viewId"] as? String ?: continue
+                        val props = update["props"] as? Map<String, Any> ?: emptyMap()
+
+                        val propsJson = try {
+                            JSONObject(props).toString()
+                        } catch (e: Exception) {
+                            allSucceeded = false
+                            continue
                         }
-                    }
-                    "remove" -> {
-                        val viewId = command["viewId"] as? String
-                        if (viewId != null) {
-                            DCMauiBridgeImpl.shared.removeView(viewId)
+
+                        val success = DCMauiBridgeImpl.shared.updateView(viewId, propsJson)
+                        if (!success) {
+                            allSucceeded = false
                         }
                     }
                 }
             }
+
+            result.success(allSucceeded)
         }
+    }
+
+    // CRITICAL FIX: Add hot restart detection exactly like iOS
+    private fun handleHotRestartMethodCall(call: MethodCall, result: Result) {
+        when (call.method) {
+            "getSessionToken" -> {
+                result.success(sessionToken)
+            }
+
+            "createSessionToken" -> {
+                // Create a new session token with timestamp like iOS
+                val token = "dcf_session_${System.currentTimeMillis()}"
+                sessionToken = token
+                result.success(token)
+            }
+
+            "cleanupViews" -> {
+                cleanupNativeViews()
+                result.success(null)
+            }
+
+            "clearSessionToken" -> {
+                sessionToken = null
+                result.success(null)
+            }
+
+            else -> {
+                result.notImplemented()
+            }
+        }
+    }
+
+    // CRITICAL FIX: Add cleanup method exactly like iOS
+    private fun cleanupNativeViews() {
+        Log.d(TAG, "Cleaning up native views for hot restart")
+
+        // Clean up DCMauiBridgeImpl views (preserves root)
+        DCMauiBridgeImpl.shared.cleanupForHotRestart()
+
+        // Clear the view registry (preserves root) - would need to add this method
+        // ViewRegistry.shared.clearAll()
+
+        // Reset Yoga shadow tree (preserves root)
+        // YogaShadowTree.shared.clearAll()
+
+        // Reset layout manager (preserves root)
+        // DCFLayoutManager.shared.clearAll()
+    }
+
+    // CRITICAL FIX: Add helper to get view by ID like iOS
+    fun getViewById(viewId: String): android.view.View? {
+        // First try our local views dictionary
+        views[viewId]?.let { return it }
+
+        // Then try DCMauiBridgeImpl's views  
+        DCMauiBridgeImpl.shared.getView(viewId)?.let { return it }
+
+        return null
     }
 
     fun cleanup() {
         Log.d(TAG, "Cleaning up bridge method channel")
-
-        queueJob?.cancel()
-        mainScope.cancel()
-        channel?.setMethodCallHandler(null)
-        channel = null
-        commandQueue.clear()
-        isInitialized = false
-
-        Log.d(TAG, "Bridge cleanup complete")
+        methodChannel?.setMethodCallHandler(null)
+        hotRestartChannel?.setMethodCallHandler(null)
+        methodChannel = null
+        hotRestartChannel = null
     }
 }
+

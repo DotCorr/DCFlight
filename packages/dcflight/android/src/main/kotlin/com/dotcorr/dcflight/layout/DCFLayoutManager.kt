@@ -397,17 +397,19 @@ class DCFLayoutManager private constructor() {
      * Register view with layout system
      */
     fun registerView(view: View, nodeId: String, componentType: String, componentInstance: DCFComponent) {
-        // First, register the view for direct access
-        registerView(view, nodeId)
+    // First, register the view for direct access
+    registerView(view, nodeId)
 
-        // Let the component know it's registered
-        componentInstance.viewRegisteredWithShadowTree(view, nodeId)
+    // Associate the view with its Yoga node
+    
+    // Let the component know it's registered like iOS
+    componentInstance.viewRegisteredWithShadowTree(view, nodeId)
 
-        // If this is a root view, trigger initial layout calculation
-        if (nodeId == "root") {
-            triggerLayoutCalculation()
-        }
+    // If this is a root view, trigger initial layout calculation like iOS
+    if (nodeId == "root") {
+        triggerLayoutCalculation()
     }
+}
 
     /**
      * Add a child node to a parent in the layout tree
@@ -552,3 +554,4 @@ private fun View.applyStyles(props: Map<String, Any?>) {
 }
 
 private fun Int.isFinite(): Boolean = this != Int.MAX_VALUE && this != Int.MIN_VALUE
+
