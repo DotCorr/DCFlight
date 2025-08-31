@@ -24,9 +24,9 @@ import com.dotcorr.dcf_primitives.R
 /**
  * DCFButtonComponent - Button component matching iOS DCFButtonComponent
  */
-class DCFButtonComponent : DCFComponent {
+class DCFButtonComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val button = AppCompatButton(context)
 
         // Default button styling
@@ -50,7 +50,7 @@ class DCFButtonComponent : DCFComponent {
         return button
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val button = view as? AppCompatButton ?: return false
 
         // Button title/text
@@ -179,7 +179,7 @@ class DCFButtonComponent : DCFComponent {
     private fun createButtonBackground(
         context: Context,
         color: Int,
-        props: Map<String, Any>
+        props: Map<String, Any?>
     ): android.graphics.drawable.Drawable {
         val cornerRadius = props["borderRadius"]?.let { radius ->
             when (radius) {
@@ -217,7 +217,7 @@ class DCFButtonComponent : DCFComponent {
 
     private fun createOutlinedButtonBackground(
         context: Context,
-        props: Map<String, Any>
+        props: Map<String, Any?>
     ): android.graphics.drawable.Drawable {
         val borderColor = props["borderColor"]?.let { parseColor(it) } ?: Color.parseColor("#007AFF")
         val borderWidth = props["borderWidth"]?.let { width ->

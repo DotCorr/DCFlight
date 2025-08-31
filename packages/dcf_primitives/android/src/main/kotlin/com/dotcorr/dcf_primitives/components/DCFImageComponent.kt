@@ -21,9 +21,9 @@ import java.net.URL
 /**
  * DCFImageComponent - Image display component matching iOS DCFImageComponent
  */
-class DCFImageComponent : DCFComponent {
+class DCFImageComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
 
         // Set default scale type
@@ -41,7 +41,7 @@ class DCFImageComponent : DCFComponent {
         return imageView
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val imageView = view as? ImageView ?: return false
 
         // Handle image source

@@ -23,7 +23,7 @@ import com.dotcorr.dcf_primitives.R
  * DCFTextComponent - Text rendering component for DCFlight
  * Matches iOS DCFTextComponent functionality
  */
-class DCFTextComponent : DCFComponent {
+class DCFTextComponent : DCFComponent() {
 
     companion object {
         // Font cache to match iOS implementation
@@ -32,7 +32,7 @@ class DCFTextComponent : DCFComponent {
         private const val DEFAULT_TEXT_SIZE = 14f
     }
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val textView = TextView(context)
 
         // Apply adaptive default styling - let OS handle light/dark mode
@@ -60,7 +60,7 @@ class DCFTextComponent : DCFComponent {
         return textView
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val textView = view as? TextView ?: return false
 
         // Update text content

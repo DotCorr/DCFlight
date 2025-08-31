@@ -20,9 +20,9 @@ import com.dotcorr.dcf_primitives.R
  * DCFCheckboxComponent - Checkbox component matching iOS DCFCheckboxComponent
  * Uses exact same prop names as iOS for cross-platform consistency
  */
-class DCFCheckboxComponent : DCFComponent {
+class DCFCheckboxComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val checkbox = AppCompatCheckBox(context)
 
         // Store component type
@@ -37,7 +37,7 @@ class DCFCheckboxComponent : DCFComponent {
         return checkbox
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val checkbox = view as? AppCompatCheckBox ?: return false
 
         // value - EXACT iOS prop name (the checked state)

@@ -21,9 +21,9 @@ import com.dotcorr.dcf_primitives.R
  * DCFWebViewComponent - WebView component matching iOS DCFWebViewComponent
  * Uses exact same prop names as iOS WKWebView for cross-platform consistency
  */
-class DCFWebViewComponent : DCFComponent {
+class DCFWebViewComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val webView = WebView(context)
 
         // Enable JavaScript by default like iOS
@@ -41,7 +41,7 @@ class DCFWebViewComponent : DCFComponent {
         return webView
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val webView = view as? WebView ?: return false
 
         // source - EXACT iOS prop name

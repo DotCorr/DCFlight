@@ -12,25 +12,84 @@ import android.view.View
 import android.view.ViewGroup
 
 /**
- * Protocol that all DCFlight components must implement
- * Each component extends this interface and must override these functions
+ * Abstract base class that all DCFlight components must extend
+ * Matches iOS DCFComponent protocol pattern
+ * Each component extends this class and must override these functions
  * even if they seem like dead code - this ensures components are future-proof
  */
-interface DCFComponent {
+abstract class DCFComponent {
+
+    // Properties that were passed during creation
+    protected var initialProps: Map<String, Any?> = emptyMap()
+
+    // Bound view reference
+    protected var boundView: View? = null
+
+    /**
+     * Default constructor for components
+     */
+    constructor() {
+        this.initialProps = emptyMap()
+    }
+
+    /**
+     * Constructor with initial properties
+     */
+    constructor(props: Map<String, Any?>) {
+        this.initialProps = props
+    }
+
     /**
      * Create a view with the given props
      */
-    fun createView(context: Context, props: Map<String, Any?>): View
+    abstract fun createView(context: Context, props: Map<String, Any?>): View
+
+    /**
+     * Alternative createView for backward compatibility
+     */
+    fun createView(context: Context): View {
+        return createView(context, initialProps)
+    }
 
     /**
      * Update a view with new props
      */
-    fun updateView(view: View, props: Map<String, Any?>): Boolean
+    abstract fun updateView(view: View, props: Map<String, Any?>): Boolean
+
+    /**
+     * Apply properties to the component
+     */
+    open fun applyProperties(props: Map<String, Any?>) {
+        boundView?.let { view ->
+            updateView(view, props)
+        }
+    }
+
+    /**
+     * Update properties of the component
+     */
+    open fun updateProperties(props: Map<String, Any?>) {
+        applyProperties(props)
+    }
+
+    /**
+     * Bind a view to this component
+     */
+    open fun bindView(view: View) {
+        this.boundView = view
+    }
+
+    /**
+     * Cleanup when component is removed
+     */
+    open fun cleanup() {
+        boundView = null
+    }
 
     /**
      * Apply layout to the view from Yoga calculations
      */
-    fun applyLayout(view: View, layout: YogaLayout) {
+    open fun applyLayout(view: View, layout: YogaLayout) {
         // Default implementation - position and size the view
         val params = view.layoutParams ?: ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -51,7 +110,7 @@ interface DCFComponent {
     /**
      * Get intrinsic content size for a view (for text measurement, etc.)
      */
-    fun getIntrinsicSize(view: View, props: Map<String, Any?>): Size {
+    open fun getIntrinsicSize(view: View, props: Map<String, Any?>): Size {
         // Default implementation - measure the view
         view.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
@@ -63,12 +122,25 @@ interface DCFComponent {
     /**
      * Called when a view is registered with the shadow tree
      */
-    fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    open fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         // Default implementation - store node ID on the view
-        view.setTag(R.id.dcf_node_id, nodeId)
+        view.setTag(DCF_NODE_ID_TAG, nodeId)
     }
 
     companion object {
+        // Tag IDs for storing data on views
+        // Using high numbers to avoid conflicts with user-defined IDs
+        const val DCF_NODE_ID_TAG = 0x7f0a0001
+        const val DCF_EVENT_CALLBACK_TAG = 0x7f0a0002
+        const val DCF_VIEW_ID_TAG = 0x7f0a0003
+        const val DCF_EVENT_TYPES_TAG = 0x7f0a0004
+        const val DCF_COMPONENT_TYPE_TAG = 0x7f0a0005
+        const val DCF_TEST_ID_TAG = 0x7f0a0006
+        const val DCF_WEBVIEW_CLIENT_TAG = 0x7f0a0007
+        const val DCF_WEBVIEW_CHROME_CLIENT_TAG = 0x7f0a0008
+        const val DCF_WEBVIEW_PROGRESS_TAG = 0x7f0a0009
+        const val DCF_WEBVIEW_NAVIGATION_GESTURES_TAG = 0x7f0a000a
+
         /**
          * Handle tunnel method calls from Dart
          * Components should override this in their companion object
@@ -120,13 +192,13 @@ object EventPropagation {
         nativeAction?.invoke(view, eventData)
 
         // Get the stored event callback for this view
-        val callback = view.getTag(R.id.dcf_event_callback) as? (String, String, Map<String, Any?>) -> Unit
+        val callback = view.getTag(DCFComponent.DCF_EVENT_CALLBACK_TAG) as? (String, String, Map<String, Any?>) -> Unit
             ?: return
 
-        val viewId = view.getTag(R.id.dcf_view_id) as? String ?: return
+        val viewId = view.getTag(DCFComponent.DCF_VIEW_ID_TAG) as? String ?: return
 
         @Suppress("UNCHECKED_CAST")
-        val eventTypes = view.getTag(R.id.dcf_event_types) as? List<String> ?: return
+        val eventTypes = view.getTag(DCFComponent.DCF_EVENT_TYPES_TAG) as? List<String> ?: return
 
         // Check if this event type is registered
         val normalizedEventName = normalizeEventNameForPropagation(eventName)

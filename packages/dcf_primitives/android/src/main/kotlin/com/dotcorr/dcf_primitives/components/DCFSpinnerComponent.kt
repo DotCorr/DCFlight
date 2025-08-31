@@ -20,9 +20,9 @@ import com.dotcorr.dcf_primitives.R
  * DCFSpinnerComponent - Activity indicator matching iOS DCFSpinnerComponent
  * Uses exact same prop names as iOS UIActivityIndicatorView for cross-platform consistency
  */
-class DCFSpinnerComponent : DCFComponent {
+class DCFSpinnerComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val progressBar = ProgressBar(context)
 
         // Set indeterminate mode (spinning)
@@ -40,7 +40,7 @@ class DCFSpinnerComponent : DCFComponent {
         return progressBar
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val progressBar = view as? ProgressBar ?: return false
 
         // animating - EXACT iOS prop name
