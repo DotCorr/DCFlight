@@ -52,9 +52,23 @@ abstract class DCFComponent {
     }
 
     /**
+     * Create view with optional props parameter
+     */
+    fun createView(context: Context, props: Map<String, Any?>? = null): View {
+        return createView(context, props ?: initialProps)
+    }
+
+    /**
      * Update a view with new props
      */
     abstract fun updateView(view: View, props: Map<String, Any?>): Boolean
+
+    /**
+     * Update view with null-safe props
+     */
+    fun updateView(view: View, props: Map<String, Any?>?): Boolean {
+        return updateView(view, props ?: emptyMap())
+    }
 
     /**
      * Apply properties to the component
@@ -148,6 +162,16 @@ abstract class DCFComponent {
         @JvmStatic
         fun handleTunnelMethod(method: String, params: Map<String, Any?>): Any? {
             println("⚠️ Component does not implement tunnel method: $method")
+            return null
+        }
+
+        /**
+         * Create a component instance with the given properties
+         * This is a factory method for creating component instances
+         */
+        @JvmStatic
+        fun createInstance(props: Map<String, Any?>): DCFComponent? {
+            // This should be overridden by specific component classes
             return null
         }
     }

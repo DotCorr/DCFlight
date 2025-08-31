@@ -53,9 +53,8 @@ android {
         implementation 'androidx.appcompat:appcompat:1.6.1'
         implementation 'com.google.android.material:material:1.11.0'
 
-        // DCFlight framework dependency - removed to break circular dependency
-        // The framework classes are available at runtime when both plugins are loaded
-        // api project(':dcflight')
+        // DCFlight framework dependency
+        implementation project(':dcflight')
 
         // WebView support
         implementation 'androidx.webkit:webkit:1.9.0'

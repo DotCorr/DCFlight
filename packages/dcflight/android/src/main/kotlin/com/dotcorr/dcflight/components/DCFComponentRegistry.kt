@@ -16,6 +16,10 @@ import java.util.concurrent.ConcurrentHashMap
  * Registry for all DCFlight component types
  * Manages component registration and creation
  */
+
+// Type alias for component factory function - must be at top level
+typealias ComponentFactory = (props: Map<String, Any?>) -> DCFComponent
+
 class DCFComponentRegistry private constructor() {
 
     companion object {
@@ -24,9 +28,6 @@ class DCFComponentRegistry private constructor() {
         @JvmField
         val shared = DCFComponentRegistry()
     }
-
-    // Type alias for component factory function
-    typealias ComponentFactory = (props: Map<String, Any?>) -> DCFComponent
 
     // Thread-safe map of component factories
     private val componentFactories = ConcurrentHashMap<String, ComponentFactory>()
@@ -109,6 +110,24 @@ class DCFComponentRegistry private constructor() {
 
     /**
      * Create a component instance
+     */
+    fun createComponentInstance(type: String): DCFComponent? {
+        val factory = componentFactories[type]
+        if (factory == null) {
+            Log.e(TAG, "No factory registered for component type: $type")
+            return null
+        }
+
+        return try {
+            factory(emptyMap())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create component instance of type: $type", e)
+            null
+        }
+    }
+
+    /**
+     * Create a component with view
      */
     fun createComponent(
         type: String,

@@ -13,7 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
-import com.dotcorr.dcflight.components.R
+import com.dotcorr.dcflight.R
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import java.util.concurrent.ConcurrentHashMap
@@ -506,5 +506,22 @@ class DCMauiBridgeImpl private constructor() {
         for ((parentId, childrenIds) in viewHierarchy) {
             Log.d(TAG, "  $parentId -> $childrenIds")
         }
+    }
+
+    /**
+     * Cleanup all resources
+     */
+    fun cleanup() {
+        Log.d(TAG, "Cleaning up DCMauiBridgeImpl")
+
+        // Clear all views
+        viewRegistry.clear()
+        viewHierarchy.clear()
+        childToParent.clear()
+
+        // Clear context
+        appContext = null
+
+        Log.d(TAG, "DCMauiBridgeImpl cleanup complete")
     }
 }
