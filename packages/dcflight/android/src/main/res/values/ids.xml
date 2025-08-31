@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- DCFlight framework view tag IDs -->
+    <!-- DCFlight framework core tag IDs -->
 
     <!-- Core view identification -->
     <item name="dcf_node_id" type="id"/>
@@ -22,22 +22,7 @@
     <item name="dcf_hit_slop_left" type="id"/>
     <item name="dcf_hit_slop_right" type="id"/>
 
-    <!-- Gradient and styling -->
-    <item name="dcf_gradient_drawable" type="id"/>
-    <item name="dcf_gradient_corner_radii" type="id"/>
-    <item name="dcf_pending_gradient_data" type="id"/>
-    <item name="dcf_pending_gradient_radii" type="id"/>
-    <item name="dcf_pending_gradient_border_width" type="id"/>
-    <item name="dcf_pending_gradient_border_color" type="id"/>
-
-    <!-- Shadow and transform -->
-    <item name="dcf_shadow_color" type="id"/>
-    <item name="dcf_shadow_radius" type="id"/>
-    <item name="dcf_shadow_offset_x" type="id"/>
-    <item name="dcf_shadow_offset_y" type="id"/>
-    <item name="dcf_transform_data" type="id"/>
-
-    <!-- Layout related -->
+    <!-- Layout engine -->
     <item name="dcf_layout_props" type="id"/>
     <item name="dcf_measure_func" type="id"/>
     <item name="dcf_yoga_node" type="id"/>
@@ -46,19 +31,6 @@
     <item name="dcf_accessibility_label" type="id"/>
     <item name="dcf_accessibility_hint" type="id"/>
     <item name="dcf_test_id" type="id"/>
-
-    <!-- Animation -->
-    <item name="dcf_animation_data" type="id"/>
-    <item name="dcf_animation_listener" type="id"/>
-
-    <!-- Gesture handling -->
-    <item name="dcf_gesture_recognizer" type="id"/>
-    <item name="dcf_touch_handler" type="id"/>
-
-    <!-- Component-specific data -->
-    <item name="dcf_text_data" type="id"/>
-    <item name="dcf_image_data" type="id"/>
-    <item name="dcf_scroll_data" type="id"/>
 
     <!-- Hot reload support -->
     <item name="dcf_hot_reload_marker" type="id"/>
