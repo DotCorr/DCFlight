@@ -13,7 +13,7 @@ class MyStackApp extends StatelessComponent {
   DCFComponentNode render() {
     return DCFView(
       layout: DCFLayout(flex: 1),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.blue),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.green),
     );
   }
 

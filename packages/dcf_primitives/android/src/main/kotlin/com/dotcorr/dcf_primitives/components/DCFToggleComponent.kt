@@ -20,9 +20,9 @@ import com.dotcorr.dcf_primitives.R
  * DCFToggleComponent - Toggle/Switch component matching iOS DCFToggleComponent
  * Uses exact same prop names as iOS for cross-platform consistency
  */
-class DCFToggleComponent : DCFComponent {
+class DCFToggleComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val switchControl = SwitchCompat(context)
 
         // Apply adaptive theming like iOS
@@ -44,7 +44,7 @@ class DCFToggleComponent : DCFComponent {
         return switchControl
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val switchControl = view as? SwitchCompat ?: return false
 
         // Update value - EXACT iOS prop name

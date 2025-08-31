@@ -18,9 +18,9 @@ import com.dotcorr.dcf_primitives.R
  * DCFViewComponent - Basic container view matching iOS DCFViewComponent
  * Acts as a container view similar to UIView in iOS or View in React Native
  */
-class DCFViewComponent : DCFComponent {
+class DCFViewComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val view = FrameLayout(context)
 
         // Store component type
@@ -32,11 +32,10 @@ class DCFViewComponent : DCFComponent {
         // Apply styles using the View extension - matching iOS pattern
         view.applyStyles(props)
 
-
         return view
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         // Just apply styles - the extension handles everything like iOS
         view.applyStyles(props)
         return true

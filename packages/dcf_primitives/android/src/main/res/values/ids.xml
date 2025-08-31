@@ -3,6 +3,14 @@
     <!-- DCF Primitives component-specific tag IDs -->
     <!-- These IDs are used by primitive components, NOT by the framework layer -->
 
+    <!-- Core framework IDs used across all components -->
+    <item name="dcf_node_id" type="id"/>
+    <item name="dcf_event_callback" type="id"/>
+    <item name="dcf_view_id" type="id"/>
+    <item name="dcf_event_types" type="id"/>
+    <item name="dcf_component_type" type="id"/>
+    <item name="dcf_test_id" type="id"/>
+
     <!-- Gradient and styling (for View-based components) -->
     <item name="dcf_gradient_drawable" type="id"/>
     <item name="dcf_gradient_corner_radii" type="id"/>

@@ -21,9 +21,9 @@ import com.dotcorr.dcf_primitives.R
  * DCFSliderComponent - Slider component matching iOS DCFSliderComponent
  * Uses exact same prop names as iOS UISlider for cross-platform consistency
  */
-class DCFSliderComponent : DCFComponent {
+class DCFSliderComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val seekBar = SeekBar(context)
 
         // Store component type
@@ -38,7 +38,7 @@ class DCFSliderComponent : DCFComponent {
         return seekBar
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val seekBar = view as? SeekBar ?: return false
 
         // Store min/max values for calculation - EXACT iOS prop names

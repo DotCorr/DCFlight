@@ -20,9 +20,9 @@ import com.dotcorr.dcf_primitives.R
 /**
  * DCFScrollViewComponent - Scrollable container matching iOS DCFScrollViewComponent
  */
-class DCFScrollViewComponent : DCFComponent {
+class DCFScrollViewComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         // Determine if horizontal or vertical scroll
         val isHorizontal = props["horizontal"] as? Boolean ?: false
 
@@ -61,7 +61,7 @@ class DCFScrollViewComponent : DCFComponent {
         return scrollView
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val scrollView = view as? ViewGroup ?: return false
 
         // Scroll enabled

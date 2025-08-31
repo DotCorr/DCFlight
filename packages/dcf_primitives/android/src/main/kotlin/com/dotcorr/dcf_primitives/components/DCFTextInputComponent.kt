@@ -24,9 +24,9 @@ import com.dotcorr.dcf_primitives.R
 /**
  * DCFTextInputComponent - Text input component matching iOS DCFTextInputComponent
  */
-class DCFTextInputComponent : DCFComponent {
+class DCFTextInputComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         val editText = AppCompatEditText(context)
 
         // Default styling
@@ -49,7 +49,7 @@ class DCFTextInputComponent : DCFComponent {
         return editText
     }
 
-    override fun updateView(view: View, props: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val editText = view as? AppCompatEditText ?: return false
 
         // Text value
