@@ -8,251 +8,261 @@
 package com.dotcorr.dcflight.bridge
 
 import android.util.Log
+import android.view.View
 import io.flutter.plugin.common.BinaryMessenger
-import io.flutter.plugin.common.EventChannel
-import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
 /**
- * Handles event communication between Flutter and native Android for DCFlight
+ * CRITICAL FIX: Method channel handler for all event-related operations
+ * Now matches iOS DCMauiEventMethodHandler exactly
  */
 class DCMauiEventMethodHandler private constructor() : MethodCallHandler {
-    private var methodChannel: MethodChannel? = null
-    private var eventChannel: EventChannel? = null
-    private var eventSink: EventChannel.EventSink? = null
-    private var binaryMessenger: BinaryMessenger? = null
-
+    
     companion object {
         private const val TAG = "DCMauiEventMethodHandler"
-        private const val METHOD_CHANNEL_NAME = "com.dotcorr.dcflight/events"
-        private const val EVENT_CHANNEL_NAME = "com.dotcorr.dcflight/event_stream"
+        // CRITICAL FIX: Use EXACT iOS channel name
+        private const val METHOD_CHANNEL_NAME = "com.dcmaui.events"
 
         @JvmStatic
         val shared = DCMauiEventMethodHandler()
     }
 
-    fun initialize(messenger: BinaryMessenger) {
+    // Method channel for event operations
+    private var methodChannel: MethodChannel? = null
+
+    // Event callback closure type - EXACT iOS pattern
+    typealias EventCallback = (String, String, Map<String, Any?>) -> Unit
+
+    // Store the event callback
+    private var eventCallback: EventCallback? = null
+
+    /**
+     * Initialize with Flutter binary messenger - EXACT iOS pattern
+     */
+    fun initialize(binaryMessenger: BinaryMessenger) {
         Log.d(TAG, "Initializing DCMauiEventMethodHandler")
 
-        binaryMessenger = messenger
-
-        // Setup method channel for event control
-        methodChannel = MethodChannel(messenger, METHOD_CHANNEL_NAME)
-        methodChannel?.setMethodCallHandler(this)
-
-        // Setup event channel for streaming events
-        eventChannel = EventChannel(messenger, EVENT_CHANNEL_NAME)
-        eventChannel?.setStreamHandler(object : EventChannel.StreamHandler {
-            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                Log.d(TAG, "Event stream listener attached")
-                eventSink = events
-            }
-
-            override fun onCancel(arguments: Any?) {
-                Log.d(TAG, "Event stream listener cancelled")
-                eventSink = null
-            }
-        })
+        methodChannel = MethodChannel(binaryMessenger, METHOD_CHANNEL_NAME)
+        setupMethodCallHandler()
 
         Log.d(TAG, "DCMauiEventMethodHandler initialized successfully")
     }
 
-    override fun onMethodCall(call: MethodCall, result: Result) {
-        Log.d(TAG, "onMethodCall: ${call.method}")
+    /**
+     * Register method call handler - EXACT iOS pattern
+     */
+    private fun setupMethodCallHandler() {
+        methodChannel?.setMethodCallHandler { call, result ->
+            Log.d(TAG, "Event method call: ${call.method}")
 
-        when (call.method) {
-            "sendEvent" -> {
-                val eventData = call.arguments as? Map<String, Any?>
-                if (eventData != null) {
-                    sendEventToFlutter(eventData)
-                    result.success(true)
-                } else {
-                    result.error("INVALID_ARGUMENT", "Event data must be a Map", null)
+            when (call.method) {
+                "addEventListeners" -> {
+                    handleAddEventListeners(call, result)
+                }
+
+                "removeEventListeners" -> {
+                    handleRemoveEventListeners(call, result)
+                }
+
+                else -> {
+                    result.notImplemented()
                 }
             }
+        }
+    }
 
-            "registerEventHandler" -> {
-                val handlerType = call.argument<String>("type")
-                val identifier = call.argument<String>("identifier")
-                registerEventHandler(handlerType, identifier)
-                result.success(true)
-            }
+    /**
+     * Set event callback function - EXACT iOS pattern
+     */
+    fun setEventCallback(callback: EventCallback) {
+        this.eventCallback = callback
+    }
 
-            "unregisterEventHandler" -> {
-                val identifier = call.argument<String>("identifier")
-                unregisterEventHandler(identifier)
-                result.success(true)
-            }
+    /**
+     * Send event to Dart - EXACT iOS pattern
+     */
+    fun sendEvent(viewId: String, eventName: String, eventData: Map<String, Any?>) {
+        Log.d(TAG, "Sending event: $eventName for view: $viewId")
 
-            "dispatchEvent" -> {
-                val eventType = call.argument<String>("type")
-                val eventData = call.argument<Map<String, Any?>>("data")
-                dispatchEvent(eventType, eventData)
-                result.success(true)
-            }
+        // Ensure event name follows "on" convention like iOS
+        val normalizedEventName = normalizeEventName(eventName)
 
-            else -> {
-                result.notImplemented()
+        if (eventCallback != null) {
+            // Use the stored callback if available
+            eventCallback!!(viewId, normalizedEventName, eventData)
+        } else {
+            // Fall back to method channel
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                methodChannel?.invokeMethod("onEvent", mapOf(
+                    "viewId" to viewId,
+                    "eventType" to normalizedEventName,
+                    "eventData" to eventData
+                ))
             }
         }
     }
 
     /**
-     * Send an event from native to Flutter
+     * Normalize event name to follow React-style convention - EXACT iOS logic
      */
-    fun sendEventToFlutter(eventData: Map<String, Any?>) {
-        Log.d(TAG, "Sending event to Flutter: $eventData")
-        eventSink?.success(eventData) ?: Log.w(TAG, "Event sink is null, cannot send event")
-    }
-
-    /**
-     * Send a component event to Flutter
-     */
-    fun sendComponentEvent(componentId: String, eventType: String, data: Map<String, Any?>?) {
-        val eventData = mutableMapOf<String, Any?>(
-            "componentId" to componentId,
-            "eventType" to eventType,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        data?.let {
-            eventData["data"] = it
+    private fun normalizeEventName(name: String): String {
+        // If already has "on" prefix and it's followed by uppercase letter, return as is
+        if (name.startsWith("on") && name.length > 2) {
+            val thirdChar = name[2]
+            if (thirdChar.isUpperCase()) {
+                return name
+            }
         }
 
-        sendEventToFlutter(eventData)
-    }
-
-    /**
-     * Send a touch event to Flutter
-     */
-    fun sendTouchEvent(componentId: String, touchType: String, x: Float, y: Float, pressure: Float = 1.0f) {
-        val eventData = mapOf(
-            "componentId" to componentId,
-            "eventType" to "touch",
-            "touchType" to touchType,
-            "x" to x,
-            "y" to y,
-            "pressure" to pressure,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        sendEventToFlutter(eventData)
-    }
-
-    /**
-     * Send a value change event to Flutter
-     */
-    fun sendValueChangeEvent(componentId: String, value: Any?) {
-        val eventData = mapOf(
-            "componentId" to componentId,
-            "eventType" to "valueChanged",
-            "value" to value,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        sendEventToFlutter(eventData)
-    }
-
-    /**
-     * Send a lifecycle event to Flutter
-     */
-    fun sendLifecycleEvent(eventType: String, data: Map<String, Any?>? = null) {
-        val eventData = mutableMapOf<String, Any?>(
-            "eventType" to "lifecycle",
-            "lifecycleEvent" to eventType,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        data?.let {
-            eventData["data"] = it
+        // Otherwise normalize: remove "on" if it exists, capitalize first letter, and add "on" prefix
+        var processedName = name
+        if (processedName.startsWith("on")) {
+            processedName = processedName.substring(2)
         }
 
-        sendEventToFlutter(eventData)
+        if (processedName.isEmpty()) {
+            return "onEvent"
+        }
+
+        return "on${processedName.substring(0, 1).uppercase()}${processedName.substring(1)}"
     }
 
-    /**
-     * Send a layout event to Flutter
-     */
-    fun sendLayoutEvent(componentId: String, x: Float, y: Float, width: Float, height: Float) {
-        val eventData = mapOf(
-            "componentId" to componentId,
-            "eventType" to "layout",
-            "x" to x,
-            "y" to y,
-            "width" to width,
-            "height" to height,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        sendEventToFlutter(eventData)
-    }
+    // MARK: - Method handlers
 
     /**
-     * Register an event handler for a specific type
+     * Handle addEventListeners calls - EXACT iOS pattern
      */
-    private fun registerEventHandler(type: String?, identifier: String?) {
-        Log.d(TAG, "Registering event handler: type=$type, identifier=$identifier")
-        // Store handler registration if needed
-    }
+    private fun handleAddEventListeners(call: MethodCall, result: Result) {
+        val args = call.arguments as? Map<String, Any>
+        val viewId = args?.get("viewId") as? String
+        val eventTypes = args?.get("eventTypes") as? List<String>
 
-    /**
-     * Unregister an event handler
-     */
-    private fun unregisterEventHandler(identifier: String?) {
-        Log.d(TAG, "Unregistering event handler: identifier=$identifier")
-        // Remove handler registration if needed
-    }
+        if (viewId == null || eventTypes == null) {
+            result.error("INVALID_ARGS", "Invalid arguments for addEventListeners", null)
+            return
+        }
 
-    /**
-     * Dispatch an event from Flutter to native
-     */
-    private fun dispatchEvent(eventType: String?, eventData: Map<String, Any?>?) {
-        Log.d(TAG, "Dispatching event: type=$eventType, data=$eventData")
+        Log.d(TAG, "Adding event listeners for view: $viewId, events: $eventTypes")
 
-        // Handle different event types
-        when (eventType) {
-            "componentTap" -> handleComponentTap(eventData)
-            "componentLongPress" -> handleComponentLongPress(eventData)
-            "componentDoubleTap" -> handleComponentDoubleTap(eventData)
-            "componentDrag" -> handleComponentDrag(eventData)
-            "componentPinch" -> handleComponentPinch(eventData)
-            else -> Log.w(TAG, "Unknown event type: $eventType")
+        // Get view from the registry like iOS
+        var view: View? = DCMauiBridgeMethodChannel.shared.getViewById(viewId)
+
+        // If still not found, try the LayoutManager like iOS
+        if (view == null) {
+            view = DCFLayoutManager.shared.getView(viewId)
+        }
+
+        if (view == null) {
+            Log.w(TAG, "View not found: $viewId")
+            // Return success anyway to prevent Flutter errors like iOS
+            result.success(true)
+            return
+        }
+
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            // Now register event listeners with the found view
+            val success = registerEventListeners(view, viewId, eventTypes)
+            result.success(success)
         }
     }
 
-    private fun handleComponentTap(data: Map<String, Any?>?) {
-        val componentId = data?.get("componentId") as? String
-        Log.d(TAG, "Component tap: $componentId")
-        // Handle tap event
+    /**
+     * Handle removeEventListeners calls - EXACT iOS pattern
+     */
+    private fun handleRemoveEventListeners(call: MethodCall, result: Result) {
+        val args = call.arguments as? Map<String, Any>
+        val viewId = args?.get("viewId") as? String
+        val eventTypes = args?.get("eventTypes") as? List<String>
+
+        if (viewId == null || eventTypes == null) {
+            result.error("INVALID_ARGS", "Invalid arguments for removeEventListeners", null)
+            return
+        }
+
+        Log.d(TAG, "Removing event listeners for view: $viewId, events: $eventTypes")
+
+        // Get view from the registry like iOS
+        var view: View? = DCMauiBridgeMethodChannel.shared.getViewById(viewId)
+
+        // If still not found, try the LayoutManager like iOS
+        if (view == null) {
+            view = DCFLayoutManager.shared.getView(viewId)
+        }
+
+        if (view == null) {
+            Log.w(TAG, "View not found: $viewId")
+            // Return success anyway to prevent Flutter errors like iOS
+            result.success(true)
+            return
+        }
+
+        // Execute on main thread like iOS
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            // Now unregister event listeners with the found view
+            val success = unregisterEventListeners(view, viewId, eventTypes)
+            result.success(success)
+        }
     }
 
-    private fun handleComponentLongPress(data: Map<String, Any?>?) {
-        val componentId = data?.get("componentId") as? String
-        Log.d(TAG, "Component long press: $componentId")
-        // Handle long press event
+    /**
+     * CRITICAL FIX: Helper method to register event listeners - EXACT iOS pattern
+     */
+    private fun registerEventListeners(view: View, viewId: String, eventTypes: List<String>): Boolean {
+        val viewType = view::class.simpleName
+
+        // Normalize event types for consistency like iOS
+        val normalizedEventTypes = eventTypes.map { normalizeEventName(it) }
+
+        // Store both original and normalized event types like iOS
+        val allEventTypes = mutableSetOf<String>()
+        allEventTypes.addAll(eventTypes)
+        allEventTypes.addAll(normalizedEventTypes)
+
+        Log.d(TAG, "Registering events for $viewType view $viewId: $allEventTypes")
+
+        // CRITICAL FIX: Store event registration info directly on the view for global event system like iOS
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, allEventTypes.toList())
+
+        // Store the event callback for the global system to use like iOS
+        val eventCallback: (String, String, Map<String, Any?>) -> Unit = { viewId, eventType, eventData ->
+            this.sendEvent(viewId, eventType, eventData)
+        }
+
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, eventCallback)
+
+        return true
     }
 
-    private fun handleComponentDoubleTap(data: Map<String, Any?>?) {
-        val componentId = data?.get("componentId") as? String
-        Log.d(TAG, "Component double tap: $componentId")
-        // Handle double tap event
-    }
+    /**
+     * CRITICAL FIX: Helper method to unregister event listeners - EXACT iOS pattern
+     */
+    private fun unregisterEventListeners(view: View, viewId: String, eventTypes: List<String>): Boolean {
+        val storedEventTypes = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_types) as? List<String>
+        if (storedEventTypes != null) {
+            val remainingTypes = storedEventTypes.toMutableList()
 
-    private fun handleComponentDrag(data: Map<String, Any?>?) {
-        val componentId = data?.get("componentId") as? String
-        val deltaX = (data?.get("deltaX") as? Number)?.toFloat() ?: 0f
-        val deltaY = (data?.get("deltaY") as? Number)?.toFloat() ?: 0f
-        Log.d(TAG, "Component drag: $componentId, delta: ($deltaX, $deltaY)")
-        // Handle drag event
-    }
+            for (eventType in eventTypes) {
+                val normalizedType = normalizeEventName(eventType)
+                remainingTypes.remove(normalizedType)
+            }
 
-    private fun handleComponentPinch(data: Map<String, Any?>?) {
-        val componentId = data?.get("componentId") as? String
-        val scale = (data?.get("scale") as? Number)?.toFloat() ?: 1f
-        Log.d(TAG, "Component pinch: $componentId, scale: $scale")
-        // Handle pinch event
+            if (remainingTypes.isEmpty()) {
+                // Clear all event data if no events remain like iOS
+                view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, null)
+                view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, null)
+                view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, null)
+            } else {
+                // Update remaining event types
+                view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, remainingTypes)
+            }
+        }
+
+        return true
     }
 
     /**
@@ -260,16 +270,10 @@ class DCMauiEventMethodHandler private constructor() : MethodCallHandler {
      */
     fun cleanup() {
         Log.d(TAG, "Cleaning up DCMauiEventMethodHandler")
-
         methodChannel?.setMethodCallHandler(null)
         methodChannel = null
-
-        eventSink = null
-        eventChannel?.setStreamHandler(null)
-        eventChannel = null
-
-        binaryMessenger = null
-
-        Log.d(TAG, "DCMauiEventMethodHandler cleaned up")
+        eventCallback = null
+        Log.d(TAG, "DCMauiEventMethodHandler cleanup complete")
     }
 }
+

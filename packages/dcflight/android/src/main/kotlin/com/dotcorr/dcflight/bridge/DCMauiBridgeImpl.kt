@@ -13,14 +13,15 @@ import android.view.View
 import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
-import com.dotcorr.dcflight.R
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.layout.YogaShadowTree
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Bridge between Dart and native Android code
- * Following iOS DCMauiBridgeImpl pattern - uses component registry, not hardcoded components
+ * CRITICAL FIX: Bridge between Dart and native Android code
+ * Now matches iOS DCMauiBridgeImpl method signatures EXACTLY
  */
 class DCMauiBridgeImpl private constructor() {
 
@@ -31,8 +32,8 @@ class DCMauiBridgeImpl private constructor() {
         val shared = DCMauiBridgeImpl()
     }
 
-    // View registry - stores all created views
-    private val viewRegistry = ConcurrentHashMap<String, View>()
+    // CRITICAL FIX: Match iOS property names exactly
+    internal val views = ConcurrentHashMap<String, View>()
 
     // Track parent-child relationships for proper cleanup
     private val viewHierarchy = ConcurrentHashMap<String, MutableList<String>>()
@@ -42,19 +43,31 @@ class DCMauiBridgeImpl private constructor() {
     private var appContext: Context? = null
 
     /**
-     * Initialize the framework
+     * Register a pre-existing view with the bridge - EXACT iOS signature
      */
-    fun initialize(context: Context): Boolean {
-        Log.d(TAG, "Initializing DCMauiBridgeImpl")
-        appContext = context.applicationContext
+    fun registerView(view: View, withId viewId: String) {
+        Log.d(TAG, "Registering view: $viewId")
+        views[viewId] = view
+        // Set view tag for identification
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
 
-        // Check if root view exists
-        val rootView = viewRegistry["root"]
+        // Register with layout manager like iOS
+        DCFLayoutManager.shared.registerView(view, viewId)
+    }
+
+    /**
+     * Initialize the framework - EXACT iOS signature
+     */
+    fun initialize(): Boolean {
+        Log.d(TAG, "Initializing DCMauiBridgeImpl")
+
+        // Check if root view exists already like iOS
+        val rootView = views["root"]
         if (rootView != null) {
             Log.d(TAG, "Root view already exists")
             // Ensure the root view is registered with the shadow tree
             if (!YogaShadowTree.shared.hasNode("root")) {
-                YogaShadowTree.shared.createNode("root", "View", emptyMap())
+                YogaShadowTree.shared.createNode("root", "View")
             }
         } else {
             Log.d(TAG, "Root view not found - will be registered later")
@@ -64,25 +77,17 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     /**
-     * Register a pre-existing view with the bridge
+     * CRITICAL FIX: Create a view with JSON props - EXACT iOS signature
      */
-    fun registerView(view: View, viewId: String) {
-        Log.d(TAG, "Registering view: $viewId")
-        viewRegistry[viewId] = view
-        view.setTag(R.id.dcf_view_id, viewId)
-
-        // Register with layout manager
-        DCFLayoutManager.shared.registerView(view, viewId)
-    }
-
-    /**
-     * Create a view with properties using component registry
-     */
-    fun createView(viewId: String, viewType: String, props: Map<String, Any?>): Boolean {
+    fun createView(viewId: String, viewType: String, propsJson: String): Boolean {
         Log.d(TAG, "Creating view: $viewId of type: $viewType")
 
-        if (viewRegistry.containsKey(viewId)) {
-            Log.w(TAG, "View already exists: $viewId")
+        // CRITICAL FIX: Parse props JSON like iOS
+        val props = try {
+            val jsonObject = JSONObject(propsJson)
+            jsonObject.toMap()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse props JSON", e)
             return false
         }
 
@@ -92,7 +97,12 @@ class DCMauiBridgeImpl private constructor() {
             return false
         }
 
-        // Use component registry to get the component type
+        // CRITICAL FIX: Detect if this is a screen component like iOS
+        val isScreen = (viewType == "Screen" || props["presentationStyle"] != null)
+
+        Log.d(TAG, "Creating ${if (isScreen) "screen" else "component"} '$viewId' of type '$viewType'")
+
+        // Get component type from registry
         val componentInstance = DCFComponentRegistry.shared.createComponentInstance(viewType)
         if (componentInstance == null) {
             Log.e(TAG, "Component type not registered: $viewType")
@@ -102,22 +112,23 @@ class DCMauiBridgeImpl private constructor() {
         // Create the view using the component
         val view = componentInstance.createView(context, props)
 
-        // Set view properties
-        view.id = View.generateViewId()
-        view.setTag(R.id.dcf_view_id, viewId)
-        view.setTag(R.id.dcf_component_type, viewType)
+        // Set view properties like iOS
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_component_type, viewType)
 
         // Register the view
-        viewRegistry[viewId] = view
+        views[viewId] = view
 
-        // Add to parent if specified
-        val parentId = props["parentId"] as? String
-        if (parentId != null) {
-            addToParent(view, parentId)
+        // CRITICAL FIX: Handle screen vs regular component like iOS
+        if (isScreen) {
+            Log.d(TAG, "🖼️ Creating screen '$viewId' with presentation style")
+            // Create screen as its own Yoga root
+            YogaShadowTree.shared.createScreenRoot(viewId, viewType)
+        } else {
+            Log.d(TAG, "🧩 Creating regular component '$viewId' of type '$viewType'")
+            // Regular components get added to the main Yoga tree
+            YogaShadowTree.shared.createNode(viewId, viewType)
         }
-
-        // Register with Yoga layout system
-        YogaShadowTree.shared.createNode(viewId, viewType, props)
 
         // Register with layout manager
         DCFLayoutManager.shared.registerView(view, viewId)
@@ -125,23 +136,32 @@ class DCMauiBridgeImpl private constructor() {
         // Notify component that view is registered
         componentInstance.viewRegisteredWithShadowTree(view, viewId)
 
-        Log.d(TAG, "Successfully created view: $viewId")
+        Log.d(TAG, "✅ Successfully created ${if (isScreen) "screen" else "component"} '$viewId'")
         return true
     }
 
     /**
-     * Update a view's properties using component registry
+     * CRITICAL FIX: Update a view with JSON props - EXACT iOS signature
      */
-    fun updateView(viewId: String, props: Map<String, Any?>): Boolean {
-        val view = viewRegistry[viewId]
+    fun updateView(viewId: String, propsJson: String): Boolean {
+        val view = views[viewId]
         if (view == null) {
             Log.w(TAG, "View not found for update: $viewId")
             return false
         }
 
-        val viewType = view.getTag(R.id.dcf_component_type) as? String ?: "View"
+        // CRITICAL FIX: Parse props JSON like iOS
+        val props = try {
+            val jsonObject = JSONObject(propsJson)
+            jsonObject.toMap()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse props JSON for update", e)
+            return false
+        }
 
-        Log.d(TAG, "Updating view: $viewId of type: $viewType")
+        val viewType = view.getTag(com.dotcorr.dcflight.R.id.dcf_component_type) as? String ?: "View"
+
+        Log.d(TAG, "🔄 Updating view: $viewId of type: $viewType")
 
         // Get component instance
         val componentInstance = DCFComponentRegistry.shared.createComponentInstance(viewType)
@@ -158,166 +178,53 @@ class DCMauiBridgeImpl private constructor() {
             return false
         }
 
-        // Update Yoga node
-        YogaShadowTree.shared.updateNode(viewId, props)
+        // CRITICAL FIX: Handle layout vs non-layout props like iOS
+        val layoutProps = extractLayoutProps(props)
+        if (layoutProps.isNotEmpty()) {
+            val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
 
-        Log.d(TAG, "Successfully updated view: $viewId")
+            if (isScreen) {
+                Log.d(TAG, "📐 Updating layout props for screen root '$viewId'")
+                YogaShadowTree.shared.updateNodeLayoutProps(viewId, layoutProps)
+            } else {
+                Log.d(TAG, "📐 Updating layout props for regular component '$viewId'")
+                YogaShadowTree.shared.updateNodeLayoutProps(viewId, layoutProps)
+            }
+        }
+
+        Log.d(TAG, "✅ Successfully updated view: $viewId")
         return true
     }
 
     /**
-     * Delete a view
+     * CRITICAL FIX: Set all children for a view with JSON - EXACT iOS signature
      */
-    fun deleteView(viewId: String): Boolean {
-        val view = viewRegistry[viewId]
-        if (view == null) {
-            Log.w(TAG, "View not found for deletion: $viewId")
+    fun setChildren(viewId: String, childrenJson: String): Boolean {
+        Log.d(TAG, "Setting children for view: $viewId")
+
+        // CRITICAL FIX: Parse children JSON like iOS
+        val childrenIds = try {
+            val jsonArray = JSONArray(childrenJson)
+            (0 until jsonArray.length()).map { jsonArray.getString(it) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse children JSON", e)
             return false
         }
 
-        Log.d(TAG, "Deleting view: $viewId")
-
-        // First, recursively delete all children
-        deleteChildrenRecursively(viewId)
-
-        // Remove from parent
-        (view.parent as? ViewGroup)?.removeView(view)
-
-        // Remove from registries
-        viewRegistry.remove(viewId)
-
-        // Clean up hierarchy tracking
-        cleanupHierarchyReferences(viewId)
-
-        // Remove from Yoga tree
-        YogaShadowTree.shared.removeNode(viewId)
-
-        // Remove from layout manager
-        DCFLayoutManager.shared.unregisterView(viewId)
-
-        Log.d(TAG, "Successfully deleted view: $viewId")
-        return true
-    }
-
-    /**
-     * Attach a child view to a parent view
-     */
-    fun attachView(childId: String, parentId: String, index: Int): Boolean {
-        Log.d(TAG, "Attaching view: $childId to parent: $parentId at index: $index")
-
-        val childView = viewRegistry[childId]
-        val parentView = viewRegistry[parentId] as? ViewGroup
-
-        if (childView == null || parentView == null) {
-            Log.e(TAG, "Cannot attach - child or parent not found")
-            return false
-        }
-
-        // Remove from current parent if exists
-        (childView.parent as? ViewGroup)?.removeView(childView)
-
-        // Add to new parent
-        if (index >= 0 && index < parentView.childCount) {
-            parentView.addView(childView, index)
-        } else {
-            parentView.addView(childView)
-        }
-
-        // Update hierarchy tracking
-        if (!viewHierarchy.containsKey(parentId)) {
-            viewHierarchy[parentId] = mutableListOf()
-        }
-
-        // Remove from old parent's children list
-        childToParent[childId]?.let { oldParentId ->
-            viewHierarchy[oldParentId]?.remove(childId)
-        }
-
-        // Add to new parent's children list
-        if (!viewHierarchy[parentId]!!.contains(childId)) {
-            viewHierarchy[parentId]!!.add(childId)
-        }
-
-        childToParent[childId] = parentId
-
-        // Update Yoga tree
-        YogaShadowTree.shared.addChildNode(parentId, childId, index)
-
-        Log.d(TAG, "Successfully attached view: $childId to parent: $parentId")
-        return true
-    }
-
-    /**
-     * Remove a view from the bridge
-     */
-    fun removeView(viewId: String): Boolean {
-        Log.d(TAG, "Removing view: $viewId")
-
-        val view = viewRegistry[viewId]
-        if (view == null) {
-            Log.w(TAG, "View not found for removal: $viewId")
-            return false
-        }
-
-        // Remove from parent if attached
-        (view.parent as? ViewGroup)?.removeView(view)
-
-        // Remove all children if it's a container
-        if (view is ViewGroup) {
-            removeAllChildrenViews(viewId)
-        }
-
-        // Clean up hierarchy references
-        cleanupHierarchyReferences(viewId)
-
-        // Remove from registries
-        viewRegistry.remove(viewId)
-
-        // Remove from layout systems
-        YogaShadowTree.shared.removeNode(viewId)
-        DCFLayoutManager.shared.unregisterView(viewId)
-
-        Log.d(TAG, "Successfully removed view: $viewId")
-        return true
-    }
-
-    /**
-     * Detach a child view from its parent
-     */
-    fun detachView(childId: String): Boolean {
-        Log.d(TAG, "Detaching view: $childId")
-
-        val childView = viewRegistry[childId]
-        if (childView == null) {
-            Log.w(TAG, "View not found for detachment: $childId")
-            return false
-        }
-
-        // Remove view from its parent
-        (childView.parent as? ViewGroup)?.removeView(childView)
-
-        // Update parent-child tracking
-        childToParent[childId]?.let { parentId ->
-            viewHierarchy[parentId]?.remove(childId)
-        }
-        childToParent.remove(childId)
-
-        Log.d(TAG, "Successfully detached view: $childId")
-        return true
-    }
-
-    /**
-     * Set all children for a view
-     */
-    fun setChildren(viewId: String, childrenIds: List<String>): Boolean {
-        Log.d(TAG, "Setting children for view: $viewId - children: $childrenIds")
-
-        val parentView = viewRegistry[viewId] as? ViewGroup
+        val parentView = views[viewId] as? ViewGroup
         if (parentView == null) {
             Log.e(TAG, "Parent view not found or not a ViewGroup: $viewId")
             return false
         }
 
+        // Handle children normally for all components like iOS
+        return setChildrenNormally(parentView, viewId, childrenIds)
+    }
+
+    /**
+     * CRITICAL FIX: Handle children for normal (non-present) components like iOS
+     */
+    private fun setChildrenNormally(parentView: ViewGroup, viewId: String, childrenIds: List<String>): Boolean {
         // Remove all existing children from tracking that are not in new list
         val oldChildren = viewHierarchy[viewId] ?: mutableListOf()
         for (oldChildId in oldChildren) {
@@ -339,201 +246,121 @@ class DCMauiBridgeImpl private constructor() {
 
         // Add children in order
         for ((index, childId) in childrenIds.withIndex()) {
-            val childView = viewRegistry[childId]
+            val childView = views[childId]
             if (childView != null) {
-                parentView.addView(childView)
+                parentView.addView(childView, index)
 
-                // Update shadow tree
-                YogaShadowTree.shared.addChildNode(viewId, childId, index)
+                // Update shadow tree like iOS
+                DCFLayoutManager.shared.addChildNode(viewId, childId, index)
             } else {
                 Log.w(TAG, "Child view not found: $childId")
             }
         }
 
-        Log.d(TAG, "Successfully set children for view: $viewId")
         return true
     }
 
     /**
-     * Handle batch updates
+     * Get children IDs for a view - iOS compatibility
      */
-    fun commitBatchUpdate(updates: List<Map<String, Any?>>): Boolean {
-        Log.d(TAG, "Committing batch update with ${updates.size} operations")
+    fun getChildrenIds(viewId: String): List<String> {
+        return viewHierarchy[viewId] ?: emptyList()
+    }
 
-        var allSucceeded = true
+    /**
+     * Get parent ID for a view - iOS compatibility
+     */
+    fun getParentId(childId: String): String? {
+        return childToParent[childId]
+    }
 
-        for (update in updates) {
-            val operation = update["operation"] as? String ?: continue
-
-            when (operation) {
-                "createView" -> {
-                    val viewId = update["viewId"] as? String ?: continue
-                    val viewType = update["viewType"] as? String ?: continue
-                    val props = update["props"] as? Map<String, Any?> ?: emptyMap()
-
-                    if (!createView(viewId, viewType, props)) {
-                        allSucceeded = false
-                    }
-                }
-
-                "updateView" -> {
-                    val viewId = update["viewId"] as? String ?: continue
-                    val props = update["props"] as? Map<String, Any?> ?: emptyMap()
-
-                    if (!updateView(viewId, props)) {
-                        allSucceeded = false
-                    }
-                }
-
-                "deleteView" -> {
-                    val viewId = update["viewId"] as? String ?: continue
-
-                    if (!deleteView(viewId)) {
-                        allSucceeded = false
-                    }
-                }
-
-                "attachView" -> {
-                    val childId = update["childId"] as? String ?: continue
-                    val parentId = update["parentId"] as? String ?: continue
-                    val index = update["index"] as? Int ?: -1
-
-                    if (!attachView(childId, parentId, index)) {
-                        allSucceeded = false
-                    }
-                }
-
-                "detachView" -> {
-                    val childId = update["childId"] as? String ?: continue
-
-                    if (!detachView(childId)) {
-                        allSucceeded = false
-                    }
-                }
-
-                "setChildren" -> {
-                    val viewId = update["viewId"] as? String ?: continue
-                    val childrenIds = update["childrenIds"] as? List<String> ?: emptyList()
-
-                    if (!setChildren(viewId, childrenIds)) {
-                        allSucceeded = false
-                    }
-                }
-            }
+    /**
+     * Print hierarchy for debugging - iOS compatibility
+     */
+    fun printHierarchy() {
+        Log.d(TAG, "View Hierarchy:")
+        for ((parentId, childrenIds) in viewHierarchy) {
+            Log.d(TAG, "  $parentId -> $childrenIds")
         }
-
-        Log.d(TAG, "Batch update completed - success: $allSucceeded")
-        return allSucceeded
     }
 
     /**
-     * Get a view by ID
+     * CRITICAL FIX: Extract layout properties like iOS
      */
-    fun getView(viewId: String): View? {
-        return viewRegistry[viewId]
+    private fun extractLayoutProps(props: Map<String, Any?>): Map<String, Any?> {
+        val layoutPropKeys = setOf(
+            "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
+            "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
+            "marginHorizontal", "marginVertical",
+            "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+            "paddingHorizontal", "paddingVertical",
+            "left", "top", "right", "bottom", "position",
+            "translateX", "translateY", "rotateInDegrees",
+            "scale", "scaleX", "scaleY",
+            "flexDirection", "justifyContent", "alignItems", "alignSelf", "alignContent",
+            "flexWrap", "flex", "flexGrow", "flexShrink", "flexBasis",
+            "display", "overflow", "direction", "borderWidth",
+            "aspectRatio", "gap", "rowGap", "columnGap"
+        )
+        return props.filter { layoutPropKeys.contains(it.key) }
     }
 
     /**
-     * Get root view
-     */
-    fun getRootView(): View? {
-        return viewRegistry["root"]
-    }
-
-    /**
-     * Clean up for hot restart
+     * Clean up all views except root view for hot restart - EXACT iOS pattern
      */
     fun cleanupForHotRestart() {
         Log.d(TAG, "Cleaning up for hot restart")
 
-        // Remove all non-root views
-        val nonRootViews = viewRegistry.filterKeys { it != "root" }
+        // Remove all non-root views from registry
+        val nonRootViews = views.filter { it.key != "root" }
         for ((viewId, view) in nonRootViews) {
             (view.parent as? ViewGroup)?.removeView(view)
-            viewRegistry.remove(viewId)
+            views.remove(viewId)
         }
 
         // Clear root view's children but preserve root
-        val rootView = viewRegistry["root"] as? ViewGroup
+        val rootView = views["root"] as? ViewGroup
         rootView?.removeAllViews()
 
         // Clear hierarchy tracking except for root
-        viewHierarchy.clear()
+        val nonRootHierarchy = viewHierarchy.filter { it.key != "root" }
+        for ((parentId, _) in nonRootHierarchy) {
+            viewHierarchy.remove(parentId)
+        }
+
+        // Clear child-to-parent mappings for non-root views
+        val nonRootChildMappings = childToParent.filter { it.value != "root" && it.key != "root" }
+        for ((childId, _) in nonRootChildMappings) {
+            childToParent.remove(childId)
+        }
+
+        // Reset root's children list but keep root entry
         viewHierarchy["root"] = mutableListOf()
-        childToParent.clear()
 
         Log.d(TAG, "Hot restart cleanup complete")
     }
 
-    // Private helper methods
-
-    private fun addToParent(view: View, parentId: String) {
-        val parent = viewRegistry[parentId] as? ViewGroup
-        if (parent != null) {
-            parent.addView(view)
-        } else {
-            Log.w(TAG, "Parent not found or not a ViewGroup: $parentId")
-        }
-    }
+    // Helper methods that were missing
 
     private fun deleteChildrenRecursively(parentId: String) {
         val children = viewHierarchy[parentId] ?: return
 
-        // Make a copy to avoid modification during iteration
         val childrenCopy = children.toList()
 
         for (childId in childrenCopy) {
-            // Recursively delete grandchildren first
             deleteChildrenRecursively(childId)
 
-            // Now delete the child view
-            val childView = viewRegistry[childId]
+            val childView = views[childId]
             if (childView != null) {
                 (childView.parent as? ViewGroup)?.removeView(childView)
-
-                // Remove from registries
-                viewRegistry.remove(childId)
+                views.remove(childId)
                 YogaShadowTree.shared.removeNode(childId)
                 DCFLayoutManager.shared.unregisterView(childId)
             }
 
-            // Update tracking
             childToParent.remove(childId)
         }
 
-        // Clear the children array for this parent
-        viewHierarchy[parentId]?.clear()
-    }
-
-    private fun removeAllChildrenViews(parentId: String) {
-        Log.d(TAG, "Removing all children from: $parentId")
-
-        val children = viewHierarchy[parentId] ?: return
-        val childrenCopy = children.toList()
-
-        for (childId in childrenCopy) {
-            // Recursively remove grandchildren first
-            removeAllChildrenViews(childId)
-
-            // Remove the child view
-            val childView = viewRegistry[childId]
-            if (childView != null) {
-                // Remove from parent
-                (childView.parent as? ViewGroup)?.removeView(childView)
-
-                // Remove from registries
-                viewRegistry.remove(childId)
-
-                // Remove from layout systems
-                YogaShadowTree.shared.removeNode(childId)
-                DCFLayoutManager.shared.unregisterView(childId)
-            }
-
-            // Update tracking
-            childToParent.remove(childId)
-        }
-
-        // Clear the children array for this parent
         viewHierarchy[parentId]?.clear()
     }
 
@@ -551,84 +378,151 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     /**
-     * Get children IDs for a view
+     * CRITICAL FIX: Delete a view - EXACT iOS signature
      */
-    fun getChildrenIds(viewId: String): List<String> {
-        return viewHierarchy[viewId] ?: emptyList()
-    }
-
-    /**
-     * Get parent ID for a view
-     */
-    fun getParentId(childId: String): String? {
-        return childToParent[childId]
-    }
-
-    /**
-     * Print hierarchy for debugging
-     */
-    fun printHierarchy() {
-        Log.d(TAG, "View Hierarchy:")
-        for ((parentId, childrenIds) in viewHierarchy) {
-            Log.d(TAG, "  $parentId -> $childrenIds")
-        }
-    }
-
-    /**
-     * Measure text dimensions
-     */
-    fun measureText(text: String, fontSize: Float, fontWeight: String?, maxWidth: Float?): Map<String, Float> {
-        Log.d(TAG, "Measuring text: '$text' with fontSize: $fontSize, fontWeight: $fontWeight, maxWidth: $maxWidth")
-
-        // Use Paint to measure text dimensions
-        val paint = android.graphics.Paint().apply {
-            textSize = fontSize
-            isAntiAlias = true
-
-            // Set font weight/style if provided
-            fontWeight?.let { weight ->
-                val typefaceStyle = when (weight.lowercase()) {
-                    "bold" -> android.graphics.Typeface.BOLD
-                    "italic" -> android.graphics.Typeface.ITALIC
-                    "bold-italic", "bolditalic" -> android.graphics.Typeface.BOLD_ITALIC
-                    else -> android.graphics.Typeface.NORMAL
-                }
-                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, typefaceStyle)
-            }
+    fun deleteView(viewId: String): Boolean {
+        val view = views[viewId]
+        if (view == null) {
+            Log.w(TAG, "View not found for deletion: $viewId")
+            return false
         }
 
-        val bounds = android.graphics.Rect()
+        Log.d(TAG, "Deleting view: $viewId")
 
-        // Handle maxWidth constraint if provided
-        val measuredText = if (maxWidth != null && maxWidth > 0) {
-            // Simple text wrapping - in production would need proper line breaking
-            val fullWidth = paint.measureText(text)
-            if (fullWidth <= maxWidth) {
-                text
-            } else {
-                // Approximate by truncating
-                var end = text.length
-                while (end > 0 && paint.measureText(text, 0, end) > maxWidth) {
-                    end--
-                }
-                text.substring(0, end)
-            }
+        // First, recursively delete all children like iOS
+        deleteChildrenRecursively(viewId)
+
+        // Remove from parent
+        (view.parent as? ViewGroup)?.removeView(view)
+
+        // Remove from registries
+        views.remove(viewId)
+
+        // Clean up hierarchy tracking
+        cleanupHierarchyReferences(viewId)
+
+        // Remove from Yoga tree
+        YogaShadowTree.shared.removeNode(viewId)
+
+        // Remove from layout manager  
+        DCFLayoutManager.shared.unregisterView(viewId)
+
+        Log.d(TAG, "Successfully deleted view: $viewId")
+        return true
+    }
+
+    /**
+     * CRITICAL FIX: Attach a child view to a parent view - EXACT iOS signature
+     */
+    fun attachView(childId: String, parentId: String, index: Int): Boolean {
+        Log.d(TAG, "Attaching view: $childId to parent: $parentId at index: $index")
+
+        val childView = views[childId]
+        val parentView = views[parentId] as? ViewGroup
+
+        if (childView == null || parentView == null) {
+            Log.e(TAG, "Cannot attach - child or parent not found")
+            return false
+        }
+
+        // Remove from current parent if exists
+        (childView.parent as? ViewGroup)?.removeView(childView)
+
+        // Add to new parent
+        if (index >= 0 && index < parentView.childCount) {
+            parentView.addView(childView, index)
         } else {
-            text
+            parentView.addView(childView)
         }
 
-        paint.getTextBounds(measuredText, 0, measuredText.length, bounds)
+        // Update hierarchy tracking like iOS
+        if (!viewHierarchy.containsKey(parentId)) {
+            viewHierarchy[parentId] = mutableListOf()
+        }
 
-        val width = paint.measureText(measuredText)
-        val height = bounds.height().toFloat()
+        // Remove from old parent's children list
+        childToParent[childId]?.let { oldParentId ->
+            viewHierarchy[oldParentId]?.remove(childId)
+        }
 
-        val result = mapOf(
-            "width" to width,
-            "height" to height
-        )
+        // Add to new parent's children list
+        if (!viewHierarchy[parentId]!!.contains(childId)) {
+            viewHierarchy[parentId]!!.add(childId)
+        }
 
-        Log.d(TAG, "Text measurement result: $result")
-        return result
+        childToParent[childId] = parentId
+
+        Log.d(TAG, "Successfully attached view: $childId to parent: $parentId")
+        return true
+    }
+
+    /**
+     * CRITICAL FIX: Detach a child view from its parent - EXACT iOS signature
+     */
+    fun detachView(childId: String): Boolean {
+        Log.d(TAG, "Detaching view: $childId")
+
+        val childView = views[childId]
+        if (childView == null) {
+            Log.w(TAG, "View not found for detachment: $childId")
+            return false
+        }
+
+        // Remove view from its parent like iOS
+        (childView.parent as? ViewGroup)?.removeView(childView)
+
+        // Update parent-child tracking like iOS
+        childToParent[childId]?.let { parentId ->
+            viewHierarchy[parentId]?.remove(childId)
+        }
+        childToParent.remove(childId)
+
+        // Note: We don't remove from views or other registries since we're just detaching like iOS
+
+        Log.d(TAG, "Successfully detached view: $childId")
+        return true
+    }
+
+    /**
+     * Get root view
+     */
+    fun getRootView(): View? {
+        return views["root"]
+    }
+
+    private fun deleteChildrenRecursively(parentId: String) {
+        val children = viewHierarchy[parentId] ?: return
+
+        val childrenCopy = children.toList()
+
+        for (childId in childrenCopy) {
+            deleteChildrenRecursively(childId)
+
+            val childView = views[childId]
+            if (childView != null) {
+                (childView.parent as? ViewGroup)?.removeView(childView)
+                views.remove(childId)
+                YogaShadowTree.shared.removeNode(childId)
+                DCFLayoutManager.shared.unregisterView(childId)
+            }
+
+            childToParent.remove(childId)
+        }
+
+        viewHierarchy[parentId]?.clear()
+    }
+
+    private fun cleanupHierarchyReferences(viewId: String) {
+        // Remove from parent's children list
+        childToParent[viewId]?.let { parentId ->
+            viewHierarchy[parentId]?.remove(viewId)
+        }
+
+        // Remove from child->parent mapping
+        childToParent.remove(viewId)
+
+        // Remove from parent->children mapping
+        viewHierarchy.remove(viewId)
     }
 
     /**
@@ -636,15 +530,47 @@ class DCMauiBridgeImpl private constructor() {
      */
     fun cleanup() {
         Log.d(TAG, "Cleaning up DCMauiBridgeImpl")
-
-        // Clear all views
-        viewRegistry.clear()
+        views.clear()
         viewHierarchy.clear()
         childToParent.clear()
-
-        // Clear context
         appContext = null
-
         Log.d(TAG, "DCMauiBridgeImpl cleanup complete")
     }
+}
+}
+
+// CRITICAL FIX: Add JSONObject to Map extension
+private fun JSONObject.toMap(): Map<String, Any?> {
+    val map = mutableMapOf<String, Any?>()
+    val keys = this.keys()
+    while (keys.hasNext()) {
+        val key = keys.next()
+        var value = this.get(key)
+
+        if (value is JSONObject) {
+            value = value.toMap()
+        } else if (value is JSONArray) {
+            value = value.toList()
+        }
+
+        map[key] = value
+    }
+    return map
+}
+
+// CRITICAL FIX: Add JSONArray to List extension
+private fun JSONArray.toList(): List<Any?> {
+    val list = mutableListOf<Any?>()
+    for (i in 0 until length()) {
+        var value = get(i)
+        
+        if (value is JSONObject) {
+            value = value.toMap()
+        } else if (value is JSONArray) {
+            value = value.toList()
+        }
+        
+        list.add(value)
+    }
+    return list
 }

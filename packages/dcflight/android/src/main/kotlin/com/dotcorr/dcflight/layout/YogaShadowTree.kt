@@ -482,6 +482,49 @@ class YogaShadowTree private constructor() {
         }
     }
 
+    fun setUseWebDefaults(enabled: Boolean) {
+    useWebDefaults = enabled
+
+    // Apply web defaults to the root node if it exists like iOS
+    if (enabled) {
+        applyWebDefaults()
+    }
+
+    Log.d(TAG, "UseWebDefaults set to $enabled")
+}
+
+/**
+ * CRITICAL FIX: Add missing isScreenRoot method to match iOS
+ */
+fun isScreenRoot(nodeId: String): Boolean {
+    return screenRootIds.contains(nodeId)
+}
+
+/**
+ * CRITICAL FIX: Add missing createNode with just ID and type (without props)
+ */
+fun createNode(id: String, componentType: String) {
+    createNode(id, componentType, emptyMap())
+}
+
+/**
+ * CRITICAL FIX: Add missing clearAll method for cleanup like iOS
+ */
+fun clearAll() {
+    syncLock.write {
+        // Use existing removeNode method for each node to ensure proper cleanup
+        val nodeIds = nodes.keys.toList()
+        for (nodeId in nodeIds) {
+            if (nodeId != "root") { // Don't remove root node
+                removeNode(nodeId)
+            }
+        }
+    }
+}
+
+
+
+
     fun createScreenRoot(id: String, componentType: String) {
         syncLock.write {
             val screenRoot = YogaNodeFactory.create()
@@ -1158,3 +1201,4 @@ class YogaShadowTree private constructor() {
         var positionType: String? = null
     )
 }
+
