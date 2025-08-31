@@ -248,7 +248,41 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     /**
-     * Detach a view from its parent
+     * Remove a view from the bridge
+     */
+    fun removeView(viewId: String): Boolean {
+        Log.d(TAG, "Removing view: $viewId")
+
+        val view = viewRegistry[viewId]
+        if (view == null) {
+            Log.w(TAG, "View not found for removal: $viewId")
+            return false
+        }
+
+        // Remove from parent if attached
+        (view.parent as? ViewGroup)?.removeView(view)
+
+        // Remove all children if it's a container
+        if (view is ViewGroup) {
+            removeAllChildrenViews(viewId)
+        }
+
+        // Clean up hierarchy references
+        cleanupHierarchyReferences(viewId)
+
+        // Remove from registries
+        viewRegistry.remove(viewId)
+
+        // Remove from layout systems
+        YogaShadowTree.shared.removeNode(viewId)
+        DCFLayoutManager.shared.unregisterView(viewId)
+
+        Log.d(TAG, "Successfully removed view: $viewId")
+        return true
+    }
+
+    /**
+     * Detach a child view from its parent
      */
     fun detachView(childId: String): Boolean {
         Log.d(TAG, "Detaching view: $childId")
@@ -471,6 +505,38 @@ class DCMauiBridgeImpl private constructor() {
         viewHierarchy[parentId]?.clear()
     }
 
+    private fun removeAllChildrenViews(parentId: String) {
+        Log.d(TAG, "Removing all children from: $parentId")
+
+        val children = viewHierarchy[parentId] ?: return
+        val childrenCopy = children.toList()
+
+        for (childId in childrenCopy) {
+            // Recursively remove grandchildren first
+            removeAllChildrenViews(childId)
+
+            // Remove the child view
+            val childView = viewRegistry[childId]
+            if (childView != null) {
+                // Remove from parent
+                (childView.parent as? ViewGroup)?.removeView(childView)
+
+                // Remove from registries
+                viewRegistry.remove(childId)
+
+                // Remove from layout systems
+                YogaShadowTree.shared.removeNode(childId)
+                DCFLayoutManager.shared.unregisterView(childId)
+            }
+
+            // Update tracking
+            childToParent.remove(childId)
+        }
+
+        // Clear the children array for this parent
+        viewHierarchy[parentId]?.clear()
+    }
+
     private fun cleanupHierarchyReferences(viewId: String) {
         // Remove from parent's children list
         childToParent[viewId]?.let { parentId ->
@@ -506,6 +572,63 @@ class DCMauiBridgeImpl private constructor() {
         for ((parentId, childrenIds) in viewHierarchy) {
             Log.d(TAG, "  $parentId -> $childrenIds")
         }
+    }
+
+    /**
+     * Measure text dimensions
+     */
+    fun measureText(text: String, fontSize: Float, fontWeight: String?, maxWidth: Float?): Map<String, Float> {
+        Log.d(TAG, "Measuring text: '$text' with fontSize: $fontSize, fontWeight: $fontWeight, maxWidth: $maxWidth")
+
+        // Use Paint to measure text dimensions
+        val paint = android.graphics.Paint().apply {
+            textSize = fontSize
+            isAntiAlias = true
+
+            // Set font weight/style if provided
+            fontWeight?.let { weight ->
+                val typefaceStyle = when (weight.lowercase()) {
+                    "bold" -> android.graphics.Typeface.BOLD
+                    "italic" -> android.graphics.Typeface.ITALIC
+                    "bold-italic", "bolditalic" -> android.graphics.Typeface.BOLD_ITALIC
+                    else -> android.graphics.Typeface.NORMAL
+                }
+                typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, typefaceStyle)
+            }
+        }
+
+        val bounds = android.graphics.Rect()
+
+        // Handle maxWidth constraint if provided
+        val measuredText = if (maxWidth != null && maxWidth > 0) {
+            // Simple text wrapping - in production would need proper line breaking
+            val fullWidth = paint.measureText(text)
+            if (fullWidth <= maxWidth) {
+                text
+            } else {
+                // Approximate by truncating
+                var end = text.length
+                while (end > 0 && paint.measureText(text, 0, end) > maxWidth) {
+                    end--
+                }
+                text.substring(0, end)
+            }
+        } else {
+            text
+        }
+
+        paint.getTextBounds(measuredText, 0, measuredText.length, bounds)
+
+        val width = paint.measureText(measuredText)
+        val height = bounds.height().toFloat()
+
+        val result = mapOf(
+            "width" to width,
+            "height" to height
+        )
+
+        Log.d(TAG, "Text measurement result: $result")
+        return result
     }
 
     /**

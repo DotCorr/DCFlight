@@ -51,24 +51,14 @@ abstract class DCFComponent {
         return createView(context, initialProps)
     }
 
-    /**
-     * Create view with optional props parameter
-     */
-    fun createView(context: Context, props: Map<String, Any?>? = null): View {
-        return createView(context, props ?: initialProps)
-    }
+
 
     /**
      * Update a view with new props
      */
     abstract fun updateView(view: View, props: Map<String, Any?>): Boolean
 
-    /**
-     * Update view with null-safe props
-     */
-    fun updateView(view: View, props: Map<String, Any?>?): Boolean {
-        return updateView(view, props ?: emptyMap())
-    }
+
 
     /**
      * Apply properties to the component
