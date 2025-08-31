@@ -47,34 +47,22 @@ open class DCFFlutterActivity : FlutterActivity() {
 
         println("🚀 $TAG: Initializing framework...")
 
-        // Register primitive components
-        registerComponents()
+        // Register framework components only
+        registerFrameworkComponents()
 
         isFrameworkInitialized = true
         println("✅ $TAG: Framework initialized successfully")
     }
 
     /**
-     * Register all primitive components
-     * Apps can override this to register custom components
+     * Register framework-level components
+     * This only registers components that are part of the framework itself
+     * Primitives and other plugins register themselves
      */
-    protected open fun registerComponents() {
-        // Register primitive components from dcf_primitives package
-        try {
-            // Use reflection to call PrimitivesComponentsReg if available
-            val primitivesRegClass = Class.forName("com.dotcorr.dcf_primitives.PrimitivesComponentsReg")
-            val registerMethod = primitivesRegClass.getDeclaredMethod("registerComponents")
-            registerMethod.invoke(null)
-
-            // Also verify registration
-            val verifyMethod = primitivesRegClass.getDeclaredMethod("verifyRegistration")
-            verifyMethod.invoke(null)
-
-            println("✅ $TAG: Primitive components registered")
-        } catch (e: Exception) {
-            println("⚠️ $TAG: Could not register primitive components: ${e.message}")
-            // Primitives package might not be included, which is okay for base framework
-        }
+    protected open fun registerFrameworkComponents() {
+        // Register any framework-level components
+        // Currently empty - primitives are registered by their own plugin
+        println("$TAG: Registering framework components")
     }
 
     /**
@@ -82,8 +70,6 @@ open class DCFFlutterActivity : FlutterActivity() {
      */
     protected open fun onHotReload() {
         println("🔄 $TAG: Hot reload triggered")
-        // Re-register components
-        registerComponents()
     }
 
     override fun onDestroy() {
