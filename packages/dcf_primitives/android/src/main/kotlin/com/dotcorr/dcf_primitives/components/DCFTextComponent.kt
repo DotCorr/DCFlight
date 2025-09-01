@@ -29,11 +29,15 @@ class DCFTextComponent : DCFComponent() {
         // Font cache to match iOS implementation
         private val fontCache = mutableMapOf<String, Typeface>()
 
-        private const val DEFAULT_TEXT_SIZE = 14f
+        // Match iOS system font size (17sp on iOS = ~17sp on Android)
+        private const val DEFAULT_TEXT_SIZE = 17f
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val textView = TextView(context)
+
+        // Set default font size to match iOS system font size
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_TEXT_SIZE)
 
         // Apply adaptive default styling - let OS handle light/dark mode
         textView.maxLines = Int.MAX_VALUE // numberOfLines = 0 in iOS means unlimited
@@ -41,11 +45,20 @@ class DCFTextComponent : DCFComponent() {
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {
             // Use theme colors that automatically adapt to light/dark mode
-            val typedValue = TypedValue()
-            context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)
-            textView.setTextColor(typedValue.data)
+            try {
+                val typedValue = TypedValue()
+                if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
+                    textView.setTextColor(typedValue.data)
+                } else {
+                    // Fallback: Use appropriate color for light mode (black text)
+                    textView.setTextColor(Color.parseColor("#FF000000"))
+                }
+            } catch (e: Exception) {
+                // Fallback: Use appropriate color for light mode (black text)
+                textView.setTextColor(Color.parseColor("#FF000000"))
+            }
         } else {
-            textView.setTextColor(Color.BLACK)
+            textView.setTextColor(Color.parseColor("#FF000000"))
         }
 
         // Apply props
@@ -89,6 +102,16 @@ class DCFTextComponent : DCFComponent() {
                 is Number -> textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size.toFloat())
                 is String -> {
                     size.removeSuffix("sp").toFloatOrNull()?.let { fontSize ->
+                        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
+                    }
+                }
+            }
+        } ?: run {
+            // Ensure default font size is applied if no fontSize is specified
+            if (textView.textSize == 0f || textView.textSize < DEFAULT_TEXT_SIZE) {
+                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_TEXT_SIZE)
+            }
+        }
                         textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
                     }
                 }
