@@ -32,13 +32,20 @@ class DCFSliderComponent : DCFComponent() {
         // Apply props
         updateView(seekBar, props)
 
-        // Apply StyleSheet properties
-        seekBar.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        seekBar.applyStyles(nonNullStyleProps)
 
         return seekBar
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val seekBar = view as? SeekBar ?: return false
 
         // Store min/max values for calculation - EXACT iOS prop names
@@ -72,44 +79,20 @@ class DCFSliderComponent : DCFComponent() {
 
         // Update minimum track tint color - EXACT iOS prop name
         props["minimumTrackTintColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        seekBar.progressTintList = ColorStateList.valueOf(colorInt)
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-            }
+            val colorInt = parseColor(color)
+            seekBar.progressTintList = ColorStateList.valueOf(colorInt)
         }
 
         // Update maximum track tint color - EXACT iOS prop name
         props["maximumTrackTintColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-            }
+            val colorInt = parseColor(color)
+            seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
         }
 
         // Update thumb tint color - EXACT iOS prop name
         props["thumbTintColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-            }
+            val colorInt = parseColor(color)
+            seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
         }
 
         // Handle continuous updates - EXACT iOS prop name

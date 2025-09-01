@@ -32,8 +32,9 @@ class DCFImageComponent : DCFComponent() {
         // Apply props
         updateView(imageView, props)
 
-        // Apply StyleSheet properties
-        imageView.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        imageView.applyStyles(nonNullStyleProps)
 
         // Store component type for identification
         imageView.setTag(R.id.dcf_component_type, "Image")
@@ -42,6 +43,12 @@ class DCFImageComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val imageView = view as? ImageView ?: return false
 
         // Handle image source
@@ -76,18 +83,10 @@ class DCFImageComponent : DCFComponent() {
 
         // Handle tint color
         props["tintColor"]?.let { tint ->
-            when (tint) {
-                is String -> {
-                    try {
-                        imageView.setColorFilter(Color.parseColor(tint), PorterDuff.Mode.SRC_IN)
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string, ignore
-                    }
-                }
-
-                is Int -> imageView.setColorFilter(tint, PorterDuff.Mode.SRC_IN)
-                null -> imageView.clearColorFilter()
-            }
+            val colorInt = parseColor(tint)
+            imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
+        } ?: run {
+            imageView.clearColorFilter()
         }
 
         // Handle opacity

@@ -41,8 +41,9 @@ class DCFButtonComponent : DCFComponent() {
         // Apply props
         updateView(button, props)
 
-        // Apply StyleSheet properties
-        button.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        button.applyStyles(nonNullStyleProps)
 
         // Store component type for identification
         button.setTag(R.id.dcf_component_type, "Button")
@@ -51,6 +52,12 @@ class DCFButtonComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val button = view as? AppCompatButton ?: return false
 
         // Button title/text
@@ -63,17 +70,7 @@ class DCFButtonComponent : DCFComponent() {
 
         // Text color
         props["titleColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        button.setTextColor(Color.parseColor(color))
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-
-                is Int -> button.setTextColor(color)
-            }
+            button.setTextColor(parseColor(color))
         } ?: run {
             // Default text color
             button.setTextColor(Color.WHITE)
@@ -93,25 +90,13 @@ class DCFButtonComponent : DCFComponent() {
 
         // Background color
         props["backgroundColor"]?.let { bgColor ->
-            val color = when (bgColor) {
-                is String -> {
-                    try {
-                        Color.parseColor(bgColor)
-                    } catch (e: IllegalArgumentException) {
-                        Color.parseColor("#007AFF") // iOS default blue
-                    }
-                }
-
-                is Int -> bgColor
-                else -> Color.parseColor("#007AFF")
-            }
-
+            val color = parseColor(bgColor)
             // Create background with ripple effect
             val background = createButtonBackground(button.context, color, props)
             button.background = background
         } ?: run {
             // Default iOS-style blue button
-            val background = createButtonBackground(button.context, Color.parseColor("#007AFF"), props)
+            val background = createButtonBackground(button.context, parseColor("#007AFF"), props)
             button.background = background
         }
 
@@ -144,14 +129,14 @@ class DCFButtonComponent : DCFComponent() {
             when (variant) {
                 "outlined" -> {
                     // Outlined button style
-                    button.setTextColor(props["titleColor"]?.let { parseColor(it) } ?: Color.parseColor("#007AFF"))
+                    button.setTextColor(props["titleColor"]?.let { parseColor(it) } ?: parseColor("#007AFF"))
                     val background = createOutlinedButtonBackground(button.context, props)
                     button.background = background
                 }
 
                 "text" -> {
                     // Text-only button style
-                    button.setTextColor(props["titleColor"]?.let { parseColor(it) } ?: Color.parseColor("#007AFF"))
+                    button.setTextColor(props["titleColor"]?.let { parseColor(it) } ?: parseColor("#007AFF"))
                     button.background = createTextButtonBackground(button.context)
                 }
 
@@ -179,7 +164,7 @@ class DCFButtonComponent : DCFComponent() {
     private fun createButtonBackground(
         context: Context,
         color: Int,
-        props: Map<String, Any?>
+        props: Map<String, Any>
     ): android.graphics.drawable.Drawable {
         val cornerRadius = props["borderRadius"]?.let { radius ->
             when (radius) {
@@ -217,9 +202,9 @@ class DCFButtonComponent : DCFComponent() {
 
     private fun createOutlinedButtonBackground(
         context: Context,
-        props: Map<String, Any?>
+        props: Map<String, Any>
     ): android.graphics.drawable.Drawable {
-        val borderColor = props["borderColor"]?.let { parseColor(it) } ?: Color.parseColor("#007AFF")
+        val borderColor = props["borderColor"]?.let { parseColor(it) } ?: parseColor("#007AFF")
         val borderWidth = props["borderWidth"]?.let { width ->
             when (width) {
                 is Number -> dpToPx(context, width.toFloat())
@@ -263,7 +248,7 @@ class DCFButtonComponent : DCFComponent() {
     private fun createTextButtonBackground(context: Context): android.graphics.drawable.Drawable {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             RippleDrawable(
-                android.content.res.ColorStateList.valueOf(Color.parseColor("#1E007AFF")),
+                android.content.res.ColorStateList.valueOf(parseColor("#1E007AFF")),
                 null,
                 null
             )
@@ -272,7 +257,7 @@ class DCFButtonComponent : DCFComponent() {
                 addState(
                     intArrayOf(android.R.attr.state_pressed),
                     GradientDrawable().apply {
-                        setColor(Color.parseColor("#1E007AFF"))
+                        setColor(parseColor("#1E007AFF"))
                     }
                 )
                 addState(
@@ -283,42 +268,5 @@ class DCFButtonComponent : DCFComponent() {
                 )
             }
         }
-    }
-
-    private fun parseColor(color: Any): Int {
-        return when (color) {
-            is String -> {
-                try {
-                    Color.parseColor(color)
-                } catch (e: IllegalArgumentException) {
-                    Color.BLACK
-                }
-            }
-
-            is Int -> color
-            else -> Color.BLACK
-        }
-    }
-
-    private fun darkenColor(color: Int, factor: Float): Int {
-        val r = (Color.red(color) * factor).toInt()
-        val g = (Color.green(color) * factor).toInt()
-        val b = (Color.blue(color) * factor).toInt()
-        return Color.argb(Color.alpha(color), r, g, b)
-    }
-
-    private fun lightenColor(color: Int, factor: Float): Int {
-        val r = Math.min((Color.red(color) * factor).toInt(), 255)
-        val g = Math.min((Color.green(color) * factor).toInt(), 255)
-        val b = Math.min((Color.blue(color) * factor).toInt(), 255)
-        return Color.argb(Color.alpha(color), r, g, b)
-    }
-
-    private fun dpToPx(context: Context, dp: Float): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            dp,
-            context.resources.displayMetrics
-        ).toInt()
     }
 }

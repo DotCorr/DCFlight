@@ -51,8 +51,9 @@ class DCFTextComponent : DCFComponent() {
         // Apply props
         updateView(textView, props)
 
-        // Apply StyleSheet properties
-        textView.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        textView.applyStyles(nonNullStyleProps)
 
         // Store component type for identification
         textView.setTag(R.id.dcf_component_type, "Text")
@@ -61,6 +62,12 @@ class DCFTextComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val textView = view as? TextView ?: return false
 
         // Update text content
@@ -73,17 +80,7 @@ class DCFTextComponent : DCFComponent() {
 
         // Update text color
         props["color"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        textView.setTextColor(Color.parseColor(color))
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string, ignore
-                    }
-                }
-
-                is Int -> textView.setTextColor(color)
-            }
+            textView.setTextColor(parseColor(color))
         }
 
         // Update font size

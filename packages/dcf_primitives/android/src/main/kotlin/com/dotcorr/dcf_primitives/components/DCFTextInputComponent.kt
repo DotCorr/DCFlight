@@ -40,8 +40,9 @@ class DCFTextInputComponent : DCFComponent() {
         // Apply props
         updateView(editText, props)
 
-        // Apply StyleSheet properties
-        editText.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        editText.applyStyles(nonNullStyleProps)
 
         // Store component type
         editText.setTag(R.id.dcf_component_type, "TextInput")
@@ -50,6 +51,12 @@ class DCFTextInputComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val editText = view as? AppCompatEditText ?: return false
 
         // Text value
@@ -69,32 +76,12 @@ class DCFTextInputComponent : DCFComponent() {
 
         // Placeholder text color
         props["placeholderTextColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        editText.setHintTextColor(Color.parseColor(color))
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color
-                    }
-                }
-
-                is Int -> editText.setHintTextColor(color)
-            }
+            editText.setHintTextColor(parseColor(color))
         }
 
         // Text color
         props["color"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        editText.setTextColor(Color.parseColor(color))
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color
-                    }
-                }
-
-                is Int -> editText.setTextColor(color)
-            }
+            editText.setTextColor(parseColor(color))
         }
 
         // Font size
@@ -348,13 +335,5 @@ class DCFTextInputComponent : DCFComponent() {
             editText.removeTextChangedListener(it)
             editText.setTag(R.id.dcf_text_input_watcher, null)
         }
-    }
-
-    private fun dpToPx(context: Context, dp: Float): Int {
-        return TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            dp,
-            context.resources.displayMetrics
-        ).toInt()
     }
 }

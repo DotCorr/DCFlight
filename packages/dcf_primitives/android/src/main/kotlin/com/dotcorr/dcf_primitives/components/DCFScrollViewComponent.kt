@@ -52,8 +52,9 @@ class DCFScrollViewComponent : DCFComponent() {
         // Apply props
         updateView(scrollView, props)
 
-        // Apply StyleSheet properties
-        scrollView.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        scrollView.applyStyles(nonNullStyleProps)
 
         // Store component type
         scrollView.setTag(R.id.dcf_component_type, "ScrollView")
@@ -62,6 +63,12 @@ class DCFScrollViewComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val scrollView = view as? ViewGroup ?: return false
 
         // Scroll enabled
