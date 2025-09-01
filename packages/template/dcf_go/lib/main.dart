@@ -14,7 +14,7 @@ class MyStackApp extends StatelessComponent {
     return DCFView(
       layout: DCFLayout(flex: 1),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.green),
-      children: [DCFText(content: "Text example")],
+      children: [DCFText(content: "Text example"),DCFButton(buttonProps: )],
     );
   }
 

@@ -39,6 +39,15 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         @JvmStatic
         lateinit var instance: DcflightPlugin
             private set
+            
+        @JvmStatic
+        fun getPluginBinding(): FlutterPlugin.FlutterPluginBinding? {
+            return if (::instance.isInitialized) {
+                instance.flutterPluginBinding
+            } else {
+                null
+            }
+        }
     }
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {

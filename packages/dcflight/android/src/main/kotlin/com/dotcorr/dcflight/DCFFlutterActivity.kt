@@ -8,6 +8,7 @@
 package com.dotcorr.dcflight
 
 import android.os.Bundle
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 
@@ -33,7 +34,10 @@ open class DCFFlutterActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         // Framework will register plugins here when implemented
-        println("$TAG: Flutter engine configured")
+        Log.d(TAG, "Flutter engine configured")
+        
+        // Now diverge to DCFlight native UI - matching iOS flow
+        divergeToFlight(flutterEngine)
     }
 
     /**
@@ -45,13 +49,28 @@ open class DCFFlutterActivity : FlutterActivity() {
             return
         }
 
-        println("🚀 $TAG: Initializing framework...")
+        Log.d(TAG, "🚀 Initializing framework...")
 
         // Register framework components only
         registerFrameworkComponents()
 
         isFrameworkInitialized = true
-        println("✅ $TAG: Framework initialized successfully")
+        Log.d(TAG, "✅ Framework initialized successfully")
+    }
+    
+    /**
+     * Diverge to native DCFlight UI - matches iOS DCFAppDelegate.divergeToFlight()
+     */
+    private fun divergeToFlight(flutterEngine: FlutterEngine) {
+        Log.d(TAG, "Diverging to native DCFlight UI...")
+        
+        // Find the plugin binding (this should be available after plugin initialization)
+        val pluginBinding = DcflightPlugin.getPluginBinding()
+        
+        // Call the diverger utility to set up native UI
+        DCDivergerUtil.divergeToFlight(this, pluginBinding)
+        
+        Log.d(TAG, "Successfully diverged to native UI")
     }
 
     /**
