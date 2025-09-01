@@ -11,6 +11,7 @@ import android.content.Context
 import android.view.View
 import androidx.appcompat.widget.AppCompatButton
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
@@ -41,7 +42,17 @@ class DCFButtonComponent : DCFComponent() {
         val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
         button.applyStyles(nonNullStyleProps)
 
-        // Store component type
+        // MATCH iOS: Handle onPress events using propagateEvent
+        button.setOnClickListener {
+            // 🚀 MATCH iOS: Use propagateEvent for onPress
+            propagateEvent(button, "onPress", mapOf(
+                "pressed" to true,
+                "timestamp" to System.currentTimeMillis() / 1000.0,
+                "buttonTitle" to button.text.toString()
+            ))
+        }
+
+        // Store component type for identification
         button.setTag(R.id.dcf_component_type, "Button")
 
         return button

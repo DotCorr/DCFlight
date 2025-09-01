@@ -14,6 +14,7 @@ import android.graphics.drawable.Drawable
 import android.view.View
 import android.widget.ImageView
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 import java.net.URL
@@ -131,9 +132,22 @@ class DCFImageComponent : DCFComponent() {
             val drawable = Drawable.createFromStream(inputStream, null)
             imageView.setImageDrawable(drawable)
             inputStream.close()
+            
+            // 🚀 MATCH iOS: Use propagateEvent for onLoad
+            propagateEvent(imageView, "onLoad", mapOf(
+                "source" to assetPath,
+                "type" to "asset"
+            ))
         } catch (e: Exception) {
             // Asset not found or error loading
             e.printStackTrace()
+            
+            // 🚀 MATCH iOS: Use propagateEvent for onError
+            propagateEvent(imageView, "onError", mapOf(
+                "error" to "Asset not found: $assetPath",
+                "source" to assetPath,
+                "type" to "asset"
+            ))
         }
     }
 
@@ -147,10 +161,31 @@ class DCFImageComponent : DCFComponent() {
             )
             if (resourceId != 0) {
                 imageView.setImageResource(resourceId)
+                
+                // 🚀 MATCH iOS: Use propagateEvent for onLoad
+                propagateEvent(imageView, "onLoad", mapOf(
+                    "source" to drawableName,
+                    "type" to "drawable",
+                    "resourceId" to resourceId
+                ))
+            } else {
+                // 🚀 MATCH iOS: Use propagateEvent for onError
+                propagateEvent(imageView, "onError", mapOf(
+                    "error" to "Drawable not found: $drawableName",
+                    "source" to drawableName,
+                    "type" to "drawable"
+                ))
             }
         } catch (e: Exception) {
             // Drawable not found
             e.printStackTrace()
+            
+            // 🚀 MATCH iOS: Use propagateEvent for onError
+            propagateEvent(imageView, "onError", mapOf(
+                "error" to "Error loading drawable: ${e.message}",
+                "source" to drawableName,
+                "type" to "drawable"
+            ))
         }
     }
 

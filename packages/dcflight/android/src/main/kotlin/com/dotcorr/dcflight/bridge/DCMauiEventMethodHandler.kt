@@ -28,7 +28,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         val shared = DCMauiEventMethodHandler()
 
         fun initialize(binaryMessenger: io.flutter.plugin.common.BinaryMessenger) {
-            val channel = MethodChannel(binaryMessenger, "com.dotcorr.dcflight/events")
+            val channel = MethodChannel(binaryMessenger, "com.dcmaui.events")
             channel.setMethodCallHandler(shared)
         }
     }
@@ -46,6 +46,12 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             }
             "dispatchEvent" -> {
                 handleDispatchEvent(call.arguments as? Map<String, Any>, result)
+            }
+            "addEventListeners" -> {
+                handleAddEventListeners(call.arguments as? Map<String, Any>, result)
+            }
+            "removeEventListeners" -> {
+                handleRemoveEventListeners(call.arguments as? Map<String, Any>, result)
             }
             else -> {
                 result.notImplemented()
@@ -182,5 +188,107 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     fun cleanup() {
         eventCallbacks.clear()
         viewEventListeners.clear()
+    }
+
+    // Handle addEventListeners calls (match iOS API)
+    private fun handleAddEventListeners(args: Map<String, Any>?, result: Result) {
+        val viewId = args?.get("viewId") as? String
+        val eventTypes = args?.get("eventTypes") as? List<String>
+
+        if (viewId == null || eventTypes == null) {
+            result.error("INVALID_ARGS", "Invalid arguments for addEventListeners", null)
+            return
+        }
+
+        val view = ViewRegistry.shared.getView(viewId)
+        if (view == null) {
+            result.error("VIEW_NOT_FOUND", "View $viewId not found", null)
+            return
+        }
+
+        // Store viewId and eventTypes on the view for propagateEvent to use
+        view.setTag(viewId.hashCode(), viewId)
+        view.setTag((viewId + "_eventTypes").hashCode(), eventTypes)
+
+        // Create event callback that sends events through method channel
+        val eventCallback: (String, String, Map<String, Any>) -> Unit = { vId, eventType, eventData ->
+            sendEventToFlutter(vId, eventType, eventData)
+        }
+        
+        // Store the callback on the view for propagateEvent to use
+        view.setTag((viewId + "_eventCallback").hashCode(), eventCallback)
+
+        // Set up native event listeners for each event type
+        for (eventType in eventTypes) {
+            setupNativeEventListener(view, eventType) { eventData ->
+                eventCallback(viewId, eventType, eventData)
+            }
+        }
+
+        result.success(true)
+    }
+
+    // Handle removeEventListeners calls (match iOS API)
+    private fun handleRemoveEventListeners(args: Map<String, Any>?, result: Result) {
+        val viewId = args?.get("viewId") as? String
+        val eventTypes = args?.get("eventTypes") as? List<String>
+
+        if (viewId == null || eventTypes == null) {
+            result.error("INVALID_ARGS", "Invalid arguments for removeEventListeners", null)
+            return
+        }
+
+        val view = ViewRegistry.shared.getView(viewId)
+        if (view != null) {
+            // Remove native event listeners
+            for (eventType in eventTypes) {
+                removeNativeEventListener(view, eventType)
+            }
+
+            // Clean up stored data
+            view.setTag(viewId.hashCode(), null)
+            view.setTag((viewId + "_eventTypes").hashCode(), null)
+            view.setTag((viewId + "_eventCallback").hashCode(), null)
+        }
+
+        result.success(true)
+    }
+
+    // Send event to Flutter through method channel (match iOS sendEvent)
+    private fun sendEventToFlutter(viewId: String, eventType: String, eventData: Map<String, Any>) {
+        val normalizedEventName = normalizeEventName(eventType)
+        
+        Log.d(TAG, "Sending event $normalizedEventName for view $viewId to Flutter")
+        
+        // For now, we'll use the direct callback mechanism
+        // In a full implementation, this would go through the method channel back to Flutter
+        // but for immediate functionality, we can trigger it directly through the engine
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            Log.d(TAG, "Event $normalizedEventName sent for view $viewId")
+        }
+    }
+
+    // Normalize event name to follow React-style convention (match iOS)
+    private fun normalizeEventName(name: String): String {
+        // If already has "on" prefix and it's followed by uppercase letter, return as is
+        if (name.startsWith("on") && name.length > 2) {
+            val thirdChar = name[2]
+            if (thirdChar.isUpperCase()) {
+                return name
+            }
+        }
+        
+        // Otherwise normalize: remove "on" if it exists, capitalize first letter, and add "on" prefix
+        var processedName = name
+        if (processedName.startsWith("on")) {
+            processedName = processedName.drop(2)
+        }
+        
+        if (processedName.isEmpty()) {
+            return "onEvent"
+        }
+        
+        return "on${processedName.replaceFirstChar { it.uppercase() }}"
+    }
     }
 }

@@ -326,6 +326,9 @@ object DCFScreenUtilities {
         Log.d(TAG, "Configuration changed")
         updateDisplayMetrics()
         notifyDimensionChange()
+        
+        // MATCH iOS: Trigger layout recalculation on orientation change
+        DCFLayoutManager.shared.calculateLayoutNow()
     }
 
     /**

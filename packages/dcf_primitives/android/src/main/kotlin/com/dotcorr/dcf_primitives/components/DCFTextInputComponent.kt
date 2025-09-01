@@ -19,6 +19,8 @@ import android.widget.EditText
 import androidx.appcompat.widget.AppCompatEditText
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.utils.ColorUtilities
+import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -262,9 +264,11 @@ class DCFTextInputComponent : DCFComponent() {
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
 
                 override fun afterTextChanged(s: Editable?) {
-                    // Store the callback for event handling
-                    editText.setTag(R.id.dcf_event_callback, onChange)
-                    // The actual callback would be handled by the framework
+                    // 🚀 MATCH iOS: Use propagateEvent for onChangeText
+                    propagateEvent(editText, "onChangeText", mapOf(
+                        "text" to (s?.toString() ?: ""),
+                        "length" to (s?.length ?: 0)
+                    ))
                 }
             }
 
