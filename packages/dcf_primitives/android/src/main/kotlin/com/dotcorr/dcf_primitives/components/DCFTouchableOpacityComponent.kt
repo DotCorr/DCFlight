@@ -103,7 +103,7 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         return updateViewInternal(view, props.filterValues { it != null }.mapValues { it.value!! })
     }
 
-    private fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         var hasUpdates = false
 
         // activeOpacity prop - matches iOS exactly

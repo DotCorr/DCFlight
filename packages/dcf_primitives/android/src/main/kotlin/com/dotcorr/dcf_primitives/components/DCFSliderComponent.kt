@@ -67,7 +67,7 @@ class DCFSliderComponent : DCFComponent() {
         return updateViewInternal(view, props.filterValues { it != null }.mapValues { it.value!! })
     }
 
-    private fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val seekBar = view as SeekBar
         var hasUpdates = false
 

@@ -39,7 +39,7 @@ class DCFAlertComponent : DCFComponent() {
         return updateViewInternal(view, props.filterValues { it != null }.mapValues { it.value!! })
     }
 
-    private fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         var hasUpdates = false
 
         // visible prop - show/hide alert

@@ -80,7 +80,7 @@ class DCFToggleComponent : DCFComponent() {
 
         // Active track color (on tint color in iOS)
         props["activeTrackColor"]?.let { color ->
-            val colorInt = parseColor(color)
+            val colorInt = parseColor(color as String)
             val states = arrayOf(
                 intArrayOf(android.R.attr.state_checked),
                 intArrayOf()
@@ -91,7 +91,7 @@ class DCFToggleComponent : DCFComponent() {
 
         // Inactive track color (background color in iOS)
         props["inactiveTrackColor"]?.let { color ->
-            val colorInt = parseColor(color)
+            val colorInt = parseColor(color as String)
             val currentTrackTint = switchControl.trackTintList
             if (currentTrackTint != null) {
                 val states = arrayOf(
@@ -108,7 +108,7 @@ class DCFToggleComponent : DCFComponent() {
 
         // Active thumb color
         props["activeThumbColor"]?.let { color ->
-            val colorInt = parseColor(color)
+            val colorInt = parseColor(color as String)
             val states = arrayOf(
                 intArrayOf(android.R.attr.state_checked),
                 intArrayOf()
@@ -119,7 +119,7 @@ class DCFToggleComponent : DCFComponent() {
 
         // Inactive thumb color (Note: iOS UISwitch doesn't have separate inactive thumb color)
         props["inactiveThumbColor"]?.let { color ->
-            val colorInt = parseColor(color)
+            val colorInt = parseColor(color as String)
             val currentThumbTint = switchControl.thumbTintList
             if (currentThumbTint != null) {
                 val states = arrayOf(
