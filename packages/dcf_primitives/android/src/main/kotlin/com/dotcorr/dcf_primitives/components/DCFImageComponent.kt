@@ -71,21 +71,18 @@ class DCFImageComponent : DCFComponent() {
 
         // Handle resize mode
         props["resizeMode"]?.let { mode ->
-            imageView.scaleType = when (mode) {
+            val scaleType = when (mode) {
                 "cover" -> ImageView.ScaleType.CENTER_CROP
                 "contain" -> ImageView.ScaleType.FIT_CENTER
                 "stretch" -> ImageView.ScaleType.FIT_XY
-                "repeat" -> ImageView.ScaleType.CENTER // Android doesn't have built-in repeat
+                "repeat" -> ImageView.ScaleType.CENTER
                 "center" -> ImageView.ScaleType.CENTER
                 else -> ImageView.ScaleType.FIT_CENTER
             }
-        }
-
-        imageView.scaleType = scaleType
+            imageView.scaleType = scaleType
         }
 
         return true
-    }
     }
 
     private fun loadImageFromSource(imageView: ImageView, source: String) {

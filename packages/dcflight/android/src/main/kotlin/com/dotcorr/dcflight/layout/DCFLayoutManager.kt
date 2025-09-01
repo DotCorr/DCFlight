@@ -287,56 +287,30 @@ fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
      * Direct layout application helper
      */
     private fun applyLayoutDirectly(view: View, left: Int, top: Int, width: Int, height: Int) {
-        // Add logging to debug layout application
         Log.d(TAG, "Applying layout: view=${view::class.simpleName}, left=$left, top=$top, width=$width, height=$height")
         
-        // Multiple validation layers for safety
         if (view.parent == null && view.context == null) {
             Log.w(TAG, "View has no parent or context, skipping layout")
             return
         }
 
-        // Validate frame values are reasonable
         if (!width.isFinite() || !height.isFinite() || width > 10000 || height > 10000) {
             return
         }
 
-        // Ensure minimum dimensions
         val safeWidth = maxOf(1, width)
         val safeHeight = maxOf(1, height)
 
-        // Apply layout based on parent type
-        val parent = view.parent as? ViewGroup
-        if (parent != null) {
-            val params = view.layoutParams ?: ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+        // MATCH iOS: Use absolute positioning like iOS frame positioning
+        view.x = left.toFloat()
+        view.y = top.toFloat()
+        
+        // Update layout params to match size
+        val params = view.layoutParams ?: ViewGroup.LayoutParams(safeWidth, safeHeight)
+        params.width = safeWidth
+        params.height = safeHeight
+        view.layoutParams = params
 
-            // Set size
-            params.width = safeWidth
-            params.height = safeHeight
-
-            // Set position using margins if supported
-            if (params is ViewGroup.MarginLayoutParams) {
-                params.leftMargin = left
-                params.topMargin = top
-                params.rightMargin = 0
-                params.bottomMargin = 0
-            }
-
-            view.layoutParams = params
-        } else {
-            // Fallback: Use absolute positioning
-            view.x = left.toFloat()
-            view.y = top.toFloat()
-            view.layoutParams?.let {
-                it.width = safeWidth
-                it.height = safeHeight
-            }
-        }
-
-        // Force layout
         view.requestLayout()
     }
 
