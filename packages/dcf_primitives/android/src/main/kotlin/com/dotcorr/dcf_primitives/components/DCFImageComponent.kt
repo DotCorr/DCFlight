@@ -81,85 +81,11 @@ class DCFImageComponent : DCFComponent() {
             }
         }
 
-        // Handle tint color
-        props["tintColor"]?.let { tint ->
-            val colorInt = parseColor(tint)
-            imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
-        } ?: run {
-            imageView.clearColorFilter()
+        imageView.scaleType = scaleType
         }
-
-        // Handle opacity
-        props["opacity"]?.let { opacity ->
-            when (opacity) {
-                is Number -> imageView.alpha = opacity.toFloat()
-            }
-        }
-
-        // Handle blur radius (requires additional library in real implementation)
-        props["blurRadius"]?.let { radius ->
-            // TODO: Implement blur effect using RenderScript or similar
-            // For now, just store the value
-            imageView.setTag(R.id.dcf_image_blur_radius, radius)
-        }
-
-        // Handle border radius (handled by StyleSheet)
-        props["borderRadius"]?.let { radius ->
-            // This is handled by DCFStyleSheet for consistent styling
-        }
-
-        // Handle aspect ratio
-        props["aspectRatio"]?.let { ratio ->
-            when (ratio) {
-                is Number -> {
-                    // Store aspect ratio for layout calculation
-                    imageView.setTag(R.id.dcf_image_aspect_ratio, ratio.toFloat())
-                }
-            }
-        }
-
-        // Handle fade duration for image loading
-        props["fadeDuration"]?.let { duration ->
-            when (duration) {
-                is Number -> {
-                    imageView.setTag(R.id.dcf_image_fade_duration, duration.toInt())
-                }
-            }
-        }
-
-        // Handle progressive loading
-        props["progressiveRenderingEnabled"]?.let { enabled ->
-            when (enabled) {
-                is Boolean -> {
-                    imageView.setTag(R.id.dcf_image_progressive, enabled)
-                }
-            }
-        }
-
-        // Handle default source (placeholder)
-        props["defaultSource"]?.let { defaultSource ->
-            when (defaultSource) {
-                is String -> {
-                    imageView.setTag(R.id.dcf_image_default_source, defaultSource)
-                    // If main source is not loaded yet, show default
-                    if (imageView.drawable == null) {
-                        loadImageFromSource(imageView, defaultSource)
-                    }
-                }
-
-                is Int -> {
-                    imageView.setTag(R.id.dcf_image_default_source, defaultSource)
-                    if (imageView.drawable == null) {
-                        imageView.setImageResource(defaultSource)
-                    }
-                }
-            }
-        }
-
-        // Store image data for potential reuse
-        imageView.setTag(R.id.dcf_image_data, props["source"])
 
         return true
+    }
     }
 
     private fun loadImageFromSource(imageView: ImageView, source: String) {

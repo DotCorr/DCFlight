@@ -25,11 +25,11 @@ object PrimitivesComponentsReg {
     fun registerComponents() {
         val registry = DCFComponentRegistry.shared
 
-        // Core components - THESE ACTUALLY EXIST
+        // Core components - EXACT 1:1 iOS MAPPING
         registry.registerComponent("View", DCFViewComponent::class.java)
         registry.registerComponent("Text", DCFTextComponent::class.java)
         registry.registerComponent("Image", DCFImageComponent::class.java)
-        registry.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
+        // REMOVED: ScrollView (doesn't exist in iOS)
 
         // Input components - THESE ACTUALLY EXIST
         registry.registerComponent("TextInput", DCFTextInputComponent::class.java)
