@@ -155,7 +155,7 @@ class DCFTextComponent : DCFComponent() {
                 "right", "end" -> Gravity.END or Gravity.TOP
                 "justify" -> {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        textView.justificationMode = TextView.JUSTIFICATION_MODE_INTER_WORD
+                        textView.justificationMode = 1
                         Gravity.START or Gravity.TOP
                     } else {
                         Gravity.START or Gravity.TOP

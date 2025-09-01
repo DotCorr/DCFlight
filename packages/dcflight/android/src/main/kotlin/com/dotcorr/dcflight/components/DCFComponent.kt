@@ -8,250 +8,234 @@
 package com.dotcorr.dcflight.components
 
 import android.content.Context
+import android.graphics.Color
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import com.dotcorr.dcflight.layout.YogaShadowTree
+import com.dotcorr.dcflight.utils.ColorUtilities
+import com.dotcorr.dcflight.utils.DCFScreenUtilities
 
 /**
- * CRITICAL FIX: Abstract base class that all DCFlight components must extend
- * Now matches iOS DCFComponent protocol exactly with tunnel method support
+ * Base class for all DCFlight components
  */
 abstract class DCFComponent {
 
-    // Properties that were passed during creation
-    protected var initialProps: Map<String, Any?> = emptyMap()
-
-    // Bound view reference
-    protected var boundView: View? = null
-
-    /**
-     * Default constructor for components
-     */
-    constructor() {
-        this.initialProps = emptyMap()
+    companion object {
+        private const val TAG = "DCFComponent"
     }
 
     /**
-     * Constructor with initial properties
-     */
-    constructor(props: Map<String, Any?>) {
-        this.initialProps = props
-    }
-
-    /**
-     * Create a view with the given props - EXACT iOS signature
+     * Creates the native view for this component
      */
     abstract fun createView(context: Context, props: Map<String, Any?>): View
 
     /**
-     * Alternative createView for backward compatibility
+     * Updates the native view with new properties
+     * This version handles nullable maps from the framework
      */
-    fun createView(context: Context): View {
-        return createView(context, initialProps)
-    }
-
-    /**
-     * Update a view with new props - EXACT iOS signature
-     */
-    abstract fun updateView(view: View, props: Map<String, Any?>): Boolean
-
-    /**
-     * CRITICAL FIX: Apply yoga layout to the view - EXACT iOS signature
-     */
-    open fun applyLayout(view: View, layout: YogaLayout) {
-        // Default implementation - position and size the view like iOS
-        val params = view.layoutParams ?: ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-
-        if (params is ViewGroup.MarginLayoutParams) {
-            params.leftMargin = layout.left.toInt()
-            params.topMargin = layout.top.toInt()
-        }
-
-        params.width = layout.width.toInt()
-        params.height = layout.height.toInt()
-
-        view.layoutParams = params
-    }
-
-    /**
-     * CRITICAL FIX: Get intrinsic content size for a view - EXACT iOS signature
-     */
-    open fun getIntrinsicSize(view: View, forProps props: Map<String, Any?>): Size {
-        // Default implementation - use view's intrinsic size or zero like iOS
-        view.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-        return if (view.measuredWidth != 0 || view.measuredHeight != 0) {
-            Size(view.measuredWidth.toFloat(), view.measuredHeight.toFloat())
-        } else {
-            Size(0f, 0f)
+    open fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        return try {
+            // Filter out null values and convert to non-nullable map for compatibility
+            val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+            updateViewInternal(view, nonNullProps)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update view", e)
+            false
         }
     }
 
     /**
-     * CRITICAL FIX: Called when a view is registered with the shadow tree - EXACT iOS signature
+     * Internal update method that works with non-nullable maps
+     * Override this in components instead of updateView
+     */
+    protected open fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+        applyCommonProps(view, props)
+        return true
+    }
+
+    /**
+     * Handle tunnel method calls for component-specific operations
+     */
+    open fun handleTunnelMethod(method: String, params: Map<String, Any>): Any? {
+        Log.w(TAG, "handleTunnelMethod not implemented for ${this::class.simpleName}")
+        return null
+    }
+
+    /**
+     * Called when view is registered with shadow tree (for layout system)
      */
     open fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Default implementation - store node ID on the view like iOS
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_node_id, nodeId)
+        Log.d(TAG, "View registered with shadow tree: $nodeId")
     }
 
     /**
-     * Apply properties to the component
+     * Applies common properties to any view
      */
-    open fun applyProperties(props: Map<String, Any?>) {
-        boundView?.let { view ->
-            updateView(view, props)
+    protected fun applyCommonProps(view: View, props: Map<String, Any>) {
+        props["backgroundColor"]?.let { bgColor ->
+            when (bgColor) {
+                is String -> {
+                    val color = ColorUtilities.color(bgColor)
+                    if (color != null) {
+                        view.setBackgroundColor(color)
+                    }
+                }
+                is Number -> {
+                    view.setBackgroundColor(bgColor.toInt())
+                }
+            }
+        }
+
+        props["opacity"]?.let { opacity ->
+            when (opacity) {
+                is Number -> view.alpha = opacity.toFloat()
+            }
+        }
+
+        props["visible"]?.let { visible ->
+            when (visible) {
+                is Boolean -> view.visibility = if (visible) View.VISIBLE else View.GONE
+            }
+        }
+
+        props["testID"]?.let { testId ->
+            view.contentDescription = testId.toString()
+        }
+
+        applyAccessibilityProps(view, props)
+        applyGestureProps(view, props)
+    }
+
+    /**
+     * Apply accessibility properties
+     */
+    protected fun applyAccessibilityProps(view: View, props: Map<String, Any>) {
+        props["accessibilityLabel"]?.let { label ->
+            view.contentDescription = label.toString()
+        }
+
+        props["accessibilityHint"]?.let { hint ->
+            view.tooltipText = hint.toString()
+        }
+
+        props["accessible"]?.let { accessible ->
+            when (accessible) {
+                is Boolean -> {
+                    view.importantForAccessibility = if (accessible) {
+                        View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                    } else {
+                        View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    }
+                }
+            }
         }
     }
 
     /**
-     * Update properties of the component
+     * Apply gesture-related properties
      */
-    open fun updateProperties(props: Map<String, Any?>) {
-        applyProperties(props)
-    }
+    protected fun applyGestureProps(view: View, props: Map<String, Any>) {
+        val hasOnPress = props.containsKey("onPress")
+        val hasOnLongPress = props.containsKey("onLongPress")
 
-    /**
-     * Bind a view to this component
-     */
-    open fun bindView(view: View) {
-        this.boundView = view
-    }
-
-    /**
-     * Cleanup when component is removed
-     */
-    open fun cleanup() {
-        boundView = null
-    }
-
-    companion object {
-        /**
-         * CRITICAL FIX: Handle tunnel method calls from Dart - EXACT iOS signature
-         * Components should override this in their companion object
-         */
-        @JvmStatic
-        open fun handleTunnelMethod(method: String, params: Map<String, Any?>): Any? {
-            Log.w(TAG, "Component ${this::class.simpleName} does not implement tunnel method: $method")
-            return null
+        if (hasOnPress || hasOnLongPress) {
+            view.isClickable = true
+            view.isFocusable = true
         }
 
-        private const val TAG = "DCFComponent"
+        if (hasOnPress) {
+            view.setOnClickListener {
+                Log.d(TAG, "View clicked: ${view.contentDescription}")
+            }
+        }
+
+        if (hasOnLongPress) {
+            view.setOnLongClickListener {
+                Log.d(TAG, "View long pressed: ${view.contentDescription}")
+                true
+            }
+        }
     }
-}
 
-/**
- * CRITICAL FIX: Extension to make tunnel method work with class instances
- * This allows the registry to call static methods on component classes
- */
-fun Class<out DCFComponent>.handleTunnelMethod(method: String, params: Map<String, Any?>): Any? {
-    return try {
-        // Get the companion object and call handleTunnelMethod
-        val companionField = this.getDeclaredField("Companion")
-        companionField.isAccessible = true
-        val companion = companionField.get(null)
-        
-        val handleMethod = companion::class.java.getDeclaredMethod(
-            "handleTunnelMethod",
-            String::class.java,
-            Map::class.java
-        )
-        handleMethod.isAccessible = true
-        handleMethod.invoke(companion, method, params)
-    } catch (e: Exception) {
-        Log.w("DCFComponent", "Failed to call tunnel method $method on ${this.simpleName}", e)
-        null
+    protected fun dpToPx(dp: Float, context: Context): Float {
+        return dp * context.resources.displayMetrics.density
     }
-}
 
-/**
- * Layout information from a Yoga node - matches iOS YGNodeLayout exactly
- */
-data class YogaLayout(
-    val left: Float,
-    val top: Float,
-    val width: Float,
-    val height: Float
-)
+    protected fun pxToDp(px: Float, context: Context): Float {
+        return px / context.resources.displayMetrics.density
+    }
 
-/**
- * Size data class for intrinsic sizing - matches iOS exactly
- */
-data class Size(
-    val width: Float,
-    val height: Float
-)
+    protected fun dpToPx(context: Context, dp: Float): Int {
+        return (dp * context.resources.displayMetrics.density).toInt()
+    }
 
-/**
- * CRITICAL FIX: Global event propagation system - EXACT iOS implementation
- * Universal functions that ANY class can use to propagate events to Dart
- */
+    protected fun parseDimension(value: Any?, context: Context): Float? {
+        return when (value) {
+            is Number -> value.toFloat()
+            is String -> {
+                when {
+                    value.endsWith("dp") -> {
+                        val dpValue = value.removeSuffix("dp").toFloatOrNull()
+                        dpValue?.let { dpToPx(it, context) }
+                    }
+                    value.endsWith("px") -> {
+                        value.removeSuffix("px").toFloatOrNull()
+                    }
+                    value.endsWith("%") -> {
+                        value.removeSuffix("%").toFloatOrNull()
+                    }
+                    else -> value.toFloatOrNull()
+                }
+            }
+            else -> null
+        }
+    }
 
-/**
- * Universal event propagation function - EXACT iOS signature
- */
-fun propagateEvent(
-    view: View,
-    eventName: String,
-    eventData: Map<String, Any?> = emptyMap(),
-    nativeAction: ((View, Map<String, Any?>) -> Unit)? = null
-) {
-    // Execute optional native-side action first like iOS
-    nativeAction?.invoke(view, eventData)
+    protected fun parseColor(colorValue: Any): Int {
+        return when (colorValue) {
+            is String -> {
+                try {
+                    Color.parseColor(colorValue)
+                } catch (e: IllegalArgumentException) {
+                    Color.BLACK
+                }
+            }
+            is Number -> colorValue.toInt()
+            else -> Color.BLACK
+        }
+    }
 
-    // Get the stored event callback for this view like iOS
-    val callback = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_callback) as? (String, String, Map<String, Any?>) -> Unit
-        ?: return
+    protected fun darkenColor(color: Int, factor: Float): Int {
+        val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return Color.rgb(r, g, b)
+    }
 
-    val viewId = view.getTag(com.dotcorr.dcflight.R.id.dcf_view_id) as? String ?: return
+    protected fun lightenColor(color: Int, factor: Float): Int {
+        val r = (Color.red(color) + (255 - Color.red(color)) * (factor - 1)).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) + (255 - Color.green(color)) * (factor - 1)).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) + (255 - Color.blue(color)) * (factor - 1)).toInt().coerceIn(0, 255)
+        return Color.rgb(r, g, b)
+    }
 
     @Suppress("UNCHECKED_CAST")
-    val eventTypes = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_types) as? List<String> ?: return
-
-    // Check if this event type is registered like iOS
-    val normalizedEventName = normalizeEventNameForPropagation(eventName)
-    val eventRegistered = eventTypes.contains(eventName) ||
-            eventTypes.contains(normalizedEventName) ||
-            eventTypes.contains(eventName.lowercase()) ||
-            eventTypes.contains("on${eventName.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}")
-
-    if (eventRegistered) {
-        callback(viewId, eventName, eventData)
-    } else {
-        Log.d("EventPropagation", "Event $eventName not registered for view $viewId")
+    protected fun <T> safeCast(value: Any?, clazz: Class<T>): T? {
+        return try {
+            if (value == null) return null
+            when {
+                clazz.isInstance(value) -> value as T
+                clazz == String::class.java -> value.toString() as T
+                clazz == Int::class.java && value is Number -> value.toInt() as T
+                clazz == Float::class.java && value is Number -> value.toFloat() as T
+                clazz == Double::class.java && value is Number -> value.toDouble() as T
+                clazz == Boolean::class.java && value is String -> value.toBoolean() as T
+                else -> null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to cast $value to ${clazz.simpleName}")
+            null
+        }
     }
 }
-
-/**
- * Simplified global event propagation for common cases - EXACT iOS signature
- */
-fun fireEvent(view: View, eventName: String, eventData: Map<String, Any?> = emptyMap()) {
-    propagateEvent(view, eventName, eventData)
-}
-
-/**
- * Helper function to normalize event names for propagation matching - EXACT iOS logic
- */
-private fun normalizeEventNameForPropagation(name: String): String {
-    // If already has "on" prefix and it's followed by uppercase letter, return as is
-    if (name.startsWith("on") && name.length > 2 && name[2].isUpperCase()) {
-        return name
-    }
-
-    // Otherwise normalize: remove "on" if it exists, capitalize first letter, and add "on" prefix
-    var processedName = name
-    if (processedName.startsWith("on")) {
-        processedName = processedName.substring(2)
-    }
-
-    if (processedName.isEmpty()) {
-        return "onEvent"
-    }
-
-    return "on${processedName.substring(0, 1).uppercase()}${processedName.substring(1)}"
-}
-

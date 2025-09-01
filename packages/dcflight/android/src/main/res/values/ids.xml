@@ -1,48 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  ~ Copyright (c) Dotcorr Studio. and affiliates.
-  ~
-  ~ This source code is licensed under the MIT license found in the
-  ~ LICENSE file in the root directory of this source tree.
-  -->
-
 <resources>
-    <!-- CRITICAL FIX: Define all DCFlight tag IDs to prevent compilation errors -->
-    
-    <!-- Core view identification tags -->
-    <item name="dcf_view_id" type="id" />
-    <item name="dcf_node_id" type="id" />
-    <item name="dcf_component_type" type="id" />
-    
-    <!-- Event system tags -->
-    <item name="dcf_event_callback" type="id" />
-    <item name="dcf_event_types" type="id" />
-    
-    <!-- Style and appearance tags -->
-    <item name="dcf_test_id" type="id" />
-    <item name="dcf_gradient_drawable" type="id" />
-    <item name="dcf_gradient_corner_radii" type="id" />
-    <item name="dcf_pending_gradient_data" type="id" />
-    <item name="dcf_pending_gradient_radii" type="id" />
-    <item name="dcf_pending_gradient_border_width" type="id" />
-    <item name="dcf_pending_gradient_border_color" type="id" />
-    
-    <!-- Hit testing tags -->
-    <item name="dcf_hit_slop_top" type="id" />
-    <item name="dcf_hit_slop_bottom" type="id" />
-    <item name="dcf_hit_slop_left" type="id" />
-    <item name="dcf_hit_slop_right" type="id" />
-    
-    <!-- Shadow tags -->
-    <item name="dcf_shadow_color" type="id" />
-    <item name="dcf_shadow_offset_x" type="id" />
-    <item name="dcf_shadow_offset_y" type="id" />
-    
-    <!-- Component-specific tags -->
-    <item name="dcf_toggle_checked_state" type="id" />
-    <item name="dcf_webview_client" type="id" />
-    <item name="dcf_webview_chrome_client" type="id" />
-    <item name="dcf_webview_progress" type="id" />
-    <item name="dcf_webview_navigation_gestures" type="id" />
+    <item name="dcf_view_id" type="id"/>
+    <item name="dcf_component_type" type="id"/>
+    <item name="dcf_layout_data" type="id"/>
+    <item name="dcf_shadow_color" type="id"/>
+    <item name="dcf_shadow_offset_x" type="id"/>
+    <item name="dcf_shadow_offset_y" type="id"/>
+    <item name="dcf_hit_slop_top" type="id"/>
+    <item name="dcf_hit_slop_bottom" type="id"/>
+    <item name="dcf_hit_slop_left" type="id"/>
+    <item name="dcf_hit_slop_right" type="id"/>
+    <item name="dcf_test_id" type="id"/>
+    <item name="dcf_gradient_drawable" type="id"/>
 </resources>
-
