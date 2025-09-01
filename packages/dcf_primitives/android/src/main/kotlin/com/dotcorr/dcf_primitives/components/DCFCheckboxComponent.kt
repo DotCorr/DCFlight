@@ -49,9 +49,9 @@ class DCFCheckboxComponent : DCFComponent() {
     override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val checkbox = view as? AppCompatCheckBox ?: return false
 
-        // value - EXACT iOS prop name (the checked state)
-        props["value"]?.let { value ->
-            checkbox.isChecked = value as? Boolean ?: false
+        // MATCH iOS EXACTLY: "checked" prop (iOS uses "checked" not "value")
+        props["checked"]?.let { checked ->
+            checkbox.isChecked = checked as? Boolean ?: false
         }
 
         // disabled - EXACT iOS prop name
@@ -71,8 +71,8 @@ class DCFCheckboxComponent : DCFComponent() {
             }
         }
 
-        // tintColor - EXACT iOS prop name (checkbox color)
-        props["tintColor"]?.let { color ->
+        // MATCH iOS EXACTLY: "checkedColor" prop (iOS uses "checkedColor" not "tintColor")
+        props["checkedColor"]?.let { color ->
             val colorInt = parseColor(color)
             val states = arrayOf(
                 intArrayOf(android.R.attr.state_checked),

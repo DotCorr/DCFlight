@@ -17,6 +17,7 @@ import android.view.View
 import android.widget.TextView
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -83,20 +84,46 @@ class DCFTextComponent : DCFComponent() {
     override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val textView = view as? TextView ?: return false
 
-        // Update text content
-        props["text"]?.let { text ->
-            textView.text = when (text) {
-                is String -> text
-                else -> text.toString()
+        // Update text content (match iOS "content" property EXACTLY)
+        props["content"]?.let { content ->
+            textView.text = when (content) {
+                is String -> content
+                else -> content.toString()
             }
         }
 
-        // Update text color
-        props["color"]?.let { color ->
-            textView.setTextColor(parseColor(color))
+        // REMOVED legacy "text" property - iOS only uses "content"
+
+        // Handle color property with adaptive fallback to match iOS exactly
+        if (props.containsKey("color")) {
+            props["color"]?.let { color ->
+                ColorUtilities.color(color.toString())?.let { parsedColor ->
+                    textView.setTextColor(parsedColor)
+                } ?: run {
+                    // Fallback to black if color parsing fails
+                    textView.setTextColor(Color.BLACK)
+                }
+            }
+        } else {
+            // Handle adaptive color only if no color is explicitly set (match iOS logic)
+            if (props.containsKey("adaptive")) {
+                val isAdaptive = props["adaptive"] as? Boolean ?: true
+                if (isAdaptive) {
+                    try {
+                        val typedValue = TypedValue()
+                        if (textView.context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
+                            textView.setTextColor(typedValue.data)
+                        } else {
+                            textView.setTextColor(Color.parseColor("#FF000000"))
+                        }
+                    } catch (e: Exception) {
+                        textView.setTextColor(Color.parseColor("#FF000000"))
+                    }
+                }
+            }
         }
 
-        // Update font size
+        // Update font size with proper default handling
         props["fontSize"]?.let { size ->
             when (size) {
                 is Number -> textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size.toFloat())
@@ -107,14 +134,10 @@ class DCFTextComponent : DCFComponent() {
                 }
             }
         } ?: run {
-            // Ensure default font size is applied if no fontSize is specified
-            if (textView.textSize == 0f || textView.textSize < DEFAULT_TEXT_SIZE) {
+            // Ensure default font size is applied if no fontSize is specified (match iOS system font)
+            val currentSize = textView.textSize / textView.resources.displayMetrics.scaledDensity
+            if (currentSize < DEFAULT_TEXT_SIZE) {
                 textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_TEXT_SIZE)
-            }
-        }
-                        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
-                    }
-                }
             }
         }
 

@@ -8,65 +8,46 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
-import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.RippleDrawable
-import android.graphics.drawable.StateListDrawable
-import android.os.Build
-import android.util.TypedValue
 import android.view.View
-import android.widget.Button
 import androidx.appcompat.widget.AppCompatButton
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
 
 /**
- * DCFButtonComponent - Button component matching iOS DCFButtonComponent
+ * DCFButtonComponent - 1:1 mapping with iOS DCFButtonComponent
+ * ONLY implements props that iOS DCFButtonComponent has:
+ * - title: String
+ * - disabled: Boolean
+ * ALL styling handled by StyleSheet via .applyStyles() like iOS
  */
 class DCFButtonComponent : DCFComponent() {
-
-    companion object {
-        // Match iOS system button defaults
-        private const val DEFAULT_FONT_SIZE = 17f
-        private const val DEFAULT_BACKGROUND_COLOR = "#007AFF"  // iOS system blue
-        private const val DEFAULT_TEXT_COLOR = "#FFFFFF"        // White text on blue
-    }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val button = AppCompatButton(context)
 
-        // Default button styling to match iOS
+        // iOS-style button defaults
         button.isAllCaps = false
-        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_FONT_SIZE)
-        button.setTextColor(parseColor(DEFAULT_TEXT_COLOR))
         
-        button.setPadding(
-            dpToPx(context, 16f),
-            dpToPx(context, 8f),
-            dpToPx(context, 16f),
-            dpToPx(context, 8f)
-        )
-
-        // Apply default background
-        val background = createButtonBackground(context, parseColor(DEFAULT_BACKGROUND_COLOR), emptyMap())
-        button.background = background
+        // Set iOS system colors as defaults
+        ColorUtilities.color("#007AFF")?.let { button.setBackgroundColor(it) }
+        ColorUtilities.color("#FFFFFF")?.let { button.setTextColor(it) }
 
         // Apply props
         updateView(button, props)
 
-        // Apply StyleSheet properties (filter nulls for style extensions)
+        // Apply StyleSheet properties (UNIFIED with iOS)
         val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
         button.applyStyles(nonNullStyleProps)
 
-        // Store component type for identification
+        // Store component type
         button.setTag(R.id.dcf_component_type, "Button")
 
         return button
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        // Convert nullable map to non-nullable for internal processing
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         return updateViewInternal(view, nonNullProps)
     }
@@ -74,7 +55,9 @@ class DCFButtonComponent : DCFComponent() {
     override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val button = view as? AppCompatButton ?: return false
 
-        // Button title/text
+        // 1:1 MATCH iOS DCFButtonComponent props:
+        
+        // "title" prop - matches iOS exactly
         props["title"]?.let { title ->
             button.text = when (title) {
                 is String -> title
@@ -82,42 +65,7 @@ class DCFButtonComponent : DCFComponent() {
             }
         }
 
-        // Text color
-        props["titleColor"]?.let { color ->
-            button.setTextColor(parseColor(color))
-        } ?: run {
-            // Default text color using constant
-            button.setTextColor(parseColor(DEFAULT_TEXT_COLOR))
-        }
-
-        // Font size
-        props["fontSize"]?.let { size ->
-            when (size) {
-                is Number -> button.setTextSize(TypedValue.COMPLEX_UNIT_SP, size.toFloat())
-                is String -> {
-                    size.removeSuffix("sp").toFloatOrNull()?.let { fontSize ->
-                        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
-                    }
-                }
-            }
-        } ?: run {
-            // Default font size using constant
-            button.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_FONT_SIZE)
-        }
-
-        // Background color
-        props["backgroundColor"]?.let { bgColor ->
-            val color = parseColor(bgColor)
-            // Create background with ripple effect
-            val background = createButtonBackground(button.context, color, props)
-            button.background = background
-        } ?: run {
-            // Default iOS-style blue button using constant
-            val background = createButtonBackground(button.context, parseColor(DEFAULT_BACKGROUND_COLOR), props)
-            button.background = background
-        }
-
-        // Disabled state
+        // "disabled" prop - matches iOS exactly  
         props["disabled"]?.let { disabled ->
             when (disabled) {
                 is Boolean -> {
@@ -127,163 +75,6 @@ class DCFButtonComponent : DCFComponent() {
             }
         }
 
-        // Handle press events
-        props["onPress"]?.let { onPress ->
-            button.setOnClickListener {
-                // Store the callback for event handling
-                button.setTag(R.id.dcf_button_pressed_state, true)
-                // The actual callback would be handled by the framework
-                // For now, just mark that button was pressed
-            }
-            button.setTag(R.id.dcf_event_callback, onPress)
-        } ?: run {
-            button.setOnClickListener(null)
-            button.setTag(R.id.dcf_event_callback, null)
-        }
-
-        // Button style variants
-        props["variant"]?.let { variant ->
-            when (variant) {
-                "outlined" -> {
-                    // Outlined button style
-                    button.setTextColor(props["titleColor"]?.let { parseColor(it) } ?: parseColor("#007AFF"))
-                    val background = createOutlinedButtonBackground(button.context, props)
-                    button.background = background
-                }
-
-                "text" -> {
-                    // Text-only button style
-                    button.setTextColor(props["titleColor"]?.let { parseColor(it) } ?: parseColor("#007AFF"))
-                    button.background = createTextButtonBackground(button.context)
-                }
-
-                "filled", "contained" -> {
-                    // Default filled style (already handled above)
-                }
-            }
-        }
-
-        // Accessibility
-        props["accessibilityLabel"]?.let { label ->
-            button.contentDescription = label.toString()
-        }
-
-        props["testID"]?.let { testId ->
-            button.setTag(R.id.dcf_test_id, testId)
-        }
-
-        // Store button title for potential reuse
-        button.setTag(R.id.dcf_button_title, props["title"])
-
         return true
-    }
-
-    private fun createButtonBackground(
-        context: Context,
-        color: Int,
-        props: Map<String, Any>
-    ): android.graphics.drawable.Drawable {
-        val cornerRadius = props["borderRadius"]?.let { radius ->
-            when (radius) {
-                is Number -> dpToPx(context, radius.toFloat()).toFloat()
-                else -> dpToPx(context, 4f).toFloat()
-            }
-        } ?: dpToPx(context, 4f).toFloat()
-
-        val normalDrawable = GradientDrawable().apply {
-            setColor(color)
-            setCornerRadius(cornerRadius)
-        }
-
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(darkenColor(color, 0.8f))
-            setCornerRadius(cornerRadius)
-        }
-
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            // Use ripple effect for Lollipop and above
-            val rippleColor = lightenColor(color, 1.3f)
-            RippleDrawable(
-                android.content.res.ColorStateList.valueOf(rippleColor),
-                normalDrawable,
-                null
-            )
-        } else {
-            // Use state list drawable for older versions
-            StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-                addState(intArrayOf(), normalDrawable)
-            }
-        }
-    }
-
-    private fun createOutlinedButtonBackground(
-        context: Context,
-        props: Map<String, Any>
-    ): android.graphics.drawable.Drawable {
-        val borderColor = props["borderColor"]?.let { parseColor(it) } ?: parseColor("#007AFF")
-        val borderWidth = props["borderWidth"]?.let { width ->
-            when (width) {
-                is Number -> dpToPx(context, width.toFloat())
-                else -> dpToPx(context, 1f)
-            }
-        } ?: dpToPx(context, 1f)
-
-        val cornerRadius = props["borderRadius"]?.let { radius ->
-            when (radius) {
-                is Number -> dpToPx(context, radius.toFloat()).toFloat()
-                else -> dpToPx(context, 4f).toFloat()
-            }
-        } ?: dpToPx(context, 4f).toFloat()
-
-        val normalDrawable = GradientDrawable().apply {
-            setColor(Color.TRANSPARENT)
-            setStroke(borderWidth, borderColor)
-            setCornerRadius(cornerRadius)
-        }
-
-        val pressedDrawable = GradientDrawable().apply {
-            setColor(Color.argb(20, Color.red(borderColor), Color.green(borderColor), Color.blue(borderColor)))
-            setStroke(borderWidth, borderColor)
-            setCornerRadius(cornerRadius)
-        }
-
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            RippleDrawable(
-                android.content.res.ColorStateList.valueOf(borderColor),
-                normalDrawable,
-                null
-            )
-        } else {
-            StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_pressed), pressedDrawable)
-                addState(intArrayOf(), normalDrawable)
-            }
-        }
-    }
-
-    private fun createTextButtonBackground(context: Context): android.graphics.drawable.Drawable {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            RippleDrawable(
-                android.content.res.ColorStateList.valueOf(parseColor("#1E007AFF")),
-                null,
-                null
-            )
-        } else {
-            StateListDrawable().apply {
-                addState(
-                    intArrayOf(android.R.attr.state_pressed),
-                    GradientDrawable().apply {
-                        setColor(parseColor("#1E007AFF"))
-                    }
-                )
-                addState(
-                    intArrayOf(),
-                    GradientDrawable().apply {
-                        setColor(Color.TRANSPARENT)
-                    }
-                )
-            }
-        }
     }
 }
