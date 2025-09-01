@@ -287,8 +287,12 @@ fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
      * Direct layout application helper
      */
     private fun applyLayoutDirectly(view: View, left: Int, top: Int, width: Int, height: Int) {
+        // Add logging to debug layout application
+        Log.d(TAG, "Applying layout: view=${view::class.simpleName}, left=$left, top=$top, width=$width, height=$height")
+        
         // Multiple validation layers for safety
         if (view.parent == null && view.context == null) {
+            Log.w(TAG, "View has no parent or context, skipping layout")
             return
         }
 

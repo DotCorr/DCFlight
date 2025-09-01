@@ -133,6 +133,10 @@ class YogaShadowTree private constructor() {
             try {
                 val mainRoot = nodes["root"] ?: return false
                 mainRoot.calculateLayout(width, height)
+                
+                // Apply calculated layout to actual views (like iOS does)
+                applyCalculatedLayoutToViews()
+                
                 true
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to calculate layout", e)
@@ -140,6 +144,35 @@ class YogaShadowTree private constructor() {
             } finally {
                 isLayoutCalculating = false
             }
+        }
+    }
+    
+    /**
+     * Apply calculated Yoga layout to actual Android views
+     * This matches iOS YogaShadowTree.applyLayoutToView behavior
+     */
+    private fun applyCalculatedLayoutToViews() {
+        try {
+            // Apply layout for all nodes with calculated positions
+            for ((nodeId, node) in nodes) {
+                val left = node.layoutX
+                val top = node.layoutY 
+                val width = node.layoutWidth
+                val height = node.layoutHeight
+                
+                // Apply to actual view through layout manager
+                DCFLayoutManager.shared.applyLayout(
+                    viewId = nodeId,
+                    left = left,
+                    top = top, 
+                    width = width,
+                    height = height
+                )
+                
+                Log.d(TAG, "Applied layout to $nodeId: ($left,$top) ${width}x$height")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to apply calculated layouts to views", e)
         }
     }
 

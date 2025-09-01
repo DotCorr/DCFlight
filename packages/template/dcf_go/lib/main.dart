@@ -14,7 +14,7 @@ class MyStackApp extends StatefulComponent {
     final count = useState(0);
     return DCFView(
       layout: DCFLayout(flex: 1),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.grey.shade100),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.red.shade100),
       children: [
         DCFText(content: "Text example ${count.state}"),
         DCFButton(
