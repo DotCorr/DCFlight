@@ -33,10 +33,10 @@ class DCFTextInputComponent : DCFComponent() {
 
         // Default styling
         editText.setPadding(
-            dpToPx(context, 12f),
-            dpToPx(context, 8f),
-            dpToPx(context, 12f),
-            dpToPx(context, 8f)
+            dpToPx(12f, context),
+            dpToPx(8f, context),
+            dpToPx(12f, context),
+            dpToPx(8f, context)
         )
 
         // Apply props
@@ -78,13 +78,13 @@ class DCFTextInputComponent : DCFComponent() {
 
         // Placeholder text color
         props["placeholderTextColor"]?.let { color ->
-            editText.setHintTextColor(parseColor(color))
+            editText.setHintTextColor(parseColor(color as String))
         }
 
         // Text color
         // MATCH iOS EXACTLY: "textColor" prop (not "color")
         props["textColor"]?.let { color ->
-            editText.setTextColor(parseColor(color))
+            editText.setTextColor(parseColor(color as String))
         }
 
         // Font size

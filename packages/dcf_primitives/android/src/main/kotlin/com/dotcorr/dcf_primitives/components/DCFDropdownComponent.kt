@@ -61,7 +61,7 @@ class DCFDropdownComponent : DCFComponent() {
         return updateViewInternal(view, props.filterValues { it != null }.mapValues { it.value!! })
     }
 
-    private fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val spinner = view as Spinner
         var hasUpdates = false
 

@@ -115,7 +115,7 @@ class DCFSpinnerComponent : DCFComponent() {
 
         // color - EXACT iOS prop name
         props["color"]?.let { color ->
-            val colorInt = parseColor(color)
+            val colorInt = parseColor(color as String)
             progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
         }
 

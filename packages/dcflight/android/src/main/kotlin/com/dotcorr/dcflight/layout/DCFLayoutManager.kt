@@ -396,9 +396,8 @@ fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
 
     // Associate the view with its Yoga node
     
-    // Let the component know it's registered like iOS
-    componentInstance.viewRegisteredWithShadowTree(view, nodeId)
-
+    // View is now registered with shadow tree - component is ready
+    
     // If this is a root view, trigger initial layout calculation like iOS
     if (nodeId == "root") {
         triggerLayoutCalculation()

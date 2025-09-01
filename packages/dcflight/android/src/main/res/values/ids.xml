@@ -12,4 +12,6 @@
     <item name="dcf_hit_slop_right" type="id"/>
     <item name="dcf_test_id" type="id"/>
     <item name="dcf_gradient_drawable" type="id"/>
+    <item name="dcf_event_callback" type="id"/>
+    <item name="dcf_event_types" type="id"/>
 </resources>

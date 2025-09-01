@@ -290,5 +290,4 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         
         return "on${processedName.replaceFirstChar { it.uppercase() }}"
     }
-    }
 }
