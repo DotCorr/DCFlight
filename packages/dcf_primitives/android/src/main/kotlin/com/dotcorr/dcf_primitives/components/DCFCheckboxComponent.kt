@@ -1,5 +1,7 @@
 /*
- * Copyright (c) Dotcorr Studio. and affiliates.
+ * Copyright (c) Dotcorr Studi        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        checkBox.applyStyles(nonNullStyleProps) and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -31,13 +33,20 @@ class DCFCheckboxComponent : DCFComponent() {
         // Apply props
         updateView(checkbox, props)
 
-        // Apply StyleSheet properties
-        checkbox.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        checkbox.applyStyles(nonNullStyleProps)
 
         return checkbox
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val checkbox = view as? AppCompatCheckBox ?: return false
 
         // value - EXACT iOS prop name (the checked state)
@@ -64,62 +73,37 @@ class DCFCheckboxComponent : DCFComponent() {
 
         // tintColor - EXACT iOS prop name (checkbox color)
         props["tintColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        val states = arrayOf(
-                            intArrayOf(android.R.attr.state_checked),
-                            intArrayOf(-android.R.attr.state_checked)
-                        )
-                        val colors = intArrayOf(colorInt, Color.GRAY)
-                        checkbox.buttonTintList = ColorStateList(states, colors)
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-
-                is Int -> {
-                    val states = arrayOf(
-                        intArrayOf(android.R.attr.state_checked),
-                        intArrayOf(-android.R.attr.state_checked)
-                    )
-                    val colors = intArrayOf(color, Color.GRAY)
-                    checkbox.buttonTintList = ColorStateList(states, colors)
-                }
-            }
+            val colorInt = parseColor(color)
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf(-android.R.attr.state_checked)
+            )
+            val colors = intArrayOf(colorInt, Color.GRAY)
+            checkbox.buttonTintList = ColorStateList(states, colors)
         }
 
         // onTintColor - iOS prop name (color when checked)
         props["onTintColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        val currentTintList = checkbox.buttonTintList
-                        if (currentTintList != null) {
-                            val states = arrayOf(
-                                intArrayOf(android.R.attr.state_checked),
-                                intArrayOf(-android.R.attr.state_checked)
-                            )
-                            val uncheckedColor = currentTintList.getColorForState(
-                                intArrayOf(-android.R.attr.state_checked),
-                                Color.GRAY
-                            )
-                            val colors = intArrayOf(colorInt, uncheckedColor)
-                            checkbox.buttonTintList = ColorStateList(states, colors)
-                        } else {
-                            val states = arrayOf(
-                                intArrayOf(android.R.attr.state_checked),
-                                intArrayOf(-android.R.attr.state_checked)
-                            )
-                            val colors = intArrayOf(colorInt, Color.GRAY)
-                            checkbox.buttonTintList = ColorStateList(states, colors)
-                        }
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
+            val colorInt = parseColor(color)
+            val currentTintList = checkbox.buttonTintList
+            if (currentTintList != null) {
+                val states = arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf(-android.R.attr.state_checked)
+                )
+                val uncheckedColor = currentTintList.getColorForState(
+                    intArrayOf(-android.R.attr.state_checked),
+                    Color.GRAY
+                )
+                val colors = intArrayOf(colorInt, uncheckedColor)
+                checkbox.buttonTintList = ColorStateList(states, colors)
+            } else {
+                val states = arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf(-android.R.attr.state_checked)
+                )
+                val colors = intArrayOf(colorInt, Color.GRAY)
+                checkbox.buttonTintList = ColorStateList(states, colors)
             }
         }
 
@@ -130,17 +114,7 @@ class DCFCheckboxComponent : DCFComponent() {
 
         // titleColor - iOS prop name (label text color)
         props["titleColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        checkbox.setTextColor(Color.parseColor(color))
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-
-                is Int -> checkbox.setTextColor(color)
-            }
+            checkbox.setTextColor(parseColor(color))
         }
 
         // Accessibility

@@ -38,13 +38,20 @@ class DCFToggleComponent : DCFComponent() {
         // Apply props
         updateView(switchControl, props)
 
-        // Apply StyleSheet properties
-        switchControl.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        switchControl.applyStyles(nonNullStyleProps)
 
         return switchControl
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val switchControl = view as? SwitchCompat ?: return false
 
         // Update value - EXACT iOS prop name
@@ -71,92 +78,60 @@ class DCFToggleComponent : DCFComponent() {
 
         // Active track color (on tint color in iOS)
         props["activeTrackColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        val states = arrayOf(
-                            intArrayOf(android.R.attr.state_checked),
-                            intArrayOf()
-                        )
-                        val colors = intArrayOf(colorInt, Color.GRAY)
-                        switchControl.trackTintList = ColorStateList(states, colors)
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-            }
+            val colorInt = parseColor(color)
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf()
+            )
+            val colors = intArrayOf(colorInt, Color.GRAY)
+            switchControl.trackTintList = ColorStateList(states, colors)
         }
 
         // Inactive track color (background color in iOS)
         props["inactiveTrackColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        val currentTrackTint = switchControl.trackTintList
-                        if (currentTrackTint != null) {
-                            val states = arrayOf(
-                                intArrayOf(android.R.attr.state_checked),
-                                intArrayOf()
-                            )
-                            val colors = intArrayOf(
-                                currentTrackTint.getColorForState(intArrayOf(android.R.attr.state_checked), Color.BLUE),
-                                colorInt
-                            )
-                            switchControl.trackTintList = ColorStateList(states, colors)
-                        }
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
+            val colorInt = parseColor(color)
+            val currentTrackTint = switchControl.trackTintList
+            if (currentTrackTint != null) {
+                val states = arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf()
+                )
+                val colors = intArrayOf(
+                    currentTrackTint.getColorForState(intArrayOf(android.R.attr.state_checked), Color.BLUE),
+                    colorInt
+                )
+                switchControl.trackTintList = ColorStateList(states, colors)
             }
         }
 
         // Active thumb color
         props["activeThumbColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        val states = arrayOf(
-                            intArrayOf(android.R.attr.state_checked),
-                            intArrayOf()
-                        )
-                        val colors = intArrayOf(colorInt, Color.WHITE)
-                        switchControl.thumbTintList = ColorStateList(states, colors)
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-            }
+            val colorInt = parseColor(color)
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf()
+            )
+            val colors = intArrayOf(colorInt, Color.WHITE)
+            switchControl.thumbTintList = ColorStateList(states, colors)
         }
 
         // Inactive thumb color (Note: iOS UISwitch doesn't have separate inactive thumb color)
         props["inactiveThumbColor"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        val currentThumbTint = switchControl.thumbTintList
-                        if (currentThumbTint != null) {
-                            val states = arrayOf(
-                                intArrayOf(android.R.attr.state_checked),
-                                intArrayOf()
-                            )
-                            val colors = intArrayOf(
-                                currentThumbTint.getColorForState(
-                                    intArrayOf(android.R.attr.state_checked),
-                                    Color.WHITE
-                                ),
-                                colorInt
-                            )
-                            switchControl.thumbTintList = ColorStateList(states, colors)
-                        }
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
+            val colorInt = parseColor(color)
+            val currentThumbTint = switchControl.thumbTintList
+            if (currentThumbTint != null) {
+                val states = arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf()
+                )
+                val colors = intArrayOf(
+                    currentThumbTint.getColorForState(
+                        intArrayOf(android.R.attr.state_checked),
+                        Color.WHITE
+                    ),
+                    colorInt
+                )
+                switchControl.thumbTintList = ColorStateList(states, colors)
             }
         }
 

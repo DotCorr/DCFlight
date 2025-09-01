@@ -34,13 +34,20 @@ class DCFSpinnerComponent : DCFComponent() {
         // Apply props
         updateView(progressBar, props)
 
-        // Apply StyleSheet properties
-        progressBar.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        progressBar.applyStyles(nonNullStyleProps)
 
         return progressBar
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val progressBar = view as? ProgressBar ?: return false
 
         // animating - EXACT iOS prop name
@@ -108,20 +115,8 @@ class DCFSpinnerComponent : DCFComponent() {
 
         // color - EXACT iOS prop name
         props["color"]?.let { color ->
-            when (color) {
-                is String -> {
-                    try {
-                        val colorInt = Color.parseColor(color)
-                        progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
-                    } catch (e: IllegalArgumentException) {
-                        // Invalid color string
-                    }
-                }
-
-                is Int -> {
-                    progressBar.indeterminateTintList = ColorStateList.valueOf(color)
-                }
-            }
+            val colorInt = parseColor(color)
+            progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
         }
 
         // style - EXACT iOS prop name (alternative to size)

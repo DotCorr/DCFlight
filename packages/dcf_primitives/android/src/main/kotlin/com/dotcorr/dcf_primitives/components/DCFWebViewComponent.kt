@@ -35,13 +35,20 @@ class DCFWebViewComponent : DCFComponent() {
         // Apply props
         updateView(webView, props)
 
-        // Apply StyleSheet properties
-        webView.applyStyles(props)
+        // Apply StyleSheet properties (filter nulls for style extensions)
+        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+        webView.applyStyles(nonNullStyleProps)
 
         return webView
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
+    }
+
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val webView = view as? WebView ?: return false
 
         // source - EXACT iOS prop name
