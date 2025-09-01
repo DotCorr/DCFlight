@@ -123,8 +123,16 @@ object DCDivergerUtil {
             }
 
             if (activity is FlutterActivity) {
+                // Replace Flutter content with native content (like iOS does)
                 val contentView = activity.findViewById<ViewGroup>(android.R.id.content)
+                
+                // Remove all Flutter views
+                contentView?.removeAllViews()
+                
+                // Add our native root view as the only content
                 contentView?.addView(rootView)
+                
+                Log.d(TAG, "Replaced Flutter content with native DCF content")
             }
 
             Log.d(TAG, "Native container setup complete")
