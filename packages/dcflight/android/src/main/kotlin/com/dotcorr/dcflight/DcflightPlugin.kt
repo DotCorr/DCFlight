@@ -60,13 +60,13 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         channel.setMethodCallHandler(this)
 
         // Initialize method channels - call the static initialize methods
-        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dotcorr.dcflight/bridge")
-            .setMethodCallHandler(DCMauiBridgeMethodChannel.shared)
-        
-        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dotcorr.dcflight/events")
-            .setMethodCallHandler(DCMauiEventMethodHandler.shared)
-            
-        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dotcorr.dcflight/layout")
+        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dcmaui.bridge")
+            .setMethodCallHandler(DCMauiBridgeMethodChannel())
+
+        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dcmaui.events")
+            .setMethodCallHandler(DCMauiEventMethodHandler())
+
+        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dcmaui.layout")
             .setMethodCallHandler(DCMauiLayoutMethodHandler.shared)
 
         Log.d(TAG, "DCFlight plugin initialized with method channels")
