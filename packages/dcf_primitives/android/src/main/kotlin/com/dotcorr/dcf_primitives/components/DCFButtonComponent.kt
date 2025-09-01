@@ -26,17 +26,31 @@ import com.dotcorr.dcf_primitives.R
  */
 class DCFButtonComponent : DCFComponent() {
 
+    companion object {
+        // Match iOS system button defaults
+        private const val DEFAULT_FONT_SIZE = 17f
+        private const val DEFAULT_BACKGROUND_COLOR = "#007AFF"  // iOS system blue
+        private const val DEFAULT_TEXT_COLOR = "#FFFFFF"        // White text on blue
+    }
+
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val button = AppCompatButton(context)
 
-        // Default button styling
+        // Default button styling to match iOS
         button.isAllCaps = false
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_FONT_SIZE)
+        button.setTextColor(parseColor(DEFAULT_TEXT_COLOR))
+        
         button.setPadding(
             dpToPx(context, 16f),
             dpToPx(context, 8f),
             dpToPx(context, 16f),
             dpToPx(context, 8f)
         )
+
+        // Apply default background
+        val background = createButtonBackground(context, parseColor(DEFAULT_BACKGROUND_COLOR), emptyMap())
+        button.background = background
 
         // Apply props
         updateView(button, props)
@@ -72,8 +86,8 @@ class DCFButtonComponent : DCFComponent() {
         props["titleColor"]?.let { color ->
             button.setTextColor(parseColor(color))
         } ?: run {
-            // Default text color
-            button.setTextColor(Color.WHITE)
+            // Default text color using constant
+            button.setTextColor(parseColor(DEFAULT_TEXT_COLOR))
         }
 
         // Font size
@@ -86,6 +100,9 @@ class DCFButtonComponent : DCFComponent() {
                     }
                 }
             }
+        } ?: run {
+            // Default font size using constant
+            button.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_FONT_SIZE)
         }
 
         // Background color
@@ -95,8 +112,8 @@ class DCFButtonComponent : DCFComponent() {
             val background = createButtonBackground(button.context, color, props)
             button.background = background
         } ?: run {
-            // Default iOS-style blue button
-            val background = createButtonBackground(button.context, parseColor("#007AFF"), props)
+            // Default iOS-style blue button using constant
+            val background = createButtonBackground(button.context, parseColor(DEFAULT_BACKGROUND_COLOR), props)
             button.background = background
         }
 

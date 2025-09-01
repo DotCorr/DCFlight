@@ -13,10 +13,10 @@ class MyStackApp extends StatefulComponent {
   DCFComponentNode render() {
     final count = useState(0);
     return DCFView(
-      layout: DCFLayout(flex: 1),
+      layout: DCFLayout(flex: 1,alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center,paddingTop: 120),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.red.shade100),
       children: [
-        DCFText(content: "Text example ${count.state}"),
+        DCFText(content: "Text example ${count.state}",textProps: DCFTextProps(fontSize: 20,color: Colors.indigo)),
         DCFButton(
           buttonProps: DCFButtonProps(title: "increment counter"),
           onPress: (v) {

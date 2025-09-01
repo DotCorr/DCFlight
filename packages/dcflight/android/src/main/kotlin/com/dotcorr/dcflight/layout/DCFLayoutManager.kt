@@ -496,8 +496,10 @@ fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
      * Perform automatic layout calculation
      */
     private fun performAutomaticLayoutCalculation() {
+        Log.d(TAG, "🔄 performAutomaticLayoutCalculation called, needsLayoutCalculation=${needsLayoutCalculation.get()}")
         if (!needsLayoutCalculation.get()) return
 
+        Log.d(TAG, "🚀 Starting layout calculation...")
         layoutExecutor.execute {
             // Get screen dimensions
             val context = viewRegistry.values.firstOrNull()?.context ?: return@execute
@@ -505,15 +507,17 @@ fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
             val screenWidth = displayMetrics.widthPixels.toFloat()
             val screenHeight = displayMetrics.heightPixels.toFloat()
 
+            Log.d(TAG, "📐 Screen dimensions: ${screenWidth}x$screenHeight")
+            
             // Calculate and apply layout
             val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
 
             mainHandler.post {
                 needsLayoutCalculation.set(false)
                 if (success) {
-                    Log.d(TAG, "Layout calculation successful")
+                    Log.d(TAG, "✅ Layout calculation successful")
                 } else {
-                    Log.w(TAG, "Layout calculation deferred, rescheduling")
+                    Log.w(TAG, "⚠️ Layout calculation deferred, rescheduling")
                     // Reschedule if deferred due to reconciliation
                     needsLayoutCalculation.set(true)
                     scheduleLayoutCalculation()
