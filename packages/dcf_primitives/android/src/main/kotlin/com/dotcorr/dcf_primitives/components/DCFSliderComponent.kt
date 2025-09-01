@@ -9,152 +9,150 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.content.res.ColorStateList
-import android.graphics.Color
-import android.graphics.PorterDuff
 import android.view.View
 import android.widget.SeekBar
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
 
 /**
- * DCFSliderComponent - Slider component matching iOS DCFSliderComponent
+ * DCFSliderComponent - 1:1 mapping with iOS DCFSliderComponent
  * Uses exact same prop names as iOS UISlider for cross-platform consistency
  */
 class DCFSliderComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val seekBar = SeekBar(context)
-
-        // Store component type
+        
+        // Set component identifier for debugging
         seekBar.setTag(R.id.dcf_component_type, "Slider")
+        
+        // Set up iOS-style onValueChange event
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser && seekBar != null) {
+                    // 🚀 MATCH iOS: Use propagateEvent for onValueChange
+                    propagateEvent(seekBar, "onValueChange", mapOf(
+                        "value" to (progress / 100.0f),
+                        "fromUser" to fromUser
+                    ))
+                }
+            }
 
-        // Apply props
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                // iOS equivalent of touchDown
+                if (seekBar != null) {
+                    propagateEvent(seekBar, "onSlidingStart", mapOf())
+                }
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                // iOS equivalent of touchUp
+                if (seekBar != null) {
+                    propagateEvent(seekBar, "onSlidingComplete", mapOf(
+                        "value" to (seekBar.progress / 100.0f)
+                    ))
+                }
+            }
+        })
+        
+        // Apply initial props and return
         updateView(seekBar, props)
-
-        // Apply StyleSheet properties (filter nulls for style extensions)
-        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
-        seekBar.applyStyles(nonNullStyleProps)
-
         return seekBar
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        // Convert nullable map to non-nullable for internal processing
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        return updateViewInternal(view, nonNullProps)
+        return updateViewInternal(view, props.filterValues { it != null }.mapValues { it.value!! })
     }
 
-    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
-        val seekBar = view as? SeekBar ?: return false
+    private fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+        val seekBar = view as SeekBar
+        var hasUpdates = false
 
-        // Store min/max values for calculation - EXACT iOS prop names
-        val minimumValue = (props["minimumValue"] as? Number)?.toFloat() ?: 0f
-        val maximumValue = (props["maximumValue"] as? Number)?.toFloat() ?: 1f
+        // 🚀 MATCH iOS UISlider props exactly
+        props["value"]?.let {
+            val value = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 0f
+                else -> 0f
+            }
+            val progress = (value * 100).toInt()
+            if (seekBar.progress != progress) {
+                seekBar.progress = progress
+                hasUpdates = true
+            }
+        }
 
-        seekBar.setTag(R.id.dcf_slider_min_value, minimumValue)
-        seekBar.setTag(R.id.dcf_slider_max_value, maximumValue)
+        props["minimumValue"]?.let {
+            val minValue = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 0f
+                else -> 0f
+            }
+            // SeekBar min is always 0, we handle offset in value calculation
+            hasUpdates = true
+        }
 
-        // Set the max progress based on range
-        val range = maximumValue - minimumValue
-        seekBar.max = 1000 // Use 1000 steps for precision
+        props["maximumValue"]?.let {
+            val maxValue = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 100f
+                else -> 100f
+            }
+            val maxProgress = (maxValue * 100).toInt()
+            if (seekBar.max != maxProgress) {
+                seekBar.max = maxProgress
+                hasUpdates = true
+            }
+        }
 
-        // Update value - EXACT iOS prop name
-        props["value"]?.let { value ->
-            when (value) {
-                is Number -> {
-                    val floatValue = value.toFloat()
-                    val normalizedValue = ((floatValue - minimumValue) / range * 1000).toInt()
-                    seekBar.progress = normalizedValue.coerceIn(0, 1000)
+        // iOS minimumTrackTintColor -> Android progress tint
+        props["minimumTrackTintColor"]?.let {
+            val colorStr = it as? String
+            colorStr?.let { color ->
+                try {
+                    val colorInt = ColorUtilities.parseColor(color)
+                    seekBar.progressTintList = ColorStateList.valueOf(colorInt)
+                    hasUpdates = true
+                } catch (e: Exception) {
+                    // Invalid color format
                 }
             }
         }
 
-        // Update disabled state - EXACT iOS prop name
-        props["disabled"]?.let { disabled ->
-            val isDisabled = disabled as? Boolean ?: false
-            seekBar.isEnabled = !isDisabled
-            seekBar.alpha = if (isDisabled) 0.5f else 1.0f
-        }
-
-        // Update minimum track tint color - EXACT iOS prop name
-        props["minimumTrackTintColor"]?.let { color ->
-            val colorInt = parseColor(color)
-            seekBar.progressTintList = ColorStateList.valueOf(colorInt)
-        }
-
-        // Update maximum track tint color - EXACT iOS prop name
-        props["maximumTrackTintColor"]?.let { color ->
-            val colorInt = parseColor(color)
-            seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
-        }
-
-        // Update thumb tint color - EXACT iOS prop name
-        props["thumbTintColor"]?.let { color ->
-            val colorInt = parseColor(color)
-            seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
-        }
-
-        // Handle continuous updates - EXACT iOS prop name
-        val isContinuous = props["continuous"] as? Boolean ?: true
-
-        // Handle value change events
-        props["onValueChange"]?.let { onChange ->
-            seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    if (fromUser && isContinuous) {
-                        val actualValue = minimumValue + (progress / 1000f) * (maximumValue - minimumValue)
-                        seekBar?.setTag(R.id.dcf_slider_value, actualValue)
-                        seekBar?.setTag(R.id.dcf_event_callback, onChange)
-                        // Framework would handle the actual callback
-                    }
-                }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                    props["onSlidingStart"]?.let { onStart ->
-                        seekBar?.setTag(R.id.dcf_event_callback, onStart)
-                        // Framework would handle the actual callback
-                    }
-                }
-
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                    if (!isContinuous) {
-                        val progress = seekBar?.progress ?: 0
-                        val actualValue = minimumValue + (progress / 1000f) * (maximumValue - minimumValue)
-                        seekBar?.setTag(R.id.dcf_slider_value, actualValue)
-                        seekBar?.setTag(R.id.dcf_event_callback, onChange)
-                    }
-
-                    props["onSlidingComplete"]?.let { onComplete ->
-                        val progress = seekBar?.progress ?: 0
-                        val actualValue = minimumValue + (progress / 1000f) * (maximumValue - minimumValue)
-                        seekBar?.setTag(R.id.dcf_slider_value, actualValue)
-                        seekBar?.setTag(R.id.dcf_event_callback, onComplete)
-                        // Framework would handle the actual callback
-                    }
-                }
-            })
-        }
-
-        // Step value - EXACT iOS prop name
-        props["step"]?.let { step ->
-            when (step) {
-                is Number -> {
-                    // Store step value for discrete slider behavior
-                    seekBar.setTag(R.id.dcf_slider_step, step.toFloat())
+        // iOS maximumTrackTintColor -> Android progress background tint  
+        props["maximumTrackTintColor"]?.let {
+            val colorStr = it as? String
+            colorStr?.let { color ->
+                try {
+                    val colorInt = ColorUtilities.parseColor(color)
+                    seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
+                    hasUpdates = true
+                } catch (e: Exception) {
+                    // Invalid color format
                 }
             }
         }
 
-        // Accessibility
-        props["accessibilityLabel"]?.let { label ->
-            seekBar.contentDescription = label.toString()
+        // iOS thumbTintColor -> Android thumb tint
+        props["thumbTintColor"]?.let {
+            val colorStr = it as? String
+            colorStr?.let { color ->
+                try {
+                    val colorInt = ColorUtilities.parseColor(color)
+                    seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
+                    hasUpdates = true
+                } catch (e: Exception) {
+                    // Invalid color format
+                }
+            }
         }
 
-        props["testID"]?.let { testId ->
-            seekBar.setTag(R.id.dcf_test_id, testId)
-        }
+        // Apply common view styling
+        view.applyStyles(props)
 
-        return true
+        return hasUpdates
     }
 }

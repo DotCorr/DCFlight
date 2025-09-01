@@ -14,6 +14,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
@@ -147,19 +148,23 @@ class DCFWebViewComponent : DCFComponent() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                // onLoadStart - EXACT iOS prop name
-                props["onLoadStart"]?.let { onLoadStart ->
-                    webView.setTag(R.id.dcf_event_callback, onLoadStart)
-                    // Framework would handle the actual callback
+                // 🚀 MATCH iOS: Use propagateEvent for onLoadStart
+                if (view != null) {
+                    propagateEvent(view, "onLoadStart", mapOf(
+                        "url" to (url ?: ""),
+                        "loading" to true
+                    ))
                 }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // onLoadEnd - EXACT iOS prop name
-                props["onLoadEnd"]?.let { onLoadEnd ->
-                    webView.setTag(R.id.dcf_event_callback, onLoadEnd)
-                    // Framework would handle the actual callback
+                // 🚀 MATCH iOS: Use propagateEvent for onLoadEnd
+                if (view != null) {
+                    propagateEvent(view, "onLoadEnd", mapOf(
+                        "url" to (url ?: ""),
+                        "loading" to false
+                    ))
                 }
             }
 
@@ -170,10 +175,13 @@ class DCFWebViewComponent : DCFComponent() {
                 failingUrl: String?
             ) {
                 super.onReceivedError(view, errorCode, description, failingUrl)
-                // onError - EXACT iOS prop name
-                props["onError"]?.let { onError ->
-                    webView.setTag(R.id.dcf_event_callback, onError)
-                    // Framework would handle the actual callback with error info
+                // 🚀 MATCH iOS: Use propagateEvent for onLoadError
+                if (view != null) {
+                    propagateEvent(view, "onLoadError", mapOf(
+                        "error" to (description ?: "Unknown error"),
+                        "errorCode" to errorCode,
+                        "url" to (failingUrl ?: "")
+                    ))
                 }
             }
 

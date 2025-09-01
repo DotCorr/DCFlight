@@ -4,7 +4,10 @@
     <item name="dcf_component_type" type="id"/>
     <item name="dcf_test_id" type="id"/>
     <item name="dcf_event_callback" type="id"/>
+    <item name="dcf_view_id" type="id"/>
+    <item name="dcf_event_types" type="id"/>
     
+        
     <!-- Button Component IDs -->
     <item name="dcf_button_pressed_state" type="id"/>
     <item name="dcf_button_title" type="id"/>

@@ -5,9 +5,113 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package com.dotcorr.dcflight.components
+package com.dotcorr.dcflight.compone        return Color.rgb(r, g, b)
+    }
 
-import android.content.Context
+    @Suppress("UNCHECKED_CAST")
+    protected fun <T> safeCast(value: Any?, clazz: Class<T>): T? {
+        return try {
+            if (value == null) return null
+            when {
+                clazz.isInstance(value) -> value.toString() as T
+                clazz == String::class.java -> value.toString() as T
+                clazz == Int::class.java && value is Number -> value.toInt() as T
+                clazz == Float::class.java && value is Number -> value.toFloat() as T
+                clazz == Double::class.java && value is Number -> value.toDouble() as T
+                clazz == Boolean::class.java && value is String -> value.toBoolean() as T
+                else -> null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to cast $value to ${clazz.simpleName}")
+            null
+        }
+    }
+}
+
+// MARK: - 🚀 GLOBAL EVENT PROPAGATION SYSTEM (MATCH iOS EXACTLY)
+// Universal functions that ANY class can use to propagate events to Dart
+
+/**
+ * Universal event propagation function - Android equivalent of iOS propagateEvent()
+ * Usage: propagateEvent(button, "onPress", mapOf("pressed" to true))
+ * 
+ * This matches iOS propagateEvent API exactly for 1:1 parity
+ */
+fun propagateEvent(
+    view: View, 
+    eventName: String, 
+    data: Map<String, Any> = emptyMap(),
+    nativeAction: ((View, Map<String, Any>) -> Unit)? = null
+) {
+    // Execute optional native-side action first (match iOS)
+    nativeAction?.invoke(view, data)
+    
+    // Get the stored event callback for this view (set up by framework automatically)
+    val callback = view.getTag(android.R.id.TAG_EVENT_CALLBACK) as? ((String, String, Map<String, Any>) -> Unit)
+    if (callback == null) {
+        // Log.d("PropagateEvent", "No event callback found for view, cannot propagate event $eventName")
+        return
+    }
+    
+    val viewId = view.getTag(android.R.id.TAG_VIEW_ID) as? String
+    if (viewId == null) {
+        // Log.w("PropagateEvent", "No viewId found for view, cannot propagate event $eventName")
+        return
+    }
+    
+    @Suppress("UNCHECKED_CAST")
+    val eventTypes = view.getTag(android.R.id.TAG_EVENT_TYPES) as? List<String>
+    if (eventTypes == null) {
+        // Log.w("PropagateEvent", "No event types registered for view $viewId, cannot propagate event $eventName")
+        return
+    }
+    
+    // Check if this event type is registered (match iOS logic exactly)
+    val normalizedEventName = normalizeEventNameForPropagation(eventName)
+    val eventRegistered = eventTypes.contains(eventName) || 
+                         eventTypes.contains(normalizedEventName) ||
+                         eventTypes.contains(eventName.lowercase()) ||
+                         eventTypes.contains("on${eventName.replaceFirstChar { it.uppercase() }}")
+    
+    if (eventRegistered) {
+        callback(viewId, eventName, data)
+    } else {
+        // Log.d("PropagateEvent", "Event $eventName not registered for view $viewId")
+    }
+}
+
+/**
+ * Helper function to normalize event names for propagation matching (match iOS exactly)
+ */
+private fun normalizeEventNameForPropagation(name: String): String {
+    // If already has "on" prefix and it's followed by uppercase letter, return as is
+    if (name.startsWith("on") && name.length > 2) {
+        val thirdChar = name[2]
+        if (thirdChar.isUpperCase()) {
+            return name
+        }
+    }
+    
+    // Otherwise normalize: remove "on" if it exists, capitalize first letter, and add "on" prefix
+    var processedName = name
+    if (processedName.startsWith("on")) {
+        processedName = processedName.drop(2)
+    }
+    
+    if (processedName.isEmpty()) {
+        return "onEvent"
+    }
+    
+    return "on${processedName.replaceFirstChar { it.uppercase() }}"
+}
+
+/**
+ * Simplified global event propagation for common cases (match iOS fireEvent)
+ * Usage: fireEvent(button, "onPress", mapOf("pressed" to true))
+ */
+fun fireEvent(view: View, eventName: String, data: Map<String, Any> = emptyMap()) {
+    propagateEvent(view, eventName, data)
+}d.content.Context
 import android.graphics.Color
 import android.util.Log
 import android.view.View

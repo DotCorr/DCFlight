@@ -14,6 +14,8 @@ import android.view.View
 import androidx.appcompat.widget.SwitchCompat
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.utils.ColorUtilities
+import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -136,12 +138,13 @@ class DCFToggleComponent : DCFComponent() {
         }
 
         // Handle value change callback
-        props["onValueChange"]?.let { onChange ->
+        props["onValueChange"]?.let { 
             switchControl.setOnCheckedChangeListener { _, isChecked ->
-                // Store state for framework to handle
-                switchControl.setTag(R.id.dcf_toggle_checked_state, isChecked)
-                switchControl.setTag(R.id.dcf_event_callback, onChange)
-                // The actual callback would be triggered by the framework
+                // 🚀 MATCH iOS: Use propagateEvent for onValueChange
+                propagateEvent(switchControl, "onValueChange", mapOf(
+                    "value" to isChecked,
+                    "timestamp" to System.currentTimeMillis() / 1000.0
+                ))
             }
         }
 
