@@ -252,6 +252,10 @@ class DCMauiBridgeImpl private constructor() {
             YogaShadowTree.shared.setChildren(viewId, childrenIds)
 
             Log.d(TAG, "Successfully set children for view: $viewId")
+            
+            // FORCE layout calculation immediately after setting children
+            DCFLayoutManager.shared.calculateLayoutNow()
+            
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to set children for view: $viewId", e)
