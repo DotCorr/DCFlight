@@ -8,13 +8,16 @@ void main() async {
   await DCFlight.start(app: MyStackApp());
 }
 
-class MyStackApp extends StatelessComponent {
+class MyStackApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
+    final count = useState(0);
     return DCFView(
       layout: DCFLayout(flex: 1),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.green),
-      children: [DCFText(content: "Text example"),DCFButton(buttonProps: )],
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.pink),
+      children: [DCFText(content: "Text example"),DCFButton(buttonProps: DCFButtonProps(title: "increment ${count.state}"),onPress: (v){
+count.setState(count.state+1);
+      })],
     );
   }
 

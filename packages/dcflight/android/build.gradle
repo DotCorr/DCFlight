@@ -56,6 +56,7 @@ android {
 
         // Yoga layout engine
         implementation 'com.facebook.yoga:yoga:1.19.0'
+        implementation 'com.facebook.soloader:soloader:0.10.4'
 
         // Coroutines for async operations
         implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
