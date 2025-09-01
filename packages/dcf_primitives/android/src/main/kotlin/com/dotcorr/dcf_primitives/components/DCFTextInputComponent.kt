@@ -80,7 +80,8 @@ class DCFTextInputComponent : DCFComponent() {
         }
 
         // Text color
-        props["color"]?.let { color ->
+        // MATCH iOS EXACTLY: "textColor" prop (not "color")
+        props["textColor"]?.let { color ->
             editText.setTextColor(parseColor(color))
         }
 
@@ -122,7 +123,8 @@ class DCFTextInputComponent : DCFComponent() {
         }
 
         // Auto capitalize
-        props["autoCapitalize"]?.let { capitalize ->
+        // MATCH iOS EXACTLY: "autoCapitalization" prop (not "autoCapitalize")
+        props["autoCapitalization"]?.let { capitalize ->
             val currentInputType = editText.inputType
             editText.inputType = when (capitalize) {
                 "none" -> currentInputType and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES.inv() and
