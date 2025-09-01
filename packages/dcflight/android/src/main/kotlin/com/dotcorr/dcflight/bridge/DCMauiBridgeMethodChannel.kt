@@ -30,7 +30,7 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
         val shared = DCMauiBridgeMethodChannel()
 
         fun initialize(binaryMessenger: io.flutter.plugin.common.BinaryMessenger) {
-            val channel = MethodChannel(binaryMessenger, "com.dotcorr.dcflight/bridge")
+            val channel = MethodChannel(binaryMessenger, "com.dcmaui.bridge")
             channel.setMethodCallHandler(shared)
         }
     }

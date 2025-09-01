@@ -93,17 +93,17 @@ object DCDivergerUtil {
         try {
             io.flutter.plugin.common.MethodChannel(
                 binaryMessenger,
-                "com.dotcorr.dcflight/bridge"
+                "com.dcmaui.bridge"
             ).setMethodCallHandler(DCMauiBridgeMethodChannel())
 
             io.flutter.plugin.common.MethodChannel(
                 binaryMessenger,
-                "com.dotcorr.dcflight/events"
+                "com.dcmaui.events"
             ).setMethodCallHandler(DCMauiEventMethodHandler())
 
             io.flutter.plugin.common.MethodChannel(
                 binaryMessenger,
-                "com.dotcorr.dcflight/layout"
+                "com.dcmaui.layout"
             ).setMethodCallHandler(DCMauiLayoutMethodHandler())
 
             Log.d(TAG, "Method channels initialized")
