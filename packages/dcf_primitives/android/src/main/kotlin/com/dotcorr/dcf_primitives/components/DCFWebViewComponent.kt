@@ -137,14 +137,10 @@ class DCFWebViewComponent : DCFComponent() {
             webView.isHorizontalScrollBarEnabled = isEnabled
         }
 
-        // showsHorizontalScrollIndicator - EXACT iOS prop name
-        props["showsHorizontalScrollIndicator"]?.let { shows ->
-            webView.isHorizontalScrollBarEnabled = shows as? Boolean ?: true
-        }
-
-        // showsVerticalScrollIndicator - EXACT iOS prop name
-        props["showsVerticalScrollIndicator"]?.let { shows ->
-            webView.isVerticalScrollBarEnabled = shows as? Boolean ?: true
+        props["showsScrollIndicators"]?.let { shows ->
+            val showIndicators = shows as? Boolean ?: true
+            webView.isHorizontalScrollBarEnabled = showIndicators
+            webView.isVerticalScrollBarEnabled = showIndicators
         }
 
         // Set up WebViewClient for navigation callbacks
