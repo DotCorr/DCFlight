@@ -124,17 +124,20 @@ class YogaShadowTree private constructor() {
     }
 
     fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
+        Log.d(TAG, "calculateAndApplyLayout called with ${width}x$height")
         return syncLock.write {
             if (isReconciling) {
+                Log.d(TAG, "Skipping layout - currently reconciling")
                 return false
             }
 
             isLayoutCalculating = true
             try {
                 val mainRoot = nodes["root"] ?: return false
+                Log.d(TAG, "Starting layout calculation on root node")
                 mainRoot.calculateLayout(width, height)
                 
-                // Apply calculated layout to actual views (like iOS does)
+                Log.d(TAG, "Layout calculated, applying to ${nodes.size} views")
                 applyCalculatedLayoutToViews()
                 
                 true
@@ -419,7 +422,9 @@ class YogaShadowTree private constructor() {
     }
 
     private fun applyNodeProps(node: YogaNode, props: Map<String, Any?>) {
+        Log.d(TAG, "applyNodeProps called with ${props.size} props: ${props.keys}")
         props.forEach { (key, value) ->
+            Log.d(TAG, "Processing prop: $key = $value")
             when (key) {
                 "width" -> setDimension(node, YogaEdge.ALL, value, true)
                 "height" -> setDimension(node, YogaEdge.ALL, value, false)
