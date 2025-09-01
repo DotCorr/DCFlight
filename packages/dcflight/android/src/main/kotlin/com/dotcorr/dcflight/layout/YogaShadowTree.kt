@@ -9,7 +9,6 @@ package com.dotcorr.dcflight.layout
 
 import android.graphics.RectF
 import android.util.Log
-import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.facebook.yoga.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -20,7 +19,6 @@ import kotlin.math.min
 
 /**
  * Manages the Yoga layout tree for DCFlight components
- * Following iOS YogaShadowTree implementation exactly
  */
 class YogaShadowTree private constructor() {
 
@@ -46,7 +44,6 @@ class YogaShadowTree private constructor() {
     @Volatile
     private var isReconciling = false
 
-    // Web defaults configuration
     private var useWebDefaults = false
 
     init {
@@ -56,7 +53,6 @@ class YogaShadowTree private constructor() {
             root.setDirection(YogaDirection.LTR)
             root.setFlexDirection(YogaFlexDirection.COLUMN)
 
-            // Get screen dimensions
             val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
             root.setWidth(displayMetrics.widthPixels.toFloat())
             root.setHeight(displayMetrics.heightPixels.toFloat())
@@ -68,17 +64,10 @@ class YogaShadowTree private constructor() {
 
     fun hasNode(nodeId: String): Boolean = nodes.containsKey(nodeId)
 
-    /**
-     * Initialize the YogaShadowTree
-     */
     fun initialize() {
         Log.d(TAG, "Initializing YogaShadowTree")
-        // Already initialized in init block, this is for compatibility
     }
 
-    /**
-     * Cleanup resources
-     */
     fun cleanup() {
         Log.d(TAG, "Cleaning up YogaShadowTree")
         syncLock.write {
@@ -91,7 +80,6 @@ class YogaShadowTree private constructor() {
             screenRoots.clear()
             screenRootIds.clear()
 
-            // Recreate root node
             rootNode = YogaNodeFactory.create()
             rootNode?.let { root ->
                 root.setDirection(YogaDirection.LTR)
@@ -107,423 +95,86 @@ class YogaShadowTree private constructor() {
         }
     }
 
-    /**
-     * Calculate layout for a node
-     */
     fun calculateLayout(nodeId: String): Map<String, Float>? {
         return syncLock.read {
-            val node = nodes[nodeId] ?: return@read null
+            val node = nodes[nodeId] ?: return null
 
-            // If this is a root or screen root, calculate from it
-            if (nodeId == "root" || screenRootIds.contains(nodeId)) {
-                node.calculateLayout(node.layoutWidth, node.layoutHeight)
+            if (isLayoutCalculating) {
+                return null
             }
 
-            mapOf(
-                "left" to node.layoutX,
-                "top" to node.layoutY,
-                "width" to node.layoutWidth,
-                "height" to node.layoutHeight
-            )
+            isLayoutCalculating = true
+
+            try {
+                node.calculateLayout(YogaConstants.UNDEFINED, YogaConstants.UNDEFINED)
+
+                mapOf(
+                    "left" to node.layoutX,
+                    "top" to node.layoutY,
+                    "width" to node.layoutWidth,
+                    "height" to node.layoutHeight
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to calculate layout for node: $nodeId", e)
+                null
+            } finally {
+                isLayoutCalculating = false
+            }
         }
     }
 
-    /**
-     * Update layout properties for a node
-     */
-    fun updateLayoutProperties(nodeId: String, properties: Map<String, Any?>) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
+    fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
+        return syncLock.write {
+            if (isReconciling) {
+                return false
+            }
 
-            properties["flexDirection"]?.let { value ->
-                when (value.toString().lowercase()) {
-                    "row" -> node.setFlexDirection(YogaFlexDirection.ROW)
-                    "column" -> node.setFlexDirection(YogaFlexDirection.COLUMN)
-                    "row-reverse" -> node.setFlexDirection(YogaFlexDirection.ROW_REVERSE)
-                    "column-reverse" -> node.setFlexDirection(YogaFlexDirection.COLUMN_REVERSE)
+            isLayoutCalculating = true
+            try {
+                val mainRoot = nodes["root"] ?: return false
+                mainRoot.calculateLayout(width, height)
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to calculate layout", e)
+                false
+            } finally {
+                isLayoutCalculating = false
+            }
+        }
+    }
+
+    fun createNode(nodeId: String, nodeType: String, props: Map<String, Any?>): Boolean {
+        return syncLock.write {
+            try {
+                if (nodes.containsKey(nodeId)) {
+                    Log.w(TAG, "Node $nodeId already exists, updating instead")
+                    return updateNode(nodeId, props)
                 }
-            }
 
-            properties["justifyContent"]?.let { value ->
-                when (value.toString().lowercase()) {
-                    "flex-start" -> node.setJustifyContent(YogaJustify.FLEX_START)
-                    "center" -> node.setJustifyContent(YogaJustify.CENTER)
-                    "flex-end" -> node.setJustifyContent(YogaJustify.FLEX_END)
-                    "space-between" -> node.setJustifyContent(YogaJustify.SPACE_BETWEEN)
-                    "space-around" -> node.setJustifyContent(YogaJustify.SPACE_AROUND)
-                    "space-evenly" -> node.setJustifyContent(YogaJustify.SPACE_EVENLY)
+                val node = YogaNodeFactory.create()
+                configureNodeDefaults(node, nodeType)
+                applyNodeProps(node, props)
+
+                nodes[nodeId] = node
+                nodeTypes[nodeId] = nodeType
+
+                if (isScreenRoot(nodeType, props)) {
+                    screenRoots[nodeId] = node
+                    screenRootIds.add(nodeId)
                 }
-            }
 
-            properties["alignItems"]?.let { value ->
-                when (value.toString().lowercase()) {
-                    "flex-start" -> node.setAlignItems(YogaAlign.FLEX_START)
-                    "center" -> node.setAlignItems(YogaAlign.CENTER)
-                    "flex-end" -> node.setAlignItems(YogaAlign.FLEX_END)
-                    "stretch" -> node.setAlignItems(YogaAlign.STRETCH)
-                    "baseline" -> node.setAlignItems(YogaAlign.BASELINE)
-                }
-            }
-
-            // Handle padding
-            properties["padding"]?.let { padding ->
-                when (padding) {
-                    is Number -> {
-                        val value = padding.toFloat()
-                        node.setPadding(YogaEdge.ALL, value)
-                    }
-                    is Map<*, *> -> {
-                        (padding["top"] as? Number)?.let { node.setPadding(YogaEdge.TOP, it.toFloat()) }
-                        (padding["bottom"] as? Number)?.let { node.setPadding(YogaEdge.BOTTOM, it.toFloat()) }
-                        (padding["left"] as? Number)?.let { node.setPadding(YogaEdge.LEFT, it.toFloat()) }
-                        (padding["right"] as? Number)?.let { node.setPadding(YogaEdge.RIGHT, it.toFloat()) }
-                    }
-                }
-            }
-
-            // Handle margin
-            properties["margin"]?.let { margin ->
-                when (margin) {
-                    is Number -> {
-                        val value = margin.toFloat()
-                        node.setMargin(YogaEdge.ALL, value)
-                    }
-                    is Map<*, *> -> {
-                        (margin["top"] as? Number)?.let { node.setMargin(YogaEdge.TOP, it.toFloat()) }
-                        (margin["bottom"] as? Number)?.let { node.setMargin(YogaEdge.BOTTOM, it.toFloat()) }
-                        (margin["left"] as? Number)?.let { node.setMargin(YogaEdge.LEFT, it.toFloat()) }
-                        (margin["right"] as? Number)?.let { node.setMargin(YogaEdge.RIGHT, it.toFloat()) }
-                    }
-                }
-            }
-
-            // Handle size
-            properties["width"]?.let { width ->
-                when (width) {
-                    is Number -> node.setWidth(width.toFloat())
-                    is String -> {
-                        if (width.endsWith("%")) {
-                            node.setWidthPercent(width.removeSuffix("%").toFloatOrNull() ?: 100f)
-                        }
-                    }
-                }
-            }
-
-            properties["height"]?.let { height ->
-                when (height) {
-                    is Number -> node.setHeight(height.toFloat())
-                    is String -> {
-                        if (height.endsWith("%")) {
-                            node.setHeightPercent(height.removeSuffix("%").toFloatOrNull() ?: 100f)
-                        }
-                    }
-                }
+                Log.d(TAG, "Created node: $nodeId of type: $nodeType")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create node: $nodeId", e)
+                false
             }
         }
     }
 
-    /**
-     * Mark a node as dirty for layout recalculation
-     */
-    fun markDirty(nodeId: String) {
-        syncLock.write {
-            nodes[nodeId]?.dirty()
-        }
+    fun createNode(id: String, componentType: String) {
+        createNode(id, componentType, emptyMap())
     }
-
-    /**
-     * Get layout for a node
-     */
-    fun getLayout(nodeId: String): Map<String, Float>? {
-        return syncLock.read {
-            val node = nodes[nodeId] ?: return@read null
-            mapOf(
-                "left" to node.layoutX,
-                "top" to node.layoutY,
-                "width" to node.layoutWidth,
-                "height" to node.layoutHeight
-            )
-        }
-    }
-
-    /**
-     * Invalidate layout for a node
-     */
-    fun invalidate(nodeId: String) {
-        markDirty(nodeId)
-    }
-
-    /**
-     * Request layout recalculation
-     */
-    fun requestLayout(nodeId: String) {
-        markDirty(nodeId)
-        calculateLayout(nodeId)
-    }
-
-    /**
-     * Apply all pending layouts
-     */
-    fun applyAllLayouts() {
-        syncLock.write {
-            rootNode?.calculateLayout(rootNode!!.layoutWidth, rootNode!!.layoutHeight)
-
-            screenRoots.values.forEach { screenRoot ->
-                screenRoot.calculateLayout(screenRoot.layoutWidth, screenRoot.layoutHeight)
-            }
-        }
-    }
-
-    /**
-     * Flush layout queue
-     */
-    fun flushLayoutQueue() {
-        applyAllLayouts()
-    }
-
-    /**
-     * Set flex direction for a node
-     */
-    fun setFlexDirection(nodeId: String, direction: String) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
-            when (direction.lowercase()) {
-                "row" -> node.setFlexDirection(YogaFlexDirection.ROW)
-                "column" -> node.setFlexDirection(YogaFlexDirection.COLUMN)
-                "row-reverse" -> node.setFlexDirection(YogaFlexDirection.ROW_REVERSE)
-                "column-reverse" -> node.setFlexDirection(YogaFlexDirection.COLUMN_REVERSE)
-            }
-        }
-    }
-
-    /**
-     * Set justify content for a node
-     */
-    fun setJustifyContent(nodeId: String, justify: String) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
-            when (justify.lowercase()) {
-                "flex-start" -> node.setJustifyContent(YogaJustify.FLEX_START)
-                "center" -> node.setJustifyContent(YogaJustify.CENTER)
-                "flex-end" -> node.setJustifyContent(YogaJustify.FLEX_END)
-                "space-between" -> node.setJustifyContent(YogaJustify.SPACE_BETWEEN)
-                "space-around" -> node.setJustifyContent(YogaJustify.SPACE_AROUND)
-                "space-evenly" -> node.setJustifyContent(YogaJustify.SPACE_EVENLY)
-            }
-        }
-    }
-
-    /**
-     * Set align items for a node
-     */
-    fun setAlignItems(nodeId: String, align: String) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
-            when (align.lowercase()) {
-                "flex-start" -> node.setAlignItems(YogaAlign.FLEX_START)
-                "center" -> node.setAlignItems(YogaAlign.CENTER)
-                "flex-end" -> node.setAlignItems(YogaAlign.FLEX_END)
-                "stretch" -> node.setAlignItems(YogaAlign.STRETCH)
-                "baseline" -> node.setAlignItems(YogaAlign.BASELINE)
-            }
-        }
-    }
-
-    /**
-     * Set padding for a node
-     */
-    fun setPadding(nodeId: String, edge: String, value: Float) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
-            val yogaEdge = when (edge.lowercase()) {
-                "top" -> YogaEdge.TOP
-                "bottom" -> YogaEdge.BOTTOM
-                "left" -> YogaEdge.LEFT
-                "right" -> YogaEdge.RIGHT
-                "all" -> YogaEdge.ALL
-                else -> YogaEdge.ALL
-            }
-            node.setPadding(yogaEdge, value)
-        }
-    }
-
-    /**
-     * Set margin for a node
-     */
-    fun setMargin(nodeId: String, edge: String, value: Float) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
-            val yogaEdge = when (edge.lowercase()) {
-                "top" -> YogaEdge.TOP
-                "bottom" -> YogaEdge.BOTTOM
-                "left" -> YogaEdge.LEFT
-                "right" -> YogaEdge.RIGHT
-                "all" -> YogaEdge.ALL
-                else -> YogaEdge.ALL
-            }
-            node.setMargin(yogaEdge, value)
-        }
-    }
-
-    /**
-     * Set position for a node
-     */
-    fun setPosition(nodeId: String, edge: String, value: Float) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
-            val yogaEdge = when (edge.lowercase()) {
-                "top" -> YogaEdge.TOP
-                "bottom" -> YogaEdge.BOTTOM
-                "left" -> YogaEdge.LEFT
-                "right" -> YogaEdge.RIGHT
-                else -> return@write
-            }
-            node.setPosition(yogaEdge, value)
-        }
-    }
-
-    /**
-     * Set size for a node
-     */
-    fun setSize(nodeId: String, width: Float?, height: Float?) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
-            width?.let { node.setWidth(it) }
-            height?.let { node.setHeight(it) }
-        }
-    }
-
-    /**
-     * Set border radius (stored as data, not directly on Yoga node)
-     */
-    fun setBorderRadius(nodeId: String, radius: Float) {
-        syncLock.write {
-            val node = nodes[nodeId] ?: return@write
-            val context = node.data as? NodeContext
-            context?.props?.put("borderRadius", radius)
-        }
-    }
-
-    /**
-     * Get screen dimensions
-     */
-    fun getScreenDimensions(): Map<String, Float> {
-        val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
-        return mapOf(
-            "width" to displayMetrics.widthPixels.toFloat(),
-            "height" to displayMetrics.heightPixels.toFloat()
-        )
-    }
-
-    /**
-     * Begin batch update
-     */
-    fun beginBatchUpdate() {
-        isReconciling = true
-    }
-
-    /**
-     * End batch update
-     */
-    fun endBatchUpdate() {
-        isReconciling = false
-        applyAllLayouts()
-    }
-
-    /**
-     * Update node with properties
-     */
-    fun updateNode(nodeId: String, properties: Map<String, Any?>) {
-        updateLayoutProperties(nodeId, properties)
-    }
-
-    /**
-     * Remove a view/node
-     */
-    fun removeView(nodeId: String) {
-        removeNode(nodeId)
-    }
-
-    /**
-     * Measure text dimensions
-     */
-    fun measureText(text: String, fontSize: Float, fontFamily: String?): Map<String, Float> {
-        // Simple approximation - in real implementation would use Paint.measureText
-        val paint = android.graphics.Paint().apply {
-            textSize = fontSize
-        }
-        val bounds = android.graphics.Rect()
-        paint.getTextBounds(text, 0, text.length, bounds)
-        return mapOf(
-            "width" to bounds.width().toFloat(),
-            "height" to bounds.height().toFloat()
-        )
-    }
-
-    fun createNode(id: String, componentType: String, props: Map<String, Any?> = emptyMap()) {
-        syncLock.write {
-            val node = YogaNodeFactory.create()
-
-            // Apply default styles based on configuration
-            applyDefaultNodeStyles(node)
-
-            // Store context data
-            val context = NodeContext(
-                nodeId = id,
-                componentType = componentType,
-                props = props.toMutableMap()
-            )
-            node.data = context
-
-            nodes[id] = node
-            nodeTypes[id] = componentType
-
-            setupMeasureFunction(id, node)
-        }
-    }
-
-    fun setUseWebDefaults(enabled: Boolean) {
-    useWebDefaults = enabled
-
-    // Apply web defaults to the root node if it exists like iOS
-    if (enabled) {
-        applyWebDefaults()
-    }
-
-    Log.d(TAG, "UseWebDefaults set to $enabled")
-}
-
-/**
- * CRITICAL FIX: Add missing isScreenRoot method to match iOS
- */
-fun isScreenRoot(nodeId: String): Boolean {
-    return screenRootIds.contains(nodeId)
-}
-
-/**
- * CRITICAL FIX: Add missing createNode with just ID and type (without props)
- */
-fun createNode(id: String, componentType: String) {
-    createNode(id, componentType, emptyMap())
-}
-
-/**
- * CRITICAL FIX: Add missing clearAll method for cleanup like iOS
- */
-fun clearAll() {
-    syncLock.write {
-        // Use existing removeNode method for each node to ensure proper cleanup
-        val nodeIds = nodes.keys.toList()
-        for (nodeId in nodeIds) {
-            if (nodeId != "root") { // Don't remove root node
-                removeNode(nodeId)
-            }
-        }
-    }
-}
-
-
-
 
     fun createScreenRoot(id: String, componentType: String) {
         syncLock.write {
@@ -539,13 +190,6 @@ fun clearAll() {
             screenRoot.setPosition(YogaEdge.TOP, 0f)
             screenRoot.setPositionType(YogaPositionType.ABSOLUTE)
 
-            val context = NodeContext(
-                nodeId = id,
-                componentType = componentType,
-                props = mutableMapOf()
-            )
-            screenRoot.data = context
-
             nodes[id] = screenRoot
             screenRoots[id] = screenRoot
             screenRootIds.add(id)
@@ -553,40 +197,52 @@ fun clearAll() {
         }
     }
 
-    private fun setupMeasureFunction(nodeId: String, node: YogaNode) {
-        val childCount = node.childCount
-
-        if (childCount == 0) {
-            node.setMeasureFunction { yogaNode, width, widthMode, height, heightMode ->
-                val context = yogaNode.data as? NodeContext ?: return@setMeasureFunction YogaMeasureOutput.make(0f, 0f)
-                val view =
-                    DCFLayoutManager.shared.getView(context.nodeId) ?: return@setMeasureFunction YogaMeasureOutput.make(
-                        0f,
-                        0f
-                    )
-
-                val constraintWidth = if (widthMode == YogaMeasureMode.UNDEFINED) Float.MAX_VALUE else width
-                val constraintHeight = if (heightMode == YogaMeasureMode.UNDEFINED) Float.MAX_VALUE else height
-
-                val componentType = context.componentType
-                val componentInstance = DCFComponentRegistry.shared.createComponentInstance(componentType)
-                    ?: return@setMeasureFunction YogaMeasureOutput.make(constraintWidth, constraintHeight)
-
-                val intrinsicSize = componentInstance.getIntrinsicSize(view, context.props)
-
-                val finalWidth = if (widthMode == YogaMeasureMode.UNDEFINED) intrinsicSize.width else min(
-                    intrinsicSize.width,
-                    constraintWidth
-                )
-                val finalHeight = if (heightMode == YogaMeasureMode.UNDEFINED) intrinsicSize.height else min(
-                    intrinsicSize.height,
-                    constraintHeight
-                )
-
-                YogaMeasureOutput.make(finalWidth, finalHeight)
+    fun updateNode(nodeId: String, props: Map<String, Any?>): Boolean {
+        return syncLock.write {
+            try {
+                val node = nodes[nodeId] ?: return false
+                applyNodeProps(node, props)
+                Log.d(TAG, "Updated node: $nodeId")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to update node: $nodeId", e)
+                false
             }
-        } else {
-            node.setMeasureFunction(null)
+        }
+    }
+
+    fun updateNodeLayoutProps(nodeId: String, props: Map<String, Any?>) {
+        val node = nodes[nodeId] ?: return
+        applyNodeProps(node, props)
+    }
+
+    fun updateScreenRootDimensions(nodeId: String, width: Float, height: Float) {
+        val node = nodes[nodeId] ?: return
+        if (screenRootIds.contains(nodeId)) {
+            node.setWidth(width)
+            node.setHeight(height)
+        }
+    }
+
+    fun removeNode(nodeId: String): Boolean {
+        return syncLock.write {
+            try {
+                val node = nodes.remove(nodeId) ?: return false
+                
+                nodeParents.remove(nodeId)
+                nodeTypes.remove(nodeId)
+                screenRoots.remove(nodeId)
+                screenRootIds.remove(nodeId)
+
+                removeFromParent(nodeId)
+                node.reset()
+
+                Log.d(TAG, "Removed node: $nodeId")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to remove node: $nodeId", e)
+                false
+            }
         }
     }
 
@@ -594,611 +250,432 @@ fun clearAll() {
         syncLock.write {
             val parentNode = nodes[parentId]
             val childNode = nodes[childId]
-
+            
             if (parentNode == null || childNode == null) {
-                Log.w(TAG, "Cannot add child: parent or child node not found")
-                return
+                return@write
             }
 
             if (screenRootIds.contains(childId)) {
-                Log.w(TAG, "Cannot add screen root as child")
-                return
+                return@write
             }
 
-            // Remove from old parent if exists
-            nodeParents[childId]?.let { oldParentId ->
-                nodes[oldParentId]?.let { oldParentNode ->
-                    safeRemoveChildFromParent(oldParentNode, childNode, childId)
-                    setupMeasureFunction(oldParentId, oldParentNode)
-                }
-            }
+            removeFromParent(childId)
 
-            // Clear measure function on parent when adding children
-            parentNode.setMeasureFunction(null)
-
-            // Add to new parent
-            if (index != null) {
-                val childCount = parentNode.childCount
-                val safeIndex = max(0, min(index, childCount))
-                parentNode.addChildAt(childNode, safeIndex)
+            if (index != null && index >= 0 && index <= parentNode.childCount) {
+                parentNode.addChildAt(childNode, index)
             } else {
                 parentNode.addChildAt(childNode, parentNode.childCount)
             }
 
             nodeParents[childId] = parentId
-
-            setupMeasureFunction(childId, childNode)
         }
     }
 
-    fun removeNode(nodeId: String) {
-        syncLock.write {
-            isReconciling = true
-
-            // Wait for layout calculation to finish
-            while (isLayoutCalculating) {
-                Thread.sleep(1)
-            }
-
-            val node = nodes[nodeId]
-            if (node == null) {
-                isReconciling = false
-                return
-            }
-
-            if (screenRootIds.contains(nodeId)) {
-                screenRoots.remove(nodeId)
-                screenRootIds.remove(nodeId)
-            } else {
-                nodeParents[nodeId]?.let { parentId ->
-                    nodes[parentId]?.let { parentNode ->
-                        safeRemoveChildFromParent(parentNode, node, nodeId)
-                        setupMeasureFunction(parentId, parentNode)
-                    }
-                }
-            }
-
-            safeRemoveAllChildren(node, nodeId)
-
-            nodes.remove(nodeId)
-            nodeParents.remove(nodeId)
-            nodeTypes.remove(nodeId)
-
-            isReconciling = false
-        }
-    }
-
-    private fun safeRemoveChildFromParent(parentNode: YogaNode, childNode: YogaNode, childId: String) {
-        val childCount = parentNode.childCount
-
-        if (childCount <= 0) return
-
-        for (i in 0 until childCount) {
-            val child = parentNode.getChildAt(i)
-            if (child == childNode) {
-                parentNode.removeChildAt(i)
-                break
-            }
-        }
-    }
-
-    private fun safeRemoveAllChildren(node: YogaNode, nodeId: String) {
-        var childCount = node.childCount
-
-        while (childCount > 0) {
-            val lastIndex = childCount - 1
-            val childNode = node.getChildAt(lastIndex)
-
-            if (childNode != null) {
-                node.removeChildAt(lastIndex)
-            }
-
-            val newChildCount = node.childCount
-            if (newChildCount >= childCount) {
-                break
-            }
-
-            childCount = newChildCount
-        }
-    }
-
-    fun updateNodeLayoutProps(nodeId: String, props: Map<String, Any?>) {
-        val node = nodes[nodeId] ?: return
-
-        // Update context props
-        val context = node.data as? NodeContext
-        context?.props?.putAll(props)
-
-        // Apply layout properties
-        props.forEach { (key, value) ->
-            applyLayoutProp(node, key, value)
-        }
-
-        validateNodeLayoutConfig(nodeId)
-    }
-
-    fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
+    fun attachChild(childId: String, parentId: String, index: Int): Boolean {
         return syncLock.write {
-            if (isReconciling) {
-                return false
-            }
-
-            isLayoutCalculating = true
             try {
-                val mainRoot = nodes["root"] ?: return false
+                val childNode = nodes[childId] ?: return false
+                val parentNode = nodes[parentId] ?: return false
 
-                mainRoot.setWidth(width)
-                mainRoot.setHeight(height)
+                removeFromParent(childId)
 
-                mainRoot.calculateLayout(width, height)
-
-                // Calculate for screen roots
-                screenRoots.forEach { (_, screenRoot) ->
-                    screenRoot.setWidth(width)
-                    screenRoot.setHeight(height)
-                    screenRoot.calculateLayout(width, height)
+                if (index >= 0 && index <= parentNode.childCount) {
+                    parentNode.addChildAt(childNode, index)
+                } else {
+                    parentNode.addChildAt(childNode, parentNode.childCount)
                 }
 
-                // Apply layout to views
-                nodes.forEach { (nodeId, node) ->
-                    getNodeLayout(nodeId)?.let { layout ->
-                        applyLayoutToView(nodeId, layout)
-                    }
-                }
+                nodeParents[childId] = parentId
 
+                Log.d(TAG, "Attached child: $childId to parent: $parentId at index: $index")
                 true
             } catch (e: Exception) {
-                Log.e(TAG, "Layout calculation failed", e)
+                Log.e(TAG, "Failed to attach child: $childId to parent: $parentId", e)
                 false
-            } finally {
-                isLayoutCalculating = false
             }
         }
     }
 
-    fun updateScreenRootDimensions(width: Float, height: Float) {
-        syncLock.write {
-            screenRoots.forEach { (_, screenRoot) ->
-                screenRoot.setWidth(width)
-                screenRoot.setHeight(height)
+    fun detachChild(childId: String): Boolean {
+        return syncLock.write {
+            try {
+                removeFromParent(childId)
+                nodeParents.remove(childId)
+                Log.d(TAG, "Detached child: $childId")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to detach child: $childId", e)
+                false
             }
         }
     }
 
-    fun isScreenRoot(nodeId: String): Boolean = screenRootIds.contains(nodeId)
+    fun setChildren(parentId: String, childrenIds: List<String>): Boolean {
+        return syncLock.write {
+            try {
+                val parentNode = nodes[parentId] ?: return false
 
-    fun getNodeLayout(nodeId: String): RectF? {
-        val node = nodes[nodeId] ?: return null
-
-        val left = node.layoutX
-        val top = node.layoutY
-        val width = node.layoutWidth
-        val height = node.layoutHeight
-
-        return RectF(left, top, left + width, top + height)
-    }
-
-    private fun validateNodeLayoutConfig(nodeId: String) {
-        val node = nodes[nodeId] ?: return
-
-        if (node.childCount > 0 && !node.hasNewLayout()) {
-            node.setHeightAuto()
-        }
-    }
-
-    private fun applyLayoutProp(node: YogaNode, key: String, value: Any?) {
-        when (key) {
-            "translateX" -> updateNodeTransformContext(node, "translateX", value)
-            "translateY" -> updateNodeTransformContext(node, "translateY", value)
-            "rotateInDegrees" -> {
-                val degrees = convertToFloat(value)
-                if (degrees != null) {
-                    val radians = degrees * Math.PI.toFloat() / 180f
-                    updateNodeTransformContext(node, "rotate", radians)
+                while (parentNode.childCount > 0) {
+                    val child = parentNode.getChildAt(0)
+                    parentNode.removeChildAt(0)
                 }
-            }
 
-            "scale" -> convertToFloat(value)?.let { updateNodeTransformContext(node, "scale", it) }
-            "scaleX" -> convertToFloat(value)?.let { updateNodeTransformContext(node, "scaleX", it) }
-            "scaleY" -> convertToFloat(value)?.let { updateNodeTransformContext(node, "scaleY", it) }
-
-            "width" -> {
-                convertToFloat(value)?.let { node.setWidth(it) }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { node.setWidthPercent(it) }
-                        }
-                    }
-            }
-
-            "height" -> {
-                convertToFloat(value)?.let { node.setHeight(it) }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { node.setHeightPercent(it) }
-                        }
-                    }
-            }
-
-            "minWidth" -> {
-                convertToFloat(value)?.let { node.setMinWidth(it) }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { node.setMinWidthPercent(it) }
-                        }
-                    }
-            }
-
-            "maxWidth" -> {
-                convertToFloat(value)?.let { node.setMaxWidth(it) }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { node.setMaxWidthPercent(it) }
-                        }
-                    }
-            }
-
-            "minHeight" -> {
-                convertToFloat(value)?.let { node.setMinHeight(it) }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { node.setMinHeightPercent(it) }
-                        }
-                    }
-            }
-
-            "maxHeight" -> {
-                convertToFloat(value)?.let { node.setMaxHeight(it) }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { node.setMaxHeightPercent(it) }
-                        }
-                    }
-            }
-
-            // Margin properties
-            "margin" -> applyEdgeValue(node, YogaEdge.ALL, value) { n, e, v -> n.setMargin(e, v) }
-            "marginTop" -> applyEdgeValue(node, YogaEdge.TOP, value) { n, e, v -> n.setMargin(e, v) }
-            "marginRight" -> applyEdgeValue(node, YogaEdge.RIGHT, value) { n, e, v -> n.setMargin(e, v) }
-            "marginBottom" -> applyEdgeValue(node, YogaEdge.BOTTOM, value) { n, e, v -> n.setMargin(e, v) }
-            "marginLeft" -> applyEdgeValue(node, YogaEdge.LEFT, value) { n, e, v -> n.setMargin(e, v) }
-
-            // Padding properties
-            "padding" -> applyEdgeValue(node, YogaEdge.ALL, value) { n, e, v -> n.setPadding(e, v) }
-            "paddingTop" -> applyEdgeValue(node, YogaEdge.TOP, value) { n, e, v -> n.setPadding(e, v) }
-            "paddingRight" -> applyEdgeValue(node, YogaEdge.RIGHT, value) { n, e, v -> n.setPadding(e, v) }
-            "paddingBottom" -> applyEdgeValue(node, YogaEdge.BOTTOM, value) { n, e, v -> n.setPadding(e, v) }
-            "paddingLeft" -> applyEdgeValue(node, YogaEdge.LEFT, value) { n, e, v -> n.setPadding(e, v) }
-
-            // Position
-            "position" -> {
-                when (value as? String) {
-                    "absolute" -> node.setPositionType(YogaPositionType.ABSOLUTE)
-                    "relative" -> node.setPositionType(YogaPositionType.RELATIVE)
-                    "static" -> {
-                        node.setPositionType(YogaPositionType.RELATIVE) // Android Yoga doesn't have static
-                        updateNodeTransformContext(node, "positionType", "static")
+                childrenIds.forEach { childId ->
+                    val childNode = nodes[childId]
+                    if (childNode != null) {
+                        parentNode.addChildAt(childNode, parentNode.childCount)
+                        nodeParents[childId] = parentId
                     }
                 }
-            }
 
-            // Position edges
-            "left" -> if (!isStaticPositioned(node)) {
-                applyEdgeValue(node, YogaEdge.LEFT, value) { n, e, v -> n.setPosition(e, v) }
-            }
-
-            "top" -> if (!isStaticPositioned(node)) {
-                applyEdgeValue(node, YogaEdge.TOP, value) { n, e, v -> n.setPosition(e, v) }
-            }
-
-            "right" -> if (!isStaticPositioned(node)) {
-                applyEdgeValue(node, YogaEdge.RIGHT, value) { n, e, v -> n.setPosition(e, v) }
-            }
-
-            "bottom" -> if (!isStaticPositioned(node)) {
-                applyEdgeValue(node, YogaEdge.BOTTOM, value) { n, e, v -> n.setPosition(e, v) }
-            }
-
-            // Flexbox properties
-            "flexDirection" -> {
-                when (value as? String) {
-                    "row" -> node.setFlexDirection(YogaFlexDirection.ROW)
-                    "column" -> node.setFlexDirection(YogaFlexDirection.COLUMN)
-                    "rowReverse" -> node.setFlexDirection(YogaFlexDirection.ROW_REVERSE)
-                    "columnReverse" -> node.setFlexDirection(YogaFlexDirection.COLUMN_REVERSE)
-                }
-            }
-
-            "justifyContent" -> {
-                when (value as? String) {
-                    "flexStart" -> node.setJustifyContent(YogaJustify.FLEX_START)
-                    "center" -> node.setJustifyContent(YogaJustify.CENTER)
-                    "flexEnd" -> node.setJustifyContent(YogaJustify.FLEX_END)
-                    "spaceBetween" -> node.setJustifyContent(YogaJustify.SPACE_BETWEEN)
-                    "spaceAround" -> node.setJustifyContent(YogaJustify.SPACE_AROUND)
-                    "spaceEvenly" -> node.setJustifyContent(YogaJustify.SPACE_EVENLY)
-                }
-            }
-
-            "alignItems" -> {
-                when (value as? String) {
-                    "auto" -> node.setAlignItems(YogaAlign.AUTO)
-                    "flexStart" -> node.setAlignItems(YogaAlign.FLEX_START)
-                    "center" -> node.setAlignItems(YogaAlign.CENTER)
-                    "flexEnd" -> node.setAlignItems(YogaAlign.FLEX_END)
-                    "stretch" -> node.setAlignItems(YogaAlign.STRETCH)
-                    "baseline" -> node.setAlignItems(YogaAlign.BASELINE)
-                    "spaceBetween" -> node.setAlignItems(YogaAlign.SPACE_BETWEEN)
-                    "spaceAround" -> node.setAlignItems(YogaAlign.SPACE_AROUND)
-                }
-            }
-
-            "alignSelf" -> {
-                when (value as? String) {
-                    "auto" -> node.setAlignSelf(YogaAlign.AUTO)
-                    "flexStart" -> node.setAlignSelf(YogaAlign.FLEX_START)
-                    "center" -> node.setAlignSelf(YogaAlign.CENTER)
-                    "flexEnd" -> node.setAlignSelf(YogaAlign.FLEX_END)
-                    "stretch" -> node.setAlignSelf(YogaAlign.STRETCH)
-                    "baseline" -> node.setAlignSelf(YogaAlign.BASELINE)
-                    "spaceBetween" -> node.setAlignSelf(YogaAlign.SPACE_BETWEEN)
-                    "spaceAround" -> node.setAlignSelf(YogaAlign.SPACE_AROUND)
-                }
-            }
-
-            "flexWrap" -> {
-                when (value as? String) {
-                    "nowrap" -> node.setWrap(YogaWrap.NO_WRAP)
-                    "wrap" -> node.setWrap(YogaWrap.WRAP)
-                    "wrapReverse" -> node.setWrap(YogaWrap.WRAP_REVERSE)
-                }
-            }
-
-            "flex" -> convertToFloat(value)?.let { node.setFlex(it) }
-            "flexGrow" -> convertToFloat(value)?.let { node.setFlexGrow(it) }
-            "flexShrink" -> convertToFloat(value)?.let { node.setFlexShrink(it) }
-            "flexBasis" -> {
-                convertToFloat(value)?.let { node.setFlexBasis(it) }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { node.setFlexBasisPercent(it) }
-                        }
-                    }
-            }
-
-            // Display and overflow
-            "display" -> {
-                when (value as? String) {
-                    "flex" -> node.setDisplay(YogaDisplay.FLEX)
-                    "none" -> node.setDisplay(YogaDisplay.NONE)
-                }
-            }
-
-            "overflow" -> {
-                when (value as? String) {
-                    "visible" -> node.setOverflow(YogaOverflow.VISIBLE)
-                    "hidden" -> node.setOverflow(YogaOverflow.HIDDEN)
-                    "scroll" -> node.setOverflow(YogaOverflow.SCROLL)
-                }
-            }
-
-            // Direction
-            "direction" -> {
-                when (value as? String) {
-                    "inherit" -> node.setDirection(YogaDirection.INHERIT)
-                    "ltr" -> node.setDirection(YogaDirection.LTR)
-                    "rtl" -> node.setDirection(YogaDirection.RTL)
-                }
-            }
-
-            // Border and aspect ratio
-            "borderWidth" -> convertToFloat(value)?.let { node.setBorder(YogaEdge.ALL, it) }
-            "aspectRatio" -> convertToFloat(value)?.let { node.setAspectRatio(it) }
-
-            // Gap (for Android Yoga that supports it)
-            "gap" -> convertToFloat(value)?.let { /* Gap not yet supported in Android Yoga */ }
-            "rowGap" -> convertToFloat(value)?.let { /* Gap not yet supported in Android Yoga */ }
-            "columnGap" -> convertToFloat(value)?.let { /* Gap not yet supported in Android Yoga */ }
-        }
-    }
-
-    private fun applyEdgeValue(
-        node: YogaNode,
-        edge: YogaEdge,
-        value: Any?,
-        setter: (YogaNode, YogaEdge, Float) -> Unit
-    ) {
-        convertToFloat(value)?.let { setter(node, edge, it) }
-            ?: (value as? String)?.let { str ->
-                if (str.endsWith("%")) {
-                    str.dropLast(1).toFloatOrNull()?.let {
-                        when (edge) {
-                            YogaEdge.ALL -> {
-                                setter(node, YogaEdge.LEFT, it)
-                                setter(node, YogaEdge.TOP, it)
-                                setter(node, YogaEdge.RIGHT, it)
-                                setter(node, YogaEdge.BOTTOM, it)
-                            }
-
-                            else -> setter(node, edge, it)
-                        }
-                    }
-                }
-            }
-    }
-
-    private fun convertToFloat(value: Any?): Float? {
-        return when (value) {
-            is Float -> value
-            is Double -> value.toFloat()
-            is Int -> value.toFloat()
-            is Long -> value.toFloat()
-            is String -> value.toFloatOrNull()
-            else -> null
-        }
-    }
-
-    private fun updateNodeTransformContext(node: YogaNode, key: String, value: Any?) {
-        val context = node.data as? NodeContext ?: return
-
-        when (key) {
-            "translateX" -> {
-                convertToFloat(value)?.let { context.translateX = it }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { context.translateXPercent = it }
-                        }
-                    }
-            }
-
-            "translateY" -> {
-                convertToFloat(value)?.let { context.translateY = it }
-                    ?: (value as? String)?.let { str ->
-                        if (str.endsWith("%")) {
-                            str.dropLast(1).toFloatOrNull()?.let { context.translateYPercent = it }
-                        }
-                    }
-            }
-
-            else -> {
-                convertToFloat(value)?.let {
-                    when (key) {
-                        "rotate" -> context.rotate = it
-                        "scale" -> context.scale = it
-                        "scaleX" -> context.scaleX = it
-                        "scaleY" -> context.scaleY = it
-                    }
-                } ?: (value as? String)?.let {
-                    if (key == "positionType") context.positionType = it
-                }
+                Log.d(TAG, "Set children for parent: $parentId")
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to set children for parent: $parentId", e)
+                false
             }
         }
     }
-
-    fun setCustomMeasureFunction(nodeId: String, measureFunc: YogaMeasureFunction) {
-        val node = nodes[nodeId] ?: return
-
-        if (node.childCount == 0) {
-            node.setMeasureFunction(measureFunc)
-        }
-    }
-
-    private fun applyLayoutToView(viewId: String, frame: RectF) {
-        val view = DCFLayoutManager.shared.getView(viewId) ?: return
-        val node = nodes[viewId] ?: return
-
-        var finalFrame = RectF(frame)
-        val context = node.data as? NodeContext
-
-        if (context != null) {
-            // Apply transforms
-            var translationX = 0f
-            var translationY = 0f
-
-            context.translateX?.let { translationX += it }
-            context.translateXPercent?.let { translationX += it * frame.width() / 100f }
-            context.translateY?.let { translationY += it }
-            context.translateYPercent?.let { translationY += it * frame.height() / 100f }
-
-            finalFrame.offset(translationX, translationY)
-
-            // Apply other transforms on main thread
-            DCFLayoutManager.shared.getView(viewId)?.let { view ->
-                view.post {
-                    context.rotate?.let { view.rotation = Math.toDegrees(it.toDouble()).toFloat() }
-                    context.scale?.let {
-                        view.scaleX = it
-                        view.scaleY = it
-                    } ?: run {
-                        context.scaleX?.let { view.scaleX = it }
-                        context.scaleY?.let { view.scaleY = it }
-                    }
-                }
-            }
-        }
-
-        // Apply layout
-        DCFLayoutManager.shared.applyLayout(
-            viewId,
-            finalFrame.left,
-            finalFrame.top,
-            finalFrame.width(),
-            finalFrame.height()
-        )
-    }
-
-    // Web Defaults Support
 
     fun applyWebDefaults() {
-        syncLock.write {
-            useWebDefaults = true
-
-            // Apply web defaults to root node
-            rootNode?.let { root ->
-                // Web default: flex-direction: row (instead of column)
-                root.setFlexDirection(YogaFlexDirection.ROW)
-                // Web default: align-content: stretch (instead of flex-start)
-                root.setAlignContent(YogaAlign.STRETCH)
-                // Web default: flex-shrink: 1 (instead of 0)
-                root.setFlexShrink(1f)
-
-                Log.d(TAG, "Applied web defaults to root node")
-            }
-
-            // Apply web defaults to all screen roots
-            screenRoots.forEach { (_, screenRoot) ->
-                screenRoot.setFlexDirection(YogaFlexDirection.ROW)
-                screenRoot.setAlignContent(YogaAlign.STRETCH)
-                screenRoot.setFlexShrink(1f)
-            }
-
-            Log.d(TAG, "Applied web defaults to ${screenRoots.size} screen roots")
+        useWebDefaults = true
+        rootNode?.let { root ->
+            root.setFlexDirection(YogaFlexDirection.ROW)
+            root.setAlignContent(YogaAlign.STRETCH)
         }
     }
 
-    private fun applyDefaultNodeStyles(node: YogaNode) {
-        if (useWebDefaults) {
-            // Web defaults
-            node.setFlexDirection(YogaFlexDirection.ROW)
-            node.setAlignContent(YogaAlign.STRETCH)
-            node.setFlexShrink(1f)
-        } else {
-            // Yoga native defaults
-            node.setFlexDirection(YogaFlexDirection.COLUMN)
-            node.setAlignContent(YogaAlign.FLEX_START)
-            node.setFlexShrink(0f)
-        }
-    }
-
-    private fun isStaticPositioned(node: YogaNode): Boolean {
-        val context = node.data as? NodeContext
-        return context?.positionType == "static"
+    fun isScreenRoot(nodeId: String): Boolean {
+        return screenRootIds.contains(nodeId)
     }
 
     fun clearAll() {
         syncLock.write {
-            nodes.forEach { (nodeId, _) ->
-                if (nodeId != "root") {
-                    removeNode(nodeId)
+            nodes.values.forEach { it.reset() }
+            nodes.clear()
+            nodeParents.clear()
+            nodeTypes.clear()
+            screenRoots.clear()
+            screenRootIds.clear()
+        }
+    }
+
+    fun viewRegisteredWithShadowTree(viewId: String): Boolean {
+        return nodes.containsKey(viewId)
+    }
+
+    private fun configureNodeDefaults(node: YogaNode, nodeType: String) {
+        node.setDirection(YogaDirection.LTR)
+        
+        if (useWebDefaults) {
+            node.setFlexDirection(YogaFlexDirection.ROW)
+            node.setAlignContent(YogaAlign.STRETCH)
+            node.setFlexShrink(1f)
+        } else {
+            node.setFlexDirection(YogaFlexDirection.COLUMN)
+        }
+
+        when (nodeType.lowercase()) {
+            "scrollview" -> {
+                node.setOverflow(YogaOverflow.SCROLL)
+            }
+            "text" -> {
+                node.setFlexShrink(0f)
+            }
+        }
+    }
+
+    private fun applyNodeProps(node: YogaNode, props: Map<String, Any?>) {
+        props.forEach { (key, value) ->
+            when (key) {
+                "width" -> setDimension(node, YogaEdge.ALL, value, true)
+                "height" -> setDimension(node, YogaEdge.ALL, value, false)
+                "minWidth" -> setMinDimension(node, value, true)
+                "maxWidth" -> setMaxDimension(node, value, true)
+                "minHeight" -> setMinDimension(node, value, false)
+                "maxHeight" -> setMaxDimension(node, value, false)
+                
+                "margin" -> setMargin(node, YogaEdge.ALL, value)
+                "marginTop" -> setMargin(node, YogaEdge.TOP, value)
+                "marginRight" -> setMargin(node, YogaEdge.RIGHT, value)
+                "marginBottom" -> setMargin(node, YogaEdge.BOTTOM, value)
+                "marginLeft" -> setMargin(node, YogaEdge.LEFT, value)
+                "marginHorizontal" -> {
+                    setMargin(node, YogaEdge.LEFT, value)
+                    setMargin(node, YogaEdge.RIGHT, value)
+                }
+                "marginVertical" -> {
+                    setMargin(node, YogaEdge.TOP, value)
+                    setMargin(node, YogaEdge.BOTTOM, value)
+                }
+                
+                "padding" -> setPadding(node, YogaEdge.ALL, value)
+                "paddingTop" -> setPadding(node, YogaEdge.TOP, value)
+                "paddingRight" -> setPadding(node, YogaEdge.RIGHT, value)
+                "paddingBottom" -> setPadding(node, YogaEdge.BOTTOM, value)
+                "paddingLeft" -> setPadding(node, YogaEdge.LEFT, value)
+                "paddingHorizontal" -> {
+                    setPadding(node, YogaEdge.LEFT, value)
+                    setPadding(node, YogaEdge.RIGHT, value)
+                }
+                "paddingVertical" -> {
+                    setPadding(node, YogaEdge.TOP, value)
+                    setPadding(node, YogaEdge.BOTTOM, value)
+                }
+                
+                "left" -> setPosition(node, YogaEdge.LEFT, value)
+                "top" -> setPosition(node, YogaEdge.TOP, value)
+                "right" -> setPosition(node, YogaEdge.RIGHT, value)
+                "bottom" -> setPosition(node, YogaEdge.BOTTOM, value)
+                
+                "position" -> setPositionType(node, value)
+                "flexDirection" -> setFlexDirection(node, value)
+                "justifyContent" -> setJustifyContent(node, value)
+                "alignItems" -> setAlignItems(node, value)
+                "alignSelf" -> setAlignSelf(node, value)
+                "alignContent" -> setAlignContent(node, value)
+                "flexWrap" -> setFlexWrap(node, value)
+                "flex" -> setFlex(node, value)
+                "flexGrow" -> setFlexGrow(node, value)
+                "flexShrink" -> setFlexShrink(node, value)
+                "flexBasis" -> setFlexBasis(node, value)
+                "display" -> setDisplay(node, value)
+                "overflow" -> setOverflow(node, value)
+                "direction" -> setDirection(node, value)
+                "aspectRatio" -> setAspectRatio(node, value)
+            }
+        }
+    }
+
+    private fun setDimension(node: YogaNode, edge: YogaEdge, value: Any?, isWidth: Boolean) {
+        when (value) {
+            is Number -> {
+                if (isWidth) node.setWidth(value.toFloat()) else node.setHeight(value.toFloat())
+            }
+            is String -> {
+                when (value) {
+                    "auto" -> if (isWidth) node.setWidthAuto() else node.setHeightAuto()
+                    else -> {
+                        val numericValue = parsePercentage(value)
+                        if (numericValue != null) {
+                            if (isWidth) node.setWidthPercent(numericValue) else node.setHeightPercent(numericValue)
+                        }
+                    }
                 }
             }
         }
     }
 
-    // Node context data class
-    private data class NodeContext(
-        val nodeId: String,
-        val componentType: String,
-        val props: MutableMap<String, Any?>,
-        var translateX: Float? = null,
-        var translateXPercent: Float? = null,
-        var translateY: Float? = null,
-        var translateYPercent: Float? = null,
-        var rotate: Float? = null,
-        var scale: Float? = null,
-        var scaleX: Float? = null,
-        var scaleY: Float? = null,
-        var positionType: String? = null
-    )
-}
+    private fun setMinDimension(node: YogaNode, value: Any?, isWidth: Boolean) {
+        when (value) {
+            is Number -> if (isWidth) node.setMinWidth(value.toFloat()) else node.setMinHeight(value.toFloat())
+        }
+    }
 
+    private fun setMaxDimension(node: YogaNode, value: Any?, isWidth: Boolean) {
+        when (value) {
+            is Number -> if (isWidth) node.setMaxWidth(value.toFloat()) else node.setMaxHeight(value.toFloat())
+        }
+    }
+
+    private fun setMargin(node: YogaNode, edge: YogaEdge, value: Any?) {
+        when (value) {
+            is Number -> node.setMargin(edge, value.toFloat())
+            is String -> {
+                when (value) {
+                    "auto" -> node.setMarginAuto(edge)
+                    else -> {
+                        val percentage = parsePercentage(value)
+                        if (percentage != null) {
+                            node.setMarginPercent(edge, percentage)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setPadding(node: YogaNode, edge: YogaEdge, value: Any?) {
+        when (value) {
+            is Number -> node.setPadding(edge, value.toFloat())
+            is String -> {
+                val percentage = parsePercentage(value)
+                if (percentage != null) {
+                    node.setPaddingPercent(edge, percentage)
+                }
+            }
+        }
+    }
+
+    private fun setPosition(node: YogaNode, edge: YogaEdge, value: Any?) {
+        when (value) {
+            is Number -> node.setPosition(edge, value.toFloat())
+            is String -> {
+                val percentage = parsePercentage(value)
+                if (percentage != null) {
+                    node.setPositionPercent(edge, percentage)
+                }
+            }
+        }
+    }
+
+    private fun setPositionType(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "absolute" -> node.setPositionType(YogaPositionType.ABSOLUTE)
+            "relative" -> node.setPositionType(YogaPositionType.RELATIVE)
+        }
+    }
+
+    private fun setFlexDirection(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "row" -> node.setFlexDirection(YogaFlexDirection.ROW)
+            "column" -> node.setFlexDirection(YogaFlexDirection.COLUMN)
+            "row-reverse" -> node.setFlexDirection(YogaFlexDirection.ROW_REVERSE)
+            "column-reverse" -> node.setFlexDirection(YogaFlexDirection.COLUMN_REVERSE)
+        }
+    }
+
+    private fun setJustifyContent(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "flex-start" -> node.setJustifyContent(YogaJustify.FLEX_START)
+            "center" -> node.setJustifyContent(YogaJustify.CENTER)
+            "flex-end" -> node.setJustifyContent(YogaJustify.FLEX_END)
+            "space-between" -> node.setJustifyContent(YogaJustify.SPACE_BETWEEN)
+            "space-around" -> node.setJustifyContent(YogaJustify.SPACE_AROUND)
+            "space-evenly" -> node.setJustifyContent(YogaJustify.SPACE_EVENLY)
+        }
+    }
+
+    private fun setAlignItems(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "flex-start" -> node.setAlignItems(YogaAlign.FLEX_START)
+            "center" -> node.setAlignItems(YogaAlign.CENTER)
+            "flex-end" -> node.setAlignItems(YogaAlign.FLEX_END)
+            "stretch" -> node.setAlignItems(YogaAlign.STRETCH)
+            "baseline" -> node.setAlignItems(YogaAlign.BASELINE)
+        }
+    }
+
+    private fun setAlignSelf(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "auto" -> node.setAlignSelf(YogaAlign.AUTO)
+            "flex-start" -> node.setAlignSelf(YogaAlign.FLEX_START)
+            "center" -> node.setAlignSelf(YogaAlign.CENTER)
+            "flex-end" -> node.setAlignSelf(YogaAlign.FLEX_END)
+            "stretch" -> node.setAlignSelf(YogaAlign.STRETCH)
+            "baseline" -> node.setAlignSelf(YogaAlign.BASELINE)
+        }
+    }
+
+    private fun setAlignContent(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "flex-start" -> node.setAlignContent(YogaAlign.FLEX_START)
+            "center" -> node.setAlignContent(YogaAlign.CENTER)
+            "flex-end" -> node.setAlignContent(YogaAlign.FLEX_END)
+            "stretch" -> node.setAlignContent(YogaAlign.STRETCH)
+            "space-between" -> node.setAlignContent(YogaAlign.SPACE_BETWEEN)
+            "space-around" -> node.setAlignContent(YogaAlign.SPACE_AROUND)
+        }
+    }
+
+    private fun setFlexWrap(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "nowrap" -> node.setWrap(YogaWrap.NO_WRAP)
+            "wrap" -> node.setWrap(YogaWrap.WRAP)
+            "wrap-reverse" -> node.setWrap(YogaWrap.WRAP_REVERSE)
+        }
+    }
+
+    private fun setFlex(node: YogaNode, value: Any?) {
+        when (value) {
+            is Number -> node.setFlex(value.toFloat())
+        }
+    }
+
+    private fun setFlexGrow(node: YogaNode, value: Any?) {
+        when (value) {
+            is Number -> node.setFlexGrow(value.toFloat())
+        }
+    }
+
+    private fun setFlexShrink(node: YogaNode, value: Any?) {
+        when (value) {
+            is Number -> node.setFlexShrink(value.toFloat())
+        }
+    }
+
+    private fun setFlexBasis(node: YogaNode, value: Any?) {
+        when (value) {
+            is Number -> node.setFlexBasis(value.toFloat())
+            is String -> {
+                when (value) {
+                    "auto" -> node.setFlexBasisAuto()
+                    else -> {
+                        val percentage = parsePercentage(value)
+                        if (percentage != null) {
+                            node.setFlexBasisPercent(percentage)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setDisplay(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "flex" -> node.setDisplay(YogaDisplay.FLEX)
+            "none" -> node.setDisplay(YogaDisplay.NONE)
+        }
+    }
+
+    private fun setOverflow(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "visible" -> node.setOverflow(YogaOverflow.VISIBLE)
+            "hidden" -> node.setOverflow(YogaOverflow.HIDDEN)
+            "scroll" -> node.setOverflow(YogaOverflow.SCROLL)
+        }
+    }
+
+    private fun setDirection(node: YogaNode, value: Any?) {
+        when (value as? String) {
+            "ltr" -> node.setDirection(YogaDirection.LTR)
+            "rtl" -> node.setDirection(YogaDirection.RTL)
+            "inherit" -> node.setDirection(YogaDirection.INHERIT)
+        }
+    }
+
+    private fun setAspectRatio(node: YogaNode, value: Any?) {
+        when (value) {
+            is Number -> node.setAspectRatio(value.toFloat())
+        }
+    }
+
+    private fun parsePercentage(value: String): Float? {
+        return if (value.endsWith("%")) {
+            value.removeSuffix("%").toFloatOrNull()
+        } else {
+            value.toFloatOrNull()
+        }
+    }
+
+    private fun removeFromParent(childId: String) {
+        val parentId = nodeParents[childId] ?: return
+        val parentNode = nodes[parentId] ?: return
+        val childNode = nodes[childId] ?: return
+
+        try {
+            for (i in 0 until parentNode.childCount) {
+                if (parentNode.getChildAt(i) == childNode) {
+                    parentNode.removeChildAt(i)
+                    break
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to remove child from parent: $e")
+        }
+    }
+
+    private fun isScreenRoot(nodeType: String, props: Map<String, Any?>): Boolean {
+        return nodeType == "Screen" || props.containsKey("presentationStyle")
+    }
+}

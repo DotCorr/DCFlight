@@ -26,12 +26,8 @@ import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.utils.DCFScreenUtilities
 
-/** DcflightPlugin */
 class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
-    /// The MethodChannel that will the communication between Flutter and native Android
-    ///
-    /// This local reference serves to register the plugin with the Flutter Engine and unregister it
-    /// when the Flutter Engine is detached from the Activity
+
     private lateinit var channel: MethodChannel
     private var activity: Activity? = null
     private var context: Context? = null
@@ -54,10 +50,15 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "dcflight")
         channel.setMethodCallHandler(this)
 
-        // Initialize method channels for bridge and events
-        DCMauiBridgeMethodChannel.shared.initialize(flutterPluginBinding.binaryMessenger)
-        DCMauiEventMethodHandler.shared.initialize(flutterPluginBinding.binaryMessenger)
-        DCMauiLayoutMethodHandler.shared.initialize(flutterPluginBinding.binaryMessenger)
+        // Initialize method channels - call the static initialize methods
+        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dotcorr.dcflight/bridge")
+            .setMethodCallHandler(DCMauiBridgeMethodChannel.shared)
+        
+        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dotcorr.dcflight/events")
+            .setMethodCallHandler(DCMauiEventMethodHandler.shared)
+            
+        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dotcorr.dcflight/layout")
+            .setMethodCallHandler(DCMauiLayoutMethodHandler.shared)
 
         Log.d(TAG, "DCFlight plugin initialized with method channels")
     }
@@ -67,13 +68,12 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             "getPlatformVersion" -> {
                 result.success("Android ${android.os.Build.VERSION.RELEASE}")
             }
-
-            "initialize" -> {
-                Log.d(TAG, "Initialize called from Dart")
-                initializeDCFlight()
-                result.success(true)
+            "divergeToFlight" -> {
+                activity?.let { act ->
+                    DCDivergerUtil.divergeToFlight(act, flutterPluginBinding)
+                    result.success(true)
+                } ?: result.error("NO_ACTIVITY", "Activity not available", null)
             }
-
             else -> {
                 result.notImplemented()
             }
@@ -81,48 +81,31 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-        Log.d(TAG, "onDetachedFromEngine called")
         channel.setMethodCallHandler(null)
-
-        // Cleanup
-        DCMauiBridgeMethodChannel.shared.cleanup()
-        DCMauiEventMethodHandler.shared.cleanup()
-        DCMauiLayoutMethodHandler.shared.cleanup()
+        
+        YogaShadowTree.shared.cleanup()
+        DCFLayoutManager.shared.cleanup()
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         Log.d(TAG, "onAttachedToActivity called")
-        activity = binding.activity
-
-        // Initialize DCFlight when activity is available
-        activity?.let {
-            DCDivergerUtil.divergeToFlight(it, flutterPluginBinding)
-        }
+        this.activity = binding.activity
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
         Log.d(TAG, "onDetachedFromActivityForConfigChanges called")
-        // Handle configuration changes if needed
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         Log.d(TAG, "onReattachedToActivityForConfigChanges called")
-        activity = binding.activity
+        this.activity = binding.activity
     }
 
     override fun onDetachedFromActivity() {
         Log.d(TAG, "onDetachedFromActivity called")
-        activity = null
-    }
-
-    private fun initializeDCFlight() {
-        Log.d(TAG, "Initializing DCFlight framework")
-        FrameworkComponentsReg.registerComponents()
-        // Initialize core systems
-        YogaShadowTree.shared.initialize()
-        DCFLayoutManager.shared.initialize()
-        DCFScreenUtilities.shared.initialize(flutterPluginBinding?.binaryMessenger)
-
-        Log.d(TAG, "DCFlight framework initialized successfully")
+        this.activity = null
+        
+        YogaShadowTree.shared.cleanup()
+        DCFLayoutManager.shared.cleanup()
     }
 }

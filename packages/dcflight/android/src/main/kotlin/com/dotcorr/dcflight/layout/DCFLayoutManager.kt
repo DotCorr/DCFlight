@@ -214,6 +214,22 @@ class DCFLayoutManager private constructor() {
         return true
     }
 
+    fun viewRegisteredWithShadowTree(viewId: String): Boolean {
+    return YogaShadowTree.shared.viewRegisteredWithShadowTree(viewId)
+}
+
+fun addChildNode(parentId: String, childId: String, index: Int? = null) {
+    YogaShadowTree.shared.addChildNode(parentId, childId, index)
+}
+
+fun updateNodeLayoutProps(nodeId: String, props: Map<String, Any?>) {
+    YogaShadowTree.shared.updateNodeLayoutProps(nodeId, props)
+}
+
+fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
+    return YogaShadowTree.shared.calculateAndApplyLayout(width, height)
+}
+
     /**
      * Apply calculated layout to a view with optional animation
      */

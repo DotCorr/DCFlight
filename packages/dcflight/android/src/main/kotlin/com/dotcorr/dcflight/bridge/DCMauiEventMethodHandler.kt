@@ -8,272 +8,179 @@
 package com.dotcorr.dcflight.bridge
 
 import android.util.Log
-import android.view.View
-import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import com.dotcorr.dcflight.layout.ViewRegistry
+import java.util.concurrent.ConcurrentHashMap
+
+typealias EventCallback = (Map<String, Any>) -> Unit
 
 /**
- * CRITICAL FIX: Method channel handler for all event-related operations
- * Now matches iOS DCMauiEventMethodHandler exactly
+ * Handles event-related method calls from Flutter
  */
-class DCMauiEventMethodHandler private constructor() : MethodCallHandler {
-    
+class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
+
     companion object {
         private const val TAG = "DCMauiEventMethodHandler"
-        // CRITICAL FIX: Use EXACT iOS channel name
-        private const val METHOD_CHANNEL_NAME = "com.dcmaui.events"
 
-        @JvmStatic
+        @JvmField
         val shared = DCMauiEventMethodHandler()
+
+        fun initialize(binaryMessenger: io.flutter.plugin.common.BinaryMessenger) {
+            val channel = MethodChannel(binaryMessenger, "com.dotcorr.dcflight/events")
+            channel.setMethodCallHandler(shared)
+        }
     }
 
-    // Method channel for event operations
-    private var methodChannel: MethodChannel? = null
+    private val eventCallbacks = ConcurrentHashMap<String, MutableMap<String, EventCallback>>()
+    private val viewEventListeners = ConcurrentHashMap<String, MutableSet<String>>()
 
-    // Event callback closure type - EXACT iOS pattern
-    typealias EventCallback = (String, String, Map<String, Any?>) -> Unit
-
-    // Store the event callback
-    private var eventCallback: EventCallback? = null
-
-    /**
-     * Initialize with Flutter binary messenger - EXACT iOS pattern
-     */
-    fun initialize(binaryMessenger: BinaryMessenger) {
-        Log.d(TAG, "Initializing DCMauiEventMethodHandler")
-
-        methodChannel = MethodChannel(binaryMessenger, METHOD_CHANNEL_NAME)
-        setupMethodCallHandler()
-
-        Log.d(TAG, "DCMauiEventMethodHandler initialized successfully")
-    }
-
-    /**
-     * Register method call handler - EXACT iOS pattern
-     */
-    private fun setupMethodCallHandler() {
-        methodChannel?.setMethodCallHandler { call, result ->
-            Log.d(TAG, "Event method call: ${call.method}")
-
-            when (call.method) {
-                "addEventListeners" -> {
-                    handleAddEventListeners(call, result)
-                }
-
-                "removeEventListeners" -> {
-                    handleRemoveEventListeners(call, result)
-                }
-
-                else -> {
-                    result.notImplemented()
-                }
+    override fun onMethodCall(call: MethodCall, result: Result) {
+        when (call.method) {
+            "registerEvent" -> {
+                handleRegisterEvent(call.arguments as? Map<String, Any>, result)
+            }
+            "unregisterEvent" -> {
+                handleUnregisterEvent(call.arguments as? Map<String, Any>, result)
+            }
+            "dispatchEvent" -> {
+                handleDispatchEvent(call.arguments as? Map<String, Any>, result)
+            }
+            else -> {
+                result.notImplemented()
             }
         }
     }
 
-    /**
-     * Set event callback function - EXACT iOS pattern
-     */
-    fun setEventCallback(callback: EventCallback) {
-        this.eventCallback = callback
+    private fun handleRegisterEvent(args: Map<String, Any>?, result: Result) {
+        val viewId = args?.get("viewId") as? String
+        val eventType = args?.get("eventType") as? String
+        val callbackId = args?.get("callbackId") as? String
+
+        if (viewId == null || eventType == null || callbackId == null) {
+            result.error("REGISTER_ERROR", "Invalid event registration parameters", null)
+            return
+        }
+
+        val view = ViewRegistry.shared.getView(viewId)
+        if (view == null) {
+            result.error("VIEW_NOT_FOUND", "View $viewId not found", null)
+            return
+        }
+
+        val callback: EventCallback = { eventData ->
+            Log.d(TAG, "Event $eventType fired for view $viewId")
+        }
+
+        eventCallbacks.getOrPut(viewId) { mutableMapOf() }[eventType] = callback
+        viewEventListeners.getOrPut(viewId) { mutableSetOf() }.add(eventType)
+
+        setupNativeEventListener(view, eventType, callback)
+
+        result.success(true)
     }
 
-    /**
-     * Send event to Dart - EXACT iOS pattern
-     */
-    fun sendEvent(viewId: String, eventName: String, eventData: Map<String, Any?>) {
-        Log.d(TAG, "Sending event: $eventName for view: $viewId")
+    private fun handleUnregisterEvent(args: Map<String, Any>?, result: Result) {
+        val viewId = args?.get("viewId") as? String
+        val eventType = args?.get("eventType") as? String
 
-        // Ensure event name follows "on" convention like iOS
-        val normalizedEventName = normalizeEventName(eventName)
+        if (viewId == null || eventType == null) {
+            result.error("UNREGISTER_ERROR", "Invalid event unregistration parameters", null)
+            return
+        }
 
-        if (eventCallback != null) {
-            // Use the stored callback if available
-            eventCallback!!(viewId, normalizedEventName, eventData)
+        eventCallbacks[viewId]?.remove(eventType)
+        viewEventListeners[viewId]?.remove(eventType)
+
+        val view = ViewRegistry.shared.getView(viewId)
+        if (view != null) {
+            removeNativeEventListener(view, eventType)
+        }
+
+        result.success(true)
+    }
+
+    private fun handleDispatchEvent(args: Map<String, Any>?, result: Result) {
+        val viewId = args?.get("viewId") as? String
+        val eventType = args?.get("eventType") as? String
+        val eventData = args?.get("eventData") as? Map<String, Any>
+
+        if (viewId == null || eventType == null) {
+            result.error("DISPATCH_ERROR", "Invalid event dispatch parameters", null)
+            return
+        }
+
+        val callback = eventCallbacks[viewId]?.get(eventType)
+        if (callback != null) {
+            callback(eventData ?: emptyMap())
+            result.success(true)
         } else {
-            // Fall back to method channel
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                methodChannel?.invokeMethod("onEvent", mapOf(
-                    "viewId" to viewId,
-                    "eventType" to normalizedEventName,
-                    "eventData" to eventData
-                ))
+            result.error("NO_LISTENER", "No listener registered for $eventType on view $viewId", null)
+        }
+    }
+
+    private fun setupNativeEventListener(view: android.view.View, eventType: String, callback: EventCallback) {
+        when (eventType) {
+            "onPress", "onClick" -> {
+                view.setOnClickListener {
+                    callback(mapOf(
+                        "type" to "press",
+                        "timestamp" to System.currentTimeMillis()
+                    ))
+                }
+            }
+            "onLongPress" -> {
+                view.setOnLongClickListener {
+                    callback(mapOf(
+                        "type" to "longPress",
+                        "timestamp" to System.currentTimeMillis()
+                    ))
+                    true
+                }
+            }
+            "onFocus" -> {
+                view.setOnFocusChangeListener { _, hasFocus ->
+                    if (hasFocus) {
+                        callback(mapOf(
+                            "type" to "focus",
+                            "timestamp" to System.currentTimeMillis()
+                        ))
+                    }
+                }
+            }
+            "onBlur" -> {
+                view.setOnFocusChangeListener { _, hasFocus ->
+                    if (!hasFocus) {
+                        callback(mapOf(
+                            "type" to "blur",
+                            "timestamp" to System.currentTimeMillis()
+                        ))
+                    }
+                }
+            }
+            else -> {
+                Log.w(TAG, "Unknown event type: $eventType")
             }
         }
     }
 
-    /**
-     * Normalize event name to follow React-style convention - EXACT iOS logic
-     */
-    private fun normalizeEventName(name: String): String {
-        // If already has "on" prefix and it's followed by uppercase letter, return as is
-        if (name.startsWith("on") && name.length > 2) {
-            val thirdChar = name[2]
-            if (thirdChar.isUpperCase()) {
-                return name
+    private fun removeNativeEventListener(view: android.view.View, eventType: String) {
+        when (eventType) {
+            "onPress", "onClick" -> {
+                view.setOnClickListener(null)
+            }
+            "onLongPress" -> {
+                view.setOnLongClickListener(null)
+            }
+            "onFocus", "onBlur" -> {
+                view.setOnFocusChangeListener(null)
             }
         }
-
-        // Otherwise normalize: remove "on" if it exists, capitalize first letter, and add "on" prefix
-        var processedName = name
-        if (processedName.startsWith("on")) {
-            processedName = processedName.substring(2)
-        }
-
-        if (processedName.isEmpty()) {
-            return "onEvent"
-        }
-
-        return "on${processedName.substring(0, 1).uppercase()}${processedName.substring(1)}"
     }
 
-    // MARK: - Method handlers
-
-    /**
-     * Handle addEventListeners calls - EXACT iOS pattern
-     */
-    private fun handleAddEventListeners(call: MethodCall, result: Result) {
-        val args = call.arguments as? Map<String, Any>
-        val viewId = args?.get("viewId") as? String
-        val eventTypes = args?.get("eventTypes") as? List<String>
-
-        if (viewId == null || eventTypes == null) {
-            result.error("INVALID_ARGS", "Invalid arguments for addEventListeners", null)
-            return
-        }
-
-        Log.d(TAG, "Adding event listeners for view: $viewId, events: $eventTypes")
-
-        // Get view from the registry like iOS
-        var view: View? = DCMauiBridgeMethodChannel.shared.getViewById(viewId)
-
-        // If still not found, try the LayoutManager like iOS
-        if (view == null) {
-            view = DCFLayoutManager.shared.getView(viewId)
-        }
-
-        if (view == null) {
-            Log.w(TAG, "View not found: $viewId")
-            // Return success anyway to prevent Flutter errors like iOS
-            result.success(true)
-            return
-        }
-
-        // Execute on main thread like iOS
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            // Now register event listeners with the found view
-            val success = registerEventListeners(view, viewId, eventTypes)
-            result.success(success)
-        }
-    }
-
-    /**
-     * Handle removeEventListeners calls - EXACT iOS pattern
-     */
-    private fun handleRemoveEventListeners(call: MethodCall, result: Result) {
-        val args = call.arguments as? Map<String, Any>
-        val viewId = args?.get("viewId") as? String
-        val eventTypes = args?.get("eventTypes") as? List<String>
-
-        if (viewId == null || eventTypes == null) {
-            result.error("INVALID_ARGS", "Invalid arguments for removeEventListeners", null)
-            return
-        }
-
-        Log.d(TAG, "Removing event listeners for view: $viewId, events: $eventTypes")
-
-        // Get view from the registry like iOS
-        var view: View? = DCMauiBridgeMethodChannel.shared.getViewById(viewId)
-
-        // If still not found, try the LayoutManager like iOS
-        if (view == null) {
-            view = DCFLayoutManager.shared.getView(viewId)
-        }
-
-        if (view == null) {
-            Log.w(TAG, "View not found: $viewId")
-            // Return success anyway to prevent Flutter errors like iOS
-            result.success(true)
-            return
-        }
-
-        // Execute on main thread like iOS
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            // Now unregister event listeners with the found view
-            val success = unregisterEventListeners(view, viewId, eventTypes)
-            result.success(success)
-        }
-    }
-
-    /**
-     * CRITICAL FIX: Helper method to register event listeners - EXACT iOS pattern
-     */
-    private fun registerEventListeners(view: View, viewId: String, eventTypes: List<String>): Boolean {
-        val viewType = view::class.simpleName
-
-        // Normalize event types for consistency like iOS
-        val normalizedEventTypes = eventTypes.map { normalizeEventName(it) }
-
-        // Store both original and normalized event types like iOS
-        val allEventTypes = mutableSetOf<String>()
-        allEventTypes.addAll(eventTypes)
-        allEventTypes.addAll(normalizedEventTypes)
-
-        Log.d(TAG, "Registering events for $viewType view $viewId: $allEventTypes")
-
-        // CRITICAL FIX: Store event registration info directly on the view for global event system like iOS
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, allEventTypes.toList())
-
-        // Store the event callback for the global system to use like iOS
-        val eventCallback: (String, String, Map<String, Any?>) -> Unit = { viewId, eventType, eventData ->
-            this.sendEvent(viewId, eventType, eventData)
-        }
-
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, eventCallback)
-
-        return true
-    }
-
-    /**
-     * CRITICAL FIX: Helper method to unregister event listeners - EXACT iOS pattern
-     */
-    private fun unregisterEventListeners(view: View, viewId: String, eventTypes: List<String>): Boolean {
-        val storedEventTypes = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_types) as? List<String>
-        if (storedEventTypes != null) {
-            val remainingTypes = storedEventTypes.toMutableList()
-
-            for (eventType in eventTypes) {
-                val normalizedType = normalizeEventName(eventType)
-                remainingTypes.remove(normalizedType)
-            }
-
-            if (remainingTypes.isEmpty()) {
-                // Clear all event data if no events remain like iOS
-                view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, null)
-                view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, null)
-                view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, null)
-            } else {
-                // Update remaining event types
-                view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, remainingTypes)
-            }
-        }
-
-        return true
-    }
-
-    /**
-     * Cleanup resources
-     */
     fun cleanup() {
-        Log.d(TAG, "Cleaning up DCMauiEventMethodHandler")
-        methodChannel?.setMethodCallHandler(null)
-        methodChannel = null
-        eventCallback = null
-        Log.d(TAG, "DCMauiEventMethodHandler cleanup complete")
+        eventCallbacks.clear()
+        viewEventListeners.clear()
     }
 }
-
