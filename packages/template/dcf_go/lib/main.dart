@@ -20,6 +20,7 @@ class MyStackApp extends StatefulComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "increment counter"),
           onPress: (v) {
+            print("Button pressed");
             count.setState(count.state + 1);
           },
         ),
