@@ -36,7 +36,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     }
 
     // Store the method channel instance like iOS does
-    private var methodChannel: MethodChannel? = null
+    internal var methodChannel: MethodChannel? = null
 
     private val eventCallbacks = ConcurrentHashMap<String, MutableMap<String, EventCallback>>()
     private val viewEventListeners = ConcurrentHashMap<String, MutableSet<String>>()
@@ -232,23 +232,24 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
      */
     private fun sendEventToFlutter(viewId: String, eventName: String, eventData: Map<String, Any?>) {
         try {
-            // Get the Flutter plugin binding to access method channel
-            val binding = com.dotcorr.dcflight.DcflightPlugin.getPluginBinding()
-            if (binding != null) {
-                val channel = io.flutter.plugin.common.MethodChannel(binding.binaryMessenger, "com.dcmaui.events")
-                
-                // Send event to Flutter - matches iOS format exactly
+            Log.d(TAG, "📨 Attempting to send event to DCFEngine - viewId: $viewId, eventName: $eventName, eventData: $eventData")
+            
+            // Use the stored method channel like iOS does
+            methodChannel?.let { channel ->
                 val arguments = mapOf(
                     "viewId" to viewId,
                     "eventType" to eventName,  
                     "eventData" to eventData
                 )
                 
+                Log.d(TAG, "📤 Calling method channel onEvent with arguments: $arguments")
+                
                 // Run on main thread like iOS
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     channel.invokeMethod("onEvent", arguments)
                 }
-            }
+            } ?: Log.e(TAG, "❌ Method channel is null - cannot send event to Flutter")
+            
         } catch (e: Exception) {
             Log.e(TAG, "Error sending event to Flutter: ${e.message}", e)
         }
