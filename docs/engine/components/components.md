@@ -1,53 +1,401 @@
-# DCFlight Component Optimization Guide
+# DCFlight Component System Guide
 
-## Overview
+## 🎯 Overview
 
-DCFlight provides **automatic component re-render optimization** that reduces unnecessary UI updates by 60-90% in typical applications. This guide explains how to write components that take full advantage of this optimization.
+DCFlight provides a comprehensive component system that renders **actual native UI components** on iOS and Android while maintaining a React-like development experience with Virtual DOM optimization.
 
-## The Problem: Unnecessary Re-renders
+## 🏗️ Architecture
 
-Without optimization, every state change in a parent component causes ALL child components to re-render, even if their props haven't changed:
+### Component Hierarchy
+```
+DCFComponent (Abstract Base)
+├── StatelessComponent (with EquatableMixin)
+└── StatefulComponent (with useState hooks)
+```
+
+### Native Rendering
+DCFlight components directly map to native UI:
+
+**iOS Mapping:**
+- `DCFView` → `UIView`
+- `DCFButton` → `UIButton`
+- `DCFText` → `UILabel`
+- `DCFTextInput` → `UITextField/UITextView`
+- `DCFScrollView` → `UIScrollView`
+
+**Android Mapping:**
+- `DCFView` → `LinearLayout/FrameLayout`
+- `DCFButton` → `Button/MaterialButton`
+- `DCFText` → `TextView`
+- `DCFTextInput` → `EditText`
+- `DCFScrollView` → `ScrollView`
+
+## 🚀 Component Types
+
+### StatelessComponent with Optimization
+
+For components that depend only on props, use `StatelessComponent` with `EquatableMixin` for automatic re-render optimization:
 
 ```dart
-// ❌ Without optimization:
-class Parent extends StatefulComponent {
+class MyButton extends StatelessComponent with EquatableMixin {
+  final String title;
+  final Color backgroundColor;
+  final VoidCallback? onPress;
+
+  MyButton({
+    required this.title,
+    this.backgroundColor = Colors.blue,
+    this.onPress,
+  });
+
+  @override
+  List<Object?> get props => [title, backgroundColor, onPress];
+
   @override
   DCFComponentNode render() {
-    final counter = useState(0);
-    
-    return DCFView(children: [
-      DCFButton(
-        onPress: (_) => counter.setState(counter.state + 1),
-        buttonProps: DCFButtonProps(title: "Count: ${counter.state}"),
-      ),
-      
-      StaticChild(),      // ❌ Re-renders even though nothing changed
-      AnotherChild(),     // ❌ Re-renders even though nothing changed  
-      DynamicChild(count: counter.state),  // ✅ Should re-render (props changed)
-    ]);
+    return DCFButton(
+      buttonProps: DCFButtonProps(title: title),
+      styleSheet: StyleSheet(backgroundColor: backgroundColor),
+      onPress: onPress != null ? (data) => onPress!() : null,
+    );
   }
 }
 ```
 
-**Result**: Poor performance, animation stuttering, unnecessary CPU usage.
+### StatefulComponent with Hooks
 
-## The Solution: Smart Re-render Optimization
-
-DCFlight's VDOM automatically detects when components don't need to re-render and skips them entirely.
-
-## Component Optimization Patterns
-
-### ✅ StatelessComponent Pattern
-
-**For components without internal state, use this pattern:**
+For components with internal state, use `StatefulComponent` with `useState`:
 
 ```dart
-class MyComponent extends StatelessComponent with EquatableMixin {
+class Counter extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final count = useState<int>(0);
+    final isLoading = useState<bool>(false);
+    
+    return DCFView(
+      layout: LayoutProps(gap: 16, padding: 20),
+      children: [
+        DCFText(
+          content: "Count: ${count.state}",
+          textProps: DCFTextProps(fontSize: 24, fontWeight: DCFFontWeight.bold),
+        ),
+        DCFButton(
+          buttonProps: DCFButtonProps(
+            title: isLoading.state ? "Loading..." : "Increment"
+          ),
+          onPress: isLoading.state ? null : (data) async {
+            isLoading.setState(true);
+            await Future.delayed(Duration(milliseconds: 500));
+            count.setState(count.state + 1);
+            isLoading.setState(false);
+          },
+          layout: LayoutProps(height: 50),
+          styleSheet: StyleSheet(
+            backgroundColor: isLoading.state ? Colors.grey : Colors.blue,
+            borderRadius: 8,
+          ),
+        ),
+      ],
+    );
+  }
+}
+```
+
+## 🔧 Event Handling System
+
+### Method Channel Communication
+
+DCFlight uses method channels for bi-directional communication between native UI and Dart:
+
+```dart
+// Event registration happens automatically
+DCFButton(
+  buttonProps: DCFButtonProps(title: "Click Me"),
+  onPress: (eventData) {
+    print("Button pressed with data: $eventData");
+    // Handle the button press
+  },
+)
+```
+
+### Event Flow
+```
+User Tap → Native Component → Method Channel → Dart Handler → Your Callback
+```
+
+### Event Data Structure
+```dart
+// Standard event data passed to handlers
+Map<String, dynamic> eventData = {
+  'timestamp': DateTime.now().millisecondsSinceEpoch,
+  'componentType': 'DCFButton',
+  // Additional event-specific data
+};
+```
+
+## 🎨 Available Components
+
+### Layout Components
+
+#### DCFView
+Basic container component for layout and styling:
+
+```dart
+DCFView(
+  layout: LayoutProps(
+    flex: 1,
+    padding: EdgeInsets.all(16),
+    gap: 8,
+    justifyContent: YogaJustifyContent.spaceBetween,
+  ),
+  styleSheet: StyleSheet(
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+  ),
+  children: [
+    // Child components
+  ],
+)
+```
+
+#### DCFScrollView
+Native scrollable container:
+
+```dart
+DCFScrollView(
+  layout: LayoutProps(flex: 1),
+  scrollDirection: Axis.vertical,
+  showsScrollIndicator: true,
+  children: [
+    // Scrollable content
+  ],
+)
+```
+
+### Input Components
+
+#### DCFButton
+Native button with full customization:
+
+```dart
+DCFButton(
+  buttonProps: DCFButtonProps(
+    title: "Primary Action",
+    systemStyle: DCFButtonSystemStyle.filled, // iOS system styles
+  ),
+  layout: LayoutProps(height: 44, width: 200),
+  styleSheet: StyleSheet(
+    backgroundColor: Colors.blue,
+    borderRadius: 8,
+  ),
+  onPress: (data) {
+    print("Button tapped!");
+  },
+)
+```
+
+#### DCFTextInput
+Native text input with validation:
+
+```dart
+class LoginForm extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final email = useState<String>("");
+    final password = useState<String>("");
+    
+    return DCFView(
+      layout: LayoutProps(padding: 20, gap: 16),
+      children: [
+        DCFTextInput(
+          textInputProps: DCFTextInputProps(
+            placeholder: "Enter email",
+            keyboardType: DCFKeyboardType.emailAddress,
+            value: email.state,
+          ),
+          onTextChange: (data) {
+            email.setState(data['text'] ?? '');
+          },
+          layout: LayoutProps(height: 44),
+          styleSheet: StyleSheet(
+            borderColor: Colors.grey,
+            borderWidth: 1,
+            borderRadius: 8,
+            padding: EdgeInsets.symmetric(horizontal: 12),
+          ),
+        ),
+        DCFTextInput(
+          textInputProps: DCFTextInputProps(
+            placeholder: "Enter password",
+            isSecure: true,
+            value: password.state,
+          ),
+          onTextChange: (data) {
+            password.setState(data['text'] ?? '');
+          },
+          layout: LayoutProps(height: 44),
+          styleSheet: StyleSheet(
+            borderColor: Colors.grey,
+            borderWidth: 1,
+            borderRadius: 8,
+            padding: EdgeInsets.symmetric(horizontal: 12),
+          ),
+        ),
+      ],
+    );
+  }
+}
+```
+
+### Display Components
+
+#### DCFText
+Native text rendering with full typography control:
+
+```dart
+DCFText(
+  content: "Welcome to DCFlight",
+  textProps: DCFTextProps(
+    fontSize: 28,
+    fontWeight: DCFFontWeight.bold,
+    color: Colors.black,
+    textAlign: DCFTextAlignment.center,
+  ),
+  layout: LayoutProps(marginBottom: 16),
+)
+```
+
+#### DCFImage
+Native image display with caching:
+
+```dart
+DCFImage(
+  imageProps: DCFImageProps(
+    source: "https://example.com/image.jpg",
+    contentMode: DCFImageContentMode.aspectFit,
+    placeholder: "assets/placeholder.png",
+  ),
+  layout: LayoutProps(width: 200, height: 200),
+  styleSheet: StyleSheet(borderRadius: 12),
+)
+```
+
+## 🚀 Performance Optimization
+
+### Re-render Optimization
+
+DCFlight automatically optimizes component re-renders:
+
+1. **Props Comparison**: Only re-renders when props actually change
+2. **Shallow Comparison**: Fast reference-based comparison when possible
+3. **Key-based Reconciliation**: Efficient list updates with proper keys
+4. **State Batching**: Multiple state updates batched into single render
+
+### Best Practices
+
+#### Use EquatableMixin for StatelessComponent
+```dart
+class OptimizedComponent extends StatelessComponent with EquatableMixin {
   final String title;
   final int count;
-  final Color color;
+  
+  OptimizedComponent({required this.title, required this.count});
+  
+  @override
+  List<Object?> get props => [title, count];
+  
+  @override
+  DCFComponentNode render() {
+    // Only re-renders when title or count changes
+    return DCFText(content: "$title: $count");
+  }
+}
+```
 
-  MyComponent({
+#### Batch State Updates
+```dart
+class BatchedUpdates extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final state = useState<Map<String, dynamic>>({});
+    
+    return DCFButton(
+      buttonProps: DCFButtonProps(title: "Update Multiple"),
+      onPress: (data) {
+        // Batch multiple state changes
+        final newState = Map<String, dynamic>.from(state.state);
+        newState['count'] = (newState['count'] ?? 0) + 1;
+        newState['lastUpdate'] = DateTime.now();
+        newState['isActive'] = !newState['isActive'];
+        
+        state.setState(newState); // Single render for all changes
+      },
+    );
+  }
+}
+```
+
+#### Use Keys for Lists
+```dart
+class OptimizedList extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final items = useState<List<Item>>([]);
+    
+    return DCFScrollView(
+      children: items.state.map((item) => 
+        DCFView(
+          key: item.id, // Important for efficient reconciliation
+          children: [
+            DCFText(content: item.title),
+          ],
+        )
+      ).toList(),
+    );
+  }
+}
+```
+
+## 🔍 Debugging and Development
+
+### Component Inspection
+```dart
+// Enable debug mode for component rendering insights
+DCFView(
+  debugName: "MainContainer", // Useful for debugging
+  children: [
+    // Components
+  ],
+)
+```
+
+### Event Debugging
+```dart
+DCFButton(
+  onPress: (data) {
+    print("Event data: $data"); // Inspect event data
+    print("Timestamp: ${DateTime.now()}");
+  },
+)
+```
+
+### Performance Monitoring
+```dart
+class PerformanceMonitor extends StatefulComponent {
+  @override
+  DCFComponentNode render() {
+    final renderCount = useState<int>(0);
+    
+    // Track renders
+    renderCount.setState(renderCount.state + 1);
+    print("Component rendered ${renderCount.state} times");
+    
+    return DCFText(content: "Render count: ${renderCount.state}");
+  }
+}
+```
     required this.title,
     required this.count,
     this.color = Colors.blue,

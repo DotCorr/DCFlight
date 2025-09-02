@@ -317,6 +317,7 @@ class DCFEngine {
 
   /// O(1) - Schedule a component update with priority handling
   void _scheduleComponentUpdate(StatefulComponent component) {
+    print("🔥 ENGINE: _scheduleComponentUpdate called for ${component.instanceId}");
     EngineDebugLogger.logUpdate(component, 'State change triggered update');
 
     // O(1) - Check for custom state change handler

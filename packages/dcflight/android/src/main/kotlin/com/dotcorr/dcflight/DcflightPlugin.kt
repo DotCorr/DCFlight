@@ -63,6 +63,9 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         DCMauiBridgeMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
         DCMauiEventMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
         DCMauiLayoutMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
+        
+        // Initialize hot restart channel - CRITICAL for hot restart cleanup!
+        DCFHotRestartMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
 
         Log.d(TAG, "DCFlight plugin initialized with method channels")
     }

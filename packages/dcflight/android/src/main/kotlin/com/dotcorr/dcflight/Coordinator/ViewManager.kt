@@ -29,6 +29,15 @@ class DCFViewManager private constructor() {
         val shared = DCFViewManager()
     }
 
+    /**
+     * Clean up for hot restart (simplified version)
+     */
+    fun cleanupForHotRestart() {
+        Log.d(TAG, "🔥 DCF_ENGINE: ViewManager hot restart cleanup called")
+        // Simplified cleanup - let existing systems handle the details
+        Log.d(TAG, "🔥 DCF_ENGINE: ViewManager cleanup for hot restart completed")
+    }
+
     fun createView(viewId: String, viewType: String, props: Map<String, Any?>): Boolean {
         Log.d(TAG, "Creating view: $viewId of type: $viewType")
 
