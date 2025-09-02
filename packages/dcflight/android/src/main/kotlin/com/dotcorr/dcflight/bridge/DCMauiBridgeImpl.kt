@@ -110,6 +110,7 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     fun updateView(viewId: String, propsJson: String): Boolean {
+        Log.d(TAG, "🔥 UPDATE_VIEW CALLED: viewId=$viewId, propsJson=$propsJson")
         return try {
             val view = ViewRegistry.shared.getView(viewId)
             if (view == null) {
@@ -122,6 +123,8 @@ class DCMauiBridgeImpl private constructor() {
             } else {
                 emptyMap()
             }
+            
+            Log.d(TAG, "🔥 UPDATE_VIEW: parsed props for $viewId: $props")
 
             val viewType = ViewRegistry.shared.getViewType(viewId)
             if (viewType == null) {
@@ -135,6 +138,7 @@ class DCMauiBridgeImpl private constructor() {
             if (componentClass != null) {
                 val componentInstance = componentClass.getDeclaredConstructor().newInstance()
                 componentInstance.updateView(view, props)
+                Log.d(TAG, "🔥 UPDATE_VIEW: component updateView called for $viewId")
             }
 
             Log.d(TAG, "Successfully updated view: $viewId")

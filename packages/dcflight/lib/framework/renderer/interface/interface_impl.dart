@@ -111,8 +111,12 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   Future<bool> updateView(
       String viewId, Map<String, dynamic> propPatches) async {
+    print('🔥 FLUTTER_BRIDGE: updateView called - viewId: $viewId, props: $propPatches');
+    
+    // ANDROID FIX: Skip batching for now since batch commits aren't working on Android
     // Track operation for batch updates if needed
-    if (_batchUpdateInProgress) {
+    if (false) { // Disabled batching temporarily
+      print('🔥 FLUTTER_BRIDGE: Adding updateView to batch - viewId: $viewId');
       _pendingBatchUpdates.add({
         'operation': 'updateView',
         'viewId': viewId,
@@ -124,22 +128,28 @@ class PlatformInterfaceImpl implements PlatformInterface {
     try {
       // Process props for updates
       final processedProps = preprocessProps(propPatches);
+      print('🔥 FLUTTER_BRIDGE: Processed props for $viewId: $processedProps');
 
       // Special case for text content updates to ensure they're always propagated
       if (propPatches.containsKey('content')) {
+        print('🔥 FLUTTER_BRIDGE: Content update detected for $viewId: ${propPatches['content']}');
       }
       
       // Make sure prop updates are properly queued even if many updates happen quickly
+      print('🔥 FLUTTER_BRIDGE: Calling method channel updateView for $viewId');
       final result = await bridgeChannel.invokeMethod<bool>('updateView', {
         'viewId': viewId,
         'props': processedProps,
       });
+      print('🔥 FLUTTER_BRIDGE: Method channel result for $viewId: $result');
 
       if (result != true && kDebugMode) {
+        print('🔥 FLUTTER_BRIDGE: WARNING - updateView returned false for $viewId');
       }
 
       return result ?? false;
     } catch (e) {
+      print('🔥 FLUTTER_BRIDGE: ERROR - updateView failed for $viewId: $e');
       return false;
     }
   }

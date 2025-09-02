@@ -173,23 +173,31 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
     }
 
     private fun handleUpdateView(args: Map<String, Any>, result: Result) {
+        Log.d(TAG, "🔥 METHOD_CHANNEL: handleUpdateView called with args: $args")
         val viewId = args["viewId"] as? String
         val props = args["props"] as? Map<String, Any>
 
         if (viewId == null || props == null) {
+            Log.e(TAG, "UPDATE_ERROR: Invalid view update parameters - viewId: $viewId, props: $props")
             result.error("UPDATE_ERROR", "Invalid view update parameters", null)
             return
         }
 
+        Log.d(TAG, "🔥 METHOD_CHANNEL: updateView - viewId: $viewId, props: $props")
+
         val propsJson = try {
             JSONObject(props).toString()
         } catch (e: Exception) {
+            Log.e(TAG, "JSON_ERROR: Failed to serialize props", e)
             result.error("JSON_ERROR", "Failed to serialize props", null)
             return
         }
 
+        Log.d(TAG, "🔥 METHOD_CHANNEL: propsJson: $propsJson")
+
         Handler(Looper.getMainLooper()).post {
             val success = DCMauiBridgeImpl.shared.updateView(viewId, propsJson)
+            Log.d(TAG, "🔥 METHOD_CHANNEL: updateView result: $success")
             result.success(success)
         }
     }
