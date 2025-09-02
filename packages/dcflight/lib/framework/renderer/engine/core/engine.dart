@@ -1642,10 +1642,13 @@ class DCFEngine {
 
       // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
+        print('🔥 ENGINE: About to call updateView - viewId: ${oldElement.nativeViewId}, changedProps: $changedProps');
         EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
             data: {'ChangedProps': changedProps.keys.toList()});
         await _nativeBridge.updateView(oldElement.nativeViewId!, changedProps);
+        print('🔥 ENGINE: updateView call completed for ${oldElement.nativeViewId}');
       } else {
+        print('🔥 ENGINE: No prop changes detected for ${oldElement.nativeViewId}');
         EngineDebugLogger.log(
             'RECONCILE_NO_PROP_CHANGES', 'No prop changes detected');
       }
@@ -1667,6 +1670,10 @@ class DCFEngine {
   /// O(props count) - Compute differences between two prop maps
   Map<String, dynamic> _diffProps(String elementType,
       Map<String, dynamic> oldProps, Map<String, dynamic> newProps) {
+    print('🔥 ENGINE: _diffProps called - elementType: $elementType');
+    print('🔥 ENGINE: oldProps: $oldProps');
+    print('🔥 ENGINE: newProps: $newProps');
+    
     var changedProps = <String, dynamic>{};
     int addedCount = 0;
     int changedCount = 0;
@@ -1680,9 +1687,11 @@ class DCFEngine {
       if (value is Function) continue; // Skip function handlers
 
       if (!oldProps.containsKey(key)) {
+        print('🔥 ENGINE: Added prop: $key = $value');
         changedProps[key] = value;
         addedCount++;
       } else if (oldProps[key] != value) {
+        print('🔥 ENGINE: Changed prop: $key from ${oldProps[key]} to $value');
         changedProps[key] = value;
         changedCount++;
       }
@@ -1691,10 +1700,13 @@ class DCFEngine {
     // O(old props count) - Find removed props
     for (final key in oldProps.keys) {
       if (!newProps.containsKey(key) && oldProps[key] is! Function) {
+        print('🔥 ENGINE: Removed prop: $key');
         changedProps[key] = null;
         removedCount++;
       }
     }
+    
+    print('🔥 ENGINE: _diffProps result: $changedProps (added: $addedCount, changed: $changedCount, removed: $removedCount)');
 
     // O(old props count) - Handle event handlers - preserve them if not changed
     for (final key in oldProps.keys) {
