@@ -18,7 +18,7 @@ class MyStackApp extends StatefulComponent {
         alignContent: YogaAlign.center,
         paddingTop: 120,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.yellow.shade100),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.yellow),
       children: [
         DCFText(
           content: "Text example ${count.state}",

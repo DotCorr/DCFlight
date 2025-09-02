@@ -6,6 +6,7 @@
  */
 
 import 'dart:async';
+import 'dart:io';
 import 'package:dcflight/framework/renderer/interface/interface_util.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -21,6 +22,13 @@ class PlatformInterfaceImpl implements PlatformInterface {
   // Add batch update state
   bool _batchUpdateInProgress = false;
   final List<Map<String, dynamic>> _pendingBatchUpdates = [];
+
+  // Platform-specific batching behavior
+  // IMPORTANT: We disable platform-level batching on Android due to implementation issues
+  // with the native batch commit system. The VDOM-level batching in DCFEngine still works
+  // and provides the primary performance benefits. This is a temporary workaround until
+  // the Android batch implementation is fixed.
+  static final bool _isAndroid = defaultTargetPlatform == TargetPlatform.android;
 
   // Map to store callbacks for each view and event type
   final Map<String, Map<String, Function>> _eventCallbacks = {};
@@ -81,8 +89,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   Future<bool> createView(
       String viewId, String type, Map<String, dynamic> props) async {
-    // Track operation for batch updates if needed
-    if (_batchUpdateInProgress) {
+    // Platform-aware batch handling
+    if (_batchUpdateInProgress && !_isAndroid) {
       _pendingBatchUpdates.add({
         'operation': 'createView',
         'viewId': viewId,
@@ -113,9 +121,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
       String viewId, Map<String, dynamic> propPatches) async {
     print('🔥 FLUTTER_BRIDGE: updateView called - viewId: $viewId, props: $propPatches');
     
-    // ANDROID FIX: Skip batching for now since batch commits aren't working on Android
-    // Track operation for batch updates if needed
-    if (false) { // Disabled batching temporarily
+    // Platform-aware batching: Skip batching on Android due to implementation issues
+    if (_batchUpdateInProgress && !_isAndroid) {
       print('🔥 FLUTTER_BRIDGE: Adding updateView to batch - viewId: $viewId');
       _pendingBatchUpdates.add({
         'operation': 'updateView',
