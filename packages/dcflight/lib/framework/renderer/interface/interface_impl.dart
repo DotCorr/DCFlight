@@ -37,8 +37,13 @@ class PlatformInterfaceImpl implements PlatformInterface {
   // Set up method channel for event handling
   void _setupMethodChannelEventHandling() {
     print('🔥 DCF_ENGINE: Setting up method channel event handling');
+    print('🔥 DCF_ENGINE: Event channel name: ${eventChannel.name}');
+    
+    // Test if the channel exists and is accessible
     eventChannel.setMethodCallHandler((call) async {
+      print('🔥 DCF_ENGINE: ✅ METHOD CHANNEL HANDLER CALLED!');
       print('🔥 DCF_ENGINE: Method channel received call: ${call.method}');
+      print('🔥 DCF_ENGINE: Method channel args: ${call.arguments}');
       if (call.method == 'onEvent') {
         final Map<dynamic, dynamic> args = call.arguments;
         print('🔥 DCF_ENGINE: onEvent args: $args');
@@ -59,6 +64,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
       }
       return null;
     });
+    
+    print('🔥 DCF_ENGINE: ✅ Method channel handler SET SUCCESSFULLY!');
   }
 
   @override

@@ -28,10 +28,16 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         val shared = DCMauiEventMethodHandler()
 
         fun initialize(binaryMessenger: io.flutter.plugin.common.BinaryMessenger) {
+            Log.d(TAG, "🚀 INITIALIZING METHOD CHANNEL: com.dcmaui.events")
             val channel = MethodChannel(binaryMessenger, "com.dcmaui.events")
             channel.setMethodCallHandler(shared)
             // Store the method channel in the shared instance like iOS
             shared.methodChannel = channel
+            Log.d(TAG, "✅ METHOD CHANNEL INITIALIZED AND STORED: ${shared.methodChannel}")
+        }
+
+        fun getInstance(): DCMauiEventMethodHandler {
+            return shared
         }
     }
 
@@ -219,7 +225,8 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         // 🚀 CRITICAL FIX: Store event callback that sends to Flutter (matches iOS exactly)
         // This is what was missing - Android propagateEvent expects to find this callback!
         val eventCallback: (String, Map<String, Any?>) -> Unit = { eventType, eventData ->
-            sendEventToFlutter(viewId, eventType, eventData)
+            // Always use the shared instance to ensure the method channel is available
+            shared.sendEventToFlutter(viewId, eventType, eventData)
         }
         view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, eventCallback)
 
@@ -230,9 +237,11 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     /**
      * Sends events back to Flutter via method channel - matches iOS sendEvent exactly
      */
-    private fun sendEventToFlutter(viewId: String, eventName: String, eventData: Map<String, Any?>) {
+    internal fun sendEventToFlutter(viewId: String, eventName: String, eventData: Map<String, Any?>) {
         try {
             Log.d(TAG, "📨 Attempting to send event to DCFEngine - viewId: $viewId, eventName: $eventName, eventData: $eventData")
+            Log.d(TAG, "🔍 METHOD CHANNEL STATUS: $methodChannel")
+            Log.d(TAG, "🔍 IS CHANNEL NULL? ${methodChannel == null}")
             
             // Use the stored method channel like iOS does
             methodChannel?.let { channel ->
