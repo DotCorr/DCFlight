@@ -173,18 +173,26 @@ class DCFEngine {
   /// O(1) - Handle a native event by finding the appropriate component
   void _handleNativeEvent(
       String viewId, String eventType, Map<dynamic, dynamic> eventData) {
+    print('🔥 DCF_ENGINE: _handleNativeEvent called - viewId: $viewId, eventType: $eventType, data: $eventData');
+    
     EngineDebugLogger.log(
         'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
         extra: {'EventData': eventData.toString()});
 
     final node = _nodesByViewId[viewId]; // O(1) lookup
     if (node == null) {
+      print('🔥 DCF_ENGINE: No node found for view ID: $viewId');
       EngineDebugLogger.log(
           'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId');
       return;
     }
 
+    print('🔥 DCF_ENGINE: Found node for view ID: $viewId, node type: ${node.runtimeType}');
+
     if (node is DCFElement) {
+      print('🔥 DCF_ENGINE: Node is DCFElement, checking for event handlers...');
+      print('🔥 DCF_ENGINE: Available props: ${node.elementProps.keys.toList()}');
+      
       // O(1) - Try multiple event handler formats
       final eventHandlerKeys = [
         eventType,
@@ -193,8 +201,12 @@ class DCFEngine {
         'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
       ];
 
+      print('🔥 DCF_ENGINE: Trying event handler keys: $eventHandlerKeys');
+
       for (final key in eventHandlerKeys) {
+        print('🔥 DCF_ENGINE: Checking key: $key');
         if (node.elementProps.containsKey(key) && node.elementProps[key] is Function) {
+          print('🔥 DCF_ENGINE: Found handler for $eventType using key: $key');
           EngineDebugLogger.log('EVENT_HANDLER_FOUND',
               'Found handler for $eventType using key: $key');
           _executeEventHandler(node.elementProps[key], eventData);
@@ -202,27 +214,36 @@ class DCFEngine {
         }
       }
 
+      print('🔥 DCF_ENGINE: No handler found for event: $eventType');
       EngineDebugLogger.log(
           'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
           extra: {'AvailableProps': node.elementProps.keys.toList()});
+    } else {
+      print('🔥 DCF_ENGINE: Node is not DCFElement, type: ${node.runtimeType}');
     }
   }
 
   /// O(1) - Execute an event handler with flexible signatures
   void _executeEventHandler(Function handler, Map<dynamic, dynamic> eventData) {
+    print('🔥 DCF_ENGINE: _executeEventHandler called with handler: ${handler.runtimeType}');
+    
     EngineDebugLogger.log('EVENT_HANDLER_EXECUTE', 'Executing event handler',
         extra: {'HandlerType': handler.runtimeType.toString()});
 
     try {
       if (eventData.isNotEmpty) {
+        print('🔥 DCF_ENGINE: Calling handler with eventData: $eventData');
         Function.apply(handler, [eventData]);
       } else {
+        print('🔥 DCF_ENGINE: Calling handler with no arguments');
         Function.apply(handler, []);
       }
+      print('🔥 DCF_ENGINE: Event handler executed successfully!');
       EngineDebugLogger.log(
           'EVENT_HANDLER_SUCCESS', 'Event handler executed successfully');
       return;
     } catch (e) {
+      print('🔥 DCF_ENGINE: Error executing event handler (trying different signature): $e');
       EngineDebugLogger.log(
           'EVENT_HANDLER_RETRY', 'Retrying with different signature');
     }

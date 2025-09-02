@@ -206,26 +206,47 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             return
         }
 
-        // Store viewId and eventTypes on the view for propagateEvent to use
-        view.setTag(viewId.hashCode(), viewId)
-        view.setTag((viewId + "_eventTypes").hashCode(), eventTypes)
+        // 🚀 UNIFIED EVENT SYSTEM: Use same tag system as propagateEvent (matches iOS)
+        // Store viewId and eventTypes on the view using resource IDs (not hash codes)
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, eventTypes.toSet())
 
-        // Create event callback that sends events through method channel
-        val eventCallback: (String, String, Map<String, Any>) -> Unit = { vId, eventType, eventData ->
-            sendEventToFlutter(vId, eventType, eventData)
+        // 🚀 CRITICAL FIX: Store event callback that sends to Flutter (matches iOS exactly)
+        // This is what was missing - Android propagateEvent expects to find this callback!
+        val eventCallback: (String, Map<String, Any?>) -> Unit = { eventType, eventData ->
+            sendEventToFlutter(viewId, eventType, eventData)
         }
-        
-        // Store the callback on the view for propagateEvent to use
-        view.setTag((viewId + "_eventCallback").hashCode(), eventCallback)
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, eventCallback)
 
-        // Set up native event listeners for each event type
-        for (eventType in eventTypes) {
-            setupNativeEventListener(view, eventType) { eventData ->
-                eventCallback(viewId, eventType, eventData)
-            }
-        }
-
+        Log.d(TAG, "Event listeners registered for view $viewId: $eventTypes")
         result.success(true)
+    }
+
+    /**
+     * Sends events back to Flutter via method channel - matches iOS sendEvent exactly
+     */
+    private fun sendEventToFlutter(viewId: String, eventName: String, eventData: Map<String, Any?>) {
+        try {
+            // Get the Flutter plugin binding to access method channel
+            val binding = com.dotcorr.dcflight.DcflightPlugin.getPluginBinding()
+            if (binding != null) {
+                val channel = io.flutter.plugin.common.MethodChannel(binding.binaryMessenger, "com.dcmaui.events")
+                
+                // Send event to Flutter - matches iOS format exactly
+                val arguments = mapOf(
+                    "viewId" to viewId,
+                    "eventType" to eventName,  
+                    "eventData" to eventData
+                )
+                
+                // Run on main thread like iOS
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    channel.invokeMethod("onEvent", arguments)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending event to Flutter: ${e.message}", e)
+        }
     }
 
     // Handle removeEventListeners calls (match iOS API)
@@ -240,32 +261,13 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
 
         val view = ViewRegistry.shared.getView(viewId)
         if (view != null) {
-            // Remove native event listeners
-            for (eventType in eventTypes) {
-                removeNativeEventListener(view, eventType)
-            }
-
-            // Clean up stored data
-            view.setTag(viewId.hashCode(), null)
-            view.setTag((viewId + "_eventTypes").hashCode(), null)
-            view.setTag((viewId + "_eventCallback").hashCode(), null)
+            // Clean up stored data - use resource IDs like addEventListeners
+            view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, null)
+            view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, null)
+            view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, null)
         }
 
         result.success(true)
-    }
-
-    // Send event to Flutter through method channel (match iOS sendEvent)
-    private fun sendEventToFlutter(viewId: String, eventType: String, eventData: Map<String, Any>) {
-        val normalizedEventName = normalizeEventName(eventType)
-        
-        Log.d(TAG, "Sending event $normalizedEventName for view $viewId to Flutter")
-        
-        // For now, we'll use the direct callback mechanism
-        // In a full implementation, this would go through the method channel back to Flutter
-        // but for immediate functionality, we can trigger it directly through the engine
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            Log.d(TAG, "Event $normalizedEventName sent for view $viewId")
-        }
     }
 
     // Normalize event name to follow React-style convention (match iOS)
