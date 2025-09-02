@@ -59,7 +59,9 @@ object DCDivergerUtil {
         }
         flutterView?.attachToFlutterEngine(flutterEngine)
 
-        initializeMethodChannels(flutterEngine.dartExecutor.binaryMessenger)
+        // Method channels are already initialized in plugin registration
+        // Don't reinitialize them here as it overwrites the Flutter handlers
+        // initializeMethodChannels(flutterEngine.dartExecutor.binaryMessenger)
 
         setupNativeContainer(activity)
 
@@ -75,21 +77,14 @@ object DCDivergerUtil {
         pluginBinding: FlutterPlugin.FlutterPluginBinding?
     ): FlutterEngine? {
         return try {
-            var flutterEngine = FlutterEngineCache.getInstance().get(ENGINE_ID)
-            
-            if (flutterEngine == null) {
-                flutterEngine = FlutterEngine(activity)
-                FlutterEngineCache.getInstance().put(ENGINE_ID, flutterEngine)
-            }
-
-            flutterEngine
+            // 🚀 CRITICAL FIX: Use the EXISTING engine from plugin binding like iOS!
+            // Don't create a new engine - use the one that already has our plugins registered!
+            pluginBinding?.flutterEngine ?: FlutterEngineCache.getInstance().get(ENGINE_ID)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create Flutter engine", e)
+            Log.e(TAG, "Failed to get Flutter engine", e)
             null
         }
-    }
-
-    private fun initializeMethodChannels(binaryMessenger: BinaryMessenger) {
+    }    private fun initializeMethodChannels(binaryMessenger: BinaryMessenger) {
         try {
             io.flutter.plugin.common.MethodChannel(
                 binaryMessenger,
@@ -99,7 +94,7 @@ object DCDivergerUtil {
             io.flutter.plugin.common.MethodChannel(
                 binaryMessenger,
                 "com.dcmaui.events"
-            ).setMethodCallHandler(DCMauiEventMethodHandler())
+            ).setMethodCallHandler(DCMauiEventMethodHandler.getInstance())
 
             io.flutter.plugin.common.MethodChannel(
                 binaryMessenger,
