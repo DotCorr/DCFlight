@@ -30,8 +30,13 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         fun initialize(binaryMessenger: io.flutter.plugin.common.BinaryMessenger) {
             val channel = MethodChannel(binaryMessenger, "com.dcmaui.events")
             channel.setMethodCallHandler(shared)
+            // Store the method channel in the shared instance like iOS
+            shared.methodChannel = channel
         }
     }
+
+    // Store the method channel instance like iOS does
+    private var methodChannel: MethodChannel? = null
 
     private val eventCallbacks = ConcurrentHashMap<String, MutableMap<String, EventCallback>>()
     private val viewEventListeners = ConcurrentHashMap<String, MutableSet<String>>()
