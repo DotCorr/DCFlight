@@ -59,15 +59,10 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "dcflight")
         channel.setMethodCallHandler(this)
 
-        // Initialize method channels - call the static initialize methods
-        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dcmaui.bridge")
-            .setMethodCallHandler(DCMauiBridgeMethodChannel())
-
-        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dcmaui.events")
-            .setMethodCallHandler(DCMauiEventMethodHandler())
-
-        MethodChannel(flutterPluginBinding.binaryMessenger, "com.dcmaui.layout")
-            .setMethodCallHandler(DCMauiLayoutMethodHandler.shared)
+        // Initialize method channels - EXACTLY like iOS using shared instances!
+        DCMauiBridgeMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
+        DCMauiEventMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
+        DCMauiLayoutMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
 
         Log.d(TAG, "DCFlight plugin initialized with method channels")
     }
