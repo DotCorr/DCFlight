@@ -36,12 +36,17 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
   // Set up method channel for event handling
   void _setupMethodChannelEventHandling() {
+    print('🔥 DCF_ENGINE: Setting up method channel event handling');
     eventChannel.setMethodCallHandler((call) async {
+      print('🔥 DCF_ENGINE: Method channel received call: ${call.method}');
       if (call.method == 'onEvent') {
         final Map<dynamic, dynamic> args = call.arguments;
+        print('🔥 DCF_ENGINE: onEvent args: $args');
         final String viewId = args['viewId'];
         final String eventType = args['eventType'];
         final Map<dynamic, dynamic> eventData = args['eventData'] ?? {};
+
+        print('🔥 DCF_ENGINE: Processing event - viewId: $viewId, eventType: $eventType, eventData: $eventData');
 
         // Convert dynamic map to String, dynamic map
         final typedEventData = eventData.map<String, dynamic>(
@@ -49,6 +54,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
         );
 
         // Forward the event to the handler
+        print('🔥 DCF_ENGINE: Forwarding to handleNativeEvent');
         handleNativeEvent(viewId, eventType, typedEventData);
       }
       return null;
@@ -281,9 +287,12 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
+    print('🔥 DCF_ENGINE: handleNativeEvent received - viewId: $viewId, eventType: $eventType, data: $eventData');
+    
     // First try to find a specific callback for this view and event
     final callback = _eventCallbacks[viewId]?[eventType];
     if (callback != null) {
+      print('🔥 DCF_ENGINE: Found specific callback for $viewId.$eventType');
       try {
         // Handle parameter count mismatch by checking function parameters
         final Function func = callback;
@@ -296,17 +305,20 @@ class PlatformInterfaceImpl implements PlatformInterface {
         }
         return;
       } catch (e) {
-        print(e);
+        print('🔥 DCF_ENGINE: Error in specific callback: $e');
       }
     }
     
     // If no specific callback found, use the global event handler as fallback
     if (_eventHandler != null) {
+      print('🔥 DCF_ENGINE: Forwarding to global event handler');
       try {
         _eventHandler!(viewId, eventType, eventData);
       } catch (e) {
-        print(e);
+        print('🔥 DCF_ENGINE: Error in global event handler: $e');
       }
+    } else {
+      print('🔥 DCF_ENGINE: No global event handler set!');
     }
   }
    @override

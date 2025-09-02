@@ -71,18 +71,31 @@ fun propagateEvent(
         // Execute native action first if provided
         nativeAction?.invoke(view, data)
 
-        // Get stored event information from view tags (set by event handler)
+        // Get stored event information from view tags (set by addEventListeners)
         val viewId = view.getTag(com.dotcorr.dcflight.R.id.dcf_view_id) as? String
         val eventTypes = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_types) as? Set<String>
         val eventCallback = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_callback) as? (String, Map<String, Any?>) -> Unit
 
+        // 🚀 DEBUG: Log event propagation details
+        android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventName=$eventName, viewId=$viewId")
+        android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventTypes=$eventTypes")
+        android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventCallback=$eventCallback")
+
         // Check if this view is registered for events and this specific event type
         if (viewId != null && eventTypes != null && eventCallback != null) {
             val normalizedEventName = normalizeEventNameForPropagation(eventName)
-            if (eventTypes.contains(normalizedEventName)) {
-                // Call the registered callback with event data
-                eventCallback(normalizedEventName, data)
+            android.util.Log.d("DCFComponent", "🔥 propagateEvent: normalizedEventName=$normalizedEventName")
+            
+            if (eventTypes.contains(normalizedEventName) || eventTypes.contains(eventName)) {
+                android.util.Log.d("DCFComponent", "🚀 FIRING EVENT: $eventName to Flutter!")
+                // 🚀 CRITICAL FIX: Send ORIGINAL event name to Flutter, not normalized
+                // Flutter expects "onPress", not "press"
+                eventCallback(eventName, data)
+            } else {
+                android.util.Log.w("DCFComponent", "❌ Event $eventName/$normalizedEventName not in registered types: $eventTypes")
             }
+        } else {
+            android.util.Log.w("DCFComponent", "❌ propagateEvent: Missing registration - viewId=$viewId, eventTypes=$eventTypes, callback=$eventCallback")
         }
     } catch (e: Exception) {
         // Log error but don't crash
