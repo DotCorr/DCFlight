@@ -82,9 +82,9 @@ class DCFLayout extends Equatable {
 
   /// Create layout props with the specified values
   const DCFLayout({
-    // these defauts are just for visibiity reasons.
+    // Default to flexible sizing for proper layout composition
     this.width = '100%', // Default to 100% width for proper nesting
-    this.height = 60, // Default to 100 height for visibility
+    this.height, // No default height - let flex layout handle it
     this.minWidth,
     this.maxWidth,
     this.minHeight,

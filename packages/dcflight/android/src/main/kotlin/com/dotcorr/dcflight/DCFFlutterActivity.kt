@@ -103,9 +103,14 @@ open class DCFFlutterActivity : FlutterActivity() {
     override fun onStart() {
         super.onStart()
         
-        // Diverge to native UI after Flutter engine is fully ready
-        // This ensures SoLoader and native libraries are initialized
-        divergeToFlightSafely()
+        // Only diverge once during app lifecycle, not every time activity starts
+        // This prevents clearing native UI when returning from background
+        if (!isFrameworkDiverged) {
+            Log.d(TAG, "First start - diverging to native UI")
+            divergeToFlightSafely()
+        } else {
+            Log.d(TAG, "Activity restarted - preserving existing native UI")
+        }
     }
     
     /**
