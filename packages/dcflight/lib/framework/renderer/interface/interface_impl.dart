@@ -28,7 +28,6 @@ class PlatformInterfaceImpl implements PlatformInterface {
   // with the native batch commit system. The VDOM-level batching in DCFEngine still works
   // and provides the primary performance benefits. This is a temporary workaround until
   // the Android batch implementation is fixed.
-  static final bool _isAndroid = defaultTargetPlatform == TargetPlatform.android;
 
   // Map to store callbacks for each view and event type
   final Map<String, Map<String, Function>> _eventCallbacks = {};
@@ -89,8 +88,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   Future<bool> createView(
       String viewId, String type, Map<String, dynamic> props) async {
-    // Platform-aware batch handling
-    if (_batchUpdateInProgress && !_isAndroid) {
+    // Platform-aware batch handling - re-enable for testing
+    if (_batchUpdateInProgress) {
       _pendingBatchUpdates.add({
         'operation': 'createView',
         'viewId': viewId,
@@ -121,8 +120,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
       String viewId, Map<String, dynamic> propPatches) async {
     print('🔥 FLUTTER_BRIDGE: updateView called - viewId: $viewId, props: $propPatches');
     
-    // Platform-aware batching: Skip batching on Android due to implementation issues
-    if (_batchUpdateInProgress && !_isAndroid) {
+    // Platform-aware batching: Re-enable for testing with fixed Android implementation
+    if (_batchUpdateInProgress) {
       print('🔥 FLUTTER_BRIDGE: Adding updateView to batch - viewId: $viewId');
       _pendingBatchUpdates.add({
         'operation': 'updateView',
@@ -260,9 +259,11 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   Future<bool> startBatchUpdate() async {
     if (_batchUpdateInProgress) {
+      print('🔥 FLUTTER_BRIDGE: startBatchUpdate called but batch already in progress');
       return false;
     }
 
+    print('🔥 FLUTTER_BRIDGE: startBatchUpdate called - starting new batch');
     _batchUpdateInProgress = true;
     _pendingBatchUpdates.clear();
     return true;
@@ -274,16 +275,23 @@ class PlatformInterfaceImpl implements PlatformInterface {
       return false;
     }
 
+    print('🔥 FLUTTER_BRIDGE: commitBatchUpdate called with ${_pendingBatchUpdates.length} updates');
+    
     try {
+      // Platform-specific parameter names: iOS expects 'updates', Android expects 'operations'
+      final paramKey = Platform.isIOS ? 'updates' : 'operations';
       final success =
           await bridgeChannel.invokeMethod<bool>('commitBatchUpdate', {
-        'updates': _pendingBatchUpdates,
+        paramKey: _pendingBatchUpdates,
       });
 
+      print('🔥 FLUTTER_BRIDGE: commitBatchUpdate native call result: $success');
+      
       _batchUpdateInProgress = false;
       _pendingBatchUpdates.clear();
       return success ?? false;
     } catch (e) {
+      print('🔥 FLUTTER_BRIDGE: commitBatchUpdate error: $e');
       _batchUpdateInProgress = false;
       _pendingBatchUpdates.clear();
       return false;

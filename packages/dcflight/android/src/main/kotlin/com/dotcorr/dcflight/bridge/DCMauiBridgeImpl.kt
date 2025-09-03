@@ -268,42 +268,88 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     fun commitBatchUpdate(operations: List<Map<String, Any>>): Boolean {
+        Log.d(TAG, "🔥 BATCH: Committing ${operations.size} operations")
+        
         return try {
             operations.forEach { operation ->
-                val type = operation["type"] as? String
-                val args = operation["args"] as? Map<String, Any>
-
-                if (type != null && args != null) {
-                    when (type) {
+                Log.d(TAG, "🔥 BATCH: Processing operation: $operation")
+                
+                // Handle the format from Dart interface_impl.dart
+                val operationType = operation["operation"] as? String
+                if (operationType != null) {
+                    when (operationType) {
                         "createView" -> {
-                            val viewId = args["viewId"] as? String
-                            val viewType = args["viewType"] as? String
-                            val propsJson = args["propsJson"] as? String
-                            if (viewId != null && viewType != null && propsJson != null) {
+                            val viewId = operation["viewId"] as? String
+                            val viewType = operation["viewType"] as? String  
+                            val props = operation["props"] as? Map<String, Any>
+                            if (viewId != null && viewType != null && props != null) {
+                                Log.d(TAG, "🔥 BATCH: Creating view $viewId of type $viewType")
+                                // Convert props map to JSON string for consistency
+                                val propsJson = JSONObject(props).toString()
                                 createView(viewId, viewType, propsJson)
                             }
                         }
                         "updateView" -> {
-                            val viewId = args["viewId"] as? String
-                            val propsJson = args["propsJson"] as? String
-                            if (viewId != null && propsJson != null) {
+                            val viewId = operation["viewId"] as? String
+                            val props = operation["props"] as? Map<String, Any>
+                            if (viewId != null && props != null) {
+                                Log.d(TAG, "🔥 BATCH: Updating view $viewId with props")
+                                // Convert props map to JSON string for consistency
+                                val propsJson = JSONObject(props).toString()
                                 updateView(viewId, propsJson)
                             }
                         }
                         "attachView" -> {
-                            val childId = args["childId"] as? String
-                            val parentId = args["parentId"] as? String
-                            val index = args["index"] as? Int
+                            val childId = operation["childId"] as? String
+                            val parentId = operation["parentId"] as? String
+                            val index = operation["index"] as? Int
                             if (childId != null && parentId != null && index != null) {
+                                Log.d(TAG, "🔥 BATCH: Attaching view $childId to $parentId at index $index")
                                 attachView(childId, parentId, index)
+                            }
+                        }
+                        else -> {
+                            Log.w(TAG, "🔥 BATCH: Unknown operation type: $operationType")
+                        }
+                    }
+                } else {
+                    // Fallback for legacy format (if any)
+                    val type = operation["type"] as? String
+                    val args = operation["args"] as? Map<String, Any>
+
+                    if (type != null && args != null) {
+                        when (type) {
+                            "createView" -> {
+                                val viewId = args["viewId"] as? String
+                                val viewType = args["viewType"] as? String
+                                val propsJson = args["propsJson"] as? String
+                                if (viewId != null && viewType != null && propsJson != null) {
+                                    createView(viewId, viewType, propsJson)
+                                }
+                            }
+                            "updateView" -> {
+                                val viewId = args["viewId"] as? String
+                                val propsJson = args["propsJson"] as? String
+                                if (viewId != null && propsJson != null) {
+                                    updateView(viewId, propsJson)
+                                }
+                            }
+                            "attachView" -> {
+                                val childId = args["childId"] as? String
+                                val parentId = args["parentId"] as? String
+                                val index = args["index"] as? Int
+                                if (childId != null && parentId != null && index != null) {
+                                    attachView(childId, parentId, index)
+                                }
                             }
                         }
                     }
                 }
             }
+            Log.d(TAG, "🔥 BATCH: Successfully committed all operations")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to commit batch update", e)
+            Log.e(TAG, "🔥 BATCH: Failed to commit batch update", e)
             false
         }
     }
@@ -321,6 +367,17 @@ class DCMauiBridgeImpl private constructor() {
         val parentId = childToParent[viewId]
         if (parentId != null) {
             viewHierarchy[parentId]?.remove(viewId)
+        }
+    }
+
+    fun clearAll() {
+        Log.d(TAG, "🔥 DCF_ENGINE: Clearing DCMauiBridgeImpl")
+        try {
+            childToParent.clear()
+            viewHierarchy.clear()
+            Log.d(TAG, "🔥 DCF_ENGINE: DCMauiBridgeImpl cleared successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "🔥 DCF_ENGINE: Error clearing DCMauiBridgeImpl", e)
         }
     }
 
