@@ -43,7 +43,27 @@ class MyStackApp extends StatefulComponent {
         DCFView(
           styleSheet: DCFStyleSheet(
             backgroundColor: Colors.yellow
-          )
+          ),
+          children: [
+             DCFButton(
+          buttonProps: DCFButtonProps(title: "increment counter"),
+          onPress: (v) {
+            print("Button pressed");
+            print("Current count: ${count.state}");
+            count.setState(count.state + 1);
+            print("New count: ${count.state}");
+          },
+        ),
+         DCFButton(
+          buttonProps: DCFButtonProps(title: "increment counter"),
+          onPress: (v) {
+            print("Button pressed");
+            print("Current count: ${count.state}");
+            count.setState(count.state + 1);
+            print("New count: ${count.state}");
+          },
+        ),
+          ]
         )
       ],
     );
