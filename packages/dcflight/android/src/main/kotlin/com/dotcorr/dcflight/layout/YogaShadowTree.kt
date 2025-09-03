@@ -323,6 +323,9 @@ class YogaShadowTree private constructor() {
 
                 nodeParents[childId] = parentId
 
+                // CRITICAL: Apply parent layout inheritance to child
+                applyParentLayoutInheritance(childNode, parentNode, childId)
+
                 Log.d(TAG, "Attached child: $childId to parent: $parentId at index: $index")
                 true
             } catch (e: Exception) {
@@ -710,6 +713,33 @@ class YogaShadowTree private constructor() {
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to remove child from parent: $e")
+        }
+    }
+
+    /**
+     * Apply layout inheritance from parent to child node
+     * This ensures cross-platform layout consistency between iOS and Android
+     */
+    private fun applyParentLayoutInheritance(childNode: YogaNode, parentNode: YogaNode, childId: String) {
+        try {
+            // Inherit alignment properties if child doesn't have them set explicitly
+            if (childNode.alignItems == YogaAlign.AUTO) {
+                childNode.setAlignItems(parentNode.alignItems)
+                Log.d(TAG, "🔄 INHERIT: Child $childId inherited alignItems=${parentNode.alignItems} from parent")
+            }
+            
+            if (childNode.justifyContent == YogaJustify.FLEX_START) {
+                childNode.setJustifyContent(parentNode.justifyContent)
+                Log.d(TAG, "🔄 INHERIT: Child $childId inherited justifyContent=${parentNode.justifyContent} from parent")
+            }
+            
+            if (childNode.alignContent == YogaAlign.AUTO) {
+                childNode.setAlignContent(parentNode.alignContent)
+                Log.d(TAG, "🔄 INHERIT: Child $childId inherited alignContent=${parentNode.alignContent} from parent")
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to apply parent layout inheritance for child $childId", e)
         }
     }
 
