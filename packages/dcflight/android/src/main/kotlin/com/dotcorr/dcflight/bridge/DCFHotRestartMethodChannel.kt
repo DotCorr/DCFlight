@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package com.dotcorr.dcflight
+package com.dotcorr.dcflight.bridge
 
 import android.os.Handler
 import android.os.Looper

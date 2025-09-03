@@ -299,7 +299,7 @@ class EnhancedPortalManager {
       }
       
       // Get existing non-portal children
-      final currentChildren = _vdomApi.getCurrentChildren(target.nativeViewId);
+      final currentChildren = await _vdomApi.getCurrentChildren(target.nativeViewId);
       final existingChildren = currentChildren
           .where((viewId) => !_isPortalViewId(viewId))
           .toList();
@@ -309,7 +309,7 @@ class EnhancedPortalManager {
       
       
       // Update target container
-      await _vdomApi.updateTargetChildren(target.nativeViewId, newChildren);
+      await _vdomApi.updateViewChildren(target.nativeViewId, newChildren);
     } catch (e) {
     }
   }

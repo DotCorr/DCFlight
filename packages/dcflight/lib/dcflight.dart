@@ -106,7 +106,7 @@ class DCFlight {
     // Initialize screen utilities
     ScreenUtilities.instance.refreshDimensions();
 
-    // Initialize VDOM API with the bridge
+    // Initialize VDOM API with the bridge (handles hot restart cleanup internally)
     await DCFEngineAPI.instance.init(bridge);
 
     // Register core plugin

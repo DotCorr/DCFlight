@@ -24,7 +24,7 @@ class MyStackApp extends StatefulComponent {
           content: "Text example ${count.state}",
           textProps: DCFTextProps(
             fontSize: 20,
-            color: Colors.red,
+            color: Colors.black,
             textAlign: 'center',
           ),
         ),
