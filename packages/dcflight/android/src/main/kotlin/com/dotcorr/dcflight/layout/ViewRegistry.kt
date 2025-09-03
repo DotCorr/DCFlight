@@ -65,4 +65,9 @@ class ViewRegistry private constructor() {
         Log.d(TAG, "Cleaning up ViewRegistry")
         registry.clear()
     }
+
+    fun clearAll() {
+        Log.d(TAG, "Clearing all views from ViewRegistry")
+        registry.clear()
+    }
 }

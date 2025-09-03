@@ -75,17 +75,23 @@ class DCFHotRestartMethodChannel : MethodChannel.MethodCallHandler {
     }
 
     /**
-     * Cleanup all DCFlight native views and resources - simplified version for testing
+     * Cleanup all DCFlight native views and resources - simple but effective
      */
     private fun cleanupNativeViews(result: Result) {
-        Log.d(TAG, "🔥 DCF_ENGINE: Starting Android hot restart cleanup (simplified)")
+        Log.d(TAG, "🔥 DCF_ENGINE: Starting Android hot restart cleanup")
         
         Handler(Looper.getMainLooper()).post {
             try {
-                Log.d(TAG, "🔥 DCF_ENGINE: Hot restart cleanup called - view managers should be reset")
+                Log.d(TAG, "🔥 DCF_ENGINE: Clearing shadow tree and view registry")
                 
-                // For now, just log that cleanup was called
-                // The key is that Flutter knows a hot restart happened
+                // Clear the YogaShadowTree - this is the most important
+                // It prevents "Node already exists" warnings
+                com.dotcorr.dcflight.layout.YogaShadowTree.shared.clearAll()
+                Log.d(TAG, "🔥 DCF_ENGINE: YogaShadowTree cleared")
+                
+                // Clear the view registry  
+                com.dotcorr.dcflight.layout.ViewRegistry.shared.clearAll()
+                Log.d(TAG, "🔥 DCF_ENGINE: ViewRegistry cleared")
                 
                 Log.d(TAG, "🔥 DCF_ENGINE: ✅ Android hot restart cleanup completed successfully")
                 result.success(true)
