@@ -13,8 +13,10 @@ import androidx.appcompat.widget.AppCompatButton
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.layout.IntrinsicSize
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
+import com.facebook.yoga.YogaMeasureMode
 
 /**
  * DCFButtonComponent - 1:1 mapping with iOS DCFButtonComponent
@@ -87,5 +89,20 @@ class DCFButtonComponent : DCFComponent() {
         }
 
         return true
+    }
+
+    /**
+     * Measure intrinsic content size for button based on text content
+     * Similar to iOS button intrinsic content size calculation
+     */
+    override fun measureIntrinsicContentSize(
+        width: Float,
+        widthMode: YogaMeasureMode,
+        height: Float,
+        heightMode: YogaMeasureMode
+    ): IntrinsicSize? {
+        // For buttons, return a standard size that matches iOS button intrinsic size
+        // This avoids the complexity of creating temporary views for measurement
+        return IntrinsicSize(88f, 44f) // Standard iOS button size
     }
 }

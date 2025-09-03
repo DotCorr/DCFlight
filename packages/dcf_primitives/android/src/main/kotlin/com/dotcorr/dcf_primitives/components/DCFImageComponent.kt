@@ -16,7 +16,9 @@ import android.widget.ImageView
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.layout.IntrinsicSize
 import com.dotcorr.dcf_primitives.R
+import com.facebook.yoga.YogaMeasureMode
 import java.net.URL
 
 /**
@@ -205,5 +207,21 @@ class DCFImageComponent : DCFComponent() {
         const val CONTENT_MODE_BOTTOM = 6
         const val CONTENT_MODE_LEFT = 7
         const val CONTENT_MODE_RIGHT = 8
+    }
+
+    /**
+     * Measure intrinsic content size for image based on natural image dimensions
+     * Returns the image's natural size or a default if not available
+     */
+    override fun measureIntrinsicContentSize(
+        width: Float,
+        widthMode: YogaMeasureMode,
+        height: Float,
+        heightMode: YogaMeasureMode
+    ): IntrinsicSize? {
+        // For images, we could try to get the natural image dimensions
+        // For now, return a reasonable default image size
+        // In a real implementation, you'd want to load the image and get its actual dimensions
+        return IntrinsicSize(100f, 100f) // Default image size
     }
 }

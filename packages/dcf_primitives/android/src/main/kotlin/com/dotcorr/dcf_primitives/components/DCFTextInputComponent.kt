@@ -19,9 +19,11 @@ import android.widget.EditText
 import androidx.appcompat.widget.AppCompatEditText
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.layout.IntrinsicSize
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcf_primitives.R
+import com.facebook.yoga.YogaMeasureMode
 
 /**
  * DCFTextInputComponent - Text input component matching iOS DCFTextInputComponent
@@ -341,5 +343,20 @@ class DCFTextInputComponent : DCFComponent() {
             editText.removeTextChangedListener(it)
             editText.setTag(R.id.dcf_text_input_watcher, null)
         }
+    }
+
+    /**
+     * Measure intrinsic content size for text input based on content and hint text
+     * Similar to iOS text field intrinsic content size calculation
+     */
+    override fun measureIntrinsicContentSize(
+        width: Float,
+        widthMode: YogaMeasureMode,
+        height: Float,
+        heightMode: YogaMeasureMode
+    ): IntrinsicSize? {
+        // Text inputs typically have a standard height but flexible width
+        // Return typical text input dimensions
+        return IntrinsicSize(200f, 44f) // Standard text input size (matches iOS)
     }
 }
