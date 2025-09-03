@@ -18,9 +18,10 @@ class MyStackApp extends StatefulComponent {
         alignContent: YogaAlign.center,
         paddingTop: 120,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
       children: [
-        DCFText(
+       DCFView(
+        children: [
+           DCFText(
           content: "Text example ${count.state}",
           textProps: DCFTextProps(
             fontSize: 20,
@@ -37,6 +38,13 @@ class MyStackApp extends StatefulComponent {
             print("New count: ${count.state}");
           },
         ),
+        ]
+       ),
+        DCFView(
+          styleSheet: DCFStyleSheet(
+            backgroundColor: Colors.yellow
+          )
+        )
       ],
     );
   }

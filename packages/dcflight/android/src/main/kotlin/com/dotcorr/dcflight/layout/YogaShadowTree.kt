@@ -68,6 +68,14 @@ class YogaShadowTree private constructor() {
         Log.d(TAG, "Initializing YogaShadowTree")
     }
 
+    /**
+     * Ensure initialization without clearing existing state
+     */
+    fun ensureInitialized() {
+        // Just log that we're ensuring initialization - don't clear existing views!
+        Log.d(TAG, "Ensuring YogaShadowTree is initialized (preserving existing state)")
+    }
+
     fun cleanup() {
         Log.d(TAG, "Cleaning up YogaShadowTree")
         syncLock.write {
@@ -718,24 +726,35 @@ class YogaShadowTree private constructor() {
 
     /**
      * Apply layout inheritance from parent to child node
-     * This ensures cross-platform layout consistency between iOS and Android
+     * This ensures cross-platform layout consistency by inheriting layout properties
+     * when child nodes don't have explicit values set
      */
     private fun applyParentLayoutInheritance(childNode: YogaNode, parentNode: YogaNode, childId: String) {
         try {
-            // Inherit alignment properties if child doesn't have them set explicitly
-            if (childNode.alignItems == YogaAlign.AUTO) {
+            // Generic inheritance system - inherit parent layout properties if child doesn't have explicit values
+            
+            // Inherit alignItems if child has default value and parent has explicit value
+            if (childNode.alignItems == YogaAlign.STRETCH && parentNode.alignItems != YogaAlign.STRETCH) {
                 childNode.setAlignItems(parentNode.alignItems)
                 Log.d(TAG, "🔄 INHERIT: Child $childId inherited alignItems=${parentNode.alignItems} from parent")
             }
             
-            if (childNode.justifyContent == YogaJustify.FLEX_START) {
+            // Inherit justifyContent if child has default value and parent has explicit value  
+            if (childNode.justifyContent == YogaJustify.FLEX_START && parentNode.justifyContent != YogaJustify.FLEX_START) {
                 childNode.setJustifyContent(parentNode.justifyContent)
                 Log.d(TAG, "🔄 INHERIT: Child $childId inherited justifyContent=${parentNode.justifyContent} from parent")
             }
             
-            if (childNode.alignContent == YogaAlign.AUTO) {
+            // Inherit alignContent if child has default value and parent has explicit value
+            if (childNode.alignContent == YogaAlign.FLEX_START && parentNode.alignContent != YogaAlign.FLEX_START) {
                 childNode.setAlignContent(parentNode.alignContent)
                 Log.d(TAG, "🔄 INHERIT: Child $childId inherited alignContent=${parentNode.alignContent} from parent")
+            }
+            
+            // Set alignSelf to match parent's alignItems for proper cross-axis alignment
+            if (parentNode.alignItems != YogaAlign.STRETCH && childNode.alignSelf == YogaAlign.AUTO) {
+                childNode.setAlignSelf(parentNode.alignItems)
+                Log.d(TAG, "🔄 INHERIT: Child $childId set alignSelf=${parentNode.alignItems} to match parent centering")
             }
             
         } catch (e: Exception) {

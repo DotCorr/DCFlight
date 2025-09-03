@@ -155,6 +155,9 @@ class YogaShadowTree {
             
             nodeParents[childId] = parentId
             
+            // CRITICAL: Apply parent layout inheritance to child for cross-platform consistency
+            applyParentLayoutInheritance(childNode: childNode, parentNode: parentNode, childId: childId)
+            
             setupMeasureFunction(nodeId: childId, node: childNode)
         }
     }
@@ -925,6 +928,45 @@ class YogaShadowTree {
                     return false
                 }
                 return positionType == "static"
+            }
+            
+            /// Apply layout inheritance from parent to child node
+            /// This ensures cross-platform layout consistency between iOS and Android
+            private func applyParentLayoutInheritance(childNode: YGNodeRef, parentNode: YGNodeRef, childId: String) {
+                guard let childType = nodeTypes[childId] else { return }
+                
+                // Generic inheritance for all components - only if not explicitly set
+                let childAlignItems = YGNodeStyleGetAlignItems(childNode)
+                let childJustifyContent = YGNodeStyleGetJustifyContent(childNode)
+                let childAlignContent = YGNodeStyleGetAlignContent(childNode)
+                
+                let parentAlignItems = YGNodeStyleGetAlignItems(parentNode)
+                let parentJustifyContent = YGNodeStyleGetJustifyContent(parentNode)
+                let parentAlignContent = YGNodeStyleGetAlignContent(parentNode)
+                
+                // Inherit alignItems if child has default value and parent has non-default
+                if childAlignItems == YGAlign.stretch && parentAlignItems != YGAlign.stretch {
+                    YGNodeStyleSetAlignItems(childNode, parentAlignItems)
+                    print("🔄 INHERIT: Child \(childId) inherited alignItems=\(parentAlignItems) from parent")
+                }
+                
+                // Inherit justifyContent if child has default value and parent has non-default
+                if childJustifyContent == YGJustify.flexStart && parentJustifyContent != YGJustify.flexStart {
+                    YGNodeStyleSetJustifyContent(childNode, parentJustifyContent)
+                    print("🔄 INHERIT: Child \(childId) inherited justifyContent=\(parentJustifyContent) from parent")
+                }
+                
+                // Inherit alignContent if child has default value and parent has non-default
+                if childAlignContent == YGAlign.flexStart && parentAlignContent != YGAlign.flexStart {
+                    YGNodeStyleSetAlignContent(childNode, parentAlignContent)
+                    print("🔄 INHERIT: Child \(childId) inherited alignContent=\(parentAlignContent) from parent")
+                }
+                
+                // Apply alignSelf for proper centering when parent centers children
+                if parentAlignItems == YGAlign.center {
+                    YGNodeStyleSetAlignSelf(childNode, YGAlign.center)
+                    print("🔄 INHERIT: Child \(childId) set alignSelf=center to match parent centering")
+                }
             }
             
             deinit {

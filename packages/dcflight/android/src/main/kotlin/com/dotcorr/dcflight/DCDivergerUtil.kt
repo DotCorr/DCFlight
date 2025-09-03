@@ -142,9 +142,11 @@ object DCDivergerUtil {
 
             DCMauiBridgeImpl.shared.setContext(context)
 
-            DCFLayoutManager.shared.initialize()
-
-            YogaShadowTree.shared.initialize()
+            // Initialize systems - but preserve existing state like iOS does!
+            // Don't clear views when returning from background
+            Log.d(TAG, "Ensuring DCFlight systems are initialized")
+            DCFLayoutManager.shared.ensureInitialized()
+            YogaShadowTree.shared.ensureInitialized()
 
             DCFScreenUtilities.initialize(binaryMessenger, context)
 

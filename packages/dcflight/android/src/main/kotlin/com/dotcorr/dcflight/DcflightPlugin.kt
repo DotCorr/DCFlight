@@ -112,7 +112,8 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         Log.d(TAG, "onDetachedFromActivity called")
         this.activity = null
         
-        YogaShadowTree.shared.cleanup()
-        DCFLayoutManager.shared.cleanup()
+        // DON'T cleanup when activity detaches - app might return from background
+        // Only cleanup when engine detaches (app is truly closing)
+        Log.d(TAG, "Activity detached but preserving native UI for background/foreground transitions")
     }
 }
