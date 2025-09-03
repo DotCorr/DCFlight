@@ -82,6 +82,22 @@ class DCFLayoutManager private constructor() {
         Log.d(TAG, "DCFLayoutManager initialized")
     }
 
+    /**
+     * Ensure initialization without clearing existing state - preserve views when returning from background
+     */
+    fun ensureInitialized() {
+        Log.d(TAG, "Ensuring DCFLayoutManager is initialized (preserving existing state)")
+        
+        // Only initialize timer if needed, don't clear existing views!
+        if (layoutCalculationTimer?.isShutdown == true || layoutCalculationTimer == null) {
+            layoutCalculationTimer = Executors.newSingleThreadScheduledExecutor { r ->
+                Thread(r, "DCFLayoutCalculation").apply {
+                    priority = Thread.MAX_PRIORITY - 2
+                }
+            }
+        }
+    }
+
     // Web defaults configuration for cross-platform compatibility
     private var useWebDefaults = false
 
