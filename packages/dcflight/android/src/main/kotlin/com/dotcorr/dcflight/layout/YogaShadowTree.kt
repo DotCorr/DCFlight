@@ -331,9 +331,7 @@ class YogaShadowTree private constructor() {
 
                 nodeParents[childId] = parentId
 
-                // CRITICAL: Apply parent layout inheritance to child
-                applyParentLayoutInheritance(childNode, parentNode, childId)
-
+                // DON'T apply inheritance here - wait until setChildren when we know child count
                 Log.d(TAG, "Attached child: $childId to parent: $parentId at index: $index")
                 true
             } catch (e: Exception) {
@@ -372,6 +370,19 @@ class YogaShadowTree private constructor() {
                     if (childNode != null) {
                         parentNode.addChildAt(childNode, parentNode.childCount)
                         nodeParents[childId] = parentId
+                    }
+                }
+
+                // CRITICAL: Apply inheritance AFTER all children are set, when we know child counts
+                val parentNode_final = nodes[parentId]
+                if (parentNode_final != null) {
+                    childrenIds.forEach { childId ->
+                        val childNode = nodes[childId]
+                        if (childNode != null) {
+                            // DISABLED: Inheritance system is interfering with flex layout
+                            // Let flex layout work naturally without inheritance overrides
+                            Log.d(TAG, "🔄 LAYOUT: Child $childId positioned via natural flex layout (no inheritance)")
+                        }
                     }
                 }
 
