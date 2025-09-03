@@ -11,6 +11,9 @@ class MyStackApp extends StatefulComponent {
   DCFComponentNode render() {
     final count = useState(0);
     return DCFView(
+      styleSheet: DCFStyleSheet(
+        backgroundColor: Colors.red,
+      ),
       layout: DCFLayout(
         flex: 1,
         alignItems: YogaAlign.center,
