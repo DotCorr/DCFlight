@@ -18,6 +18,11 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * Data class to hold measured intrinsic content size
+ */
+data class IntrinsicSize(val width: Float, val height: Float)
+
+/**
  * Manages the Yoga layout tree for DCFlight components
  */
 class YogaShadowTree private constructor() {
@@ -433,13 +438,11 @@ class YogaShadowTree private constructor() {
             node.setFlexDirection(YogaFlexDirection.COLUMN)
         }
 
-        when (nodeType.lowercase()) {
-            "scrollview" -> {
-                node.setOverflow(YogaOverflow.SCROLL)
-            }
-            "text" -> {
-                node.setFlexShrink(0f)
-            }
+        // Set universal measure function for all components
+        // This allows any component to report its intrinsic content size
+        node.setMeasureFunction { _, width, widthMode, height, heightMode ->
+            val intrinsicSize = measureIntrinsicContentSize(nodeType, width, widthMode, height, heightMode)
+            YogaMeasureOutput.make(intrinsicSize.width, intrinsicSize.height)
         }
     }
 
@@ -779,6 +782,32 @@ class YogaShadowTree private constructor() {
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply parent layout inheritance for child $childId", e)
+        }
+    }
+
+    /**
+     * Universal intrinsic content size measurement for all components
+     * Delegates to the component's own measurement capabilities
+     */
+    private fun measureIntrinsicContentSize(
+        nodeType: String,
+        width: Float,
+        widthMode: YogaMeasureMode,
+        height: Float,
+        heightMode: YogaMeasureMode
+    ): IntrinsicSize {
+        return try {
+            // Delegate to component registry to get intrinsic size
+            DCFLayoutManager.shared.measureIntrinsicContentSize(
+                nodeType, width, widthMode, height, heightMode
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to measure intrinsic content size for $nodeType", e)
+            // Return reasonable default if measurement fails
+            IntrinsicSize(
+                width = if (width.isNaN()) 0f else width,
+                height = if (height.isNaN()) 0f else height
+            )
         }
     }
 

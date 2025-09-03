@@ -9,6 +9,10 @@ package com.dotcorr.dcflight.components
 
 import android.content.Context
 import android.view.View
+import android.util.Log
+import com.facebook.yoga.*
+import com.dotcorr.dcflight.layout.IntrinsicSize
+import com.dotcorr.dcflight.R
 
 /**
  * DCFComponent - Base class for all DCFlight components
@@ -38,6 +42,23 @@ abstract class DCFComponent {
     abstract fun updateView(view: View, props: Map<String, Any?>): Boolean
     
     /**
+     * Measure intrinsic content size for layout calculation
+     * Components can override this to provide their natural content dimensions
+     * @param width Available width for measurement
+     * @param widthMode How width should be interpreted (EXACTLY, AT_MOST, UNDEFINED)
+     * @param height Available height for measurement  
+     * @param heightMode How height should be interpreted (EXACTLY, AT_MOST, UNDEFINED)
+     * @return IntrinsicSize containing measured width and height
+     */
+    open fun measureIntrinsicContentSize(
+        width: Float,
+        widthMode: YogaMeasureMode,
+        height: Float,
+        heightMode: YogaMeasureMode
+    ): IntrinsicSize? {
+        // Default implementation returns null - components override for custom measurement
+        return null
+    }    /**
      * Optional: Handle tunnel method calls (framework-specific operations)
      */
     open fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

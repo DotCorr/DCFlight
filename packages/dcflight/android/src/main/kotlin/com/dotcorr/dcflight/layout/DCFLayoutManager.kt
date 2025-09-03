@@ -130,6 +130,47 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
+     * Measure intrinsic content size for a component
+     * Delegates to the component's own measurement capabilities
+     */
+    fun measureIntrinsicContentSize(
+        nodeType: String,
+        width: Float,
+        widthMode: com.facebook.yoga.YogaMeasureMode,
+        height: Float,
+        heightMode: com.facebook.yoga.YogaMeasureMode
+    ): IntrinsicSize {
+        return try {
+            // Use component registry to get the component and measure its intrinsic size
+            val componentRegistry = com.dotcorr.dcflight.components.DCFComponentRegistry.shared
+            val componentClass = componentRegistry.getComponent(nodeType)
+            
+            if (componentClass != null) {
+                // Let the component measure itself if it supports intrinsic sizing
+                val component = componentClass.getDeclaredConstructor().newInstance()
+                val measuredSize = component?.measureIntrinsicContentSize(width, widthMode, height, heightMode)
+                
+                if (measuredSize != null) {
+                    return IntrinsicSize(measuredSize.width, measuredSize.height)
+                }
+            }
+            
+            // Fallback: return reasonable default sizes
+            IntrinsicSize(
+                width = if (width.isNaN()) 0f else width,
+                height = if (height.isNaN()) 0f else height
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to measure intrinsic content size for $nodeType: $e")
+            // Return reasonable defaults
+            IntrinsicSize(
+                width = if (width.isNaN()) 0f else width,
+                height = if (height.isNaN()) 0f else height
+            )
+        }
+    }
+
+    /**
      * Configure web defaults for cross-platform compatibility
      * When enabled, aligns with CSS defaults: flex-direction: row, align-content: stretch, flex-shrink: 1
      */
