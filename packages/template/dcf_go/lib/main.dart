@@ -20,6 +20,7 @@ class MyStackApp extends StatefulComponent {
       ),
       children: [
        DCFView(
+        
         children: [
            DCFText(
           content: "Text example ${count.state}",

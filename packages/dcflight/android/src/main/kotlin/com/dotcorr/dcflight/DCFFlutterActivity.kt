@@ -84,17 +84,8 @@ open class DCFFlutterActivity : FlutterActivity() {
             Log.d(TAG, "✅ SoLoader initialized")
         }
 
-        // ROBUST FIX: Always cleanup native state after SoLoader is ready
-        // This prevents hot restart crashes by clearing stale native resources
-        try {
-            Log.d(TAG, "🔥 CLEANUP: Starting native cleanup after SoLoader init")
-            com.dotcorr.dcflight.layout.YogaShadowTree.shared.clearAll()
-            com.dotcorr.dcflight.layout.ViewRegistry.shared.clearAll()
-            com.dotcorr.dcflight.bridge.DCMauiBridgeImpl.shared.clearAll()
-            Log.d(TAG, "🔥 CLEANUP: Native cleanup completed successfully")
-        } catch (e: Exception) {
-            Log.w(TAG, "🔥 CLEANUP: Native cleanup failed: ${e.message}")
-        }
+        // iOS-CONSISTENT: Don't do aggressive cleanup like iOS
+        // iOS doesn't clear native state on app lifecycle changes - Android shouldn't either
 
         // Initialize DCFlight framework
         initializeFramework()
