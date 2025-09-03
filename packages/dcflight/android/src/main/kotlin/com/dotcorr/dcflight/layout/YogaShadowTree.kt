@@ -731,31 +731,40 @@ class YogaShadowTree private constructor() {
      */
     private fun applyParentLayoutInheritance(childNode: YogaNode, parentNode: YogaNode, childId: String) {
         try {
-            // Generic inheritance system - inherit parent layout properties if child doesn't have explicit values
+            // Smart inheritance system - only apply to parent nodes that actually have children
+            // This matches iOS behavior and avoids hardcoded node types
             
-            // Inherit alignItems if child has default value and parent has explicit value
-            if (childNode.alignItems == YogaAlign.STRETCH && parentNode.alignItems != YogaAlign.STRETCH) {
-                childNode.setAlignItems(parentNode.alignItems)
-                Log.d(TAG, "🔄 INHERIT: Child $childId inherited alignItems=${parentNode.alignItems} from parent")
+            val nodeType = nodeTypes[childId] ?: "Unknown"
+            val isParentWithChildren = childNode.childCount > 0
+            
+            // Only apply layout inheritance to nodes that are actually parent containers with children
+            if (isParentWithChildren) {
+                
+                // Only inherit alignItems if child has default value and parent has explicit value
+                if (childNode.alignItems == YogaAlign.STRETCH && parentNode.alignItems != YogaAlign.STRETCH) {
+                    childNode.setAlignItems(parentNode.alignItems)
+                    Log.d(TAG, "🔄 INHERIT: Parent $childId inherited alignItems=${parentNode.alignItems} from parent")
+                }
+                
+                // Only inherit justifyContent if child has default value and parent has explicit value  
+                if (childNode.justifyContent == YogaJustify.FLEX_START && parentNode.justifyContent != YogaJustify.FLEX_START) {
+                    childNode.setJustifyContent(parentNode.justifyContent)
+                    Log.d(TAG, "🔄 INHERIT: Parent $childId inherited justifyContent=${parentNode.justifyContent} from parent")
+                }
+                
+                // Only inherit alignContent if child has default value and parent has explicit value
+                if (childNode.alignContent == YogaAlign.FLEX_START && parentNode.alignContent != YogaAlign.FLEX_START) {
+                    childNode.setAlignContent(parentNode.alignContent)
+                    Log.d(TAG, "🔄 INHERIT: Parent $childId inherited alignContent=${parentNode.alignContent} from parent")
+                }
+                
+                Log.d(TAG, "🔄 LAYOUT: Parent container $childId ($nodeType) with ${childNode.childCount} children inherits layout props")
+            } else {
+                Log.d(TAG, "🔄 LAYOUT: Leaf node $childId ($nodeType) positioned via parent flex layout (no inheritance)")
             }
             
-            // Inherit justifyContent if child has default value and parent has explicit value  
-            if (childNode.justifyContent == YogaJustify.FLEX_START && parentNode.justifyContent != YogaJustify.FLEX_START) {
-                childNode.setJustifyContent(parentNode.justifyContent)
-                Log.d(TAG, "🔄 INHERIT: Child $childId inherited justifyContent=${parentNode.justifyContent} from parent")
-            }
-            
-            // Inherit alignContent if child has default value and parent has explicit value
-            if (childNode.alignContent == YogaAlign.FLEX_START && parentNode.alignContent != YogaAlign.FLEX_START) {
-                childNode.setAlignContent(parentNode.alignContent)
-                Log.d(TAG, "🔄 INHERIT: Child $childId inherited alignContent=${parentNode.alignContent} from parent")
-            }
-            
-            // Set alignSelf to match parent's alignItems for proper cross-axis alignment
-            if (parentNode.alignItems != YogaAlign.STRETCH && childNode.alignSelf == YogaAlign.AUTO) {
-                childNode.setAlignSelf(parentNode.alignItems)
-                Log.d(TAG, "🔄 INHERIT: Child $childId set alignSelf=${parentNode.alignItems} to match parent centering")
-            }
+            // NEVER override alignSelf for any components - let flex layout work naturally
+            // This allows proper layout flow and prevents safe area positioning issues
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply parent layout inheritance for child $childId", e)
