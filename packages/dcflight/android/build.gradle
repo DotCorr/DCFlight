@@ -54,9 +54,9 @@ android {
         implementation 'com.google.android.material:material:1.11.0'
         implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
-        // Yoga layout engine
-        implementation 'com.facebook.yoga:yoga:1.19.0'
-        implementation 'com.facebook.soloader:soloader:0.10.4'
+        // Yoga layout engine - exposed as API so dependent modules can access it
+        api 'com.facebook.yoga:yoga:1.19.0'
+        api 'com.facebook.soloader:soloader:0.10.4'
 
         // Coroutines for async operations
         implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'

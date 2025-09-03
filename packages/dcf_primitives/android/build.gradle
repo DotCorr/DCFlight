@@ -53,7 +53,7 @@ android {
         implementation 'androidx.appcompat:appcompat:1.6.1'
         implementation 'com.google.android.material:material:1.11.0'
 
-        // DCFlight framework dependency
+        // DCFlight framework dependency - provides Yoga layout engine transitively
         implementation project(':dcflight')
 
         // WebView support

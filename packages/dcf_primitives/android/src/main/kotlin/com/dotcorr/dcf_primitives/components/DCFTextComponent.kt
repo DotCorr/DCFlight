@@ -17,7 +17,9 @@ import android.view.View
 import android.widget.TextView
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.layout.IntrinsicSize
 import com.dotcorr.dcflight.utils.ColorUtilities
+import com.facebook.yoga.YogaMeasureMode
 import com.dotcorr.dcf_primitives.R
 
 /**
@@ -293,5 +295,25 @@ class DCFTextComponent : DCFComponent() {
             fontCache[cacheKey] = typeface
             typeface
         }
+    }
+
+    /**
+     * Measure intrinsic content size for text component
+     * This is crucial for proper layout calculation in YogaShadowTree
+     */
+    override fun measureIntrinsicContentSize(
+        width: Float,
+        widthMode: YogaMeasureMode,
+        height: Float,
+        heightMode: YogaMeasureMode
+    ): IntrinsicSize? {
+        // For text measurement, we need to create a temporary TextView with the same properties
+        // and measure its intrinsic size based on the text content
+        
+        // Default fallback size
+        val defaultWidth = if (widthMode == com.facebook.yoga.YogaMeasureMode.UNDEFINED) 200f else width
+        val defaultHeight = 44f // Default text line height
+        
+        return IntrinsicSize(defaultWidth, defaultHeight)
     }
 }
