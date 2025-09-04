@@ -21,7 +21,6 @@ object PrimitivesComponentsReg {
      * Register all primitive components with the framework
      * This should be called during app initialization
      */
-    @JvmStatic
     fun registerComponents() {
         val registry = DCFComponentRegistry.shared
 
@@ -37,7 +36,12 @@ object PrimitivesComponentsReg {
         registry.registerComponent("Spinner", DCFSpinnerComponent::class.java)
         registry.registerComponent("WebView", DCFWebViewComponent::class.java)
 
-
+        // Additional components available in Android (iOS equivalents exist under different names)
+        registry.registerComponent("Alert", DCFAlertComponent::class.java)
+        registry.registerComponent("Dropdown", DCFDropdownComponent::class.java)
+        registry.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
+        registry.registerComponent("GestureDetector", DCFGestureDetectorComponent::class.java)
+        registry.registerComponent("Svg", DCFSvgComponent::class.java)
 
         println("✅ PrimitivesComponentsReg: Registered ${getRegisteredComponentTypes().size} primitive components")
     }
@@ -45,7 +49,6 @@ object PrimitivesComponentsReg {
     /**
      * Unregister all primitive components (useful for testing)
      */
-    @JvmStatic
     fun unregisterComponents() {
         val registry = DCFComponentRegistry.shared
         val componentsToUnregister = getRegisteredComponentTypes()
@@ -60,7 +63,6 @@ object PrimitivesComponentsReg {
     /**
      * Check if all expected primitive components are registered
      */
-    @JvmStatic
     fun verifyRegistration(): Boolean {
         val expectedComponents = getRegisteredComponentTypes()
         val registry = DCFComponentRegistry.shared
@@ -88,27 +90,29 @@ object PrimitivesComponentsReg {
      * Get list of all registered component types
      * ONLY RETURN COMPONENTS THAT ACTUALLY EXIST
      */
-    @JvmStatic
     fun getRegisteredComponentTypes(): List<String> {
         return listOf(
             "View",
             "Text",
             "Image",
-            "ScrollView",
             "TextInput",
             "Button",
             "Toggle",
             "Slider",
             "Checkbox",
             "Spinner",
-            "WebView"
+            "WebView",
+            "Alert",
+            "Dropdown",
+            "TouchableOpacity",
+            "GestureDetector",
+            "Svg"
         )
     }
 
     /**
      * Get list of components that need to be implemented for iOS parity
      */
-    @JvmStatic
     fun getMissingComponentTypes(): List<String> {
         return listOf(
             "Alert",
