@@ -51,6 +51,22 @@ abstract class DCFComponent {
     protected open fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         return false
     }
+    
+    /**
+     * Calculate intrinsic size for the component - MATCH iOS getIntrinsicSize
+     * Used by Yoga layout for measuring leaf nodes
+     */
+    open fun getIntrinsicSize(view: View, props: Map<String, Any>): android.graphics.PointF {
+        return android.graphics.PointF(0f, 0f)
+    }
+    
+    /**
+     * Called when the view is registered with the shadow tree - MATCH iOS
+     * Components can override this for specialized handling
+     */
+    open fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // Default implementation does nothing
+    }
 }
 
 /**

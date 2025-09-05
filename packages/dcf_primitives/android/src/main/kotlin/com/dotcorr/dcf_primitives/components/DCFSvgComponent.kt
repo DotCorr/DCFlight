@@ -8,6 +8,7 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
+import android.graphics.PointF
 import android.graphics.drawable.Drawable
 import android.view.View
 import android.widget.ImageView
@@ -166,5 +167,37 @@ class DCFSvgComponent : DCFComponent() {
                 "source" to drawableName
             ))
         }
+    }
+
+    // MARK: - Intrinsic Size Calculation - MATCH iOS
+
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        val imageView = view as? ImageView ?: return PointF(0f, 0f)
+
+        // Get drawable dimensions if available
+        val drawable = imageView.drawable
+        if (drawable != null) {
+            val intrinsicWidth = drawable.intrinsicWidth.toFloat()
+            val intrinsicHeight = drawable.intrinsicHeight.toFloat()
+            
+            if (intrinsicWidth > 0 && intrinsicHeight > 0) {
+                return PointF(intrinsicWidth, intrinsicHeight)
+            }
+        }
+
+        // Fallback to measured dimensions
+        imageView.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
+        val measuredWidth = imageView.measuredWidth.toFloat()
+        val measuredHeight = imageView.measuredHeight.toFloat()
+
+        return PointF(kotlin.math.max(1f, measuredWidth), kotlin.math.max(1f, measuredHeight))
+    }
+
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // SVG components are typically leaf nodes and don't need special handling
     }
 }

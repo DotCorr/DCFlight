@@ -59,9 +59,15 @@ class DCMauiLayoutMethodHandler : MethodChannel.MethodCallHandler {
         }
 
         Handler(Looper.getMainLooper()).post {
-            val layout = YogaShadowTree.shared.calculateLayout(nodeId)
+            val layout = YogaShadowTree.shared.getNodeLayout(nodeId)
             if (layout != null) {
-                result.success(layout)
+                val layoutMap = mapOf(
+                    "x" to layout.left.toDouble(),
+                    "y" to layout.top.toDouble(),
+                    "width" to layout.width().toDouble(),
+                    "height" to layout.height().toDouble()
+                )
+                result.success(layoutMap)
             } else {
                 result.error("LAYOUT_FAILED", "Failed to calculate layout for node $nodeId", null)
             }

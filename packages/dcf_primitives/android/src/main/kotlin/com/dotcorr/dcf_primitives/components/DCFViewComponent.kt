@@ -8,30 +8,39 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
+import android.graphics.PointF
+import android.util.Log
 import android.view.View
-import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFFrameLayout
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
- * DCFViewComponent - Basic container view matching iOS DCFViewComponent
- * Acts as a container view similar to UIView in iOS or View in React Native
+ * EXACT iOS DCFViewComponent port for Android
+ * Matches iOS DCFViewComponent.swift behavior 1:1
+ * Acts as a container view similar to UIView in iOS
  */
 class DCFViewComponent : DCFComponent() {
 
-    override fun createView(context: Context, props: Map<String, Any?>): View {
-        val view = FrameLayout(context)
+    companion object {
+        private const val TAG = "DCFViewComponent"
+    }
 
-        // Store component type
+    override fun createView(context: Context, props: Map<String, Any?>): View {
+        val view = DCFFrameLayout(context)
+
+        // Store component type for identification
         view.setTag(R.id.dcf_component_type, "View")
 
-        // Apply props
-        updateView(view, props)
+        // Apply props - convert nullable to non-nullable
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        updateViewInternal(view, nonNullProps)
 
-        // Apply StyleSheet properties (filter nulls for style extensions)
-        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
-        view.applyStyles(nonNullStyleProps)
+        // Apply StyleSheet properties
+        view.applyStyles(nonNullProps)
+
+        Log.d(TAG, "Created view component")
 
         return view
     }
@@ -42,9 +51,25 @@ class DCFViewComponent : DCFComponent() {
         return updateViewInternal(view, nonNullProps)
     }
 
-    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
-        // Just apply styles - the extension handles everything like iOS
+    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+        Log.d(TAG, "Updating view component with props: $props")
+
+        // Apply StyleSheet properties - the extension handles everything like iOS
         view.applyStyles(props)
+        
         return true
+    }
+
+    // MARK: - Intrinsic Size Calculation - MATCH iOS
+
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        // Views are containers and typically don't have intrinsic size
+        // They rely on their children and layout constraints
+        return PointF(0f, 0f)
+    }
+
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // View components can be containers, so they might need layout management
+        Log.d(TAG, "View component registered with shadow tree: $nodeId")
     }
 }

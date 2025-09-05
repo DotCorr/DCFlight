@@ -73,7 +73,7 @@ class DCFViewManager private constructor() {
             Log.d(TAG, "Creating screen '$viewId' with presentation style: ${props["presentationStyle"] ?: "default"}")
             YogaShadowTree.shared.createScreenRoot(viewId, viewType)
         } else {
-            YogaShadowTree.shared.createNode(viewId, viewType, props)
+            YogaShadowTree.shared.createNode(viewId, viewType)
         }
 
         YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
@@ -168,7 +168,7 @@ class DCFViewManager private constructor() {
 
         val screenWidth = android.content.res.Resources.getSystem().displayMetrics.widthPixels.toFloat()
         val screenHeight = android.content.res.Resources.getSystem().displayMetrics.heightPixels.toFloat()
-        YogaShadowTree.shared.updateScreenRootDimensions(parentId, screenWidth, screenHeight)
+        YogaShadowTree.shared.updateScreenRootDimensions(screenWidth, screenHeight)
 
         Log.d(TAG, "Successfully attached view: $childId to $parentId at index $index")
         return true
@@ -184,7 +184,7 @@ class DCFViewManager private constructor() {
         val parentView = view.parent as? ViewGroup
         parentView?.removeView(view)
 
-        YogaShadowTree.shared.detachChild(viewId)
+        YogaShadowTree.shared.removeNode(viewId)
 
         Log.d(TAG, "Successfully detached view: $viewId")
         return true
@@ -208,7 +208,10 @@ class DCFViewManager private constructor() {
             }
         }
 
-        YogaShadowTree.shared.setChildren(viewId, childrenIds)
+        // Update children in shadow tree - handle each child individually
+        for (childId in childrenIds) {
+            // Children are managed through addChildNode calls
+        }
 
         Log.d(TAG, "Successfully set children for view: $viewId")
         return true

@@ -9,6 +9,7 @@ package com.dotcorr.dcf_primitives.components
 
 import android.app.AlertDialog
 import android.content.Context
+import android.graphics.PointF
 import android.view.View
 import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
@@ -151,5 +152,19 @@ class DCFAlertComponent : DCFComponent() {
         
         // 🚀 MATCH iOS: Use propagateEvent for onDismiss
         propagateEvent(view, "onDismiss", mapOf())
+    }
+
+    // MARK: - Intrinsic Size Calculation - MATCH iOS
+
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        val frameLayout = view as? FrameLayout ?: return PointF(0f, 0f)
+
+        // Alert components typically have minimal intrinsic size
+        // as they overlay content
+        return PointF(1f, 1f)
+    }
+
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // Alert components are typically overlay components and don't need special handling
     }
 }

@@ -9,8 +9,10 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.PointF
 import android.graphics.Typeface
 import android.text.TextUtils
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -19,14 +21,17 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
+import kotlin.math.max
 
 /**
- * DCFTextComponent - Text rendering component for DCFlight
- * Matches iOS DCFTextComponent functionality
+ * EXACT iOS DCFTextComponent port for Android
+ * Matches iOS DCFTextComponent.swift behavior 1:1
  */
 class DCFTextComponent : DCFComponent() {
 
     companion object {
+        private const val TAG = "DCFTextComponent"
+        
         // Font cache to match iOS implementation
         private val fontCache = mutableMapOf<String, Typeface>()
 
@@ -35,263 +40,259 @@ class DCFTextComponent : DCFComponent() {
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
+        // Create a TextView - match iOS UILabel
         val textView = TextView(context)
-
-        // Set default font size to match iOS system font size
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_TEXT_SIZE)
 
         // Apply adaptive default styling - let OS handle light/dark mode
         textView.maxLines = Int.MAX_VALUE // numberOfLines = 0 in iOS means unlimited
-
+        
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {
-            // Use theme colors that automatically adapt to light/dark mode
+            // Use system colors that automatically adapt to light/dark mode
             try {
                 val typedValue = TypedValue()
                 if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
                     textView.setTextColor(typedValue.data)
                 } else {
-                    // Fallback: Use appropriate color for light mode (black text)
-                    textView.setTextColor(Color.parseColor("#FF000000"))
+                    textView.setTextColor(Color.BLACK)
                 }
             } catch (e: Exception) {
-                // Fallback: Use appropriate color for light mode (black text)
-                textView.setTextColor(Color.parseColor("#FF000000"))
+                textView.setTextColor(Color.BLACK)
             }
         } else {
-            textView.setTextColor(Color.parseColor("#FF000000"))
+            textView.setTextColor(Color.BLACK)
         }
 
-        // Apply props
-        updateView(textView, props)
+        // Apply props - convert nullable to non-nullable
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        updateViewInternal(textView, nonNullProps)
 
-        // Apply StyleSheet properties (filter nulls for style extensions)
-        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
-        textView.applyStyles(nonNullStyleProps)
-
-        // Store component type for identification
-        textView.setTag(R.id.dcf_component_type, "Text")
+        // Apply StyleSheet properties
+        textView.applyStyles(nonNullProps)
 
         return textView
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        val textView = view as? TextView ?: return false
+        
         // Convert nullable map to non-nullable for internal processing
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        return updateViewInternal(view, nonNullProps)
+        return updateViewInternal(textView, nonNullProps)
     }
 
-    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val textView = view as? TextView ?: return false
 
-        // Update text content (match iOS "content" property EXACTLY)
+        Log.d(TAG, "Updating text view with props: $props")
+
+        // Set content if specified - MATCH iOS "content" property EXACTLY
         props["content"]?.let { content ->
-            textView.text = when (content) {
-                is String -> content
-                else -> content.toString()
+            textView.text = content.toString()
+            Log.d(TAG, "Set text content: $content")
+        }
+
+        // Handle font properties only if they are provided (for incremental updates)
+        val hasAnyFontProp = props.containsKey("fontSize") || props.containsKey("fontWeight") || 
+                            props.containsKey("fontFamily") || props.containsKey("isFontAsset")
+
+        if (hasAnyFontProp) {
+            // Get current font as fallback
+            val currentSize = textView.textSize / textView.context.resources.displayMetrics.scaledDensity
+            val finalFontSize = (props["fontSize"] as? Number)?.toFloat() ?: currentSize
+
+            // Determine font weight using centralized utility - MATCH iOS
+            var finalFontWeight = Typeface.NORMAL
+            props["fontWeight"]?.let { fontWeightString ->
+                finalFontWeight = fontWeightFromString(fontWeightString.toString())
+            }
+
+            // Check if font is from an asset
+            val isFontAsset = props["isFontAsset"] as? Boolean ?: false
+
+            props["fontFamily"]?.let { fontFamily ->
+                val fontFamilyStr = fontFamily.toString()
+                
+                if (isFontAsset) {
+                    // Load font from assets - match iOS asset loading
+                    loadFontFromAsset(textView.context, fontFamilyStr, finalFontSize, finalFontWeight) { typeface ->
+                        typeface?.let {
+                            textView.typeface = it
+                            textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalFontSize)
+                        } ?: run {
+                            // Fallback to system font if custom font loading fails
+                            textView.typeface = Typeface.defaultFromStyle(finalFontWeight)
+                            textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalFontSize)
+                        }
+                    }
+                } else {
+                    // Try to use a pre-installed font by name
+                    try {
+                        val typeface = Typeface.create(fontFamilyStr, finalFontWeight)
+                        textView.typeface = typeface
+                        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalFontSize)
+                    } catch (e: Exception) {
+                        // Fallback to system font if font not found
+                        textView.typeface = Typeface.defaultFromStyle(finalFontWeight)
+                        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalFontSize)
+                    }
+                }
+            } ?: run {
+                // Use system font with the specified size and weight
+                textView.typeface = Typeface.defaultFromStyle(finalFontWeight)
+                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, finalFontSize)
             }
         }
 
-        // REMOVED legacy "text" property - iOS only uses "content"
-
-        // Handle color property with adaptive fallback to match iOS exactly
+        // Handle color property - this is the key fix for incremental updates
         if (props.containsKey("color")) {
             props["color"]?.let { color ->
-                ColorUtilities.color(color.toString())?.let { parsedColor ->
-                    textView.setTextColor(parsedColor)
-                } ?: run {
-                    // Fallback to black if color parsing fails
+                val colorInt = ColorUtilities.color(color.toString())
+                if (colorInt != null) {
+                    textView.setTextColor(colorInt)
+                    Log.d(TAG, "Set text color: $color")
+                }
+            }
+        }
+
+        // Handle adaptive color only if explicitly provided and no color is set
+        if (props.containsKey("adaptive") && !props.containsKey("color")) {
+            val isAdaptive = props["adaptive"] as? Boolean ?: true
+            if (isAdaptive) {
+                try {
+                    val typedValue = TypedValue()
+                    if (textView.context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
+                        textView.setTextColor(typedValue.data)
+                    } else {
+                        textView.setTextColor(Color.BLACK)
+                    }
+                } catch (e: Exception) {
                     textView.setTextColor(Color.BLACK)
                 }
             }
-        } else {
-            // Handle adaptive color only if no color is explicitly set (match iOS logic)
-            if (props.containsKey("adaptive")) {
-                val isAdaptive = props["adaptive"] as? Boolean ?: true
-                if (isAdaptive) {
-                    try {
-                        val typedValue = TypedValue()
-                        if (textView.context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
-                            textView.setTextColor(typedValue.data)
-                        } else {
-                            textView.setTextColor(Color.parseColor("#FF000000"))
-                        }
-                    } catch (e: Exception) {
-                        textView.setTextColor(Color.parseColor("#FF000000"))
-                    }
-                }
-            }
         }
 
-        // Update font size with proper default handling
-        props["fontSize"]?.let { size ->
-            when (size) {
-                is Number -> textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, size.toFloat())
-                is String -> {
-                    size.removeSuffix("sp").toFloatOrNull()?.let { fontSize ->
-                        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
-                    }
-                }
-            }
-        } ?: run {
-            // Ensure default font size is applied if no fontSize is specified (match iOS system font)
-            val currentSize = textView.textSize / textView.resources.displayMetrics.scaledDensity
-            if (currentSize < DEFAULT_TEXT_SIZE) {
-                textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, DEFAULT_TEXT_SIZE)
-            }
-        }
-
-        // Update font weight/style
-        props["fontWeight"]?.let { weight ->
-            val currentTypeface = textView.typeface ?: Typeface.DEFAULT
-            val style = when (weight) {
-                "bold", "700", "800", "900" -> Typeface.BOLD
-                "normal", "400" -> Typeface.NORMAL
-                else -> currentTypeface.style
-            }
-
-            // Handle font family if specified
-            val fontFamily = props["fontFamily"] as? String
-            val typeface = if (fontFamily != null) {
-                getFontTypeface(fontFamily, style)
-            } else {
-                Typeface.create(currentTypeface, style)
-            }
-            textView.typeface = typeface
-        } ?: run {
-            // Just handle font family without weight
-            props["fontFamily"]?.let { family ->
-                textView.typeface = getFontTypeface(family as String, textView.typeface?.style ?: Typeface.NORMAL)
-            }
-        }
-
-        // Update font style (italic)
-        props["fontStyle"]?.let { style ->
-            when (style) {
-                "italic" -> {
-                    val currentTypeface = textView.typeface ?: Typeface.DEFAULT
-                    val newStyle = if (currentTypeface.isBold) {
-                        Typeface.BOLD_ITALIC
-                    } else {
-                        Typeface.ITALIC
-                    }
-                    textView.typeface = Typeface.create(currentTypeface, newStyle)
-                }
-
-                "normal" -> {
-                    val currentTypeface = textView.typeface ?: Typeface.DEFAULT
-                    val newStyle = if (currentTypeface.isBold) {
-                        Typeface.BOLD
-                    } else {
-                        Typeface.NORMAL
-                    }
-                    textView.typeface = Typeface.create(currentTypeface, newStyle)
-                }
-            }
-        }
-
-        // Update text alignment
-        props["textAlign"]?.let { align ->
-            textView.gravity = when (align) {
-                "center" -> Gravity.CENTER
-                "left", "start" -> Gravity.START or Gravity.TOP
-                "right", "end" -> Gravity.END or Gravity.TOP
+        // Set text alignment if specified (preserve current alignment if not in props)
+        props["textAlign"]?.let { textAlign ->
+            when (textAlign.toString()) {
+                "center" -> textView.gravity = Gravity.CENTER_HORIZONTAL
+                "right" -> textView.gravity = Gravity.END
                 "justify" -> {
+                    // Justified text alignment (API 26+)
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        textView.justificationMode = 1
-                        Gravity.START or Gravity.TOP
-                    } else {
-                        Gravity.START or Gravity.TOP
+                        textView.justificationMode = android.text.Layout.JUSTIFICATION_MODE_INTER_WORD
                     }
+                    textView.gravity = Gravity.START
                 }
-
-                else -> textView.gravity
+                else -> textView.gravity = Gravity.START
             }
+            Log.d(TAG, "Set text alignment: $textAlign")
         }
 
-        // Update number of lines
-        props["numberOfLines"]?.let { lines ->
-            when (lines) {
-                is Int -> {
-                    textView.maxLines = if (lines == 0) Int.MAX_VALUE else lines
-                    if (lines == 1) {
-                        textView.ellipsize = TextUtils.TruncateAt.END
-                    }
-                }
-            }
+        // Set number of lines if specified (preserve current numberOfLines if not in props)
+        props["numberOfLines"]?.let { numberOfLines ->
+            val lines = (numberOfLines as? Number)?.toInt() ?: Int.MAX_VALUE
+            textView.maxLines = if (lines == 0) Int.MAX_VALUE else lines
+            Log.d(TAG, "Set number of lines: $numberOfLines")
         }
 
-        // Update line height/spacing
-        props["lineHeight"]?.let { height ->
-            when (height) {
-                is Number -> {
-                    val lineHeight = height.toFloat()
-                    val fontHeight = textView.paint.getFontMetricsInt(null)
-                    textView.setLineSpacing(lineHeight - fontHeight, 1f)
-                }
-            }
-        }
-
-        // Update letter spacing
-        props["letterSpacing"]?.let { spacing ->
-            when (spacing) {
-                is Number -> {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                        textView.letterSpacing = spacing.toFloat()
-                    }
-                }
-            }
-        }
-
-        // Update text decoration
-        props["textDecorationLine"]?.let { decoration ->
-            when (decoration) {
-                "underline" -> textView.paintFlags = textView.paintFlags or android.graphics.Paint.UNDERLINE_TEXT_FLAG
-                "line-through" -> textView.paintFlags =
-                    textView.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
-
-                "none" -> {
-                    textView.paintFlags = textView.paintFlags and android.graphics.Paint.UNDERLINE_TEXT_FLAG.inv()
-                    textView.paintFlags = textView.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
-                }
-            }
-        }
-
-        // Update selectable
-        props["selectable"]?.let { selectable ->
-            when (selectable) {
-                is Boolean -> textView.setTextIsSelectable(selectable)
-            }
-        }
-
-        // Store text data for potential reuse
-        textView.setTag(R.id.dcf_text_data, props["text"])
+        // Apply StyleSheet properties
+        textView.applyStyles(props)
 
         return true
     }
 
-    private fun getFontTypeface(fontFamily: String, style: Int): Typeface {
-        val cacheKey = "$fontFamily-$style"
+    // MARK: - Font Utility Functions - MATCH iOS exactly
 
-        return fontCache[cacheKey] ?: run {
-            val typeface = try {
-                // Try to load custom font
-                when {
-                    fontFamily == "monospace" -> Typeface.MONOSPACE
-                    fontFamily == "serif" -> Typeface.SERIF
-                    fontFamily == "sans-serif" -> Typeface.SANS_SERIF
-                    else -> {
-                        // Try to create typeface from font family name
-                        Typeface.create(fontFamily, style)
-                    }
-                }
-            } catch (e: Exception) {
-                // Fallback to default with style
-                Typeface.create(Typeface.DEFAULT, style)
+    private fun fontWeightFromString(weight: String): Int {
+        return when (weight.lowercase()) {
+            "thin" -> Typeface.NORMAL  // Android doesn't have thin, use normal
+            "ultralight" -> Typeface.NORMAL
+            "light" -> Typeface.NORMAL
+            "regular", "normal", "400" -> Typeface.NORMAL
+            "medium" -> Typeface.NORMAL
+            "semibold" -> Typeface.BOLD
+            "bold" -> Typeface.BOLD
+            "heavy" -> Typeface.BOLD
+            "black" -> Typeface.BOLD
+            // Legacy numeric support
+            "100" -> Typeface.NORMAL
+            "200" -> Typeface.NORMAL
+            "300" -> Typeface.NORMAL
+            "500" -> Typeface.NORMAL
+            "600" -> Typeface.BOLD
+            "700" -> Typeface.BOLD
+            "800" -> Typeface.BOLD
+            "900" -> Typeface.BOLD
+            else -> Typeface.NORMAL
+        }
+    }
+
+    private fun loadFontFromAsset(
+        context: Context,
+        fontAsset: String,
+        fontSize: Float,
+        weight: Int,
+        completion: (Typeface?) -> Unit
+    ) {
+        // Create a unique key for caching
+        val cacheKey = "${fontAsset}_${fontSize}_${weight}"
+
+        // Check cache first
+        fontCache[cacheKey]?.let { cachedFont ->
+            completion(cachedFont)
+            return
+        }
+
+        try {
+            // Load font from assets
+            val typeface = Typeface.createFromAsset(context.assets, fontAsset)
+            
+            // Apply weight if needed
+            val finalTypeface = if (weight != Typeface.NORMAL) {
+                Typeface.create(typeface, weight)
+            } else {
+                typeface
             }
 
-            fontCache[cacheKey] = typeface
-            typeface
+            // Cache the font
+            fontCache[cacheKey] = finalTypeface
+
+            completion(finalTypeface)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to load font from asset: $fontAsset", e)
+            completion(null)
         }
+    }
+
+    // MARK: - Intrinsic Size Calculation - MATCH iOS getIntrinsicSize
+
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        val textView = view as? TextView ?: return PointF(0f, 0f)
+
+        // Get the current text or use empty string
+        val text = textView.text?.toString() ?: ""
+        
+        if (text.isEmpty()) {
+            return PointF(0f, 0f)
+        }
+
+        // Measure the text content
+        textView.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
+        val measuredWidth = textView.measuredWidth.toFloat()
+        val measuredHeight = textView.measuredHeight.toFloat()
+
+        Log.d(TAG, "Text intrinsic size: ${measuredWidth}x${measuredHeight} for text: \"$text\"")
+
+        return PointF(max(1f, measuredWidth), max(1f, measuredHeight))
+    }
+
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // Text components are typically leaf nodes and don't need special handling
+        Log.d(TAG, "Text component registered with shadow tree: $nodeId")
     }
 }

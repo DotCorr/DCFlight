@@ -45,8 +45,7 @@ class DCMauiBridgeImpl private constructor() {
 
     fun initialize(): Boolean {
         Log.d(TAG, "Initializing DCMauiBridgeImpl")
-        YogaShadowTree.shared.initialize()
-        DCFLayoutManager.shared.initialize()
+        // YogaShadowTree and DCFLayoutManager are already initialized as singletons
         return true
     }
 
@@ -105,7 +104,8 @@ class DCMauiBridgeImpl private constructor() {
             ViewRegistry.shared.registerView(view, viewId, viewType)
             views[viewId] = view
 
-            YogaShadowTree.shared.createNode(viewId, viewType, props)
+            YogaShadowTree.shared.createNode(viewId, viewType)
+            YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
 
             Log.d(TAG, "Successfully created view: $viewId of type: $viewType")
             true
@@ -138,7 +138,7 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
-            YogaShadowTree.shared.updateNode(viewId, props)
+            YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
 
             val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
             if (componentClass != null) {
@@ -201,7 +201,7 @@ class DCMauiBridgeImpl private constructor() {
             childToParent[childId] = parentId
             viewHierarchy.getOrPut(parentId) { mutableListOf() }.add(childId)
 
-            YogaShadowTree.shared.attachChild(childId, parentId, index)
+            YogaShadowTree.shared.addChildNode(parentId, childId, index)
 
             Log.d(TAG, "Successfully attached view: $childId to $parentId at index $index")
             true
@@ -227,7 +227,7 @@ class DCMauiBridgeImpl private constructor() {
                 viewHierarchy[parentId]?.remove(viewId)
             }
 
-            YogaShadowTree.shared.detachChild(viewId)
+            YogaShadowTree.shared.removeNode(viewId)
 
             Log.d(TAG, "Successfully detached view: $viewId")
             true
@@ -259,7 +259,7 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
 
-            YogaShadowTree.shared.setChildren(viewId, childrenIds)
+            // Children are managed through addChildNode calls individually
 
             Log.d(TAG, "Successfully set children for view: $viewId")
             

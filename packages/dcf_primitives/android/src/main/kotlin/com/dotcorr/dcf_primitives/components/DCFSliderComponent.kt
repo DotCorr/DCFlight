@@ -9,6 +9,7 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.PointF
 import android.view.View
 import android.widget.SeekBar
 import com.dotcorr.dcflight.components.DCFComponent
@@ -154,5 +155,26 @@ class DCFSliderComponent : DCFComponent() {
         view.applyStyles(props)
 
         return hasUpdates
+    }
+
+    // MARK: - Intrinsic Size Calculation - MATCH iOS
+
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        val seekBar = view as? SeekBar ?: return PointF(0f, 0f)
+
+        // Measure the slider content
+        seekBar.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
+        val measuredWidth = seekBar.measuredWidth.toFloat()
+        val measuredHeight = seekBar.measuredHeight.toFloat()
+
+        return PointF(kotlin.math.max(1f, measuredWidth), kotlin.math.max(1f, measuredHeight))
+    }
+
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // Slider components are typically leaf nodes and don't need special handling
     }
 }

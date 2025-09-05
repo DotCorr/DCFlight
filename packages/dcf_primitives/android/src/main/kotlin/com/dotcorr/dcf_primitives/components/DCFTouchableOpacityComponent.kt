@@ -8,9 +8,10 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
+import android.graphics.PointF
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
@@ -18,12 +19,18 @@ import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
 
 /**
- * DCFTouchableOpacityComponent - 1:1 mapping with iOS DCFTouchableOpacityComponent
+ * EXACT iOS DCFTouchableOpacityComponent port for Android
+ * Matches iOS DCFTouchableOpacityComponent.swift behavior 1:1
  * Provides touch feedback with opacity animation like iOS
  */
 class DCFTouchableOpacityComponent : DCFComponent() {
 
-    private var activeOpacity: Float = 0.2f
+    companion object {
+        private const val TAG = "DCFTouchableOpacity"
+        private const val DEFAULT_ACTIVE_OPACITY = 0.2f
+    }
+
+    private var activeOpacity: Float = DEFAULT_ACTIVE_OPACITY
     private var originalAlpha: Float = 1.0f
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
@@ -39,30 +46,42 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         frameLayout.setOnTouchListener { view, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    // 🚀 MATCH iOS: Use propagateEvent for onPressIn
+                    Log.d(TAG, "Touch down on TouchableOpacity")
+                    
+                    // MATCH iOS: Use propagateEvent for onPressIn
                     propagateEvent(view, "onPressIn", mapOf(
                         "timestamp" to System.currentTimeMillis() / 1000.0
                     ))
                     
-                    // Apply opacity feedback
-                    view.alpha = activeOpacity
+                    // Apply opacity feedback - MATCH iOS animation
+                    view.animate()
+                        .alpha(activeOpacity)
+                        .setDuration(100)
+                        .start()
                     true
                 }
                 
                 MotionEvent.ACTION_UP -> {
-                    // 🚀 MATCH iOS: Use propagateEvent for onPressOut
+                    Log.d(TAG, "Touch up on TouchableOpacity")
+                    
+                    // MATCH iOS: Use propagateEvent for onPressOut
                     propagateEvent(view, "onPressOut", mapOf(
                         "timestamp" to System.currentTimeMillis() / 1000.0
                     ))
                     
-                    // Restore original alpha
-                    view.alpha = originalAlpha
+                    // Restore original alpha - MATCH iOS animation
+                    view.animate()
+                        .alpha(originalAlpha)
+                        .setDuration(100)
+                        .start()
                     
                     // Check if touch is still inside bounds for onPress
                     val x = event.x
                     val y = event.y
                     if (x >= 0 && x <= view.width && y >= 0 && y <= view.height) {
-                        // 🚀 MATCH iOS: Use propagateEvent for onPress
+                        Log.d(TAG, "TouchableOpacity pressed")
+                        
+                        // MATCH iOS: Use propagateEvent for onPress
                         propagateEvent(view, "onPress", mapOf(
                             "timestamp" to System.currentTimeMillis() / 1000.0
                         ))
@@ -71,13 +90,18 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                 }
                 
                 MotionEvent.ACTION_CANCEL -> {
-                    // 🚀 MATCH iOS: Use propagateEvent for onPressOut
+                    Log.d(TAG, "Touch cancelled on TouchableOpacity")
+                    
+                    // MATCH iOS: Use propagateEvent for onPressOut
                     propagateEvent(view, "onPressOut", mapOf(
                         "timestamp" to System.currentTimeMillis() / 1000.0
                     ))
                     
-                    // Restore original alpha
-                    view.alpha = originalAlpha
+                    // Restore original alpha - MATCH iOS animation
+                    view.animate()
+                        .alpha(originalAlpha)
+                        .setDuration(100)
+                        .start()
                     true
                 }
                 
@@ -87,54 +111,65 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         
         // Set up long press detection like iOS
         frameLayout.setOnLongClickListener { view ->
-            // 🚀 MATCH iOS: Use propagateEvent for onLongPress
+            Log.d(TAG, "Long press on TouchableOpacity")
+            
+            // MATCH iOS: Use propagateEvent for onLongPress
             propagateEvent(view, "onLongPress", mapOf(
                 "timestamp" to System.currentTimeMillis() / 1000.0
             ))
             true
         }
         
-        // Apply initial props
-        updateView(frameLayout, props)
+        // Apply initial props - convert nullable to non-nullable
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        updateViewInternal(frameLayout, nonNullProps)
+        
+        // Apply StyleSheet properties
+        frameLayout.applyStyles(nonNullProps)
+        
+        Log.d(TAG, "Created TouchableOpacity component")
+        
         return frameLayout
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        return updateViewInternal(view, props.filterValues { it != null }.mapValues { it.value!! })
+        // Convert nullable map to non-nullable for internal processing
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        return updateViewInternal(view, nonNullProps)
     }
 
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
-        var hasUpdates = false
+        Log.d(TAG, "Updating TouchableOpacity with props: $props")
 
-        // activeOpacity prop - matches iOS exactly
-        props["activeOpacity"]?.let {
-            val opacity = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 0.2f
-                else -> 0.2f
+        // Update activeOpacity if provided - MATCH iOS
+        props["activeOpacity"]?.let { opacity ->
+            activeOpacity = when (opacity) {
+                is Number -> opacity.toFloat()
+                is String -> opacity.toFloatOrNull() ?: DEFAULT_ACTIVE_OPACITY
+                else -> DEFAULT_ACTIVE_OPACITY
             }
-            if (activeOpacity != opacity) {
-                activeOpacity = opacity
-                hasUpdates = true
-            }
+            Log.d(TAG, "Set activeOpacity: $activeOpacity")
         }
 
-        // disabled prop
-        props["disabled"]?.let {
-            val disabled = when (it) {
-                is Boolean -> it
-                is String -> it.toBoolean()
-                else -> false
-            }
-            if (view.isEnabled == disabled) {
-                view.isEnabled = !disabled
-                hasUpdates = true
-            }
-        }
+        // Store current alpha as original alpha
+        originalAlpha = view.alpha
 
-        // Apply common view styling
+        // Apply StyleSheet properties
         view.applyStyles(props)
+        
+        return true
+    }
 
-        return hasUpdates
+    // MARK: - Intrinsic Size Calculation - MATCH iOS
+
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        // TouchableOpacity is a container and typically doesn't have intrinsic size
+        // It relies on its children and layout constraints
+        return PointF(0f, 0f)
+    }
+
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // TouchableOpacity components are containers, so they might need layout management
+        Log.d(TAG, "TouchableOpacity component registered with shadow tree: $nodeId")
     }
 }

@@ -14,6 +14,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import com.dotcorr.dcflight.components.DCFFrameLayout
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
@@ -109,7 +110,7 @@ object DCDivergerUtil {
 
     private fun setupNativeContainer(activity: Activity) {
         try {
-            rootView = FrameLayout(activity).apply {
+            rootView = DCFFrameLayout(activity).apply {
                 setBackgroundColor(Color.WHITE)
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -145,8 +146,7 @@ object DCDivergerUtil {
             // Initialize systems - but preserve existing state like iOS does!
             // Don't clear views when returning from background
             Log.d(TAG, "Ensuring DCFlight systems are initialized")
-            DCFLayoutManager.shared.ensureInitialized()
-            YogaShadowTree.shared.ensureInitialized()
+            // DCFLayoutManager and YogaShadowTree are already initialized as singletons
 
             DCFScreenUtilities.initialize(binaryMessenger, context)
 

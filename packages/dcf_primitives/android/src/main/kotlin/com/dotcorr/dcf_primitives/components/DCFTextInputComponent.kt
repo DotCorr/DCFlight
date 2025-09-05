@@ -9,9 +9,11 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.PointF
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
+import android.util.Log
 import android.util.TypedValue
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -22,6 +24,7 @@ import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcf_primitives.R
+import kotlin.math.max
 
 /**
  * DCFTextInputComponent - Text input component matching iOS DCFTextInputComponent
@@ -341,5 +344,27 @@ class DCFTextInputComponent : DCFComponent() {
             editText.removeTextChangedListener(it)
             editText.setTag(R.id.dcf_text_input_watcher, null)
         }
+    }
+
+    // MARK: - Intrinsic Size Calculation - MATCH iOS
+
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        val editText = view as? EditText ?: return PointF(0f, 0f)
+
+        // Measure the text input content
+        editText.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
+        val measuredWidth = editText.measuredWidth.toFloat()
+        val measuredHeight = editText.measuredHeight.toFloat()
+
+        return PointF(max(1f, measuredWidth), max(1f, measuredHeight))
+    }
+
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // TextInput components are typically leaf nodes and don't need special handling
+        Log.d("DCFTextInputComponent", "TextInput component registered with shadow tree: $nodeId")
     }
 }
