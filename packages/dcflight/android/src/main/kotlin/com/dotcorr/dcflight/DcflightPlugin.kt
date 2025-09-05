@@ -90,8 +90,8 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
         
-        YogaShadowTree.shared.cleanup()
-        DCFLayoutManager.shared.cleanup()
+        YogaShadowTree.shared.clearAll()
+        // DCFLayoutManager doesn't have a global cleanup method
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {

@@ -9,6 +9,7 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.PointF
 import android.view.View
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -227,5 +228,26 @@ class DCFWebViewComponent : DCFComponent() {
         }
 
         return true
+    }
+
+    // MARK: - Intrinsic Size Calculation - MATCH iOS
+
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        val webView = view as? WebView ?: return PointF(0f, 0f)
+
+        // Measure the web view content
+        webView.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
+        val measuredWidth = webView.measuredWidth.toFloat()
+        val measuredHeight = webView.measuredHeight.toFloat()
+
+        return PointF(kotlin.math.max(1f, measuredWidth), kotlin.math.max(1f, measuredHeight))
+    }
+
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // WebView components are typically leaf nodes and don't need special handling
     }
 }
