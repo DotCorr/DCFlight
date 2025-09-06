@@ -22,53 +22,46 @@ import com.dotcorr.dcf_primitives.R
 import kotlin.math.max
 
 /**
- * DCFButtonComponent - Composed using View + Text primitives
- * Matches iOS DCFButtonComponent behavior 1:1 using abstraction layer composition
- * NO native Android Button widget - uses FrameLayout + TextView for cross-platform consistency
- * EXACT same props as Dart DCFButton component:
- * - title: String
- * - disabled: Boolean
- * - adaptive: Boolean
- * ALL styling handled by StyleSheet via .applyStyles() like iOS
+ * TouchableOpacity-style button component using low-level primitives
+ * Uses FrameLayout container with TextView for guaranteed text visibility
+ * Avoids Android Button complexities that cause text visibility issues
  */
-class DCFButtonComponent : DCFComponent() {
+class DCFTouchableComponent : DCFComponent() {
 
     companion object {
-        private const val TAG = "DCFButtonComponent"
+        private const val TAG = "DCFTouchableComponent"
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        // Create button container using FrameLayout (View primitive)
+        // Create container using FrameLayout (like TouchableOpacity)
         val container = FrameLayout(context)
         
-        // Create text view for the title (Text primitive)
+        // Create text view for the title
         val textView = TextView(context)
         textView.gravity = Gravity.CENTER
         textView.setTextColor(Color.BLACK)
         textView.textSize = 16f
-        textView.isAllCaps = false
         
-        // Add text view to container with centered layout
+        // Add text view to container
         val layoutParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         )
-        layoutParams.gravity = Gravity.CENTER
         container.addView(textView, layoutParams)
         
-        // Set touchable container styling
+        // Set default touchable styling
         container.setBackgroundColor(Color.LTGRAY)
         container.isClickable = true
         container.isFocusable = true
         
-        // Apply initial props - convert nullable to non-nullable
+        // Apply initial props
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         updateViewInternal(container, nonNullProps)
 
-        // Apply StyleSheet properties (UNIFIED with iOS)
+        // Apply StyleSheet properties
         container.applyStyles(nonNullProps)
 
-        // Handle touch feedback (TouchableOpacity style)
+        // Handle touch events with opacity feedback
         container.setOnTouchListener { view, event ->
             when (event.action) {
                 android.view.MotionEvent.ACTION_DOWN -> {
@@ -76,18 +69,17 @@ class DCFButtonComponent : DCFComponent() {
                 }
                 android.view.MotionEvent.ACTION_UP,
                 android.view.MotionEvent.ACTION_CANCEL -> {
-                    view.alpha = if (view.isEnabled) 1.0f else 0.5f
+                    view.alpha = 1.0f
                 }
             }
             false // Allow click to continue
         }
 
-        // MATCH iOS: Handle onPress events using propagateEvent
+        // Handle onPress events
         container.setOnClickListener {
             val textView = container.getChildAt(0) as TextView
-            Log.d(TAG, "Button clicked: ${textView.text}")
+            Log.d(TAG, "Touchable clicked: ${textView.text}")
             
-            // MATCH iOS: Use propagateEvent for onPress
             propagateEvent(container, "onPress", mapOf(
                 "pressed" to true,
                 "timestamp" to System.currentTimeMillis() / 1000.0,
@@ -95,10 +87,10 @@ class DCFButtonComponent : DCFComponent() {
             ))
         }
 
-        // Store component type for identification
-        container.setTag(R.id.dcf_component_type, "Button")
+        // Store component type
+        container.setTag(R.id.dcf_component_type, "Touchable")
 
-        Log.d(TAG, "Created composed button component")
+        Log.d(TAG, "Created touchable component")
 
         return container
     }
@@ -112,39 +104,30 @@ class DCFButtonComponent : DCFComponent() {
         val container = view as? FrameLayout ?: return false
         val textView = container.getChildAt(0) as? TextView ?: return false
 
-        Log.d(TAG, "Updating button with props: $props")
+        Log.d(TAG, "Updating touchable with props: $props")
 
-        // 1:1 MATCH Dart DCFButton props:
-        
-        // "title" prop - matches Dart DCFButtonProps exactly
+        // Handle title prop
         props["title"]?.let { title ->
             val titleText = when (title) {
                 is String -> title
                 else -> title.toString()
             }
             textView.text = titleText
-            Log.d(TAG, "Set button title: $titleText")
+            Log.d(TAG, "Set touchable title: $titleText")
         }
 
-        // "disabled" prop - matches Dart DCFButtonProps exactly  
+        // Handle disabled prop
         props["disabled"]?.let { disabled ->
             when (disabled) {
                 is Boolean -> {
                     container.isEnabled = !disabled
                     container.alpha = if (disabled) 0.5f else 1.0f
-                    Log.d(TAG, "Set button disabled: $disabled")
+                    Log.d(TAG, "Set touchable disabled: $disabled")
                 }
             }
         }
 
-        // "adaptive" prop - matches Dart DCFButtonProps exactly
-        props["adaptive"]?.let { adaptive ->
-            // Store adaptive flag for potential theme-aware styling
-            container.setTag("dcf_adaptive".hashCode(), adaptive)
-            Log.d(TAG, "Set button adaptive: $adaptive")
-        }
-
-        // Handle text color from styling
+        // Handle text color
         props["color"]?.let { color ->
             val colorInt = when (color) {
                 is String -> Color.parseColor(color)
@@ -154,7 +137,7 @@ class DCFButtonComponent : DCFComponent() {
             textView.setTextColor(colorInt)
         }
 
-        // Handle background color from styling
+        // Handle background color
         props["backgroundColor"]?.let { backgroundColor ->
             val colorInt = when (backgroundColor) {
                 is String -> Color.parseColor(backgroundColor)
@@ -164,26 +147,23 @@ class DCFButtonComponent : DCFComponent() {
             container.setBackgroundColor(colorInt)
         }
 
-        // Apply StyleSheet properties (let flexbox handle centering)
+        // Apply StyleSheet properties
         container.applyStyles(props)
 
         return true
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
-
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val container = view as? FrameLayout ?: return PointF(0f, 0f)
         val textView = container.getChildAt(0) as? TextView ?: return PointF(0f, 0f)
 
-        // Get the current text or use empty string
         val text = textView.text?.toString() ?: ""
         
         if (text.isEmpty()) {
-            return PointF(100f, 50f) // Default button size
+            return PointF(100f, 50f) // Default size
         }
 
-        // Measure the text view content
+        // Measure the text view
         textView.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -192,13 +172,12 @@ class DCFButtonComponent : DCFComponent() {
         val measuredWidth = textView.measuredWidth.toFloat() + 32f // Add padding
         val measuredHeight = textView.measuredHeight.toFloat() + 16f // Add padding
 
-        Log.d(TAG, "Button intrinsic size: ${measuredWidth}x${measuredHeight} for title: \"$text\"")
+        Log.d(TAG, "Touchable intrinsic size: ${measuredWidth}x${measuredHeight} for title: \"$text\"")
 
         return PointF(max(100f, measuredWidth), max(50f, measuredHeight))
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Button components are typically leaf nodes and don't need special handling
-        Log.d(TAG, "Composed button component registered with shadow tree: $nodeId")
+        Log.d(TAG, "Touchable component registered with shadow tree: $nodeId")
     }
 }
