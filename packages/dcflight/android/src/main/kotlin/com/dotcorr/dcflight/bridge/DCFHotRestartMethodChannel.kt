@@ -89,9 +89,10 @@ class DCFHotRestartMethodChannel : MethodChannel.MethodCallHandler {
                 com.dotcorr.dcflight.layout.YogaShadowTree.shared.clearAll()
                 Log.d(TAG, "🔥 DCF_ENGINE: YogaShadowTree cleared")
                 
-                // Clear the view registry  
-                com.dotcorr.dcflight.layout.ViewRegistry.shared.clearAll()
-                Log.d(TAG, "🔥 DCF_ENGINE: ViewRegistry cleared")
+                // Clear the view registry EXCEPT the root view
+                // This fixes the issue where the first view doesn't get cleared off the view manager
+                com.dotcorr.dcflight.layout.ViewRegistry.shared.clearAllExceptRoot()
+                Log.d(TAG, "🔥 DCF_ENGINE: ViewRegistry cleared (except root)")
                 
                 Log.d(TAG, "🔥 DCF_ENGINE: ✅ Android hot restart cleanup completed successfully")
                 result.success(true)
