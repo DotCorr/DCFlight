@@ -8,10 +8,12 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.PointF
 import android.util.Log
+import android.view.Gravity
 import android.view.View
-import androidx.appcompat.widget.AppCompatButton
+import android.widget.Button
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
@@ -34,15 +36,16 @@ class DCFButtonComponent : DCFComponent() {
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val button = AppCompatButton(context)
+        val button = Button(context)
 
         // iOS-style button defaults
         button.isAllCaps = false
+        button.gravity = Gravity.CENTER
         
-        // Set iOS system colors as defaults - MATCH iOS exactly
-        ColorUtilities.color("#007AFF")?.let { button.setBackgroundColor(it) }
-        ColorUtilities.color("#FFFFFF")?.let { button.setTextColor(it) }
-
+        // Fix text visibility - use contrasting colors
+        button.setTextColor(Color.BLACK)
+        button.setBackgroundColor(Color.LTGRAY)
+        
         // Apply initial props - convert nullable to non-nullable
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         updateViewInternal(button, nonNullProps)
@@ -76,7 +79,7 @@ class DCFButtonComponent : DCFComponent() {
     }
 
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
-        val button = view as? AppCompatButton ?: return false
+        val button = view as? Button ?: return false
 
         Log.d(TAG, "Updating button with props: $props")
 
@@ -112,7 +115,7 @@ class DCFButtonComponent : DCFComponent() {
     // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val button = view as? AppCompatButton ?: return PointF(0f, 0f)
+        val button = view as? Button ?: return PointF(0f, 0f)
 
         // Get the current text or use empty string
         val text = button.text?.toString() ?: ""
