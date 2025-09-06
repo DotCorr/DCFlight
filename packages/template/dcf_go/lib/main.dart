@@ -12,7 +12,7 @@ class MyStackApp extends StatefulComponent {
     final count = useState(0);
     return DCFView(
       styleSheet: DCFStyleSheet(
-        backgroundColor: Colors.green,
+        backgroundColor: Colors.red,
       ),
       layout: DCFLayout(
         flex: 1,
@@ -47,7 +47,7 @@ class MyStackApp extends StatefulComponent {
        ),
         DCFView(
           styleSheet: DCFStyleSheet(
-            backgroundColor: Colors.yellow
+            backgroundColor: Colors.orange
           ),
           children: [
              DCFButton(

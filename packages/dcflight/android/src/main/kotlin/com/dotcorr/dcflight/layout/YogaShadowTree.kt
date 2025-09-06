@@ -533,12 +533,24 @@ class YogaShadowTree private constructor() {
         Log.d(TAG, "🔄 LAYOUT: Child $childId ($nodeType) positioned via parent flex layout (no alignSelf override)")
     }
 
+    // iOS-to-Android size scaling factor
+    private fun applyiOSScaling(value: Float): Float {
+        val density = Resources.getSystem().displayMetrics.density
+        // iOS points = Android dp * scaling factor
+        // Fine-tuned iOS scale: 1.0 iOS point = 1.0 Android dp (closer match)
+        return value * density * 1.0f
+    }
+
     // Layout property application - MATCH iOS exactly
     private fun applyLayoutProp(node: YogaNode, key: String, value: Any) {
         when (key) {
             "width" -> {
                 when (value) {
-                    is Number -> node.setWidth(value.toFloat())
+                    is Number -> {
+                        val scaledWidth = applyiOSScaling(value.toFloat())
+                        node.setWidth(scaledWidth)
+                        Log.d(TAG, "Width scaling: ${value.toFloat()} iOS points -> $scaledWidth Android pixels")
+                    }
                     is String -> {
                         if (value.endsWith("%")) {
                             val percent = value.removeSuffix("%").toFloatOrNull()
@@ -551,7 +563,11 @@ class YogaShadowTree private constructor() {
             }
             "height" -> {
                 when (value) {
-                    is Number -> node.setHeight(value.toFloat())
+                    is Number -> {
+                        val scaledHeight = applyiOSScaling(value.toFloat())
+                        node.setHeight(scaledHeight)
+                        Log.d(TAG, "Height scaling: ${value.toFloat()} iOS points -> $scaledHeight Android pixels")
+                    }
                     is String -> {
                         if (value.endsWith("%")) {
                             val percent = value.removeSuffix("%").toFloatOrNull()
@@ -607,52 +623,52 @@ class YogaShadowTree private constructor() {
             }
             "paddingTop" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.TOP, value.toFloat())
+                    node.setPadding(YogaEdge.TOP, applyiOSScaling(value.toFloat()))
                 }
             }
             "paddingRight" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.RIGHT, value.toFloat())
+                    node.setPadding(YogaEdge.RIGHT, applyiOSScaling(value.toFloat()))
                 }
             }
             "paddingBottom" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.BOTTOM, value.toFloat())
+                    node.setPadding(YogaEdge.BOTTOM, applyiOSScaling(value.toFloat()))
                 }
             }
             "paddingLeft" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.LEFT, value.toFloat())
+                    node.setPadding(YogaEdge.LEFT, applyiOSScaling(value.toFloat()))
                 }
             }
             "padding" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.ALL, value.toFloat())
+                    node.setPadding(YogaEdge.ALL, applyiOSScaling(value.toFloat()))
                 }
             }
             "marginTop" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.TOP, value.toFloat())
+                    node.setMargin(YogaEdge.TOP, applyiOSScaling(value.toFloat()))
                 }
             }
             "marginRight" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.RIGHT, value.toFloat())
+                    node.setMargin(YogaEdge.RIGHT, applyiOSScaling(value.toFloat()))
                 }
             }
             "marginBottom" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.BOTTOM, value.toFloat())
+                    node.setMargin(YogaEdge.BOTTOM, applyiOSScaling(value.toFloat()))
                 }
             }
             "marginLeft" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.LEFT, value.toFloat())
+                    node.setMargin(YogaEdge.LEFT, applyiOSScaling(value.toFloat()))
                 }
             }
             "margin" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.ALL, value.toFloat())
+                    node.setMargin(YogaEdge.ALL, applyiOSScaling(value.toFloat()))
                 }
             }
             "position" -> {
@@ -663,22 +679,22 @@ class YogaShadowTree private constructor() {
             }
             "top" -> {
                 if (value is Number) {
-                    node.setPosition(YogaEdge.TOP, value.toFloat())
+                    node.setPosition(YogaEdge.TOP, applyiOSScaling(value.toFloat()))
                 }
             }
             "right" -> {
                 if (value is Number) {
-                    node.setPosition(YogaEdge.RIGHT, value.toFloat())
+                    node.setPosition(YogaEdge.RIGHT, applyiOSScaling(value.toFloat()))
                 }
             }
             "bottom" -> {
                 if (value is Number) {
-                    node.setPosition(YogaEdge.BOTTOM, value.toFloat())
+                    node.setPosition(YogaEdge.BOTTOM, applyiOSScaling(value.toFloat()))
                 }
             }
             "left" -> {
                 if (value is Number) {
-                    node.setPosition(YogaEdge.LEFT, value.toFloat())
+                    node.setPosition(YogaEdge.LEFT, applyiOSScaling(value.toFloat()))
                 }
             }
             // Add more properties as needed matching iOS exactly
