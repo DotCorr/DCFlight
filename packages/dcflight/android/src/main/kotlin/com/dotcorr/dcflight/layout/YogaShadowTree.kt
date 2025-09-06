@@ -490,12 +490,12 @@ class YogaShadowTree private constructor() {
     private fun applyParentLayoutInheritance(childNode: YogaNode, parentNode: YogaNode, childId: String) {
         val nodeType = nodeTypes[childId] ?: return
         
-        // Smart inheritance system - only apply to parent nodes that actually have children
-        // This matches iOS behavior and avoids hardcoded node types
-        val isParentWithChildren = childNode.childCount > 0
+        // Smart inheritance system - apply to parent containers (Views) that can have children
+        // This matches iOS behavior and ensures consistent layout inheritance
+        val isParentContainer = nodeType == "View" || childNode.childCount > 0
         
-        // Only apply layout inheritance to nodes that are actually parent containers with children
-        if (isParentWithChildren) {
+        // Apply layout inheritance to container views (Views can always have children)
+        if (isParentContainer) {
             Log.d(TAG, "Applying parent layout inheritance to container: $childId")
             
             val childAlignItems = childNode.alignItems
