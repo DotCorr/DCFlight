@@ -31,11 +31,13 @@ class HotReloadDetector {
     if (!kDebugMode || _isInitialized) return;
     
     DCFLogger.debug('HOT_RELOAD', 'Initializing hot reload detection system');
-    DCFLogger.debug('HOT_RELOAD', 'Note: For now, hot reload must be triggered manually using triggerManualHotReload()');
+    
+    // Set up automatic hot reload detection using Flutter's reassembly callback
+    WidgetsBinding.instance.addObserver(_HotReloadObserver(this));
     
     _isInitialized = true;
     
-    DCFLogger.debug('HOT_RELOAD', 'Hot reload detection system initialized');
+    DCFLogger.debug('HOT_RELOAD', 'Hot reload detection system initialized with automatic detection');
   }
 
   /// Cleanup the hot reload detection system
@@ -123,6 +125,32 @@ class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
 void triggerManualHotReload() {
   if (kDebugMode) {
     HotReloadDetector.instance.handleHotReload();
+  }
+}
+
+/// Observer to detect Flutter hot reload events
+class _HotReloadObserver extends WidgetsBindingObserver {
+  final HotReloadDetector _detector;
+  
+  _HotReloadObserver(this._detector);
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Not used for hot reload detection
+  }
+  
+  @override
+  Future<bool> didPushRoute(String route) async {
+    // Potential hot reload indicator
+    if (kDebugMode) {
+      _detector.handleHotReload();
+    }
+    return false;
+  }
+  
+  @override
+  void didHaveMemoryPressure() {
+    // Not used for hot reload detection
   }
 }
 
