@@ -70,4 +70,22 @@ class ViewRegistry private constructor() {
         Log.d(TAG, "Clearing all views from ViewRegistry")
         registry.clear()
     }
+
+    /**
+     * Clear all views except the root view during hot restart
+     * This prevents the first view from not getting cleared off the view manager
+     */
+    fun clearAllExceptRoot() {
+        Log.d(TAG, "Clearing all views except 'root' from ViewRegistry")
+        val rootViewInfo = registry["root"]
+        registry.clear()
+        
+        // Restore root if it existed
+        if (rootViewInfo != null) {
+            registry["root"] = rootViewInfo
+            Log.d(TAG, "Preserved root view during cleanup")
+        }
+        
+        Log.d(TAG, "Cleared ${registry.size - (if (rootViewInfo != null) 1 else 0)} views, keeping root")
+    }
 }
