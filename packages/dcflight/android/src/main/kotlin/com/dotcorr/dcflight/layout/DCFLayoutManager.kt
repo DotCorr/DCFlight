@@ -137,6 +137,48 @@ class DCFLayoutManager private constructor() {
         }
     }
 
+    // MARK: - iOS-Style Rendering Control
+    private val pendingViewAttachments = mutableMapOf<String, PendingAttachment>()
+    private var isInDelayedRenderingMode = false
+    
+    data class PendingAttachment(
+        val view: View,
+        val parentId: String,
+        val index: Int
+    )
+    
+    /**
+     * Enable iOS-style delayed rendering to prevent flash
+     */
+    fun enableDelayedRendering() {
+        isInDelayedRenderingMode = true
+        pendingViewAttachments.clear()
+    }
+    
+    /**
+     * Disable delayed rendering and commit all pending attachments
+     */
+    fun commitDelayedRendering() {
+        if (!isInDelayedRenderingMode) return
+        
+        // Commit all pending attachments in order
+        pendingViewAttachments.values.forEach { attachment ->
+            val parentView = getView(attachment.parentId)
+            if (parentView is ViewGroup) {
+                try {
+                    if (attachment.view.parent == null) {
+                        parentView.addView(attachment.view, attachment.index)
+                    }
+                } catch (e: Exception) {
+                    // Ignore attachment errors during commit
+                }
+            }
+        }
+        
+        pendingViewAttachments.clear()
+        isInDelayedRenderingMode = false
+    }
+
     // MARK: - View Registry Management
 
     /**
@@ -262,10 +304,6 @@ class DCFLayoutManager private constructor() {
         mainHandler.post {
             try {
                 if (view.parent != null || view.rootView != null) {
-                    // Make sure view is visible first
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
-
                     // CRITICAL: Mark this view as manually positioned in its parent DCFFrameLayout
                     val parent = view.parent
                     if (parent is DCFFrameLayout) {
@@ -274,6 +312,11 @@ class DCFLayoutManager private constructor() {
 
                     // Set layout - this is the line that was crashing
                     view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
+
+                    // SYSTEM-WIDE FIX: Make view visible ONLY after layout is applied
+                    // This prevents flash for ALL components automatically
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
 
                     // Force layout
                     view.requestLayout()
