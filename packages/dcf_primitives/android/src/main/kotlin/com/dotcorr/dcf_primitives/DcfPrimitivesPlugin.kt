@@ -49,10 +49,5 @@ class DcfPrimitivesPlugin : FlutterPlugin {
             Log.e(TAG, "❌ DcfPrimitivesPlugin: Failed to register primitive components", e)
             // Don't set isRegistered to true so it can be retried
         }
-
-        // Verify registration
-        if (isRegistered) {
-            PrimitivesComponentsReg.verifyRegistration()
-        }
     }
 }
