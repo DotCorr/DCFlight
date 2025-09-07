@@ -28,6 +28,17 @@ class DCFWebViewComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val webView = WebView(context)
 
+        // Apply adaptive default styling - let OS handle light/dark mode
+        val isAdaptive = props["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system colors that automatically adapt to light/dark mode
+            webView.setBackgroundColor(
+                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemBackgroundColor(context)
+            )
+        } else {
+            webView.setBackgroundColor(Color.WHITE)
+        }
+
         // Enable JavaScript by default like iOS
         webView.settings.javaScriptEnabled = true
 
@@ -251,3 +262,4 @@ class DCFWebViewComponent : DCFComponent() {
         // WebView components are typically leaf nodes and don't need special handling
     }
 }
+

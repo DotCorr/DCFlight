@@ -36,6 +36,17 @@ class DCFTouchableOpacityComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val frameLayout = FrameLayout(context)
         
+        // Apply adaptive default styling - let OS handle light/dark mode
+        val isAdaptive = props["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system colors that automatically adapt to light/dark mode
+            frameLayout.setBackgroundColor(
+                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemBackgroundColor(context)
+            )
+        } else {
+            frameLayout.setBackgroundColor(Color.TRANSPARENT)
+        }
+        
         // Set component identifier
         frameLayout.setTag(R.id.dcf_component_type, "TouchableOpacity")
         
@@ -173,3 +184,4 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         Log.d(TAG, "TouchableOpacity component registered with shadow tree: $nodeId")
     }
 }
+

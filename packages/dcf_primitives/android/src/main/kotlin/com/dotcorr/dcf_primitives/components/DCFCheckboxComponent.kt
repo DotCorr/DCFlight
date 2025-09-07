@@ -28,6 +28,17 @@ class DCFCheckboxComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val checkBox = CheckBox(context)
         
+        // Apply adaptive default styling - let OS handle light/dark mode
+        val isAdaptive = props["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system colors that automatically adapt to light/dark mode
+            checkBox.setTextColor(
+                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
+            )
+        } else {
+            checkBox.setTextColor(Color.BLACK)
+        }
+        
         // Set component identifier for debugging
         checkBox.setTag(R.id.dcf_component_type, "Checkbox")
         
@@ -107,3 +118,4 @@ class DCFCheckboxComponent : DCFComponent() {
         // Checkbox components are typically leaf nodes and don't need special handling
     }
 }
+

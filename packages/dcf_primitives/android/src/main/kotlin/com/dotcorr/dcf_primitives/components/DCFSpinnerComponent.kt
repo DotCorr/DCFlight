@@ -27,6 +27,13 @@ class DCFSpinnerComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val progressBar = ProgressBar(context)
 
+        // Apply adaptive default styling - let OS handle light/dark mode
+        val isAdaptive = props["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system colors that automatically adapt to light/dark mode
+            // ProgressBar automatically uses theme colors in Android
+        }
+
         // Set indeterminate mode (spinning)
         progressBar.isIndeterminate = true
 
@@ -119,3 +126,4 @@ class DCFSpinnerComponent : DCFComponent() {
         // Spinner components are typically leaf nodes and don't need special handling
     }
 }
+

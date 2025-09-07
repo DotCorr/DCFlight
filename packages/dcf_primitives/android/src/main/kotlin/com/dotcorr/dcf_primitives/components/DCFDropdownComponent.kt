@@ -17,6 +17,7 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
+import com.dotcorr.dcf_primitives.utils.AdaptiveColorHelper
 
 /**
  * DCFDropdownComponent - 1:1 mapping with iOS DCFDropdownComponent
@@ -109,6 +110,15 @@ class DCFDropdownComponent : DCFComponent() {
             }
         }
 
+        // adaptive prop - matches iOS adaptivity
+        props["adaptive"]?.let { adaptive ->
+            if (adaptive == true) {
+                // Apply adaptive background color
+                spinner.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(spinner.context))
+                hasUpdates = true
+            }
+        }
+
         // Apply common view styling
         view.applyStyles(props)
 
@@ -136,3 +146,4 @@ class DCFDropdownComponent : DCFComponent() {
         // Dropdown components are typically leaf nodes and don't need special handling
     }
 }
+

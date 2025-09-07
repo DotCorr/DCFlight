@@ -27,6 +27,13 @@ class DCFSliderComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val seekBar = SeekBar(context)
         
+        // Apply adaptive default styling - let OS handle light/dark mode
+        val isAdaptive = props["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system colors that automatically adapt to light/dark mode
+            // SeekBar automatically uses theme colors in newer Android versions
+        }
+        
         // Set component identifier for debugging
         seekBar.setTag(R.id.dcf_component_type, "Slider")
         
@@ -178,3 +185,4 @@ class DCFSliderComponent : DCFComponent() {
         // Slider components are typically leaf nodes and don't need special handling
     }
 }
+
