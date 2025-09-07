@@ -34,6 +34,21 @@ class DCFTextInputComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val editText = AppCompatEditText(context)
 
+        // Apply adaptive default styling - let OS handle light/dark mode
+        val isAdaptive = props["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system colors that automatically adapt to light/dark mode
+            editText.setTextColor(
+                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
+            )
+            editText.setBackgroundColor(
+                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemBackgroundColor(context)
+            )
+        } else {
+            editText.setTextColor(Color.BLACK)
+            editText.setBackgroundColor(Color.WHITE)
+        }
+
         // Default styling
         editText.setPadding(
             dpToPx(12f, context),
@@ -368,3 +383,4 @@ class DCFTextInputComponent : DCFComponent() {
         Log.d("DCFTextInputComponent", "TextInput component registered with shadow tree: $nodeId")
     }
 }
+

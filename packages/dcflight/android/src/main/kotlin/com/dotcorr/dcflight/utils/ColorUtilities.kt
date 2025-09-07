@@ -7,18 +7,96 @@
 
 package com.dotcorr.dcflight.utils
 
+import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
+import android.os.Build
 import android.util.Log
+import android.util.TypedValue
 import java.util.regex.Pattern
 import kotlin.math.abs
 
 /**
  * Utilities for color conversion
- * Following iOS ColorUtilities implementation
+ * Following iOS ColorUtilities implementation with Android adaptivity support
  */
 object ColorUtilities {
 
     private const val TAG = "ColorUtilities"
+
+    /**
+     * Get adaptive system color based on current theme (light/dark mode)
+     * Matches iOS behavior for system colors
+     */
+    @JvmStatic
+    fun getSystemColor(context: Context, colorType: SystemColorType): Int {
+        return try {
+            val typedValue = TypedValue()
+            val attrId = when (colorType) {
+                SystemColorType.BACKGROUND -> android.R.attr.colorBackground
+                SystemColorType.SURFACE -> android.R.attr.colorBackground
+                SystemColorType.PRIMARY_TEXT -> android.R.attr.textColorPrimary
+                SystemColorType.SECONDARY_TEXT -> android.R.attr.textColorSecondary
+                SystemColorType.ACCENT -> android.R.attr.colorAccent
+                SystemColorType.PRIMARY -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    android.R.attr.colorPrimary
+                } else {
+                    android.R.attr.colorAccent
+                }
+            }
+            
+            if (context.theme.resolveAttribute(attrId, typedValue, true)) {
+                typedValue.data
+            } else {
+                // Fallback colors based on current theme
+                val isDarkTheme = isDarkTheme(context)
+                when (colorType) {
+                    SystemColorType.BACKGROUND -> if (isDarkTheme) Color.BLACK else Color.WHITE
+                    SystemColorType.SURFACE -> if (isDarkTheme) Color.parseColor("#121212") else Color.WHITE
+                    SystemColorType.PRIMARY_TEXT -> if (isDarkTheme) Color.WHITE else Color.BLACK
+                    SystemColorType.SECONDARY_TEXT -> if (isDarkTheme) Color.parseColor("#B3FFFFFF") else Color.parseColor("#8A000000")
+                    SystemColorType.ACCENT -> Color.parseColor("#2196F3")
+                    SystemColorType.PRIMARY -> Color.parseColor("#2196F3")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to resolve system color: $colorType", e)
+            // Return safe defaults
+            when (colorType) {
+                SystemColorType.BACKGROUND -> Color.WHITE
+                SystemColorType.SURFACE -> Color.WHITE
+                SystemColorType.PRIMARY_TEXT -> Color.BLACK
+                SystemColorType.SECONDARY_TEXT -> Color.GRAY
+                SystemColorType.ACCENT -> Color.parseColor("#2196F3")
+                SystemColorType.PRIMARY -> Color.parseColor("#2196F3")
+            }
+        }
+    }
+
+    /**
+     * Check if current theme is dark mode
+     */
+    @JvmStatic
+    fun isDarkTheme(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val uiMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            uiMode == Configuration.UI_MODE_NIGHT_YES
+        } else {
+            false
+        }
+    }
+
+    /**
+     * System color types that match iOS system colors
+     */
+    enum class SystemColorType {
+        BACKGROUND,      // UIColor.systemBackground
+        SURFACE,         // UIColor.secondarySystemBackground  
+        PRIMARY_TEXT,    // UIColor.label
+        SECONDARY_TEXT,  // UIColor.secondaryLabel
+        ACCENT,          // UIColor.systemBlue
+        PRIMARY          // UIColor.systemBlue/colorPrimary
+    }
 
     /**
      * Convert a hex string to a color Int
@@ -278,3 +356,4 @@ object ColorUtilities {
         return color(colorString) ?: fallback
     }
 }
+

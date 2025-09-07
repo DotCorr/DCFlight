@@ -44,9 +44,25 @@ class DCFButtonComponent : DCFComponent() {
         // Create text view for the title (Text primitive)
         val textView = TextView(context)
         textView.gravity = Gravity.CENTER
-        textView.setTextColor(Color.BLACK)
         textView.textSize = 16f
         textView.isAllCaps = false
+        
+        // Apply adaptive styling - match iOS behavior
+        val isAdaptive = (props.filterValues { it != null }.mapValues { it.value!! })["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system button colors that adapt to light/dark mode
+            container.setBackgroundColor(
+                com.dotcorr.dcflight.utils.ColorUtilities.getSystemColor(
+                    context,
+                    com.dotcorr.dcflight.utils.ColorUtilities.SystemColorType.ACCENT
+                )
+            )
+            textView.setTextColor(Color.WHITE)
+        } else {
+            // Non-adaptive default styling
+            container.setBackgroundColor(Color.LTGRAY)
+            textView.setTextColor(Color.BLACK)
+        }
         
         // Add text view to container with centered layout
         val layoutParams = FrameLayout.LayoutParams(
@@ -57,7 +73,6 @@ class DCFButtonComponent : DCFComponent() {
         container.addView(textView, layoutParams)
         
         // Set touchable container styling
-        container.setBackgroundColor(Color.LTGRAY)
         container.isClickable = true
         container.isFocusable = true
         
@@ -202,3 +217,4 @@ class DCFButtonComponent : DCFComponent() {
         Log.d(TAG, "Composed button component registered with shadow tree: $nodeId")
     }
 }
+

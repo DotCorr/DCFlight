@@ -33,6 +33,26 @@ class DCFViewComponent : DCFComponent() {
         // Store component type for identification
         view.setTag(R.id.dcf_component_type, "View")
 
+        // Apply adaptive default styling - let OS handle light/dark mode
+        val isAdaptive = props["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system colors that automatically adapt to light/dark mode
+            try {
+                val typedValue = android.util.TypedValue()
+                if (context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)) {
+                    view.setBackgroundColor(typedValue.data)
+                } else {
+                    // Fallback based on current theme detection
+                    val isDarkTheme = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    view.setBackgroundColor(if (isDarkTheme) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                }
+            } catch (e: Exception) {
+                view.setBackgroundColor(android.graphics.Color.WHITE)
+            }
+        } else {
+            view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
+
         // Apply props - convert nullable to non-nullable
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         updateViewInternal(view, nonNullProps)
@@ -40,7 +60,7 @@ class DCFViewComponent : DCFComponent() {
         // Apply StyleSheet properties
         view.applyStyles(nonNullProps)
 
-        Log.d(TAG, "Created view component")
+        Log.d(TAG, "Created view component with adaptive: $isAdaptive")
 
         return view
     }
@@ -73,3 +93,4 @@ class DCFViewComponent : DCFComponent() {
         Log.d(TAG, "View component registered with shadow tree: $nodeId")
     }
 }
+

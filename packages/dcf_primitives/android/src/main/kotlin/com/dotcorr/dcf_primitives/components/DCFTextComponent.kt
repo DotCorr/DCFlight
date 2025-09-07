@@ -49,16 +49,9 @@ class DCFTextComponent : DCFComponent() {
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {
             // Use system colors that automatically adapt to light/dark mode
-            try {
-                val typedValue = TypedValue()
-                if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
-                    textView.setTextColor(typedValue.data)
-                } else {
-                    textView.setTextColor(Color.BLACK)
-                }
-            } catch (e: Exception) {
-                textView.setTextColor(Color.BLACK)
-            }
+            textView.setTextColor(
+                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
+            )
         } else {
             textView.setTextColor(Color.BLACK)
         }
@@ -296,3 +289,4 @@ class DCFTextComponent : DCFComponent() {
         Log.d(TAG, "Text component registered with shadow tree: $nodeId")
     }
 }
+

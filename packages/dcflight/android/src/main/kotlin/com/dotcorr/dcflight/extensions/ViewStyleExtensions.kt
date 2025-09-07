@@ -12,6 +12,8 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.View
 import android.view.ViewGroup
+import android.content.res.Configuration
+import android.util.TypedValue
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.R
 
@@ -20,6 +22,15 @@ import com.dotcorr.dcflight.R
  * Apply common style properties to this view, driven only by explicit props
  */
 fun View.applyStyles(props: Map<String, Any>) {
+    // Handle adaptive flag first - matches iOS behavior
+    val isAdaptive = props["adaptive"] as? Boolean ?: true
+    
+    // Apply adaptive defaults before other styling
+    if (isAdaptive && !props.containsKey("backgroundColor")) {
+        // Only apply adaptive background if no explicit backgroundColor is set
+        applyAdaptiveDefaults()
+    }
+
     // CRITICAL: Apply border radius FIRST before gradient to avoid override
     var hasCornerRadius = false
     var finalCornerRadius = 0f
@@ -252,6 +263,104 @@ private fun View.applyGradientBackground(gradientData: Map<String, Any>, cornerR
 }
 
 /**
+ * Apply adaptive defaults based on view type - matches iOS behavior
+ */
+private fun View.applyAdaptiveDefaults() {
+    val context = this.context
+    try {
+        when (this) {
+            is android.widget.TextView -> {
+                // Text views get adaptive text color
+                val typedValue = TypedValue()
+                if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
+                    this.setTextColor(typedValue.data)
+                }
+            }
+            else -> {
+                // Other views get adaptive background
+                val typedValue = TypedValue()
+                if (context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)) {
+                    this.setBackgroundColor(typedValue.data)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        // Fallback to manual detection
+        val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        when (this) {
+            is android.widget.TextView -> {
+                this.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
+            }
+            else -> {
+                this.setBackgroundColor(if (isDarkTheme) Color.BLACK else Color.WHITE)
+            }
+        }
+    }
+}
+
+/**
+ * Apply adaptive background color based on current theme
+ */
+fun View.applyAdaptiveBackgroundColor() {
+    val context = this.context
+    try {
+        val typedValue = TypedValue()
+        if (context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)) {
+            this.setBackgroundColor(typedValue.data)
+        } else {
+            // Fallback based on current theme
+            val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            this.setBackgroundColor(if (isDarkTheme) Color.BLACK else Color.WHITE)
+        }
+    } catch (e: Exception) {
+        this.setBackgroundColor(Color.WHITE)
+    }
+}
+
+/**
+ * Apply adaptive text color based on current theme
+ */
+fun View.applyAdaptiveTextColor() {
+    if (this is android.widget.TextView) {
+        val context = this.context
+        try {
+            val typedValue = TypedValue()
+            if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
+                this.setTextColor(typedValue.data)
+            } else {
+                // Fallback based on current theme
+                val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                this.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
+            }
+        } catch (e: Exception) {
+            this.setTextColor(Color.BLACK)
+        }
+    }
+}
+
+/**
+ * Apply adaptive accent color (for buttons, etc.)
+ */
+fun View.applyAdaptiveAccentColor() {
+    val context = this.context
+    try {
+        val typedValue = TypedValue()
+        val attrId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            android.R.attr.colorAccent
+        } else {
+            android.R.attr.colorAccent
+        }
+        if (context.theme.resolveAttribute(attrId, typedValue, true)) {
+            this.setBackgroundColor(typedValue.data)
+        } else {
+            this.setBackgroundColor(Color.parseColor("#2196F3")) // Material Blue
+        }
+    } catch (e: Exception) {
+        this.setBackgroundColor(Color.parseColor("#2196F3"))
+    }
+}
+
+/**
  * Update gradient layer frame when view bounds change - matching iOS
  */
 fun View.updateGradientFrame() {
@@ -262,3 +371,4 @@ fun View.updateGradientFrame() {
         this.invalidate()
     }
 }
+
