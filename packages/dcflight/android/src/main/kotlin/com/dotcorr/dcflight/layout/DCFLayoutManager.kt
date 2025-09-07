@@ -475,4 +475,22 @@ class DCFLayoutManager private constructor() {
             }
         }
     }
+
+    /**
+     * Invalidate all layouts and force recalculation (for configuration changes like rotation)
+     * This matches iOS behavior during orientation changes
+     */
+    fun invalidateAllLayouts() {
+        Log.d(TAG, "Invalidating all layouts for configuration change")
+        
+        // Clear all pending layouts
+        pendingLayouts.clear()
+        
+        // Mark all views as needing layout recalculation
+        needsLayoutCalculation.set(true)
+        
+        // Trigger immediate layout calculation with current screen dimensions
+        triggerLayoutCalculation()
+    }
 }
+

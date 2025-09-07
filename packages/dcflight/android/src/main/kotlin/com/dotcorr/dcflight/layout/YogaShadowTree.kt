@@ -386,6 +386,32 @@ class YogaShadowTree private constructor() {
         }
     }
 
+    /**
+     * Calculate layout for all roots using current screen dimensions
+     * This method is called during configuration changes like rotation
+     */
+    @Synchronized
+    fun calculateLayoutForAllRoots() {
+        Log.d(TAG, "Calculating layout for all roots")
+        
+        // Get current screen dimensions
+        val displayMetrics = Resources.getSystem().displayMetrics
+        val screenWidth = displayMetrics.widthPixels.toFloat()
+        val screenHeight = displayMetrics.heightPixels.toFloat()
+        
+        // Update all screen root dimensions first
+        updateScreenRootDimensions(screenWidth, screenHeight)
+        
+        // Calculate and apply layout with current dimensions
+        val success = calculateAndApplyLayout(screenWidth, screenHeight)
+        
+        if (success) {
+            Log.d(TAG, "✅ Layout calculated for all roots successfully")
+        } else {
+            Log.w(TAG, "⚠️ Layout calculation for all roots encountered issues")
+        }
+    }
+
     fun isScreenRoot(nodeId: String): Boolean {
         return screenRootIds.contains(nodeId)
     }
@@ -713,3 +739,4 @@ class YogaShadowTree private constructor() {
         return nodes.containsKey(viewId)
     }
 }
+
