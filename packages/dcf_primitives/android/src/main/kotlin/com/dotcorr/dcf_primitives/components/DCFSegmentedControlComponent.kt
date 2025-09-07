@@ -23,8 +23,8 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
-import com.dotcorr.dcf_primitives.utils.AdaptiveColorHelper
-import com.dotcorr.dcf_primitives.utils.ColorUtilities
+import com.dotcorr.dcflight.utils.AdaptiveColorHelper
+import com.dotcorr.dcflight.utils.ColorUtilities
 
 /**
  * DCFSegmentedControlComponent - 1:1 mapping with iOS DCFSegmentedControl

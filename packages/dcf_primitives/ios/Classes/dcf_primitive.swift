@@ -39,8 +39,6 @@ import dcflight
             "GestureDetector", componentClass: DCFGestureDetectorComponent.self)
         DCFComponentRegistry.shared.registerComponent(
             "TouchableOpacity", componentClass: DCFTouchableOpacityComponent.self)
-        // Register animation primitives
-
         // Register new cross-platform primitives
         DCFComponentRegistry.shared.registerComponent(
             "TextInput", componentClass: DCFTextInputComponent.self)
@@ -56,7 +54,6 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent(
             "SegmentedControl", componentClass: DCFSegmentedControlComponent.self)
 
-        // 🚀 Register ADVANCED primitive components
         DCFComponentRegistry.shared.registerComponent(
             "Slider", componentClass: DCFSliderComponent.self)
         DCFComponentRegistry.shared.registerComponent(
@@ -66,3 +63,4 @@ import dcflight
             "WebView", componentClass: DCFWebViewComponent.self)
     }
 }
+

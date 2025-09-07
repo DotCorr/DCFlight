@@ -8,6 +8,7 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.PointF
 import android.util.Log
 import android.view.MotionEvent
