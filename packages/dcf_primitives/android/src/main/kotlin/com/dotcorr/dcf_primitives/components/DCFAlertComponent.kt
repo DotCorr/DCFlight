@@ -16,6 +16,7 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
+import com.dotcorr.dcf_primitives.utils.AdaptiveColorHelper
 
 /**
  * DCFAlertComponent - 1:1 mapping with iOS DCFAlertComponent
@@ -56,6 +57,15 @@ class DCFAlertComponent : DCFComponent() {
                 hasUpdates = true
             } else if (!visible && alertDialog != null) {
                 hideAlert(view)
+                hasUpdates = true
+            }
+        }
+
+        // adaptive prop - matches iOS adaptivity
+        props["adaptive"]?.let { adaptive ->
+            if (adaptive == true) {
+                // Apply adaptive background color for container
+                view.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(view.context))
                 hasUpdates = true
             }
         }
@@ -168,3 +178,4 @@ class DCFAlertComponent : DCFComponent() {
         // Alert components are typically overlay components and don't need special handling
     }
 }
+

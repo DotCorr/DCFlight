@@ -25,6 +25,17 @@ class DCFScrollViewComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val scrollView = ScrollView(context)
         
+        // Apply adaptive default styling - let OS handle light/dark mode
+        val isAdaptive = props["adaptive"] as? Boolean ?: true
+        if (isAdaptive) {
+            // Use system colors that automatically adapt to light/dark mode
+            scrollView.setBackgroundColor(
+                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemBackgroundColor(context)
+            )
+        } else {
+            scrollView.setBackgroundColor(Color.TRANSPARENT)
+        }
+        
         // Set component identifier for debugging
         scrollView.setTag(R.id.dcf_component_type, "ScrollView")
         
@@ -99,3 +110,4 @@ class DCFScrollViewComponent : DCFComponent() {
         // ScrollView components may contain children and need shadow tree handling
     }
 }
+

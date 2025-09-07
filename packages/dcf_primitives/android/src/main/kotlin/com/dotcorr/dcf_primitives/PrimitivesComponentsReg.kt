@@ -36,12 +36,18 @@ object PrimitivesComponentsReg {
         registry.registerComponent("Spinner", DCFSpinnerComponent::class.java)
         registry.registerComponent("WebView", DCFWebViewComponent::class.java)
 
-        // Additional components available in Android (iOS equivalents exist under different names)
+        // Interactive components
         registry.registerComponent("Alert", DCFAlertComponent::class.java)
         registry.registerComponent("Dropdown", DCFDropdownComponent::class.java)
         registry.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
         registry.registerComponent("GestureDetector", DCFGestureDetectorComponent::class.java)
+        
+        // Graphics and Media
         registry.registerComponent("Svg", DCFSvgComponent::class.java)
+        registry.registerComponent("Icon", DCFIconComponent::class.java)
+
+        // TODO: Missing components that exist in iOS but not yet implemented in Android
+        // registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
 
         println("✅ PrimitivesComponentsReg: Registered ${getRegisteredComponentTypes().size} primitive components")
     }
@@ -92,6 +98,7 @@ object PrimitivesComponentsReg {
      */
     fun getRegisteredComponentTypes(): List<String> {
         return listOf(
+            // Core components
             "View",
             "Text",
             "Image",
@@ -102,10 +109,15 @@ object PrimitivesComponentsReg {
             "Checkbox",
             "Spinner",
             "WebView",
+            "ScrollView",
+            
+            // Interactive components  
             "Alert",
             "Dropdown",
             "TouchableOpacity",
             "GestureDetector",
+            
+            // Graphics and Media
             "Svg"
         )
     }
@@ -115,14 +127,10 @@ object PrimitivesComponentsReg {
      */
     fun getMissingComponentTypes(): List<String> {
         return listOf(
-            "Alert",
-            "Dropdown",
-            "SegmentedControl",
-            "TouchableOpacity",
-            "GestureDetector",
+            // Components that exist in iOS but not yet in Android
             "Icon",
-            "DCFIcon",
-            "Svg"
+            "SegmentedControl"
         )
     }
 }
+

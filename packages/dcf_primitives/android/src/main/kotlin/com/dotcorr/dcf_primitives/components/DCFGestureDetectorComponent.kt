@@ -17,6 +17,7 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
+import com.dotcorr.dcf_primitives.utils.AdaptiveColorHelper
 
 /**
  * DCFGestureDetectorComponent - 1:1 mapping with iOS DCFGestureDetectorComponent
@@ -125,6 +126,15 @@ class DCFGestureDetectorComponent : DCFComponent() {
             }
         }
 
+        // adaptive prop - matches iOS adaptivity
+        props["adaptive"]?.let { adaptive ->
+            if (adaptive == true) {
+                // Apply adaptive background color
+                view.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(view.context))
+                hasUpdates = true
+            }
+        }
+
         // Apply common view styling
         view.applyStyles(props)
 
@@ -152,3 +162,4 @@ class DCFGestureDetectorComponent : DCFComponent() {
         // GestureDetector components may contain children and need shadow tree handling
     }
 }
+

@@ -16,6 +16,7 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
+import com.dotcorr.dcf_primitives.utils.AdaptiveColorHelper
 
 /**
  * DCFSvgComponent - 1:1 mapping with iOS DCFSvgComponent
@@ -77,6 +78,15 @@ class DCFSvgComponent : DCFComponent() {
                 else -> 100
             }
             hasUpdates = true
+        }
+
+        // adaptive prop - matches iOS adaptivity
+        props["adaptive"]?.let { adaptive ->
+            if (adaptive == true) {
+                // Apply adaptive background color for container
+                imageView.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(imageView.context))
+                hasUpdates = true
+            }
         }
 
         // Apply common view styling
@@ -201,3 +211,4 @@ class DCFSvgComponent : DCFComponent() {
         // SVG components are typically leaf nodes and don't need special handling
     }
 }
+
