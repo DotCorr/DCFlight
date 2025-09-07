@@ -48,31 +48,5 @@ object PrimitivesComponentsReg {
         registry.registerComponent("Icon", DCFIconComponent::class.java)
     }
 
-    /**
-     * Get list of all registered component types
-     */
-    private fun getRegisteredComponentTypes(): List<String> {
-        return listOf(
-            "View", "Text", "Image", "TextInput", "Button", "Toggle", 
-            "Slider", "Checkbox", "Spinner", "WebView", "Alert", 
-            "Dropdown", "TouchableOpacity", "GestureDetector", 
-            "SegmentedControl", "Svg", "Icon"
-        )
-    }
-
-    /**
-     * Unregister all primitive components (useful for testing)
-     */
-    fun unregisterComponents() {
-        val registry = DCFComponentRegistry.shared
-        val componentsToUnregister = getRegisteredComponentTypes()
-
-        componentsToUnregister.forEach { componentType ->
-            // Note: This would require adding an unregister method to DCFComponentRegistry
-            // For now, just log
-            println("🧹 PrimitivesComponentsReg: Unregistering $componentType")
-        }
-    }
-
 }
 

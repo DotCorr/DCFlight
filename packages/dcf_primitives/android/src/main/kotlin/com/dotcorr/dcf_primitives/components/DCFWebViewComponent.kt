@@ -9,6 +9,7 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.PointF
 import android.view.View
 import android.webkit.WebView

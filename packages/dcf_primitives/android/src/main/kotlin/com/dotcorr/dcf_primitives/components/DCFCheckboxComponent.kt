@@ -9,6 +9,7 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Color
 import android.view.View
 import android.widget.CheckBox
 import com.dotcorr.dcflight.components.DCFComponent
