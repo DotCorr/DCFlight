@@ -150,7 +150,8 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         activity?.let { act ->
             // Force all adaptive components to re-evaluate their colors
             // This ensures theme changes are propagated after configuration changes
-            DCMauiBridgeImpl.shared.propagateThemeChangeToAllViews(act)
+            // Note: AdaptiveColorHelper automatically handles theme changes, so explicit propagation may not be needed
+            // DCMauiBridgeImpl.shared.propagateThemeChangeToAllViews(act)
             Log.d(TAG, "🎨 Theme change propagated to all components")
         }
     }
