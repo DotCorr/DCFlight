@@ -41,15 +41,23 @@ object PrimitivesComponentsReg {
         registry.registerComponent("Dropdown", DCFDropdownComponent::class.java)
         registry.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
         registry.registerComponent("GestureDetector", DCFGestureDetectorComponent::class.java)
+        registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
         
         // Graphics and Media
         registry.registerComponent("Svg", DCFSvgComponent::class.java)
         registry.registerComponent("Icon", DCFIconComponent::class.java)
+    }
 
-        // TODO: Missing components that exist in iOS but not yet implemented in Android
-        // registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
-
-        println("✅ PrimitivesComponentsReg: Registered ${getRegisteredComponentTypes().size} primitive components")
+    /**
+     * Get list of all registered component types
+     */
+    private fun getRegisteredComponentTypes(): List<String> {
+        return listOf(
+            "View", "Text", "Image", "TextInput", "Button", "Toggle", 
+            "Slider", "Checkbox", "Spinner", "WebView", "Alert", 
+            "Dropdown", "TouchableOpacity", "GestureDetector", 
+            "SegmentedControl", "Svg", "Icon"
+        )
     }
 
     /**
@@ -66,71 +74,5 @@ object PrimitivesComponentsReg {
         }
     }
 
-    /**
-     * Check if all expected primitive components are registered
-     */
-    fun verifyRegistration(): Boolean {
-        val expectedComponents = getRegisteredComponentTypes()
-        val registry = DCFComponentRegistry.shared
-        var allRegistered = true
-
-        for (componentType in expectedComponents) {
-            if (!registry.isComponentRegistered(componentType)) {
-                println("⚠️ PrimitivesComponentsReg: Component '$componentType' is not registered")
-                allRegistered = false
-            } else {
-                println("✓ PrimitivesComponentsReg: Component '$componentType' is registered")
-            }
-        }
-
-        if (allRegistered) {
-            println("✅ PrimitivesComponentsReg: All expected primitive components are registered")
-        } else {
-            println("❌ PrimitivesComponentsReg: Some components are missing")
-        }
-
-        return allRegistered
-    }
-
-    /**
-     * Get list of all registered component types
-     * ONLY RETURN COMPONENTS THAT ACTUALLY EXIST
-     */
-    fun getRegisteredComponentTypes(): List<String> {
-        return listOf(
-            // Core components
-            "View",
-            "Text",
-            "Image",
-            "TextInput",
-            "Button",
-            "Toggle",
-            "Slider",
-            "Checkbox",
-            "Spinner",
-            "WebView",
-            "ScrollView",
-            
-            // Interactive components  
-            "Alert",
-            "Dropdown",
-            "TouchableOpacity",
-            "GestureDetector",
-            
-            // Graphics and Media
-            "Svg"
-        )
-    }
-
-    /**
-     * Get list of components that need to be implemented for iOS parity
-     */
-    fun getMissingComponentTypes(): List<String> {
-        return listOf(
-            // Components that exist in iOS but not yet in Android
-            "Icon",
-            "SegmentedControl"
-        )
-    }
 }
 
