@@ -101,11 +101,58 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     override fun onDetachedFromActivityForConfigChanges() {
         Log.d(TAG, "onDetachedFromActivityForConfigChanges called")
+        // Preserve activity reference temporarily during config changes
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         Log.d(TAG, "onReattachedToActivityForConfigChanges called")
         this.activity = binding.activity
+        
+        // CRITICAL: Handle configuration changes like iOS
+        // Recalculate layout and update screen dimensions after rotation
+        handleConfigurationChange(binding.activity)
+    }
+    
+    private fun handleConfigurationChange(activity: Activity) {
+        Log.d(TAG, "📱 Configuration changed - handling rotation/theme change")
+        
+        try {
+            // Update screen dimensions for YogaShadowTree root nodes
+            updateScreenDimensionsAfterRotation()
+            
+            // Force layout recalculation to handle new dimensions
+            DCFLayoutManager.shared.invalidateAllLayouts()
+            YogaShadowTree.shared.calculateLayoutForAllRoots()
+            
+            // Trigger theme update propagation for all adaptive components
+            propagateThemeChangeToAllComponents()
+            
+            Log.d(TAG, "✅ Configuration change handled successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to handle configuration change", e)
+        }
+    }
+    
+    private fun updateScreenDimensionsAfterRotation() {
+        activity?.let { act ->
+            val displayMetrics = act.resources.displayMetrics
+            val newWidth = displayMetrics.widthPixels.toFloat()
+            val newHeight = displayMetrics.heightPixels.toFloat()
+            
+            Log.d(TAG, "📐 Screen dimensions updated: ${newWidth}x${newHeight}")
+            
+            // Update all screen root dimensions in YogaShadowTree
+            YogaShadowTree.shared.updateScreenRootDimensions(newWidth, newHeight)
+        }
+    }
+    
+    private fun propagateThemeChangeToAllComponents() {
+        activity?.let { act ->
+            // Force all adaptive components to re-evaluate their colors
+            // This ensures theme changes are propagated after configuration changes
+            DCMauiBridgeImpl.shared.propagateThemeChangeToAllViews(act)
+            Log.d(TAG, "🎨 Theme change propagated to all components")
+        }
     }
 
     override fun onDetachedFromActivity() {
@@ -117,3 +164,4 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         Log.d(TAG, "Activity detached but preserving native UI for background/foreground transitions")
     }
 }
+
