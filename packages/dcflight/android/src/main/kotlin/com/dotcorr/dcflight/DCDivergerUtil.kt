@@ -110,6 +110,13 @@ object DCDivergerUtil {
 
     private fun setupNativeContainer(activity: Activity) {
         try {
+            // 🚀 CRITICAL FIX: Prevent UI destruction on background/foreground transitions
+            // If rootView already exists, just return - don't recreate like iOS
+            if (rootView != null) {
+                Log.d(TAG, "Native container already exists, preserving UI state")
+                return
+            }
+
             rootView = DCFFrameLayout(activity).apply {
                 setBackgroundColor(Color.WHITE)
                 layoutParams = ViewGroup.LayoutParams(
@@ -181,3 +188,4 @@ object DCDivergerUtil {
         }
     }
 }
+

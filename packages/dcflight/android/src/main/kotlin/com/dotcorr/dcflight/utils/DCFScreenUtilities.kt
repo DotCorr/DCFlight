@@ -95,6 +95,18 @@ object DCFScreenUtilities {
     }
 
     /**
+     * 🚀 CRITICAL FIX: Refresh screen dimensions for rotation handling
+     * This was missing - needed for device rotation support!
+     */
+    fun refreshScreenDimensions() {
+        Log.d(TAG, "Refreshing screen dimensions for configuration change")
+        updateDisplayMetrics()
+        
+        // Notify Flutter layer of the dimension change
+        notifyDimensionChange()
+    }
+
+    /**
      * Setup method channel handlers
      */
     private fun setupMethodChannel() {
@@ -402,3 +414,4 @@ object DCFScreenUtilities {
         }
     }
 }
+
