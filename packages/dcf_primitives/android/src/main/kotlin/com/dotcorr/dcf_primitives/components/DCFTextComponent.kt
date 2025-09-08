@@ -169,19 +169,40 @@ class DCFTextComponent : DCFComponent() {
         props["textAlign"]?.let { textAlign ->
             when (textAlign.toString()) {
                 "center" -> {
-                    // CRITICAL FIX: Use CENTER instead of CENTER_HORIZONTAL to work with flex centering
-                    // This ensures text centering works properly when parent uses flex justifyContent/alignItems center
-                    textView.gravity = Gravity.CENTER
+                    // iOS BEHAVIOR: Use textAlignment property instead of gravity
+                    // This affects only how text is aligned within the TextView bounds,
+                    // NOT the TextView positioning in its parent (which Yoga handles)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                        textView.textAlignment = 4 // TEXT_ALIGNMENT_CENTER
+                    } else {
+                        textView.gravity = Gravity.CENTER_HORIZONTAL
+                    }
                 }
-                "right" -> textView.gravity = Gravity.END
+                "right" -> {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                        textView.textAlignment = 6 // TEXT_ALIGNMENT_VIEW_END
+                    } else {
+                        textView.gravity = Gravity.END
+                    }
+                }
                 "justify" -> {
                     // Justified text alignment (API 26+)
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                         textView.justificationMode = android.text.Layout.JUSTIFICATION_MODE_INTER_WORD
                     }
-                    textView.gravity = Gravity.START
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                        textView.textAlignment = 5 // TEXT_ALIGNMENT_VIEW_START
+                    } else {
+                        textView.gravity = Gravity.START
+                    }
                 }
-                else -> textView.gravity = Gravity.START
+                else -> {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                        textView.textAlignment = 5 // TEXT_ALIGNMENT_VIEW_START
+                    } else {
+                        textView.gravity = Gravity.START
+                    }
+                }
             }
             Log.d(TAG, "Set text alignment: $textAlign")
         }
