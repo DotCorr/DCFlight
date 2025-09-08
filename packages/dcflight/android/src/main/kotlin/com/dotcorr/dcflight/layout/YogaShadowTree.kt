@@ -617,6 +617,13 @@ class YogaShadowTree private constructor() {
                     "columnReverse" -> node.setFlexDirection(YogaFlexDirection.COLUMN_REVERSE)
                 }
             }
+            "flexWrap" -> {
+                when (value as? String) {
+                    "nowrap" -> node.setWrap(YogaWrap.NO_WRAP)
+                    "wrap" -> node.setWrap(YogaWrap.WRAP)
+                    "wrapReverse" -> node.setWrap(YogaWrap.WRAP_REVERSE)
+                }
+            }
             "justifyContent" -> {
                 when (value as? String) {
                     "flexStart" -> node.setJustifyContent(YogaJustify.FLEX_START)
