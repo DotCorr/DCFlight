@@ -266,11 +266,8 @@ class DCMauiBridgeImpl private constructor() {
 
             Log.d(TAG, "Successfully set children for view: $viewId")
             
-            if (viewId == "1") {
-                DCFLayoutManager.shared.calculateLayoutNow()
-            } else {
-                DCFLayoutManager.shared.triggerLayoutCalculation()
-            }
+            // Always use immediate layout calculation to prevent startup flash
+            DCFLayoutManager.shared.calculateLayoutNow()
             
             true
         } catch (e: Exception) {
