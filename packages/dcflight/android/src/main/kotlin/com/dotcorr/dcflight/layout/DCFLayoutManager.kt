@@ -96,13 +96,18 @@ class DCFLayoutManager private constructor() {
     // MARK: - Automatic Layout Calculation
 
     /**
-     * CRASH FIX: Schedule automatic layout calculation with reconciliation awareness
+     * iOS-style layout calculation scheduling with 100ms debouncing (matches iOS exactly)
      */
     private fun scheduleLayoutCalculation() {
-        // Cancel existing timer and schedule new calculation with debouncing (100ms delay)
-        layoutCalculationTimer?.schedule({
-            performAutomaticLayoutCalculation()
-        }, 100, TimeUnit.MILLISECONDS)
+        // Cancel existing scheduled calculation (matches iOS)
+        mainHandler.removeCallbacks(layoutCalculationRunnable)
+        
+        // Schedule new calculation with 100ms delay (matches iOS exactly)
+        mainHandler.postDelayed(layoutCalculationRunnable, 100)
+    }
+    
+    private val layoutCalculationRunnable = Runnable {
+        performAutomaticLayoutCalculation()
     }
 
     /**
