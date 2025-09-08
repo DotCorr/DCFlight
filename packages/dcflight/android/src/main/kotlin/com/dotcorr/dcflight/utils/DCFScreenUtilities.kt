@@ -339,18 +339,6 @@ object DCFScreenUtilities {
     }
 
     /**
-     * Handle configuration changes
-     */
-    fun onConfigurationChanged(newConfig: Configuration) {
-        Log.d(TAG, "Configuration changed")
-        updateDisplayMetrics()
-        notifyDimensionChange()
-        
-        // MATCH iOS: Trigger layout recalculation on orientation change
-        DCFLayoutManager.shared.calculateLayoutNow()
-    }
-
-    /**
      * Notify Flutter about dimension changes
      */
     private fun notifyDimensionChange() {
