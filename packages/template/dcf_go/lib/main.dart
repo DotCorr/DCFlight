@@ -2,67 +2,46 @@ import 'package:dcflight/dcflight.dart';
 
 void main() async {
   DCFlight.setLogLevel(DCFLogLevel.debug);
-
-  await DCFlight.start(app: MyStackApp());
+  await DCFlight.start(app: MyGridApp());
 }
 
-class MyStackApp extends StatefulComponent {
+class MyGridApp extends StatefulComponent {
   @override
   DCFComponentNode render() {
-    final count = useState(0);
     return DCFView(
-      // styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
       layout: DCFLayout(
         flex: 1,
-        alignItems: YogaAlign.center,
-        justifyContent: YogaJustifyContent.center,
-        alignContent: YogaAlign.center,
-        paddingTop: 120,
+        padding: 20,
       ),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[100]),
       children: [
+        // Simple 2x2 Grid
         DCFView(
-          styleSheet: DCFStyleSheet(backgroundColor: Colors.green),
-          layout: DCFLayout(height: 500),
+          layout: DCFLayout(
+            flexDirection: YogaFlexDirection.row,
+            flexWrap: YogaWrap.wrap,
+            // gap: 10,
+          ),
           children: [
-            DCFText(
-              content: "Text example ${count.state}",
-              textProps: DCFTextProps(
-                fontSize: 20,
-                color: Colors.black,
-                textAlign: 'center',
-              ),
+            DCFView(
+              layout: DCFLayout(width: "45%", height: 100),
+              styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
+              children: [DCFText(content: "1")],
             ),
-            DCFButton(
-              buttonProps: DCFButtonProps(title: "increment counter"),
-              onPress: (v) {
-                print("Button pressed");
-                print("Current count: ${count.state}");
-                count.setState(count.state + 1);
-                print("New count: ${count.state}");
-              },
+            DCFView(
+              layout: DCFLayout(width: "45%", height: 100),
+              styleSheet: DCFStyleSheet(backgroundColor: Colors.blue),
+              children: [DCFText(content: "2")],
             ),
-          ],
-        ),
-        DCFView(
-          styleSheet: DCFStyleSheet(backgroundColor: Colors.orange),
-          children: [
-            DCFButton(
-              buttonProps: DCFButtonProps(title: "increment counter"),
-              onPress: (v) {
-                print("Button pressed");
-                print("Current count: ${count.state}");
-                count.setState(count.state + 1);
-                print("New count: ${count.state}");
-              },
+            DCFView(
+              layout: DCFLayout(width: "45%", height: 100),
+              styleSheet: DCFStyleSheet(backgroundColor: Colors.green),
+              children: [DCFText(content: "3")],
             ),
-            DCFButton(
-              buttonProps: DCFButtonProps(title: "increment counter"),
-              onPress: (v) {
-                print("Button pressed");
-                print("Current count: ${count.state}");
-                count.setState(count.state + 1);
-                print("New count: ${count.state}");
-              },
+            DCFView(
+              layout: DCFLayout(width: "45%", height: 100),
+              styleSheet: DCFStyleSheet(backgroundColor: Colors.orange),
+              children: [DCFText(content: "4")],
             ),
           ],
         ),

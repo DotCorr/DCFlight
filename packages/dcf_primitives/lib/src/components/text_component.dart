@@ -135,7 +135,7 @@ class DCFText extends StatelessComponent
   /// Create a text component
   DCFText({
     required this.content,
-    this.textProps = const DCFTextProps(),
+    this.textProps = const DCFTextProps(textAlign: 'center'),
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
     this.events,
@@ -169,3 +169,4 @@ class DCFText extends StatelessComponent
         key,
       ];
 }
+
