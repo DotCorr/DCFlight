@@ -24,15 +24,11 @@ import io.flutter.plugin.common.BinaryMessenger
 import kotlinx.coroutines.*
 
 import com.dotcorr.dcflight.bridge.DCMauiBridgeImpl
-import com.dotcorr.dcflight.bridge.DCMauiBridgeMethodChannel
-import com.dotcorr.dcflight.bridge.DCMauiEventMethodHandler
-import com.dotcorr.dcflight.bridge.DCMauiLayoutMethodHandler
 
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 
 import com.dotcorr.dcflight.components.FrameworkComponentsReg
-import com.dotcorr.dcflight.components.DCFComponentRegistry
 
 import com.dotcorr.dcflight.utils.DCFScreenUtilities
 
@@ -60,10 +56,6 @@ object DCDivergerUtil {
         }
         flutterView?.attachToFlutterEngine(flutterEngine)
 
-        // Method channels are already initialized in plugin registration
-        // Don't reinitialize them here as it overwrites the Flutter handlers
-        // initializeMethodChannels(flutterEngine.dartExecutor.binaryMessenger)
-
         setupNativeContainer(activity)
 
         initializeDCFlightSystems(activity, flutterEngine.dartExecutor.binaryMessenger)
@@ -84,27 +76,6 @@ object DCDivergerUtil {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get Flutter engine", e)
             null
-        }
-    }    private fun initializeMethodChannels(binaryMessenger: BinaryMessenger) {
-        try {
-            io.flutter.plugin.common.MethodChannel(
-                binaryMessenger,
-                "com.dcmaui.bridge"
-            ).setMethodCallHandler(DCMauiBridgeMethodChannel())
-
-            io.flutter.plugin.common.MethodChannel(
-                binaryMessenger,
-                "com.dcmaui.events"
-            ).setMethodCallHandler(DCMauiEventMethodHandler.getInstance())
-
-            io.flutter.plugin.common.MethodChannel(
-                binaryMessenger,
-                "com.dcmaui.layout"
-            ).setMethodCallHandler(DCMauiLayoutMethodHandler())
-
-            Log.d(TAG, "Method channels initialized")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize method channels", e)
         }
     }
 
