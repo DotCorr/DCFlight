@@ -38,13 +38,16 @@ class DCMauiBridgeImpl private constructor() {
     private val viewHierarchy = ConcurrentHashMap<String, MutableList<String>>()
     private val childToParent = ConcurrentHashMap<String, String>()
     private var appContext: Context? = null
+    private var isInitialized = false
 
     fun setContext(context: Context) {
         appContext = context
     }
 
     fun initialize(): Boolean {
+        if (isInitialized) return true
         Log.d(TAG, "Initializing DCMauiBridgeImpl")
+        isInitialized = true
         // YogaShadowTree and DCFLayoutManager are already initialized as singletons
         return true
     }
@@ -263,8 +266,8 @@ class DCMauiBridgeImpl private constructor() {
 
             Log.d(TAG, "Successfully set children for view: $viewId")
             
-            // FORCE layout calculation immediately after setting children
-            DCFLayoutManager.shared.calculateLayoutNow()
+            // Schedule layout calculation instead of forcing immediate calculation
+            DCFLayoutManager.shared.triggerLayoutCalculation()
             
             true
         } catch (e: Exception) {
@@ -425,3 +428,4 @@ class DCMauiBridgeImpl private constructor() {
         return list
     }
 }
+
