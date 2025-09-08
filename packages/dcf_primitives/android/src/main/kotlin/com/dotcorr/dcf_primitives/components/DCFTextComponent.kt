@@ -168,7 +168,11 @@ class DCFTextComponent : DCFComponent() {
         // Set text alignment if specified (preserve current alignment if not in props)
         props["textAlign"]?.let { textAlign ->
             when (textAlign.toString()) {
-                "center" -> textView.gravity = Gravity.CENTER_HORIZONTAL
+                "center" -> {
+                    // CRITICAL FIX: Use CENTER instead of CENTER_HORIZONTAL to work with flex centering
+                    // This ensures text centering works properly when parent uses flex justifyContent/alignItems center
+                    textView.gravity = Gravity.CENTER
+                }
                 "right" -> textView.gravity = Gravity.END
                 "justify" -> {
                     // Justified text alignment (API 26+)

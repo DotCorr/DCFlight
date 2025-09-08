@@ -44,6 +44,28 @@ enum DCFFontWeight {
   }
 }
 
+/// Text alignment options for text components  
+enum DCFTextAlign {
+  left,
+  center,
+  right,
+  justify;
+
+  /// Convert to string value for native side
+  String get value {
+    switch (this) {
+      case DCFTextAlign.left:
+        return 'left';
+      case DCFTextAlign.center:
+        return 'center';
+      case DCFTextAlign.right:
+        return 'right';
+      case DCFTextAlign.justify:
+        return 'justify';
+    }
+  }
+}
+
 /// Text style properties
 class DCFTextProps extends Equatable {
   /// Font size
@@ -62,7 +84,7 @@ class DCFTextProps extends Equatable {
   final Color? color;
 
   /// Text alignment
-  final String? textAlign;
+  final DCFTextAlign? textAlign;
 
   /// Number of lines (0 for unlimited)
   final int? numberOfLines;
@@ -91,7 +113,7 @@ class DCFTextProps extends Equatable {
       if (isFontAsset) 'isFontAsset': isFontAsset,
       if (color != null)
         'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
-      if (textAlign != null) 'textAlign': textAlign,
+      if (textAlign != null) 'textAlign': textAlign!.value,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
       'adaptive': adaptive,
     };
@@ -135,7 +157,7 @@ class DCFText extends StatelessComponent
   /// Create a text component
   DCFText({
     required this.content,
-    this.textProps = const DCFTextProps(textAlign: 'center'),
+    this.textProps = const DCFTextProps(),
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
     this.events,
