@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
  */
 object DCFScreenUtilities {
     private const val TAG = "DCFScreenUtilities"
-    private const val CHANNEL_NAME = "com.dotcorr.dcflight/screen"
+    private const val CHANNEL_NAME = "com.dcmaui.screen_dimensions"
 
     private var context: Context? = null
     private var methodChannel: MethodChannel? = null
@@ -150,10 +150,16 @@ object DCFScreenUtilities {
      */
     fun getScreenDimensions(): Map<String, Any> {
         return mapOf(
-            "width" to screenWidth,
-            "height" to screenHeight,
+            "width" to screenWidth.toDouble(),
+            "height" to screenHeight.toDouble(),
             "widthDp" to convertPxToDp(screenWidth),
-            "heightDp" to convertPxToDp(screenHeight)
+            "heightDp" to convertPxToDp(screenHeight),
+            "scale" to density.toDouble(),
+            "statusBarHeight" to 0.0,
+            "safeAreaTop" to 0.0,
+            "safeAreaBottom" to 0.0,
+            "safeAreaLeft" to 0.0,
+            "safeAreaRight" to 0.0
         )
     }
 

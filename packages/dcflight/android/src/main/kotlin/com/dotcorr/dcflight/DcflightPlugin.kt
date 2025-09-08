@@ -64,6 +64,9 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         DCMauiEventMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
         DCMauiLayoutMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
         
+        // Initialize screen utilities for screen dimensions method channel
+        DCFScreenUtilities.initialize(flutterPluginBinding.binaryMessenger, flutterPluginBinding.applicationContext)
+        
         // Initialize hot restart channel - CRITICAL for hot restart cleanup!
         // DCFHotRestartMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
 
