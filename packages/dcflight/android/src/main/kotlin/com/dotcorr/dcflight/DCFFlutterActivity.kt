@@ -57,11 +57,15 @@
 
 package com.dotcorr.dcflight
 
+import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
 import com.facebook.soloader.SoLoader
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import com.dotcorr.dcflight.layout.YogaShadowTree
+import com.dotcorr.dcflight.layout.DCFLayoutManager
+import com.dotcorr.dcflight.utils.DCFScreenUtilities
 
 /**
  * DCFFlutterActivity - Base activity for DCFlight apps
@@ -189,4 +193,30 @@ open class DCFFlutterActivity : FlutterActivity() {
         super.onDestroy()
         println("🧹 $TAG: Activity destroyed")
     }
+
+    /**
+     * Handle configuration changes like device rotation
+     * 🚀 CRITICAL FIX: This was missing - causing layout not to update on rotation!
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        
+        Log.d(TAG, "🔄 Configuration changed - handling rotation/layout update")
+        
+        try {
+            // Update screen utilities with new display metrics
+            DCFScreenUtilities.refreshScreenDimensions()
+            
+            // Invalidate all layouts to force recalculation with new screen dimensions
+            DCFLayoutManager.shared.invalidateAllLayouts()
+            
+            // Recalculate all layouts with new dimensions
+            YogaShadowTree.shared.calculateLayoutForAllRoots()
+            
+            Log.d(TAG, "✅ Layout updated for configuration change")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to handle configuration change", e)
+        }
+    }
 }
+
