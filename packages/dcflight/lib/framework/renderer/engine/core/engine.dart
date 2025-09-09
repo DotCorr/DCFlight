@@ -40,7 +40,7 @@ class DCFEngine {
   final Map<String, StatefulComponent> _statefulComponents = {};
   final Map<String, DCFComponentNode> _previousRenderedNodes = {};
 
-  /// Priority-based update system  
+  /// Priority-based update system
   final Set<String> _pendingUpdates = {};
   final Map<String, ComponentPriority> _componentPriorities = {};
   Timer? _updateTimer;
@@ -173,26 +173,18 @@ class DCFEngine {
   /// O(1) - Handle a native event by finding the appropriate component
   void _handleNativeEvent(
       String viewId, String eventType, Map<dynamic, dynamic> eventData) {
-    print('🔥 DCF_ENGINE: _handleNativeEvent called - viewId: $viewId, eventType: $eventType, data: $eventData');
-    
     EngineDebugLogger.log(
         'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
         extra: {'EventData': eventData.toString()});
 
     final node = _nodesByViewId[viewId]; // O(1) lookup
     if (node == null) {
-      print('🔥 DCF_ENGINE: No node found for view ID: $viewId');
       EngineDebugLogger.log(
           'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId');
       return;
     }
 
-    print('🔥 DCF_ENGINE: Found node for view ID: $viewId, node type: ${node.runtimeType}');
-
     if (node is DCFElement) {
-      print('🔥 DCF_ENGINE: Node is DCFElement, checking for event handlers...');
-      print('🔥 DCF_ENGINE: Available props: ${node.elementProps.keys.toList()}');
-      
       // O(1) - Try multiple event handler formats
       final eventHandlerKeys = [
         eventType,
@@ -201,12 +193,9 @@ class DCFEngine {
         'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
       ];
 
-      print('🔥 DCF_ENGINE: Trying event handler keys: $eventHandlerKeys');
-
       for (final key in eventHandlerKeys) {
-        print('🔥 DCF_ENGINE: Checking key: $key');
-        if (node.elementProps.containsKey(key) && node.elementProps[key] is Function) {
-          print('🔥 DCF_ENGINE: Found handler for $eventType using key: $key');
+        if (node.elementProps.containsKey(key) &&
+            node.elementProps[key] is Function) {
           EngineDebugLogger.log('EVENT_HANDLER_FOUND',
               'Found handler for $eventType using key: $key');
           _executeEventHandler(node.elementProps[key], eventData);
@@ -214,36 +203,27 @@ class DCFEngine {
         }
       }
 
-      print('🔥 DCF_ENGINE: No handler found for event: $eventType');
       EngineDebugLogger.log(
           'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
           extra: {'AvailableProps': node.elementProps.keys.toList()});
-    } else {
-      print('🔥 DCF_ENGINE: Node is not DCFElement, type: ${node.runtimeType}');
-    }
+    } else {}
   }
 
   /// O(1) - Execute an event handler with flexible signatures
   void _executeEventHandler(Function handler, Map<dynamic, dynamic> eventData) {
-    print('🔥 DCF_ENGINE: _executeEventHandler called with handler: ${handler.runtimeType}');
-    
     EngineDebugLogger.log('EVENT_HANDLER_EXECUTE', 'Executing event handler',
         extra: {'HandlerType': handler.runtimeType.toString()});
 
     try {
       if (eventData.isNotEmpty) {
-        print('🔥 DCF_ENGINE: Calling handler with eventData: $eventData');
         Function.apply(handler, [eventData]);
       } else {
-        print('🔥 DCF_ENGINE: Calling handler with no arguments');
         Function.apply(handler, []);
       }
-      print('🔥 DCF_ENGINE: Event handler executed successfully!');
       EngineDebugLogger.log(
           'EVENT_HANDLER_SUCCESS', 'Event handler executed successfully');
       return;
     } catch (e) {
-      print('🔥 DCF_ENGINE: Error executing event handler (trying different signature): $e');
       EngineDebugLogger.log(
           'EVENT_HANDLER_RETRY', 'Retrying with different signature');
     }
@@ -286,22 +266,23 @@ class DCFEngine {
     }
   }
 
-  /// React reconciliation: when to replace vs update at same position  
-  bool _shouldReplaceAtSamePosition(DCFComponentNode oldChild, DCFComponentNode newChild) {
+  /// React reconciliation: when to replace vs update at same position
+  bool _shouldReplaceAtSamePosition(
+      DCFComponentNode oldChild, DCFComponentNode newChild) {
     // Rule 1: Different types = replace
     if (oldChild.runtimeType != newChild.runtimeType) {
       return true;
     }
-    
-    // Rule 2: Different keys = replace  
+
+    // Rule 2: Different keys = replace
     if (oldChild.key != newChild.key) {
       return true;
     }
-    
+
     // Rule 3: EFFICIENT UPDATE - Only replace for major structural changes
     // For StatelessComponent and StatefulComponent, always try to update first
     // Only replace if reconciliation actually fails or there are critical differences
-    
+
     // For Elements, check if it's a completely different element type/structure
     if (oldChild is DCFElement && newChild is DCFElement) {
       // Different element types should replace
@@ -309,7 +290,7 @@ class DCFEngine {
         return true;
       }
     }
-    
+
     // Default: Try to update efficiently instead of replacing
     // This preserves component state and avoids unnecessary re-renders
     return false;
@@ -317,7 +298,6 @@ class DCFEngine {
 
   /// O(1) - Schedule a component update with priority handling
   void _scheduleComponentUpdate(StatefulComponent component) {
-    print("🔥 ENGINE: _scheduleComponentUpdate called for ${component.instanceId}");
     EngineDebugLogger.logUpdate(component, 'State change triggered update');
 
     // O(1) - Check for custom state change handler
@@ -583,8 +563,8 @@ class DCFEngine {
     // Component lookup - only StatefulComponents can be updated
     final component = _statefulComponents[componentId];
     if (component == null) {
-      EngineDebugLogger.log(
-          'COMPONENT_UPDATE_NOT_FOUND', 'StatefulComponent not found: $componentId');
+      EngineDebugLogger.log('COMPONENT_UPDATE_NOT_FOUND',
+          'StatefulComponent not found: $componentId');
       return;
     }
 
@@ -596,8 +576,7 @@ class DCFEngine {
         EngineDebugLogger.log(
             'LIFECYCLE_INTERCEPTOR', 'Calling beforeUpdate interceptor');
         final context = VDomLifecycleContext(
-          scheduleUpdate: () =>
-              _scheduleComponentUpdateInternal(component),
+          scheduleUpdate: () => _scheduleComponentUpdateInternal(component),
           forceUpdate: (node) => _partialUpdateNode(node),
           vdomState: {'isUpdating': true},
         );
@@ -617,7 +596,7 @@ class DCFEngine {
           extra: {'HasOldNode': oldRenderedNode != null});
 
       _previousRenderedNodes[componentId] = oldRenderedNode;
-    
+
       // O(component render complexity) - Force re-render by clearing cached rendered node
       component.renderedNode = null;
       final newRenderedNode = component.renderedNode;
@@ -696,14 +675,13 @@ class DCFEngine {
             'LIFECYCLE_EFFECTS_INSERTION', 'Running insertion effects');
         component.runInsertionEffects();
       }
-    
+
       // O(1) - Call lifecycle interceptor after update
       if (lifecycleInterceptor != null) {
         EngineDebugLogger.log(
             'LIFECYCLE_INTERCEPTOR', 'Calling afterUpdate interceptor');
         final context = VDomLifecycleContext(
-          scheduleUpdate: () =>
-              _scheduleComponentUpdateInternal(component),
+          scheduleUpdate: () => _scheduleComponentUpdateInternal(component),
           forceUpdate: (node) => _partialUpdateNode(node),
           vdomState: {'isUpdating': false},
         );
@@ -1003,8 +981,8 @@ class DCFEngine {
       'ElementType': element.type,
       'Props': element.elementProps.keys.toList()
     });
-    final success =
-        await _nativeBridge.createView(viewId, element.type, element.elementProps);
+    final success = await _nativeBridge.createView(
+        viewId, element.type, element.elementProps);
     if (!success) {
       EngineDebugLogger.log(
           'ELEMENT_CREATE_FAILED', 'Failed to create native view',
@@ -1147,7 +1125,8 @@ class DCFEngine {
     // Handle stateless components (React functional components - no internal tracking needed)
     else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
       EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
-          reason: 'StatelessComponent reconciliation - always check rendered content');
+          reason:
+              'StatelessComponent reconciliation - always check rendered content');
 
       // O(1) - Transfer important properties between nodes
       newNode.nativeViewId = oldNode.nativeViewId;
@@ -1516,11 +1495,13 @@ class DCFEngine {
   /// This re-executes all render() methods while preserving navigation state
   Future<void> forceFullTreeReRender() async {
     if (rootComponent == null) {
-      EngineDebugLogger.log('HOT_RELOAD_ERROR', 'No root component to re-render');
+      EngineDebugLogger.log(
+          'HOT_RELOAD_ERROR', 'No root component to re-render');
       return;
     }
 
-    EngineDebugLogger.log('HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
+    EngineDebugLogger.log(
+        'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
 
     try {
       // Simply mark all stateful components as needing update
@@ -1528,13 +1509,15 @@ class DCFEngine {
       for (final component in _statefulComponents.values) {
         _scheduleComponentUpdate(component);
       }
-      
+
       // Process all pending updates - this will naturally re-render everything
       await _processPendingUpdates();
-      
-      EngineDebugLogger.log('HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
+
+      EngineDebugLogger.log(
+          'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
     } catch (e) {
-      EngineDebugLogger.log('HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');
+      EngineDebugLogger.log(
+          'HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');
       rethrow;
     }
   }
@@ -1637,18 +1620,15 @@ class DCFEngine {
       }
 
       // O(props count) - Find changed props using proper diffing algorithm
-      final changedProps =
-          _diffProps(oldElement.type, oldElement.elementProps, newElement.elementProps);
+      final changedProps = _diffProps(
+          oldElement.type, oldElement.elementProps, newElement.elementProps);
 
       // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
-        print('🔥 ENGINE: About to call updateView - viewId: ${oldElement.nativeViewId}, changedProps: $changedProps');
         EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
             data: {'ChangedProps': changedProps.keys.toList()});
         await _nativeBridge.updateView(oldElement.nativeViewId!, changedProps);
-        print('🔥 ENGINE: updateView call completed for ${oldElement.nativeViewId}');
       } else {
-        print('🔥 ENGINE: No prop changes detected for ${oldElement.nativeViewId}');
         EngineDebugLogger.log(
             'RECONCILE_NO_PROP_CHANGES', 'No prop changes detected');
       }
@@ -1670,10 +1650,6 @@ class DCFEngine {
   /// O(props count) - Compute differences between two prop maps
   Map<String, dynamic> _diffProps(String elementType,
       Map<String, dynamic> oldProps, Map<String, dynamic> newProps) {
-    print('🔥 ENGINE: _diffProps called - elementType: $elementType');
-    print('🔥 ENGINE: oldProps: $oldProps');
-    print('🔥 ENGINE: newProps: $newProps');
-    
     var changedProps = <String, dynamic>{};
     int addedCount = 0;
     int changedCount = 0;
@@ -1687,11 +1663,9 @@ class DCFEngine {
       if (value is Function) continue; // Skip function handlers
 
       if (!oldProps.containsKey(key)) {
-        print('🔥 ENGINE: Added prop: $key = $value');
         changedProps[key] = value;
         addedCount++;
       } else if (oldProps[key] != value) {
-        print('🔥 ENGINE: Changed prop: $key from ${oldProps[key]} to $value');
         changedProps[key] = value;
         changedCount++;
       }
@@ -1700,13 +1674,10 @@ class DCFEngine {
     // O(old props count) - Find removed props
     for (final key in oldProps.keys) {
       if (!newProps.containsKey(key) && oldProps[key] is! Function) {
-        print('🔥 ENGINE: Removed prop: $key');
         changedProps[key] = null;
         removedCount++;
       }
     }
-    
-    print('🔥 ENGINE: _diffProps result: $changedProps (added: $addedCount, changed: $changedCount, removed: $removedCount)');
 
     // O(old props count) - Handle event handlers - preserve them if not changed
     for (final key in oldProps.keys) {
@@ -1949,18 +1920,19 @@ class DCFEngine {
       // Smart conditional rendering: if same position but very different components,
       // replace instead of reconcile to prevent state bleeding
       if (_shouldReplaceAtSamePosition(oldChild, newChild)) {
-        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE', 
+        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE',
             'Replacing child at index $i due to conditional rendering pattern');
         await _replaceNode(oldChild, newChild);
       } else {
         await _reconcile(oldChild, newChild);
       }
 
-      final childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
+      final childViewId =
+          newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
       if (childViewId != null) {
         updatedChildIds.add(childViewId);
       }
-    }    // O((new - common) * render complexity) - Handle length differences
+    } // O((new - common) * render complexity) - Handle length differences
     if (newChildren.length > oldChildren.length) {
       hasStructuralChanges = true;
       EngineDebugLogger.log('RECONCILE_SIMPLE_ADD',
@@ -2125,6 +2097,7 @@ class DCFEngine {
     await _nativeBridge.setChildren(viewId, childIds);
   }
 
+  //? review (legacy -no more needed)
   /// O(view count) - Delete views (for portal cleanup)
   Future<void> deleteViews(List<String> viewIds) async {
     await isReady;
@@ -2663,4 +2636,3 @@ class DCFEngine {
     return suggestions;
   }
 }
-
