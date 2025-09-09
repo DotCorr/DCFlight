@@ -266,8 +266,9 @@ class DCMauiBridgeImpl private constructor() {
 
             Log.d(TAG, "Successfully set children for view: $viewId")
             
-            // Always use immediate layout calculation to prevent startup flash
-            DCFLayoutManager.shared.calculateLayoutNow()
+            // iOS BEHAVIOR: Don't do immediate layout calculation here
+            // Layout will be calculated at the end of the batch operation
+            // This prevents the one-by-one rendering issue
             
             true
         } catch (e: Exception) {
