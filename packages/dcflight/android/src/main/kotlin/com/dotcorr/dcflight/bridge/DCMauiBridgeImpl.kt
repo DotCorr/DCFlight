@@ -141,22 +141,38 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
-            YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
+            // CRITICAL FIX: Separate layout props from other props - MATCH iOS exactly
+            val layoutProps = extractLayoutProps(props)
+            val nonLayoutProps = props.filter { !layoutProps.containsKey(it.key) }
 
-            val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
-            if (componentClass != null) {
-                val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-                componentInstance.updateView(view, props)
-                Log.d(TAG, "🔥 UPDATE_VIEW: component updateView called for $viewId")
+            // Update layout props if any - MATCH iOS DCFViewManager.updateView
+            if (layoutProps.isNotEmpty()) {
+                val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
+                
+                if (isScreen) {
+                    Log.d(TAG, "📐 UPDATE_VIEW: Updating layout props for screen root '$viewId'")
+                    YogaShadowTree.shared.updateNodeLayoutProps(viewId, layoutProps)
+                } else {
+                    Log.d(TAG, "� UPDATE_VIEW: Updating layout props for regular component '$viewId'")
+                    DCFLayoutManager.shared.updateNodeWithLayoutProps(
+                        nodeId = viewId,
+                        componentType = viewType,
+                        props = layoutProps
+                    )
+                }
             }
 
-            // CRITICAL FIX: Trigger layout recalculation after property updates
-            // This matches iOS behavior where layout is immediately recalculated when properties change
-            // Fixes grid density changes not properly resizing boxes
-            DCFLayoutManager.shared.calculateLayoutNow()
-            Log.d(TAG, "🔥 UPDATE_VIEW: layout recalculated after property update for $viewId")
+            // Update non-layout props - MATCH iOS DCFViewManager.updateView
+            if (nonLayoutProps.isNotEmpty()) {
+                val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
+                if (componentClass != null) {
+                    val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                    componentInstance.updateView(view, nonLayoutProps)
+                    Log.d(TAG, "🔥 UPDATE_VIEW: component updateView called for $viewId")
+                }
+            }
 
-            Log.d(TAG, "Successfully updated view: $viewId")
+            Log.d(TAG, "✅ UPDATE_VIEW: Successfully updated view '$viewId'")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update view: $viewId", e)
@@ -259,12 +275,16 @@ class DCMauiBridgeImpl private constructor() {
             parentViewGroup.removeAllViews()
             viewHierarchy[viewId]?.clear()
 
-            childrenIds.forEach { childId ->
+            childrenIds.forEachIndexed { index: Int, childId: String ->
                 val childView = ViewRegistry.shared.getView(childId)
                 if (childView != null) {
                     parentViewGroup.addView(childView)
                     childToParent[childId] = viewId
                     viewHierarchy.getOrPut(viewId) { mutableListOf() }.add(childId)
+                    
+                    // CRITICAL FIX: Update shadow tree like iOS - this was missing!
+                    // This is why initial layout was broken - shadow tree didn't know relationships
+                    DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
                 }
             }
 
@@ -364,9 +384,9 @@ class DCMauiBridgeImpl private constructor() {
             }
             Log.d(TAG, "🔥 BATCH: Successfully committed all operations")
             
-            // iOS BEHAVIOR: Calculate layout once after all batch operations are complete
-            // This prevents the one-by-one rendering and matches iOS all-at-once rendering
-            DCFLayoutManager.shared.calculateLayoutNow()
+            // iOS BEHAVIOR: Don't call calculateLayoutNow() here
+            // Layout calculation is automatically triggered by addChildNode calls
+            // This ensures iOS-style debounced layout calculation
             
             true
         } catch (e: Exception) {
@@ -438,6 +458,27 @@ class DCMauiBridgeImpl private constructor() {
             }
         }
         return list
+    }
+
+    // MATCH iOS SupportedLayoutsProps.supportedLayoutProps exactly
+    private fun extractLayoutProps(props: Map<String, Any>): Map<String, Any> {
+        val supportedLayoutProps = setOf(
+            "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
+            "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
+            "marginHorizontal", "marginVertical",
+            "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+            "paddingHorizontal", "paddingVertical",
+            "left", "top", "right", "bottom", "position",
+            "translateX", "translateY",
+            "rotateInDegrees",
+            "scale", "scaleX", "scaleY",
+            "flexDirection", "justifyContent", "alignItems", "alignSelf", "alignContent",
+            "flexWrap", "flex", "flexGrow", "flexShrink", "flexBasis",
+            "display", "overflow", "direction", "borderWidth",
+            "aspectRatio", "gap", "rowGap", "columnGap"
+        )
+        
+        return props.filter { supportedLayoutProps.contains(it.key) }
     }
 }
 
