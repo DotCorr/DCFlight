@@ -150,6 +150,12 @@ class DCMauiBridgeImpl private constructor() {
                 Log.d(TAG, "🔥 UPDATE_VIEW: component updateView called for $viewId")
             }
 
+            // CRITICAL FIX: Trigger layout recalculation after property updates
+            // This matches iOS behavior where layout is immediately recalculated when properties change
+            // Fixes grid density changes not properly resizing boxes
+            DCFLayoutManager.shared.calculateLayoutNow()
+            Log.d(TAG, "🔥 UPDATE_VIEW: layout recalculated after property update for $viewId")
+
             Log.d(TAG, "Successfully updated view: $viewId")
             true
         } catch (e: Exception) {
@@ -357,6 +363,11 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
             Log.d(TAG, "🔥 BATCH: Successfully committed all operations")
+            
+            // iOS BEHAVIOR: Calculate layout once after all batch operations are complete
+            // This prevents the one-by-one rendering and matches iOS all-at-once rendering
+            DCFLayoutManager.shared.calculateLayoutNow()
+            
             true
         } catch (e: Exception) {
             Log.e(TAG, "🔥 BATCH: Failed to commit batch update", e)
