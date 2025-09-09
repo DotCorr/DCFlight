@@ -11,7 +11,7 @@ import 'package:dcflight/dcflight.dart';
 ///
 /// A slider component that provides native platform behavior.
 /// Supports custom styling, range, and step values with adaptive theming.
-class DCFSlider extends StatelessComponent
+class DCFSlider extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

@@ -124,7 +124,7 @@ class DCFDropdownProps {
 
 /// DCFDropdown - Cross-platform dropdown menu component
 /// Provides native dropdown functionality with type-safe positioning and items
-class DCFDropdown extends StatelessComponent
+class DCFDropdown extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

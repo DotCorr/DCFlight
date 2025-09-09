@@ -96,7 +96,7 @@ class DCFSegmentedControlProps extends Equatable {
 }
 
 /// A segmented control component implementation using StatelessComponent
-class DCFSegmentedControl extends StatelessComponent
+class DCFSegmentedControl extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

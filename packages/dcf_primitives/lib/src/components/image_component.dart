@@ -56,7 +56,7 @@ class DCFImageProps extends Equatable {
 }
 
 /// An image component implementation using StatelessComponent
-class DCFImage extends StatelessComponent
+class DCFImage extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

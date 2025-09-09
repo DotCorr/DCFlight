@@ -57,7 +57,7 @@ class DCFIconProps extends Equatable {
 }
 
 /// An icon component implementation using StatelessComponent
-class DCFIcon extends StatelessComponent
+class DCFIcon extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

@@ -1,7 +1,7 @@
 import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
-class WebsiteScreen extends StatefulComponent {
+class WebsiteScreen extends DCFStatefulComponent {
   @override
   List<Object?> get props => [];
 

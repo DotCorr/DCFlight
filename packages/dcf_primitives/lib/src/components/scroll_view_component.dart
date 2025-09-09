@@ -9,7 +9,7 @@ import 'package:dcflight/dcflight.dart';
 
 /// DCFScrollView - Optimized scroll view component
 /// Uses your native VirtualizedScrollView for best performance
-class DCFScrollView extends StatelessComponent
+class DCFScrollView extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

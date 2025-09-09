@@ -4,7 +4,7 @@ import 'package:dcflight/dcflight.dart';
 ///
 /// This variant automatically determines when to render based on
 /// the current active screen state.
-class DCFLazySuspense extends StatefulComponent with EquatableMixin {
+class DCFLazySuspense extends DCFStatefulComponent with EquatableMixin {
   /// The route/screen name this suspense is for
   final String routeName;
 

@@ -79,7 +79,7 @@ class DCFTabBarStyle extends Equatable {
 }
 
 /// Tab navigator that coordinates multiple screens in a tab interface
-class DCFTabNavigator extends StatelessComponent
+class DCFTabNavigator extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

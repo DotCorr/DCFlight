@@ -1,7 +1,7 @@
 import "package:dcf_reanimated/dcf_reanimated.dart";
 import "package:dcflight/dcflight.dart";
 
-class AnimationTestScreen extends StatefulComponent {
+class AnimationTestScreen extends DCFStatefulComponent {
   AnimationTestScreen({super.key});
 
   @override

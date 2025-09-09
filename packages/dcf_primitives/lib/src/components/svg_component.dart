@@ -55,7 +55,7 @@ class DCFSVGProps extends Equatable {
 }
 
 /// An SVG component implementation using StatelessComponent
-class DCFSVG extends StatelessComponent
+class DCFSVG extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

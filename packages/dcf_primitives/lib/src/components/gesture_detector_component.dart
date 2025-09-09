@@ -8,7 +8,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// A gesture detector component implementation using StatelessComponent
-class DCFGestureDetector extends StatelessComponent
+class DCFGestureDetector extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
