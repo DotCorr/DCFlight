@@ -38,9 +38,6 @@ class YogaShadowTree private constructor() {
     private val screenRoots = ConcurrentHashMap<String, YogaNode>()
     private val screenRootIds = mutableSetOf<String>()
     
-    // Gap simulation support
-    private val nodeGaps = ConcurrentHashMap<String, Float>()
-    
     @Volatile
     private var isLayoutCalculating = false
     
@@ -628,22 +625,20 @@ class YogaShadowTree private constructor() {
                 }
             }
             "gap" -> {
-                // iOS BEHAVIOR: Simulate gap using margins since Android Yoga doesn't support setGap
+                // TODO: Add gap support when Android Yoga library supports it
+                // Currently Android Yoga doesn't have setGap method like iOS
                 val gapValue = (value as? Number)?.toFloat() ?: 0f
-                
-                // Store gap value for this node to apply to children
-                setNodeGap(nodeId, gapValue)
-                Log.d(TAG, "Applied gap: $gapValue to node: $nodeId")
+                Log.d(TAG, "Gap not yet supported on Android: $gapValue")
             }
             "rowGap" -> {
-                // TODO: Add rowGap support - implement similar to gap but only for rows
+                // TODO: Add rowGap support when Android Yoga library supports it
                 val gapValue = (value as? Number)?.toFloat() ?: 0f
-                Log.d(TAG, "RowGap stored: $gapValue (pending implementation)")
+                Log.d(TAG, "RowGap not yet supported on Android: $gapValue")
             }
             "columnGap" -> {
-                // TODO: Add columnGap support - implement similar to gap but only for columns  
+                // TODO: Add columnGap support when Android Yoga library supports it  
                 val gapValue = (value as? Number)?.toFloat() ?: 0f
-                Log.d(TAG, "ColumnGap stored: $gapValue (pending implementation)")
+                Log.d(TAG, "ColumnGap not yet supported on Android: $gapValue")
             }
             "justifyContent" -> {
                 when (value as? String) {
@@ -761,56 +756,10 @@ class YogaShadowTree private constructor() {
         nodeTypes.clear()
         screenRoots.clear()
         screenRootIds.clear()
-        nodeGaps.clear()
     }
 
     fun viewRegisteredWithShadowTree(viewId: String): Boolean {
         return nodes.containsKey(viewId)
-    }
-    
-    // MARK: - Gap Support Methods
-    
-    private fun setNodeGap(nodeId: String, gapValue: Float) {
-        nodeGaps[nodeId] = gapValue
-        Log.d(TAG, "Stored gap value: $gapValue for node: $nodeId")
-        
-        // Apply gap to existing children
-        applyGapToChildren(nodeId)
-    }
-    
-    private fun applyGapToChildren(parentId: String) {
-        val parentNode = nodes[parentId] ?: return
-        val gapValue = nodeGaps[parentId] ?: return
-        
-        if (gapValue <= 0f) return
-        
-        val childCount = parentNode.childCount
-        if (childCount <= 1) return // No gap needed for single or no children
-        
-        // Apply gap as margins to simulate spacing
-        for (i in 0 until childCount) {
-            val childNode = parentNode.getChildAt(i)
-            
-            // Add margin to create gap effect
-            // For row layout: add margin-right to all except last child
-            // For column layout: add margin-bottom to all except last child
-            val isLastChild = i == childCount - 1
-            
-            if (!isLastChild) {
-                val flexDirection = parentNode.flexDirection
-                when (flexDirection) {
-                    YogaFlexDirection.ROW, YogaFlexDirection.ROW_REVERSE -> {
-                        // Add right margin for row direction
-                        childNode.setMargin(YogaEdge.END, gapValue)
-                    }
-                    YogaFlexDirection.COLUMN, YogaFlexDirection.COLUMN_REVERSE -> {
-                        // Add bottom margin for column direction  
-                        childNode.setMargin(YogaEdge.BOTTOM, gapValue)
-                    }
-                }
-                Log.d(TAG, "Applied gap margin: $gapValue to child $i of parent: $parentId")
-            }
-        }
     }
 }
 

@@ -41,7 +41,7 @@ class HotReloadTestScreen extends DCFStatefulComponent {
               "Current Status: Manual trigger only\nChange this color and click 'Test Hot Reload'!",
           textProps: DCFTextProps(
             fontSize: 16,
-            textAlign: "center",
+            textAlign: DCFTextAlign.center,
             color: Colors.grey.shade700,
           ),
         ),
@@ -104,7 +104,7 @@ class HotReloadTestScreen extends DCFStatefulComponent {
               "Manual Hot Reload Test:\n1. Click buttons to change counter state\n2. Modify this text or background color\n3. Click 'Test Hot Reload' button\n4. State persists, UI updates with changes!",
           textProps: DCFTextProps(
             fontSize: 14,
-            textAlign: "center",
+            textAlign: DCFTextAlign.center,
             color: Colors.grey.shade600,
           ),
         ),

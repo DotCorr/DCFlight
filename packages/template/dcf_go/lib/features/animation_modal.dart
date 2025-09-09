@@ -597,7 +597,7 @@ class AnimatedModalScreen extends DCFStatefulComponent {
                         content: "👻 I will disappear after 3 seconds",
                         textProps: DCFTextProps(
                           fontSize: 12,
-                          textAlign: "center",
+                          textAlign: DCFTextAlign.center,
                         ),
                       ),
                     ],
