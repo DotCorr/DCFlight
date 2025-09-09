@@ -124,7 +124,7 @@ class ProfileScreen extends DCFStatefulComponent {
 
         DCFText(
           content: "Try the 'Settings' button in the navigation bar!",
-          textProps: DCFTextProps(fontSize: 16, textAlign: "center"),
+          textProps: DCFTextProps(fontSize: 16, textAlign: DCFTextAlign.center),
           layout: DCFLayout(marginBottom: 30),
         ),
 
@@ -201,7 +201,7 @@ class SettingsScreen extends DCFStatefulComponent {
 
         DCFText(
           content: "Try the 'Cancel' and 'Done' buttons in the navigation bar!",
-          textProps: DCFTextProps(fontSize: 16, textAlign: "center"),
+          textProps: DCFTextProps(fontSize: 16, textAlign: DCFTextAlign.center),
           layout: DCFLayout(marginBottom: 30),
         ),
 

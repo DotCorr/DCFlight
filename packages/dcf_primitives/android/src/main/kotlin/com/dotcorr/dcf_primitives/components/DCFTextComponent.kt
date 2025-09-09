@@ -166,9 +166,31 @@ class DCFTextComponent : DCFComponent() {
         }
 
         // Set text alignment if specified (preserve current alignment if not in props)
-        // TODO: Re-implement text alignment without Yoga conflicts
         props["textAlign"]?.let { textAlign ->
-            Log.d(TAG, "Set text alignment: $textAlign (pending implementation)")
+            when (textAlign.toString()) {
+                "center" -> {
+                    // iOS BEHAVIOR: Center text content only, not TextView positioning
+                    // Use gravity but clear any vertical positioning to avoid Yoga conflicts
+                    textView.gravity = Gravity.CENTER_HORIZONTAL
+                }
+                "right", "end" -> {
+                    textView.gravity = Gravity.END
+                }
+                "left", "start" -> {
+                    textView.gravity = Gravity.START
+                }
+                "justify" -> {
+                    // Justified text alignment (API 26+)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                        textView.justificationMode = android.text.Layout.JUSTIFICATION_MODE_INTER_WORD
+                    }
+                    textView.gravity = Gravity.START
+                }
+                else -> {
+                    textView.gravity = Gravity.START
+                }
+            }
+            Log.d(TAG, "Set text alignment: $textAlign")
         }
 
         // Set number of lines if specified (preserve current numberOfLines if not in props)
