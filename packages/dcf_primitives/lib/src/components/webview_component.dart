@@ -125,7 +125,7 @@ class DCFWebViewProps extends Equatable {
 }
 
 /// WebView component for loading dynamic content
-class DCFWebView extends StatelessComponent
+class DCFWebView extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

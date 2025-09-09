@@ -8,7 +8,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// A touchable opacity component implementation using StatelessComponent
-class DCFTouchableOpacity extends StatelessComponent
+class DCFTouchableOpacity extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

@@ -11,7 +11,7 @@ import 'package:dcflight/dcflight.dart';
 ///
 /// A spinner component that provides native platform activity indicator behavior.
 /// Supports different sizes and colors with adaptive theming.
-class DCFSpinner extends StatelessComponent
+class DCFSpinner extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

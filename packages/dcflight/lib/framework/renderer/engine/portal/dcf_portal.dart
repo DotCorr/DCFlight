@@ -17,7 +17,7 @@ import 'package:flutter/foundation.dart';
 /// DCFPortal component for rendering children into a different DOM tree location
 /// Similar to React's createPortal, this allows rendering components outside
 /// their normal parent-child hierarchy
-class DCFPortal extends StatefulComponent
+class DCFPortal extends DCFStatefulComponent
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
@@ -118,7 +118,7 @@ class DCFPortal extends StatefulComponent
 }
 
 /// DCFPortalTarget component for creating portal targets
-class DCFPortalTarget extends StatefulComponent
+class DCFPortalTarget extends DCFStatefulComponent
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;

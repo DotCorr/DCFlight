@@ -100,8 +100,8 @@ class EngineDebugLogger {
     
     log('UPDATE', _describeNode(component), extra: {
       'Reason': reason,
-      'IsMounted': component is StatefulComponent ? component.isMounted : 
-                   (component is StatelessComponent ? component.isMounted : 'N/A'),
+      'IsMounted': component is DCFStatefulComponent ? component.isMounted : 
+                   (component is DCFStatelessComponent ? component.isMounted : 'N/A'),
     });
   }
   
@@ -136,7 +136,7 @@ class EngineDebugLogger {
       }
     }
     
-    if (node is StatefulComponent) {
+    if (node is DCFStatefulComponent) {
       desc += ', instanceId:${node.instanceId}';
     }
     

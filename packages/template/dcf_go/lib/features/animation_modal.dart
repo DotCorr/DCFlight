@@ -2,7 +2,7 @@ import "package:dcf_reanimated/dcf_reanimated.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
-class AnimatedModalScreen extends StatefulComponent {
+class AnimatedModalScreen extends DCFStatefulComponent {
   @override
   List<Object?> get props => [];
 

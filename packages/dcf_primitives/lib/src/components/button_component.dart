@@ -42,7 +42,7 @@ class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
 }
 
 /// A button component implementation using StatelessComponent
-class DCFButton extends StatelessComponent with EquatableMixin {
+class DCFButton extends DCFStatelessComponent with EquatableMixin {
   /// The button properties
   final DCFButtonProps buttonProps;
 

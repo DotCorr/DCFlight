@@ -11,7 +11,7 @@ import 'package:dcflight/dcflight.dart';
 ///
 /// A checkbox component that provides native platform behavior.
 /// Supports custom styling, sizes, and colors with adaptive theming.
-class DCFCheckbox extends StatelessComponent
+class DCFCheckbox extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

@@ -33,7 +33,7 @@ enum DCFPresentationStyle {
   overlay,
 }
 
-class DCFScreen extends StatelessComponent
+class DCFScreen extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

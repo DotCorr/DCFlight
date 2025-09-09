@@ -1,7 +1,7 @@
 import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
-class HomeScreen extends StatelessComponent {
+class HomeScreen extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFSafeArea(
@@ -102,7 +102,7 @@ class HomeScreen extends StatelessComponent {
   List<Object?> get props => [];
 }
 
-class ProfileScreen extends StatefulComponent {
+class ProfileScreen extends DCFStatefulComponent {
   @override
   List<Object?> get props => [];
 
@@ -179,7 +179,7 @@ class ProfileScreen extends StatefulComponent {
   }
 }
 
-class SettingsScreen extends StatefulComponent {
+class SettingsScreen extends DCFStatefulComponent {
   @override
   List<Object?> get props => [];
 

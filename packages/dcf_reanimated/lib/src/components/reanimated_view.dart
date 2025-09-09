@@ -34,7 +34,7 @@ import '../helper/init.dart';
 ///   ],
 /// )
 /// ```
-class ReanimatedView extends StatelessComponent with EquatableMixin {
+class ReanimatedView extends DCFStatelessComponent with EquatableMixin {
   /// Child components to render inside the animated view
   final List<DCFComponentNode> children;
 

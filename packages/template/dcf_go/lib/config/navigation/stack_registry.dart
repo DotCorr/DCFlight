@@ -6,7 +6,7 @@ import "package:dcf_go/features/website_screen.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
-class StackScreenRegistry extends StatelessComponent {
+class StackScreenRegistry extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFFragment(

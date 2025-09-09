@@ -99,7 +99,7 @@ class DCFTextProps extends Equatable {
     this.fontFamily,
     this.isFontAsset = false,
     this.color,
-    this.textAlign,
+    this.textAlign =  DCFTextAlign.center,
     this.numberOfLines,
     this.adaptive = true,
   });
@@ -133,7 +133,7 @@ class DCFTextProps extends Equatable {
 }
 
 /// A text component implementation using StatelessComponent
-class DCFText extends StatelessComponent
+class DCFText extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

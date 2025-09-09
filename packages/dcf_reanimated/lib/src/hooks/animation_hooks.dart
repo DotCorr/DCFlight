@@ -15,7 +15,7 @@ import '../styles/animated_style.dart';
 /// 
 /// These hooks provide reactive animation capabilities that run purely
 /// on the UI thread for maximum performance.
-extension PureReanimatedHooks on StatefulComponent {
+extension PureReanimatedHooks on DCFStatefulComponent {
   /// Creates a shared value that runs purely on UI thread.
   /// 
   /// [SharedValue] objects can be animated smoothly without bridge calls

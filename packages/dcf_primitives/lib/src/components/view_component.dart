@@ -8,7 +8,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// A basic view component implementation using StatelessComponent
-class DCFView extends StatelessComponent
+class DCFView extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

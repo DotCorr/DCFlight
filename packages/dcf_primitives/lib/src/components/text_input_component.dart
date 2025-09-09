@@ -10,7 +10,7 @@ import 'package:dcflight/dcflight.dart';
 
 /// DCFTextInput - Cross-platform text input component
 /// Provides native text input functionality with comprehensive type safety
-class DCFTextInput extends StatelessComponent
+class DCFTextInput extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

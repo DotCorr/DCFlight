@@ -11,7 +11,7 @@ import 'package:dcflight/dcflight.dart';
 ///
 /// A toggle/switch component that provides native platform behavior.
 /// Supports custom styling, sizes, and colors with adaptive theming.
-class DCFToggle extends StatelessComponent
+class DCFToggle extends DCFStatelessComponent
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;

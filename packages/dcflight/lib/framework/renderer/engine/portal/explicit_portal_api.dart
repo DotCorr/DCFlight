@@ -228,7 +228,7 @@ class PortalController {
 ///   }
 /// }
 /// ```
-mixin PortalHookMixin on StatefulComponent {
+mixin PortalHookMixin on DCFStatefulComponent {
   final Map<String, PortalController> _portalControllers = {};
   
   /// Get or create a portal controller for the given target

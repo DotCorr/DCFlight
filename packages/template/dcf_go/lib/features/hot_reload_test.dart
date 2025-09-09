@@ -9,7 +9,7 @@ import 'package:dcflight/dcflight.dart';
 import 'package:dcflight/framework/devtools/hot_reload.dart';
 
 /// Simple test component to demonstrate hot reload functionality
-class HotReloadTestScreen extends StatefulComponent {
+class HotReloadTestScreen extends DCFStatefulComponent {
   @override
   List<Object?> get props => [];
 

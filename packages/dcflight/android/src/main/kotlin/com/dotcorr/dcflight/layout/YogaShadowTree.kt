@@ -38,6 +38,9 @@ class YogaShadowTree private constructor() {
     private val screenRoots = ConcurrentHashMap<String, YogaNode>()
     private val screenRootIds = mutableSetOf<String>()
     
+    // Gap simulation support
+    private val nodeGaps = ConcurrentHashMap<String, Float>()
+    
     @Volatile
     private var isLayoutCalculating = false
     
@@ -624,6 +627,24 @@ class YogaShadowTree private constructor() {
                     "wrapReverse" -> node.setWrap(YogaWrap.WRAP_REVERSE)
                 }
             }
+            "gap" -> {
+                // iOS BEHAVIOR: Simulate gap using margins since Android Yoga doesn't support setGap
+                val gapValue = (value as? Number)?.toFloat() ?: 0f
+                
+                // Store gap value for this node to apply to children
+                setNodeGap(nodeId, gapValue)
+                Log.d(TAG, "Applied gap: $gapValue to node: $nodeId")
+            }
+            "rowGap" -> {
+                // TODO: Add rowGap support - implement similar to gap but only for rows
+                val gapValue = (value as? Number)?.toFloat() ?: 0f
+                Log.d(TAG, "RowGap stored: $gapValue (pending implementation)")
+            }
+            "columnGap" -> {
+                // TODO: Add columnGap support - implement similar to gap but only for columns  
+                val gapValue = (value as? Number)?.toFloat() ?: 0f
+                Log.d(TAG, "ColumnGap stored: $gapValue (pending implementation)")
+            }
             "justifyContent" -> {
                 when (value as? String) {
                     "flexStart" -> node.setJustifyContent(YogaJustify.FLEX_START)
@@ -740,10 +761,56 @@ class YogaShadowTree private constructor() {
         nodeTypes.clear()
         screenRoots.clear()
         screenRootIds.clear()
+        nodeGaps.clear()
     }
 
     fun viewRegisteredWithShadowTree(viewId: String): Boolean {
         return nodes.containsKey(viewId)
+    }
+    
+    // MARK: - Gap Support Methods
+    
+    private fun setNodeGap(nodeId: String, gapValue: Float) {
+        nodeGaps[nodeId] = gapValue
+        Log.d(TAG, "Stored gap value: $gapValue for node: $nodeId")
+        
+        // Apply gap to existing children
+        applyGapToChildren(nodeId)
+    }
+    
+    private fun applyGapToChildren(parentId: String) {
+        val parentNode = nodes[parentId] ?: return
+        val gapValue = nodeGaps[parentId] ?: return
+        
+        if (gapValue <= 0f) return
+        
+        val childCount = parentNode.childCount
+        if (childCount <= 1) return // No gap needed for single or no children
+        
+        // Apply gap as margins to simulate spacing
+        for (i in 0 until childCount) {
+            val childNode = parentNode.getChildAt(i)
+            
+            // Add margin to create gap effect
+            // For row layout: add margin-right to all except last child
+            // For column layout: add margin-bottom to all except last child
+            val isLastChild = i == childCount - 1
+            
+            if (!isLastChild) {
+                val flexDirection = parentNode.flexDirection
+                when (flexDirection) {
+                    YogaFlexDirection.ROW, YogaFlexDirection.ROW_REVERSE -> {
+                        // Add right margin for row direction
+                        childNode.setMargin(YogaEdge.END, gapValue)
+                    }
+                    YogaFlexDirection.COLUMN, YogaFlexDirection.COLUMN_REVERSE -> {
+                        // Add bottom margin for column direction  
+                        childNode.setMargin(YogaEdge.BOTTOM, gapValue)
+                    }
+                }
+                Log.d(TAG, "Applied gap margin: $gapValue to child $i of parent: $parentId")
+            }
+        }
     }
 }
 

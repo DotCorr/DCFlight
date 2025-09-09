@@ -7,7 +7,7 @@ import 'package:dcflight/dcflight.dart';
 
 /// A navigation root that provides stack-based navigation through pure screen registration
 /// No additional navigator component needed - DCFScreens handle their own navigation
-class DCFStackNavigationRoot extends StatelessComponent {
+class DCFStackNavigationRoot extends DCFStatelessComponent {
   /// Initial screen name to display first
   final String initialScreen;
 
@@ -74,7 +74,7 @@ class DCFStackNavigationRoot extends StatelessComponent {
 
 /// Internal component that sets up the initial navigation controller
 /// This just creates the UINavigationController and sets the initial screen
-class DCFStackNavigationBootstrapper extends StatelessComponent
+class DCFStackNavigationBootstrapper extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override

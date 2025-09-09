@@ -1,117 +1,95 @@
+import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:dcf_primitives/dcf_primitives.dart';
 
 void main() async {
   DCFlight.setLogLevel(DCFLogLevel.debug);
-  await DCFlight.start(app: MyGridApp());
+
+  await DCFlight.start(app: MyTabApp());
 }
 
-class MyGridApp extends StatefulComponent {
+// class MyStackApp extends StatefulComponent {
+//   @override
+//   DCFComponentNode render() {
+//     final count = useState(0);
+//     return DCFView(
+//       // styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
+//       layout: DCFLayout(
+//         flex: 1,
+//         alignItems: YogaAlign.center,
+//         justifyContent: YogaJustifyContent.center,
+//         alignContent: YogaAlign.center,
+//         paddingTop: 120,
+//       ),
+//       children: [
+//         DCFView(
+//           styleSheet: DCFStyleSheet(backgroundColor: Colors.green),
+//           layout: DCFLayout(height: 500),
+//           children: [
+//             DCFText(
+//               content: "Text example ${count.state}",
+//               textProps: DCFTextProps(
+//                 fontSize: 20,
+//                 color: Colors.black,
+//                 // textAlign: ,
+//               ),
+//             ),
+//             DCFButton(
+//               buttonProps: DCFButtonProps(title: "increment counter"),
+//               onPress: (v) {
+//                 print("Button pressed");
+//                 print("Current count: ${count.state}");
+//                 count.setState(count.state + 1);
+//                 print("New count: ${count.state}");
+//               },
+//             ),
+//           ],
+//         ),
+//         DCFView(
+//           styleSheet: DCFStyleSheet(backgroundColor: Colors.orange),
+//           children: [
+//             DCFButton(
+//               buttonProps: DCFButtonProps(title: "increment counter"),
+//               onPress: (v) {
+//                 print("Button pressed");
+//                 print("Current count: ${count.state}");
+//                 count.setState(count.state + 1);
+//                 print("New count: ${count.state}");
+//               },
+//             ),
+//             DCFButton(
+//               buttonProps: DCFButtonProps(title: "increment counter"),
+//               onPress: (v) {
+//                 print("Button pressed");
+//                 print("Current count: ${count.state}");
+//                 count.setState(count.state + 1);
+//                 print("New count: ${count.state}");
+//               },
+//             ),
+//           ],
+//         ),
+//       ],
+//     );
+//   }
+
+//   @override
+//   List<Object?> get props => [];
+// }
+
+class MyTabApp extends DCFStatefulComponent {
+  @override
+  List<Object?> get props => [];
+
   @override
   DCFComponentNode render() {
-    return DCFView(
-      layout: DCFLayout(
-        flex: 1,
-        padding: 20,
-      ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[100]),
+    return DCFFragment(
       children: [
-        // Simple 2x2 Grid
-        DCFView(
-          layout: DCFLayout(
-            flexDirection: YogaFlexDirection.row,
-            flexWrap: YogaWrap.wrap,
-            width: "100%",  // CRITICAL: Container needs width for flexWrap to work
-            // gap: 10,
-          ),
-          children: [
-            DCFView(
-              layout: DCFLayout(width: "48%", height: 100, marginBottom: 10, marginRight: "4%"),
-              styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
-              children: [
-                DCFText(
-                  content: "1",
-                  layout: DCFLayout(
-                    flex: 1,
-                    justifyContent: YogaJustifyContent.center,
-                    alignItems: YogaAlign.center,
-                  ),
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                    color: Colors.white,
-                    textAlign: DCFTextAlign.center,
-                  ),
-                )
-              ],
-            ),
-            DCFView(
-              layout: DCFLayout(width: "48%", height: 100, marginBottom: 10),
-              styleSheet: DCFStyleSheet(backgroundColor: Colors.blue),
-              children: [
-                DCFText(
-                  content: "2",
-                  layout: DCFLayout(
-                    flex: 1,
-                    justifyContent: YogaJustifyContent.center,
-                    alignItems: YogaAlign.center,
-                  ),
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                    color: Colors.white,
-                    textAlign: DCFTextAlign.center,
-                  ),
-                )
-              ],
-            ),
-            DCFView(
-              layout: DCFLayout(width: "48%", height: 100, marginRight: "4%"),
-              styleSheet: DCFStyleSheet(backgroundColor: Colors.green),
-              children: [
-                DCFText(
-                  content: "3",
-                  layout: DCFLayout(
-                    flex: 1,
-                    justifyContent: YogaJustifyContent.center,
-                    alignItems: YogaAlign.center,
-                  ),
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                    color: Colors.white,
-                    textAlign: DCFTextAlign.center,
-                  ),
-                )
-              ],
-            ),
-            DCFView(
-              layout: DCFLayout(width: "48%", height: 100),
-              styleSheet: DCFStyleSheet(backgroundColor: Colors.orange),
-              children: [
-                DCFText(
-                  content: "4",
-                  layout: DCFLayout(
-                    flex: 1,
-                    justifyContent: YogaJustifyContent.center,
-                    alignItems: YogaAlign.center,
-                  ),
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                    color: Colors.white,
-                    textAlign: DCFTextAlign.center,
-                  ),
-                )
-              ],
-            ),
-          ],
+        DCFNestedNavigationRoot(
+          selectedIndex: 0,
+          tabRoutes: ["test1","test2","test2"],
+          tabRoutesRegistryComponents: [],
+          subRoutesRegistryComponents: [],
         ),
       ],
     );
   }
-
-  @override
-  List<Object?> get props => [];
 }
-

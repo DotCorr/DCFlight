@@ -8,7 +8,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// Improved SafeAreaView component that properly handles orientation changes
-class DCFSafeArea extends StatefulComponent {
+class DCFSafeArea extends DCFStatefulComponent {
   final bool top;
   final bool bottom;
   final bool left;

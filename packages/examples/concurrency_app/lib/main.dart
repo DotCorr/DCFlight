@@ -14,7 +14,7 @@ void main() {
   DCFlight.start(app: ComplexDashboardHome());
 }
 
-class ComplexDashboardHome extends StatefulComponent {
+class ComplexDashboardHome extends DCFStatefulComponent {
   @override
   List<Object?> get props => [];
 
