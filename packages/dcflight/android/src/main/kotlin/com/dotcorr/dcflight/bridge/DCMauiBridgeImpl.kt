@@ -110,7 +110,6 @@ class DCMauiBridgeImpl private constructor() {
             YogaShadowTree.shared.createNode(viewId, viewType)
             YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
 
-            Log.d(TAG, "Successfully created view: $viewId of type: $viewType")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create view: $viewId", e)
@@ -119,7 +118,6 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     fun updateView(viewId: String, propsJson: String): Boolean {
-        Log.d(TAG, "🔥 UPDATE_VIEW CALLED: viewId=$viewId, propsJson=$propsJson")
         return try {
             val view = ViewRegistry.shared.getView(viewId)
             if (view == null) {
@@ -132,8 +130,6 @@ class DCMauiBridgeImpl private constructor() {
             } else {
                 emptyMap()
             }
-            
-            Log.d(TAG, "🔥 UPDATE_VIEW: parsed props for $viewId: $props")
 
             val viewType = ViewRegistry.shared.getViewType(viewId)
             if (viewType == null) {
@@ -150,10 +146,8 @@ class DCMauiBridgeImpl private constructor() {
                 val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
                 
                 if (isScreen) {
-                    Log.d(TAG, "📐 UPDATE_VIEW: Updating layout props for screen root '$viewId'")
                     YogaShadowTree.shared.updateNodeLayoutProps(viewId, layoutProps)
                 } else {
-                    Log.d(TAG, "� UPDATE_VIEW: Updating layout props for regular component '$viewId'")
                     DCFLayoutManager.shared.updateNodeWithLayoutProps(
                         nodeId = viewId,
                         componentType = viewType,
@@ -168,11 +162,9 @@ class DCMauiBridgeImpl private constructor() {
                 if (componentClass != null) {
                     val componentInstance = componentClass.getDeclaredConstructor().newInstance()
                     componentInstance.updateView(view, nonLayoutProps)
-                    Log.d(TAG, "🔥 UPDATE_VIEW: component updateView called for $viewId")
                 }
             }
 
-            Log.d(TAG, "✅ UPDATE_VIEW: Successfully updated view '$viewId'")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update view: $viewId", e)
@@ -189,7 +181,6 @@ class DCMauiBridgeImpl private constructor() {
             views.remove(viewId)
             YogaShadowTree.shared.removeNode(viewId)
             
-            Log.d(TAG, "Successfully deleted view: $viewId")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete view: $viewId", e)
@@ -228,7 +219,6 @@ class DCMauiBridgeImpl private constructor() {
 
             YogaShadowTree.shared.addChildNode(parentId, childId, index)
 
-            Log.d(TAG, "Successfully attached view: $childId to $parentId at index $index")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to attach view: $childId to $parentId", e)
@@ -254,10 +244,8 @@ class DCMauiBridgeImpl private constructor() {
 
             YogaShadowTree.shared.removeNode(viewId)
 
-            Log.d(TAG, "Successfully detached view: $viewId")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to detach view: $viewId", e)
             false
         }
     }
@@ -289,11 +277,6 @@ class DCMauiBridgeImpl private constructor() {
             }
 
             // Children are managed through addChildNode calls individually
-
-            Log.d(TAG, "Successfully set children for view: $viewId")
-            
-            // iOS BEHAVIOR: Don't do immediate layout calculation here
-            // Layout will be calculated at the end of the batch operation
             // This prevents the one-by-one rendering issue
             
             true

@@ -39,8 +39,6 @@ class DCFViewManager private constructor() {
     }
 
     fun createView(viewId: String, viewType: String, props: Map<String, Any?>): Boolean {
-        Log.d(TAG, "Creating view: $viewId of type: $viewType")
-
         val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
         if (componentClass == null) {
             Log.e(TAG, "Component type '$viewType' not found")
@@ -70,7 +68,6 @@ class DCFViewManager private constructor() {
         val isScreen = (viewType == "Screen" || props["presentationStyle"] != null)
 
         if (isScreen) {
-            Log.d(TAG, "Creating screen '$viewId' with presentation style: ${props["presentationStyle"] ?: "default"}")
             YogaShadowTree.shared.createScreenRoot(viewId, viewType)
         } else {
             YogaShadowTree.shared.createNode(viewId, viewType)
@@ -78,13 +75,10 @@ class DCFViewManager private constructor() {
 
         YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
 
-        Log.d(TAG, "Successfully created view '$viewId'")
         return true
     }
 
     fun updateView(viewId: String, props: Map<String, Any?>): Boolean {
-        Log.d(TAG, "Updating view '$viewId'")
-
         val viewInfo = ViewRegistry.shared.getViewInfo(viewId)
         if (viewInfo == null) {
             Log.e(TAG, "View '$viewId' not found for update")
@@ -123,17 +117,13 @@ class DCFViewManager private constructor() {
             }
         }
 
-        Log.d(TAG, "Successfully updated view '$viewId'")
         return true
     }
 
     fun deleteView(viewId: String): Boolean {
-        Log.d(TAG, "Deleting view '$viewId'")
-
         ViewRegistry.shared.removeView(viewId)
         DCFLayoutManager.shared.unregisterView(viewId)
 
-        Log.d(TAG, "Successfully deleted view '$viewId'")
         return true
     }
 
@@ -170,7 +160,6 @@ class DCFViewManager private constructor() {
         val screenHeight = android.content.res.Resources.getSystem().displayMetrics.heightPixels.toFloat()
         YogaShadowTree.shared.updateScreenRootDimensions(screenWidth, screenHeight)
 
-        Log.d(TAG, "Successfully attached view: $childId to $parentId at index $index")
         return true
     }
 
@@ -186,7 +175,6 @@ class DCFViewManager private constructor() {
 
         YogaShadowTree.shared.removeNode(viewId)
 
-        Log.d(TAG, "Successfully detached view: $viewId")
         return true
     }
 
@@ -213,7 +201,6 @@ class DCFViewManager private constructor() {
             // Children are managed through addChildNode calls
         }
 
-        Log.d(TAG, "Successfully set children for view: $viewId")
         return true
     }
 
@@ -271,3 +258,4 @@ class DCFViewManager private constructor() {
         return nonLayoutProps
     }
 }
+
