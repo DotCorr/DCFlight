@@ -83,8 +83,6 @@ class YogaShadowTree private constructor() {
         
         // Setup measure function like iOS
         setupMeasureFunction(id, node)
-        
-        Log.d(TAG, "Created node: $id of type: $componentType")
     }
 
     @Synchronized
@@ -111,8 +109,6 @@ class YogaShadowTree private constructor() {
         screenRoots[id] = screenRoot
         screenRootIds.add(id)
         nodeTypes[id] = componentType
-        
-        Log.d(TAG, "Created screen root: $id")
     }
 
     private fun setupMeasureFunction(nodeId: String, node: YogaNode) {
@@ -512,18 +508,26 @@ class YogaShadowTree private constructor() {
         }
     }
 
+    // ANDROID-SPECIFIC: Selective scaling for component sizing consistency
+    // This addresses the sizing difference between iOS points and Android dp
+    // Only applies to visual dimensions, not layout logic
+    private fun applyAndroidSizingScale(value: Float): Float {
+        val displayMetrics = Resources.getSystem().displayMetrics
+        // Convert dp-like values to pixels for consistent Android sizing
+        // This matches iOS visual appearance while maintaining Android density independence
+        return value * displayMetrics.density
+    }
+
     // MATCH iOS applyParentLayoutInheritance EXACTLY
     private fun applyParentLayoutInheritance(childNode: YogaNode, parentNode: YogaNode, childId: String) {
         val nodeType = nodeTypes[childId] ?: return
         
-        // Smart inheritance system - apply to parent containers (Views) that can have children
-        // This matches iOS behavior and ensures consistent layout inheritance
-        val isParentContainer = nodeType == "View" || childNode.childCount > 0
+        // Smart inheritance system - only apply to parent nodes that actually have children
+        // This matches iOS behavior and avoids hardcoded node types
+        val isParentWithChildren = childNode.childCount > 0
         
-        // Apply layout inheritance to container views (Views can always have children)
-        if (isParentContainer) {
-            Log.d(TAG, "Applying parent layout inheritance to container: $childId")
-            
+        // Only apply layout inheritance to nodes that are actually parent containers with children
+        if (isParentWithChildren) {
             val childAlignItems = childNode.alignItems
             val childJustifyContent = childNode.justifyContent
             val childAlignContent = childNode.alignContent
@@ -535,36 +539,18 @@ class YogaShadowTree private constructor() {
             // Only inherit alignItems if child has default value and parent has non-default
             if (childAlignItems == YogaAlign.STRETCH && parentAlignItems != YogaAlign.STRETCH) {
                 childNode.setAlignItems(parentAlignItems)
-                Log.d(TAG, "🔄 INHERIT: Parent $childId inherited alignItems=$parentAlignItems from parent")
             }
             
             // Only inherit justifyContent if child has default value and parent has non-default
             if (childJustifyContent == YogaJustify.FLEX_START && parentJustifyContent != YogaJustify.FLEX_START) {
                 childNode.setJustifyContent(parentJustifyContent)
-                Log.d(TAG, "🔄 INHERIT: Parent $childId inherited justifyContent=$parentJustifyContent from parent")
             }
             
             // Only inherit alignContent if child has default value and parent has non-default
             if (childAlignContent == YogaAlign.FLEX_START && parentAlignContent != YogaAlign.FLEX_START) {
                 childNode.setAlignContent(parentAlignContent)
-                Log.d(TAG, "🔄 INHERIT: Parent $childId inherited alignContent=$parentAlignContent from parent")
             }
-            
-            Log.d(TAG, "🔄 LAYOUT: Parent container $childId ($nodeType) with ${childNode.childCount} children inherits layout props")
-        } else {
-            Log.d(TAG, "🔄 LAYOUT: Leaf node $childId ($nodeType) positioned via parent flex layout (no inheritance)")
         }
-        
-        // NEVER override alignSelf for any components - let flex layout work naturally
-        Log.d(TAG, "🔄 LAYOUT: Child $childId ($nodeType) positioned via parent flex layout (no alignSelf override)")
-    }
-
-    // iOS-to-Android size scaling factor
-    private fun applyiOSScaling(value: Float): Float {
-        val density = Resources.getSystem().displayMetrics.density
-        // iOS points = Android dp * scaling factor
-        // Fine-tuned iOS scale: 1.0 iOS point = 1.0 Android dp (closer match)
-        return value * density * 1.0f
     }
 
     // Layout property application - MATCH iOS exactly
@@ -573,9 +559,8 @@ class YogaShadowTree private constructor() {
             "width" -> {
                 when (value) {
                     is Number -> {
-                        val scaledWidth = applyiOSScaling(value.toFloat())
-                        node.setWidth(scaledWidth)
-                        Log.d(TAG, "Width scaling: ${value.toFloat()} iOS points -> $scaledWidth Android pixels")
+                        // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                        node.setWidth(applyAndroidSizingScale(value.toFloat()))
                     }
                     is String -> {
                         if (value.endsWith("%")) {
@@ -590,9 +575,8 @@ class YogaShadowTree private constructor() {
             "height" -> {
                 when (value) {
                     is Number -> {
-                        val scaledHeight = applyiOSScaling(value.toFloat())
-                        node.setHeight(scaledHeight)
-                        Log.d(TAG, "Height scaling: ${value.toFloat()} iOS points -> $scaledHeight Android pixels")
+                        // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                        node.setHeight(applyAndroidSizingScale(value.toFloat()))
                     }
                     is String -> {
                         if (value.endsWith("%")) {
@@ -627,18 +611,12 @@ class YogaShadowTree private constructor() {
             "gap" -> {
                 // TODO: Add gap support when Android Yoga library supports it
                 // Currently Android Yoga doesn't have setGap method like iOS
-                val gapValue = (value as? Number)?.toFloat() ?: 0f
-                Log.d(TAG, "Gap not yet supported on Android: $gapValue")
             }
             "rowGap" -> {
                 // TODO: Add rowGap support when Android Yoga library supports it
-                val gapValue = (value as? Number)?.toFloat() ?: 0f
-                Log.d(TAG, "RowGap not yet supported on Android: $gapValue")
             }
             "columnGap" -> {
                 // TODO: Add columnGap support when Android Yoga library supports it  
-                val gapValue = (value as? Number)?.toFloat() ?: 0f
-                Log.d(TAG, "ColumnGap not yet supported on Android: $gapValue")
             }
             "justifyContent" -> {
                 when (value as? String) {
@@ -672,52 +650,62 @@ class YogaShadowTree private constructor() {
             }
             "paddingTop" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.TOP, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPadding(YogaEdge.TOP, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "paddingRight" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.RIGHT, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPadding(YogaEdge.RIGHT, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "paddingBottom" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.BOTTOM, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPadding(YogaEdge.BOTTOM, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "paddingLeft" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.LEFT, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPadding(YogaEdge.LEFT, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "padding" -> {
                 if (value is Number) {
-                    node.setPadding(YogaEdge.ALL, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPadding(YogaEdge.ALL, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "marginTop" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.TOP, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setMargin(YogaEdge.TOP, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "marginRight" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.RIGHT, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setMargin(YogaEdge.RIGHT, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "marginBottom" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.BOTTOM, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setMargin(YogaEdge.BOTTOM, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "marginLeft" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.LEFT, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setMargin(YogaEdge.LEFT, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "margin" -> {
                 if (value is Number) {
-                    node.setMargin(YogaEdge.ALL, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setMargin(YogaEdge.ALL, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "position" -> {
@@ -728,22 +716,26 @@ class YogaShadowTree private constructor() {
             }
             "top" -> {
                 if (value is Number) {
-                    node.setPosition(YogaEdge.TOP, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPosition(YogaEdge.TOP, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "right" -> {
                 if (value is Number) {
-                    node.setPosition(YogaEdge.RIGHT, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPosition(YogaEdge.RIGHT, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "bottom" -> {
                 if (value is Number) {
-                    node.setPosition(YogaEdge.BOTTOM, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPosition(YogaEdge.BOTTOM, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             "left" -> {
                 if (value is Number) {
-                    node.setPosition(YogaEdge.LEFT, applyiOSScaling(value.toFloat()))
+                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
+                    node.setPosition(YogaEdge.LEFT, applyAndroidSizingScale(value.toFloat()))
                 }
             }
             // Add more properties as needed matching iOS exactly

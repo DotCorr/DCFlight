@@ -2,7 +2,20 @@
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
+ *             // Use the synchronized calculateAndApplyLayout method
+            // This will automatically defer if reconciliation is in progress
+            val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
+
+            // Update flag on main thread
+            mainHandler.post {
+                needsLayoutCalculation.set(false)
+                if (success) {
+                } else {
+                    // Reschedule if deferred due to reconciliation
+                    needsLayoutCalculation.set(true)
+                    scheduleLayoutCalculation()
+                }
+            }the root directory of this source tree.
  */
 
 package com.dotcorr.dcflight.layout
@@ -472,22 +485,12 @@ class DCFLayoutManager private constructor() {
             val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
 
             mainHandler.post {
-                if (success) {
-                    Log.d(TAG, "Immediate layout calculation successful")
-                } else {
-                    Log.w(TAG, "Immediate layout calculation failed")
-                }
+                // Layout calculation completed
             }
         }
     }
 
-    /**
-     * Invalidate all layouts and force recalculation (for configuration changes like rotation)
-     * This matches iOS behavior during orientation changes
-     */
     fun invalidateAllLayouts() {
-        Log.d(TAG, "Invalidating all layouts for configuration change")
-        
         // Clear all pending layouts
         pendingLayouts.clear()
         
