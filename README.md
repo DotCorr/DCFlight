@@ -44,14 +44,19 @@ It diverges from the flutter abstraction for UI rendering and renders the root v
 ## 📝 Dart Example
 
 ```dart
+
 import 'package:dcflight/dcflight.dart';
 void main() async {
   DCFlight.setLogLevel(DCFLogLevel.debug);
 
-  await DCFlight.start(app: DCFView(children: [
+  await DCFlight.start(app: DCFView(
+    layout: DCFLayout(flex: 1, justifyContent: YogaJustifyContent.center, alignItems: YogaAlign.center),
+    styleSheet: DCFStyleSheet(backgroundColor: Colors.amber),
+    children: [
     DCFText(content: "Hello World ✈️"),
   ]));
 }
+
 ```
 
 ## ☕ Buy Me a Coffee
