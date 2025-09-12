@@ -1,3 +1,10 @@
+-▬▬.◙.▬▬‐
+   ▂▄▄▓▄▄▂
+◢◤ █▀▀████▄▄▄◢◤
+█▄ █ █▄ ███▀▀▀▀▀▀╬
+◥█████◤
+══╩══╩══
+
 # DEV Status - Resumed
 Currently took a break from mobile dev due to changing global dynamics. I have decided to focus on AI projects for internal or private use and commercial use. As of 19th August 2025, i have resumed this project but as a side project.
 
