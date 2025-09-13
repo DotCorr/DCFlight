@@ -87,7 +87,7 @@ class HotReloadDetector {
 class HotReloadDetectorWidget extends StatefulWidget {
   final Widget child;
   
-  const HotReloadDetectorWidget({Key? key, required this.child}) : super(key: key);
+  const HotReloadDetectorWidget({super.key, required this.child});
   
   @override
   State<HotReloadDetectorWidget> createState() => _HotReloadDetectorWidgetState();

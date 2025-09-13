@@ -1,24 +1,7 @@
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
- * This source c  /// Print stylish welcome header
-  Future<void> _printWelcomeHeader() async {
-    final width = _getTerminalWidth();
-    final title = '🚀 DCFlight Hot Reload System';
-    final subtitle = 'Powered by DCFlight Framework with Flutter Tooling';
-
-    // Create responsive header
-    final headerLine = _boxHeavyHorizontal * (width - 2);
-    final titlePadding = ((width - title.length - 2) / 2).floor();
-    final subtitlePadding = ((width - subtitle.length - 2) / 2).floor();
-
-    print('');
-    print('$_brightCyan$_bold$_boxTopLeft$headerLine$_boxTopRight$_reset');
-    print('$_brightCyan$_bold$_boxVertical${' ' * titlePadding}$title${' ' * (width - title.length - titlePadding - 2)}$_boxVertical$_reset');
-    print('$_dim$_boxVertical${' ' * subtitlePadding}$subtitle${' ' * (width - subtitle.length - subtitlePadding - 2)}$_boxVertical$_reset');
-    print('$_brightCyan$_bold$_boxBottomLeft$headerLine$_boxBottomRight$_reset');
-    print('');
-  }sed under the MIT license found in the
+ * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
@@ -307,8 +290,9 @@ class HotReloadWatcher {
   Future<void> _triggerDCFlightHotReload() async {
     try {
       final client = HttpClient();
+      final hostIP = await _getHostIP();
       final request =
-          await client.postUrl(Uri.parse('http://localhost:8765/hot-reload'));
+          await client.postUrl(Uri.parse('http://$hostIP:8765/hot-reload'));
       request.headers.set('Content-Type', 'application/json');
 
       // Send the request
@@ -331,9 +315,56 @@ class HotReloadWatcher {
     }
   }
 
+  /// Get the appropriate host IP address for connecting to the device/simulator
+  Future<String> _getHostIP() async {
+    try {
+      // For Android emulator, use the special IP that points to host machine
+      if (await _isAndroidEmulator()) {
+        return '10.0.2.2';
+      }
+
+      // For iOS simulator and real devices, get the actual host IP
+      final interfaces = await NetworkInterface.list();
+      for (final interface in interfaces) {
+        // Skip loopback interfaces
+        if (interface.name.startsWith('lo')) continue;
+
+        for (final addr in interface.addresses) {
+          // Prefer IPv4 addresses
+          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
+            // Skip private addresses that might not be reachable
+            if (!addr.address.startsWith('127.') &&
+                !addr.address.startsWith('169.254.')) {
+              return addr.address;
+            }
+          }
+        }
+      }
+
+      // Fallback to localhost if no suitable IP found
+      return 'localhost';
+    } catch (e) {
+      _logWatcher('⚠️', 'Failed to detect host IP, using localhost: $e', _yellow);
+      return 'localhost';
+    }
+  }
+
+  /// Check if we're running on Android emulator
+  Future<bool> _isAndroidEmulator() async {
+    try {
+      final result = await Process.run('adb', ['devices']);
+      final output = result.stdout.toString();
+      // Check if we have emulator devices
+      return output.contains('emulator');
+    } catch (e) {
+      // If adb is not available, assume not emulator
+      return false;
+    }
+  }
+
   /// Select device for Flutter
   Future<String> _selectDevice() async {
-    print('\n' + '=' * 60);
+    print('\n${'=' * 60}');
     print('🔧 DEVICE SELECTION');
     print('=' * 60);
 
@@ -374,7 +405,7 @@ class HotReloadWatcher {
     }
 
     // Get user selection with clear prompt
-    print('\n' + '-' * 60);
+    print('\n${'-' * 60}');
     stdout.write('👆 SELECT DEVICE (1-${devices.length}): ');
     stdout.flush(); // Force output immediately
 
@@ -466,3 +497,4 @@ class HotReloadWatcher {
     print('$_dim💡 Thanks for using DCFlight Hot Reload System!$_reset\n');
   }
 }
+
