@@ -9,7 +9,7 @@ void main() async {
 }
 
 class InteractiveGridApp extends DCFStatefulComponent {
-  // Generate random colors for grid boxes
+  // Generate random colors fwr grid boxes
   final List<Color> _colors = [
     Colors.red,
     Colors.blue,
