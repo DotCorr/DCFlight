@@ -88,8 +88,8 @@ class InteractiveGridApp extends DCFStatefulComponent {
       );
     }
 
-    return DCFSafeArea(
-      styleSheet: DCFStyleSheet(backgroundColor: Color(0xfff5f5f5)),
+    return DCFView(
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.red,),
       layout: DCFLayout(
         flex: 1,
         padding: 20,

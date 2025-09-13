@@ -18,9 +18,9 @@ class HotReloadListener {
   /// Start listening for hot reload commands from the watcher
   static Future<void> start() async {
     try {
-      _server = await HttpServer.bind(InternetAddress.loopbackIPv4, _port);
+      _server = await HttpServer.bind(InternetAddress.anyIPv4, _port);
       
-      print('🔥 Hot reload listener started on port $_port');
+      print('🔥 Hot reload listener started on port $_port (listening on all interfaces)');
       
       _server!.listen((HttpRequest request) async {
         // Handle CORS for development
