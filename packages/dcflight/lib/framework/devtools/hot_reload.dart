@@ -55,6 +55,7 @@ class HotReloadDetector {
   Future<void> handleHotReload() async {
     if (!kDebugMode) return;
     
+    print('🔥 DCFlight HotReloadDetector.handleHotReload() called');
     DCFLogger.debug('HOT_RELOAD', '🔥 REAL Hot reload detected! Triggering VDOM tree re-render...');
     
     try {
@@ -123,8 +124,12 @@ class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
 /// Global function to manually trigger hot reload for testing
 /// Call this from your development tools or debug console
 void triggerManualHotReload() {
+  print('🔥 triggerManualHotReload() called');
   if (kDebugMode) {
+    print('🔥 Calling HotReloadDetector.instance.handleHotReload()');
     HotReloadDetector.instance.handleHotReload();
+  } else {
+    print('🔥 Not in debug mode, skipping hot reload');
   }
 }
 

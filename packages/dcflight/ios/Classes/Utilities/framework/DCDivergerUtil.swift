@@ -34,7 +34,7 @@ import Flutter
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
         nativeRootVC.title = "Root View (DCFlight)"
-        self.window.rootViewController = nativeRootVC
+        self.window!.rootViewController = nativeRootVC
         setupDCF(rootView: nativeRootVC.view, flutterEngine: flutterEngine)
 
         _ = DCFScreenUtilities.shared
