@@ -288,78 +288,56 @@ class HotReloadWatcher {
 
   /// Send HTTP request to DCFlight app to trigger VDOM hot reload
   Future<void> _triggerDCFlightHotReload() async {
-    try {
-      final client = HttpClient();
-      final hostIP = await _getHostIP();
-      final request =
-          await client.postUrl(Uri.parse('http://$hostIP:8765/hot-reload'));
-      request.headers.set('Content-Type', 'application/json');
-
-      // Send the request
-      final response = await request.close();
-
-      if (response.statusCode == 200) {
-        _logWatcher('✅', 'DCFlight VDOM hot reload triggered', _green);
-      } else {
-        _logWatcher(
-            '⚠️',
-            'DCFlight app may not be running (${response.statusCode})',
-            _yellow);
-      }
-
-      client.close();
-    } catch (e) {
-      // This is expected if the app isn't running or doesn't have the listener
-      // Don't log as error since Flutter hot reload still works
-      _logWatcher('💡', 'DCFlight hot reload listener not available', _dim);
+    const int maxRetries = 3;
+    const Duration retryDelay = Duration(milliseconds: 500);
+    
+    // First check if server is healthy
+    final isHealthy = await _checkServerHealth();
+    if (!isHealthy) {
+      _logWatcher('⚠️', 'Skipping DCFlight hot reload - server not healthy', _yellow);
+      return;
     }
-  }
+    
+    final possibleIPs = ['localhost', '127.0.0.1', '10.0.2.2'];
+    
+    for (final ip in possibleIPs) {
+      for (int attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          print('🔥 WATCHER: Trying hot reload at http://$ip:8765/hot-reload (attempt $attempt)');
+          final client = HttpClient();
+          final request = await client.postUrl(Uri.parse('http://$ip:8765/hot-reload'));
+          request.headers.set('Content-Type', 'application/json');
 
-  /// Get the appropriate host IP address for connecting to the device/simulator
-  Future<String> _getHostIP() async {
-    try {
-      // For Android emulator, use the special IP that points to host machine
-      if (await _isAndroidEmulator()) {
-        return '10.0.2.2';
-      }
+          // Send the request
+          final response = await request.close();
 
-      // For iOS simulator and real devices, get the actual host IP
-      final interfaces = await NetworkInterface.list();
-      for (final interface in interfaces) {
-        // Skip loopback interfaces
-        if (interface.name.startsWith('lo')) continue;
+          if (response.statusCode == 200) {
+            _logWatcher('✅', 'DCFlight VDOM hot reload triggered at $ip (attempt $attempt)', _green);
+            client.close();
+            return;
+          } else {
+            print('⚠️ WATCHER: Server at $ip returned status ${response.statusCode}');
+          }
 
-        for (final addr in interface.addresses) {
-          // Prefer IPv4 addresses
-          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
-            // Skip private addresses that might not be reachable
-            if (!addr.address.startsWith('127.') &&
-                !addr.address.startsWith('169.254.')) {
-              return addr.address;
-            }
+          client.close();
+          
+          // If not the last attempt, wait before retrying
+          if (attempt < maxRetries) {
+            await Future.delayed(retryDelay);
+          }
+        } catch (e) {
+          print('⚠️ WATCHER: Hot reload attempt $attempt at $ip failed: $e');
+          
+          // If not the last attempt, wait before retrying
+          if (attempt < maxRetries) {
+            await Future.delayed(retryDelay);
           }
         }
       }
-
-      // Fallback to localhost if no suitable IP found
-      return 'localhost';
-    } catch (e) {
-      _logWatcher('⚠️', 'Failed to detect host IP, using localhost: $e', _yellow);
-      return 'localhost';
     }
-  }
-
-  /// Check if we're running on Android emulator
-  Future<bool> _isAndroidEmulator() async {
-    try {
-      final result = await Process.run('adb', ['devices']);
-      final output = result.stdout.toString();
-      // Check if we have emulator devices
-      return output.contains('emulator');
-    } catch (e) {
-      // If adb is not available, assume not emulator
-      return false;
-    }
+    
+    // All attempts failed
+    _logWatcher('❌', 'DCFlight hot reload failed on all IPs after $maxRetries attempts each', _red);
   }
 
   /// Select device for Flutter
@@ -495,6 +473,38 @@ class HotReloadWatcher {
     }
 
     print('$_dim💡 Thanks for using DCFlight Hot Reload System!$_reset\n');
+  }
+
+  /// Check if DCFlight hot reload server is healthy
+  Future<bool> _checkServerHealth() async {
+    final possibleIPs = ['localhost', '127.0.0.1', '10.0.2.2'];
+    
+    for (final ip in possibleIPs) {
+      try {
+        print('🔍 WATCHER: Trying to connect to http://$ip:8765/health');
+        final client = HttpClient();
+        client.connectionTimeout = Duration(seconds: 3);
+        
+        final request = await client.getUrl(Uri.parse('http://$ip:8765/health'));
+        final response = await request.close();
+        final responseBody = await response.transform(utf8.decoder).join();
+        
+        client.close();
+        
+        if (response.statusCode == 200) {
+          final healthData = jsonDecode(responseBody);
+          final instanceId = healthData['instanceId'];
+          _logWatcher('💚', 'DCFlight server healthy at $ip (Instance: $instanceId)', _green);
+          return true;
+        }
+      } catch (e) {
+        print('� WATCHER: Failed to connect to $ip: $e');
+        continue;
+      }
+    }
+    
+    _logWatcher('💔', 'DCFlight server not reachable on any IP', _yellow);
+    return false;
   }
 }
 

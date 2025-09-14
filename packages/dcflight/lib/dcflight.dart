@@ -8,6 +8,8 @@
 // Main entry point for the DCFlight framework
 library;
 
+import 'dart:io';
+
 export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
     hide
         PlatformDispatcher,
@@ -115,13 +117,39 @@ class DCFlight {
     return true;
   }
 
+  /// Get project identifier for log isolation
+  static String _getProjectId() {
+    // Try to get project name from pubspec.yaml or use current directory name
+    try {
+      final currentDir = Directory.current;
+      final pubspecFile = File('${currentDir.path}/pubspec.yaml');
+      if (pubspecFile.existsSync()) {
+        final content = pubspecFile.readAsStringSync();
+        final nameMatch = RegExp(r'name:\s*([^\s]+)').firstMatch(content);
+        if (nameMatch != null) {
+          return nameMatch.group(1)!;
+        }
+      }
+      // Fallback to directory name
+      return currentDir.path.split('/').last;
+    } catch (e) {
+      return 'unknown_project';
+    }
+  }
+
   /// Start the application with the given root component
   static Future<void> start({required DCFComponentNode app}) async {
     await _initialize();
 
+    // Set unique identifiers for log isolation
+    DCFLogger.setInstanceId(DateTime.now().millisecondsSinceEpoch.toString());
+    DCFLogger.setProjectId(_getProjectId());
+
     // Start hot reload listener in debug mode
     if (!const bool.fromEnvironment('dart.vm.product')) {
+      print('🔥 DCFlight: Starting hot reload listener...');
       await HotReloadListener.start();
+      print('🔥 DCFlight: Hot reload listener started successfully');
     }
 
     // Check for hot restart and cleanup if needed (debug mode only)
