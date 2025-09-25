@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-library dcf_reanimated.components;
+library;
 
 import 'package:dcflight/dcflight.dart';
 import '../styles/animated_style.dart';

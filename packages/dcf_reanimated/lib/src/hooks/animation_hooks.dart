@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-library dcf_reanimated.hooks;
+library;
 
 import 'package:dcflight/dcflight.dart';
 import '../values/animation_values.dart';

@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-library dcf_reanimated.styles;
+library;
 
 import 'package:equatable/equatable.dart';
 import '../values/animation_values.dart';
