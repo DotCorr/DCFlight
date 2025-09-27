@@ -8,6 +8,8 @@
 import 'package:args/command_runner.dart';
 import 'package:dcflight_cli/commands/run_command.dart';
 import 'package:dcflight_cli/commands/create_command.dart';
+import 'package:dcflight_cli/commands/inject_command.dart';
+import 'package:dcflight_cli/commands/eject_command.dart';
 
 class DCFlightCommandRunner extends CommandRunner<void> {
   DCFlightCommandRunner()
@@ -17,6 +19,8 @@ class DCFlightCommandRunner extends CommandRunner<void> {
         ) {
     addCommand(RunCommand());
     addCommand(CreateCommand());
+    addCommand(InjectCommand());
+    addCommand(EjectCommand());
   }
 }
 
