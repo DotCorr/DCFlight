@@ -7,6 +7,7 @@
 
 import 'package:args/command_runner.dart';
 import 'package:dcflight_cli/commands/run_command.dart';
+import 'package:dcflight_cli/commands/create_command.dart';
 
 class DCFlightCommandRunner extends CommandRunner<void> {
   DCFlightCommandRunner()
@@ -15,6 +16,7 @@ class DCFlightCommandRunner extends CommandRunner<void> {
           'DCFlight CLI - Development tools for DCFlight framework',
         ) {
     addCommand(RunCommand());
+    addCommand(CreateCommand());
   }
 }
 
