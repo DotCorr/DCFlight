@@ -33,14 +33,11 @@ Create a new DCFlight project using the CLI:
 dart pub global activate dcflight_cli
 
 # Create new project
-dcflight create my_app
+dcf create app my_app
 cd my_app
 
-# Run on iOS
-dcflight run ios
-
-# Run on Android
-dcflight run android
+# Run your DCFlight app
+dcf go
 ```
 
 ### 2. Your First Component

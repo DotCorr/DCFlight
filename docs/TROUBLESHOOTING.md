@@ -189,8 +189,7 @@ Check development setup:
 
 ```bash
 # ✅ Use DCFlight CLI for proper hot reload
-dcflight run ios
-dcflight run android
+dcf go
 
 # ❌ Avoid direct flutter commands in DCFlight projects
 flutter run  # May not work correctly
@@ -300,16 +299,12 @@ class DebugPlatformInterface extends PlatformInterfaceImpl {
 ### 1. DCFlight CLI Diagnostic
 
 ```bash
-# Check DCFlight installation and setup
-dcflight doctor
-
 # Clean and rebuild
-dcflight clean
-dcflight build --debug
+flutter clean
+dcf go --verbose
 
 # Verbose output for debugging
-dcflight run ios --verbose
-dcflight run android --verbose
+dcf go --verbose
 ```
 
 ### 2. Platform-Specific Debugging
