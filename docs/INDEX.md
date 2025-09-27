@@ -58,8 +58,11 @@ Welcome to the comprehensive DCFlight documentation! This index will guide you t
 ## 🔧 Development Tools
 
 ### DCFlight CLI
-- **Project Management** - `create`, `run`, `build` commands
-- **Module System** - Adding and managing DCFlight modules
+- **[CLI Guide](./CLI_GUIDE.md)** - Complete CLI documentation and usage
+- **[CLI Quick Reference](./CLI_QUICK_REFERENCE.md)** - Command reference and common workflows
+- **Project Management** - `create`, `go` commands
+- **Package Management** - `inject`, `eject` commands for dependencies
+- **Module System** - Creating and managing DCFlight modules
 - **Development Workflow** - Hot reload and debugging features
 
 ### Debugging
