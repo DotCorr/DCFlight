@@ -43,6 +43,10 @@ class DCFImageComponent : DCFComponent() {
         // Create an image view - MATCH iOS UIImageView
         val imageView = ImageView(context)
         
+        // ANDROID FLASH FIX: Start invisible to prevent flash screen
+        imageView.visibility = View.INVISIBLE
+        imageView.alpha = 0f
+        
         // Apply initial styling - MATCH iOS
         imageView.scaleType = ImageView.ScaleType.CENTER_CROP // scaleAspectFill equivalent
         imageView.clipToOutline = true // clipsToBounds equivalent
