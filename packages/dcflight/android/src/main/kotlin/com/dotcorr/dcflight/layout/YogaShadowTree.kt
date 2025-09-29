@@ -803,6 +803,23 @@ class YogaShadowTree private constructor() {
         nodeTypes.clear()
         screenRoots.clear()
         screenRootIds.clear()
+        
+        // CRITICAL: Recreate the root node after clearing
+        // This prevents "Root node not found" errors during hot restart
+        rootNode = YogaNodeFactory.create()
+        rootNode?.let { root ->
+            root.setDirection(YogaDirection.LTR)
+            root.setFlexDirection(YogaFlexDirection.COLUMN)
+            
+            val displayMetrics = Resources.getSystem().displayMetrics
+            root.setWidth(displayMetrics.widthPixels.toFloat())
+            root.setHeight(displayMetrics.heightPixels.toFloat())
+            
+            nodes["root"] = root
+            nodeTypes["root"] = "View"
+        }
+        
+        Log.d(TAG, "YogaShadowTree cleared and root node recreated")
     }
 
     fun viewRegisteredWithShadowTree(viewId: String): Boolean {

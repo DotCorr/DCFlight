@@ -21,6 +21,7 @@ import android.util.Log
 import com.dotcorr.dcflight.bridge.DCMauiBridgeMethodChannel
 import com.dotcorr.dcflight.bridge.DCMauiEventMethodHandler
 import com.dotcorr.dcflight.bridge.DCMauiLayoutMethodHandler
+import com.dotcorr.dcflight.bridge.DCFHotRestartMethodChannel
 import com.dotcorr.dcflight.components.FrameworkComponentsReg
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
