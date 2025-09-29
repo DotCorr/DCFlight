@@ -576,5 +576,18 @@ class DCFLayoutManager private constructor() {
         // Trigger immediate layout calculation with current screen dimensions
         triggerLayoutCalculation()
     }
+
+    /**
+     * HOT RESTART FIX: Ensure all views start invisible during hot restart
+     * This prevents flash during hot restart by making all views invisible initially
+     */
+    fun prepareForHotRestart() {
+        // Make all registered views invisible to prevent flash during hot restart
+        for ((_, view) in viewRegistry) {
+            view.visibility = View.INVISIBLE
+            view.alpha = 0f
+        }
+        Log.d(TAG, "Prepared ${viewRegistry.size} views for hot restart")
+    }
 }
 
