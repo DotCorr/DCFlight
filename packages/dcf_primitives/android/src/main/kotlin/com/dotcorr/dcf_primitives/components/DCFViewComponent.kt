@@ -33,6 +33,10 @@ class DCFViewComponent : DCFComponent() {
         // Store component type for identification
         view.setTag(R.id.dcf_component_type, "View")
 
+        // ANDROID FLASH FIX: Start invisible to prevent flash screen
+        view.visibility = View.INVISIBLE
+        view.alpha = 0f
+
         // Apply adaptive default styling - let OS handle light/dark mode
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {

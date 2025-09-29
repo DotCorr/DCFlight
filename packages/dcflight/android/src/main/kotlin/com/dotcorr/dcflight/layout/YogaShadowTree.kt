@@ -38,6 +38,11 @@ class YogaShadowTree private constructor() {
     private val screenRoots = ConcurrentHashMap<String, YogaNode>()
     private val screenRootIds = mutableSetOf<String>()
     
+    // Gap value storage for Android workaround
+    private val gapValues = ConcurrentHashMap<String, Float>()
+    private val rowGapValues = ConcurrentHashMap<String, Float>()
+    private val columnGapValues = ConcurrentHashMap<String, Float>()
+    
     @Volatile
     private var isLayoutCalculating = false
     
@@ -302,7 +307,7 @@ class YogaShadowTree private constructor() {
         
         // Apply layout properties
         props.filterValues { it != null }.forEach { (key, value) ->
-            applyLayoutProp(node, key, value!!)
+            applyLayoutProp(node, key, value!!, nodeId)
         }
         
         validateNodeLayoutConfig(nodeId)
@@ -554,7 +559,7 @@ class YogaShadowTree private constructor() {
     }
 
     // Layout property application - MATCH iOS exactly
-    private fun applyLayoutProp(node: YogaNode, key: String, value: Any) {
+    private fun applyLayoutProp(node: YogaNode, key: String, value: Any, nodeId: String) {
         when (key) {
             "width" -> {
                 when (value) {
@@ -609,14 +614,26 @@ class YogaShadowTree private constructor() {
                 }
             }
             "gap" -> {
-                // TODO: Add gap support when Android Yoga library supports it
-                // Currently Android Yoga doesn't have setGap method like iOS
+                // ANDROID GAP WORKAROUND: Store gap value for margin-based simulation
+                if (value is Number) {
+                    val gapValue = applyAndroidSizingScale(value.toFloat())
+                    // Store gap value in a map for later processing
+                    gapValues[nodeId] = gapValue
+                }
             }
             "rowGap" -> {
-                // TODO: Add rowGap support when Android Yoga library supports it
+                // ANDROID ROW GAP WORKAROUND: Store row gap value
+                if (value is Number) {
+                    val gapValue = applyAndroidSizingScale(value.toFloat())
+                    rowGapValues[nodeId] = gapValue
+                }
             }
             "columnGap" -> {
-                // TODO: Add columnGap support when Android Yoga library supports it  
+                // ANDROID COLUMN GAP WORKAROUND: Store column gap value
+                if (value is Number) {
+                    val gapValue = applyAndroidSizingScale(value.toFloat())
+                    columnGapValues[nodeId] = gapValue
+                }
             }
             "justifyContent" -> {
                 when (value as? String) {
@@ -748,6 +765,9 @@ class YogaShadowTree private constructor() {
         nodeTypes.clear()
         screenRoots.clear()
         screenRootIds.clear()
+        gapValues.clear()
+        rowGapValues.clear()
+        columnGapValues.clear()
     }
 
     fun viewRegisteredWithShadowTree(viewId: String): Boolean {

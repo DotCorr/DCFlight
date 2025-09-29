@@ -29,6 +29,10 @@ class DCFWebViewComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val webView = WebView(context)
 
+        // ANDROID FLASH FIX: Start invisible to prevent flash screen
+        webView.visibility = View.INVISIBLE
+        webView.alpha = 0f
+
         // Apply adaptive default styling - let OS handle light/dark mode
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {

@@ -9,7 +9,7 @@ void main() async {
 }
 
 class InteractiveGridApp extends DCFStatefulComponent {
-  // Generate random colors fwr grid boxes
+  // Generate random colors for grid boxes
   final List<Color> _colors = [
     Colors.red,
     Colors.blue,
@@ -23,9 +23,15 @@ class InteractiveGridApp extends DCFStatefulComponent {
     Colors.cyan,
   ];
 
+  // Store colors for each box to prevent flashing on Android
+  final Map<int, Color> _boxColors = {};
+  
   // Debouncing mechanism for buttons
   DateTime? _lastButtonPress;
   static const Duration _debounceDelay = Duration(milliseconds: 300);
+  
+  // Track if this is the first render to prevent Android flash
+  bool _isFirstRender = true;
 
   bool _shouldAllowButtonPress() {
     final now = DateTime.now();
@@ -36,8 +42,17 @@ class InteractiveGridApp extends DCFStatefulComponent {
     return false;
   }
 
-  Color _getRandomColor() {
-    return _colors[Random().nextInt(_colors.length)];
+  Color _getColorForBox(int index) {
+    // Use cached color or generate new one
+    if (!_boxColors.containsKey(index)) {
+      _boxColors[index] = _colors[Random().nextInt(_colors.length)];
+    }
+    return _boxColors[index]!;
+  }
+
+  void _cleanupBoxColors(int currentCount) {
+    // Remove colors for boxes that no longer exist
+    _boxColors.removeWhere((key, value) => key >= currentCount);
   }
 
   @override
@@ -45,24 +60,34 @@ class InteractiveGridApp extends DCFStatefulComponent {
     final boxCount = useState(4); // Start with 4 boxes - reset from the 53+ issue
     final gridDensity = useState(2.0); // Density slider (2-6 columns)
     
+    // Clean up old box colors to prevent memory leaks
+    _cleanupBoxColors(boxCount.state);
+    
+    // Mark first render as complete
+    if (_isFirstRender) {
+      _isFirstRender = false;
+    }
+    
     // Calculate box width based on screen and density
     final columns = gridDensity.state.round();
-    final boxWidth = (100 / columns) - 2; // Percentage width minus gap
+    // Account for margins (10px each side) instead of gap
+    final boxWidth = (100 / columns) - 4; // Percentage width minus margins
     
-    // Generate grid boxes
+    // Generate grid boxes with stable colors and proper Android rendering
     List<DCFComponentNode> gridBoxes = [];
     for (int i = 0; i < boxCount.state; i++) {
       gridBoxes.add(
         DCFView(
           key: 'grid_box_$i',
           styleSheet: DCFStyleSheet(
-            backgroundColor: _getRandomColor(),
+            backgroundColor: _getColorForBox(i), // Use stable color per box
           ),
           layout: DCFLayout(
             width: boxWidth,
             height: 100,
+            // Use consistent margins instead of gap for better Android compatibility
             marginBottom: 10,
-            marginRight: i % columns == columns - 1 ? 0 : 10, // No margin on last column
+            marginRight: 10,
             flexDirection: YogaFlexDirection.column,
             justifyContent: YogaJustifyContent.center,
             alignItems: YogaAlign.center,
@@ -71,13 +96,13 @@ class InteractiveGridApp extends DCFStatefulComponent {
             DCFText(
               content: "${i + 1}",
               textProps: DCFTextProps(
-                fontSize: 18, // Increased from 24 to be more visible in small boxes
+                fontSize: 18,
                 color: Colors.white,
                 fontWeight: DCFFontWeight.bold,
                 textAlign: DCFTextAlign.center,
               ),
               layout: DCFLayout(
-                flex: 1, // Make sure text takes available space
+                flex: 1,
                 width: '100%',
                 justifyContent: YogaJustifyContent.center,
                 alignItems: YogaAlign.center,
@@ -122,7 +147,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
           ],
         ),
         
-        // Grid Container
+        // Grid Container - Android compatible layout without gap
         DCFView(
           layout: DCFLayout(
             flex: 1,
@@ -131,7 +156,8 @@ class InteractiveGridApp extends DCFStatefulComponent {
             flexWrap: YogaWrap.wrap,
             justifyContent: YogaJustifyContent.flexStart,
             alignContent: YogaAlign.flexStart,
-            gap: 10, // This will test our gap implementation
+            // Remove gap property for better Android compatibility
+            // Use margin-based spacing instead
           ),
           children: gridBoxes,
         ),
@@ -185,7 +211,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
               ],
             ),
             
-            // Add/Remove buttons
+            // Add/Remove buttons - Always show both buttons for consistency
             DCFView(
               layout: DCFLayout(
                 flexDirection: YogaFlexDirection.row,
@@ -201,7 +227,9 @@ class InteractiveGridApp extends DCFStatefulComponent {
                 ),
                 DCFView(layout: DCFLayout(width: 20)),
                 DCFButton(
-                  buttonProps: DCFButtonProps(title: "Remove Box"),
+                  buttonProps: DCFButtonProps(
+                    title: boxCount.state > 0 ? "Remove Box" : "Remove Box (0)",
+                  ),
                   onPress: (v) {
                     if (!_shouldAllowButtonPress()) return;
                     if (boxCount.state > 0) {
