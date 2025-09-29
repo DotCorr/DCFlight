@@ -68,7 +68,7 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         DCFScreenUtilities.initialize(flutterPluginBinding.binaryMessenger, flutterPluginBinding.applicationContext)
         
         // Initialize hot restart channel - CRITICAL for hot restart cleanup!
-        // DCFHotRestartMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
+        DCFHotRestartMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
 
         Log.d(TAG, "DCFlight plugin initialized with method channels")
     }

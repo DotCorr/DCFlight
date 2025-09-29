@@ -78,10 +78,14 @@ class DCFHotRestartMethodChannel : MethodChannel.MethodCallHandler {
      * Cleanup all DCFlight native views and resources - simple but effective
      */
     private fun cleanupNativeViews(result: Result) {
-        Log.d(TAG, "🔥 DCF_ENGINE: Starting Android hot restart cleanup")
+        Log.d(TAG, "🔥 DCF_ENGINE: Starting Android hot restart cleanup with flash prevention")
         
         Handler(Looper.getMainLooper()).post {
             try {
+                // HOT RESTART FIX: Prepare layout manager for hot restart to prevent flash
+                com.dotcorr.dcflight.layout.DCFLayoutManager.shared.prepareForHotRestart()
+                Log.d(TAG, "🔥 DCF_ENGINE: Layout manager prepared for hot restart")
+                
                 Log.d(TAG, "🔥 DCF_ENGINE: Clearing shadow tree and view registry")
                 
                 // Clear the YogaShadowTree - this is the most important
