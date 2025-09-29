@@ -287,6 +287,26 @@ class DCFLayoutManager private constructor() {
         return true
     }
 
+    /**
+     * FLASH SCREEN FIX: Apply layout without making view visible
+     * Used for batch layout application to prevent flash
+     */
+    fun applyLayoutWithoutVisibility(viewId: String, left: Float, top: Float, width: Float, height: Float): Boolean {
+        val view = getView(viewId) ?: return false
+
+        // Create valid frame with minimum dimensions to ensure visibility
+        val frame = Rect(
+            left.toInt(),
+            top.toInt(),
+            (left + max(1f, width)).toInt(),
+            (top + max(1f, height)).toInt()
+        )
+
+        // Apply layout without making visible
+        applyLayoutDirectlyWithoutVisibility(view, frame)
+        return true
+    }
+
     // Direct layout application helper - MATCH iOS applyLayoutDirectly exactly
     private fun applyLayoutDirectly(view: View, frame: Rect) {
         // 🔥 HOT RESTART COMPREHENSIVE SAFETY: Multiple validation layers
@@ -335,6 +355,62 @@ class DCFLayoutManager private constructor() {
                     // This prevents flash for ALL components automatically
                     view.visibility = View.VISIBLE
                     view.alpha = 1.0f
+
+                    // Force layout
+                    view.requestLayout()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error applying layout to view", e)
+            }
+        }
+    }
+
+    // FLASH SCREEN FIX: Apply layout without making view visible
+    private fun applyLayoutDirectlyWithoutVisibility(view: View, frame: Rect) {
+        // 🔥 HOT RESTART COMPREHENSIVE SAFETY: Multiple validation layers
+
+        // Level 1: Check if view is in invalid state
+        if (view.parent == null && view.rootView == null) {
+            return
+        }
+
+        // Level 2: Validate frame values are reasonable
+        if (!frame.width().toFloat().isFinite() || !frame.height().toFloat().isFinite() ||
+            !frame.left.toFloat().isFinite() || !frame.top.toFloat().isFinite() ||
+            frame.width().toFloat().isNaN() || frame.height().toFloat().isNaN() ||
+            frame.left.toFloat().isNaN() || frame.top.toFloat().isNaN()) {
+            return
+        }
+
+        // Level 3: Check for reasonable bounds
+        if (frame.width() > 10000 || frame.height() > 10000 ||
+            frame.width() < 0 || frame.height() < 0) {
+            return
+        }
+
+        // Ensure minimum dimensions
+        val safeFrame = Rect(
+            frame.left,
+            frame.top,
+            frame.left + max(1, frame.width()),
+            frame.top + max(1, frame.height())
+        )
+
+        // Level 4: Final safety - set layout on main thread
+        mainHandler.post {
+            try {
+                if (view.parent != null || view.rootView != null) {
+                    // CRITICAL: Mark this view as manually positioned in its parent DCFFrameLayout
+                    val parent = view.parent
+                    if (parent is DCFFrameLayout) {
+                        parent.setChildManuallyPositioned(view, true)
+                    }
+
+                    // Set layout - this is the line that was crashing
+                    view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
+
+                    // FLASH SCREEN FIX: Do NOT make view visible here
+                    // Visibility will be set later in batch after all layouts are applied
 
                     // Force layout
                     view.requestLayout()

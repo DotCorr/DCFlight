@@ -358,13 +358,17 @@ class YogaShadowTree private constructor() {
                 }
             }
             
-            // Apply calculated layout to all nodes - MATCH iOS applyLayoutToView
+            // FLASH SCREEN FIX: Apply layouts without making views visible yet
+            val layoutsToApply = mutableListOf<Pair<String, Rect>>()
             for ((nodeId, _) in nodes) {
                 val layout = getNodeLayout(nodeId)
                 if (layout != null) {
-                    applyLayoutToView(nodeId, layout)
+                    layoutsToApply.add(Pair(nodeId, layout))
                 }
             }
+            
+            // Apply all layouts at once without making views visible
+            applyLayoutsBatch(layoutsToApply)
             
             Log.d(TAG, "Layout calculation and application completed successfully")
             return true
@@ -434,6 +438,40 @@ class YogaShadowTree private constructor() {
         // If node has children and undefined height, set auto height
         if (node.childCount > 0 && !node.height.unit.name.contains("POINT")) {
             node.setHeightAuto()
+        }
+    }
+
+    // FLASH SCREEN FIX: Apply layouts in batch without making views visible
+    private fun applyLayoutsBatch(layouts: List<Pair<String, Rect>>) {
+        Handler(Looper.getMainLooper()).post {
+            // Apply all layouts first without making views visible
+            for ((viewId, frame) in layouts) {
+                val view = DCFLayoutManager.shared.getView(viewId)
+                if (view != null) {
+                    val wasUserInteractionEnabled = view.isEnabled
+                    
+                    // Apply layout using layout manager without making visible
+                    DCFLayoutManager.shared.applyLayoutWithoutVisibility(
+                        viewId = viewId,
+                        left = frame.left.toFloat(),
+                        top = frame.top.toFloat(),
+                        width = frame.width().toFloat(),
+                        height = frame.height().toFloat()
+                    )
+                    
+                    view.isEnabled = wasUserInteractionEnabled
+                    view.requestLayout()
+                }
+            }
+            
+            // Now make all views visible at once after all layouts are applied
+            for ((viewId, _) in layouts) {
+                val view = DCFLayoutManager.shared.getView(viewId)
+                if (view != null) {
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+                }
+            }
         }
     }
 
