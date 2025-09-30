@@ -53,10 +53,11 @@ class YogaShadowTree private constructor() {
         rootNode = YogaNodeFactory.create().apply {
             setDirection(YogaDirection.LTR)
             setFlexDirection(YogaFlexDirection.COLUMN)
-            
+
             val displayMetrics = Resources.getSystem().displayMetrics
-            setWidth(displayMetrics.widthPixels.toFloat())
-            setHeight(displayMetrics.heightPixels.toFloat())
+            // Use logical pixels (dp) like iOS uses logical points for consistency
+            setWidth((displayMetrics.widthPixels / displayMetrics.density).toFloat())
+            setHeight((displayMetrics.heightPixels / displayMetrics.density).toFloat())
         }
         
         rootNode?.let { root ->
