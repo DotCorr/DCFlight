@@ -34,7 +34,11 @@ import Flutter
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
         nativeRootVC.title = "Root View (DCFlight)"
-        self.window!.rootViewController = nativeRootVC
+        guard let window = self.window else {
+            print("❌ DCFlight: No window available to set rootViewController")
+            return
+        }
+        window.rootViewController = nativeRootVC
         setupDCF(rootView: nativeRootVC.view, flutterEngine: flutterEngine)
 
         _ = DCFScreenUtilities.shared

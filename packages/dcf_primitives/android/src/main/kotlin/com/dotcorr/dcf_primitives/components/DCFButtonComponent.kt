@@ -18,18 +18,12 @@ import android.widget.TextView
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcflight.extensions.applyAndroidVisualScale
 import com.dotcorr.dcf_primitives.R
 import kotlin.math.max
 
 /**
- * DCFButtonComponent - Composed using View + Text primitives
- * Matches iOS DCFButtonComponent behavior 1:1 using abstraction layer composition
- * NO native Android Button widget - uses FrameLayout + TextView for cross-platform consistency
- * EXACT same props as Dart DCFButton component:
- * - title: String
- * - disabled: Boolean
- * - adaptive: Boolean
+ * DCFButtonComponent - Button component for Android
+ * Uses FrameLayout + TextView for consistency
  * ALL styling handled by StyleSheet via .applyStyles() like iOS
  */
 class DCFButtonComponent : DCFComponent() {

@@ -12,20 +12,15 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.View
 import android.view.ViewGroup
-import android.content.res.Configuration
 import android.util.TypedValue
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.R
 
 /**
- * View extension for generic style application - matching iOS UIView extension
- * Apply common style properties to this view, driven only by explicit props
+ * View extension for style application
+ * Apply common style properties to views
  */
 
-fun applyAndroidVisualScale(value: Float): Float {
-    // Test: Remove visual scaling to see if Yoga handles it naturally
-    return value
-}
 fun View.applyStyles(props: Map<String, Any>) {
     val isAdaptive = props["adaptive"] as? Boolean ?: true
     
@@ -39,31 +34,30 @@ fun View.applyStyles(props: Map<String, Any>) {
     // Create or get existing drawable
     val drawable = (this.background as? GradientDrawable) ?: GradientDrawable()
 
-    // Border Radius - Scale for visual consistency
+    // Border Radius
     props["borderRadius"]?.let { borderRadius ->
         val radius = when (borderRadius) {
             is Number -> borderRadius.toFloat()
             else -> 0f
         }
-        drawable.cornerRadius = applyAndroidVisualScale(radius)
-        finalCornerRadius = applyAndroidVisualScale(radius)
+        drawable.cornerRadius = radius
+        finalCornerRadius = radius
         hasCornerRadius = true
         this.clipToOutline = true
     }
 
-    // Per-corner Radius - Scale for visual consistency
-    val topLeft = (props["borderTopLeftRadius"] as? Number)?.toFloat()?.let { applyAndroidVisualScale(it) }
-    val topRight = (props["borderTopRightRadius"] as? Number)?.toFloat()?.let { applyAndroidVisualScale(it) }
-    val bottomLeft = (props["borderBottomLeftRadius"] as? Number)?.toFloat()?.let { applyAndroidVisualScale(it) }
-    val bottomRight = (props["borderBottomRightRadius"] as? Number)?.toFloat()?.let { applyAndroidVisualScale(it) }
+    // Per-corner Radius
+    val topLeft = (props["borderTopLeftRadius"] as? Number)?.toFloat()
+    val topRight = (props["borderTopRightRadius"] as? Number)?.toFloat()
+    val bottomLeft = (props["borderBottomLeftRadius"] as? Number)?.toFloat()
+    val bottomRight = (props["borderBottomRightRadius"] as? Number)?.toFloat()
 
     if (topLeft != null || topRight != null || bottomLeft != null || bottomRight != null) {
-        val scaledFinalCornerRadius = applyAndroidVisualScale(finalCornerRadius)
         val radii = floatArrayOf(
-            topLeft ?: scaledFinalCornerRadius, topLeft ?: scaledFinalCornerRadius,
-            topRight ?: scaledFinalCornerRadius, topRight ?: scaledFinalCornerRadius,
-            bottomRight ?: scaledFinalCornerRadius, bottomRight ?: scaledFinalCornerRadius,
-            bottomLeft ?: scaledFinalCornerRadius, bottomLeft ?: scaledFinalCornerRadius
+            topLeft ?: finalCornerRadius, topLeft ?: finalCornerRadius,
+            topRight ?: finalCornerRadius, topRight ?: finalCornerRadius,
+            bottomRight ?: finalCornerRadius, bottomRight ?: finalCornerRadius,
+            bottomLeft ?: finalCornerRadius, bottomLeft ?: finalCornerRadius
         )
         drawable.cornerRadii = radii
         hasCornerRadius = true
@@ -80,8 +74,7 @@ fun View.applyStyles(props: Map<String, Any>) {
 
         val borderWidth = (props["borderWidth"] as? Number)?.toInt() ?: 0
         if (borderWidth > 0) {
-            val scaledBorderWidth = applyAndroidVisualScale(borderWidth.toFloat()).toInt()
-            drawable.setStroke(scaledBorderWidth, color)
+            drawable.setStroke(borderWidth, color)
             this.clipToOutline = true
         }
     }
@@ -122,13 +115,13 @@ fun View.applyStyles(props: Map<String, Any>) {
             this.setTag(R.id.dcf_shadow_color, shadowColor)
         }
 
-        props["shadowRadius"]?.let { shadowRadius ->
-            val radius = when (shadowRadius) {
-                is Number -> shadowRadius.toFloat()
-                else -> 0f
-            }
-            this.elevation = applyAndroidVisualScale(radius)
+    props["shadowRadius"]?.let { shadowRadius ->
+        val radius = when (shadowRadius) {
+            is Number -> shadowRadius.toFloat()
+            else -> 0f
         }
+        this.elevation = radius
+    }
 
         props["shadowOffsetX"]?.let { offsetX ->
             this.setTag(R.id.dcf_shadow_offset_x, offsetX)
