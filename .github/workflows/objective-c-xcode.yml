@@ -15,10 +15,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check for Xcode project
+        run: |
+          cd packages/template/dcf_go/ios/Runner
+          if ! ls *.xcodeproj 1> /dev/null 2>&1 && ! ls *.xcworkspace 1> /dev/null 2>&1; then
+            echo "No Xcode project or workspace found in $(pwd)."
+            exit 1
+          fi
+
       - name: Set Default Scheme
         run: |
           cd packages/template/dcf_go/ios/Runner
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
+          if [ -z "$scheme_list" ]; then
+            echo "No schemes found. Is the Xcode project present and valid?"
+            exit 1
+          fi
           default=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
           echo $default > default
           echo Using default scheme: $default
@@ -28,10 +40,10 @@ jobs:
           cd packages/template/dcf_go/ios/Runner
           scheme=$(cat default)
           if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then 
-            filetype_parameter="workspace" 
+            filetype_parameter="workspace"
             file_to_build="`ls -A | grep -i \\.xcworkspace\$`"
           else 
-            filetype_parameter="project" 
+            filetype_parameter="project"
             file_to_build="`ls -A | grep -i \\.xcodeproj\$`"
           fi
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
