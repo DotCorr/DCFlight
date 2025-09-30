@@ -58,7 +58,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
 
     return DCFView(
       styleSheet: DCFStyleSheet(
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.amber,
       ),
       layout: DCFLayout(
         flex: 1,
