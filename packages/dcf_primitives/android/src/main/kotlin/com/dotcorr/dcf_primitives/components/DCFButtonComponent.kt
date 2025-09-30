@@ -18,6 +18,7 @@ import android.widget.TextView
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.extensions.applyAndroidVisualScale
 import com.dotcorr.dcf_primitives.R
 import kotlin.math.max
 

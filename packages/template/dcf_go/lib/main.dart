@@ -34,7 +34,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
         DCFView(
           styleSheet: DCFStyleSheet(
             backgroundColor: _getRandomColor(),
-            borderRadius: 8,
+            borderRadius: 20,
           ),
           layout: DCFLayout(
             width: boxWidth,
@@ -58,11 +58,12 @@ class InteractiveGridApp extends DCFStatefulComponent {
 
     return DCFView(
       styleSheet: DCFStyleSheet(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.red,
       ),
       layout: DCFLayout(
         flex: 1,
         padding: 20,
+        paddingTop: 100,
       ),
       children: [
         // Header
