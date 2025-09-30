@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    name: Build and analyse default scheme using xcodebuild command
     runs-on: macos-latest
 
     steps:
@@ -17,7 +18,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: '3.19.6'
 
       - name: Flutter pub get
         run: |
