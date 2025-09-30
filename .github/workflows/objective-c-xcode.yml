@@ -8,12 +8,26 @@ on:
 
 jobs:
   build:
-    name: Build and analyse default scheme using xcodebuild command
     runs-on: macos-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable'
+
+      - name: Flutter pub get
+        run: |
+          cd packages/template/dcf_go
+          flutter pub get
+
+      - name: Build iOS ephemeral files
+        run: |
+          cd packages/template/dcf_go
+          flutter build ios --no-codesign
 
       - name: List files in iOS project directory
         run: |
