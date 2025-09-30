@@ -15,6 +15,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: List files in iOS project directory
+        run: |
+          cd packages/template/dcf_go/ios/Runner
+          ls -la
+
       - name: Check for Xcode project
         run: |
           cd packages/template/dcf_go/ios/Runner
