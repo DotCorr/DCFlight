@@ -17,12 +17,12 @@ jobs:
 
       - name: List files in iOS project directory
         run: |
-          cd packages/template/dcf_go/ios/Runner
+          cd packages/template/dcf_go/ios
           ls -la
 
       - name: Check for Xcode project
         run: |
-          cd packages/template/dcf_go/ios/Runner
+          cd packages/template/dcf_go/ios
           if ! ls *.xcodeproj 1> /dev/null 2>&1 && ! ls *.xcworkspace 1> /dev/null 2>&1; then
             echo "No Xcode project or workspace found in $(pwd)."
             exit 1
@@ -30,7 +30,7 @@ jobs:
 
       - name: Set Default Scheme
         run: |
-          cd packages/template/dcf_go/ios/Runner
+          cd packages/template/dcf_go/ios
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
           if [ -z "$scheme_list" ]; then
             echo "No schemes found. Is the Xcode project present and valid?"
@@ -42,7 +42,7 @@ jobs:
 
       - name: Build
         run: |
-          cd packages/template/dcf_go/ios/Runner
+          cd packages/template/dcf_go/ios
           scheme=$(cat default)
           if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then 
             filetype_parameter="workspace"
