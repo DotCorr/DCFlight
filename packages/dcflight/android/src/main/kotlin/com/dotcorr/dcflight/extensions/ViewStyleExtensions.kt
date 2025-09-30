@@ -12,6 +12,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.View
 import android.view.ViewGroup
+import android.content.res.Configuration
 import android.util.TypedValue
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.R
