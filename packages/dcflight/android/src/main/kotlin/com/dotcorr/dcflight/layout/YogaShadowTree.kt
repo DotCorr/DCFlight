@@ -643,8 +643,7 @@ class YogaShadowTree private constructor() {
             "gap" -> {
                 // YOGA 2.0+ GAP SUPPORT: Use native gap API
                 if (value is Number) {
-                    val gapValue = value.toFloat()(value.toFloat())
-                    node.setGap(YogaGutter.ALL, gapValue)
+                    node.setGap(YogaGutter.ALL, value.toFloat())
                 }
             }
             "rowGap" -> {
