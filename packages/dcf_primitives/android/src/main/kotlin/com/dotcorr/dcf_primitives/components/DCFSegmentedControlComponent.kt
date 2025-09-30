@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.extensions.applyAndroidVisualScale
 import com.dotcorr.dcf_primitives.R
 import com.dotcorr.dcflight.utils.AdaptiveColorHelper
 import com.dotcorr.dcflight.utils.ColorUtilities
@@ -224,8 +225,8 @@ class DCFSegmentedControlComponent : DCFComponent() {
         selectedDrawable.setColor(Color.BLUE) // Default selected color
         selectedDrawable.cornerRadius = 8f
         stateList.addState(intArrayOf(android.R.attr.state_checked), selectedDrawable)
-        
-        // Normal state background  
+
+        // Normal state background
         val normalDrawable = GradientDrawable()
         normalDrawable.setColor(Color.TRANSPARENT)
         normalDrawable.setStroke(2, Color.GRAY)
