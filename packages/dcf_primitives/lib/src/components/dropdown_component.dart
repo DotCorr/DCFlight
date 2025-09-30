@@ -124,7 +124,7 @@ class DCFDropdownProps {
 
 /// DCFDropdown - Cross-platform dropdown menu component
 /// Provides native dropdown functionality with type-safe positioning and items
-class DCFDropdown extends StatelessComponent
+class DCFDropdown extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -134,10 +134,10 @@ class DCFDropdown extends StatelessComponent
   final DCFDropdownProps dropdownProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -157,8 +157,8 @@ class DCFDropdown extends StatelessComponent
   DCFDropdown({
     super.key,
     required this.dropdownProps,
-    this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onValueChange,
     this.onMultiValueChange,
     this.onOpen,

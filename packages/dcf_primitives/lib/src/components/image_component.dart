@@ -56,7 +56,7 @@ class DCFImageProps extends Equatable {
 }
 
 /// An image component implementation using StatelessComponent
-class DCFImage extends StatelessComponent
+class DCFImage extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -66,10 +66,10 @@ class DCFImage extends StatelessComponent
   final DCFImageProps imageProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The styleSheet properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -83,8 +83,8 @@ class DCFImage extends StatelessComponent
   /// Create an image component
   DCFImage({
     required this.imageProps,
-    this.layout = const LayoutProps(height: 50, width: 200),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(height: 50, width: 200),
+    this.styleSheet = const DCFStyleSheet(),
     this.onLoad,
     this.onError,
     this.events,

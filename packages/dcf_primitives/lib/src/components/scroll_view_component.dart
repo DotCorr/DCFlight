@@ -9,7 +9,7 @@ import 'package:dcflight/dcflight.dart';
 
 /// DCFScrollView - Optimized scroll view component
 /// Uses your native VirtualizedScrollView for best performance
-class DCFScrollView extends StatelessComponent
+class DCFScrollView extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -22,16 +22,16 @@ class DCFScrollView extends StatelessComponent
   final bool horizontal;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Whether to show scrollbar
   final bool showsScrollIndicator;
 
   /// Content container style
-  final StyleSheet contentContainerStyle;
+  final DCFStyleSheet contentContainerStyle;
 
   /// Event handlers
   final Function(Map<dynamic, dynamic>)? onScroll;
@@ -63,10 +63,10 @@ class DCFScrollView extends StatelessComponent
   DCFScrollView({
     required this.children,
     this.horizontal = false,
-      this.layout = const LayoutProps(flex: 1),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(flex: 1),
+    this.styleSheet = const DCFStyleSheet(),
     this.showsScrollIndicator = true,
-    this.contentContainerStyle = const StyleSheet(),
+    this.contentContainerStyle = const DCFStyleSheet(),
     this.onScroll,
     this.onScrollBeginDrag,
     this.onScrollEndDrag,

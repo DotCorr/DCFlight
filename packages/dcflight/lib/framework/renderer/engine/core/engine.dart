@@ -1,3 +1,4 @@
+// MARKINGS - Pass safe test cases
 // ignore_for_file: unnecessary_type_check
 
 /*
@@ -37,10 +38,10 @@ class DCFEngine {
   final Map<String, DCFComponentNode> _nodesByViewId = {};
 
   /// Component tracking maps - React-like
-  final Map<String, StatefulComponent> _statefulComponents = {};
+  final Map<String, DCFStatefulComponent> _statefulComponents = {};
   final Map<String, DCFComponentNode> _previousRenderedNodes = {};
 
-  /// Priority-based update system  
+  /// Priority-based update system
   final Set<String> _pendingUpdates = {};
   final Map<String, ComponentPriority> _componentPriorities = {};
   Timer? _updateTimer;
@@ -154,7 +155,7 @@ class DCFEngine {
   void registerComponent(DCFComponentNode component) {
     EngineDebugLogger.logMount(component, context: 'registerComponent');
 
-    if (component is StatefulComponent) {
+    if (component is DCFStatefulComponent) {
       // StatefulComponents need tracking for hooks and updates
       _statefulComponents[component.instanceId] = component;
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
@@ -194,7 +195,8 @@ class DCFEngine {
       ];
 
       for (final key in eventHandlerKeys) {
-        if (node.elementProps.containsKey(key) && node.elementProps[key] is Function) {
+        if (node.elementProps.containsKey(key) &&
+            node.elementProps[key] is Function) {
           EngineDebugLogger.log('EVENT_HANDLER_FOUND',
               'Found handler for $eventType using key: $key');
           _executeEventHandler(node.elementProps[key], eventData);
@@ -205,7 +207,7 @@ class DCFEngine {
       EngineDebugLogger.log(
           'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
           extra: {'AvailableProps': node.elementProps.keys.toList()});
-    }
+    } else {}
   }
 
   /// O(1) - Execute an event handler with flexible signatures
@@ -265,22 +267,23 @@ class DCFEngine {
     }
   }
 
-  /// React reconciliation: when to replace vs update at same position  
-  bool _shouldReplaceAtSamePosition(DCFComponentNode oldChild, DCFComponentNode newChild) {
+  /// React reconciliation: when to replace vs update at same position
+  bool _shouldReplaceAtSamePosition(
+      DCFComponentNode oldChild, DCFComponentNode newChild) {
     // Rule 1: Different types = replace
     if (oldChild.runtimeType != newChild.runtimeType) {
       return true;
     }
-    
-    // Rule 2: Different keys = replace  
+
+    // Rule 2: Different keys = replace
     if (oldChild.key != newChild.key) {
       return true;
     }
-    
+
     // Rule 3: EFFICIENT UPDATE - Only replace for major structural changes
     // For StatelessComponent and StatefulComponent, always try to update first
     // Only replace if reconciliation actually fails or there are critical differences
-    
+
     // For Elements, check if it's a completely different element type/structure
     if (oldChild is DCFElement && newChild is DCFElement) {
       // Different element types should replace
@@ -288,14 +291,14 @@ class DCFEngine {
         return true;
       }
     }
-    
+
     // Default: Try to update efficiently instead of replacing
     // This preserves component state and avoids unnecessary re-renders
     return false;
   }
 
   /// O(1) - Schedule a component update with priority handling
-  void _scheduleComponentUpdate(StatefulComponent component) {
+  void _scheduleComponentUpdate(DCFStatefulComponent component) {
     EngineDebugLogger.logUpdate(component, 'State change triggered update');
 
     // O(1) - Check for custom state change handler
@@ -322,7 +325,7 @@ class DCFEngine {
   }
 
   /// O(1) - Internal method for scheduling component updates with priority
-  void _scheduleComponentUpdateInternal(StatefulComponent component) {
+  void _scheduleComponentUpdateInternal(DCFStatefulComponent component) {
     EngineDebugLogger.log('SCHEDULE_UPDATE',
         'Scheduling priority-based update for component: ${component.instanceId}');
 
@@ -561,8 +564,8 @@ class DCFEngine {
     // Component lookup - only StatefulComponents can be updated
     final component = _statefulComponents[componentId];
     if (component == null) {
-      EngineDebugLogger.log(
-          'COMPONENT_UPDATE_NOT_FOUND', 'StatefulComponent not found: $componentId');
+      EngineDebugLogger.log('COMPONENT_UPDATE_NOT_FOUND',
+          'StatefulComponent not found: $componentId');
       return;
     }
 
@@ -574,8 +577,7 @@ class DCFEngine {
         EngineDebugLogger.log(
             'LIFECYCLE_INTERCEPTOR', 'Calling beforeUpdate interceptor');
         final context = VDomLifecycleContext(
-          scheduleUpdate: () =>
-              _scheduleComponentUpdateInternal(component),
+          scheduleUpdate: () => _scheduleComponentUpdateInternal(component),
           forceUpdate: (node) => _partialUpdateNode(node),
           vdomState: {'isUpdating': true},
         );
@@ -583,7 +585,7 @@ class DCFEngine {
       }
 
       // O(1) - Perform component-specific update preparation
-      if (component is StatefulComponent) {
+      if (component is DCFStatefulComponent) {
         EngineDebugLogger.log(
             'COMPONENT_PREPARE', 'Preparing StatefulComponent for render');
         component.prepareForRender();
@@ -595,7 +597,7 @@ class DCFEngine {
           extra: {'HasOldNode': oldRenderedNode != null});
 
       _previousRenderedNodes[componentId] = oldRenderedNode;
-    
+
       // O(component render complexity) - Force re-render by clearing cached rendered node
       component.renderedNode = null;
       final newRenderedNode = component.renderedNode;
@@ -674,14 +676,13 @@ class DCFEngine {
             'LIFECYCLE_EFFECTS_INSERTION', 'Running insertion effects');
         component.runInsertionEffects();
       }
-    
+
       // O(1) - Call lifecycle interceptor after update
       if (lifecycleInterceptor != null) {
         EngineDebugLogger.log(
             'LIFECYCLE_INTERCEPTOR', 'Calling afterUpdate interceptor');
         final context = VDomLifecycleContext(
-          scheduleUpdate: () =>
-              _scheduleComponentUpdateInternal(component),
+          scheduleUpdate: () => _scheduleComponentUpdateInternal(component),
           forceUpdate: (node) => _partialUpdateNode(node),
           vdomState: {'isUpdating': false},
         );
@@ -786,7 +787,7 @@ class DCFEngine {
       }
 
       // O(component render complexity + children render complexity) - Handle Component nodes with enhanced phased effects
-      if (node is StatefulComponent || node is StatelessComponent) {
+      if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
         EngineDebugLogger.log('RENDER_COMPONENT', 'Rendering component node',
             component: node.runtimeType.toString());
 
@@ -797,7 +798,7 @@ class DCFEngine {
           if (lifecycleInterceptor != null) {
             final context = VDomLifecycleContext(
               scheduleUpdate: () =>
-                  _scheduleComponentUpdateInternal(node as StatefulComponent),
+                  _scheduleComponentUpdateInternal(node as DCFStatefulComponent),
               forceUpdate: (node) => _partialUpdateNode(node),
               vdomState: {'isMounting': true},
             );
@@ -833,7 +834,7 @@ class DCFEngine {
               extra: {'ViewId': viewId});
 
           // O(hooks count) - Enhanced: Mount component with phased effects
-          if (node is StatefulComponent && !node.isMounted) {
+          if (node is DCFStatefulComponent && !node.isMounted) {
             EngineDebugLogger.log('LIFECYCLE_DID_MOUNT',
                 'Calling componentDidMount for StatefulComponent');
             node.componentDidMount();
@@ -847,7 +848,7 @@ class DCFEngine {
             _componentsWaitingForInsertion.add(node.instanceId);
 
             _scheduleLayoutEffects(node);
-          } else if (node is StatelessComponent && !node.isMounted) {
+          } else if (node is DCFStatelessComponent && !node.isMounted) {
             EngineDebugLogger.log('LIFECYCLE_DID_MOUNT',
                 'Calling componentDidMount for StatelessComponent');
             node.componentDidMount();
@@ -857,7 +858,7 @@ class DCFEngine {
           if (lifecycleInterceptor != null) {
             final context = VDomLifecycleContext(
               scheduleUpdate: () =>
-                  _scheduleComponentUpdateInternal(node as StatefulComponent),
+                  _scheduleComponentUpdateInternal(node as DCFStatefulComponent),
               forceUpdate: (node) => _partialUpdateNode(node),
               vdomState: {'isMounting': false},
             );
@@ -905,7 +906,7 @@ class DCFEngine {
   }
 
   /// O(1) - Schedule layout effects to run after children are mounted
-  void _scheduleLayoutEffects(StatefulComponent component) {
+  void _scheduleLayoutEffects(DCFStatefulComponent component) {
     Future.microtask(() {
       if (_componentsWaitingForLayout.contains(component.instanceId)) {
         EngineDebugLogger.log('LIFECYCLE_EFFECTS_LAYOUT',
@@ -981,8 +982,8 @@ class DCFEngine {
       'ElementType': element.type,
       'Props': element.elementProps.keys.toList()
     });
-    final success =
-        await _nativeBridge.createView(viewId, element.type, element.elementProps);
+    final success = await _nativeBridge.createView(
+        viewId, element.type, element.elementProps);
     if (!success) {
       EngineDebugLogger.log(
           'ELEMENT_CREATE_FAILED', 'Failed to create native view',
@@ -1089,7 +1090,7 @@ class DCFEngine {
       }
     }
     // O(component reconciliation complexity) - Handle component nodes
-    else if (oldNode is StatefulComponent && newNode is StatefulComponent) {
+    else if (oldNode is DCFStatefulComponent && newNode is DCFStatefulComponent) {
       if (oldNode == newNode) {
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
@@ -1123,9 +1124,10 @@ class DCFEngine {
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
     // Handle stateless components (React functional components - no internal tracking needed)
-    else if (oldNode is StatelessComponent && newNode is StatelessComponent) {
+    else if (oldNode is DCFStatelessComponent && newNode is DCFStatelessComponent) {
       EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
-          reason: 'StatelessComponent reconciliation - always check rendered content');
+          reason:
+              'StatelessComponent reconciliation - always check rendered content');
 
       // O(1) - Transfer important properties between nodes
       newNode.nativeViewId = oldNode.nativeViewId;
@@ -1245,7 +1247,7 @@ class DCFEngine {
           extra: {'OldEvents': oldEventTypes, 'NewEvents': newEventTypes});
 
       // O(tree render complexity) - Special case: component that renders a fragment
-      if (newNode is StatefulComponent || newNode is StatelessComponent) {
+      if (newNode is DCFStatefulComponent || newNode is DCFStatelessComponent) {
         final renderedNode = newNode.renderedNode;
         if (renderedNode is DCFFragment) {
           EngineDebugLogger.log('REPLACE_COMPONENT_TO_FRAGMENT',
@@ -1351,7 +1353,7 @@ class DCFEngine {
       }
 
       // O(hooks count) - Handle StatefulComponent disposal
-      if (oldNode is StatefulComponent) {
+      if (oldNode is DCFStatefulComponent) {
         EngineDebugLogger.log('DISPOSE_STATEFUL', 'Disposing StatefulComponent',
             extra: {'InstanceId': oldNode.instanceId});
 
@@ -1380,7 +1382,7 @@ class DCFEngine {
         await _disposeOldComponent(oldNode.renderedNode);
       }
       // Handle StatelessComponent disposal (React functional components)
-      else if (oldNode is StatelessComponent) {
+      else if (oldNode is DCFStatelessComponent) {
         EngineDebugLogger.log(
             'DISPOSE_STATELESS', 'Disposing StatelessComponent',
             extra: {'ComponentType': oldNode.runtimeType.toString()});
@@ -1490,6 +1492,37 @@ class DCFEngine {
     }
   }
 
+  /// Force a complete re-render of the entire component tree for hot reload support
+  /// This re-executes all render() methods while preserving navigation state
+  Future<void> forceFullTreeReRender() async {
+    if (rootComponent == null) {
+      EngineDebugLogger.log(
+          'HOT_RELOAD_ERROR', 'No root component to re-render');
+      return;
+    }
+
+    EngineDebugLogger.log(
+        'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
+
+    try {
+      // Simply mark all stateful components as needing update
+      // This is exactly what happens during normal state changes
+      for (final component in _statefulComponents.values) {
+        _scheduleComponentUpdate(component);
+      }
+
+      // Process all pending updates - this will naturally re-render everything
+      await _processPendingUpdates();
+
+      EngineDebugLogger.log(
+          'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
+    } catch (e) {
+      EngineDebugLogger.log(
+          'HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');
+      rethrow;
+    }
+  }
+
   /// O(tree depth) - Find a node's parent view ID
   String? _findParentViewId(DCFComponentNode node) {
     DCFComponentNode? current = node.parent;
@@ -1526,8 +1559,8 @@ class DCFEngine {
     } else if (node.parent is DCFFragment) {
       final parent = node.parent as DCFFragment;
       return parent.children.indexOf(node);
-    } else if (node.parent is StatefulComponent ||
-        node.parent is StatelessComponent) {
+    } else if (node.parent is DCFStatefulComponent ||
+        node.parent is DCFStatelessComponent) {
       // Component is the direct child of another component
       // In this case, it takes the place of its parent's rendered content
       return _findNodeIndexInParent(node.parent!);
@@ -1588,8 +1621,8 @@ class DCFEngine {
       }
 
       // O(props count) - Find changed props using proper diffing algorithm
-      final changedProps =
-          _diffProps(oldElement.type, oldElement.elementProps, newElement.elementProps);
+      final changedProps = _diffProps(
+          oldElement.type, oldElement.elementProps, newElement.elementProps);
 
       // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
@@ -1888,18 +1921,19 @@ class DCFEngine {
       // Smart conditional rendering: if same position but very different components,
       // replace instead of reconcile to prevent state bleeding
       if (_shouldReplaceAtSamePosition(oldChild, newChild)) {
-        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE', 
+        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE',
             'Replacing child at index $i due to conditional rendering pattern');
         await _replaceNode(oldChild, newChild);
       } else {
         await _reconcile(oldChild, newChild);
       }
 
-      final childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
+      final childViewId =
+          newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
       if (childViewId != null) {
         updatedChildIds.add(childViewId);
       }
-    }    // O((new - common) * render complexity) - Handle length differences
+    } // O((new - common) * render complexity) - Handle length differences
     if (newChildren.length > oldChildren.length) {
       hasStructuralChanges = true;
       EngineDebugLogger.log('RECONCILE_SIMPLE_ADD',
@@ -2064,6 +2098,7 @@ class DCFEngine {
     await _nativeBridge.setChildren(viewId, childIds);
   }
 
+  //? review (legacy -no more needed)
   /// O(view count) - Delete views (for portal cleanup)
   Future<void> deleteViews(List<String> viewIds) async {
     await isReady;
@@ -2602,4 +2637,3 @@ class DCFEngine {
     return suggestions;
   }
 }
-

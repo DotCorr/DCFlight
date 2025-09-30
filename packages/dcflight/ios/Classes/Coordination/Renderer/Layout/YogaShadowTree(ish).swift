@@ -155,6 +155,9 @@ class YogaShadowTree {
             
             nodeParents[childId] = parentId
             
+            // CRITICAL: Apply parent layout inheritance to child for cross-platform consistency
+            applyParentLayoutInheritance(childNode: childNode, parentNode: parentNode, childId: childId)
+            
             setupMeasureFunction(nodeId: childId, node: childNode)
         }
     }
@@ -925,6 +928,58 @@ class YogaShadowTree {
                     return false
                 }
                 return positionType == "static"
+            }
+            
+            /// Apply layout inheritance from parent to child node
+            /// This ensures cross-platform layout consistency between iOS and Android
+            private func applyParentLayoutInheritance(childNode: YGNodeRef, parentNode: YGNodeRef, childId: String) {
+                guard let nodeType = nodeTypes[childId] else { return }
+                
+                // Smart inheritance system - only apply to parent nodes that actually have children
+                // This matches Android behavior and avoids hardcoded node types
+                
+                let isParentWithChildren = YGNodeGetChildCount(childNode) > 0
+                
+                // Only apply layout inheritance to nodes that are actually parent containers with children
+                if isParentWithChildren {
+                    
+                    let childAlignItems = YGNodeStyleGetAlignItems(childNode)
+                    let childJustifyContent = YGNodeStyleGetJustifyContent(childNode)
+                    let childAlignContent = YGNodeStyleGetAlignContent(childNode)
+                    
+                    let parentAlignItems = YGNodeStyleGetAlignItems(parentNode)
+                    let parentJustifyContent = YGNodeStyleGetJustifyContent(parentNode)
+                    let parentAlignContent = YGNodeStyleGetAlignContent(parentNode)
+                    
+                    // Only inherit alignItems if child has default value and parent has non-default
+                    if childAlignItems == YGAlign.stretch && parentAlignItems != YGAlign.stretch {
+                        YGNodeStyleSetAlignItems(childNode, parentAlignItems)
+                        print("🔄 INHERIT: Parent \(childId) inherited alignItems=\(parentAlignItems) from parent")
+                    }
+                    
+                    // Only inherit justifyContent if child has default value and parent has non-default
+                    if childJustifyContent == YGJustify.flexStart && parentJustifyContent != YGJustify.flexStart {
+                        YGNodeStyleSetJustifyContent(childNode, parentJustifyContent)
+                        print("🔄 INHERIT: Parent \(childId) inherited justifyContent=\(parentJustifyContent) from parent")
+                    }
+                    
+                    // Only inherit alignContent if child has default value and parent has non-default
+                    if childAlignContent == YGAlign.flexStart && parentAlignContent != YGAlign.flexStart {
+                        YGNodeStyleSetAlignContent(childNode, parentAlignContent)
+                        print("🔄 INHERIT: Parent \(childId) inherited alignContent=\(parentAlignContent) from parent")
+                    }
+                    
+                    print("🔄 LAYOUT: Parent container \(childId) (\(nodeType)) with \(YGNodeGetChildCount(childNode)) children inherits layout props")
+                } else {
+                    print("🔄 LAYOUT: Leaf node \(childId) (\(nodeType)) positioned via parent flex layout (no inheritance)")
+                }
+                
+                // NEVER override alignSelf for any components - let flex layout work naturally
+                // This allows proper layout flow and prevents safe area positioning issues
+                
+                // NEVER override alignSelf for components - let flex layout work naturally
+                // This allows proper layout flow and prevents safe area positioning issues
+                print("🔄 LAYOUT: Child \(childId) (\(nodeType)) positioned via parent flex layout (no alignSelf override)")
             }
             
             deinit {

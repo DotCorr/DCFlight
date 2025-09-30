@@ -16,19 +16,24 @@ import '../configs/pop_over_config.dart';
 enum DCFPresentationStyle {
   /// Tab presentation - screen appears as a tab in tab bar
   tab,
+
   /// Push presentation - screen appears pushed onto navigation stack
   push,
+
   /// Modal presentation - screen appears as a modal overlay
   modal,
+
   /// Sheet presentation - screen appears as a bottom sheet
   sheet,
+
   /// Popover presentation - screen appears as a popover (iPad)
   popover,
+
   /// Overlay presentation - screen appears as a custom overlay
   overlay,
 }
 
-class DCFScreen extends StatelessComponent
+class DCFScreen extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -41,11 +46,11 @@ class DCFScreen extends StatelessComponent
   final DCFPushConfig? pushConfig;
   final DCFPopoverConfig? popoverConfig;
   final DCFOverlayConfig? overlayConfig;
-  
+
   final DCFComponentNode Function()? builder;
   final bool renderChildren;
   final List<DCFComponentNode>? children;
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
   final RouteNavigationCommand? routeNavigationCommand;
   final Map<String, dynamic>? events;
   final Function(Map<dynamic, dynamic>)? onAppear;
@@ -60,7 +65,6 @@ class DCFScreen extends StatelessComponent
   DCFScreen({
     super.key,
     required this.route,
-
     required this.presentationStyle,
     this.tabConfig,
     this.modalConfig,
@@ -70,7 +74,7 @@ class DCFScreen extends StatelessComponent
     this.builder,
     this.renderChildren = true,
     this.children,
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.routeNavigationCommand,
     this.events,
     this.onAppear,
@@ -95,7 +99,6 @@ class DCFScreen extends StatelessComponent
       eventMap['onNavigationEvent'] = onNavigationEvent!;
     }
 
-
     if (onReceiveParams != null) eventMap['onReceiveParams'] = onReceiveParams!;
     if (onHeaderActionPress != null) {
       eventMap['onHeaderActionPress'] = onHeaderActionPress!;
@@ -110,7 +113,7 @@ class DCFScreen extends StatelessComponent
       if (popoverConfig != null) ...popoverConfig!.toMap(),
       if (overlayConfig != null) ...overlayConfig!.toMap(),
       if (navigationBarConfig != null) ...navigationBarConfig!.toMap(),
-      ...LayoutProps(padding: 0, margin: 0, height: "100%", width: "100%")
+      ...DCFLayout(padding: 0, margin: 0, height: "100%", width: "100%")
           .toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
@@ -227,6 +230,3 @@ class DCFNavigationBarConfig extends Equatable {
         suffixActions,
       ];
 }
-
-
-

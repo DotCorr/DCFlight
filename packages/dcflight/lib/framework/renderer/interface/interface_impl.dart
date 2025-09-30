@@ -6,6 +6,7 @@
  */
 
 import 'dart:async';
+import 'dart:io';
 import 'package:dcflight/framework/renderer/interface/interface_util.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +23,12 @@ class PlatformInterfaceImpl implements PlatformInterface {
   bool _batchUpdateInProgress = false;
   final List<Map<String, dynamic>> _pendingBatchUpdates = [];
 
+  // Platform-specific batching behavior
+  // IMPORTANT: We disable platform-level batching on Android due to implementation issues
+  // with the native batch commit system. The VDOM-level batching in DCFEngine still works
+  // and provides the primary performance benefits. This is a temporary workaround until
+  // the Android batch implementation is fixed.
+
   // Map to store callbacks for each view and event type
   final Map<String, Map<String, Function>> _eventCallbacks = {};
   
@@ -36,12 +43,22 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
   // Set up method channel for event handling
   void _setupMethodChannelEventHandling() {
+    print('🔥 DCF_ENGINE: Setting up method channel event handling');
+    print('🔥 DCF_ENGINE: Event channel name: ${eventChannel.name}');
+    
+    // Test if the channel exists and is accessible
     eventChannel.setMethodCallHandler((call) async {
+      print('🔥 DCF_ENGINE: ✅ METHOD CHANNEL HANDLER CALLED!');
+      print('🔥 DCF_ENGINE: Method channel received call: ${call.method}');
+      print('🔥 DCF_ENGINE: Method channel args: ${call.arguments}');
       if (call.method == 'onEvent') {
         final Map<dynamic, dynamic> args = call.arguments;
+        print('🔥 DCF_ENGINE: onEvent args: $args');
         final String viewId = args['viewId'];
         final String eventType = args['eventType'];
         final Map<dynamic, dynamic> eventData = args['eventData'] ?? {};
+
+        print('🔥 DCF_ENGINE: Processing event - viewId: $viewId, eventType: $eventType, eventData: $eventData');
 
         // Convert dynamic map to String, dynamic map
         final typedEventData = eventData.map<String, dynamic>(
@@ -49,10 +66,13 @@ class PlatformInterfaceImpl implements PlatformInterface {
         );
 
         // Forward the event to the handler
+        print('🔥 DCF_ENGINE: Forwarding to handleNativeEvent');
         handleNativeEvent(viewId, eventType, typedEventData);
       }
       return null;
     });
+    
+    print('🔥 DCF_ENGINE: ✅ Method channel handler SET SUCCESSFULLY!');
   }
 
   @override
@@ -68,7 +88,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   Future<bool> createView(
       String viewId, String type, Map<String, dynamic> props) async {
-    // Track operation for batch updates if needed
+    // Platform-aware batch handling - re-enable for testing
     if (_batchUpdateInProgress) {
       _pendingBatchUpdates.add({
         'operation': 'createView',
@@ -98,8 +118,11 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   Future<bool> updateView(
       String viewId, Map<String, dynamic> propPatches) async {
-    // Track operation for batch updates if needed
+    print('🔥 FLUTTER_BRIDGE: updateView called - viewId: $viewId, props: $propPatches');
+    
+    // Platform-aware batching: Re-enable for testing with fixed Android implementation
     if (_batchUpdateInProgress) {
+      print('🔥 FLUTTER_BRIDGE: Adding updateView to batch - viewId: $viewId');
       _pendingBatchUpdates.add({
         'operation': 'updateView',
         'viewId': viewId,
@@ -111,22 +134,28 @@ class PlatformInterfaceImpl implements PlatformInterface {
     try {
       // Process props for updates
       final processedProps = preprocessProps(propPatches);
+      print('🔥 FLUTTER_BRIDGE: Processed props for $viewId: $processedProps');
 
       // Special case for text content updates to ensure they're always propagated
       if (propPatches.containsKey('content')) {
+        print('🔥 FLUTTER_BRIDGE: Content update detected for $viewId: ${propPatches['content']}');
       }
       
       // Make sure prop updates are properly queued even if many updates happen quickly
+      print('🔥 FLUTTER_BRIDGE: Calling method channel updateView for $viewId');
       final result = await bridgeChannel.invokeMethod<bool>('updateView', {
         'viewId': viewId,
         'props': processedProps,
       });
+      print('🔥 FLUTTER_BRIDGE: Method channel result for $viewId: $result');
 
       if (result != true && kDebugMode) {
+        print('🔥 FLUTTER_BRIDGE: WARNING - updateView returned false for $viewId');
       }
 
       return result ?? false;
     } catch (e) {
+      print('🔥 FLUTTER_BRIDGE: ERROR - updateView failed for $viewId: $e');
       return false;
     }
   }
@@ -230,9 +259,11 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   Future<bool> startBatchUpdate() async {
     if (_batchUpdateInProgress) {
+      print('🔥 FLUTTER_BRIDGE: startBatchUpdate called but batch already in progress');
       return false;
     }
 
+    print('🔥 FLUTTER_BRIDGE: startBatchUpdate called - starting new batch');
     _batchUpdateInProgress = true;
     _pendingBatchUpdates.clear();
     return true;
@@ -244,16 +275,23 @@ class PlatformInterfaceImpl implements PlatformInterface {
       return false;
     }
 
+    print('🔥 FLUTTER_BRIDGE: commitBatchUpdate called with ${_pendingBatchUpdates.length} updates');
+    
     try {
+      // Platform-specific parameter names: iOS expects 'updates', Android expects 'operations'
+      final paramKey = Platform.isIOS ? 'updates' : 'operations';
       final success =
           await bridgeChannel.invokeMethod<bool>('commitBatchUpdate', {
-        'updates': _pendingBatchUpdates,
+        paramKey: _pendingBatchUpdates,
       });
 
+      print('🔥 FLUTTER_BRIDGE: commitBatchUpdate native call result: $success');
+      
       _batchUpdateInProgress = false;
       _pendingBatchUpdates.clear();
       return success ?? false;
     } catch (e) {
+      print('🔥 FLUTTER_BRIDGE: commitBatchUpdate error: $e');
       _batchUpdateInProgress = false;
       _pendingBatchUpdates.clear();
       return false;
@@ -281,9 +319,12 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
+    print('🔥 DCF_ENGINE: handleNativeEvent received - viewId: $viewId, eventType: $eventType, data: $eventData');
+    
     // First try to find a specific callback for this view and event
     final callback = _eventCallbacks[viewId]?[eventType];
     if (callback != null) {
+      print('🔥 DCF_ENGINE: Found specific callback for $viewId.$eventType');
       try {
         // Handle parameter count mismatch by checking function parameters
         final Function func = callback;
@@ -296,17 +337,20 @@ class PlatformInterfaceImpl implements PlatformInterface {
         }
         return;
       } catch (e) {
-        print(e);
+        print('🔥 DCF_ENGINE: Error in specific callback: $e');
       }
     }
     
     // If no specific callback found, use the global event handler as fallback
     if (_eventHandler != null) {
+      print('🔥 DCF_ENGINE: Forwarding to global event handler');
       try {
         _eventHandler!(viewId, eventType, eventData);
       } catch (e) {
-        print(e);
+        print('🔥 DCF_ENGINE: Error in global event handler: $e');
       }
+    } else {
+      print('🔥 DCF_ENGINE: No global event handler set!');
     }
   }
    @override

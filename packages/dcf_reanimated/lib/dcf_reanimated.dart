@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-library dcf_reanimated;
+library;
 
 // Type-safe enums for animation configuration
 export 'src/enums/animation_enums.dart';

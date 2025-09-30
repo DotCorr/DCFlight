@@ -11,7 +11,7 @@ import 'package:dcflight/dcflight.dart';
 ///
 /// A toggle/switch component that provides native platform behavior.
 /// Supports custom styling, sizes, and colors with adaptive theming.
-class DCFToggle extends StatelessComponent
+class DCFToggle extends DCFStatelessComponent
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
@@ -44,10 +44,10 @@ class DCFToggle extends StatelessComponent
   final String size;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -63,8 +63,8 @@ class DCFToggle extends StatelessComponent
     this.activeThumbColor,
     this.inactiveThumbColor,
     this.size = 'medium',
-    this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(backgroundColor: Colors.transparent),
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(backgroundColor: Colors.transparent),
     this.events,
   });
 
@@ -114,7 +114,7 @@ class DCFToggle extends StatelessComponent
       children: [],
     );
   }
-  
+
   @override
   List<Object?> get props => [
         value,
@@ -137,4 +137,3 @@ class DCFToggleSize {
   static const String medium = 'medium';
   static const String large = 'large';
 }
-

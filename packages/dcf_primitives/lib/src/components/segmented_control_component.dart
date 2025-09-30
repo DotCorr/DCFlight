@@ -96,7 +96,7 @@ class DCFSegmentedControlProps extends Equatable {
 }
 
 /// A segmented control component implementation using StatelessComponent
-class DCFSegmentedControl extends StatelessComponent
+class DCFSegmentedControl extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -106,10 +106,10 @@ class DCFSegmentedControl extends StatelessComponent
   final DCFSegmentedControlProps segmentedControlProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -120,11 +120,11 @@ class DCFSegmentedControl extends StatelessComponent
   /// Create a segmented control component
   DCFSegmentedControl({
     required this.segmentedControlProps,
-    this.layout = const LayoutProps(
+    this.layout = const DCFLayout(
       height: 32,
       width: 200,
     ),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onSelectionChange,
     this.events,
     super.key,

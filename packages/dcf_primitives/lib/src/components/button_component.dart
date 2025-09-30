@@ -42,15 +42,15 @@ class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
 }
 
 /// A button component implementation using StatelessComponent
-class DCFButton extends StatelessComponent with EquatableMixin {
+class DCFButton extends DCFStatelessComponent with EquatableMixin {
   /// The button properties
   final DCFButtonProps buttonProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -64,8 +64,8 @@ class DCFButton extends StatelessComponent with EquatableMixin {
   /// Create a button component
   DCFButton({
     required this.buttonProps,
-    this.layout = const LayoutProps(height: 50, width: 200),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout( width: 200,alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center),
+    this.styleSheet = const DCFStyleSheet(),
     this.onPress,
     this.onLongPress,
     this.events,

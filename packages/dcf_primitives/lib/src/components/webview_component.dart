@@ -125,7 +125,7 @@ class DCFWebViewProps extends Equatable {
 }
 
 /// WebView component for loading dynamic content
-class DCFWebView extends StatelessComponent
+class DCFWebView extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -135,10 +135,10 @@ class DCFWebView extends StatelessComponent
   final DCFWebViewProps webViewProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -164,11 +164,11 @@ class DCFWebView extends StatelessComponent
   /// Create a webview component
   DCFWebView({
     required this.webViewProps,
-    this.layout = const LayoutProps(
+    this.layout = const DCFLayout(
       height: 400,
       width: 300,
     ),
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.onLoadStart,
     this.onLoadEnd,
     this.onLoadError,

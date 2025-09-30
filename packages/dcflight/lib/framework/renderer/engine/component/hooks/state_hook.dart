@@ -32,12 +32,18 @@ class StateHook<T> extends Hook {
 
   /// Set the value and trigger update
   void setState(T newValue) {
+    print("🔥 STATE_HOOK: setState called - old: $_value, new: $newValue");
     // Only update and trigger render if value actually changed
     if (_value != newValue) {
+      print("🔥 STATE_HOOK: Value changed, updating and scheduling render");
       _value = newValue;
       
       // Schedule a component update
+      print("🔥 STATE_HOOK: Calling _scheduleUpdate");
       _scheduleUpdate();
+      print("🔥 STATE_HOOK: _scheduleUpdate completed");
+    } else {
+      print("🔥 STATE_HOOK: Value unchanged, skipping update");
     }
   }
   

@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-library dcf_reanimated.values;
+library;
 
 import 'dart:math' as math;
 import 'package:equatable/equatable.dart';

@@ -55,7 +55,7 @@ class DCFSVGProps extends Equatable {
 }
 
 /// An SVG component implementation using StatelessComponent
-class DCFSVG extends StatelessComponent
+class DCFSVG extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -65,10 +65,10 @@ class DCFSVG extends StatelessComponent
   final DCFSVGProps svgProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -76,8 +76,8 @@ class DCFSVG extends StatelessComponent
   /// Create an SVG component
   DCFSVG({
     required this.svgProps,
-    this.layout = const LayoutProps(height: 20, width: 20),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(height: 20, width: 20),
+    this.styleSheet = const DCFStyleSheet(),
     this.events,
     super.key,
   });
