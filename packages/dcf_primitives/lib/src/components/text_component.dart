@@ -44,6 +44,28 @@ enum DCFFontWeight {
   }
 }
 
+/// Text alignment options for text components  
+enum DCFTextAlign {
+  left,
+  center,
+  right,
+  justify;
+
+  /// Convert to string value for native side
+  String get value {
+    switch (this) {
+      case DCFTextAlign.left:
+        return 'left';
+      case DCFTextAlign.center:
+        return 'center';
+      case DCFTextAlign.right:
+        return 'right';
+      case DCFTextAlign.justify:
+        return 'justify';
+    }
+  }
+}
+
 /// Text style properties
 class DCFTextProps extends Equatable {
   /// Font size
@@ -62,7 +84,7 @@ class DCFTextProps extends Equatable {
   final Color? color;
 
   /// Text alignment
-  final String? textAlign;
+  final DCFTextAlign? textAlign;
 
   /// Number of lines (0 for unlimited)
   final int? numberOfLines;
@@ -77,7 +99,7 @@ class DCFTextProps extends Equatable {
     this.fontFamily,
     this.isFontAsset = false,
     this.color,
-    this.textAlign,
+    this.textAlign =  DCFTextAlign.center,
     this.numberOfLines,
     this.adaptive = true,
   });
@@ -91,7 +113,7 @@ class DCFTextProps extends Equatable {
       if (isFontAsset) 'isFontAsset': isFontAsset,
       if (color != null)
         'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
-      if (textAlign != null) 'textAlign': textAlign,
+      if (textAlign != null) 'textAlign': textAlign!.value,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
       'adaptive': adaptive,
     };
@@ -111,7 +133,7 @@ class DCFTextProps extends Equatable {
 }
 
 /// A text component implementation using StatelessComponent
-class DCFText extends StatelessComponent
+class DCFText extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -124,10 +146,10 @@ class DCFText extends StatelessComponent
   final DCFTextProps textProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -136,8 +158,8 @@ class DCFText extends StatelessComponent
   DCFText({
     required this.content,
     this.textProps = const DCFTextProps(),
-    this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(),
     this.events,
     super.key,
   });
@@ -169,3 +191,4 @@ class DCFText extends StatelessComponent
         key,
       ];
 }
+

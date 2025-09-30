@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="dcf_view_id" type="id"/>
+    <item name="dcf_component_type" type="id"/>
+    <item name="dcf_layout_data" type="id"/>
+    <item name="dcf_shadow_color" type="id"/>
+    <item name="dcf_shadow_offset_x" type="id"/>
+    <item name="dcf_shadow_offset_y" type="id"/>
+    <item name="dcf_hit_slop_top" type="id"/>
+    <item name="dcf_hit_slop_bottom" type="id"/>
+    <item name="dcf_hit_slop_left" type="id"/>
+    <item name="dcf_hit_slop_right" type="id"/>
+    <item name="dcf_test_id" type="id"/>
+    <item name="dcf_gradient_drawable" type="id"/>
+    <item name="dcf_event_callback" type="id"/>
+    <item name="dcf_event_types" type="id"/>
+</resources>

@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'dart:async';
 
 import 'package:dcflight/framework/renderer/interface/interface.dart' show PlatformInterface;
@@ -20,10 +19,10 @@ class DCFEngineAPI {
   static DCFEngineAPI get instance => _instance;
   
   /// Internal VDOM implementation
-  late final DCFEngine _vdom;
+  DCFEngine? _vdom;
   
   /// Ready completer
-  final Completer<void> _readyCompleter = Completer<void>();
+  Completer<void> _readyCompleter = Completer<void>();
   
   /// Private constructor
   DCFEngineAPI._() {
@@ -33,12 +32,51 @@ class DCFEngineAPI {
   /// Initialize the VDOM API with a platform interface
   Future<void> init(PlatformInterface platformInterface) async {
     try {
+      // If already initialized (hot restart), reset first
+      if (_vdom != null) {
+        await _resetForHotRestart();
+      }
+      
       _vdom = DCFEngine(platformInterface);
-      await _vdom.isReady;
+      await _vdom!.isReady;
+      
+      // Create new completer if previous one was completed
+      if (_readyCompleter.isCompleted) {
+        _readyCompleter = Completer<void>();
+      }
       _readyCompleter.complete();
     } catch (e) {
-      _readyCompleter.completeError(e);
+      if (!_readyCompleter.isCompleted) {
+        _readyCompleter.completeError(e);
+      }
       rethrow;
+    }
+  }
+  
+  /// Reset the engine state for hot restart
+  Future<void> _resetForHotRestart() async {
+    if (_vdom != null) {
+      try {
+        // Try to cleanup native views before disposing engine
+        await _vdom!.forceFullTreeReRender();
+        
+        // Dispose of old engine and its resources
+        _vdom = null;
+        
+        // Reset completer for new initialization
+        if (!_readyCompleter.isCompleted) {
+          _readyCompleter.complete();
+        }
+        
+        print("🔄 DCFEngineAPI: Hot restart cleanup completed");
+      } catch (e) {
+        print("⚠️  DCFEngineAPI: Hot restart cleanup error: $e");
+        // Continue with reset even if cleanup fails
+        _vdom = null;
+        if (!_readyCompleter.isCompleted) {
+          _readyCompleter.complete();
+        }
+      }
     }
   }
   
@@ -48,46 +86,47 @@ class DCFEngineAPI {
   /// Create a root component
   Future<void> createRoot(DCFComponentNode component) async {
     await isReady;
-    return _vdom.createRoot(component);
+    return _vdom!.createRoot(component);
   }
   
-  /// Render a node to native UI
-  Future<String?> renderToNative(DCFComponentNode node,
-      {String? parentViewId, int? index}) async {
+  /// Render a component to the native side
+  Future<String?> renderToNative(DCFComponentNode node, {String? parentViewId, int? index}) async {
     await isReady;
-    return _vdom.renderToNative(node, parentViewId: parentViewId, index: index);
+    return _vdom!.renderToNative(node, parentViewId: parentViewId, index: index);
   }
   
-  /// Create a portal container with the specified ID and properties
-  Future<String> createPortal(String portalId, {
-    String? parentViewId,
-    Map<String, dynamic>? props,
-    int? index,
-  }) async {
+  /// Create a portal with a target view ID
+  Future<String> createPortal(String portalId,
+      {required String parentViewId,
+      Map<String, dynamic>? props,
+      int? index}) async {
     await isReady;
-    return _vdom.createPortal(portalId, 
-      parentViewId: parentViewId ?? 'root',
-      props: props ?? {},
-      index: index ?? 0);
+    return _vdom!.createPortal(portalId,
+        parentViewId: parentViewId, props: props, index: index);
   }
   
-  /// Get the current child view IDs of a target container
-  /// This allows portal content to be appended rather than replaced
-  List<String> getCurrentChildren(String targetViewId) {
-    return _vdom.getCurrentChildren(targetViewId);
-  }
-
-  /// Update a target container's children (for portal content)
-  /// This ensures the native bridge call goes through the VDOM system
-  Future<void> updateTargetChildren(String targetViewId, List<String> childViewIds) async {
+  /// Get current children of a view
+  Future<List<String>> getCurrentChildren(String targetViewId) async {
     await isReady;
-    // Use the VDOM's public method to maintain proper integration
-    await _vdom.updateViewChildren(targetViewId, childViewIds);
+    return _vdom!.getCurrentChildren(targetViewId);
+  }
+  
+  /// Update view children array directly
+  Future<void> updateViewChildren(String targetViewId, List<String> childViewIds) async {
+    await isReady;
+    await _vdom!.updateViewChildren(targetViewId, childViewIds);
   }
   
   /// Delete orphaned views (for portal cleanup)
   Future<void> deleteViews(List<String> viewIds) async {
     await isReady;
-    await _vdom.deleteViews(viewIds);
+    await _vdom!.deleteViews(viewIds);
+  }
+  
+  /// Force a full tree re-render for debugging purposes
+  Future<void> forceFullTreeReRender() async {
+    await isReady;
+    await _vdom!.forceFullTreeReRender();
   }
 }
+

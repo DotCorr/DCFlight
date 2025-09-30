@@ -14,7 +14,7 @@ import 'package:equatable/equatable.dart';
 import 'hooks/state_hook.dart';
 
 // ignore: must_be_immutable
-abstract class StatefulComponent extends DCFComponentNode with EquatableMixin {
+abstract class DCFStatefulComponent extends DCFComponentNode with EquatableMixin {
   // Keep instanceId for internal tracking only (not for reconciliation)
   final String instanceId;
   DCFComponentNode? _renderedNode;
@@ -24,7 +24,7 @@ abstract class StatefulComponent extends DCFComponentNode with EquatableMixin {
   final List<Hook> _hooks = [];
   Function() scheduleUpdate = () {};
 
-  StatefulComponent({super.key})
+  DCFStatefulComponent({super.key})
       : instanceId = '${DateTime.now().millisecondsSinceEpoch}_${Object().hashCode}' {
     scheduleUpdate = _defaultScheduleUpdate;
   }
@@ -294,11 +294,11 @@ abstract class StatefulComponent extends DCFComponentNode with EquatableMixin {
 }
 
 // ignore: must_be_immutable
-abstract class StatelessComponent extends DCFComponentNode with EquatableMixin {
+abstract class DCFStatelessComponent extends DCFComponentNode with EquatableMixin {
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
 
-  StatelessComponent({super.key});
+  DCFStatelessComponent({super.key});
 
   @override
   List<Object?> get props;

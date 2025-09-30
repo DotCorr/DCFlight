@@ -267,7 +267,7 @@ enum DCFAlertStyle {
 /// 
 /// An alert/dialog component that provides native platform behavior.
 /// Supports different alert types, actions, text fields, and custom styling.
-class DCFAlert extends StatelessComponent {
+class DCFAlert extends DCFStatelessComponent {
   /// Whether the alert is visible
   final bool visible;
   

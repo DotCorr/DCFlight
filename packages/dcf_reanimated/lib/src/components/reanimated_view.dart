@@ -5,25 +5,25 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-library dcf_reanimated.components;
+library;
 
 import 'package:dcflight/dcflight.dart';
 import '../styles/animated_style.dart';
 import '../helper/init.dart';
 
 /// The main animated view component that runs animations purely on the UI thread.
-/// 
+///
 /// [ReanimatedView] is a drop-in replacement for [DCFView] that adds animation
 /// capabilities without sacrificing performance. All animations are configured
 /// via props and run natively without bridge calls.
-/// 
+///
 /// Key features:
 /// - Pure UI thread execution (60fps)
 /// - Zero bridge calls during animation
 /// - Automatic initialization
 /// - Event callbacks for animation lifecycle
 /// - Unique animation IDs for debugging
-/// 
+///
 /// Example:
 /// ```dart
 /// ReanimatedView(
@@ -34,46 +34,46 @@ import '../helper/init.dart';
 ///   ],
 /// )
 /// ```
-class ReanimatedView extends StatelessComponent with EquatableMixin {
+class ReanimatedView extends DCFStatelessComponent with EquatableMixin {
   /// Child components to render inside the animated view
   final List<DCFComponentNode> children;
-  
+
   /// Animation configuration that runs on UI thread
   final AnimatedStyle? animatedStyle;
-  
+
   /// Layout properties for positioning and sizing
-  final LayoutProps layout;
-  
+  final DCFLayout layout;
+
   /// Static styling properties (non-animated)
-  final StyleSheet styleSheet;
-  
+  final DCFStyleSheet styleSheet;
+
   /// Whether to start animation automatically when component mounts
   final bool autoStart;
-  
+
   /// Delay before starting animation in milliseconds
   final int startDelay;
-  
+
   /// Called when animation begins
   final void Function()? onAnimationStart;
-  
+
   /// Called when animation completes
   final void Function()? onAnimationComplete;
-  
+
   /// Called when animation repeats (for repeating animations)
   final void Function()? onAnimationRepeat;
-  
+
   /// Additional event handlers
   final Map<String, dynamic>? events;
 
   /// Creates a new animated view component.
-  /// 
+  ///
   /// The [children] parameter is required, all others have sensible defaults.
   /// Animation initialization is handled automatically.
   ReanimatedView({
     required this.children,
     this.animatedStyle,
-    this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(),
     this.autoStart = true,
     this.startDelay = 0,
     this.onAnimationStart,
@@ -108,11 +108,11 @@ class ReanimatedView extends StatelessComponent with EquatableMixin {
       'autoStart': autoStart,
       'startDelay': startDelay,
       'isPureReanimated': true, // Flag for native to use pure animation mode
-      
+
       // Layout and styling
       ...layout.toMap(),
       ...styleSheet.toMap(),
-      
+
       // Event handlers
       ...eventHandlers,
     };

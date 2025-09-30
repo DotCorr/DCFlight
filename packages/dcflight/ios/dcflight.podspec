@@ -14,7 +14,7 @@ A crossplatform framework.
   
   # Dependencies
   s.dependency 'Flutter'
-  s.dependency 'Yoga' 
+  s.dependency 'Yoga', '~> 3.0.0' 
   
   # Add plugin registration
   s.public_header_files = 'Classes/**/*.h'

@@ -1,10 +1,10 @@
 // 🎯 DCFLazySuspense - Suspense with built-in navigation awareness
 import 'package:dcflight/dcflight.dart';
 
-/// 
+///
 /// This variant automatically determines when to render based on
 /// the current active screen state.
-class DCFLazySuspense extends StatefulComponent with EquatableMixin {
+class DCFLazySuspense extends DCFStatefulComponent with EquatableMixin {
   /// The route/screen name this suspense is for
   final String routeName;
 
@@ -21,15 +21,15 @@ class DCFLazySuspense extends StatefulComponent with EquatableMixin {
   final bool Function()? additionalCondition;
 
   /// Layout properties for the container
-  final LayoutProps? layout;
+  final DCFLayout? layout;
 
   /// Style sheet for the container
-  final StyleSheet? styleSheet;
+  final DCFStyleSheet? styleSheet;
 
   /// Whether to show debug logs
   final bool enableDebugLogs;
 
-   DCFLazySuspense({
+  DCFLazySuspense({
     super.key,
     required this.routeName,
     required this.activeScreenStore,
@@ -45,40 +45,42 @@ class DCFLazySuspense extends StatefulComponent with EquatableMixin {
   DCFComponentNode render() {
     // Watch the active screen store
     final activeScreen = useStore(activeScreenStore);
-    
+
     // Determine if we should render
     bool shouldRender = activeScreen.state == routeName;
-    
+
     // Apply additional condition if provided
     if (additionalCondition != null) {
       shouldRender = shouldRender && additionalCondition!();
     }
-    
+
     if (shouldRender) {
       if (enableDebugLogs) {
-        print("🏗️ DCFLazySuspense[$routeName]: Rendering children (route active)");
+        print(
+            "🏗️ DCFLazySuspense[$routeName]: Rendering children (route active)");
       }
-      
+
       return DCFView(
-        layout: layout ?? LayoutProps(),
-        styleSheet: styleSheet ?? StyleSheet(),
+        layout: layout ?? DCFLayout(),
+        styleSheet: styleSheet ?? DCFStyleSheet(),
         children: [children()],
       );
     } else {
       if (enableDebugLogs) {
-        print("⏸️ DCFLazySuspense[$routeName]: Rendering fallback (route inactive)");
+        print(
+            "⏸️ DCFLazySuspense[$routeName]: Rendering fallback (route inactive)");
       }
-      
+
       if (fallback != null) {
         return DCFView(
-          layout: layout ?? LayoutProps(),
-          styleSheet: styleSheet ?? StyleSheet(),
+          layout: layout ?? DCFLayout(),
+          styleSheet: styleSheet ?? DCFStyleSheet(),
           children: [fallback!()],
         );
       } else {
         return DCFView(
-          layout: layout ?? LayoutProps(),
-          styleSheet: styleSheet ?? StyleSheet(),
+          layout: layout ?? DCFLayout(),
+          styleSheet: styleSheet ?? DCFStyleSheet(),
           children: [],
         );
       }
@@ -107,8 +109,8 @@ extension StoreToSuspense<T> on Store<T> {
     DCFComponentNode Function() children, {
     DCFComponentNode Function()? fallback,
     String? debugName,
-    LayoutProps? layout,
-    StyleSheet? styleSheet,
+    DCFLayout? layout,
+    DCFStyleSheet? styleSheet,
     bool enableDebugLogs = true,
   }) {
     return DCFSuspense(
@@ -128,8 +130,8 @@ extension StoreToSuspense<T> on Store<T> {
     DCFComponentNode Function() children, {
     DCFComponentNode Function()? fallback,
     String? debugName,
-    LayoutProps? layout,
-    StyleSheet? styleSheet,
+    DCFLayout? layout,
+    DCFStyleSheet? styleSheet,
     bool enableDebugLogs = true,
   }) {
     return suspenseWhen(

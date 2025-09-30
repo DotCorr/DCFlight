@@ -79,7 +79,7 @@ class DCFTabBarStyle extends Equatable {
 }
 
 /// Tab navigator that coordinates multiple screens in a tab interface
-class DCFTabNavigator extends StatelessComponent
+class DCFTabNavigator extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -104,7 +104,7 @@ class DCFTabNavigator extends StatelessComponent
   final double? animationDuration;
 
   /// Style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -123,7 +123,7 @@ class DCFTabNavigator extends StatelessComponent
     this.isHidden = false,
     this.lazyLoad = true,
     this.animationDuration,
-    this.styleSheet = const StyleSheet(),
+    this.styleSheet = const DCFStyleSheet(),
     this.events,
     this.onTabChange,
     this.onTabPress,
@@ -154,7 +154,7 @@ class DCFTabNavigator extends StatelessComponent
 
       if (animationDuration != null) 'animationDuration': animationDuration,
 
-      ...LayoutProps(padding: 0, margin: 0, flex: 1).toMap(),
+      ...DCFLayout(padding: 0, margin: 0, flex: 1).toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
     };

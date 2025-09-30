@@ -8,7 +8,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// A touchable opacity component implementation using StatelessComponent
-class DCFTouchableOpacity extends StatelessComponent
+class DCFTouchableOpacity extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -21,10 +21,10 @@ class DCFTouchableOpacity extends StatelessComponent
   final double activeOpacity;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Press event handler - receives Map<dynamic, dynamic> with press data
   final Function(Map<dynamic, dynamic>)? onPress;
@@ -54,8 +54,8 @@ class DCFTouchableOpacity extends StatelessComponent
   DCFTouchableOpacity({
     required this.children,
     this.activeOpacity = 0.2,
-    this.layout = const LayoutProps(padding: 8, height: 50, width: 200),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(padding: 8, height: 50, width: 200),
+    this.styleSheet = const DCFStyleSheet(),
     this.onPress,
     this.onPressIn,
     this.onPressOut,

@@ -11,7 +11,7 @@ import 'package:dcflight/dcflight.dart';
 ///
 /// A slider component that provides native platform behavior.
 /// Supports custom styling, range, and step values with adaptive theming.
-class DCFSlider extends StatelessComponent
+class DCFSlider extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -54,10 +54,10 @@ class DCFSlider extends StatelessComponent
   final Color? thumbTintColor;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -76,8 +76,8 @@ class DCFSlider extends StatelessComponent
     this.minimumTrackTintColor,
     this.maximumTrackTintColor,
     this.thumbTintColor,
-    this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(),
     this.events,
   });
 

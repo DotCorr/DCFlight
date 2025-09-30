@@ -57,7 +57,7 @@ class DCFIconProps extends Equatable {
 }
 
 /// An icon component implementation using StatelessComponent
-class DCFIcon extends StatelessComponent
+class DCFIcon extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
@@ -67,10 +67,10 @@ class DCFIcon extends StatelessComponent
   final DCFIconProps iconProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The styleSheet properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Event handlers
   final Map<String, dynamic>? events;
@@ -84,8 +84,8 @@ class DCFIcon extends StatelessComponent
   /// Create an icon component
   DCFIcon({
     required this.iconProps,
-    this.layout = const LayoutProps(height: 20, width: 20),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(height: 20, width: 20),
+    this.styleSheet = const DCFStyleSheet(),
     this.onLoad,
     this.onError,
     this.events,

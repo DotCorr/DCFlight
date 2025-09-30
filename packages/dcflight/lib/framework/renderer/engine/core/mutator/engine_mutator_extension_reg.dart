@@ -62,7 +62,7 @@ class VDomExtensionRegistry {
   }
 
   /// Register custom state change handler for a component type
-  void registerStateChangeHandler<T extends StatefulComponent>(
+  void registerStateChangeHandler<T extends DCFStatefulComponent>(
     VDomStateChangeHandler handler
   ) {
     _stateChangeHandlers[T] = handler;
@@ -136,11 +136,11 @@ abstract class VDomLifecycleInterceptor {
 /// Custom state change handler - allows bypassing normal state updates
 abstract class VDomStateChangeHandler {
   /// Whether this handler should process the state change
-  bool shouldHandle(StatefulComponent component, dynamic newState);
+  bool shouldHandle(DCFStatefulComponent component, dynamic newState);
 
   /// Custom state change logic
   void handleStateChange(
-    StatefulComponent component, 
+    DCFStatefulComponent component, 
     dynamic oldState, 
     dynamic newState,
     VDomStateChangeContext context,
@@ -150,7 +150,7 @@ abstract class VDomStateChangeHandler {
 /// Custom hook factory - allows creating hooks that integrate with VDOM
 abstract class VDomHookFactory {
   /// Create the hook instance
-  Hook createHook(StatefulComponent component, List<dynamic> args);
+  Hook createHook(DCFStatefulComponent component, List<dynamic> args);
 }
 
 /// Context objects that provide VDOM access to extensions

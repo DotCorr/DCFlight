@@ -13,7 +13,7 @@ import 'package:dcflight/framework/renderer/engine/component/component_node.dart
 import 'component.dart';
 
 /// Component that catches errors in its subtree
-abstract class ErrorBoundary extends StatefulComponent {
+abstract class ErrorBoundary extends DCFStatefulComponent {
   ErrorBoundary({super.key});
 
   /// Current error state

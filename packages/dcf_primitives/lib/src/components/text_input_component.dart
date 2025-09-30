@@ -5,18 +5,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:equatable/equatable.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// DCFTextInput - Cross-platform text input component
 /// Provides native text input functionality with comprehensive type safety
-class DCFTextInput extends StatelessComponent
+class DCFTextInput extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.immediate;
-  final LayoutProps? layout;
-  final StyleSheet? styleSheet;
+  final DCFLayout? layout;
+  final DCFStyleSheet? styleSheet;
   final String? value;
   final String? defaultValue;
   final String? placeholder;
@@ -59,7 +58,7 @@ class DCFTextInput extends StatelessComponent
   DCFTextInput({
     super.key,
     this.styleSheet,
-    this.layout = const LayoutProps(height: 50, width: 200),
+    this.layout = const DCFLayout(height: 50, width: 200),
     this.value,
     this.defaultValue,
     this.placeholder,

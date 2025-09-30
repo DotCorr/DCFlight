@@ -29,11 +29,23 @@ enum DCFLogLevel {
 /// Centralized logging system for DCFlight
 class DCFLogger {
   static DCFLogLevel _currentLevel = DCFLogLevel.warning;
+  static String? _instanceId;
+  static String? _projectId;
   
   /// Set the global log level
   static void setLevel(DCFLogLevel level) {
     _currentLevel = level;
     _log(DCFLogLevel.info, 'DCFLogger', 'Log level set to: ${level.name}');
+  }
+  
+  /// Set instance ID for log isolation
+  static void setInstanceId(String id) {
+    _instanceId = id;
+  }
+  
+  /// Set project ID for log isolation
+  static void setProjectId(String id) {
+    _projectId = id;
   }
   
   /// Get the current log level
@@ -91,8 +103,14 @@ class DCFLogger {
     final levelIcon = _getLevelIcon(level);
     final levelName = level.name.toUpperCase().padRight(7);
     
+    // Build identifier string
+    final identifiers = <String>[];
+    if (_projectId != null) identifiers.add('P:$_projectId');
+    if (_instanceId != null) identifiers.add('I:$_instanceId');
+    final idString = identifiers.isNotEmpty ? '[${identifiers.join('|')}]' : '';
+    
     // Format: [TIMESTAMP] LEVEL_ICON LEVEL TAG: MESSAGE
-    print('[$timestamp] $levelIcon $levelName $tag: $message');
+    print('[$timestamp]$idString $levelIcon $levelName $tag: $message');
   }
   
   /// Get emoji icon for log level
@@ -204,3 +222,4 @@ class DCFLoggerTags {
     }
   }
 }
+

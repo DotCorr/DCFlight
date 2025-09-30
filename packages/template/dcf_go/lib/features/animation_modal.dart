@@ -2,7 +2,7 @@ import "package:dcf_reanimated/dcf_reanimated.dart";
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
 
-class AnimatedModalScreen extends StatefulComponent {
+class AnimatedModalScreen extends DCFStatefulComponent {
   @override
   List<Object?> get props => [];
 
@@ -10,7 +10,7 @@ class AnimatedModalScreen extends StatefulComponent {
   DCFComponentNode render() {
     // Animation value state that drives all animations
     final animationValue = useState<double>(1.0); // Start at full scale (100%)
-    
+
     // Which demo to show: 0 = Transform, 1 = Opacity, 2 = Drawer
     final selectedDemoState = useState<int>(0);
 
@@ -18,41 +18,36 @@ class AnimatedModalScreen extends StatefulComponent {
     final transformStyle = useAnimatedStyle(() {
       // Animate from 0px to ~350px width (full container width minus padding)
       final width = animationValue.state * 350; // 0px → 350px
-      return AnimatedStyle()
-        .widthValue(width); // Simplified API!
+      return AnimatedStyle().widthValue(width); // Simplified API!
     }, dependencies: [animationValue.state]);
 
     final opacityStyle = useAnimatedStyle(() {
       // Direct opacity mapping (0.0 → 1.0)
-      return AnimatedStyle()
-        .opacityValue(animationValue.state); // Simplified API!
+      return AnimatedStyle().opacityValue(
+        animationValue.state,
+      ); // Simplified API!
     }, dependencies: [animationValue.state]);
 
     final drawerStyle = useAnimatedStyle(() {
       // Animate drawer from 0px to ~350px width
       final width = animationValue.state * 350; // 0px → 350px
-      return AnimatedStyle()
-        .widthValue(width); // Simplified API!
+      return AnimatedStyle().widthValue(width); // Simplified API!
     }, dependencies: [animationValue.state]);
 
     return DCFScrollView(
-      layout: LayoutProps(
-        // padding: 20,
-        flex: 1,
-        // paddingTop: 120,
-        gap: 16,
-        paddingBottom:120
-      ),
-      styleSheet: StyleSheet(backgroundColor: Colors.red.shade100),
+      layout: DCFLayout(flex: 1, paddingTop: 60, gap: 16, paddingBottom: 120),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.red.shade100),
       children: [
         // Segmented control to pick demo
         DCFSegmentedControl(
           segmentedControlProps: DCFSegmentedControlProps(
             segments: [
               DCFSegmentItem(title: "Transform"),
-              DCFSegmentItem(title: "Opacity"), 
+              DCFSegmentItem(title: "Opacity"),
               DCFSegmentItem(title: "Drawer"),
-              DCFSegmentItem(title: "Complex"), // NEW: Complex preset animations
+              DCFSegmentItem(
+                title: "Complex",
+              ), // NEW: Complex preset animations
             ],
             selectedIndex: selectedDemoState.state,
           ),
@@ -64,48 +59,47 @@ class AnimatedModalScreen extends StatefulComponent {
         ),
 
         // Slider that drives a shared animation value used across demos
-        DCFView(
-          layout: LayoutProps(gap: 8, flex: 1,height: 50), 
-          children: [
-            DCFText(content: "Animation value: ${animationValue.state.toStringAsFixed(2)}"),
-            DCFSlider(
-              value: animationValue.state,
-              onValueChange: (v) {
-                try {
-                  final newValue = v['value'] as double;
-                  animationValue.setState(newValue);
-                } catch (_) {}
-              },
-            ),
-          ]
+        DCFSlider(
+          layout: DCFLayout(flex: 0, height: 50),
+          value: animationValue.state,
+          onValueChange: (v) {
+            try {
+              final newValue = v['value'] as double;
+              animationValue.setState(newValue);
+            } catch (_) {}
+          },
         ),
 
         // Demo area - shows different animated behaviours driven by `sharedValue`.
         DCFScrollView(
-          layout: LayoutProps(gap: 5,height:"400"), 
+          layout: DCFLayout(gap: 5, height: "200"),
           children: [
             // Transform demo: translateX based on sharedValue
             if (selectedDemoState.state == 0)
               DCFView(
-                layout: LayoutProps(width: "100%", height: 140),
+                layout: DCFLayout(width: "100%", height: 140),
                 children: [
                   DCFView(
-                    layout: LayoutProps(padding: 12),
+                    layout: DCFLayout(padding: 12),
                     children: [
                       DCFText(
-                        content: "Transform demo (width)", 
-                        textProps: DCFTextProps(fontSize: 14)
+                        content: "Transform demo (width)",
+                        textProps: DCFTextProps(fontSize: 14),
                       ),
                     ],
                   ),
                   // Container with no padding for full width animation
                   DCFView(
-                    layout: LayoutProps(paddingLeft: 12, paddingRight: 12),
+                    layout: DCFLayout(paddingLeft: 12, paddingRight: 12),
                     children: [
                       // Pure UI thread animated box using ReanimatedView
                       ReanimatedView(
-                        layout: LayoutProps(height: 60), // Width controlled by animation
-                        styleSheet: StyleSheet(backgroundColor: Colors.blueAccent),
+                        layout: DCFLayout(
+                          height: 60,
+                        ), // Width controlled by animation
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.blueAccent,
+                        ),
                         animatedStyle: transformStyle,
                         children: [
                           DCFText(content: "I animate from 0 to full width!"),
@@ -119,17 +113,17 @@ class AnimatedModalScreen extends StatefulComponent {
             // Opacity demo: box fades in/out
             if (selectedDemoState.state == 1)
               DCFView(
-                layout: LayoutProps(width: "100%", height: 140, padding: 12),
+                layout: DCFLayout(width: "100%", height: 140, padding: 12),
                 children: [
                   DCFText(
-                    content: "Opacity demo", 
-                    textProps: DCFTextProps(fontSize: 14)
+                    content: "Opacity demo",
+                    textProps: DCFTextProps(fontSize: 14),
                   ),
                   // Pure UI thread opacity animation using ReanimatedView
                   ReanimatedView(
                     key: "opacity_box",
-                    layout: LayoutProps(width: "50%", height: 80),
-                    styleSheet: StyleSheet(backgroundColor: Colors.red),
+                    layout: DCFLayout(width: "50%", height: 80),
+                    styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
                     children: [],
                   ),
@@ -139,25 +133,25 @@ class AnimatedModalScreen extends StatefulComponent {
             // Drawer demo: a panel whose width is controlled by the slider
             if (selectedDemoState.state == 2)
               DCFView(
-                layout: LayoutProps(width: "100%", height: "100%"),
+                layout: DCFLayout(width: "100%", height: "100%"),
                 children: [
                   DCFText(
-                    content: "Drawer demo (controlled by slider)", 
-                    textProps: DCFTextProps(fontSize: 14)
+                    content: "Drawer demo (controlled by slider)",
+                    textProps: DCFTextProps(fontSize: 14),
                   ),
                   // Pure UI thread animated drawer using ReanimatedView
                   ReanimatedView(
                     key: "drawer_panel",
-                    layout: LayoutProps(
-                      position: YogaPositionType.absolute, 
-                      absoluteLayout: AbsoluteLayout(left: 0, top: 40), 
-                      
-                      padding: 12
+                    layout: DCFLayout(
+                      position: YogaPositionType.absolute,
+                      absoluteLayout: AbsoluteLayout(left: 0, top: 40),
+
+                      padding: 12,
                     ),
-                    styleSheet: StyleSheet(
-                      backgroundColor: Colors.white, 
-                      borderColor: Colors.grey.shade300, 
-                      borderWidth: 1
+                    styleSheet: DCFStyleSheet(
+                      backgroundColor: Colors.white,
+                      borderColor: Colors.grey.shade300,
+                      borderWidth: 1,
                     ),
                     animatedStyle: drawerStyle,
                     children: [
@@ -179,70 +173,156 @@ class AnimatedModalScreen extends StatefulComponent {
             // Complex preset animations demo - showcases ALL DCF Reanimated APIs
             if (selectedDemoState.state == 3)
               DCFScrollView(
-                layout: LayoutProps(width: "100%", height: "100%", gap: 16, padding: 12),
+                layout: DCFLayout(
+                  width: "100%",
+                  height: "100%",
+                  gap: 16,
+                  padding: 12,
+                ),
                 children: [
                   DCFText(
-                    content: "Complex Preset Animations - API Showcase", 
-                    textProps: DCFTextProps(fontSize: 16, fontWeight: DCFFontWeight.bold)
+                    content: "Complex Preset Animations - API Showcase",
+                    textProps: DCFTextProps(
+                      fontSize: 16,
+                      fontWeight: DCFFontWeight.bold,
+                    ),
                   ),
-                  
+
                   // Entrance Animations Section
                   DCFText(
-                    content: "🚀 Entrance Animations", 
-                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                    content: "🚀 Entrance Animations",
+                    textProps: DCFTextProps(
+                      fontSize: 14,
+                      fontWeight: DCFFontWeight.bold,
+                    ),
                   ),
-                  
+
                   DCFView(
-                    layout: LayoutProps(flexDirection: YogaFlexDirection.row, gap: 8, flexWrap: YogaWrap.wrap),
+                    layout: DCFLayout(
+                      flexDirection: YogaFlexDirection.row,
+                      gap: 8,
+                      flexWrap: YogaWrap.wrap,
+                    ),
                     children: [
                       // Fade In
                       ReanimatedView(
-                        animatedStyle: Reanimated.fadeIn(duration: 800, delay: 0),
-                        layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
-                        styleSheet: StyleSheet(backgroundColor: Colors.blue, borderRadius: 8),
+                        animatedStyle: Reanimated.fadeIn(
+                          duration: 800,
+                          delay: 0,
+                        ),
+                        layout: DCFLayout(
+                          width: 80,
+                          height: 80,
+                          marginBottom: 8,
+                        ),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.blue,
+                          borderRadius: 8,
+                        ),
                         children: [
-                          DCFText(content: "Fade", textProps: DCFTextProps(color: Colors.white, fontSize: 12)),
+                          DCFText(
+                            content: "Fade",
+                            textProps: DCFTextProps(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
-                      
+
                       // Scale In
                       ReanimatedView(
-                        animatedStyle: Reanimated.scaleIn(fromScale: 0.0, toScale: 1.0, duration: 600, delay: 200),
-                        layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
-                        styleSheet: StyleSheet(backgroundColor: Colors.green, borderRadius: 8),
+                        animatedStyle: Reanimated.scaleIn(
+                          fromScale: 0.0,
+                          toScale: 1.0,
+                          duration: 600,
+                          delay: 200,
+                        ),
+                        layout: DCFLayout(
+                          width: 80,
+                          height: 80,
+                          marginBottom: 8,
+                        ),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.green,
+                          borderRadius: 8,
+                        ),
                         children: [
-                          DCFText(content: "Scale", textProps: DCFTextProps(color: Colors.white, fontSize: 12)),
+                          DCFText(
+                            content: "Scale",
+                            textProps: DCFTextProps(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
-                      
+
                       // Slide In Right
                       ReanimatedView(
-                        animatedStyle: Reanimated.slideInRight(distance: 100.0, duration: 700, delay: 400),
-                        layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
-                        styleSheet: StyleSheet(backgroundColor: Colors.purple, borderRadius: 8),
+                        animatedStyle: Reanimated.slideInRight(
+                          distance: 100.0,
+                          duration: 700,
+                          delay: 400,
+                        ),
+                        layout: DCFLayout(
+                          width: 80,
+                          height: 80,
+                          marginBottom: 8,
+                        ),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.purple,
+                          borderRadius: 8,
+                        ),
                         children: [
-                          DCFText(content: "→ Slide", textProps: DCFTextProps(color: Colors.white, fontSize: 12)),
+                          DCFText(
+                            content: "→ Slide",
+                            textProps: DCFTextProps(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
-                      
-                      // Slide In Left  
+
+                      // Slide In Left
                       ReanimatedView(
-                        animatedStyle: Reanimated.slideInLeft(distance: 100.0, duration: 700, delay: 600),
-                        layout: LayoutProps(width: 80, height: 80, marginBottom: 8),
-                        styleSheet: StyleSheet(backgroundColor: Colors.orange, borderRadius: 8),
+                        animatedStyle: Reanimated.slideInLeft(
+                          distance: 100.0,
+                          duration: 700,
+                          delay: 600,
+                        ),
+                        layout: DCFLayout(
+                          width: 80,
+                          height: 80,
+                          marginBottom: 8,
+                        ),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.orange,
+                          borderRadius: 8,
+                        ),
                         children: [
-                          DCFText(content: "← Slide", textProps: DCFTextProps(color: Colors.white, fontSize: 12)),
+                          DCFText(
+                            content: "← Slide",
+                            textProps: DCFTextProps(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ],
                   ),
-                  
+
                   // Complex Combined Animation
                   DCFText(
-                    content: "✨ Complex Combined Animation", 
-                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                    content: "✨ Complex Combined Animation",
+                    textProps: DCFTextProps(
+                      fontSize: 14,
+                      fontWeight: DCFFontWeight.bold,
+                    ),
                   ),
-                  
+
                   ReanimatedView(
                     animatedStyle: Reanimated.slideScaleFadeIn(
                       slideDistance: 80.0,
@@ -252,31 +332,50 @@ class AnimatedModalScreen extends StatefulComponent {
                       delay: 800,
                       curve: AnimationCurve.elasticOut,
                     ),
-                    layout: LayoutProps(width: "90%", height: 100, alignSelf: YogaAlign.center, padding: 16),
-                    styleSheet: StyleSheet(
+                    layout: DCFLayout(
+                      width: "90%",
+                      height: 100,
+                      alignSelf: YogaAlign.center,
+                      padding: 16,
+                    ),
+                    styleSheet: DCFStyleSheet(
                       backgroundColor: Colors.indigo,
                       borderRadius: 12,
                     ),
                     children: [
                       DCFText(
-                        content: "🎯 Premium Combined Animation", 
-                        textProps: DCFTextProps(color: Colors.white, fontSize: 14, fontWeight: DCFFontWeight.bold)
+                        content: "🎯 Premium Combined Animation",
+                        textProps: DCFTextProps(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: DCFFontWeight.bold,
+                        ),
                       ),
                       DCFText(
-                        content: "Slide + Scale + Fade with overshoot", 
-                        textProps: DCFTextProps(color: Colors.white, fontSize: 12)
+                        content: "Slide + Scale + Fade with overshoot",
+                        textProps: DCFTextProps(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
-                  
+
                   // Continuous Animations Section
                   DCFText(
-                    content: "🔄 Continuous Animations", 
-                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                    content: "🔄 Continuous Animations",
+                    textProps: DCFTextProps(
+                      fontSize: 14,
+                      fontWeight: DCFFontWeight.bold,
+                    ),
                   ),
-                  
+
                   DCFView(
-                    layout: LayoutProps(flexDirection: YogaFlexDirection.row, gap: 12, justifyContent: YogaJustifyContent.spaceEvenly),
+                    layout: DCFLayout(
+                      flexDirection: YogaFlexDirection.row,
+                      gap: 12,
+                      justifyContent: YogaJustifyContent.spaceEvenly,
+                    ),
                     children: [
                       // Rotating Spinner
                       ReanimatedView(
@@ -285,13 +384,19 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 2000,
                           delay: 1000,
                         ),
-                        layout: LayoutProps(width: 60, height: 60),
-                        styleSheet: StyleSheet(backgroundColor: Colors.red, borderRadius: 30),
+                        layout: DCFLayout(width: 60, height: 60),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.red,
+                          borderRadius: 30,
+                        ),
                         children: [
-                          DCFText(content: "🌀", textProps: DCFTextProps(fontSize: 24)),
+                          DCFText(
+                            content: "🌀",
+                            textProps: DCFTextProps(fontSize: 24),
+                          ),
                         ],
                       ),
-                      
+
                       // Pulsing Heart
                       ReanimatedView(
                         animatedStyle: Reanimated.pulse(
@@ -300,13 +405,19 @@ class AnimatedModalScreen extends StatefulComponent {
                           duration: 1200,
                           delay: 1200,
                         ),
-                        layout: LayoutProps(width: 60, height: 60),
-                        styleSheet: StyleSheet(backgroundColor: Colors.pink, borderRadius: 30),
+                        layout: DCFLayout(width: 60, height: 60),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.pink,
+                          borderRadius: 30,
+                        ),
                         children: [
-                          DCFText(content: "💖", textProps: DCFTextProps(fontSize: 24)),
+                          DCFText(
+                            content: "💖",
+                            textProps: DCFTextProps(fontSize: 24),
+                          ),
                         ],
                       ),
-                      
+
                       // Bouncing Ball
                       ReanimatedView(
                         animatedStyle: Reanimated.bounce(
@@ -315,21 +426,30 @@ class AnimatedModalScreen extends StatefulComponent {
                           delay: 1400,
                           repeatCount: 4,
                         ),
-                        layout: LayoutProps(width: 60, height: 60),
-                        styleSheet: StyleSheet(backgroundColor: Colors.yellow, borderRadius: 30),
+                        layout: DCFLayout(width: 60, height: 60),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.yellow,
+                          borderRadius: 30,
+                        ),
                         children: [
-                          DCFText(content: "⚽", textProps: DCFTextProps(fontSize: 24)),
+                          DCFText(
+                            content: "⚽",
+                            textProps: DCFTextProps(fontSize: 24),
+                          ),
                         ],
                       ),
                     ],
                   ),
-                  
+
                   // Error State Animation
                   DCFText(
-                    content: "⚠️ Error State Animation", 
-                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                    content: "⚠️ Error State Animation",
+                    textProps: DCFTextProps(
+                      fontSize: 14,
+                      fontWeight: DCFFontWeight.bold,
+                    ),
                   ),
-                  
+
                   ReanimatedView(
                     animatedStyle: Reanimated.wiggle(
                       wiggleAngle: 0.15, // ~8 degrees
@@ -337,8 +457,13 @@ class AnimatedModalScreen extends StatefulComponent {
                       delay: 1800,
                       repeatCount: 6,
                     ),
-                    layout: LayoutProps(width: "80%", height: 50, alignSelf: YogaAlign.center, padding: 12),
-                    styleSheet: StyleSheet(
+                    layout: DCFLayout(
+                      width: "80%",
+                      height: 50,
+                      alignSelf: YogaAlign.center,
+                      padding: 12,
+                    ),
+                    styleSheet: DCFStyleSheet(
                       backgroundColor: Colors.red.shade100,
                       borderColor: Colors.red,
                       borderWidth: 2,
@@ -346,83 +471,149 @@ class AnimatedModalScreen extends StatefulComponent {
                     ),
                     children: [
                       DCFText(
-                        content: "❌ This field has an error - watch me wiggle!", 
-                        textProps: DCFTextProps(color: Colors.red, fontSize: 12)
+                        content: "❌ This field has an error - watch me wiggle!",
+                        textProps: DCFTextProps(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
-                  
+
                   // Staggered Animation Sequence
                   DCFText(
-                    content: "🎬 Staggered Animation Sequence", 
-                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                    content: "🎬 Staggered Animation Sequence",
+                    textProps: DCFTextProps(
+                      fontSize: 14,
+                      fontWeight: DCFFontWeight.bold,
+                    ),
                   ),
-                  
+
                   DCFView(
-                    layout: LayoutProps(gap: 4),
+                    layout: DCFLayout(gap: 4),
                     children: [
                       // Item 1
                       ReanimatedView(
-                        animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2200),
-                        layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
-                        styleSheet: StyleSheet(backgroundColor: Colors.teal.shade100, borderRadius: 4),
+                        animatedStyle: Reanimated.slideInLeft(
+                          distance: 80,
+                          duration: 400,
+                          delay: 2200,
+                        ),
+                        layout: DCFLayout(
+                          height: 40,
+                          marginBottom: 4,
+                          padding: 8,
+                        ),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.teal.shade100,
+                          borderRadius: 4,
+                        ),
                         children: [
-                          DCFText(content: "📋 List Item 1", textProps: DCFTextProps(fontSize: 12)),
+                          DCFText(
+                            content: "📋 List Item 1",
+                            textProps: DCFTextProps(fontSize: 12),
+                          ),
                         ],
                       ),
-                      
+
                       // Item 2
                       ReanimatedView(
-                        animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2350),
-                        layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
-                        styleSheet: StyleSheet(backgroundColor: Colors.teal.shade200, borderRadius: 4),
+                        animatedStyle: Reanimated.slideInLeft(
+                          distance: 80,
+                          duration: 400,
+                          delay: 2350,
+                        ),
+                        layout: DCFLayout(
+                          height: 40,
+                          marginBottom: 4,
+                          padding: 8,
+                        ),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.teal.shade200,
+                          borderRadius: 4,
+                        ),
                         children: [
-                          DCFText(content: "📋 List Item 2", textProps: DCFTextProps(fontSize: 12)),
+                          DCFText(
+                            content: "📋 List Item 2",
+                            textProps: DCFTextProps(fontSize: 12),
+                          ),
                         ],
                       ),
-                      
+
                       // Item 3
                       ReanimatedView(
-                        animatedStyle: Reanimated.slideInLeft(distance: 80, duration: 400, delay: 2500),
-                        layout: LayoutProps(height: 40, marginBottom: 4, padding: 8),
-                        styleSheet: StyleSheet(backgroundColor: Colors.teal.shade300, borderRadius: 4),
+                        animatedStyle: Reanimated.slideInLeft(
+                          distance: 80,
+                          duration: 400,
+                          delay: 2500,
+                        ),
+                        layout: DCFLayout(
+                          height: 40,
+                          marginBottom: 4,
+                          padding: 8,
+                        ),
+                        styleSheet: DCFStyleSheet(
+                          backgroundColor: Colors.teal.shade300,
+                          borderRadius: 4,
+                        ),
                         children: [
-                          DCFText(content: "📋 List Item 3", textProps: DCFTextProps(fontSize: 12)),
+                          DCFText(
+                            content: "📋 List Item 3",
+                            textProps: DCFTextProps(fontSize: 12),
+                          ),
                         ],
                       ),
                     ],
                   ),
-                  
+
                   // Exit Animation Demo
                   DCFText(
-                    content: "👋 Exit Animation", 
-                    textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.bold)
+                    content: "👋 Exit Animation",
+                    textProps: DCFTextProps(
+                      fontSize: 14,
+                      fontWeight: DCFFontWeight.bold,
+                    ),
                   ),
-                  
+
                   ReanimatedView(
-                    animatedStyle: Reanimated.fadeOut(duration: 1000, delay: 3000),
-                    layout: LayoutProps(width: "70%", height: 60, alignSelf: YogaAlign.center, padding: 12),
-                    styleSheet: StyleSheet(backgroundColor: Colors.grey.shade300, borderRadius: 8),
-                    onAnimationComplete: () => print("🎉 Exit animation completed!"),
+                    animatedStyle: Reanimated.fadeOut(
+                      duration: 1000,
+                      delay: 3000,
+                    ),
+                    layout: DCFLayout(
+                      width: "70%",
+                      height: 60,
+                      alignSelf: YogaAlign.center,
+                      padding: 12,
+                    ),
+                    styleSheet: DCFStyleSheet(
+                      backgroundColor: Colors.grey.shade300,
+                      borderRadius: 8,
+                    ),
+                    onAnimationComplete:
+                        () => print("🎉 Exit animation completed!"),
                     children: [
                       DCFText(
-                        content: "👻 I will disappear after 3 seconds", 
-                        textProps: DCFTextProps(fontSize: 12, textAlign: "center")
+                        content: "👻 I will disappear after 3 seconds",
+                        textProps: DCFTextProps(
+                          fontSize: 12,
+                          textAlign: DCFTextAlign.center,
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
-          ]
+          ],
         ),
 
         DCFView(
-          layout: LayoutProps(
-            flexDirection: YogaFlexDirection.row, 
+          layout: DCFLayout(
+            flexDirection: YogaFlexDirection.row,
             flexWrap: YogaWrap.wrap,
             height: 110,
-            gap: 8
-          ), 
+            gap: 8,
+          ),
           children: [
             DCFButton(
               buttonProps: DCFButtonProps(title: "Reset"),
@@ -439,8 +630,8 @@ class AnimatedModalScreen extends StatefulComponent {
                 AppNavigation.dismissModal();
               },
             ),
-          ]
-        )
+          ],
+        ),
       ],
     );
   }

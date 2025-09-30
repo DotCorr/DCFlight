@@ -8,17 +8,17 @@
 import 'package:dcflight/dcflight.dart';
 
 /// A basic view component implementation using StatelessComponent
-class DCFView extends StatelessComponent
+class DCFView extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.normal;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
   /// The style properties
-  final StyleSheet styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Child nodes
   final List<DCFComponentNode> children;
@@ -34,8 +34,8 @@ class DCFView extends StatelessComponent
 
   /// Create a view component
   DCFView({
-    this.layout = const LayoutProps(height: "100%", width: "100%" ),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(backgroundColor: Colors.transparent),
     this.children = const [],
     this.events,
     this.adaptive = true,
@@ -73,4 +73,3 @@ class DCFView extends StatelessComponent
         key,
       ];
 }
-

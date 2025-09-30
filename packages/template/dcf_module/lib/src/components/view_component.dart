@@ -25,7 +25,7 @@ class DCFView extends StatelessComponent {
 
   /// Create a view component
   DCFView({
-    this.layout = const LayoutProps(padding: 8,flex: 1),
+    this.layout = const LayoutProps(),
     this.style = const StyleSheet(),
     this.children = const [],
     this.events,
