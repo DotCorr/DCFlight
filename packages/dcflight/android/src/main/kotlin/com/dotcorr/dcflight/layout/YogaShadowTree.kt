@@ -7,14 +7,17 @@
 
 package com.dotcorr.dcflight.layout
 
+import android.content.Context
 import android.content.res.Resources
 import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
 import com.facebook.yoga.*
 import com.dotcorr.dcflight.components.DCFComponentRegistry
+import com.dotcorr.dcflight.utils.DCFScreenUtilities
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 
@@ -48,6 +51,9 @@ class YogaShadowTree private constructor() {
     
     // ENHANCEMENT: Web defaults configuration
     private var useWebDefaults = false
+    
+    // CRITICAL FIX: Density scaling for cross-platform consistency
+    private var densityScaleFactor: Float = 1.0f
 
     init {
         rootNode = YogaNodeFactory.create().apply {
@@ -65,6 +71,34 @@ class YogaShadowTree private constructor() {
         }
         
         Log.d(TAG, "Initializing YogaShadowTree")
+        
+        // CRITICAL FIX: Initialize density scale factor for cross-platform consistency
+        updateDensityScaleFactor()
+    }
+    
+    /**
+     * CRITICAL FIX: Update density scale factor for cross-platform consistency
+     * This ensures Android sizing matches iOS behavior
+     */
+    private fun updateDensityScaleFactor() {
+        try {
+            val displayMetrics = Resources.getSystem().displayMetrics
+            densityScaleFactor = displayMetrics.density
+            
+            Log.d(TAG, "Density scale factor updated: $densityScaleFactor (density: ${displayMetrics.densityDpi} dpi)")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to update density scale factor, using default 1.0", e)
+            densityScaleFactor = 1.0f
+        }
+    }
+    
+    /**
+     * CRITICAL FIX: Apply density scaling to match iOS behavior
+     * iOS uses logical points that are automatically scaled by the system
+     * Android needs manual scaling to achieve the same visual result
+     */
+    private fun applyDensityScaling(value: Float): Float {
+        return value * densityScaleFactor
     }
 
     @Synchronized
@@ -592,8 +626,9 @@ class YogaShadowTree private constructor() {
             "width" -> {
                 when (value) {
                     is Number -> {
-                        // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                        node.setWidth(value.toFloat())
+                        // CRITICAL FIX: Apply density scaling to match iOS behavior
+                        val scaledValue = applyDensityScaling(value.toFloat())
+                        node.setWidth(scaledValue)
                     }
                     is String -> {
                         if (value.endsWith("%")) {
@@ -608,8 +643,9 @@ class YogaShadowTree private constructor() {
             "height" -> {
                 when (value) {
                     is Number -> {
-                        // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                        node.setHeight(value.toFloat())
+                        // CRITICAL FIX: Apply density scaling to match iOS behavior
+                        val scaledValue = applyDensityScaling(value.toFloat())
+                        node.setHeight(scaledValue)
                     }
                     is String -> {
                         if (value.endsWith("%")) {
@@ -642,24 +678,24 @@ class YogaShadowTree private constructor() {
                 }
             }
             "gap" -> {
-                // YOGA 2.0+ GAP SUPPORT: Use native gap API
+                // YOGA 2.0+ GAP SUPPORT: Use native gap API with density scaling
                 if (value is Number) {
-                    val gapValue = value.toFloat()
-                    node.setGap(YogaGutter.ALL, gapValue)
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setGap(YogaGutter.ALL, scaledValue)
                 }
             }
             "rowGap" -> {
-                // YOGA 2.0+ ROW GAP SUPPORT: Use native row gap API
+                // YOGA 2.0+ ROW GAP SUPPORT: Use native row gap API with density scaling
                 if (value is Number) {
-                    val gapValue = value.toFloat()
-                    node.setGap(YogaGutter.ROW, gapValue)
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setGap(YogaGutter.ROW, scaledValue)
                 }
             }
             "columnGap" -> {
-                // YOGA 2.0+ COLUMN GAP SUPPORT: Use native column gap API
+                // YOGA 2.0+ COLUMN GAP SUPPORT: Use native column gap API with density scaling
                 if (value is Number) {
-                    val gapValue = value.toFloat()
-                    node.setGap(YogaGutter.COLUMN, gapValue)
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setGap(YogaGutter.COLUMN, scaledValue)
                 }
             }
             "justifyContent" -> {
@@ -694,62 +730,72 @@ class YogaShadowTree private constructor() {
             }
             "paddingTop" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.TOP, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPadding(YogaEdge.TOP, scaledValue)
                 }
             }
             "paddingRight" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.RIGHT, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPadding(YogaEdge.RIGHT, scaledValue)
                 }
             }
             "paddingBottom" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.BOTTOM, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPadding(YogaEdge.BOTTOM, scaledValue)
                 }
             }
             "paddingLeft" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.LEFT, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPadding(YogaEdge.LEFT, scaledValue)
                 }
             }
             "padding" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.ALL, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPadding(YogaEdge.ALL, scaledValue)
                 }
             }
             "marginTop" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.TOP, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setMargin(YogaEdge.TOP, scaledValue)
                 }
             }
             "marginRight" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.RIGHT, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setMargin(YogaEdge.RIGHT, scaledValue)
                 }
             }
             "marginBottom" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.BOTTOM, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setMargin(YogaEdge.BOTTOM, scaledValue)
                 }
             }
             "marginLeft" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.LEFT, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setMargin(YogaEdge.LEFT, scaledValue)
                 }
             }
             "margin" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.ALL, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setMargin(YogaEdge.ALL, scaledValue)
                 }
             }
             "position" -> {
@@ -760,26 +806,30 @@ class YogaShadowTree private constructor() {
             }
             "top" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPosition(YogaEdge.TOP, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPosition(YogaEdge.TOP, scaledValue)
                 }
             }
             "right" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPosition(YogaEdge.RIGHT, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPosition(YogaEdge.RIGHT, scaledValue)
                 }
             }
             "bottom" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPosition(YogaEdge.BOTTOM, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPosition(YogaEdge.BOTTOM, scaledValue)
                 }
             }
             "left" -> {
                 if (value is Number) {
-                    // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPosition(YogaEdge.LEFT, value.toFloat())
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    val scaledValue = applyDensityScaling(value.toFloat())
+                    node.setPosition(YogaEdge.LEFT, scaledValue)
                 }
             }
             // Add more properties as needed matching iOS exactly
@@ -815,6 +865,15 @@ class YogaShadowTree private constructor() {
 
     fun viewRegisteredWithShadowTree(viewId: String): Boolean {
         return nodes.containsKey(viewId)
+    }
+    
+    /**
+     * CRITICAL FIX: Refresh density scale factor when screen configuration changes
+     * This ensures consistent scaling across device rotations and density changes
+     */
+    fun refreshDensityScaleFactor() {
+        updateDensityScaleFactor()
+        Log.d(TAG, "Density scale factor refreshed: $densityScaleFactor")
     }
 }
 
