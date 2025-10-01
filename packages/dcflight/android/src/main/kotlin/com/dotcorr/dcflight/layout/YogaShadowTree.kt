@@ -890,9 +890,9 @@ class YogaShadowTree private constructor() {
         val width = layout.width()
         val height = layout.height()
         
-        // Prevent extremely large or small dimensions that cause flash
-        if (width <= 0 || height <= 0) return false
-        if (width > 10000 || height > 10000) return false
+        // FIXED: Allow zero dimensions for hidden views, only reject negative or extreme values
+        if (width < 0 || height < 0) return false
+        if (width > 50000 || height > 50000) return false // Increased limit for large screens
         
         // Check for NaN or infinite values
         if (!width.toFloat().isFinite() || !height.toFloat().isFinite()) return false

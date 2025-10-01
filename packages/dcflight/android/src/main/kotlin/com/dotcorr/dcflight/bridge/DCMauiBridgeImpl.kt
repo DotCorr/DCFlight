@@ -195,23 +195,41 @@ class DCMauiBridgeImpl private constructor() {
 
             if (childView == null || parentView == null) {
                 Log.e(TAG, "Cannot attach - child '$childId' or parent '$parentId' not found")
+                Log.e(TAG, "Available views: ${ViewRegistry.shared.allViewIds}")
                 return false
             }
 
             val parentViewGroup = parentView as? ViewGroup
             if (parentViewGroup == null) {
-                Log.e(TAG, "Parent view '$parentId' is not a ViewGroup")
+                Log.e(TAG, "Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
                 return false
             }
 
+            // ANDROID ATTACH FIX: Remove from existing parent first
             if (childView.parent != null) {
                 (childView.parent as? ViewGroup)?.removeView(childView)
+                Log.d(TAG, "Removed child '$childId' from existing parent")
             }
 
-            if (index >= 0 && index <= parentViewGroup.childCount) {
-                parentViewGroup.addView(childView, index)
-            } else {
-                parentViewGroup.addView(childView)
+            // ANDROID ATTACH FIX: Use post to ensure proper timing
+            parentViewGroup.post {
+                try {
+                    if (index >= 0 && index <= parentViewGroup.childCount) {
+                        parentViewGroup.addView(childView, index)
+                        Log.d(TAG, "Attached child '$childId' to parent '$parentId' at index $index")
+                    } else {
+                        parentViewGroup.addView(childView)
+                        Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
+                    }
+                    
+                    // ANDROID ATTACH FIX: Ensure child is visible after attachment
+                    childView.visibility = View.VISIBLE
+                    childView.alpha = 1.0f
+                    
+                    Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in post attachment: ${e.message}", e)
+                }
             }
 
             childToParent[childId] = parentId
