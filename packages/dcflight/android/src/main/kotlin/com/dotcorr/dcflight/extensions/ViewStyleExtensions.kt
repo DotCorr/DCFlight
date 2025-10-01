@@ -7,6 +7,8 @@
 
 package com.dotcorr.dcflight.extensions
 
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build

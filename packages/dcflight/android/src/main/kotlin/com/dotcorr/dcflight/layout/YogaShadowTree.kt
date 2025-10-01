@@ -7,6 +7,7 @@
 
 package com.dotcorr.dcflight.layout
 
+import android.content.res.Resources
 import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
@@ -643,21 +644,21 @@ class YogaShadowTree private constructor() {
             "gap" -> {
                 // YOGA 2.0+ GAP SUPPORT: Use native gap API
                 if (value is Number) {
-                    val gapValue = value.toFloat()(value.toFloat())
+                    val gapValue = value.toFloat()
                     node.setGap(YogaGutter.ALL, gapValue)
                 }
             }
             "rowGap" -> {
                 // YOGA 2.0+ ROW GAP SUPPORT: Use native row gap API
                 if (value is Number) {
-                    val gapValue = value.toFloat()(value.toFloat())
+                    val gapValue = value.toFloat()
                     node.setGap(YogaGutter.ROW, gapValue)
                 }
             }
             "columnGap" -> {
                 // YOGA 2.0+ COLUMN GAP SUPPORT: Use native column gap API
                 if (value is Number) {
-                    val gapValue = value.toFloat()(value.toFloat())
+                    val gapValue = value.toFloat()
                     node.setGap(YogaGutter.COLUMN, gapValue)
                 }
             }
@@ -694,61 +695,61 @@ class YogaShadowTree private constructor() {
             "paddingTop" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.TOP, value.toFloat()(value.toFloat()))
+                    node.setPadding(YogaEdge.TOP, value.toFloat())
                 }
             }
             "paddingRight" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.RIGHT, value.toFloat()(value.toFloat()))
+                    node.setPadding(YogaEdge.RIGHT, value.toFloat())
                 }
             }
             "paddingBottom" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.BOTTOM, value.toFloat()(value.toFloat()))
+                    node.setPadding(YogaEdge.BOTTOM, value.toFloat())
                 }
             }
             "paddingLeft" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.LEFT, value.toFloat()(value.toFloat()))
+                    node.setPadding(YogaEdge.LEFT, value.toFloat())
                 }
             }
             "padding" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPadding(YogaEdge.ALL, value.toFloat()(value.toFloat()))
+                    node.setPadding(YogaEdge.ALL, value.toFloat())
                 }
             }
             "marginTop" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.TOP, value.toFloat()(value.toFloat()))
+                    node.setMargin(YogaEdge.TOP, value.toFloat())
                 }
             }
             "marginRight" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.RIGHT, value.toFloat()(value.toFloat()))
+                    node.setMargin(YogaEdge.RIGHT, value.toFloat())
                 }
             }
             "marginBottom" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.BOTTOM, value.toFloat()(value.toFloat()))
+                    node.setMargin(YogaEdge.BOTTOM, value.toFloat())
                 }
             }
             "marginLeft" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.LEFT, value.toFloat()(value.toFloat()))
+                    node.setMargin(YogaEdge.LEFT, value.toFloat())
                 }
             }
             "margin" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setMargin(YogaEdge.ALL, value.toFloat()(value.toFloat()))
+                    node.setMargin(YogaEdge.ALL, value.toFloat())
                 }
             }
             "position" -> {
@@ -760,25 +761,25 @@ class YogaShadowTree private constructor() {
             "top" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPosition(YogaEdge.TOP, value.toFloat()(value.toFloat()))
+                    node.setPosition(YogaEdge.TOP, value.toFloat())
                 }
             }
             "right" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPosition(YogaEdge.RIGHT, value.toFloat()(value.toFloat()))
+                    node.setPosition(YogaEdge.RIGHT, value.toFloat())
                 }
             }
             "bottom" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPosition(YogaEdge.BOTTOM, value.toFloat()(value.toFloat()))
+                    node.setPosition(YogaEdge.BOTTOM, value.toFloat())
                 }
             }
             "left" -> {
                 if (value is Number) {
                     // ANDROID-SPECIFIC: Apply sizing scale for visual consistency
-                    node.setPosition(YogaEdge.LEFT, value.toFloat()(value.toFloat()))
+                    node.setPosition(YogaEdge.LEFT, value.toFloat())
                 }
             }
             // Add more properties as needed matching iOS exactly
