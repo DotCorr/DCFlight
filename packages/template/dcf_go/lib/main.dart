@@ -8,23 +8,9 @@ void main() async {
 }
 
 class InteractiveGridApp extends DCFStatefulComponent {
-  final List<Color> _colors = [
-    Colors.blue.shade400,
-    Colors.purple.shade400,
-    Colors.teal.shade400,
-    Colors.orange.shade400,
-    Colors.pink.shade400,
-    Colors.indigo.shade400,
-  ];
-
-  Color _getRandomColor() {
-    return _colors[Random().nextInt(_colors.length)];
-  }
-
   @override
   DCFComponentNode render() {
     final boxCount = useState(4);
-
     final gridDensity = useState(2.0);
     
     final columns = gridDensity.state.round();
@@ -35,7 +21,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
       gridBoxes.add(
         DCFView(
           styleSheet: DCFStyleSheet(
-            backgroundColor: _getRandomColor(),
+            backgroundColor: Colors.indigo.shade400,
             borderRadius: 20,
           ),
           layout: DCFLayout(
@@ -48,6 +34,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
             DCFText(
               content: "${i + 1}",
               textProps: DCFTextProps(
+                textAlign: DCFTextAlign.center,
                 fontSize: 24,
                 color: Colors.white,
                 fontWeight: DCFFontWeight.bold,
@@ -86,13 +73,17 @@ class InteractiveGridApp extends DCFStatefulComponent {
           ),
           layout: DCFLayout(marginBottom: 20),
         ),
-       DCFSlider(value: boxCount.state.toDouble()/100,onValueChange: (DCFSliderValueData data){
-         print(data.value);
-         // Fix: Convert double to int properly
-         final double sliderValue = data.value;
-         final int newBoxCount = (sliderValue * 100).round();
-         boxCount.setState(newBoxCount);
-       }),
+        
+        // Slider for box count
+        DCFSlider(
+          value: boxCount.state.toDouble() / 100,
+          onValueChange: (DCFSliderValueData data) {
+            print(data.value);
+            final int newBoxCount = (data.value * 100).round();
+            boxCount.setState(newBoxCount);
+          },
+        ),
+        
         // Grid
         DCFView(
           layout: DCFLayout(
