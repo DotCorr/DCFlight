@@ -7,6 +7,35 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Checkbox value change callback data
+class DCFCheckboxValueData {
+  /// Current checkbox value
+  final bool value;
+  
+  /// Whether the change was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the change
+  final DateTime timestamp;
+
+  DCFCheckboxValueData({
+    required this.value,
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFCheckboxValueData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFCheckboxValueData(
+      value: data['value'] as bool,
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// 🚀 DCF Checkbox Component
 ///
 /// A checkbox component that provides native platform behavior.
@@ -21,7 +50,7 @@ class DCFCheckbox extends DCFStatelessComponent
   final bool checked;
 
   /// Called when checkbox state changes
-  final Function(Map<dynamic, dynamic>)? onValueChange;
+  final Function(DCFCheckboxValueData)? onValueChange;
 
   /// Whether the checkbox is disabled
   final bool disabled;
@@ -76,7 +105,9 @@ class DCFCheckbox extends DCFStatelessComponent
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onValueChange != null) {
-      eventMap['onValueChange'] = onValueChange;
+      eventMap['onValueChange'] = (Map<dynamic, dynamic> data) {
+        onValueChange!(DCFCheckboxValueData.fromMap(data));
+      };
     }
 
     Map<String, dynamic> props = {

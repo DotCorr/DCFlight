@@ -7,6 +7,102 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Touchable opacity press callback data
+class DCFTouchableOpacityPressData {
+  /// Whether the press was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the press
+  final DateTime timestamp;
+
+  DCFTouchableOpacityPressData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTouchableOpacityPressData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTouchableOpacityPressData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Touchable opacity press in callback data
+class DCFTouchableOpacityPressInData {
+  /// Whether the press in was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the press in
+  final DateTime timestamp;
+
+  DCFTouchableOpacityPressInData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTouchableOpacityPressInData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTouchableOpacityPressInData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Touchable opacity press out callback data
+class DCFTouchableOpacityPressOutData {
+  /// Whether the press out was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the press out
+  final DateTime timestamp;
+
+  DCFTouchableOpacityPressOutData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTouchableOpacityPressOutData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTouchableOpacityPressOutData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Touchable opacity long press callback data
+class DCFTouchableOpacityLongPressData {
+  /// Whether the long press was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the long press
+  final DateTime timestamp;
+
+  DCFTouchableOpacityLongPressData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTouchableOpacityLongPressData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTouchableOpacityLongPressData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// A touchable opacity component implementation using StatelessComponent
 class DCFTouchableOpacity extends DCFStatelessComponent
     with EquatableMixin
@@ -26,17 +122,17 @@ class DCFTouchableOpacity extends DCFStatelessComponent
   /// The style properties
   final DCFStyleSheet styleSheet;
 
-  /// Press event handler - receives Map<dynamic, dynamic> with press data
-  final Function(Map<dynamic, dynamic>)? onPress;
+  /// Press event handler - receives type-safe press data
+  final Function(DCFTouchableOpacityPressData)? onPress;
 
-  /// Press in event handler - receives Map<dynamic, dynamic>
-  final Function(Map<dynamic, dynamic>)? onPressIn;
+  /// Press in event handler - receives type-safe press in data
+  final Function(DCFTouchableOpacityPressInData)? onPressIn;
 
-  /// Press out event handler - receives Map<dynamic, dynamic>
-  final Function(Map<dynamic, dynamic>)? onPressOut;
+  /// Press out event handler - receives type-safe press out data
+  final Function(DCFTouchableOpacityPressOutData)? onPressOut;
 
-  /// Long press event handler - receives Map<dynamic, dynamic>
-  final Function(Map<dynamic, dynamic>)? onLongPress;
+  /// Long press event handler - receives type-safe long press data
+  final Function(DCFTouchableOpacityLongPressData)? onLongPress;
 
   /// Long press delay in milliseconds
   final int longPressDelay;
@@ -73,19 +169,27 @@ class DCFTouchableOpacity extends DCFStatelessComponent
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onPress != null) {
-      eventMap['onPress'] = onPress;
+      eventMap['onPress'] = (Map<dynamic, dynamic> data) {
+        onPress!(DCFTouchableOpacityPressData.fromMap(data));
+      };
     }
 
     if (onPressIn != null) {
-      eventMap['onPressIn'] = onPressIn;
+      eventMap['onPressIn'] = (Map<dynamic, dynamic> data) {
+        onPressIn!(DCFTouchableOpacityPressInData.fromMap(data));
+      };
     }
 
     if (onPressOut != null) {
-      eventMap['onPressOut'] = onPressOut;
+      eventMap['onPressOut'] = (Map<dynamic, dynamic> data) {
+        onPressOut!(DCFTouchableOpacityPressOutData.fromMap(data));
+      };
     }
 
     if (onLongPress != null) {
-      eventMap['onLongPress'] = onLongPress;
+      eventMap['onLongPress'] = (Map<dynamic, dynamic> data) {
+        onLongPress!(DCFTouchableOpacityLongPressData.fromMap(data));
+      };
     }
 
     // Serialize command if provided

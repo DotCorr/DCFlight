@@ -7,6 +7,40 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Segmented control selection change callback data
+class DCFSegmentedControlSelectionData {
+  /// Selected segment index
+  final int selectedIndex;
+  
+  /// Selected segment value
+  final String selectedValue;
+  
+  /// Whether the selection was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the selection change
+  final DateTime timestamp;
+
+  DCFSegmentedControlSelectionData({
+    required this.selectedIndex,
+    required this.selectedValue,
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFSegmentedControlSelectionData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFSegmentedControlSelectionData(
+      selectedIndex: data['selectedIndex'] as int,
+      selectedValue: data['selectedValue'] as String,
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// Segmented control item configuration
 class DCFSegmentItem extends Equatable {
   /// The title text for the segment
@@ -114,8 +148,8 @@ class DCFSegmentedControl extends DCFStatelessComponent
   /// Event handlers
   final Map<String, dynamic>? events;
 
-  /// Selection change event handler - receives Map<dynamic, dynamic> with selection data
-  final Function(Map<dynamic, dynamic>)? onSelectionChange;
+  /// Selection change event handler - receives type-safe selection data
+  final Function(DCFSegmentedControlSelectionData)? onSelectionChange;
 
   /// Create a segmented control component
   DCFSegmentedControl({
@@ -136,7 +170,9 @@ class DCFSegmentedControl extends DCFStatelessComponent
     Map<dynamic, dynamic> eventMap = events ?? {};
 
     if (onSelectionChange != null) {
-      eventMap['onSelectionChange'] = onSelectionChange;
+      eventMap['onSelectionChange'] = (Map<dynamic, dynamic> data) {
+        onSelectionChange!(DCFSegmentedControlSelectionData.fromMap(data));
+      };
     }
 
     return DCFElement(
