@@ -8,6 +8,7 @@
 package com.dotcorr.dcflight.bridge
 
 import android.content.Context
+import android.content.res.Resources
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -385,12 +386,8 @@ class DCMauiBridgeImpl private constructor() {
             }
             Log.d(TAG, "🔥 BATCH: Successfully committed all operations")
             
-            // SLIDER PERFORMANCE FIX: Optimize for rapid updates to prevent flash
-            DCFLayoutManager.shared.optimizeForRapidUpdates()
-            
-            // iOS BEHAVIOR: Don't call calculateLayoutNow() here
-            // Layout calculation is automatically triggered by addChildNode calls
-            // This ensures iOS-style debounced layout calculation
+            // ANDROID ARCHITECTURE FIX: Let layout calculation happen naturally
+            // This prevents black screen issues while still allowing proper layout
             
             true
         } catch (e: Exception) {
