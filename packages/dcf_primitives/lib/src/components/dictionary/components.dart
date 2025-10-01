@@ -24,3 +24,4 @@ export '../spinner_component.dart';
 export '../alert_component.dart';
 export '../webview_component.dart';
 export '../safe_area.dart';
+export '../framework/suspense.dart';
