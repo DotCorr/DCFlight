@@ -17,6 +17,12 @@ dependencies:
   # Note: dcflight does NOT depend on dcf_primitives
   # The primitives are a separate plugin that depends on dcflight
 
+  dcf_primitives:
+    path: ../dcf_primitives
+
+  dcf_reanimated:
+    path: ../dcf_reanimated
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

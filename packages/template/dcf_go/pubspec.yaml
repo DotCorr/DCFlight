@@ -14,12 +14,6 @@ dependencies:
   dcflight:
     path: ../../dcflight
 
-  dcf_primitives:
-    path: ../../dcf_primitives
-
-  dcf_reanimated:
-    path: ../../dcf_reanimated
-
   dcf_screens:
     path: ../../dcf_screens
 
