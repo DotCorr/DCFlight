@@ -32,8 +32,8 @@ class WebsiteScreen extends DCFStatefulComponent {
                   DCFSegmentItem(title: "DCFlight"),
                 ],
               ),
-              onSelectionChange: (v) {
-                selectedIndexWeb.setState(v["selectedIndex"]);
+              onSelectionChange: (DCFSegmentedControlSelectionData data) {
+                selectedIndexWeb.setState(data.selectedIndex);
               },
             ),
 
