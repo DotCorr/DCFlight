@@ -84,7 +84,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
           ),
           layout: DCFLayout(marginBottom: 20),
         ),
-        
+        DCFSlider(value: .5),
         // Grid
         DCFView(
           layout: DCFLayout(

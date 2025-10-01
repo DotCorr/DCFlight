@@ -12,11 +12,26 @@ import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.util.DisplayMetrics
 import android.view.View
 import android.view.ViewGroup
 import android.util.TypedValue
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.R
+
+/**
+ * CRITICAL FIX: Apply density scaling to style properties for cross-platform consistency
+ * iOS uses logical points that are automatically scaled by the system
+ * Android needs manual scaling to achieve the same visual result
+ */
+private fun applyStyleDensityScaling(value: Float): Float {
+    return try {
+        val displayMetrics = Resources.getSystem().displayMetrics
+        value * displayMetrics.density
+    } catch (e: Exception) {
+        value // Fallback to original value if scaling fails
+    }
+}
 
 /**
  * View extension for style application
@@ -39,7 +54,10 @@ fun View.applyStyles(props: Map<String, Any>) {
     // Border Radius
     props["borderRadius"]?.let { borderRadius ->
         val radius = when (borderRadius) {
-            is Number -> borderRadius.toFloat()
+            is Number -> {
+                // CRITICAL FIX: Apply density scaling to match iOS behavior
+                applyStyleDensityScaling(borderRadius.toFloat())
+            }
             else -> 0f
         }
         drawable.cornerRadius = radius
@@ -49,10 +67,10 @@ fun View.applyStyles(props: Map<String, Any>) {
     }
 
     // Per-corner Radius
-    val topLeft = (props["borderTopLeftRadius"] as? Number)?.toFloat()
-    val topRight = (props["borderTopRightRadius"] as? Number)?.toFloat()
-    val bottomLeft = (props["borderBottomLeftRadius"] as? Number)?.toFloat()
-    val bottomRight = (props["borderBottomRightRadius"] as? Number)?.toFloat()
+    val topLeft = (props["borderTopLeftRadius"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()) }
+    val topRight = (props["borderTopRightRadius"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()) }
+    val bottomLeft = (props["borderBottomLeftRadius"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()) }
+    val bottomRight = (props["borderBottomRightRadius"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()) }
 
     if (topLeft != null || topRight != null || bottomLeft != null || bottomRight != null) {
         val radii = floatArrayOf(
@@ -74,7 +92,10 @@ fun View.applyStyles(props: Map<String, Any>) {
             else -> Color.TRANSPARENT
         }
 
-        val borderWidth = (props["borderWidth"] as? Number)?.toInt() ?: 0
+        val borderWidth = (props["borderWidth"] as? Number)?.let { 
+            // CRITICAL FIX: Apply density scaling to match iOS behavior
+            applyStyleDensityScaling(it.toFloat()).toInt()
+        } ?: 0
         if (borderWidth > 0) {
             drawable.setStroke(borderWidth, color)
             this.clipToOutline = true
@@ -119,17 +140,28 @@ fun View.applyStyles(props: Map<String, Any>) {
 
     props["shadowRadius"]?.let { shadowRadius ->
         val radius = when (shadowRadius) {
-            is Number -> shadowRadius.toFloat()
+            is Number -> {
+                // CRITICAL FIX: Apply density scaling to match iOS behavior
+                applyStyleDensityScaling(shadowRadius.toFloat())
+            }
             else -> 0f
         }
         this.elevation = radius
     }
 
         props["shadowOffsetX"]?.let { offsetX ->
-            this.setTag(R.id.dcf_shadow_offset_x, offsetX)
+            // CRITICAL FIX: Apply density scaling to match iOS behavior
+            val scaledOffsetX = if (offsetX is Number) {
+                applyStyleDensityScaling(offsetX.toFloat())
+            } else offsetX
+            this.setTag(R.id.dcf_shadow_offset_x, scaledOffsetX)
         }
         props["shadowOffsetY"]?.let { offsetY ->
-            this.setTag(R.id.dcf_shadow_offset_y, offsetY)
+            // CRITICAL FIX: Apply density scaling to match iOS behavior
+            val scaledOffsetY = if (offsetY is Number) {
+                applyStyleDensityScaling(offsetY.toFloat())
+            } else offsetY
+            this.setTag(R.id.dcf_shadow_offset_y, scaledOffsetY)
         }
     }
 
@@ -137,7 +169,10 @@ fun View.applyStyles(props: Map<String, Any>) {
     props["elevation"]?.let { elevation ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             this.elevation = when (elevation) {
-                is Number -> elevation.toFloat()
+                is Number -> {
+                    // CRITICAL FIX: Apply density scaling to match iOS behavior
+                    applyStyleDensityScaling(elevation.toFloat())
+                }
                 else -> 0f
             }
         }
@@ -146,10 +181,10 @@ fun View.applyStyles(props: Map<String, Any>) {
     // Hit Slop - Apply only if specified (extends touch area)
     props["hitSlop"]?.let { hitSlop ->
         if (hitSlop is Map<*, *>) {
-            val top = (hitSlop["top"] as? Number)?.toInt() ?: 0
-            val bottom = (hitSlop["bottom"] as? Number)?.toInt() ?: 0
-            val left = (hitSlop["left"] as? Number)?.toInt() ?: 0
-            val right = (hitSlop["right"] as? Number)?.toInt() ?: 0
+            val top = (hitSlop["top"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+            val bottom = (hitSlop["bottom"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+            val left = (hitSlop["left"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+            val right = (hitSlop["right"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
 
             // Store hit slop for custom hit testing
             this.setTag(R.id.dcf_hit_slop_top, top)
