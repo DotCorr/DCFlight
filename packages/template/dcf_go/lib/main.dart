@@ -85,13 +85,13 @@ class InteractiveGridApp extends DCFStatefulComponent {
           ),
           layout: DCFLayout(marginBottom: 20),
         ),
-        DCFSlider(value: boxCount.state.toDouble()/100,onValueChange: (v){
-          print(v);
-          // Fix: Convert double to int properly
-          final double sliderValue = v['value'] as double;
-          final int newBoxCount = (sliderValue * 100).round();
-          boxCount.setState(newBoxCount);
-        }),
+       DCFSlider(value: boxCount.state.toDouble()/100,onValueChange: (DCFSliderValueData data){
+         print(data.value);
+         // Fix: Convert double to int properly
+         final double sliderValue = data.value;
+         final int newBoxCount = (sliderValue * 100).round();
+         boxCount.setState(newBoxCount);
+       }),
         // Grid
         DCFView(
           layout: DCFLayout(

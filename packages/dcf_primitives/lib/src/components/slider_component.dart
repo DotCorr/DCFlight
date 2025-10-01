@@ -7,6 +7,88 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Slider value change callback data
+class DCFSliderValueData {
+  /// Current slider value (0.0 to 1.0)
+  final double value;
+  
+  /// Whether the change was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the change
+  final DateTime timestamp;
+
+  DCFSliderValueData({
+    required this.value,
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFSliderValueData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFSliderValueData(
+      value: (data['value'] as num).toDouble(),
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Slider sliding start callback data
+class DCFSliderStartData {
+  /// Whether the start was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the start
+  final DateTime timestamp;
+
+  DCFSliderStartData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFSliderStartData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFSliderStartData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Slider sliding complete callback data
+class DCFSliderCompleteData {
+  /// Final slider value (0.0 to 1.0)
+  final double value;
+  
+  /// Whether the completion was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the completion
+  final DateTime timestamp;
+
+  DCFSliderCompleteData({
+    required this.value,
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFSliderCompleteData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFSliderCompleteData(
+      value: (data['value'] as num).toDouble(),
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// 🚀 DCF Slider Component
 ///
 /// A slider component that provides native platform behavior.
@@ -30,13 +112,13 @@ class DCFSlider extends DCFStatelessComponent
   final double? step;
 
   /// Called when slider value changes
-  final Function(Map<dynamic, dynamic>)? onValueChange;
+  final Function(DCFSliderValueData)? onValueChange;
 
   /// Called when user starts sliding
-  final Function(Map<dynamic, dynamic>)? onSlidingStart;
+  final Function(DCFSliderStartData)? onSlidingStart;
 
   /// Called when user finishes sliding
-  final Function(Map<dynamic, dynamic>)? onSlidingComplete;
+  final Function(DCFSliderCompleteData)? onSlidingComplete;
 
   /// Whether the slider is disabled
   final bool disabled;
@@ -87,15 +169,21 @@ class DCFSlider extends DCFStatelessComponent
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onValueChange != null) {
-      eventMap['onValueChange'] = onValueChange;
+      eventMap['onValueChange'] = (Map<dynamic, dynamic> data) {
+        onValueChange!(DCFSliderValueData.fromMap(data));
+      };
     }
 
     if (onSlidingStart != null) {
-      eventMap['onSlidingStart'] = onSlidingStart;
+      eventMap['onSlidingStart'] = (Map<dynamic, dynamic> data) {
+        onSlidingStart!(DCFSliderStartData.fromMap(data));
+      };
     }
 
     if (onSlidingComplete != null) {
-      eventMap['onSlidingComplete'] = onSlidingComplete;
+      eventMap['onSlidingComplete'] = (Map<dynamic, dynamic> data) {
+        onSlidingComplete!(DCFSliderCompleteData.fromMap(data));
+      };
     }
 
     Map<String, dynamic> props = {

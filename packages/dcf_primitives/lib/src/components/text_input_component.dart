@@ -7,6 +7,155 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Text input focus callback data
+class DCFTextInputFocusData {
+  /// Whether the input is focused
+  final bool isFocused;
+  
+  /// Timestamp of the focus change
+  final DateTime timestamp;
+
+  DCFTextInputFocusData({
+    required this.isFocused,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTextInputFocusData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTextInputFocusData(
+      isFocused: data['isFocused'] as bool,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Text input blur callback data
+class DCFTextInputBlurData {
+  /// Whether the input is blurred
+  final bool isBlurred;
+  
+  /// Timestamp of the blur
+  final DateTime timestamp;
+
+  DCFTextInputBlurData({
+    required this.isBlurred,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTextInputBlurData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTextInputBlurData(
+      isBlurred: data['isBlurred'] as bool,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Text input submit callback data
+class DCFTextInputSubmitData {
+  /// The submitted text
+  final String text;
+  
+  /// Timestamp of the submit
+  final DateTime timestamp;
+
+  DCFTextInputSubmitData({
+    required this.text,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTextInputSubmitData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTextInputSubmitData(
+      text: data['text'] as String,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Text input key press callback data
+class DCFTextInputKeyPressData {
+  /// The key that was pressed
+  final String key;
+  
+  /// Timestamp of the key press
+  final DateTime timestamp;
+
+  DCFTextInputKeyPressData({
+    required this.key,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTextInputKeyPressData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTextInputKeyPressData(
+      key: data['key'] as String,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Text input selection change callback data
+class DCFTextInputSelectionData {
+  /// Start position of selection
+  final int start;
+  
+  /// End position of selection
+  final int end;
+  
+  /// Timestamp of the selection change
+  final DateTime timestamp;
+
+  DCFTextInputSelectionData({
+    required this.start,
+    required this.end,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTextInputSelectionData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTextInputSelectionData(
+      start: data['start'] as int,
+      end: data['end'] as int,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Text input end editing callback data
+class DCFTextInputEndEditingData {
+  /// The final text
+  final String text;
+  
+  /// Timestamp of the end editing
+  final DateTime timestamp;
+
+  DCFTextInputEndEditingData({
+    required this.text,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFTextInputEndEditingData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFTextInputEndEditingData(
+      text: data['text'] as String,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// DCFTextInput - Cross-platform text input component
 /// Provides native text input functionality with comprehensive type safety
 class DCFTextInput extends DCFStatelessComponent
@@ -47,12 +196,12 @@ class DCFTextInput extends DCFStatelessComponent
   final String? fontWeight;
   final String? fontFamily;
   final void Function(String)? onChangeText;
-  final Function(Map<dynamic, dynamic>)? onFocus;
-  final Function(Map<dynamic, dynamic>)? onBlur;
-  final Function(Map<dynamic, dynamic>)? onSubmitEditing;
-  final Function(Map<dynamic, dynamic>)? onKeyPress;
-  final Function(Map<dynamic, dynamic>)? onSelectionChange;
-  final Function(Map<dynamic, dynamic>)? onEndEditing;
+  final Function(DCFTextInputFocusData)? onFocus;
+  final Function(DCFTextInputBlurData)? onBlur;
+  final Function(DCFTextInputSubmitData)? onSubmitEditing;
+  final Function(DCFTextInputKeyPressData)? onKeyPress;
+  final Function(DCFTextInputSelectionData)? onSelectionChange;
+  final Function(DCFTextInputEndEditingData)? onEndEditing;
   final bool adaptive;
 
   DCFTextInput({
@@ -105,14 +254,36 @@ class DCFTextInput extends DCFStatelessComponent
 
     // Add specific event handlers
     if (onChangeText != null) events['onChangeText'] = onChangeText;
-    if (onFocus != null) events['onFocus'] = onFocus;
-    if (onBlur != null) events['onBlur'] = onBlur;
-    if (onSubmitEditing != null) events['onSubmitEditing'] = onSubmitEditing;
-    if (onKeyPress != null) events['onKeyPress'] = onKeyPress;
-    if (onSelectionChange != null) {
-      events['onSelectionChange'] = onSelectionChange;
+    if (onFocus != null) {
+      events['onFocus'] = (Map<dynamic, dynamic> data) {
+        onFocus!(DCFTextInputFocusData.fromMap(data));
+      };
     }
-    if (onEndEditing != null) events['onEndEditing'] = onEndEditing;
+    if (onBlur != null) {
+      events['onBlur'] = (Map<dynamic, dynamic> data) {
+        onBlur!(DCFTextInputBlurData.fromMap(data));
+      };
+    }
+    if (onSubmitEditing != null) {
+      events['onSubmitEditing'] = (Map<dynamic, dynamic> data) {
+        onSubmitEditing!(DCFTextInputSubmitData.fromMap(data));
+      };
+    }
+    if (onKeyPress != null) {
+      events['onKeyPress'] = (Map<dynamic, dynamic> data) {
+        onKeyPress!(DCFTextInputKeyPressData.fromMap(data));
+      };
+    }
+    if (onSelectionChange != null) {
+      events['onSelectionChange'] = (Map<dynamic, dynamic> data) {
+        onSelectionChange!(DCFTextInputSelectionData.fromMap(data));
+      };
+    }
+    if (onEndEditing != null) {
+      events['onEndEditing'] = (Map<dynamic, dynamic> data) {
+        onEndEditing!(DCFTextInputEndEditingData.fromMap(data));
+      };
+    }
 
     return DCFElement(
       type: 'TextInput',
