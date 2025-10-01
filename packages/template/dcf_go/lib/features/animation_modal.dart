@@ -51,9 +51,9 @@ class AnimatedModalScreen extends DCFStatefulComponent {
             ],
             selectedIndex: selectedDemoState.state,
           ),
-          onSelectionChange: (v) {
+          onSelectionChange: (DCFSegmentedControlSelectionData data) {
             try {
-              selectedDemoState.setState(v['selectedIndex']);
+              selectedDemoState.setState(data.selectedIndex);
             } catch (_) {}
           },
         ),
@@ -62,10 +62,9 @@ class AnimatedModalScreen extends DCFStatefulComponent {
         DCFSlider(
           layout: DCFLayout(flex: 0, height: 50),
           value: animationValue.state,
-          onValueChange: (v) {
+          onValueChange: (DCFSliderValueData data) {
             try {
-              final newValue = v['value'] as double;
-              animationValue.setState(newValue);
+              animationValue.setState(data.value);
             } catch (_) {}
           },
         ),

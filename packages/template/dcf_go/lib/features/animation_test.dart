@@ -44,8 +44,8 @@ class AnimationTestScreen extends DCFStatefulComponent {
             ],
             selectedIndex: selectedDemo.state,
           ),
-          onSelectionChange: (v) {
-            selectedDemo.setState(v['selectedIndex']);
+          onSelectionChange: (DCFSegmentedControlSelectionData data) {
+            selectedDemo.setState(data.selectedIndex);
           },
         ),
 
@@ -59,8 +59,8 @@ class AnimationTestScreen extends DCFStatefulComponent {
             ),
             DCFSlider(
               value: animationValue.state,
-              onValueChange: (v) {
-                animationValue.setState(v['value'] as double);
+              onValueChange: (DCFSliderValueData data) {
+                animationValue.setState(data.value);
               },
             ),
           ],
