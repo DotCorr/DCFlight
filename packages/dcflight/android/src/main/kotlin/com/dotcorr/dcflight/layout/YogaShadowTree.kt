@@ -394,7 +394,12 @@ class YogaShadowTree private constructor() {
             for ((nodeId, _) in nodes) {
                 val layout = getNodeLayout(nodeId)
                 if (layout != null) {
-                    layoutsToApply.add(Pair(nodeId, layout))
+                    // SLIDER PERFORMANCE FIX: Validate layout bounds to prevent flash
+                    if (isValidLayoutBounds(layout)) {
+                        layoutsToApply.add(Pair(nodeId, layout))
+                    } else {
+                        Log.w(TAG, "Invalid layout bounds for node $nodeId: $layout")
+                    }
                 }
             }
             
@@ -874,6 +879,26 @@ class YogaShadowTree private constructor() {
     fun refreshDensityScaleFactor() {
         updateDensityScaleFactor()
         Log.d(TAG, "Density scale factor refreshed: $densityScaleFactor")
+    }
+    
+    /**
+     * SLIDER PERFORMANCE FIX: Validate layout bounds to prevent flash
+     * This prevents views from getting stuck in full-screen mode
+     */
+    private fun isValidLayoutBounds(layout: Rect): Boolean {
+        // Check for reasonable bounds to prevent flash
+        val width = layout.width()
+        val height = layout.height()
+        
+        // Prevent extremely large or small dimensions that cause flash
+        if (width <= 0 || height <= 0) return false
+        if (width > 10000 || height > 10000) return false
+        
+        // Check for NaN or infinite values
+        if (!width.toFloat().isFinite() || !height.toFloat().isFinite()) return false
+        if (width.toFloat().isNaN() || height.toFloat().isNaN()) return false
+        
+        return true
     }
 }
 
