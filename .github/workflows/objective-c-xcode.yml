@@ -30,6 +30,12 @@ jobs:
           cd packages/template/dcf_go
           flutter build ios --no-codesign
 
+      - name: Install CocoaPods dependencies
+        run: |
+          cd packages/template/dcf_go/ios
+          pod repo update
+          pod install --repo-update
+
       - name: List files in iOS project directory
         run: |
           cd packages/template/dcf_go/ios
