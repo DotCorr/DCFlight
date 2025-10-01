@@ -367,6 +367,9 @@ class DCMauiBridgeImpl private constructor() {
             }
             Log.d(TAG, "🔥 BATCH: Successfully committed all operations")
             
+            // SLIDER PERFORMANCE FIX: Optimize for rapid updates to prevent flash
+            DCFLayoutManager.shared.optimizeForRapidUpdates()
+            
             // iOS BEHAVIOR: Don't call calculateLayoutNow() here
             // Layout calculation is automatically triggered by addChildNode calls
             // This ensures iOS-style debounced layout calculation

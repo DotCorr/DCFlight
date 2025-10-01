@@ -62,6 +62,10 @@ class DCFLayoutManager private constructor() {
     // Track when layout calculation is needed
     private val needsLayoutCalculation = AtomicBoolean(false)
     private var layoutCalculationTimer: ScheduledExecutorService? = null
+    
+    // SLIDER PERFORMANCE FIX: Track rapid update mode for adaptive debouncing
+    private val isRapidUpdateMode = AtomicBoolean(false)
+    private val rapidUpdateTimer = AtomicLong(0L)
 
     // Dedicated executor for layout operations
     private val layoutExecutor = Executors.newSingleThreadExecutor { r ->
@@ -109,14 +113,18 @@ class DCFLayoutManager private constructor() {
     // MARK: - Automatic Layout Calculation
 
     /**
-     * iOS-style layout calculation scheduling with 100ms debouncing (matches iOS exactly)
+     * iOS-style layout calculation scheduling with adaptive debouncing for performance
      */
     private fun scheduleLayoutCalculation() {
         // Cancel existing scheduled calculation (matches iOS)
         mainHandler.removeCallbacks(layoutCalculationRunnable)
         
-        // Schedule new calculation with 100ms delay (matches iOS exactly)
-        mainHandler.postDelayed(layoutCalculationRunnable, 100)
+        // SLIDER PERFORMANCE FIX: Use shorter debounce during rapid updates
+        // This prevents the choppy performance during slider drag
+        val debounceDelay = if (isRapidUpdateMode.get()) 16L else 100L // 16ms = 60fps, 100ms = normal
+        
+        // Schedule new calculation with adaptive delay
+        mainHandler.postDelayed(layoutCalculationRunnable, debounceDelay)
     }
     
     private val layoutCalculationRunnable = Runnable {
@@ -545,6 +553,15 @@ class DCFLayoutManager private constructor() {
      */
     fun triggerLayoutCalculation() {
         needsLayoutCalculation.set(true)
+        
+        // SLIDER PERFORMANCE FIX: Detect rapid updates
+        val currentTime = System.currentTimeMillis()
+        val lastUpdateTime = rapidUpdateTimer.getAndSet(currentTime)
+        
+        // If updates are happening within 50ms, consider it rapid
+        val isRapid = (currentTime - lastUpdateTime) < 50L
+        isRapidUpdateMode.set(isRapid)
+        
         scheduleLayoutCalculation()
     }
 
@@ -588,6 +605,45 @@ class DCFLayoutManager private constructor() {
             view.alpha = 0f
         }
         Log.d(TAG, "Prepared ${viewRegistry.size} views for hot restart")
+    }
+    
+    /**
+     * FLASH SCREEN FIX: Make all views visible after batch operations
+     * This ensures text and other components are visible after batch creation
+     */
+    fun makeAllViewsVisible() {
+        for ((_, view) in viewRegistry) {
+            view.visibility = View.VISIBLE
+            view.alpha = 1.0f
+        }
+        Log.d(TAG, "Made ${viewRegistry.size} views visible after batch operations")
+    }
+    
+    /**
+     * SLIDER PERFORMANCE FIX: Optimize layout application during rapid updates
+     * This prevents the flash issue during slider drag by batching layout updates
+     */
+    fun optimizeForRapidUpdates() {
+        if (isRapidUpdateMode.get()) {
+            // During rapid updates, defer visibility changes to prevent flash
+            mainHandler.postDelayed({
+                makeAllViewsVisible()
+                isRapidUpdateMode.set(false)
+            }, 50) // Small delay to batch visibility changes
+        }
+    }
+    
+    /**
+     * SLIDER PERFORMANCE FIX: Prevent flash during slider updates
+     * This is called specifically when slider values change rapidly
+     */
+    fun handleSliderUpdate() {
+        // Mark as rapid update to use faster debouncing
+        isRapidUpdateMode.set(true)
+        rapidUpdateTimer.set(System.currentTimeMillis())
+        
+        // Trigger layout calculation with rapid update optimization
+        triggerLayoutCalculation()
     }
 }
 
