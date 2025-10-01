@@ -23,6 +23,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     final boxCount = useState(4);
+
     final gridDensity = useState(2.0);
     
     final columns = gridDensity.state.round();
@@ -84,7 +85,13 @@ class InteractiveGridApp extends DCFStatefulComponent {
           ),
           layout: DCFLayout(marginBottom: 20),
         ),
-        DCFSlider(value: .5),
+        DCFSlider(value: boxCount.state.toDouble()/100,onValueChange: (v){
+          print(v);
+          // Fix: Convert double to int properly
+          final double sliderValue = v['value'] as double;
+          final int newBoxCount = (sliderValue * 100).round();
+          boxCount.setState(newBoxCount);
+        }),
         // Grid
         DCFView(
           layout: DCFLayout(
