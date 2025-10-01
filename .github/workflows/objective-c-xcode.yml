@@ -25,6 +25,11 @@ jobs:
           cd packages/template/dcf_go
           flutter pub get
 
+      - name: CocoaPods repo update
+        run: |
+          cd packages/template/dcf_go/ios
+          pod repo update
+
       - name: Build iOS ephemeral files
         run: |
           cd packages/template/dcf_go
@@ -33,7 +38,6 @@ jobs:
       - name: Install CocoaPods dependencies
         run: |
           cd packages/template/dcf_go/ios
-          pod repo update
           pod install --repo-update
 
       - name: List files in iOS project directory
