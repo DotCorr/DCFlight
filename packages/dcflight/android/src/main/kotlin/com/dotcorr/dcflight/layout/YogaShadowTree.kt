@@ -389,12 +389,12 @@ class YogaShadowTree private constructor() {
                 }
             }
             
-            // FLASH SCREEN FIX: Apply layouts without making views visible yet
+            // ANDROID ARCHITECTURE FIX: Apply layouts immediately after calculation
             val layoutsToApply = mutableListOf<Pair<String, Rect>>()
             for ((nodeId, _) in nodes) {
                 val layout = getNodeLayout(nodeId)
                 if (layout != null) {
-                    // SLIDER PERFORMANCE FIX: Validate layout bounds to prevent flash
+                    // Only reject truly invalid layouts
                     if (isValidLayoutBounds(layout)) {
                         layoutsToApply.add(Pair(nodeId, layout))
                     } else {
@@ -481,34 +481,27 @@ class YogaShadowTree private constructor() {
 
     // FLASH SCREEN FIX: Apply layouts in batch without making views visible
     private fun applyLayoutsBatch(layouts: List<Pair<String, Rect>>) {
-        Handler(Looper.getMainLooper()).post {
-            // Apply all layouts first without making views visible
-            for ((viewId, frame) in layouts) {
-                val view = DCFLayoutManager.shared.getView(viewId)
-                if (view != null) {
-                    val wasUserInteractionEnabled = view.isEnabled
-                    
-                    // Apply layout using layout manager without making visible
-                    DCFLayoutManager.shared.applyLayoutWithoutVisibility(
-                        viewId = viewId,
-                        left = frame.left.toFloat(),
-                        top = frame.top.toFloat(),
-                        width = frame.width().toFloat(),
-                        height = frame.height().toFloat()
-                    )
-                    
-                    view.isEnabled = wasUserInteractionEnabled
-                    view.requestLayout()
-                }
-            }
-            
-            // Now make all views visible at once after all layouts are applied
-            for ((viewId, _) in layouts) {
-                val view = DCFLayoutManager.shared.getView(viewId)
-                if (view != null) {
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
-                }
+        // ANDROID ARCHITECTURE FIX: Apply layouts immediately and synchronously
+        // This prevents the timing issues that cause text to not show
+        for ((viewId, frame) in layouts) {
+            val view = DCFLayoutManager.shared.getView(viewId)
+            if (view != null) {
+                val wasUserInteractionEnabled = view.isEnabled
+                
+                // Apply layout immediately
+                DCFLayoutManager.shared.applyLayoutWithoutVisibility(
+                    viewId = viewId,
+                    left = frame.left.toFloat(),
+                    top = frame.top.toFloat(),
+                    width = frame.width().toFloat(),
+                    height = frame.height().toFloat()
+                )
+                
+                // ANDROID ARCHITECTURE FIX: Make visible immediately after layout
+                view.visibility = View.VISIBLE
+                view.alpha = 1.0f
+                view.isEnabled = wasUserInteractionEnabled
+                view.requestLayout()
             }
         }
     }
