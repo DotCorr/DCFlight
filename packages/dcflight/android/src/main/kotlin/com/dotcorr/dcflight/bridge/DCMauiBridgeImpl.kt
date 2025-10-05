@@ -424,8 +424,24 @@ class DCMauiBridgeImpl private constructor() {
             
             // 5. REACT-LIKE: Layout calculation happens ONCE for entire tree
             //    This is the equivalent of React's layout phase after commit
-            Log.d(TAG, "🔥 BATCH_COMMIT: Triggering layout calculation")
-            DCFLayoutManager.shared.calculateLayout()
+            Log.d(TAG, "🔥 BATCH_COMMIT: Triggering SYNCHRONOUS layout calculation")
+            
+            // Get screen dimensions
+            val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+            val screenWidth = displayMetrics.widthPixels.toFloat()
+            val screenHeight = displayMetrics.heightPixels.toFloat()
+            
+            // Calculate and apply layout SYNCHRONOUSLY (not posted to executor)
+            val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
+            Log.d(TAG, "🔥 BATCH_COMMIT: Layout calculation completed synchronously: $layoutSuccess")
+            
+            // Force a redraw of the root view to ensure all changes are visible
+            val rootView = ViewRegistry.shared.getView("root")
+            rootView?.let { root ->
+                root.requestLayout()
+                root.invalidate()
+                Log.d(TAG, "🔥 BATCH_COMMIT: Forced root view redraw")
+            }
             
             Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
             true
