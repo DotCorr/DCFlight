@@ -43,9 +43,7 @@ class DCFTextComponent : DCFComponent() {
         // Create a TextView - match iOS UILabel
         val textView = TextView(context)
 
-        // ANDROID ARCHITECTURE FIX: Start visible like iOS - no hiding madness
-        textView.visibility = View.VISIBLE
-        textView.alpha = 1.0f
+        // Let the system handle visibility naturally - no manual control
 
         // Apply adaptive default styling - let OS handle light/dark mode
         textView.maxLines = Int.MAX_VALUE // numberOfLines = 0 in iOS means unlimited

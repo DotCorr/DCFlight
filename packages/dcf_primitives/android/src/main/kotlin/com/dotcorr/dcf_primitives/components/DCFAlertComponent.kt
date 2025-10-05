@@ -32,6 +32,8 @@ class DCFAlertComponent : DCFComponent() {
         // Set component identifier
         frameLayout.setTag(R.id.dcf_component_type, "Alert")
         
+        // Let the system handle visibility naturally - no manual control
+        
         // Apply initial props
         updateView(frameLayout, props)
         return frameLayout

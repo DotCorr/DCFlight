@@ -36,9 +36,7 @@ class DCFButtonComponent : DCFComponent() {
         // Create button container using FrameLayout (View primitive)
         val container = FrameLayout(context)
         
-        // ANDROID FLASH FIX: Start invisible to prevent flash screen
-        container.visibility = View.INVISIBLE
-        container.alpha = 0f
+        // Let the system handle visibility naturally - no manual control
         
         // Create text view for the title (Text primitive)
         val textView = TextView(context)
