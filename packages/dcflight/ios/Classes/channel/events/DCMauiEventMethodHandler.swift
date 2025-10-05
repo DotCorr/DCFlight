@@ -183,6 +183,25 @@ class DCMauiEventMethodHandler: NSObject {
         }
     }
     
+    // Public method for batch operations (no FlutterResult needed)
+    func addEventListenersForBatch(viewId: String, eventTypes: [String]) {
+        // Get view from the registry
+        var view: UIView? = ViewRegistry.shared.getView(id: viewId)
+        
+        // If still not found, try the LayoutManager
+        if view == nil {
+            view = DCFLayoutManager.shared.getView(withId: viewId)
+        }
+        
+        guard let foundView = view else {
+            print("⚠️ View \(viewId) not found for event listener registration")
+            return
+        }
+        
+        // Register event listeners synchronously
+        _ = registerEventListeners(view: foundView, viewId: viewId, eventTypes: eventTypes)
+    }
+    
     // Helper method to register event listeners
     private func registerEventListeners(view: UIView, viewId: String, eventTypes: [String]) -> Bool {
         let viewType = String(describing: type(of: view))
