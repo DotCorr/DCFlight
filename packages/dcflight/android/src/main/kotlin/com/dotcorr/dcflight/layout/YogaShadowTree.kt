@@ -479,7 +479,7 @@ class YogaShadowTree private constructor() {
         }
     }
 
-    // FLASH SCREEN FIX: Apply layouts in batch without making views visible
+    // MATCH iOS: Apply layouts in batch with proper visibility handling
     private fun applyLayoutsBatch(layouts: List<Pair<String, Rect>>) {
         // ANDROID ARCHITECTURE FIX: Apply layouts on main thread like iOS
         // This prevents CalledFromWrongThreadException
@@ -489,8 +489,8 @@ class YogaShadowTree private constructor() {
                 if (view != null) {
                     val wasUserInteractionEnabled = view.isEnabled
                     
-                    // Apply layout immediately
-                    DCFLayoutManager.shared.applyLayoutWithoutVisibility(
+                    // MATCH iOS: Use applyLayout (not applyLayoutWithoutVisibility) to ensure visibility
+                    DCFLayoutManager.shared.applyLayout(
                         viewId = viewId,
                         left = frame.left.toFloat(),
                         top = frame.top.toFloat(),
@@ -498,14 +498,10 @@ class YogaShadowTree private constructor() {
                         height = frame.height().toFloat()
                     )
                     
-                    // ANDROID ARCHITECTURE FIX: Make visible immediately after layout
+                    // MATCH iOS: Ensure view is visible and enabled
                     view.visibility = View.VISIBLE
                     view.alpha = 1.0f
                     view.isEnabled = wasUserInteractionEnabled
-                    
-                    // CRITICAL FIX: Force layout and invalidate to ensure text is visible
-                    view.requestLayout()
-                    view.invalidate()
                 }
             }
         }

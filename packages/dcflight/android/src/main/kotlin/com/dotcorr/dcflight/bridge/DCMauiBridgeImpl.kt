@@ -223,13 +223,9 @@ class DCMauiBridgeImpl private constructor() {
                         Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
                     }
                     
-                    // ANDROID ATTACH FIX: Ensure child is visible after attachment
+                    // MATCH iOS: Ensure child is visible after attachment
                     childView.visibility = View.VISIBLE
                     childView.alpha = 1.0f
-                    
-                    // CRITICAL FIX: Force layout after attachment to ensure text is visible
-                    childView.requestLayout()
-                    parentViewGroup.requestLayout()
                     
                     Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
                 } catch (e: Exception) {
