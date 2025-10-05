@@ -1475,7 +1475,12 @@ class DCFEngine {
       EngineDebugLogger.reset();
 
       rootComponent = component;
+      
+      // CRITICAL FIX: Wrap initial mount in batch for atomic rendering
+      await _nativeBridge.startBatchUpdate();
       await renderToNative(component, parentViewId: "root");
+      await _nativeBridge.commitBatchUpdate();
+      
       setRootComponent(component);
 
       EngineDebugLogger.log('CREATE_ROOT_COMPLETE',
@@ -1485,7 +1490,11 @@ class DCFEngine {
           'CREATE_ROOT_FIRST', 'Creating first root component');
       rootComponent = component;
 
+      // CRITICAL FIX: Wrap initial mount in batch for atomic rendering
+      await _nativeBridge.startBatchUpdate();
       final viewId = await renderToNative(component, parentViewId: "root");
+      await _nativeBridge.commitBatchUpdate();
+      
       setRootComponent(component);
 
       EngineDebugLogger.log(

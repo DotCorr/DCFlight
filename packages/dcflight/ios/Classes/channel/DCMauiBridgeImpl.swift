@@ -360,6 +360,122 @@ import Foundation
         viewHierarchy["root"] = []
         
     }
+    
+    // MARK: - Batch Update Support (React-like atomic rendering)
+    
+    /// Start a batch update (no-op on iOS, kept for compatibility)
+    @objc func startBatchUpdate() -> Bool {
+        print("🔥 iOS_BRIDGE: startBatchUpdate called")
+        return true
+    }
+    
+    /// Commit a batch of operations atomically
+    @objc func commitBatchUpdate(updates: [[String: Any]]) -> Bool {
+        print("🔥 iOS_BRIDGE: commitBatchUpdate called with \(updates.count) updates")
+        
+        // Collect operations by type
+        var createOps: [(viewId: String, viewType: String, props: [String: Any])] = []
+        var updateOps: [(viewId: String, props: [String: Any])] = []
+        var attachOps: [(childId: String, parentId: String, index: Int)] = []
+        var eventOps: [(viewId: String, eventTypes: [String])] = []
+        
+        // Phase 1: Parse all operations
+        for operation in updates {
+            guard let operationType = operation["operation"] as? String else {
+                continue
+            }
+            
+            switch operationType {
+            case "createView":
+                if let viewId = operation["viewId"] as? String,
+                   let viewType = operation["viewType"] as? String,
+                   let props = operation["props"] as? [String: Any] {
+                    createOps.append((viewId, viewType, props))
+                }
+                
+            case "updateView":
+                if let viewId = operation["viewId"] as? String,
+                   let props = operation["props"] as? [String: Any] {
+                    updateOps.append((viewId, props))
+                }
+                
+            case "attachView":
+                if let childId = operation["childId"] as? String,
+                   let parentId = operation["parentId"] as? String,
+                   let index = operation["index"] as? Int {
+                    attachOps.append((childId, parentId, index))
+                }
+                
+            case "addEventListeners":
+                if let viewId = operation["viewId"] as? String,
+                   let eventTypes = operation["eventTypes"] as? [String] {
+                    eventOps.append((viewId, eventTypes))
+                }
+                
+            default:
+                print("🔥 iOS_BRIDGE: Unknown operation type: \(operationType)")
+            }
+        }
+        
+        print("🔥 iOS_BRIDGE: Collected \(createOps.count) creates, \(updateOps.count) updates, \(attachOps.count) attaches, \(eventOps.count) event registrations")
+        
+        // Phase 2: Execute all operations atomically
+        do {
+            // 1. Create all views first
+            for op in createOps {
+                print("🔥 iOS_BATCH_COMMIT: Creating \(op.viewId)")
+                guard let propsData = try? JSONSerialization.data(withJSONObject: op.props),
+                      let propsJson = String(data: propsData, encoding: .utf8) else {
+                    print("❌ Failed to serialize props for \(op.viewId)")
+                    return false
+                }
+                if !createView(viewId: op.viewId, viewType: op.viewType, propsJson: propsJson) {
+                    print("❌ Failed to create view \(op.viewId)")
+                    return false
+                }
+            }
+            
+            // 2. Update all view props
+            for op in updateOps {
+                print("🔥 iOS_BATCH_COMMIT: Updating \(op.viewId)")
+                guard let propsData = try? JSONSerialization.data(withJSONObject: op.props),
+                      let propsJson = String(data: propsData, encoding: .utf8) else {
+                    print("❌ Failed to serialize props for \(op.viewId)")
+                    return false
+                }
+                if !updateView(viewId: op.viewId, propsJson: propsJson) {
+                    print("❌ Failed to update view \(op.viewId)")
+                    return false
+                }
+            }
+            
+            // 3. Attach all views to build tree structure
+            for op in attachOps {
+                print("🔥 iOS_BATCH_COMMIT: Attaching \(op.childId) to \(op.parentId)")
+                if !attachView(childId: op.childId, parentId: op.parentId, index: op.index) {
+                    print("❌ Failed to attach \(op.childId) to \(op.parentId)")
+                    return false
+                }
+            }
+            
+            // 4. Register event listeners AFTER all views exist
+            for op in eventOps {
+                print("🔥 iOS_BATCH_COMMIT: Registering event listeners for \(op.viewId)")
+                DCMauiEventChannel.shared.addEventListeners(viewId: op.viewId, eventTypes: op.eventTypes)
+            }
+            
+            print("🔥 iOS_BATCH_COMMIT: Successfully committed all operations atomically")
+            return true
+        } catch {
+            print("❌ iOS_BATCH_COMMIT: Failed during atomic commit: \(error)")
+            return false
+        }
+    }
+    
+    /// Cancel a batch update (no-op on iOS, kept for compatibility)
+    @objc func cancelBatchUpdate() -> Bool {
+        return true
+    }
 }
 
 
