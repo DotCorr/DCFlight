@@ -371,6 +371,7 @@ import Foundation
     
     /// Commit a batch of operations atomically
     @objc func commitBatchUpdate(updates: [[String: Any]]) -> Bool {
+        NSLog("🚨🚨🚨 iOS_BRIDGE: COMMIT BATCH UPDATE CALLED WITH %d UPDATES", updates.count)
         print("🔥 iOS_BRIDGE: commitBatchUpdate called with \(updates.count) updates")
         
         // Collect operations by type
@@ -461,8 +462,13 @@ import Foundation
             // 4. Register event listeners AFTER all views exist
             for op in eventOps {
                 print("🔥 iOS_BATCH_COMMIT: Registering event listeners for \(op.viewId)")
-                DCMauiEventChannel.shared.addEventListeners(viewId: op.viewId, eventTypes: op.eventTypes)
+                DCMauiEventMethodHandler.shared.addEventListenersForBatch(viewId: op.viewId, eventTypes: op.eventTypes)
             }
+            
+            // 5. REACT-LIKE: Layout calculation happens ONCE for entire tree
+            print("🔥 iOS_BATCH_COMMIT: Triggering layout calculation")
+            DCFLayoutManager.shared.calculateLayoutNow()
+            print("🔥 iOS_BATCH_COMMIT: Layout calculation completed")
             
             print("🔥 iOS_BATCH_COMMIT: Successfully committed all operations atomically")
             return true

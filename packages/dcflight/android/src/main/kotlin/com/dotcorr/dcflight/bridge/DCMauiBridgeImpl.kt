@@ -424,7 +424,8 @@ class DCMauiBridgeImpl private constructor() {
             
             // 5. REACT-LIKE: Layout calculation happens ONCE for entire tree
             //    This is the equivalent of React's layout phase after commit
-            //    Views are already visible by default - no need to force visibility
+            Log.d(TAG, "🔥 BATCH_COMMIT: Triggering layout calculation")
+            DCFLayoutManager.shared.calculateLayout()
             
             Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
             true
