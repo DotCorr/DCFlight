@@ -29,6 +29,8 @@ class DCFCheckboxComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val checkBox = CheckBox(context)
         
+        // Let the system handle visibility naturally - no manual control
+        
         // Apply adaptive default styling - let OS handle light/dark mode
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {

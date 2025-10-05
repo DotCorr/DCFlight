@@ -35,6 +35,8 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val radioGroup = RadioGroup(context)
         radioGroup.orientation = LinearLayout.HORIZONTAL
         
+        // Let the system handle visibility naturally - no manual control
+        
         // Set component identifier
         radioGroup.setTag(R.id.dcf_component_type, "SegmentedControl")
         

@@ -29,6 +29,8 @@ class DCFIconComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
         
+        // Let the system handle visibility naturally - no manual control
+        
         // Set component identifier
         imageView.setTag(R.id.dcf_component_type, "Icon")
         

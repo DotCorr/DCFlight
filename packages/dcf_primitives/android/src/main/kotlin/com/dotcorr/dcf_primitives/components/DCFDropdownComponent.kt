@@ -28,6 +28,8 @@ class DCFDropdownComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val spinner = Spinner(context)
         
+        // Let the system handle visibility naturally - no manual control
+        
         // Set component identifier
         spinner.setTag(R.id.dcf_component_type, "Dropdown")
         

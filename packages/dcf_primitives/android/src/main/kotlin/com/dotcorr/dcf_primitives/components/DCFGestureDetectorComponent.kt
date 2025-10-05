@@ -28,6 +28,8 @@ class DCFGestureDetectorComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val frameLayout = FrameLayout(context)
         
+        // Let the system handle visibility naturally - no manual control
+        
         // Set component identifier
         frameLayout.setTag(R.id.dcf_component_type, "GestureDetector")
         

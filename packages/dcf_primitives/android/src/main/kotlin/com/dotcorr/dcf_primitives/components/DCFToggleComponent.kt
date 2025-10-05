@@ -28,6 +28,8 @@ class DCFToggleComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val switchControl = SwitchCompat(context)
 
+        // Let the system handle visibility naturally - no manual control
+        
         // Apply adaptive theming like iOS
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {
