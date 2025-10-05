@@ -212,25 +212,24 @@ class DCMauiBridgeImpl private constructor() {
                 Log.d(TAG, "Removed child '$childId' from existing parent")
             }
 
-            // ANDROID ATTACH FIX: Use post to ensure proper timing
-            parentViewGroup.post {
-                try {
-                    if (index >= 0 && index <= parentViewGroup.childCount) {
-                        parentViewGroup.addView(childView, index)
-                        Log.d(TAG, "Attached child '$childId' to parent '$parentId' at index $index")
-                    } else {
-                        parentViewGroup.addView(childView)
-                        Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
-                    }
-                    
-                    // MATCH iOS: Ensure child is visible after attachment
-                    childView.visibility = View.VISIBLE
-                    childView.alpha = 1.0f
-                    
-                    Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error in post attachment: ${e.message}", e)
+            // REACT-LIKE RENDERING: Attach synchronously, no post()
+            // Views MUST be attached immediately for batch commits to work properly
+            try {
+                if (index >= 0 && index <= parentViewGroup.childCount) {
+                    parentViewGroup.addView(childView, index)
+                    Log.d(TAG, "Attached child '$childId' to parent '$parentId' at index $index")
+                } else {
+                    parentViewGroup.addView(childView)
+                    Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
                 }
+                
+                // REACT-LIKE RENDERING: Do NOT manipulate visibility!
+                // Views are visible by default. Let the natural view lifecycle handle this.
+                
+                Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in attachment: ${e.message}", e)
+                throw e
             }
 
             childToParent[childId] = parentId
@@ -306,92 +305,116 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     fun commitBatchUpdate(operations: List<Map<String, Any>>): Boolean {
-        Log.d(TAG, "🔥 BATCH: Committing ${operations.size} operations")
+        Log.d(TAG, "🔥 BATCH: Committing ${operations.size} operations (REACT-LIKE ATOMIC)")
         
-        return try {
-            operations.forEach { operation ->
-                Log.d(TAG, "🔥 BATCH: Processing operation: $operation")
-                
-                // Handle the format from Dart interface_impl.dart
-                val operationType = operation["operation"] as? String
-                if (operationType != null) {
-                    when (operationType) {
+        // REACT-LIKE RENDERING: Phase 1 - RENDER (Collect all operations, no side effects)
+        data class CreateOp(val viewId: String, val viewType: String, val propsJson: String)
+        data class UpdateOp(val viewId: String, val propsJson: String)
+        data class AttachOp(val childId: String, val parentId: String, val index: Int)
+        
+        val createOps = mutableListOf<CreateOp>()
+        val updateOps = mutableListOf<UpdateOp>()
+        val attachOps = mutableListOf<AttachOp>()
+        
+        // Collect all operations first (pure, no side effects)
+        operations.forEach { operation ->
+            val operationType = operation["operation"] as? String
+            if (operationType != null) {
+                when (operationType) {
+                    "createView" -> {
+                        val viewId = operation["viewId"] as? String
+                        val viewType = operation["viewType"] as? String  
+                        val props = operation["props"] as? Map<String, Any>
+                        if (viewId != null && viewType != null && props != null) {
+                            val propsJson = JSONObject(props).toString()
+                            createOps.add(CreateOp(viewId, viewType, propsJson))
+                        }
+                    }
+                    "updateView" -> {
+                        val viewId = operation["viewId"] as? String
+                        val props = operation["props"] as? Map<String, Any>
+                        if (viewId != null && props != null) {
+                            val propsJson = JSONObject(props).toString()
+                            updateOps.add(UpdateOp(viewId, propsJson))
+                        }
+                    }
+                    "attachView" -> {
+                        val childId = operation["childId"] as? String
+                        val parentId = operation["parentId"] as? String
+                        val index = operation["index"] as? Int
+                        if (childId != null && parentId != null && index != null) {
+                            attachOps.add(AttachOp(childId, parentId, index))
+                        }
+                    }
+                }
+            } else {
+                // Fallback for legacy format (if any)
+                val type = operation["type"] as? String
+                val args = operation["args"] as? Map<String, Any>
+                if (type != null && args != null) {
+                    when (type) {
                         "createView" -> {
-                            val viewId = operation["viewId"] as? String
-                            val viewType = operation["viewType"] as? String  
-                            val props = operation["props"] as? Map<String, Any>
-                            if (viewId != null && viewType != null && props != null) {
-                                Log.d(TAG, "🔥 BATCH: Creating view $viewId of type $viewType")
-                                // Convert props map to JSON string for consistency
-                                val propsJson = JSONObject(props).toString()
-                                createView(viewId, viewType, propsJson)
+                            val viewId = args["viewId"] as? String
+                            val viewType = args["viewType"] as? String
+                            val propsJson = args["propsJson"] as? String
+                            if (viewId != null && viewType != null && propsJson != null) {
+                                createOps.add(CreateOp(viewId, viewType, propsJson))
                             }
                         }
                         "updateView" -> {
-                            val viewId = operation["viewId"] as? String
-                            val props = operation["props"] as? Map<String, Any>
-                            if (viewId != null && props != null) {
-                                Log.d(TAG, "🔥 BATCH: Updating view $viewId with props")
-                                // Convert props map to JSON string for consistency
-                                val propsJson = JSONObject(props).toString()
-                                updateView(viewId, propsJson)
+                            val viewId = args["viewId"] as? String
+                            val propsJson = args["propsJson"] as? String
+                            if (viewId != null && propsJson != null) {
+                                updateOps.add(UpdateOp(viewId, propsJson))
                             }
                         }
                         "attachView" -> {
-                            val childId = operation["childId"] as? String
-                            val parentId = operation["parentId"] as? String
-                            val index = operation["index"] as? Int
+                            val childId = args["childId"] as? String
+                            val parentId = args["parentId"] as? String
+                            val index = args["index"] as? Int
                             if (childId != null && parentId != null && index != null) {
-                                Log.d(TAG, "🔥 BATCH: Attaching view $childId to $parentId at index $index")
-                                attachView(childId, parentId, index)
-                            }
-                        }
-                        else -> {
-                            Log.w(TAG, "🔥 BATCH: Unknown operation type: $operationType")
-                        }
-                    }
-                } else {
-                    // Fallback for legacy format (if any)
-                    val type = operation["type"] as? String
-                    val args = operation["args"] as? Map<String, Any>
-
-                    if (type != null && args != null) {
-                        when (type) {
-                            "createView" -> {
-                                val viewId = args["viewId"] as? String
-                                val viewType = args["viewType"] as? String
-                                val propsJson = args["propsJson"] as? String
-                                if (viewId != null && viewType != null && propsJson != null) {
-                                    createView(viewId, viewType, propsJson)
-                                }
-                            }
-                            "updateView" -> {
-                                val viewId = args["viewId"] as? String
-                                val propsJson = args["propsJson"] as? String
-                                if (viewId != null && propsJson != null) {
-                                    updateView(viewId, propsJson)
-                                }
-                            }
-                            "attachView" -> {
-                                val childId = args["childId"] as? String
-                                val parentId = args["parentId"] as? String
-                                val index = args["index"] as? Int
-                                if (childId != null && parentId != null && index != null) {
-                                    attachView(childId, parentId, index)
-                                }
+                                attachOps.add(AttachOp(childId, parentId, index))
                             }
                         }
                     }
                 }
             }
-            Log.d(TAG, "🔥 BATCH: Successfully committed all operations")
+        }
+        
+        Log.d(TAG, "🔥 BATCH: Collected ${createOps.size} creates, ${updateOps.size} updates, ${attachOps.size} attaches")
+        
+        // REACT-LIKE RENDERING: Phase 2 - COMMIT (Apply ALL operations atomically)
+        return try {
+            // CRITICAL FIX: Execute synchronously, not posted!
+            // The bridge methods are already called on main thread from Flutter
+            // Using Handler.post() causes the function to return before work is done
             
-            // ANDROID ARCHITECTURE FIX: Let layout calculation happen naturally
-            // This prevents black screen issues while still allowing proper layout
+            // 1. Create all views first
+            createOps.forEach { op ->
+                Log.d(TAG, "🔥 BATCH_COMMIT: Creating ${op.viewId}")
+                createView(op.viewId, op.viewType, op.propsJson)
+            }
             
+            // 2. Update all view props
+            updateOps.forEach { op ->
+                Log.d(TAG, "🔥 BATCH_COMMIT: Updating ${op.viewId}")
+                updateView(op.viewId, op.propsJson)
+            }
+            
+            // 3. Attach all views to build tree structure
+            attachOps.forEach { op ->
+                Log.d(TAG, "🔥 BATCH_COMMIT: Attaching ${op.childId} to ${op.parentId}")
+                attachView(op.childId, op.parentId, op.index)
+            }
+            
+            // 4. REACT-LIKE: Layout calculation happens ONCE for entire tree
+            //    This is the equivalent of React's layout phase after commit
+            //    Views are already visible by default - no need to force visibility
+            
+            Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "🔥 BATCH: Failed to commit batch update", e)
+            Log.e(TAG, "🔥 BATCH_COMMIT: Failed during atomic commit", e)
             false
         }
     }
