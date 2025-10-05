@@ -227,6 +227,10 @@ class DCMauiBridgeImpl private constructor() {
                     childView.visibility = View.VISIBLE
                     childView.alpha = 1.0f
                     
+                    // CRITICAL FIX: Force layout after attachment to ensure text is visible
+                    childView.requestLayout()
+                    parentViewGroup.requestLayout()
+                    
                     Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error in post attachment: ${e.message}", e)

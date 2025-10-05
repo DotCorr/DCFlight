@@ -25,7 +25,7 @@ class DCFButtonPressData {
     return DCFButtonPressData(
       fromUser: data['fromUser'] as bool? ?? true,
       timestamp: data['timestamp'] != null 
-          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          ? DateTime.fromMillisecondsSinceEpoch((data['timestamp'] as num).toInt())
           : DateTime.now(),
     );
   }
@@ -49,7 +49,7 @@ class DCFButtonLongPressData {
     return DCFButtonLongPressData(
       fromUser: data['fromUser'] as bool? ?? true,
       timestamp: data['timestamp'] != null 
-          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          ? DateTime.fromMillisecondsSinceEpoch((data['timestamp'] as num).toInt())
           : DateTime.now(),
     );
   }

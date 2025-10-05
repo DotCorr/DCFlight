@@ -35,7 +35,7 @@ class DCFGestureTapData {
       x: (data['x'] as num).toDouble(),
       y: (data['y'] as num).toDouble(),
       timestamp: data['timestamp'] != null 
-          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          ? DateTime.fromMillisecondsSinceEpoch((data['timestamp'] as num).toInt())
           : DateTime.now(),
     );
   }
