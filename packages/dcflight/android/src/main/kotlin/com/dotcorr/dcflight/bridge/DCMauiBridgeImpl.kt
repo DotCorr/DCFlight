@@ -311,10 +311,12 @@ class DCMauiBridgeImpl private constructor() {
         data class CreateOp(val viewId: String, val viewType: String, val propsJson: String)
         data class UpdateOp(val viewId: String, val propsJson: String)
         data class AttachOp(val childId: String, val parentId: String, val index: Int)
+        data class AddEventListenersOp(val viewId: String, val eventTypes: List<String>)
         
         val createOps = mutableListOf<CreateOp>()
         val updateOps = mutableListOf<UpdateOp>()
         val attachOps = mutableListOf<AttachOp>()
+        val eventOps = mutableListOf<AddEventListenersOp>()
         
         // Collect all operations first (pure, no side effects)
         operations.forEach { operation ->
@@ -344,6 +346,13 @@ class DCMauiBridgeImpl private constructor() {
                         val index = operation["index"] as? Int
                         if (childId != null && parentId != null && index != null) {
                             attachOps.add(AttachOp(childId, parentId, index))
+                        }
+                    }
+                    "addEventListeners" -> {
+                        val viewId = operation["viewId"] as? String
+                        val eventTypes = operation["eventTypes"] as? List<String>
+                        if (viewId != null && eventTypes != null) {
+                            eventOps.add(AddEventListenersOp(viewId, eventTypes))
                         }
                     }
                 }
@@ -381,7 +390,7 @@ class DCMauiBridgeImpl private constructor() {
             }
         }
         
-        Log.d(TAG, "🔥 BATCH: Collected ${createOps.size} creates, ${updateOps.size} updates, ${attachOps.size} attaches")
+        Log.d(TAG, "🔥 BATCH: Collected ${createOps.size} creates, ${updateOps.size} updates, ${attachOps.size} attaches, ${eventOps.size} event registrations")
         
         // REACT-LIKE RENDERING: Phase 2 - COMMIT (Apply ALL operations atomically)
         return try {
@@ -407,7 +416,13 @@ class DCMauiBridgeImpl private constructor() {
                 attachView(op.childId, op.parentId, op.index)
             }
             
-            // 4. REACT-LIKE: Layout calculation happens ONCE for entire tree
+            // 4. Register event listeners AFTER all views exist
+            eventOps.forEach { op ->
+                Log.d(TAG, "🔥 BATCH_COMMIT: Registering event listeners for ${op.viewId}")
+                DCMauiEventMethodHandler.shared.addEventListenersForBatch(op.viewId, op.eventTypes)
+            }
+            
+            // 5. REACT-LIKE: Layout calculation happens ONCE for entire tree
             //    This is the equivalent of React's layout phase after commit
             //    Views are already visible by default - no need to force visibility
             

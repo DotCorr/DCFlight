@@ -233,6 +233,30 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         Log.d(TAG, "Event listeners registered for view $viewId: $eventTypes")
         result.success(true)
     }
+    
+    /**
+     * Public method to add event listeners without Flutter Result (for batch operations)
+     */
+    fun addEventListenersForBatch(viewId: String, eventTypes: List<String>): Boolean {
+        val view = ViewRegistry.shared.getView(viewId)
+        if (view == null) {
+            Log.e(TAG, "View $viewId not found for event listener registration")
+            return false
+        }
+
+        // Store viewId and eventTypes on the view
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, eventTypes.toSet())
+
+        // Store event callback that sends to Flutter
+        val eventCallback: (String, Map<String, Any?>) -> Unit = { eventType, eventData ->
+            shared.sendEventToFlutter(viewId, eventType, eventData)
+        }
+        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, eventCallback)
+
+        Log.d(TAG, "Event listeners registered for view $viewId: $eventTypes")
+        return true
+    }
 
     /**
      * Sends events back to Flutter via method channel - matches iOS sendEvent exactly

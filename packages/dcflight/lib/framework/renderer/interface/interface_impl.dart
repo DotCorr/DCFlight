@@ -90,11 +90,13 @@ class PlatformInterfaceImpl implements PlatformInterface {
       String viewId, String type, Map<String, dynamic> props) async {
     // Platform-aware batch handling - re-enable for testing
     if (_batchUpdateInProgress) {
+      // CRITICAL FIX: Preprocess props BEFORE adding to batch to remove closures
+      final processedProps = preprocessProps(props);
       _pendingBatchUpdates.add({
         'operation': 'createView',
         'viewId': viewId,
         'viewType': type,
-        'props': props,
+        'props': processedProps,
       });
       return true;
     }
@@ -123,10 +125,12 @@ class PlatformInterfaceImpl implements PlatformInterface {
     // Platform-aware batching: Re-enable for testing with fixed Android implementation
     if (_batchUpdateInProgress) {
       print('🔥 FLUTTER_BRIDGE: Adding updateView to batch - viewId: $viewId');
+      // CRITICAL FIX: Preprocess props BEFORE adding to batch to remove closures
+      final processedProps = preprocessProps(propPatches);
       _pendingBatchUpdates.add({
         'operation': 'updateView',
         'viewId': viewId,
-        'props': propPatches,
+        'props': processedProps,
       });
       return true;
     }
@@ -229,6 +233,18 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
   @override
   Future<bool> addEventListeners(String viewId, List<String> eventTypes) async {
+    // CRITICAL FIX: Queue event listener registration in batch
+    // Event listeners must be registered AFTER views are created
+    if (_batchUpdateInProgress) {
+      print('🔥 FLUTTER_BRIDGE: Adding addEventListeners to batch - viewId: $viewId, eventTypes: $eventTypes');
+      _pendingBatchUpdates.add({
+        'operation': 'addEventListeners',
+        'viewId': viewId,
+        'eventTypes': eventTypes,
+      });
+      return true;
+    }
+    
     try {
       await eventChannel.invokeMethod('addEventListeners', {
         'viewId': viewId,

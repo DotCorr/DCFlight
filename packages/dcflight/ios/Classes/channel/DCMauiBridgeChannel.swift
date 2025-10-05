@@ -102,12 +102,18 @@ class DCMauiBridgeMethodChannel: NSObject {
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
             
+        case "startBatchUpdate":
+            handleStartBatchUpdate(result: result)
+            
         case "commitBatchUpdate":
             if let args = args {
                 handleCommitBatchUpdate(args, result: result)
             } else {
                 result(FlutterError(code: "ARGS_ERROR", message: "Arguments cannot be null", details: nil))
             }
+            
+        case "cancelBatchUpdate":
+            handleCancelBatchUpdate(result: result)
             
         // REMOVED: callComponentMethod - replaced with prop-based commands
         // Components now handle imperative operations through command props
@@ -275,6 +281,12 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
     }
     
+    // Handle start batch update
+    private func handleStartBatchUpdate(result: @escaping FlutterResult) {
+        let success = DCMauiBridgeImpl.shared.startBatchUpdate()
+        result(success)
+    }
+    
     // Handle batch updates
     private func handleCommitBatchUpdate(_ args: [String: Any], result: @escaping FlutterResult) {
         guard let updates = args["updates"] as? [[String: Any]] else {
@@ -284,40 +296,16 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         // Execute on main thread
         DispatchQueue.main.async {
-            var allSucceeded = true
-            
-            for update in updates {
-                if let operation = update["operation"] as? String {
-                    switch operation {
-                    case "createView":
-                        if let viewId = update["viewId"] as? String,
-                           let viewType = update["viewType"] as? String,
-                           let props = update["props"] as? [String: Any],
-                           let propsData = try? JSONSerialization.data(withJSONObject: props),
-                           let propsJson = String(data: propsData, encoding: .utf8) {
-                            let success = DCMauiBridgeImpl.shared.createView(viewId: viewId, viewType: viewType, propsJson: propsJson)
-                            if !success {
-                                allSucceeded = false
-                            }
-                        }
-                    case "updateView":
-                        if let viewId = update["viewId"] as? String,
-                           let props = update["props"] as? [String: Any],
-                           let propsData = try? JSONSerialization.data(withJSONObject: props),
-                           let propsJson = String(data: propsData, encoding: .utf8) {
-                            let success = DCMauiBridgeImpl.shared.updateView(viewId: viewId, propsJson: propsJson)
-                            if !success {
-                                allSucceeded = false
-                            }
-                        }
-                    default:
-                        break
-                    }
-                }
-            }
-            
-            result(allSucceeded)
+            // Use the new atomic batch commit implementation
+            let success = DCMauiBridgeImpl.shared.commitBatchUpdate(updates: updates)
+            result(success)
         }
+    }
+    
+    // Handle cancel batch update
+    private func handleCancelBatchUpdate(result: @escaping FlutterResult) {
+        let success = DCMauiBridgeImpl.shared.cancelBatchUpdate()
+        result(success)
     }
     
     /// Handle hot restart detection method calls
