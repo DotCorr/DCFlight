@@ -481,28 +481,28 @@ class YogaShadowTree private constructor() {
 
     // MATCH iOS: Apply layouts in batch with proper visibility handling
     private fun applyLayoutsBatch(layouts: List<Pair<String, Rect>>) {
-        // ANDROID ARCHITECTURE FIX: Apply layouts on main thread like iOS
-        // This prevents CalledFromWrongThreadException
-        Handler(Looper.getMainLooper()).post {
-            for ((viewId, frame) in layouts) {
-                val view = DCFLayoutManager.shared.getView(viewId)
-                if (view != null) {
-                    val wasUserInteractionEnabled = view.isEnabled
-                    
-                    // MATCH iOS: Use applyLayout (not applyLayoutWithoutVisibility) to ensure visibility
-                    DCFLayoutManager.shared.applyLayout(
-                        viewId = viewId,
-                        left = frame.left.toFloat(),
-                        top = frame.top.toFloat(),
-                        width = frame.width().toFloat(),
-                        height = frame.height().toFloat()
-                    )
-                    
-                    // MATCH iOS: Ensure view is visible and enabled
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
-                    view.isEnabled = wasUserInteractionEnabled
-                }
+        // REACT-LIKE RENDERING: Apply layouts synchronously
+        // We're already on the main thread (called from Yoga layout calculation)
+        // No need for Handler.post() which makes it async and breaks rendering
+        for ((viewId, frame) in layouts) {
+            val view = DCFLayoutManager.shared.getView(viewId)
+            if (view != null) {
+                val wasUserInteractionEnabled = view.isEnabled
+                
+                // Apply layout synchronously - happens immediately
+                DCFLayoutManager.shared.applyLayout(
+                    viewId = viewId,
+                    left = frame.left.toFloat(),
+                    top = frame.top.toFloat(),
+                    width = frame.width().toFloat(),
+                    height = frame.height().toFloat()
+                )
+                
+                // Restore interaction state only (not visibility)
+                // Views are visible by default - no need to force visibility
+                view.isEnabled = wasUserInteractionEnabled
+                
+                Log.d(TAG, "Applied layout to view $viewId: $frame")
             }
         }
     }

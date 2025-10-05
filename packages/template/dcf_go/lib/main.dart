@@ -47,11 +47,11 @@ class InteractiveGridApp extends DCFStatefulComponent {
 
     return DCFView(
       styleSheet: DCFStyleSheet(
-        backgroundColor: Colors.green.shade400,
+        backgroundColor: Colors.orange.shade400,
       ),
       layout: DCFLayout(
         flex: 1,
-        padding: 20,
+        padding: 10,
         paddingTop: 100,
       ),
       children: [
@@ -102,6 +102,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
         DCFView(
           layout: DCFLayout(
             width: '100%',
+            padding: 20,
             paddingTop: 20,
             gap: 15,
           ),
@@ -138,6 +139,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
               layout: DCFLayout(
                 flexDirection: YogaFlexDirection.row,
                 justifyContent: YogaJustifyContent.center,
+              
                 gap: 10,
               ),
               children: [

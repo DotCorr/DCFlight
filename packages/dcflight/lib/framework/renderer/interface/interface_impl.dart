@@ -186,6 +186,19 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
   @override
   Future<bool> attachView(String childId, String parentId, int index) async {
+    // CRITICAL FIX: Queue attachView in batch like createView and updateView
+    // Attachments MUST happen AFTER views are created!
+    if (_batchUpdateInProgress) {
+      print('🔥 FLUTTER_BRIDGE: Adding attachView to batch - child: $childId, parent: $parentId, index: $index');
+      _pendingBatchUpdates.add({
+        'operation': 'attachView',
+        'childId': childId,
+        'parentId': parentId,
+        'index': index,
+      });
+      return true;
+    }
+
     try {
       final result = await bridgeChannel.invokeMethod<bool>('attachView', {
         'childId': childId,

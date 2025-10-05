@@ -360,10 +360,10 @@ class DCFLayoutManager private constructor() {
                     // Set layout - this is the line that was crashing
                     view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
 
-                    // SYSTEM-WIDE FIX: Make view visible ONLY after layout is applied
-                    // This prevents flash for ALL components automatically
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
+                    // REACT-LIKE RENDERING: Do NOT manipulate visibility here
+                    // Views are visible by default. Visibility management violates React's
+                    // render/commit separation and causes timing issues.
+                    // Let the natural view lifecycle handle visibility.
 
                     // Force layout
                     view.requestLayout()
@@ -600,24 +600,21 @@ class DCFLayoutManager private constructor() {
      * This prevents flash during hot restart by making all views invisible initially
      */
     fun prepareForHotRestart() {
-        // Make all registered views invisible to prevent flash during hot restart
-        for ((_, view) in viewRegistry) {
-            view.visibility = View.INVISIBLE
-            view.alpha = 0f
-        }
-        Log.d(TAG, "Prepared ${viewRegistry.size} views for hot restart")
+        // REACT-LIKE RENDERING: NO visibility manipulation
+        // Views remain visible naturally during hot restart
+        // Cleanup happens at the VDOM level, not here
+        Log.d(TAG, "Hot restart preparation (no visibility manipulation)")
     }
     
     /**
-     * FLASH SCREEN FIX: Make all views visible after batch operations
-     * This ensures text and other components are visible after batch creation
+     * DEPRECATED: This function is no longer needed
+     * REACT-LIKE RENDERING: Views are visible by default, no need to force visibility
      */
+    @Deprecated("Views are visible by default - no need to force visibility")
     fun makeAllViewsVisible() {
-        for ((_, view) in viewRegistry) {
-            view.visibility = View.VISIBLE
-            view.alpha = 1.0f
-        }
-        Log.d(TAG, "Made ${viewRegistry.size} views visible after batch operations")
+        // REMOVED: This anti-pattern caused timing issues and hidden views
+        // Views should be visible naturally without manual manipulation
+        Log.d(TAG, "makeAllViewsVisible called but no longer needed (views visible by default)")
     }
     
     /**
