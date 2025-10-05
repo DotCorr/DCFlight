@@ -481,27 +481,32 @@ class YogaShadowTree private constructor() {
 
     // FLASH SCREEN FIX: Apply layouts in batch without making views visible
     private fun applyLayoutsBatch(layouts: List<Pair<String, Rect>>) {
-        // ANDROID ARCHITECTURE FIX: Apply layouts immediately and synchronously
-        // This prevents the timing issues that cause text to not show
-        for ((viewId, frame) in layouts) {
-            val view = DCFLayoutManager.shared.getView(viewId)
-            if (view != null) {
-                val wasUserInteractionEnabled = view.isEnabled
-                
-                // Apply layout immediately
-                DCFLayoutManager.shared.applyLayoutWithoutVisibility(
-                    viewId = viewId,
-                    left = frame.left.toFloat(),
-                    top = frame.top.toFloat(),
-                    width = frame.width().toFloat(),
-                    height = frame.height().toFloat()
-                )
-                
-                // ANDROID ARCHITECTURE FIX: Make visible immediately after layout
-                view.visibility = View.VISIBLE
-                view.alpha = 1.0f
-                view.isEnabled = wasUserInteractionEnabled
-                view.requestLayout()
+        // ANDROID ARCHITECTURE FIX: Apply layouts on main thread like iOS
+        // This prevents CalledFromWrongThreadException
+        Handler(Looper.getMainLooper()).post {
+            for ((viewId, frame) in layouts) {
+                val view = DCFLayoutManager.shared.getView(viewId)
+                if (view != null) {
+                    val wasUserInteractionEnabled = view.isEnabled
+                    
+                    // Apply layout immediately
+                    DCFLayoutManager.shared.applyLayoutWithoutVisibility(
+                        viewId = viewId,
+                        left = frame.left.toFloat(),
+                        top = frame.top.toFloat(),
+                        width = frame.width().toFloat(),
+                        height = frame.height().toFloat()
+                    )
+                    
+                    // ANDROID ARCHITECTURE FIX: Make visible immediately after layout
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+                    view.isEnabled = wasUserInteractionEnabled
+                    
+                    // CRITICAL FIX: Force layout and invalidate to ensure text is visible
+                    view.requestLayout()
+                    view.invalidate()
+                }
             }
         }
     }
