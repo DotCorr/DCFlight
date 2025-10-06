@@ -17,8 +17,8 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
+import com.dotcorr.dcflight.layout.ViewRegistry
 import com.dotcorr.dcflight.utils.DCFScreenUtilities
-import com.dotcorr.dcflight.utils.ViewRegistry
 
 /**
  * DCFFlutterActivity - Base activity for DCFlight apps
@@ -131,25 +131,33 @@ open class DCFFlutterActivity : FlutterActivity() {
             // Invalidate all layouts to force recalculation with new screen dimensions
             DCFLayoutManager.shared.invalidateAllLayouts()
             
+            // CRITICAL FIX: Measure root view before recalculating layout
+            val rootView: View? = ViewRegistry.shared.getView("root")
+            if (rootView != null) {
+                val displayMetrics = resources.displayMetrics
+                rootView.measure(
+                    View.MeasureSpec.makeMeasureSpec(displayMetrics.widthPixels, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(displayMetrics.heightPixels, View.MeasureSpec.EXACTLY)
+                )
+                Log.d(TAG, "🔄 Root view measured after rotation: ${rootView.measuredWidth}x${rootView.measuredHeight}")
+            }
+            
             // Recalculate all layouts with new dimensions
             YogaShadowTree.shared.calculateLayoutForAllRoots()
             
             // CRITICAL: Force recursive invalidation after rotation to redraw all views
-            val rootView = ViewRegistry.shared.getView("root")
-            rootView?.let { root ->
-                root.post {
-                    // Recursively invalidate all views to ensure text renders after rotation
-                    fun invalidateAll(v: View) {
-                        v.invalidate()
-                        if (v is ViewGroup) {
-                            for (i in 0 until v.childCount) {
-                                invalidateAll(v.getChildAt(i))
-                            }
+            if (rootView != null) {
+                // Recursively invalidate all views SYNCHRONOUSLY
+                fun invalidateAll(v: View) {
+                    v.invalidate()
+                    if (v is ViewGroup) {
+                        for (i in 0 until v.childCount) {
+                            invalidateAll(v.getChildAt(i))
                         }
                     }
-                    invalidateAll(root)
-                    Log.d(TAG, "🔄 Posted recursive invalidation after rotation")
                 }
+                invalidateAll(rootView)
+                Log.d(TAG, "🔄 Forced recursive invalidation after rotation")
             }
             
             Log.d(TAG, "✅ Layout updated for configuration change")
