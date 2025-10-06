@@ -10,12 +10,15 @@ package com.dotcorr.dcflight
 import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.view.ViewGroup
 import com.facebook.soloader.SoLoader
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.utils.DCFScreenUtilities
+import com.dotcorr.dcflight.utils.ViewRegistry
 
 /**
  * DCFFlutterActivity - Base activity for DCFlight apps
@@ -130,6 +133,24 @@ open class DCFFlutterActivity : FlutterActivity() {
             
             // Recalculate all layouts with new dimensions
             YogaShadowTree.shared.calculateLayoutForAllRoots()
+            
+            // CRITICAL: Force recursive invalidation after rotation to redraw all views
+            val rootView = ViewRegistry.shared.getView("root")
+            rootView?.let { root ->
+                root.post {
+                    // Recursively invalidate all views to ensure text renders after rotation
+                    fun invalidateAll(v: View) {
+                        v.invalidate()
+                        if (v is ViewGroup) {
+                            for (i in 0 until v.childCount) {
+                                invalidateAll(v.getChildAt(i))
+                            }
+                        }
+                    }
+                    invalidateAll(root)
+                    Log.d(TAG, "🔄 Posted recursive invalidation after rotation")
+                }
+            }
             
             Log.d(TAG, "✅ Layout updated for configuration change")
         } catch (e: Exception) {
