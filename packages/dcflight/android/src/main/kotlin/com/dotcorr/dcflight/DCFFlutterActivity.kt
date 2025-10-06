@@ -142,8 +142,14 @@ open class DCFFlutterActivity : FlutterActivity() {
                 Log.d(TAG, "🔄 Root view measured after rotation: ${rootView.measuredWidth}x${rootView.measuredHeight}")
             }
             
-            // Recalculate all layouts with new dimensions
-            YogaShadowTree.shared.calculateLayoutForAllRoots()
+            // Force intrinsic size recalculation for all components during rotation
+            rootView?.post {
+                YogaShadowTree.shared.calculateAndApplyLayout(
+                    resources.displayMetrics.widthPixels.toFloat(),
+                    resources.displayMetrics.heightPixels.toFloat()
+                )
+                Log.d(TAG, "🔄 Forced intrinsic size recalculation after rotation")
+            }
             
             // CRITICAL: Force recursive invalidation after rotation to redraw all views
             if (rootView != null) {
@@ -159,14 +165,6 @@ open class DCFFlutterActivity : FlutterActivity() {
                 invalidateAll(rootView)
                 Log.d(TAG, "🔄 Forced recursive invalidation after rotation")
                 
-                // CRITICAL: Force text intrinsic size recalculation after rotation
-                rootView.post {
-                    YogaShadowTree.shared.calculateAndApplyLayout(
-                        resources.displayMetrics.widthPixels.toFloat(),
-                        resources.displayMetrics.heightPixels.toFloat()
-                    )
-                    Log.d(TAG, "🔄 Forced text intrinsic size recalculation after rotation")
-                }
             }
             
             Log.d(TAG, "✅ Layout updated for configuration change")
