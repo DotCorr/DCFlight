@@ -214,20 +214,20 @@ class DCMauiBridgeImpl private constructor() {
 
             // REACT-LIKE RENDERING: Attach synchronously, no post()
             // Views MUST be attached immediately for batch commits to work properly
-            try {
-                if (index >= 0 && index <= parentViewGroup.childCount) {
-                    parentViewGroup.addView(childView, index)
-                    Log.d(TAG, "Attached child '$childId' to parent '$parentId' at index $index")
-                } else {
-                    parentViewGroup.addView(childView)
-                    Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
-                }
-                
+                try {
+                    if (index >= 0 && index <= parentViewGroup.childCount) {
+                        parentViewGroup.addView(childView, index)
+                        Log.d(TAG, "Attached child '$childId' to parent '$parentId' at index $index")
+                    } else {
+                        parentViewGroup.addView(childView)
+                        Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
+                    }
+                    
                 // REACT-LIKE RENDERING: Do NOT manipulate visibility!
                 // Views are visible by default. Let the natural view lifecycle handle this.
-                
-                Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
-            } catch (e: Exception) {
+                    
+                    Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
+                } catch (e: Exception) {
                 Log.e(TAG, "Error in attachment: ${e.message}", e)
                 throw e
             }
@@ -319,32 +319,32 @@ class DCMauiBridgeImpl private constructor() {
         val eventOps = mutableListOf<AddEventListenersOp>()
         
         // Collect all operations first (pure, no side effects)
-        operations.forEach { operation ->
-            val operationType = operation["operation"] as? String
-            if (operationType != null) {
-                when (operationType) {
-                    "createView" -> {
-                        val viewId = operation["viewId"] as? String
-                        val viewType = operation["viewType"] as? String  
-                        val props = operation["props"] as? Map<String, Any>
-                        if (viewId != null && viewType != null && props != null) {
-                            val propsJson = JSONObject(props).toString()
+            operations.forEach { operation ->
+                val operationType = operation["operation"] as? String
+                if (operationType != null) {
+                    when (operationType) {
+                        "createView" -> {
+                            val viewId = operation["viewId"] as? String
+                            val viewType = operation["viewType"] as? String  
+                            val props = operation["props"] as? Map<String, Any>
+                            if (viewId != null && viewType != null && props != null) {
+                                val propsJson = JSONObject(props).toString()
                             createOps.add(CreateOp(viewId, viewType, propsJson))
                         }
-                    }
-                    "updateView" -> {
-                        val viewId = operation["viewId"] as? String
-                        val props = operation["props"] as? Map<String, Any>
-                        if (viewId != null && props != null) {
-                            val propsJson = JSONObject(props).toString()
+                        }
+                        "updateView" -> {
+                            val viewId = operation["viewId"] as? String
+                            val props = operation["props"] as? Map<String, Any>
+                            if (viewId != null && props != null) {
+                                val propsJson = JSONObject(props).toString()
                             updateOps.add(UpdateOp(viewId, propsJson))
                         }
-                    }
-                    "attachView" -> {
-                        val childId = operation["childId"] as? String
-                        val parentId = operation["parentId"] as? String
-                        val index = operation["index"] as? Int
-                        if (childId != null && parentId != null && index != null) {
+                        }
+                        "attachView" -> {
+                            val childId = operation["childId"] as? String
+                            val parentId = operation["parentId"] as? String
+                            val index = operation["index"] as? Int
+                            if (childId != null && parentId != null && index != null) {
                             attachOps.add(AttachOp(childId, parentId, index))
                         }
                     }
@@ -354,34 +354,34 @@ class DCMauiBridgeImpl private constructor() {
                         if (viewId != null && eventTypes != null) {
                             eventOps.add(AddEventListenersOp(viewId, eventTypes))
                         }
+                        }
                     }
-                }
-            } else {
-                // Fallback for legacy format (if any)
-                val type = operation["type"] as? String
-                val args = operation["args"] as? Map<String, Any>
-                if (type != null && args != null) {
-                    when (type) {
-                        "createView" -> {
-                            val viewId = args["viewId"] as? String
-                            val viewType = args["viewType"] as? String
-                            val propsJson = args["propsJson"] as? String
-                            if (viewId != null && viewType != null && propsJson != null) {
+                } else {
+                    // Fallback for legacy format (if any)
+                    val type = operation["type"] as? String
+                    val args = operation["args"] as? Map<String, Any>
+                    if (type != null && args != null) {
+                        when (type) {
+                            "createView" -> {
+                                val viewId = args["viewId"] as? String
+                                val viewType = args["viewType"] as? String
+                                val propsJson = args["propsJson"] as? String
+                                if (viewId != null && viewType != null && propsJson != null) {
                                 createOps.add(CreateOp(viewId, viewType, propsJson))
                             }
-                        }
-                        "updateView" -> {
-                            val viewId = args["viewId"] as? String
-                            val propsJson = args["propsJson"] as? String
-                            if (viewId != null && propsJson != null) {
+                            }
+                            "updateView" -> {
+                                val viewId = args["viewId"] as? String
+                                val propsJson = args["propsJson"] as? String
+                                if (viewId != null && propsJson != null) {
                                 updateOps.add(UpdateOp(viewId, propsJson))
                             }
-                        }
-                        "attachView" -> {
-                            val childId = args["childId"] as? String
-                            val parentId = args["parentId"] as? String
-                            val index = args["index"] as? Int
-                            if (childId != null && parentId != null && index != null) {
+                            }
+                            "attachView" -> {
+                                val childId = args["childId"] as? String
+                                val parentId = args["parentId"] as? String
+                                val index = args["index"] as? Int
+                                if (childId != null && parentId != null && index != null) {
                                 attachOps.add(AttachOp(childId, parentId, index))
                             }
                         }
@@ -431,30 +431,36 @@ class DCMauiBridgeImpl private constructor() {
             val screenWidth = displayMetrics.widthPixels.toFloat()
             val screenHeight = displayMetrics.heightPixels.toFloat()
             
+            // CRITICAL FIX: Ensure root view is measured before Yoga calculates layout
+            // This prevents incorrect layout calculations on initial render
+            val rootView = ViewRegistry.shared.getView("root")
+            rootView?.let { root ->
+                // Force Android to measure the root view with screen dimensions
+                root.measure(
+                    View.MeasureSpec.makeMeasureSpec(screenWidth.toInt(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(screenHeight.toInt(), View.MeasureSpec.EXACTLY)
+                )
+                Log.d(TAG, "🔥 BATCH_COMMIT: Root view measured: ${root.measuredWidth}x${root.measuredHeight}")
+            }
+            
             // Calculate and apply layout SYNCHRONOUSLY (not posted to executor)
             val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
             Log.d(TAG, "🔥 BATCH_COMMIT: Layout calculation completed synchronously: $layoutSuccess")
             
             // Force a redraw of the root view to ensure all changes are visible
-            val rootView = ViewRegistry.shared.getView("root")
             rootView?.let { root ->
-                // CRITICAL: Post invalidation to next frame to ensure view hierarchy is fully attached
-                // On initial render, views aren't fully attached to window's render tree yet
-                // Posting ensures GPU has time to attach views before drawing
-                root.post {
-                    // Recursively invalidate all views to ensure text renders
-                    // NOTE: Do NOT call requestLayout() - it conflicts with manual layout
-                    fun invalidateAll(v: View) {
-                        v.invalidate()
-                        if (v is ViewGroup) {
-                            for (i in 0 until v.childCount) {
-                                invalidateAll(v.getChildAt(i))
-                            }
+                // Recursively invalidate all views SYNCHRONOUSLY
+                // NOTE: Do NOT call requestLayout() - it conflicts with manual layout
+                fun invalidateAll(v: View) {
+                    v.invalidate()
+                    if (v is ViewGroup) {
+                        for (i in 0 until v.childCount) {
+                            invalidateAll(v.getChildAt(i))
                         }
                     }
-                    invalidateAll(root)
-                    Log.d(TAG, "🔥 BATCH_COMMIT: Posted recursive invalidation to next frame")
                 }
+                invalidateAll(root)
+                Log.d(TAG, "🔥 BATCH_COMMIT: Forced recursive invalidation")
             }
             
             Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
