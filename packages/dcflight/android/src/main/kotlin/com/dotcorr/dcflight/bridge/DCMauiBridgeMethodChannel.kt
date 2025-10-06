@@ -269,9 +269,18 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
             return
         }
 
-        Handler(Looper.getMainLooper()).post {
+        // CRITICAL FIX: Execute synchronously - we're already on main thread from Flutter's platform channel
+        // Posting to handler makes it async and breaks React-like atomic rendering
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            // Already on main thread - execute immediately (synchronous)
             val success = DCMauiBridgeImpl.shared.commitBatchUpdate(operations)
             result.success(success)
+        } else {
+            // Not on main thread - post to main thread
+            Handler(Looper.getMainLooper()).post {
+                val success = DCMauiBridgeImpl.shared.commitBatchUpdate(operations)
+                result.success(success)
+            }
         }
     }
 

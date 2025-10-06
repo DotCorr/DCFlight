@@ -347,8 +347,10 @@ class DCFLayoutManager private constructor() {
             frame.top + max(1, frame.height())
         )
 
-        // Level 4: Final safety - set layout on main thread
-        mainHandler.post {
+        // Level 4: Final safety - set layout synchronously if on main thread, otherwise post
+        // CRITICAL FIX: Apply synchronously if already on main thread (for batch commits)
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            // We're on main thread - apply immediately (synchronous)
             try {
                 if (view.parent != null || view.rootView != null) {
                     // CRITICAL: Mark this view as manually positioned in its parent DCFFrameLayout
@@ -360,16 +362,45 @@ class DCFLayoutManager private constructor() {
                     // Set layout - this is the line that was crashing
                     view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
 
-                    // REACT-LIKE RENDERING: Do NOT manipulate visibility here
-                    // Views are visible by default. Visibility management violates React's
-                    // render/commit separation and causes timing issues.
-                    // Let the natural view lifecycle handle visibility.
+                    // Ensure view is visible after layout (only if it's not already visible)
+                    // Some Android views default to INVISIBLE, so we need to ensure visibility
+                    if (view.visibility != View.VISIBLE) {
+                        view.visibility = View.VISIBLE
+                    }
+                    if (view.alpha == 0f) {
+                        view.alpha = 1.0f
+                    }
 
-                    // Force layout
-                    view.requestLayout()
+                    // Force invalidate to ensure redraw
+                    view.invalidate()
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Error applying layout to view", e)
+            }
+        } else {
+            // Not on main thread - post to main thread
+            mainHandler.post {
+                try {
+                    if (view.parent != null || view.rootView != null) {
+                        val parent = view.parent
+                        if (parent is DCFFrameLayout) {
+                            parent.setChildManuallyPositioned(view, true)
+                        }
+                        view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
+                        
+                        // Ensure view is visible after layout
+                        if (view.visibility != View.VISIBLE) {
+                            view.visibility = View.VISIBLE
+                        }
+                        if (view.alpha == 0f) {
+                            view.alpha = 1.0f
+                        }
+                        
+                        view.invalidate()
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error applying layout to view", e)
+                }
             }
         }
     }
@@ -600,21 +631,24 @@ class DCFLayoutManager private constructor() {
      * This prevents flash during hot restart by making all views invisible initially
      */
     fun prepareForHotRestart() {
-        // REACT-LIKE RENDERING: NO visibility manipulation
-        // Views remain visible naturally during hot restart
-        // Cleanup happens at the VDOM level, not here
-        Log.d(TAG, "Hot restart preparation (no visibility manipulation)")
+        // Make all registered views invisible to prevent flash during hot restart
+        for ((_, view) in viewRegistry) {
+            view.visibility = View.INVISIBLE
+            view.alpha = 0f
+        }
+        Log.d(TAG, "Prepared ${viewRegistry.size} views for hot restart")
     }
     
     /**
-     * DEPRECATED: This function is no longer needed
-     * REACT-LIKE RENDERING: Views are visible by default, no need to force visibility
+     * FLASH SCREEN FIX: Make all views visible after batch operations
+     * This ensures text and other components are visible after batch creation
      */
-    @Deprecated("Views are visible by default - no need to force visibility")
     fun makeAllViewsVisible() {
-        // REMOVED: This anti-pattern caused timing issues and hidden views
-        // Views should be visible naturally without manual manipulation
-        Log.d(TAG, "makeAllViewsVisible called but no longer needed (views visible by default)")
+        for ((_, view) in viewRegistry) {
+            view.visibility = View.VISIBLE
+            view.alpha = 1.0f
+        }
+        Log.d(TAG, "Made ${viewRegistry.size} views visible after batch operations")
     }
     
     /**
