@@ -461,6 +461,12 @@ class DCMauiBridgeImpl private constructor() {
                 }
                 invalidateAll(root)
                 Log.d(TAG, "🔥 BATCH_COMMIT: Forced recursive invalidation")
+                
+                // CRITICAL: Force layout recalculation to fix last view rendering
+                root.post {
+                    YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
+                    Log.d(TAG, "🔥 BATCH_COMMIT: Forced layout recalculation on next frame")
+                }
             }
             
             Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
