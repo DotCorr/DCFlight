@@ -437,6 +437,9 @@ class YogaShadowTree private constructor() {
     fun calculateLayoutForAllRoots() {
         Log.d(TAG, "Calculating layout for all roots")
         
+        // ROTATION FIX: Refresh density scale factor after rotation
+        refreshDensityScaleFactor()
+        
         // Get current screen dimensions
         val displayMetrics = Resources.getSystem().displayMetrics
         val screenWidth = displayMetrics.widthPixels.toFloat()
@@ -445,6 +448,9 @@ class YogaShadowTree private constructor() {
         // Update all screen root dimensions first
         updateScreenRootDimensions(screenWidth, screenHeight)
         
+        // ROTATION FIX: Force all views to remeasure their intrinsic sizes
+        forceIntrinsicSizeRecalculation()
+        
         // Calculate and apply layout with current dimensions
         val success = calculateAndApplyLayout(screenWidth, screenHeight)
         
@@ -452,6 +458,65 @@ class YogaShadowTree private constructor() {
             Log.d(TAG, "✅ Layout calculated for all roots successfully")
         } else {
             Log.w(TAG, "⚠️ Layout calculation for all roots encountered issues")
+        }
+    }
+    
+    /**
+     * ROTATION FIX: Force all views to recalculate their intrinsic sizes
+     * This ensures text and other content is properly measured after rotation
+     */
+    private fun forceIntrinsicSizeRecalculation() {
+        Log.d(TAG, "🔄 Forcing intrinsic size recalculation after rotation")
+        
+        // Force all registered views to remeasure
+        for ((viewId, _) in nodes) {
+            val view = DCFLayoutManager.shared.getView(viewId)
+            if (view != null) {
+                // Force the view to remeasure its content
+                view.requestLayout()
+                view.invalidate()
+                
+                // ROTATION FIX: Force text redraw for all text-containing views
+                forceTextRedrawForView(view)
+                
+                // If it's a container with children, force children to remeasure too
+                if (view is android.view.ViewGroup) {
+                    for (i in 0 until view.childCount) {
+                        val child = view.getChildAt(i)
+                        child.requestLayout()
+                        child.invalidate()
+                        forceTextRedrawForView(child)
+                    }
+                }
+            }
+        }
+        
+        Log.d(TAG, "🔄 Forced intrinsic size recalculation for ${nodes.size} views")
+    }
+    
+    /**
+     * ROTATION FIX: Force text redraw for any view that contains text
+     * This is a generic approach that works for all component types
+     */
+    private fun forceTextRedrawForView(view: android.view.View) {
+        // Recursively find and redraw all TextViews in the view hierarchy
+        if (view is android.widget.TextView) {
+            // ROTATION FIX: Force text view to recalculate its layout before measuring
+            // This ensures text is properly measured after device rotation
+            view.requestLayout()
+            view.invalidate()
+            
+            // Force the text view to measure with current configuration
+            view.measure(
+                android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED),
+                android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+            )
+            
+            Log.d(TAG, "🔄 Forced text redraw for TextView: ${view.text}")
+        } else if (view is android.view.ViewGroup) {
+            for (i in 0 until view.childCount) {
+                forceTextRedrawForView(view.getChildAt(i))
+            }
         }
     }
 
