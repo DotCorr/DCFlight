@@ -3,8 +3,7 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 import 'dart:math';
 
 void main() async {
-  DCFlight.setLogLevel(DCFLogLevel.debug);
-  await DCFlight.start(app: InteractiveGridApp());
+  await DCFlight.go(app: InteractiveGridApp());
 }
 
 class InteractiveGridApp extends DCFStatefulComponent {
