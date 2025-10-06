@@ -374,7 +374,7 @@ class DCFLayoutManager private constructor() {
                     // Set layout - this applies the position
                     view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
 
-                    // Force immediate redraw
+                    // Force immediate redraw (do NOT call requestLayout - it conflicts with manual layout)
                     view.invalidate()
                     
                     // Also request parent to redraw to ensure visibility
