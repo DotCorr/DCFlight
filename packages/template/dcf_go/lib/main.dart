@@ -115,7 +115,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
                 gap: 10,
               ),
               children: [
-                DCFButton(
+               DCFButton(styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                   buttonProps: DCFButtonProps(title: "Less Columns"),
                   onPress: (v) {
                     if (gridDensity.state > 2) {
@@ -123,7 +123,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
                     }
                   },
                 ),
-                DCFButton(
+                DCFButton(styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                   buttonProps: DCFButtonProps(title: "More Columns"),
                   onPress: (v) {
                     if (gridDensity.state < 6) {
@@ -143,13 +143,13 @@ class InteractiveGridApp extends DCFStatefulComponent {
                 gap: 10,
               ),
               children: [
-                DCFButton(
+                DCFButton(styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                   buttonProps: DCFButtonProps(title: "Add Box"),
                   onPress: (v) {
                     boxCount.setState(boxCount.state + 1);
                   },
                 ),
-                DCFButton(
+                DCFButton(styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                   buttonProps: DCFButtonProps(title: "Remove Box"),
                   onPress: (v) {
                     if (boxCount.state > 0) {

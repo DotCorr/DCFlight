@@ -438,9 +438,18 @@ class DCMauiBridgeImpl private constructor() {
             // Force a redraw of the root view to ensure all changes are visible
             val rootView = ViewRegistry.shared.getView("root")
             rootView?.let { root ->
-                root.requestLayout()
-                root.invalidate()
-                Log.d(TAG, "🔥 BATCH_COMMIT: Forced root view redraw")
+                // Recursively invalidate all views to ensure text renders on initial mount
+                // NOTE: Do NOT call requestLayout() - it conflicts with manual layout
+                fun invalidateAll(v: View) {
+                    v.invalidate()
+                    if (v is ViewGroup) {
+                        for (i in 0 until v.childCount) {
+                            invalidateAll(v.getChildAt(i))
+                        }
+                    }
+                }
+                invalidateAll(root)
+                Log.d(TAG, "🔥 BATCH_COMMIT: Forced recursive invalidation of entire hierarchy")
             }
             
             Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
