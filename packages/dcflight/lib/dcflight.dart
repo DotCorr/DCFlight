@@ -137,7 +137,7 @@ class DCFlight {
   }
 
   /// Start the application with the given root component
-  static Future<void> start({required DCFComponentNode app}) async {
+  static Future<void> go({required DCFComponentNode app}) async {
     await _initialize();
 
     // Set unique identifiers for log isolation
