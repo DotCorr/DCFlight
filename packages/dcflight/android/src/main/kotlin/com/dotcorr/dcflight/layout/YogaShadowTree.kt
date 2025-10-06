@@ -476,16 +476,12 @@ class YogaShadowTree private constructor() {
                 view.requestLayout()
                 view.invalidate()
                 
-                // ROTATION FIX: Force text redraw for all text-containing views
-                forceTextRedrawForView(view)
-                
                 // If it's a container with children, force children to remeasure too
                 if (view is android.view.ViewGroup) {
                     for (i in 0 until view.childCount) {
                         val child = view.getChildAt(i)
                         child.requestLayout()
                         child.invalidate()
-                        forceTextRedrawForView(child)
                     }
                 }
             }
@@ -494,31 +490,6 @@ class YogaShadowTree private constructor() {
         Log.d(TAG, "🔄 Forced intrinsic size recalculation for ${nodes.size} views")
     }
     
-    /**
-     * ROTATION FIX: Force text redraw for any view that contains text
-     * This is a generic approach that works for all component types
-     */
-    private fun forceTextRedrawForView(view: android.view.View) {
-        // Recursively find and redraw all TextViews in the view hierarchy
-        if (view is android.widget.TextView) {
-            // ROTATION FIX: Force text view to recalculate its layout before measuring
-            // This ensures text is properly measured after device rotation
-            view.requestLayout()
-            view.invalidate()
-            
-            // Force the text view to measure with current configuration
-            view.measure(
-                android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED),
-                android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
-            )
-            
-            Log.d(TAG, "🔄 Forced text redraw for TextView: ${view.text}")
-        } else if (view is android.view.ViewGroup) {
-            for (i in 0 until view.childCount) {
-                forceTextRedrawForView(view.getChildAt(i))
-            }
-        }
-    }
 
     fun isScreenRoot(nodeId: String): Boolean {
         return screenRootIds.contains(nodeId)
