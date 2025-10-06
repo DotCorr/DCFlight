@@ -13,7 +13,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
     final gridDensity = useState(2.0);
     
     final columns = gridDensity.state.round();
-    final boxWidth = (100 / columns) - 2;
+    final boxWidth = 100.0; // Match button width for visual consistency
     
     List<DCFComponentNode> gridBoxes = [];
     for (int i = 0; i < boxCount.state; i++) {
@@ -114,7 +114,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
                 gap: 10,
               ),
               children: [
-               DCFButton(styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
+               DCFButton(
                   buttonProps: DCFButtonProps(title: "Less Columns"),
                   onPress: (v) {
                     if (gridDensity.state > 2) {
@@ -122,7 +122,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
                     }
                   },
                 ),
-                DCFButton(styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
+                DCFButton(
                   buttonProps: DCFButtonProps(title: "More Columns"),
                   onPress: (v) {
                     if (gridDensity.state < 6) {
@@ -142,14 +142,14 @@ class InteractiveGridApp extends DCFStatefulComponent {
                 gap: 10,
               ),
               children: [
-                DCFButton(styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
+                DCFButton(
                   buttonProps: DCFButtonProps(title: "Add Box"),
                   onPress: (v) {
                     boxCount.setState(boxCount.state + 1);
                   },
                 ),
-                DCFButton(styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
-                  buttonProps: DCFButtonProps(title: "Remove Box"),
+                DCFButton(
+                  buttonProps: DCFButtonProps(title: "Remove Box",),
                   onPress: (v) {
                     if (boxCount.state > 0) {
                       boxCount.setState(boxCount.state - 1);
