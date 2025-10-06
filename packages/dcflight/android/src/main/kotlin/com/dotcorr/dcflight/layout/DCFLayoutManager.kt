@@ -359,7 +359,11 @@ class DCFLayoutManager private constructor() {
                         parent.setChildManuallyPositioned(view, true)
                     }
 
-                    // CRITICAL: Measure view first (required for proper rendering)
+                    // CRITICAL: Ensure view is visible BEFORE measurement (required for proper text rendering)
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+
+                    // CRITICAL: Measure view with exact dimensions (required for proper rendering)
                     val width = safeFrame.width()
                     val height = safeFrame.height()
                     view.measure(
@@ -370,12 +374,11 @@ class DCFLayoutManager private constructor() {
                     // Set layout - this applies the position
                     view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
 
-                    // Ensure view is visible and opaque
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
-
-                    // Force redraw
+                    // Force immediate redraw
                     view.invalidate()
+                    
+                    // Also request parent to redraw to ensure visibility
+                    (view.parent as? View)?.invalidate()
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Error applying layout to view", e)
@@ -390,6 +393,10 @@ class DCFLayoutManager private constructor() {
                             parent.setChildManuallyPositioned(view, true)
                         }
                         
+                        // Ensure view is visible BEFORE measurement
+                        view.visibility = View.VISIBLE
+                        view.alpha = 1.0f
+                        
                         // Measure view first
                         val width = safeFrame.width()
                         val height = safeFrame.height()
@@ -399,9 +406,10 @@ class DCFLayoutManager private constructor() {
                         )
                         
                         view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
-                        view.visibility = View.VISIBLE
-                        view.alpha = 1.0f
+                        
+                        // Force immediate redraw
                         view.invalidate()
+                        (view.parent as? View)?.invalidate()
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Error applying layout to view", e)
