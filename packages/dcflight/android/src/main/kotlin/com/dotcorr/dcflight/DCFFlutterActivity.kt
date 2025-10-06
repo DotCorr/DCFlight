@@ -128,8 +128,8 @@ open class DCFFlutterActivity : FlutterActivity() {
             // Update screen utilities with new display metrics
             DCFScreenUtilities.refreshScreenDimensions()
             
-            // Invalidate all layouts to force recalculation with new screen dimensions
-            DCFLayoutManager.shared.invalidateAllLayouts()
+            // ROTATION FIX: Use the new rotation handling method
+            DCFLayoutManager.shared.handleDeviceRotation()
             
             // CRITICAL FIX: Measure root view before recalculating layout
             val rootView: View? = ViewRegistry.shared.getView("root")
@@ -144,10 +144,7 @@ open class DCFFlutterActivity : FlutterActivity() {
             
             // Force intrinsic size recalculation for all components during rotation
             rootView?.post {
-                YogaShadowTree.shared.calculateAndApplyLayout(
-                    resources.displayMetrics.widthPixels.toFloat(),
-                    resources.displayMetrics.heightPixels.toFloat()
-                )
+                YogaShadowTree.shared.calculateLayoutForAllRoots()
                 Log.d(TAG, "🔄 Forced intrinsic size recalculation after rotation")
             }
             

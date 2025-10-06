@@ -135,6 +135,9 @@ class DCFButtonComponent : DCFComponent() {
                 else -> title.toString()
             }
             textView.text = titleText
+            // ROTATION FIX: Force text redraw after title change
+            textView.invalidate()
+            textView.requestLayout()
             Log.d(TAG, "Set button title: $titleText")
         }
 
@@ -195,7 +198,12 @@ class DCFButtonComponent : DCFComponent() {
             return PointF(100f, 50f) // Default button size
         }
 
-        // Measure the text view content
+        // ROTATION FIX: Force text view to recalculate its layout before measuring
+        // This ensures text is properly measured after device rotation
+        textView.requestLayout()
+        textView.invalidate()
+        
+        // Force the text view to measure with current configuration
         textView.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
