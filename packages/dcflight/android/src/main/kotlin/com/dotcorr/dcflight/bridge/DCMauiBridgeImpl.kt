@@ -330,7 +330,7 @@ class DCMauiBridgeImpl private constructor() {
                             if (viewId != null && viewType != null && props != null) {
                                 val propsJson = JSONObject(props).toString()
                             createOps.add(CreateOp(viewId, viewType, propsJson))
-                        }
+                            }
                         }
                         "updateView" -> {
                             val viewId = operation["viewId"] as? String
@@ -338,7 +338,7 @@ class DCMauiBridgeImpl private constructor() {
                             if (viewId != null && props != null) {
                                 val propsJson = JSONObject(props).toString()
                             updateOps.add(UpdateOp(viewId, propsJson))
-                        }
+                            }
                         }
                         "attachView" -> {
                             val childId = operation["childId"] as? String
@@ -347,7 +347,7 @@ class DCMauiBridgeImpl private constructor() {
                             if (childId != null && parentId != null && index != null) {
                             attachOps.add(AttachOp(childId, parentId, index))
                         }
-                    }
+                            }
                     "addEventListeners" -> {
                         val viewId = operation["viewId"] as? String
                         val eventTypes = operation["eventTypes"] as? List<String>
@@ -368,14 +368,14 @@ class DCMauiBridgeImpl private constructor() {
                                 val propsJson = args["propsJson"] as? String
                                 if (viewId != null && viewType != null && propsJson != null) {
                                 createOps.add(CreateOp(viewId, viewType, propsJson))
-                            }
+                                }
                             }
                             "updateView" -> {
                                 val viewId = args["viewId"] as? String
                                 val propsJson = args["propsJson"] as? String
                                 if (viewId != null && propsJson != null) {
                                 updateOps.add(UpdateOp(viewId, propsJson))
-                            }
+                                }
                             }
                             "attachView" -> {
                                 val childId = args["childId"] as? String
