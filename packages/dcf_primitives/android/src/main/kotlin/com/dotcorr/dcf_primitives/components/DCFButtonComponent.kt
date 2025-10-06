@@ -198,12 +198,7 @@ class DCFButtonComponent : DCFComponent() {
             return PointF(100f, 50f) // Default button size
         }
 
-        // ROTATION FIX: Force text view to recalculate its layout before measuring
-        // This ensures text is properly measured after device rotation
-        textView.requestLayout()
-        textView.invalidate()
-        
-        // Force the text view to measure with current configuration
+        // Clean measurement - let the system handle text rendering naturally
         textView.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)

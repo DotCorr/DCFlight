@@ -111,10 +111,6 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         Log.d(TAG, "onReattachedToActivityForConfigChanges called")
         this.activity = binding.activity
-        
-        // CRITICAL: Handle configuration changes like iOS
-        // Recalculate layout and update screen dimensions after rotation
-        handleConfigurationChange(binding.activity)
     }
     
     private fun handleConfigurationChange(activity: Activity) {

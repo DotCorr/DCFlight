@@ -696,24 +696,19 @@ class DCFLayoutManager private constructor() {
      * This ensures text remains visible after rotation
      */
     fun handleDeviceRotation() {
-        Log.d(TAG, "🔄 Handling device rotation - forcing text remeasurement")
+        Log.d(TAG, "🔄 Handling device rotation - clean invalidation like iOS")
         
-        // Force all views to remeasure their content
+        // Clean invalidation - let the system handle text rendering naturally
         for ((viewId, view) in viewRegistry) {
-            // Force the view to remeasure
             view.requestLayout()
             view.invalidate()
             
-            // ROTATION FIX: Force text redraw for all text-containing views
-            forceTextRedrawForView(view)
-            
-            // If it's a container, force children to remeasure too
+            // If it's a container, invalidate children too
             if (view is ViewGroup) {
                 for (i in 0 until view.childCount) {
                     val child = view.getChildAt(i)
                     child.requestLayout()
                     child.invalidate()
-                    forceTextRedrawForView(child)
                 }
             }
         }
@@ -724,30 +719,5 @@ class DCFLayoutManager private constructor() {
         Log.d(TAG, "🔄 Device rotation handling completed for ${viewRegistry.size} views")
     }
     
-    /**
-     * ROTATION FIX: Force text redraw for any view that contains text
-     * This is a generic approach that works for all component types
-     */
-    private fun forceTextRedrawForView(view: View) {
-        // Recursively find and redraw all TextViews in the view hierarchy
-        if (view is android.widget.TextView) {
-            // ROTATION FIX: Force text view to recalculate its layout before measuring
-            // This ensures text is properly measured after device rotation
-            view.requestLayout()
-            view.invalidate()
-            
-            // Force the text view to measure with current configuration
-            view.measure(
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            )
-            
-            Log.d(TAG, "🔄 Forced text redraw for TextView: ${view.text}")
-        } else if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                forceTextRedrawForView(view.getChildAt(i))
-            }
-        }
-    }
 }
 
