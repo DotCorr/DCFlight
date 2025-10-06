@@ -359,19 +359,22 @@ class DCFLayoutManager private constructor() {
                         parent.setChildManuallyPositioned(view, true)
                     }
 
-                    // Set layout - this is the line that was crashing
+                    // CRITICAL: Measure view first (required for proper rendering)
+                    val width = safeFrame.width()
+                    val height = safeFrame.height()
+                    view.measure(
+                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+                    )
+                    
+                    // Set layout - this applies the position
                     view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
 
-                    // Ensure view is visible after layout (only if it's not already visible)
-                    // Some Android views default to INVISIBLE, so we need to ensure visibility
-                    if (view.visibility != View.VISIBLE) {
-                        view.visibility = View.VISIBLE
-                    }
-                    if (view.alpha == 0f) {
-                        view.alpha = 1.0f
-                    }
+                    // Ensure view is visible and opaque
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
 
-                    // Force invalidate to ensure redraw
+                    // Force redraw
                     view.invalidate()
                 }
             } catch (e: Exception) {
@@ -386,16 +389,18 @@ class DCFLayoutManager private constructor() {
                         if (parent is DCFFrameLayout) {
                             parent.setChildManuallyPositioned(view, true)
                         }
+                        
+                        // Measure view first
+                        val width = safeFrame.width()
+                        val height = safeFrame.height()
+                        view.measure(
+                            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+                        )
+                        
                         view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
-                        
-                        // Ensure view is visible after layout
-                        if (view.visibility != View.VISIBLE) {
-                            view.visibility = View.VISIBLE
-                        }
-                        if (view.alpha == 0f) {
-                            view.alpha = 1.0f
-                        }
-                        
+                        view.visibility = View.VISIBLE
+                        view.alpha = 1.0f
                         view.invalidate()
                     }
                 } catch (e: Exception) {
