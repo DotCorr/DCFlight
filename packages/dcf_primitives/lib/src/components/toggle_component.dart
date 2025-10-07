@@ -7,6 +7,35 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Toggle value change callback data
+class DCFToggleValueData {
+  /// Current toggle value
+  final bool value;
+  
+  /// Whether the change was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the change
+  final DateTime timestamp;
+
+  DCFToggleValueData({
+    required this.value,
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFToggleValueData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFToggleValueData(
+      value: data['value'] as bool,
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// 🚀 DCF Toggle Component (Switch)
 ///
 /// A toggle/switch component that provides native platform behavior.
@@ -20,7 +49,7 @@ class DCFToggle extends DCFStatelessComponent
   final bool value;
 
   /// Called when toggle value changes
-  final Function(Map<dynamic, dynamic>)? onValueChange;
+  final Function(DCFToggleValueData)? onValueChange;
 
   /// Whether the toggle is disabled
   final bool disabled;
@@ -74,7 +103,9 @@ class DCFToggle extends DCFStatelessComponent
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onValueChange != null) {
-      eventMap['onValueChange'] = onValueChange;
+      eventMap['onValueChange'] = (Map<dynamic, dynamic> data) {
+        onValueChange!(DCFToggleValueData.fromMap(data));
+      };
     }
 
     Map<String, dynamic> props = {

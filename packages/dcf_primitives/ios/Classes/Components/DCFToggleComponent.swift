@@ -9,7 +9,6 @@
 import UIKit
 import dcflight
 
-// 🚀 TOGGLE/SWITCH COMPONENT - Native iOS switch behavior
 class DCFToggleComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFToggleComponent()
     
@@ -20,7 +19,6 @@ class DCFToggleComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let switchControl = UISwitch()
         
-        // Apply adaptive theming
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
@@ -32,7 +30,6 @@ class DCFToggleComponent: NSObject, DCFComponent {
             }
         }
         
-        // Setup event handling
         switchControl.addTarget(DCFToggleComponent.sharedInstance, action: #selector(switchValueChanged(_:)), for: .valueChanged)
         
         updateView(switchControl, withProps: props)
@@ -44,18 +41,15 @@ class DCFToggleComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let switchControl = view as? UISwitch else { return false }
         
-        // Update value
         if let value = props["value"] as? Bool {
             switchControl.setOn(value, animated: props["animated"] as? Bool ?? true)
         }
         
-        // Update enabled state
         if let disabled = props["disabled"] as? Bool {
             switchControl.isEnabled = !disabled
             switchControl.alpha = disabled ? 0.5 : 1.0
         }
         
-        // Update colors
         if let activeTrackColor = props["activeTrackColor"] as? String {
             switchControl.onTintColor = ColorUtilities.color(fromHexString: activeTrackColor)
         }
@@ -69,8 +63,6 @@ class DCFToggleComponent: NSObject, DCFComponent {
         }
         
         if let inactiveThumbColor = props["inactiveThumbColor"] as? String {
-            // Note: iOS UISwitch doesn't have separate inactive thumb color
-            // We could implement this with custom styling if needed
         }
         
         switchControl.applyStyles(props: props)

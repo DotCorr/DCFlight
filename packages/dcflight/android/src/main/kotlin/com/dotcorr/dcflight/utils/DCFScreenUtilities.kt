@@ -102,7 +102,6 @@ object DCFScreenUtilities {
         Log.d(TAG, "Refreshing screen dimensions for configuration change")
         updateDisplayMetrics()
         
-        // Notify Flutter layer of the dimension change
         notifyDimensionChange()
     }
 
@@ -153,7 +152,6 @@ object DCFScreenUtilities {
         screenWidth = width
         screenHeight = height
 
-        // Notify Flutter of dimension change
         notifyDimensionChange()
     }
 
@@ -328,8 +326,6 @@ object DCFScreenUtilities {
      * Get safe area insets (simplified version)
      */
     fun getSafeAreaInsets(): Map<String, Float> {
-        // This is a simplified implementation
-        // In a real app, you'd need to account for notches, navigation bars, etc.
         return mapOf(
             "top" to 0f,
             "bottom" to 0f,

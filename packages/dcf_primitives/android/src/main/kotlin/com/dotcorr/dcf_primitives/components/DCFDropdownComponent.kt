@@ -28,15 +28,13 @@ class DCFDropdownComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val spinner = Spinner(context)
         
-        // Set component identifier
+        
         spinner.setTag(R.id.dcf_component_type, "Dropdown")
         
-        // Set up selection listener for events
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedItem = parent?.getItemAtPosition(position)
                 
-                // 🚀 MATCH iOS: Use propagateEvent for onValueChange
                 propagateEvent(spinner, "onValueChange", mapOf(
                     "selectedIndex" to position,
                     "selectedValue" to (selectedItem?.toString() ?: ""),
@@ -45,7 +43,6 @@ class DCFDropdownComponent : DCFComponent() {
             }
             
             override fun onNothingSelected(parent: AdapterView<*>?) {
-                // 🚀 MATCH iOS: Use propagateEvent for onValueChange
                 propagateEvent(spinner, "onValueChange", mapOf(
                     "selectedIndex" to -1,
                     "selectedValue" to "",
@@ -54,7 +51,6 @@ class DCFDropdownComponent : DCFComponent() {
             }
         }
         
-        // Apply initial props
         updateView(spinner, props)
         return spinner
     }
@@ -67,7 +63,6 @@ class DCFDropdownComponent : DCFComponent() {
         val spinner = view as Spinner
         var hasUpdates = false
 
-        // items prop - array of options
         props["items"]?.let { items ->
             when (items) {
                 is List<*> -> {
@@ -84,7 +79,6 @@ class DCFDropdownComponent : DCFComponent() {
             }
         }
 
-        // selectedIndex prop
         props["selectedIndex"]?.let {
             val index = when (it) {
                 is Number -> it.toInt()
@@ -97,7 +91,6 @@ class DCFDropdownComponent : DCFComponent() {
             }
         }
 
-        // enabled prop
         props["enabled"]?.let {
             val enabled = when (it) {
                 is Boolean -> it
@@ -110,27 +103,22 @@ class DCFDropdownComponent : DCFComponent() {
             }
         }
 
-        // adaptive prop - matches iOS adaptivity
         props["adaptive"]?.let { adaptive ->
             if (adaptive == true) {
-                // Apply adaptive background color
                 spinner.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(spinner.context))
                 hasUpdates = true
             }
         }
 
-        // Apply common view styling
         view.applyStyles(props)
 
         return hasUpdates
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val spinner = view as? Spinner ?: return PointF(0f, 0f)
 
-        // Measure the spinner content
         spinner.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -143,7 +131,6 @@ class DCFDropdownComponent : DCFComponent() {
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Dropdown components are typically leaf nodes and don't need special handling
     }
 }
 

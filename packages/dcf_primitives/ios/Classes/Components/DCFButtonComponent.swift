@@ -9,7 +9,6 @@
 import UIKit
 import dcflight
 
-// 🚀 CLEAN BUTTON COMPONENT - Uses only propagateEvent()
 class DCFButtonComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFButtonComponent()
     
@@ -18,10 +17,8 @@ class DCFButtonComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-    // 🔍 DEBUG: Log what props Button actually receives (same as Screen/Tab logging)
     print("🔧 DCFButtonComponent: Found props keys: \(Array(props.keys))")
     
-    // Extract event types to compare with Screen/TabNavigator
     let eventTypes = props.keys.filter { $0.hasPrefix("on") }
     print("🔧 DCFButtonComponent: Extracted event types: \(eventTypes)")
     
@@ -31,7 +28,6 @@ class DCFButtonComponent: NSObject, DCFComponent {
         button.layer.cornerRadius = 8
         button.clipsToBounds = true
         
-        // Set default iOS system blue background and white text
         if #available(iOS 13.0, *) {
             button.backgroundColor = UIColor.systemBlue
             button.setTitleColor(UIColor.white, for: .normal)
@@ -40,7 +36,6 @@ class DCFButtonComponent: NSObject, DCFComponent {
             button.setTitleColor(UIColor.white, for: .normal)
         }
         
-        // Setup button targets (simple and clean)
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchUp(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
@@ -67,7 +62,6 @@ class DCFButtonComponent: NSObject, DCFComponent {
         return true
     }
     
-    // 🚀 CLEAN: Simple event handler using propagateEvent()
     @objc func handleButtonPress(_ sender: UIButton) {
         propagateEvent(on: sender, eventName: "onPress", data: [
             "pressed": true,

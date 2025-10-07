@@ -29,10 +29,9 @@ class DCFCheckboxComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val checkBox = CheckBox(context)
         
-        // Apply adaptive default styling - let OS handle light/dark mode
+        
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {
-            // Use system colors that automatically adapt to light/dark mode
             checkBox.setTextColor(
                 com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
             )
@@ -40,15 +39,11 @@ class DCFCheckboxComponent : DCFComponent() {
             checkBox.setTextColor(Color.BLACK)
         }
         
-        // Set component identifier for debugging
         checkBox.setTag(R.id.dcf_component_type, "Checkbox")
         
-        // Apply initial props
         updateView(checkBox, props)
         
-        // Set up iOS-style onValueChange event
         checkBox.setOnCheckedChangeListener { _, isChecked ->
-            // 🚀 MATCH iOS: Use propagateEvent for onValueChange
             propagateEvent(checkBox, "onValueChange", mapOf(
                 "value" to isChecked,
                 "checked" to isChecked
@@ -66,7 +61,6 @@ class DCFCheckboxComponent : DCFComponent() {
         val checkBox = view as CheckBox
         var hasUpdates = false
 
-        // 🚀 MATCH iOS: "checked" prop (iOS uses "checked", not "value")
         props["checked"]?.let {
             val checked = when (it) {
                 is Boolean -> it
@@ -79,7 +73,6 @@ class DCFCheckboxComponent : DCFComponent() {
             }
         }
 
-        // disabled prop
         props["disabled"]?.let {
             val disabled = when (it) {
                 is Boolean -> it
@@ -92,18 +85,15 @@ class DCFCheckboxComponent : DCFComponent() {
             }
         }
 
-        // Apply common view styling
         view.applyStyles(props)
 
         return hasUpdates
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): android.graphics.PointF {
         val checkBox = view as? CheckBox ?: return android.graphics.PointF(0f, 0f)
 
-        // Measure the checkbox content
         checkBox.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -116,7 +106,6 @@ class DCFCheckboxComponent : DCFComponent() {
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Checkbox components are typically leaf nodes and don't need special handling
     }
 }
 

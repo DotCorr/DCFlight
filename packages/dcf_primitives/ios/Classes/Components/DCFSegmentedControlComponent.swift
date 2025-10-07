@@ -9,7 +9,6 @@ import UIKit
 import dcflight
 
 class DCFSegmentedControlComponent: NSObject, DCFComponent {
-    // Use shared instance like other working components (Toggle, Slider, etc.)
     private static let sharedInstance = DCFSegmentedControlComponent()
     
     required override init() {
@@ -18,12 +17,10 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
     
     func createView(props: [String: Any]) -> UIView {
         
-        // Extract segments from props
         var segments: [String] = []
         var iconAssets: [String] = []
         
         if let segmentArray = props["segments"] as? [[String: Any]] {
-            // Parse segment objects from Dart
             for segmentData in segmentArray {
                 if let title = segmentData["title"] as? String {
                     segments.append(title)
@@ -35,38 +32,30 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
                 }
             }
         } else if let segmentArray = props["segments"] as? [String] {
-            // Legacy string array support
             segments = segmentArray
         } else if let segmentArray = props["segments"] as? [Any] {
-            // Try to extract strings from mixed array
             segments = segmentArray.compactMap { $0 as? String }
         }
         
         
-        // Create segmented control with segments
         let segmentedControl = UISegmentedControl(items: segments.isEmpty ? ["Segment 1"] : segments)
         
-        // Set up icons if available
         if !iconAssets.isEmpty {
             updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
         }
         
-        // Apply adaptive theming like other DCF components
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
-                // Use system colors for adaptive theming
                 segmentedControl.backgroundColor = UIColor.systemGray6
                 segmentedControl.selectedSegmentTintColor = UIColor.systemBlue
                 segmentedControl.tintColor = UIColor.label
             } else {
-                // Fallback for older iOS versions
                 segmentedControl.backgroundColor = UIColor.lightGray
                 segmentedControl.tintColor = UIColor.blue
             }
         }
         
-        // Set initial selection
         if let selectedIndex = props["selectedIndex"] as? Int,
            selectedIndex >= 0 && selectedIndex < segmentedControl.numberOfSegments {
             segmentedControl.selectedSegmentIndex = selectedIndex
@@ -74,7 +63,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             segmentedControl.selectedSegmentIndex = 0
         }
         
-        // Configure target-action for value changes - use shared instance like other components
         segmentedControl.addTarget(DCFSegmentedControlComponent.sharedInstance, action: #selector(segmentedControlValueChanged(_:)), for: .valueChanged)
         
         updateView(segmentedControl, withProps: props)
@@ -87,12 +75,10 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         }
         
         
-        // Update segments if changed
         var segments: [String] = []
         var iconAssets: [String] = []
         
         if let segmentArray = props["segments"] as? [[String: Any]] {
-            // Parse segment objects from Dart
             for segmentData in segmentArray {
                 if let title = segmentData["title"] as? String {
                     segments.append(title)
@@ -105,16 +91,13 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             }
             updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
         } else if let segmentArray = props["segments"] as? [String] {
-            // Legacy string array support
             segments = segmentArray
             updateSegments(segmentedControl, segments: segments, iconAssets: [])
         } else if let segmentArray = props["segments"] as? [Any] {
-            // Try to extract strings from mixed array
             segments = segmentArray.compactMap { $0 as? String }
             updateSegments(segmentedControl, segments: segments, iconAssets: [])
         }
         
-        // Update selected index
         if let selectedIndex = props["selectedIndex"] as? Int {
             if selectedIndex >= 0 && selectedIndex < segmentedControl.numberOfSegments {
                 segmentedControl.selectedSegmentIndex = selectedIndex
@@ -122,29 +105,23 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             }
         }
         
-        // Update enabled state
         if let enabled = props["enabled"] as? Bool {
             segmentedControl.isEnabled = enabled
         }
         
-        // Check if adaptive theming is enabled
         let isAdaptive = props["adaptive"] as? Bool ?? true
         
-        // Update selected segment tint color (iOS 13+)
         if #available(iOS 13.0, *) {
             if let selectedColor = props["selectedTintColor"] as? String {
                 segmentedControl.selectedSegmentTintColor = ColorUtilities.color(fromHexString: selectedColor)
             } else if isAdaptive {
-                // Re-apply adaptive color if no explicit color provided
                 segmentedControl.selectedSegmentTintColor = UIColor.systemBlue
             }
         }
         
-        // Update background color
         if let backgroundColor = props["backgroundColor"] as? String {
             segmentedControl.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
         } else if isAdaptive {
-            // Re-apply adaptive background if no explicit color provided
             if #available(iOS 13.0, *) {
                 segmentedControl.backgroundColor = UIColor.systemGray6
             } else {
@@ -152,11 +129,9 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             }
         }
         
-        // Update tint color (affects text color of selected segment)
         if let tintColor = props["tintColor"] as? String {
             segmentedControl.tintColor = ColorUtilities.color(fromHexString: tintColor)
         } else if isAdaptive {
-            // Re-apply adaptive tint color if no explicit color provided
             if #available(iOS 13.0, *) {
                 segmentedControl.tintColor = UIColor.label
             } else {
@@ -164,36 +139,27 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             }
         }
         
-        // Apply common styles
         view.applyStyles(props: props)
         return true
     }
     
     private func updateSegments(_ segmentedControl: UISegmentedControl, segments: [String], iconAssets: [String] = []) {
-        // Store current selection
         let currentSelection = segmentedControl.selectedSegmentIndex
         
-        // Remove all existing segments
         segmentedControl.removeAllSegments()
         
-        // Add new segments
         for (index, segment) in segments.enumerated() {
-            // Check if we have an icon for this segment
             if index < iconAssets.count && !iconAssets[index].isEmpty {
-                // Load icon image
                 if let iconImage = loadIconImage(iconAssets[index]) {
                     segmentedControl.insertSegment(with: iconImage, at: index, animated: false)
                 } else {
-                    // Fallback to text if icon loading fails
                     segmentedControl.insertSegment(withTitle: segment, at: index, animated: false)
                 }
             } else {
-                // No icon, use text
                 segmentedControl.insertSegment(withTitle: segment, at: index, animated: false)
             }
         }
         
-        // Restore selection if still valid
         if currentSelection >= 0 && currentSelection < segments.count {
             segmentedControl.selectedSegmentIndex = currentSelection
         } else if !segments.isEmpty {
@@ -207,34 +173,28 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         let selectedTitle = sender.titleForSegment(at: selectedIndex) ?? ""
         
         
-        // Create event data that matches what Dart expects
         let eventData: [String: Any] = [
             "selectedIndex": selectedIndex,
             "selectedTitle": selectedTitle
         ]
         
         
-        // Propagate event to Dart
         propagateEvent(on: sender, eventName: "onSelectionChange", data: eventData) { view, data in
         }
     }
     
-    // MARK: - Icon Loading
     
     private func loadIconImage(_ asset: String) -> UIImage? {
         
-        // Use the Flutter asset lookup pattern from DCFSvgComponent
         let key = sharedFlutterViewController?.lookupKey(forAsset: asset)
         let mainBundle = Bundle.main
         
-        // Try to load as UIImage first (for PNG, JPEG, etc.)
         if let assetKey = key,
            let path = mainBundle.path(forResource: assetKey, ofType: nil),
            let image = UIImage(contentsOfFile: path) {
             return image
         }
         
-        // Fallback: try loading directly by asset name
         if let image = UIImage(named: asset) {
             return image
         }
@@ -242,7 +202,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         return nil
     }
 
-    // MARK: - DCFComponent Protocol Methods
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(
@@ -259,10 +218,8 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             return CGSize(width: 200, height: 32)
         }
         
-        // Get the intrinsic size of the segmented control
         let intrinsicSize = segmentedControl.intrinsicContentSize
         
-        // Ensure minimum reasonable size
         let width = max(intrinsicSize.width, 100)
         let height = max(intrinsicSize.height, 32)
         

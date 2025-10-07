@@ -1,3 +1,4 @@
+import 'package:dcf_primitives/dcf_primitives.dart';
 import "package:dcf_go/features/animation_modal.dart";
 import "package:dcf_go/features/animation_test.dart";
 import "package:dcf_go/features/app.dart";

@@ -34,6 +34,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
 /**
@@ -49,31 +50,27 @@ class DCFLayoutManager private constructor() {
         val shared = DCFLayoutManager()
     }
 
-    // Set of views using absolute layout (controlled by Dart)
     private val absoluteLayoutViews = mutableSetOf<View>()
 
-    // Map view IDs to actual Views for direct access
     internal val viewRegistry = ConcurrentHashMap<String, View>()
 
-    // For optimizing layout updates
     private val pendingLayouts = ConcurrentHashMap<String, Rect>()
     private val isLayoutUpdateScheduled = AtomicBoolean(false)
 
-    // Track when layout calculation is needed
     private val needsLayoutCalculation = AtomicBoolean(false)
     private var layoutCalculationTimer: ScheduledExecutorService? = null
+    
+    private val isRapidUpdateMode = AtomicBoolean(false)
+    private val rapidUpdateTimer = AtomicLong(0L)
 
-    // Dedicated executor for layout operations
     private val layoutExecutor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "DCFLayoutThread").apply {
             priority = Thread.MAX_PRIORITY - 1
         }
     }
 
-    // Main thread handler for UI updates
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // ENHANCEMENT: Web defaults configuration for cross-platform compatibility
     private var useWebDefaults = false
 
     init {
@@ -84,7 +81,6 @@ class DCFLayoutManager private constructor() {
         }
     }
 
-    // MARK: - Web Defaults Configuration
 
     /**
      * Configure web defaults for cross-platform compatibility
@@ -93,7 +89,6 @@ class DCFLayoutManager private constructor() {
     fun setUseWebDefaults(enabled: Boolean) {
         useWebDefaults = enabled
 
-        // Apply web defaults to the root node if it exists
         if (enabled) {
             YogaShadowTree.shared.applyWebDefaults()
         }
@@ -106,17 +101,16 @@ class DCFLayoutManager private constructor() {
      */
     fun getUseWebDefaults(): Boolean = useWebDefaults
 
-    // MARK: - Automatic Layout Calculation
 
     /**
-     * iOS-style layout calculation scheduling with 100ms debouncing (matches iOS exactly)
+     * iOS-style layout calculation scheduling with adaptive debouncing for performance
      */
     private fun scheduleLayoutCalculation() {
-        // Cancel existing scheduled calculation (matches iOS)
         mainHandler.removeCallbacks(layoutCalculationRunnable)
         
-        // Schedule new calculation with 100ms delay (matches iOS exactly)
-        mainHandler.postDelayed(layoutCalculationRunnable, 100)
+        val debounceDelay = if (isRapidUpdateMode.get()) 16L else 100L // 16ms = 60fps, 100ms = normal
+        
+        mainHandler.postDelayed(layoutCalculationRunnable, debounceDelay)
     }
     
     private val layoutCalculationRunnable = Runnable {
@@ -129,25 +123,19 @@ class DCFLayoutManager private constructor() {
     private fun performAutomaticLayoutCalculation() {
         if (!needsLayoutCalculation.get()) return
 
-        // Use layout executor for calculation
         layoutExecutor.execute {
-            // Get screen dimensions
             val displayMetrics = Resources.getSystem().displayMetrics
             val screenWidth = displayMetrics.widthPixels.toFloat()
             val screenHeight = displayMetrics.heightPixels.toFloat()
 
-            // CRASH FIX: Use the synchronized calculateAndApplyLayout method
-            // This will automatically defer if reconciliation is in progress
             val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
 
-            // Update flag on main thread
             mainHandler.post {
                 needsLayoutCalculation.set(false)
                 if (success) {
                     Log.d(TAG, "Layout calculation successful")
                 } else {
                     Log.w(TAG, "Layout calculation deferred, rescheduling")
-                    // Reschedule if deferred due to reconciliation
                     needsLayoutCalculation.set(true)
                     scheduleLayoutCalculation()
                 }
@@ -155,7 +143,6 @@ class DCFLayoutManager private constructor() {
         }
     }
 
-    // MARK: - iOS-Style Rendering Control
     private val pendingViewAttachments = mutableMapOf<String, PendingAttachment>()
     private var isInDelayedRenderingMode = false
     
@@ -179,7 +166,6 @@ class DCFLayoutManager private constructor() {
     fun commitDelayedRendering() {
         if (!isInDelayedRenderingMode) return
         
-        // Commit all pending attachments in order
         pendingViewAttachments.values.forEach { attachment ->
             val parentView = getView(attachment.parentId)
             if (parentView is ViewGroup) {
@@ -188,7 +174,6 @@ class DCFLayoutManager private constructor() {
                         parentView.addView(attachment.view, attachment.index)
                     }
                 } catch (e: Exception) {
-                    // Ignore attachment errors during commit
                 }
             }
         }
@@ -197,7 +182,6 @@ class DCFLayoutManager private constructor() {
         isInDelayedRenderingMode = false
     }
 
-    // MARK: - View Registry Management
 
     /**
      * Register a view with an ID
@@ -221,7 +205,6 @@ class DCFLayoutManager private constructor() {
      */
     fun getView(viewId: String): View? = viewRegistry[viewId]
 
-    // MARK: - Absolute Layout Management
 
     /**
      * Mark a view as using absolute layout (controlled by Dart side)
@@ -235,7 +218,6 @@ class DCFLayoutManager private constructor() {
      */
     fun isUsingAbsoluteLayout(view: View): Boolean = absoluteLayoutViews.contains(view)
 
-    // MARK: - Cleanup
 
     /**
      * Clean up resources for a view
@@ -248,7 +230,6 @@ class DCFLayoutManager private constructor() {
         viewRegistry.remove(viewId)
     }
 
-    // MARK: - Layout Management
 
     /**
      * Apply calculated layout to a view with optional animation - MATCH iOS exactly
@@ -256,7 +237,6 @@ class DCFLayoutManager private constructor() {
     fun applyLayout(viewId: String, left: Float, top: Float, width: Float, height: Float, animationDuration: Long = 0): Boolean {
         val view = getView(viewId) ?: return false
 
-        // Create valid frame with minimum dimensions to ensure visibility
         val frame = Rect(
             left.toInt(),
             top.toInt(),
@@ -264,19 +244,15 @@ class DCFLayoutManager private constructor() {
             (top + max(1f, height)).toInt()
         )
 
-        // Apply on main thread
         if (Looper.myLooper() == Looper.getMainLooper()) {
             if (animationDuration > 0) {
-                // TODO: Add animation support if needed
                 applyLayoutDirectly(view, frame)
             } else {
                 applyLayoutDirectly(view, frame)
             }
         } else {
-            // Schedule on main thread
             mainHandler.post {
                 if (animationDuration > 0) {
-                    // TODO: Add animation support if needed
                     applyLayoutDirectly(view, frame)
                 } else {
                     applyLayoutDirectly(view, frame)
@@ -294,7 +270,6 @@ class DCFLayoutManager private constructor() {
     fun applyLayoutWithoutVisibility(viewId: String, left: Float, top: Float, width: Float, height: Float): Boolean {
         val view = getView(viewId) ?: return false
 
-        // Create valid frame with minimum dimensions to ensure visibility
         val frame = Rect(
             left.toInt(),
             top.toInt(),
@@ -302,21 +277,16 @@ class DCFLayoutManager private constructor() {
             (top + max(1f, height)).toInt()
         )
 
-        // Apply layout without making visible
         applyLayoutDirectlyWithoutVisibility(view, frame)
         return true
     }
 
-    // Direct layout application helper - MATCH iOS applyLayoutDirectly exactly
     private fun applyLayoutDirectly(view: View, frame: Rect) {
-        // 🔥 HOT RESTART COMPREHENSIVE SAFETY: Multiple validation layers
 
-        // Level 1: Check if view is in invalid state
         if (view.parent == null && view.rootView == null) {
             return
         }
 
-        // Level 2: Validate frame values are reasonable
         if (!frame.width().toFloat().isFinite() || !frame.height().toFloat().isFinite() ||
             !frame.left.toFloat().isFinite() || !frame.top.toFloat().isFinite() ||
             frame.width().toFloat().isNaN() || frame.height().toFloat().isNaN() ||
@@ -324,13 +294,11 @@ class DCFLayoutManager private constructor() {
             return
         }
 
-        // Level 3: Check for reasonable bounds
         if (frame.width() > 10000 || frame.height() > 10000 ||
             frame.width() < 0 || frame.height() < 0) {
             return
         }
 
-        // Ensure minimum dimensions
         val safeFrame = Rect(
             frame.left,
             frame.top,
@@ -338,8 +306,7 @@ class DCFLayoutManager private constructor() {
             frame.top + max(1, frame.height())
         )
 
-        // Level 4: Final safety - set layout on main thread
-        mainHandler.post {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
             try {
                 if (view.parent != null || view.rootView != null) {
                     // CRITICAL: Mark this view as manually positioned in its parent DCFFrameLayout
@@ -348,33 +315,64 @@ class DCFLayoutManager private constructor() {
                         parent.setChildManuallyPositioned(view, true)
                     }
 
-                    // Set layout - this is the line that was crashing
-                    view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
-
-                    // SYSTEM-WIDE FIX: Make view visible ONLY after layout is applied
-                    // This prevents flash for ALL components automatically
+                    // CRITICAL: Ensure view is visible BEFORE measurement (required for proper text rendering)
                     view.visibility = View.VISIBLE
                     view.alpha = 1.0f
 
-                    // Force layout
-                    view.requestLayout()
+                    // CRITICAL: Measure view with exact dimensions (required for proper rendering)
+                    val width = safeFrame.width()
+                    val height = safeFrame.height()
+                    view.measure(
+                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+                    )
+                    
+                    view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
+
+                    view.invalidate()
+                    
+                    (view.parent as? View)?.invalidate()
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Error applying layout to view", e)
             }
+        } else {
+            mainHandler.post {
+                try {
+                    if (view.parent != null || view.rootView != null) {
+                        val parent = view.parent
+                        if (parent is DCFFrameLayout) {
+                            parent.setChildManuallyPositioned(view, true)
+                        }
+                        
+                        view.visibility = View.VISIBLE
+                        view.alpha = 1.0f
+                        
+                        val width = safeFrame.width()
+                        val height = safeFrame.height()
+                        view.measure(
+                            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+                        )
+                        
+                        view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
+                        
+                        view.invalidate()
+                        (view.parent as? View)?.invalidate()
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error applying layout to view", e)
+                }
+            }
         }
     }
 
-    // FLASH SCREEN FIX: Apply layout without making view visible
     private fun applyLayoutDirectlyWithoutVisibility(view: View, frame: Rect) {
-        // 🔥 HOT RESTART COMPREHENSIVE SAFETY: Multiple validation layers
 
-        // Level 1: Check if view is in invalid state
         if (view.parent == null && view.rootView == null) {
             return
         }
 
-        // Level 2: Validate frame values are reasonable
         if (!frame.width().toFloat().isFinite() || !frame.height().toFloat().isFinite() ||
             !frame.left.toFloat().isFinite() || !frame.top.toFloat().isFinite() ||
             frame.width().toFloat().isNaN() || frame.height().toFloat().isNaN() ||
@@ -382,13 +380,11 @@ class DCFLayoutManager private constructor() {
             return
         }
 
-        // Level 3: Check for reasonable bounds
         if (frame.width() > 10000 || frame.height() > 10000 ||
             frame.width() < 0 || frame.height() < 0) {
             return
         }
 
-        // Ensure minimum dimensions
         val safeFrame = Rect(
             frame.left,
             frame.top,
@@ -396,7 +392,6 @@ class DCFLayoutManager private constructor() {
             frame.top + max(1, frame.height())
         )
 
-        // Level 4: Final safety - set layout on main thread
         mainHandler.post {
             try {
                 if (view.parent != null || view.rootView != null) {
@@ -406,13 +401,9 @@ class DCFLayoutManager private constructor() {
                         parent.setChildManuallyPositioned(view, true)
                     }
 
-                    // Set layout - this is the line that was crashing
                     view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
 
-                    // FLASH SCREEN FIX: Do NOT make view visible here
-                    // Visibility will be set later in batch after all layouts are applied
 
-                    // Force layout
                     view.requestLayout()
                 }
             } catch (e: Exception) {
@@ -429,15 +420,12 @@ class DCFLayoutManager private constructor() {
             return false
         }
 
-        // Store layout in pending queue
         val frame = Rect(left.toInt(), top.toInt(), (left + max(1f, width)).toInt(), (top + max(1f, height)).toInt())
 
-        // Use layout executor to modify shared data
         layoutExecutor.execute {
             pendingLayouts[viewId] = frame
 
             if (!isLayoutUpdateScheduled.getAndSet(true)) {
-                // Schedule layout application on main thread
                 mainHandler.post {
                     applyPendingLayouts()
                 }
@@ -451,24 +439,18 @@ class DCFLayoutManager private constructor() {
      * Apply pending layouts - MATCH iOS exactly
      */
     private fun applyPendingLayouts(animationDuration: Long = 0) {
-        // Must be called on main thread
         check(Looper.myLooper() == Looper.getMainLooper()) { "applyPendingLayouts must be called on the main thread" }
 
-        // Reset flag first
         isLayoutUpdateScheduled.set(false)
 
-        // Make local copy to prevent concurrency issues
         val layoutsToApply = mutableMapOf<String, Rect>()
 
-        // Use layoutExecutor to safely get pending layouts
         layoutExecutor.execute {
             layoutsToApply.putAll(pendingLayouts)
             pendingLayouts.clear()
 
-            // Apply all pending layouts on main thread
             mainHandler.post {
                 if (animationDuration > 0) {
-                    // TODO: Add animation support if needed
                     for ((viewId, frame) in layoutsToApply) {
                         getView(viewId)?.let { view ->
                             applyLayoutDirectly(view, frame)
@@ -485,21 +467,15 @@ class DCFLayoutManager private constructor() {
         }
     }
 
-    // MARK: - Component Registration
 
     /**
      * Register view with layout system - MATCH iOS exactly
      */
     fun registerView(view: View, nodeId: String, componentType: String, componentInstance: DCFComponent) {
-        // First, register the view for direct access
         registerView(view, nodeId)
 
-        // Associate the view with its Yoga node
-        // Let the component know it's registered - this allows each component
-        // to handle its own specialized registration logic
         componentInstance.viewRegisteredWithShadowTree(view, nodeId)
 
-        // If this is a root view, trigger initial layout calculation
         if (nodeId == "root") {
             triggerLayoutCalculation()
         }
@@ -509,10 +485,8 @@ class DCFLayoutManager private constructor() {
      * Add a child node to a parent in the layout tree with safe coordination
      */
     fun addChildNode(parentId: String, childId: String, index: Int) {
-        // Call the synchronized YogaShadowTree addition
         YogaShadowTree.shared.addChildNode(parentId, childId, index)
 
-        // Trigger layout calculation when tree structure changes
         needsLayoutCalculation.set(true)
         scheduleLayoutCalculation()
     }
@@ -521,10 +495,8 @@ class DCFLayoutManager private constructor() {
      * Remove a node from the layout tree with safe coordination
      */
     fun removeNode(nodeId: String) {
-        // Call the synchronized YogaShadowTree removal
         YogaShadowTree.shared.removeNode(nodeId)
 
-        // Trigger layout calculation when tree structure changes
         needsLayoutCalculation.set(true)
         scheduleLayoutCalculation()
     }
@@ -535,7 +507,6 @@ class DCFLayoutManager private constructor() {
     fun updateNodeWithLayoutProps(nodeId: String, componentType: String, props: Map<String, Any>) {
         YogaShadowTree.shared.updateNodeLayoutProps(nodeId, props)
 
-        // Trigger automatic layout calculation when layout props change
         needsLayoutCalculation.set(true)
         scheduleLayoutCalculation()
     }
@@ -545,6 +516,13 @@ class DCFLayoutManager private constructor() {
      */
     fun triggerLayoutCalculation() {
         needsLayoutCalculation.set(true)
+        
+        val currentTime = System.currentTimeMillis()
+        val lastUpdateTime = rapidUpdateTimer.getAndSet(currentTime)
+        
+        val isRapid = (currentTime - lastUpdateTime) < 50L
+        isRapidUpdateMode.set(isRapid)
+        
         scheduleLayoutCalculation()
     }
 
@@ -557,23 +535,18 @@ class DCFLayoutManager private constructor() {
             val screenWidth = displayMetrics.widthPixels.toFloat()
             val screenHeight = displayMetrics.heightPixels.toFloat()
 
-            // Use the synchronized calculateAndApplyLayout method
             val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
 
             mainHandler.post {
-                // Layout calculation completed
             }
         }
     }
 
     fun invalidateAllLayouts() {
-        // Clear all pending layouts
         pendingLayouts.clear()
         
-        // Mark all views as needing layout recalculation
         needsLayoutCalculation.set(true)
         
-        // Trigger immediate layout calculation with current screen dimensions
         triggerLayoutCalculation()
     }
 
@@ -582,12 +555,73 @@ class DCFLayoutManager private constructor() {
      * This prevents flash during hot restart by making all views invisible initially
      */
     fun prepareForHotRestart() {
-        // Make all registered views invisible to prevent flash during hot restart
         for ((_, view) in viewRegistry) {
             view.visibility = View.INVISIBLE
             view.alpha = 0f
         }
         Log.d(TAG, "Prepared ${viewRegistry.size} views for hot restart")
     }
+    
+    /**
+     * FLASH SCREEN FIX: Make all views visible after batch operations
+     * This ensures text and other components are visible after batch creation
+     */
+    fun makeAllViewsVisible() {
+        for ((_, view) in viewRegistry) {
+            view.visibility = View.VISIBLE
+            view.alpha = 1.0f
+        }
+        Log.d(TAG, "Made ${viewRegistry.size} views visible after batch operations")
+    }
+    
+    /**
+     * SLIDER PERFORMANCE FIX: Optimize layout application during rapid updates
+     * This prevents the flash issue during slider drag by batching layout updates
+     */
+    fun optimizeForRapidUpdates() {
+        if (isRapidUpdateMode.get()) {
+            mainHandler.postDelayed({
+                makeAllViewsVisible()
+                isRapidUpdateMode.set(false)
+            }, 50) // Small delay to batch visibility changes
+        }
+    }
+    
+    /**
+     * SLIDER PERFORMANCE FIX: Prevent flash during slider updates
+     * This is called specifically when slider values change rapidly
+     */
+    fun handleSliderUpdate() {
+        isRapidUpdateMode.set(true)
+        rapidUpdateTimer.set(System.currentTimeMillis())
+        
+        triggerLayoutCalculation()
+    }
+    
+    /**
+     * ROTATION FIX: Handle device rotation by forcing text remeasurement
+     * This ensures text remains visible after rotation
+     */
+    fun handleDeviceRotation() {
+        Log.d(TAG, "🔄 Handling device rotation - clean invalidation like iOS")
+        
+        for ((viewId, view) in viewRegistry) {
+            view.requestLayout()
+            view.invalidate()
+            
+            if (view is ViewGroup) {
+                for (i in 0 until view.childCount) {
+                    val child = view.getChildAt(i)
+                    child.requestLayout()
+                    child.invalidate()
+                }
+            }
+        }
+        
+        triggerLayoutCalculation()
+        
+        Log.d(TAG, "🔄 Device rotation handling completed for ${viewRegistry.size} views")
+    }
+    
 }
 

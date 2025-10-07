@@ -29,10 +29,9 @@ class DCFAlertComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val frameLayout = FrameLayout(context)
         
-        // Set component identifier
         frameLayout.setTag(R.id.dcf_component_type, "Alert")
         
-        // Apply initial props
+        
         updateView(frameLayout, props)
         return frameLayout
     }
@@ -44,7 +43,6 @@ class DCFAlertComponent : DCFComponent() {
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         var hasUpdates = false
 
-        // visible prop - show/hide alert
         props["visible"]?.let {
             val visible = when (it) {
                 is Boolean -> it
@@ -61,16 +59,13 @@ class DCFAlertComponent : DCFComponent() {
             }
         }
 
-        // adaptive prop - matches iOS adaptivity
         props["adaptive"]?.let { adaptive ->
             if (adaptive == true) {
-                // Apply adaptive background color for container
                 view.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(view.context))
                 hasUpdates = true
             }
         }
 
-        // Apply common view styling
         view.applyStyles(props)
 
         return hasUpdates
@@ -80,17 +75,14 @@ class DCFAlertComponent : DCFComponent() {
         val context = view.context
         val builder = AlertDialog.Builder(context)
         
-        // title prop
         props["title"]?.let {
             builder.setTitle(it.toString())
         }
         
-        // message prop
         props["message"]?.let {
             builder.setMessage(it.toString())
         }
         
-        // buttons prop
         props["buttons"]?.let { buttons ->
             when (buttons) {
                 is List<*> -> {
@@ -103,7 +95,6 @@ class DCFAlertComponent : DCFComponent() {
                                 when (style) {
                                     "cancel" -> {
                                         builder.setNegativeButton(text) { dialog, _ ->
-                                            // 🚀 MATCH iOS: Use propagateEvent for onActionPress
                                             propagateEvent(view, "onActionPress", mapOf(
                                                 "buttonIndex" to index,
                                                 "buttonText" to text,
@@ -114,7 +105,6 @@ class DCFAlertComponent : DCFComponent() {
                                     }
                                     "destructive" -> {
                                         builder.setNeutralButton(text) { dialog, _ ->
-                                            // 🚀 MATCH iOS: Use propagateEvent for onActionPress
                                             propagateEvent(view, "onActionPress", mapOf(
                                                 "buttonIndex" to index,
                                                 "buttonText" to text,
@@ -125,7 +115,6 @@ class DCFAlertComponent : DCFComponent() {
                                     }
                                     else -> {
                                         builder.setPositiveButton(text) { dialog, _ ->
-                                            // 🚀 MATCH iOS: Use propagateEvent for onActionPress
                                             propagateEvent(view, "onActionPress", mapOf(
                                                 "buttonIndex" to index,
                                                 "buttonText" to text,
@@ -142,9 +131,7 @@ class DCFAlertComponent : DCFComponent() {
             }
         }
         
-        // Set up dismiss listener
         builder.setOnDismissListener {
-            // 🚀 MATCH iOS: Use propagateEvent for onDismiss
             propagateEvent(view, "onDismiss", mapOf())
             alertDialog = null
         }
@@ -152,7 +139,6 @@ class DCFAlertComponent : DCFComponent() {
         alertDialog = builder.create()
         alertDialog?.show()
         
-        // 🚀 MATCH iOS: Use propagateEvent for onShow
         propagateEvent(view, "onShow", mapOf())
     }
 
@@ -160,22 +146,17 @@ class DCFAlertComponent : DCFComponent() {
         alertDialog?.dismiss()
         alertDialog = null
         
-        // 🚀 MATCH iOS: Use propagateEvent for onDismiss
         propagateEvent(view, "onDismiss", mapOf())
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val frameLayout = view as? FrameLayout ?: return PointF(0f, 0f)
 
-        // Alert components typically have minimal intrinsic size
-        // as they overlay content
         return PointF(1f, 1f)
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Alert components are typically overlay components and don't need special handling
     }
 }
 

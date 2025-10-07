@@ -26,7 +26,6 @@ class DcfPrimitivesPlugin : FlutterPlugin {
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         Log.d(TAG, "DcfPrimitivesPlugin: onAttachedToEngine called")
 
-        // Register primitive components only once
         if (!isRegistered) {
             registerPrimitiveComponents()
         }
@@ -34,20 +33,17 @@ class DcfPrimitivesPlugin : FlutterPlugin {
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         Log.d(TAG, "DcfPrimitivesPlugin: onDetachedFromEngine called")
-        // Components remain registered for the lifetime of the app
     }
 
     private fun registerPrimitiveComponents() {
         Log.d(TAG, "Registering primitive components with DCFlight framework")
 
         try {
-            // Register all primitive components with the framework registry
             PrimitivesComponentsReg.registerComponents()
             isRegistered = true
             Log.d(TAG, "✅ DcfPrimitivesPlugin: Successfully registered primitive components")
         } catch (e: Exception) {
             Log.e(TAG, "❌ DcfPrimitivesPlugin: Failed to register primitive components", e)
-            // Don't set isRegistered to true so it can be retried
         }
     }
 }

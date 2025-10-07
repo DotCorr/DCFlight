@@ -1,39 +1,26 @@
 import 'package:dcflight/dcflight.dart';
+import 'package:dcf_primitives/dcf_primitives.dart';
 import 'dart:math';
 
 void main() async {
-  DCFlight.setLogLevel(DCFLogLevel.debug);
-  await DCFlight.start(app: InteractiveGridApp());
+  await DCFlight.go(app: InteractiveGridApp());
 }
 
 class InteractiveGridApp extends DCFStatefulComponent {
-  final List<Color> _colors = [
-    Colors.blue.shade400,
-    Colors.purple.shade400,
-    Colors.teal.shade400,
-    Colors.orange.shade400,
-    Colors.pink.shade400,
-    Colors.indigo.shade400,
-  ];
-
-  Color _getRandomColor() {
-    return _colors[Random().nextInt(_colors.length)];
-  }
-
   @override
   DCFComponentNode render() {
     final boxCount = useState(4);
     final gridDensity = useState(2.0);
     
     final columns = gridDensity.state.round();
-    final boxWidth = (100 / columns) - 2;
+    final boxWidth = 100.0; // Match button width for visual consistency
     
     List<DCFComponentNode> gridBoxes = [];
     for (int i = 0; i < boxCount.state; i++) {
       gridBoxes.add(
         DCFView(
           styleSheet: DCFStyleSheet(
-            backgroundColor: _getRandomColor(),
+            backgroundColor: Colors.indigo.shade400,
             borderRadius: 20,
           ),
           layout: DCFLayout(
@@ -46,6 +33,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
             DCFText(
               content: "${i + 1}",
               textProps: DCFTextProps(
+                textAlign: DCFTextAlign.center,
                 fontSize: 24,
                 color: Colors.white,
                 fontWeight: DCFFontWeight.bold,
@@ -58,11 +46,11 @@ class InteractiveGridApp extends DCFStatefulComponent {
 
     return DCFView(
       styleSheet: DCFStyleSheet(
-        backgroundColor: Colors.amber.shade400,
+        backgroundColor: Colors.orange.shade400,
       ),
       layout: DCFLayout(
         flex: 1,
-        padding: 20,
+        padding: 10,
         paddingTop: 100,
       ),
       children: [
@@ -85,6 +73,16 @@ class InteractiveGridApp extends DCFStatefulComponent {
           layout: DCFLayout(marginBottom: 20),
         ),
         
+        // Slider for box count
+        DCFSlider(
+          value: boxCount.state.toDouble() / 100,
+          onValueChange: (DCFSliderValueData data) {
+            print(data.value);
+            final int newBoxCount = (data.value * 100).round();
+            boxCount.setState(newBoxCount);
+          },
+        ),
+        
         // Grid
         DCFView(
           layout: DCFLayout(
@@ -103,6 +101,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
         DCFView(
           layout: DCFLayout(
             width: '100%',
+            padding: 20,
             paddingTop: 20,
             gap: 15,
           ),
@@ -115,7 +114,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
                 gap: 10,
               ),
               children: [
-                DCFButton(
+               DCFButton(
                   buttonProps: DCFButtonProps(title: "Less Columns"),
                   onPress: (v) {
                     if (gridDensity.state > 2) {
@@ -139,6 +138,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
               layout: DCFLayout(
                 flexDirection: YogaFlexDirection.row,
                 justifyContent: YogaJustifyContent.center,
+              
                 gap: 10,
               ),
               children: [
@@ -149,7 +149,7 @@ class InteractiveGridApp extends DCFStatefulComponent {
                   },
                 ),
                 DCFButton(
-                  buttonProps: DCFButtonProps(title: "Remove Box"),
+                  buttonProps: DCFButtonProps(title: "Remove Box",),
                   onPress: (v) {
                     if (boxCount.state > 0) {
                       boxCount.setState(boxCount.state - 1);

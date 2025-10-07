@@ -10,11 +10,14 @@ package com.dotcorr.dcflight
 import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.view.ViewGroup
 import com.facebook.soloader.SoLoader
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
+import com.dotcorr.dcflight.layout.ViewRegistry
 import com.dotcorr.dcflight.utils.DCFScreenUtilities
 
 /**
@@ -32,21 +35,17 @@ open class DCFFlutterActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize SoLoader for Yoga native library
         if (!SoLoader.isInitialized()) {
             SoLoader.init(this, false)
             Log.d(TAG, "✅ SoLoader initialized")
         }
 
-        // Initialize DCFlight framework
         initializeFramework()
     }
     
     override fun onStart() {
         super.onStart()
         
-        // Only diverge once during app lifecycle, not every time activity starts
-        // This prevents clearing native UI when returning from background
         if (!isFrameworkDiverged) {
             Log.d(TAG, "First start - diverging to native UI")
             divergeToFlightSafely()
@@ -122,14 +121,39 @@ open class DCFFlutterActivity : FlutterActivity() {
         Log.d(TAG, "🔄 Configuration changed - handling rotation/layout update")
         
         try {
-            // Update screen utilities with new display metrics
             DCFScreenUtilities.refreshScreenDimensions()
             
-            // Invalidate all layouts to force recalculation with new screen dimensions
-            DCFLayoutManager.shared.invalidateAllLayouts()
+            DCFLayoutManager.shared.handleDeviceRotation()
             
-            // Recalculate all layouts with new dimensions
-            YogaShadowTree.shared.calculateLayoutForAllRoots()
+            val rootView: View? = ViewRegistry.shared.getView("root")
+            if (rootView != null) {
+                val displayMetrics = resources.displayMetrics
+                rootView.measure(
+                    View.MeasureSpec.makeMeasureSpec(displayMetrics.widthPixels, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(displayMetrics.heightPixels, View.MeasureSpec.EXACTLY)
+                )
+                Log.d(TAG, "🔄 Root view measured after rotation: ${rootView.measuredWidth}x${rootView.measuredHeight}")
+            }
+            
+            rootView?.post {
+                YogaShadowTree.shared.calculateLayoutForAllRoots()
+                Log.d(TAG, "🔄 Forced intrinsic size recalculation after rotation")
+            }
+            
+            // CRITICAL: Force recursive invalidation after rotation to redraw all views
+            if (rootView != null) {
+                fun invalidateAll(v: View) {
+                    v.invalidate()
+                    if (v is ViewGroup) {
+                        for (i in 0 until v.childCount) {
+                            invalidateAll(v.getChildAt(i))
+                        }
+                    }
+                }
+                invalidateAll(rootView)
+                Log.d(TAG, "🔄 Forced recursive invalidation after rotation")
+                
+            }
             
             Log.d(TAG, "✅ Layout updated for configuration change")
         } catch (e: Exception) {

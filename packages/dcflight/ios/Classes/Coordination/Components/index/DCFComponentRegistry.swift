@@ -14,8 +14,6 @@ public class DCFComponentRegistry {
     internal var componentTypes: [String: DCFComponent.Type] = [:]
     
     private init() {
-        // No built-in components are registered here
-        // Module developers will register their own components
     }
     
     /// Register a component type handler

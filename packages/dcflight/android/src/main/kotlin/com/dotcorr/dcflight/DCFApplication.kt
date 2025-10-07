@@ -28,22 +28,18 @@ open class DCFApplication : Application() {
         super.onCreate()
         Log.d(TAG, "DCFApplication onCreate")
 
-        // Create and configure Flutter engine
         initializeFlutterEngine()
     }
 
     private fun initializeFlutterEngine() {
         Log.d(TAG, "Initializing Flutter engine")
 
-        // Create Flutter engine
         flutterEngine = FlutterEngine(this).apply {
-            // Start executing Dart code
             dartExecutor.executeDartEntrypoint(
                 DartExecutor.DartEntrypoint.createDefault()
             )
         }
 
-        // Cache the engine for reuse
         FlutterEngineCache
             .getInstance()
             .put(ENGINE_ID, flutterEngine!!)
@@ -55,11 +51,9 @@ open class DCFApplication : Application() {
         super.onTerminate()
         Log.d(TAG, "DCFApplication onTerminate")
 
-        // Clean up Flutter engine
         flutterEngine?.destroy()
         flutterEngine = null
 
-        // Clear the cache
         FlutterEngineCache.getInstance().remove(ENGINE_ID)
     }
 }

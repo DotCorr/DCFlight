@@ -7,6 +7,136 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Scroll view scroll callback data
+class DCFScrollViewScrollData {
+  /// Current scroll position X
+  final double scrollX;
+  
+  /// Current scroll position Y
+  final double scrollY;
+  
+  /// Timestamp of the scroll event
+  final DateTime timestamp;
+
+  DCFScrollViewScrollData({
+    required this.scrollX,
+    required this.scrollY,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFScrollViewScrollData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFScrollViewScrollData(
+      scrollX: (data['scrollX'] as num).toDouble(),
+      scrollY: (data['scrollY'] as num).toDouble(),
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Scroll view drag start callback data
+class DCFScrollViewDragStartData {
+  /// Whether the drag was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the drag start
+  final DateTime timestamp;
+
+  DCFScrollViewDragStartData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFScrollViewDragStartData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFScrollViewDragStartData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Scroll view drag end callback data
+class DCFScrollViewDragEndData {
+  /// Whether the drag was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the drag end
+  final DateTime timestamp;
+
+  DCFScrollViewDragEndData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFScrollViewDragEndData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFScrollViewDragEndData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Scroll view scroll end callback data
+class DCFScrollViewScrollEndData {
+  /// Whether the scroll was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the scroll end
+  final DateTime timestamp;
+
+  DCFScrollViewScrollEndData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFScrollViewScrollEndData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFScrollViewScrollEndData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Scroll view content size change callback data
+class DCFScrollViewContentSizeData {
+  /// New content width
+  final double width;
+  
+  /// New content height
+  final double height;
+  
+  /// Timestamp of the content size change
+  final DateTime timestamp;
+
+  DCFScrollViewContentSizeData({
+    required this.width,
+    required this.height,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFScrollViewContentSizeData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFScrollViewContentSizeData(
+      width: (data['width'] as num).toDouble(),
+      height: (data['height'] as num).toDouble(),
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// DCFScrollView - Optimized scroll view component
 /// Uses your native VirtualizedScrollView for best performance
 class DCFScrollView extends DCFStatelessComponent
@@ -34,11 +164,11 @@ class DCFScrollView extends DCFStatelessComponent
   final DCFStyleSheet contentContainerStyle;
 
   /// Event handlers
-  final Function(Map<dynamic, dynamic>)? onScroll;
-  final Function(Map<dynamic, dynamic>)? onScrollBeginDrag;
-  final Function(Map<dynamic, dynamic>)? onScrollEndDrag;
-  final Function(Map<dynamic, dynamic>)? onScrollEnd;
-  final Function(Map<dynamic, dynamic>)? onContentSizeChange;
+  final Function(DCFScrollViewScrollData)? onScroll;
+  final Function(DCFScrollViewDragStartData)? onScrollBeginDrag;
+  final Function(DCFScrollViewDragEndData)? onScrollEndDrag;
+  final Function(DCFScrollViewScrollEndData)? onScrollEnd;
+  final Function(DCFScrollViewContentSizeData)? onContentSizeChange;
 
   /// Scroll indicator styling
   final Color? scrollIndicatorColor;
@@ -97,19 +227,29 @@ class DCFScrollView extends DCFStatelessComponent
 
     // Add specific event handlers
     if (onScroll != null) {
-      eventMap['onScroll'] = onScroll;
+      eventMap['onScroll'] = (Map<dynamic, dynamic> data) {
+        onScroll!(DCFScrollViewScrollData.fromMap(data));
+      };
     }
     if (onScrollBeginDrag != null) {
-      eventMap['onScrollBeginDrag'] = onScrollBeginDrag;
+      eventMap['onScrollBeginDrag'] = (Map<dynamic, dynamic> data) {
+        onScrollBeginDrag!(DCFScrollViewDragStartData.fromMap(data));
+      };
     }
     if (onScrollEndDrag != null) {
-      eventMap['onScrollEndDrag'] = onScrollEndDrag;
+      eventMap['onScrollEndDrag'] = (Map<dynamic, dynamic> data) {
+        onScrollEndDrag!(DCFScrollViewDragEndData.fromMap(data));
+      };
     }
     if (onScrollEnd != null) {
-      eventMap['onScrollEnd'] = onScrollEnd;
+      eventMap['onScrollEnd'] = (Map<dynamic, dynamic> data) {
+        onScrollEnd!(DCFScrollViewScrollEndData.fromMap(data));
+      };
     }
     if (onContentSizeChange != null) {
-      eventMap['onContentSizeChange'] = onContentSizeChange;
+      eventMap['onContentSizeChange'] = (Map<dynamic, dynamic> data) {
+        onContentSizeChange!(DCFScrollViewContentSizeData.fromMap(data));
+      };
     }
 
     // Build props map

@@ -28,13 +28,11 @@ class DCFGestureDetectorComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val frameLayout = FrameLayout(context)
         
-        // Set component identifier
+        
         frameLayout.setTag(R.id.dcf_component_type, "GestureDetector")
         
-        // Set up gesture detector
         val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onSingleTapUp(e: MotionEvent): Boolean {
-                // 🚀 MATCH iOS: Use propagateEvent for onTap
                 propagateEvent(frameLayout, "onTap", mapOf(
                     "x" to e.x.toDouble(),
                     "y" to e.y.toDouble()
@@ -43,7 +41,6 @@ class DCFGestureDetectorComponent : DCFComponent() {
             }
             
             override fun onLongPress(e: MotionEvent) {
-                // 🚀 MATCH iOS: Use propagateEvent for onLongPress
                 propagateEvent(frameLayout, "onLongPress", mapOf(
                     "x" to e.x.toDouble(),
                     "y" to e.y.toDouble()
@@ -59,17 +56,14 @@ class DCFGestureDetectorComponent : DCFComponent() {
                 val deltaX = (e2.x - (e1?.x ?: 0f))
                 val deltaY = (e2.y - (e1?.y ?: 0f))
                 
-                // Determine swipe direction
                 when {
                     Math.abs(deltaX) > Math.abs(deltaY) -> {
                         if (deltaX > 0) {
-                            // 🚀 MATCH iOS: Use propagateEvent for onSwipeRight
                             propagateEvent(frameLayout, "onSwipeRight", mapOf(
                                 "velocityX" to velocityX.toDouble(),
                                 "velocityY" to velocityY.toDouble()
                             ))
                         } else {
-                            // 🚀 MATCH iOS: Use propagateEvent for onSwipeLeft
                             propagateEvent(frameLayout, "onSwipeLeft", mapOf(
                                 "velocityX" to velocityX.toDouble(),
                                 "velocityY" to velocityY.toDouble()
@@ -78,13 +72,11 @@ class DCFGestureDetectorComponent : DCFComponent() {
                     }
                     else -> {
                         if (deltaY > 0) {
-                            // 🚀 MATCH iOS: Use propagateEvent for onSwipeDown
                             propagateEvent(frameLayout, "onSwipeDown", mapOf(
                                 "velocityX" to velocityX.toDouble(),
                                 "velocityY" to velocityY.toDouble()
                             ))
                         } else {
-                            // 🚀 MATCH iOS: Use propagateEvent for onSwipeUp
                             propagateEvent(frameLayout, "onSwipeUp", mapOf(
                                 "velocityX" to velocityX.toDouble(),
                                 "velocityY" to velocityY.toDouble()
@@ -96,12 +88,10 @@ class DCFGestureDetectorComponent : DCFComponent() {
             }
         })
         
-        // Set up touch listener to pass events to gesture detector
         frameLayout.setOnTouchListener { _, event ->
             gestureDetector.onTouchEvent(event)
         }
         
-        // Apply initial props
         updateView(frameLayout, props)
         return frameLayout
     }
@@ -113,7 +103,6 @@ class DCFGestureDetectorComponent : DCFComponent() {
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         var hasUpdates = false
 
-        // disabled prop
         props["disabled"]?.let {
             val disabled = when (it) {
                 is Boolean -> it
@@ -126,27 +115,22 @@ class DCFGestureDetectorComponent : DCFComponent() {
             }
         }
 
-        // adaptive prop - matches iOS adaptivity
         props["adaptive"]?.let { adaptive ->
             if (adaptive == true) {
-                // Apply adaptive background color
                 view.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(view.context))
                 hasUpdates = true
             }
         }
 
-        // Apply common view styling
         view.applyStyles(props)
 
         return hasUpdates
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val frameLayout = view as? FrameLayout ?: return PointF(0f, 0f)
 
-        // Measure the gesture detector content
         frameLayout.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -159,7 +143,6 @@ class DCFGestureDetectorComponent : DCFComponent() {
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // GestureDetector components may contain children and need shadow tree handling
     }
 }
 

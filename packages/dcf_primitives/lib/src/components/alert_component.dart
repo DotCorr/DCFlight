@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:dcf_primitives/dcf_primitives.dart';
 
 /// Alert text field configuration with full parity to DCFTextInput
 class DCFAlertTextField {

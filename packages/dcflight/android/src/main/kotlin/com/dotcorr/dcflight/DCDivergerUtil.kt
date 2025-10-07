@@ -70,8 +70,6 @@ object DCDivergerUtil {
         pluginBinding: FlutterPlugin.FlutterPluginBinding?
     ): FlutterEngine? {
         return try {
-            // 🚀 CRITICAL FIX: Use the EXISTING engine from plugin binding like iOS!
-            // Don't create a new engine - use the one that already has our plugins registered!
             pluginBinding?.flutterEngine ?: FlutterEngineCache.getInstance().get(ENGINE_ID)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get Flutter engine", e)
@@ -81,8 +79,6 @@ object DCDivergerUtil {
 
     private fun setupNativeContainer(activity: Activity) {
         try {
-            // 🚀 CRITICAL FIX: Prevent UI destruction on background/foreground transitions
-            // If rootView already exists, just return - don't recreate like iOS
             if (rootView != null) {
                 Log.d(TAG, "Native container already exists, preserving UI state")
                 return
@@ -97,13 +93,10 @@ object DCDivergerUtil {
             }
 
             if (activity is FlutterActivity) {
-                // Replace Flutter content with native content (like iOS does)
                 val contentView = activity.findViewById<ViewGroup>(android.R.id.content)
                 
-                // Remove all Flutter views
                 contentView?.removeAllViews()
                 
-                // Add our native root view as the only content
                 contentView?.addView(rootView)
                 
                 Log.d(TAG, "Replaced Flutter content with native DCF content")
@@ -121,10 +114,7 @@ object DCDivergerUtil {
 
             DCMauiBridgeImpl.shared.setContext(context)
 
-            // Initialize systems - but preserve existing state like iOS does!
-            // Don't clear views when returning from background
             Log.d(TAG, "Ensuring DCFlight systems are initialized")
-            // DCFLayoutManager and YogaShadowTree are already initialized as singletons
 
             DCFScreenUtilities.initialize(binaryMessenger, context)
 

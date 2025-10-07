@@ -11,25 +11,20 @@ import WebKit
 import dcflight
 
 class DCFWebViewComponent: NSObject, DCFComponent {
-    // Use shared instance pattern like other components
     private static let sharedInstance = DCFWebViewComponent()
     
     private var currentURL: String?
-    // Remove the sourceView tracking - we'll propagate events directly on the webView
     
     required override init() {
         super.init()
     }
     
     func createView(props: [String: Any]) -> UIView {
-    // 🔍 DEBUG: Log what props WebView actually receives (same as Screen/Tab logging)
     print("🔧 DCFWebViewComponent: Found props keys: \(Array(props.keys))")
     
-    // Extract event types to compare with Screen/TabNavigator
     let eventTypes = props.keys.filter { $0.hasPrefix("on") }
     print("🔧 DCFWebViewComponent: Extracted event types: \(eventTypes)")
     
-        // Ensure we're on the main thread for UI operations
         guard Thread.isMainThread else {
             return DispatchQueue.main.sync {
                 return createView(props: props)
@@ -38,38 +33,30 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         
         let configuration = WKWebViewConfiguration()
         
-        // Configure JavaScript
         let javaScriptEnabled = props["javaScriptEnabled"] as? Bool ?? true
         configuration.preferences.javaScriptEnabled = javaScriptEnabled
         
-        // Configure media playback
         let allowsInlineMediaPlayback = props["allowsInlineMediaPlayback"] as? Bool ?? true
         configuration.allowsInlineMediaPlayback = allowsInlineMediaPlayback
         
         let mediaPlaybackRequiresUserAction = props["mediaPlaybackRequiresUserAction"] as? Bool ?? true
         configuration.mediaTypesRequiringUserActionForPlayback = mediaPlaybackRequiresUserAction ? .all : []
         
-        // Create the web view
         let webView = WKWebView(frame: .zero, configuration: configuration)
         
         
-        // Set navigation delegate to shared instance
         webView.navigationDelegate = DCFWebViewComponent.sharedInstance
         webView.uiDelegate = DCFWebViewComponent.sharedInstance
         
-        // Add progress observation for onLoadProgress events
         webView.addObserver(DCFWebViewComponent.sharedInstance, forKeyPath: "estimatedProgress", options: .new, context: nil)
         
-        // Add JavaScript message handler for onMessage events
         let userContentController = webView.configuration.userContentController
         userContentController.add(DCFWebViewComponent.sharedInstance, name: "dcfMessage")
         
-        // Ensure the webview is visible and properly sized
         webView.translatesAutoresizingMaskIntoConstraints = false
         webView.isOpaque = true  // Make opaque to ensure content visibility
         webView.backgroundColor = UIColor.white  // Always white background
         
-        // Configure scroll behavior
         let allowsZoom = props["allowsZoom"] as? Bool ?? true
         webView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
         webView.scrollView.showsHorizontalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
@@ -81,17 +68,14 @@ class DCFWebViewComponent: NSObject, DCFComponent {
                 (props["automaticallyAdjustContentInsets"] as? Bool ?? true) ? .automatic : .never
         }
         
-        // Set user agent if provided
         if let userAgent = props["userAgent"] as? String {
             webView.customUserAgent = userAgent
         }
         
-        // Handle adaptive theming - always use white for better visibility 
         webView.backgroundColor = UIColor.white
         webView.scrollView.backgroundColor = UIColor.white
         
         
-        // Load content on main thread
         DispatchQueue.main.async {
             DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
         }
@@ -100,27 +84,23 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // View should be the webview directly now
         guard let webView = view as? WKWebView else { 
             return false 
         }
         
         let source = props["source"] as? String ?? ""
         
-        // Only reload if source changed
         if DCFWebViewComponent.sharedInstance.currentURL != source {
             DispatchQueue.main.async {
                 DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
             }
         }
         
-        // Update other properties that can be changed without reload
         webView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
         webView.scrollView.showsHorizontalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
         webView.scrollView.showsVerticalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
         webView.scrollView.bounces = props["bounces"] as? Bool ?? true
         
-        // Handle adaptive theming updates
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
@@ -136,7 +116,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         return true
     }
     
-    // MARK: - DCFComponent Protocol Methods
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(
@@ -152,11 +131,9 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Track node registration for debugging
     }
     
     private func loadContent(webView: WKWebView, props: [String: Any]) {
-        // Ensure we're on the main thread for all web view operations
         guard Thread.isMainThread else {
             DispatchQueue.main.async {
                 self.loadContent(webView: webView, props: props)
@@ -171,7 +148,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         
         currentURL = source
         
-        // Ensure webView is properly configured for content loading
         webView.isHidden = false
         webView.alpha = 1.0
         
@@ -187,20 +163,17 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             
             var request = URLRequest(url: url)
             
-            // Add debugging headers and proper configuration
             request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
             request.timeoutInterval = 30.0
             
             
-            // Load the request
             webView.load(request)
             
         case "htmlString":
             webView.loadHTMLString(source, baseURL: nil)
             
         case "localFile":
-            // Load file from app bundle using Flutter asset resolution
             if let key = sharedFlutterViewController?.lookupKey(forAsset: source),
                let path = Bundle.main.path(forResource: key, ofType: nil),
                let fileURL = URL(string: "file://" + path) {
@@ -208,19 +181,16 @@ class DCFWebViewComponent: NSObject, DCFComponent {
                 if #available(iOS 9.0, *) {
                     webView.loadFileURL(fileURL, allowingReadAccessTo: fileURL.deletingLastPathComponent())
                 } else {
-                    // Fallback for older iOS versions
                     if let data = try? Data(contentsOf: fileURL) {
                         let mimeType = mimeTypeForContentType(contentType)
                         webView.load(data, mimeType: mimeType, characterEncodingName: "UTF-8", baseURL: fileURL.deletingLastPathComponent())
                     }
                 }
             } else {
-                // Fallback: try direct file path if asset resolution fails
                 if let fileURL = URL(string: source.hasPrefix("file://") ? source : "file://" + source) {
                     if #available(iOS 9.0, *) {
                         webView.loadFileURL(fileURL, allowingReadAccessTo: fileURL.deletingLastPathComponent())
                     } else {
-                        // Fallback for older iOS versions
                         if let data = try? Data(contentsOf: fileURL) {
                             let mimeType = mimeTypeForContentType(contentType)
                             webView.load(data, mimeType: mimeType, characterEncodingName: "UTF-8", baseURL: fileURL.deletingLastPathComponent())
@@ -250,11 +220,9 @@ class DCFWebViewComponent: NSObject, DCFComponent {
     }
 }
 
-// MARK: - WKNavigationDelegate
 extension DCFWebViewComponent: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         
-        // Propagate event directly on the webView
         propagateEvent(on: webView, eventName: "onLoadStart", data: [
             "url": webView.url?.absoluteString ?? "",
             "title": webView.title ?? ""
@@ -263,13 +231,11 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         
-        // Force a layout pass to ensure content is visible
         DispatchQueue.main.async {
             webView.setNeedsLayout()
             webView.layoutIfNeeded()
         }
         
-        // Propagate event directly on the webView
         propagateEvent(on: webView, eventName: "onLoadEnd", data: [
             "url": webView.url?.absoluteString ?? "",
             "title": webView.title ?? ""
@@ -278,7 +244,6 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         
-        // Propagate event directly on the webView
         propagateEvent(on: webView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
             "code": (error as NSError).code,
@@ -288,7 +253,6 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         
-        // Propagate event directly on the webView
         propagateEvent(on: webView, eventName: "onLoadError", data: [
             "error": error.localizedDescription,
             "code": (error as NSError).code,
@@ -299,7 +263,6 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         let url = navigationAction.request.url?.absoluteString ?? ""
         
-        // Propagate event directly on the webView
         propagateEvent(on: webView, eventName: "onNavigationStateChange", data: [
             "url": url,
             "title": webView.title ?? "",
@@ -312,7 +275,6 @@ extension DCFWebViewComponent: WKNavigationDelegate {
     }
 }
 
-// MARK: - WKUIDelegate
 extension DCFWebViewComponent: WKUIDelegate {
     public func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
         let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
@@ -355,13 +317,11 @@ extension DCFWebViewComponent: WKUIDelegate {
     }
 }
 
-// MARK: - KVO for progress tracking
 extension DCFWebViewComponent {
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "estimatedProgress" {
             if let webView = object as? WKWebView {
                 let progress = webView.estimatedProgress
-                // Propagate progress event directly on the webView
                 propagateEvent(on: webView, eventName: "onLoadProgress", data: [
                     "progress": progress
                 ])
@@ -370,12 +330,10 @@ extension DCFWebViewComponent {
     }
 }
 
-// MARK: - WKScriptMessageHandler for JavaScript messages
 extension DCFWebViewComponent: WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         if message.name == "dcfMessage" {
             if let webView = message.webView {
-                // Propagate message event directly on the webView
                 propagateEvent(on: webView, eventName: "onMessage", data: [
                     "data": message.body
                 ])

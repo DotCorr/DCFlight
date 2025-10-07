@@ -18,7 +18,6 @@ export 'component/fragment.dart';
 // Re-export element and node classes
 export 'component/component_node.dart';
 export 'component/dcf_element.dart';
-export 'component/suspense.dart';
 
 
 
