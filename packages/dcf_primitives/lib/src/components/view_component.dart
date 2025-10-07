@@ -7,6 +7,45 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// View layout callback data
+class DCFViewLayoutData {
+  /// Width of the view
+  final double width;
+  
+  /// Height of the view
+  final double height;
+  
+  /// X position of the view
+  final double x;
+  
+  /// Y position of the view
+  final double y;
+  
+  /// Timestamp of the layout event
+  final DateTime timestamp;
+
+  DCFViewLayoutData({
+    required this.width,
+    required this.height,
+    required this.x,
+    required this.y,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFViewLayoutData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFViewLayoutData(
+      width: (data['width'] as num).toDouble(),
+      height: (data['height'] as num).toDouble(),
+      x: (data['x'] as num).toDouble(),
+      y: (data['y'] as num).toDouble(),
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// A basic view component implementation using StatelessComponent
 class DCFView extends DCFStatelessComponent
     with EquatableMixin
@@ -30,7 +69,7 @@ class DCFView extends DCFStatelessComponent
   final bool adaptive;
 
   /// Layout event handler
-  final Function(Map<dynamic, dynamic>)? onLayout;
+  final Function(DCFViewLayoutData)? onLayout;
 
   /// Create a view component
   DCFView({
@@ -47,7 +86,9 @@ class DCFView extends DCFStatelessComponent
   DCFComponentNode render() {
     final eventMap = events ?? <String, dynamic>{};
     if (onLayout != null) {
-      eventMap['onLayout'] = onLayout;
+      eventMap['onLayout'] = (Map<dynamic, dynamic> data) {
+        onLayout!(DCFViewLayoutData.fromMap(data));
+      };
     }
 
     return DCFElement(

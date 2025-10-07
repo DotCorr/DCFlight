@@ -7,6 +7,54 @@
 
 import 'package:dcflight/dcflight.dart';
 
+/// Button press callback data
+class DCFButtonPressData {
+  /// Whether the press was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the press
+  final DateTime timestamp;
+
+  DCFButtonPressData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFButtonPressData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFButtonPressData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch((data['timestamp'] as num).toInt())
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Button long press callback data
+class DCFButtonLongPressData {
+  /// Whether the long press was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the long press
+  final DateTime timestamp;
+
+  DCFButtonLongPressData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFButtonLongPressData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFButtonLongPressData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch((data['timestamp'] as num).toInt())
+          : DateTime.now(),
+    );
+  }
+}
+
 /// Button properties
 class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
   @override
@@ -44,7 +92,7 @@ class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
 /// A button component implementation using StatelessComponent
 class DCFButton extends DCFStatelessComponent with EquatableMixin {
   /// The button properties
-  final DCFButtonProps buttonProps;
+  final DCFButtonProps? buttonProps;
 
   /// The layout properties
   final DCFLayout layout;
@@ -55,17 +103,17 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
   /// Event handlers
   final Map<String, dynamic>? events;
 
-  /// Press event handler - receives Map<dynamic, dynamic> with press data
-  final Function(Map<dynamic, dynamic>)? onLongPress;
+  /// Press event handler - receives type-safe press data
+  final Function(DCFButtonPressData)? onPress;
 
-  /// Press event handler - receives Map<dynamic, dynamic> with press data
-  final Function(Map<dynamic, dynamic>)? onPress;
+  /// Long press event handler - receives type-safe long press data
+  final Function(DCFButtonLongPressData)? onLongPress;
 
   /// Create a button component
   DCFButton({
-    required this.buttonProps,
-    this.layout = const DCFLayout( width: 200,alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center),
-    this.styleSheet = const DCFStyleSheet(),
+     this.buttonProps = const DCFButtonProps(title: "Button"),
+    this.layout = const DCFLayout(width: 100, alignItems: YogaAlign.center, justifyContent: YogaJustifyContent.center),
+    this.styleSheet = const DCFStyleSheet(backgroundColor: Colors.blueAccent, borderRadius: 10),
     this.onPress,
     this.onLongPress,
     this.events,
@@ -78,16 +126,20 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onPress != null) {
-      eventMap['onPress'] = onPress;
+      eventMap['onPress'] = (Map<dynamic, dynamic> data) {
+        onPress!(DCFButtonPressData.fromMap(data));
+      };
     }
 
     if (onLongPress != null) {
-      eventMap['onLongPress'] = onLongPress;
+      eventMap['onLongPress'] = (Map<dynamic, dynamic> data) {
+        onLongPress!(DCFButtonLongPressData.fromMap(data));
+      };
     }
 
     // Serialize command if provided
     Map<String, dynamic> props = {
-      ...buttonProps.toMap(),
+      ...buttonProps?.toMap()??{},
       ...layout.toMap(),
       ...styleSheet.toMap(),
       ...eventMap,

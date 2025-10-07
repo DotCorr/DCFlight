@@ -9,7 +9,6 @@
 import UIKit
 import dcflight
 
-// 🚀 SPINNER/ACTIVITY INDICATOR COMPONENT - Native spinner with adaptive theming
 class DCFSpinnerComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFSpinnerComponent()
     
@@ -21,7 +20,6 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
         
         let spinner: UIActivityIndicatorView
         
-        // Choose style based on props
         let style = props["style"] as? String ?? "medium"
         
         if #available(iOS 13.0, *) {
@@ -44,7 +42,6 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
             }
         }
         
-        // Apply adaptive theming like DCFViewComponent
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
@@ -63,7 +60,6 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let spinner = view as? UIActivityIndicatorView else { return false }
         
-        // Update animating state
         if let animating = props["animating"] as? Bool {
             if animating {
                 spinner.startAnimating()
@@ -71,17 +67,14 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
                 spinner.stopAnimating()
             }
         } else {
-            // Default to animating
             spinner.startAnimating()
         }
         
-        // Update color
         if let color = props["color"] as? String,
            let spinnerColor = ColorUtilities.color(fromHexString: color) {
             spinner.color = spinnerColor
         }
         
-        // Update hidden when stopped
         if let hidesWhenStopped = props["hidesWhenStopped"] as? Bool {
             spinner.hidesWhenStopped = hidesWhenStopped
         } else {

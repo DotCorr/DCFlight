@@ -60,15 +60,12 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "dcflight")
         channel.setMethodCallHandler(this)
 
-        // Initialize method channels - EXACTLY like iOS using shared instances!
         DCMauiBridgeMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
         DCMauiEventMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
         DCMauiLayoutMethodHandler.initialize(flutterPluginBinding.binaryMessenger)
         
-        // Initialize screen utilities for screen dimensions method channel
         DCFScreenUtilities.initialize(flutterPluginBinding.binaryMessenger, flutterPluginBinding.applicationContext)
         
-        // Initialize hot restart channel - CRITICAL for hot restart cleanup!
         DCFHotRestartMethodChannel.initialize(flutterPluginBinding.binaryMessenger)
 
         Log.d(TAG, "DCFlight plugin initialized with method channels")
@@ -95,7 +92,6 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         channel.setMethodCallHandler(null)
         
         YogaShadowTree.shared.clearAll()
-        // DCFLayoutManager doesn't have a global cleanup method
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -105,30 +101,22 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     override fun onDetachedFromActivityForConfigChanges() {
         Log.d(TAG, "onDetachedFromActivityForConfigChanges called")
-        // Preserve activity reference temporarily during config changes
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
         Log.d(TAG, "onReattachedToActivityForConfigChanges called")
         this.activity = binding.activity
-        
-        // CRITICAL: Handle configuration changes like iOS
-        // Recalculate layout and update screen dimensions after rotation
-        handleConfigurationChange(binding.activity)
     }
     
     private fun handleConfigurationChange(activity: Activity) {
         Log.d(TAG, "📱 Configuration changed - handling rotation/theme change")
         
         try {
-            // Update screen dimensions for YogaShadowTree root nodes
             updateScreenDimensionsAfterRotation()
             
-            // Force layout recalculation to handle new dimensions
             DCFLayoutManager.shared.invalidateAllLayouts()
             YogaShadowTree.shared.calculateLayoutForAllRoots()
             
-            // Trigger theme update propagation for all adaptive components
             propagateThemeChangeToAllComponents()
             
             Log.d(TAG, "✅ Configuration change handled successfully")
@@ -145,17 +133,12 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             
             Log.d(TAG, "📐 Screen dimensions updated: ${newWidth}x${newHeight}")
             
-            // Update all screen root dimensions in YogaShadowTree
             YogaShadowTree.shared.updateScreenRootDimensions(newWidth, newHeight)
         }
     }
     
     private fun propagateThemeChangeToAllComponents() {
         activity?.let { act ->
-            // Force all adaptive components to re-evaluate their colors
-            // This ensures theme changes are propagated after configuration changes
-            // Note: AdaptiveColorHelper automatically handles theme changes, so explicit propagation may not be needed
-            // DCMauiBridgeImpl.shared.propagateThemeChangeToAllViews(act)
             Log.d(TAG, "🎨 Theme change propagated to all components")
         }
     }
@@ -164,8 +147,6 @@ class DcflightPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         Log.d(TAG, "onDetachedFromActivity called")
         this.activity = null
         
-        // DON'T cleanup when activity detaches - app might return from background
-        // Only cleanup when engine detaches (app is truly closing)
         Log.d(TAG, "Activity detached but preserving native UI for background/foreground transitions")
     }
 }

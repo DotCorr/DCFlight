@@ -269,9 +269,14 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
             return
         }
 
-        Handler(Looper.getMainLooper()).post {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
             val success = DCMauiBridgeImpl.shared.commitBatchUpdate(operations)
             result.success(success)
+        } else {
+            Handler(Looper.getMainLooper()).post {
+                val success = DCMauiBridgeImpl.shared.commitBatchUpdate(operations)
+                result.success(success)
+            }
         }
     }
 

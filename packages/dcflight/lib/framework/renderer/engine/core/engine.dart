@@ -727,7 +727,9 @@ class DCFEngine {
           EngineDebugLogger.logMount(node, context: 'Fragment mounting');
           node.mount(node.parent);
         }
-
+        // Todo: Remove this and handle diffrently not in the engine
+        // portals have no place in the engine logic, they are handled by the portal manager
+        // or somewhere but not in the engine as the engine is dedicated to rendering
         // O(1) - Check if this fragment is a portal placeholder
         if (node.metadata != null &&
             node.metadata!['isPortalPlaceholder'] == true) {
@@ -1473,7 +1475,12 @@ class DCFEngine {
       EngineDebugLogger.reset();
 
       rootComponent = component;
+      
+      // CRITICAL FIX: Wrap initial mount in batch for atomic rendering
+      await _nativeBridge.startBatchUpdate();
       await renderToNative(component, parentViewId: "root");
+      await _nativeBridge.commitBatchUpdate();
+      
       setRootComponent(component);
 
       EngineDebugLogger.log('CREATE_ROOT_COMPLETE',
@@ -1483,7 +1490,11 @@ class DCFEngine {
           'CREATE_ROOT_FIRST', 'Creating first root component');
       rootComponent = component;
 
+      // CRITICAL FIX: Wrap initial mount in batch for atomic rendering
+      await _nativeBridge.startBatchUpdate();
       final viewId = await renderToNative(component, parentViewId: "root");
+      await _nativeBridge.commitBatchUpdate();
+      
       setRootComponent(component);
 
       EngineDebugLogger.log(

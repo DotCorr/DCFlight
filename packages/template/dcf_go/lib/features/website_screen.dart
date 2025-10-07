@@ -1,3 +1,4 @@
+import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -32,8 +33,8 @@ class WebsiteScreen extends DCFStatefulComponent {
                   DCFSegmentItem(title: "DCFlight"),
                 ],
               ),
-              onSelectionChange: (v) {
-                selectedIndexWeb.setState(v["selectedIndex"]);
+              onSelectionChange: (DCFSegmentedControlSelectionData data) {
+                selectedIndexWeb.setState(data.selectedIndex);
               },
             ),
 

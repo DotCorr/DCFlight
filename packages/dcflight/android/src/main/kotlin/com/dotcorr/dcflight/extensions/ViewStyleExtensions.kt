@@ -7,14 +7,31 @@
 
 package com.dotcorr.dcflight.extensions
 
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.util.DisplayMetrics
 import android.view.View
 import android.view.ViewGroup
 import android.util.TypedValue
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.R
+
+/**
+ * CRITICAL FIX: Apply density scaling to style properties for cross-platform consistency
+ * iOS uses logical points that are automatically scaled by the system
+ * Android needs manual scaling to achieve the same visual result
+ */
+private fun applyStyleDensityScaling(value: Float): Float {
+    return try {
+        val displayMetrics = Resources.getSystem().displayMetrics
+        value * displayMetrics.density
+    } catch (e: Exception) {
+        value // Fallback to original value if scaling fails
+    }
+}
 
 /**
  * View extension for style application
@@ -31,13 +48,13 @@ fun View.applyStyles(props: Map<String, Any>) {
     var hasCornerRadius = false
     var finalCornerRadius = 0f
 
-    // Create or get existing drawable
     val drawable = (this.background as? GradientDrawable) ?: GradientDrawable()
 
-    // Border Radius
     props["borderRadius"]?.let { borderRadius ->
         val radius = when (borderRadius) {
-            is Number -> borderRadius.toFloat()
+            is Number -> {
+                applyStyleDensityScaling(borderRadius.toFloat())
+            }
             else -> 0f
         }
         drawable.cornerRadius = radius
@@ -46,11 +63,10 @@ fun View.applyStyles(props: Map<String, Any>) {
         this.clipToOutline = true
     }
 
-    // Per-corner Radius
-    val topLeft = (props["borderTopLeftRadius"] as? Number)?.toFloat()
-    val topRight = (props["borderTopRightRadius"] as? Number)?.toFloat()
-    val bottomLeft = (props["borderBottomLeftRadius"] as? Number)?.toFloat()
-    val bottomRight = (props["borderBottomRightRadius"] as? Number)?.toFloat()
+    val topLeft = (props["borderTopLeftRadius"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()) }
+    val topRight = (props["borderTopRightRadius"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()) }
+    val bottomLeft = (props["borderBottomLeftRadius"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()) }
+    val bottomRight = (props["borderBottomRightRadius"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()) }
 
     if (topLeft != null || topRight != null || bottomLeft != null || bottomRight != null) {
         val radii = floatArrayOf(
@@ -64,7 +80,6 @@ fun View.applyStyles(props: Map<String, Any>) {
         this.clipToOutline = true
     }
 
-    // Border color and width - Apply only if specified
     props["borderColor"]?.let { borderColor ->
         val color = when (borderColor) {
             is String -> ColorUtilities.parseColor(borderColor)
@@ -72,14 +87,15 @@ fun View.applyStyles(props: Map<String, Any>) {
             else -> Color.TRANSPARENT
         }
 
-        val borderWidth = (props["borderWidth"] as? Number)?.toInt() ?: 0
+        val borderWidth = (props["borderWidth"] as? Number)?.let { 
+            applyStyleDensityScaling(it.toFloat()).toInt()
+        } ?: 0
         if (borderWidth > 0) {
             drawable.setStroke(borderWidth, color)
             this.clipToOutline = true
         }
     }
 
-    // Background color - Apply only if specified
     props["backgroundColor"]?.let { backgroundColor ->
         val color = when (backgroundColor) {
             is String -> ColorUtilities.parseColor(backgroundColor)
@@ -89,17 +105,14 @@ fun View.applyStyles(props: Map<String, Any>) {
         drawable.setColor(color)
     }
 
-    // Apply the drawable
     this.background = drawable
 
-    // Gradient background - Apply AFTER border radius
     props["backgroundGradient"]?.let { gradientData ->
         if (gradientData is Map<*, *>) {
             applyGradientBackground(gradientData as Map<String, Any>, finalCornerRadius)
         }
     }
 
-    // Opacity (Alpha) - Apply only if specified
     props["opacity"]?.let { opacity ->
         this.alpha = when (opacity) {
             is Number -> opacity.toFloat()
@@ -107,49 +120,53 @@ fun View.applyStyles(props: Map<String, Any>) {
         }
     }
 
-    // Shadow properties - Apply only if specified
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         props["shadowColor"]?.let { shadowColor ->
-            // Android uses elevation for shadows, can't set color directly
-            // Store for potential custom shadow implementation
             this.setTag(R.id.dcf_shadow_color, shadowColor)
         }
 
     props["shadowRadius"]?.let { shadowRadius ->
         val radius = when (shadowRadius) {
-            is Number -> shadowRadius.toFloat()
+            is Number -> {
+                applyStyleDensityScaling(shadowRadius.toFloat())
+            }
             else -> 0f
         }
         this.elevation = radius
     }
 
         props["shadowOffsetX"]?.let { offsetX ->
-            this.setTag(R.id.dcf_shadow_offset_x, offsetX)
+            val scaledOffsetX = if (offsetX is Number) {
+                applyStyleDensityScaling(offsetX.toFloat())
+            } else offsetX
+            this.setTag(R.id.dcf_shadow_offset_x, scaledOffsetX)
         }
         props["shadowOffsetY"]?.let { offsetY ->
-            this.setTag(R.id.dcf_shadow_offset_y, offsetY)
+            val scaledOffsetY = if (offsetY is Number) {
+                applyStyleDensityScaling(offsetY.toFloat())
+            } else offsetY
+            this.setTag(R.id.dcf_shadow_offset_y, scaledOffsetY)
         }
     }
 
-    // Elevation (Android-style) - Convert to elevation
     props["elevation"]?.let { elevation ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             this.elevation = when (elevation) {
-                is Number -> elevation.toFloat()
+                is Number -> {
+                    applyStyleDensityScaling(elevation.toFloat())
+                }
                 else -> 0f
             }
         }
     }
 
-    // Hit Slop - Apply only if specified (extends touch area)
     props["hitSlop"]?.let { hitSlop ->
         if (hitSlop is Map<*, *>) {
-            val top = (hitSlop["top"] as? Number)?.toInt() ?: 0
-            val bottom = (hitSlop["bottom"] as? Number)?.toInt() ?: 0
-            val left = (hitSlop["left"] as? Number)?.toInt() ?: 0
-            val right = (hitSlop["right"] as? Number)?.toInt() ?: 0
+            val top = (hitSlop["top"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+            val bottom = (hitSlop["bottom"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+            val left = (hitSlop["left"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+            val right = (hitSlop["right"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
 
-            // Store hit slop for custom hit testing
             this.setTag(R.id.dcf_hit_slop_top, top)
             this.setTag(R.id.dcf_hit_slop_bottom, bottom)
             this.setTag(R.id.dcf_hit_slop_left, left)
@@ -157,7 +174,6 @@ fun View.applyStyles(props: Map<String, Any>) {
         }
     }
 
-    // Accessibility properties - Apply only if specified
     props["accessible"]?.let { accessible ->
         this.importantForAccessibility = if (accessible as? Boolean == true) {
             View.IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -174,7 +190,6 @@ fun View.applyStyles(props: Map<String, Any>) {
         this.setTag(R.id.dcf_test_id, testID)
     }
 
-    // Pointer Events - Apply only if specified
     props["pointerEvents"]?.let { pointerEvents ->
         when (pointerEvents) {
             "none" -> {
@@ -183,13 +198,11 @@ fun View.applyStyles(props: Map<String, Any>) {
             }
 
             "box-none" -> {
-                // View itself doesn't receive events, but children can
                 this.isClickable = false
                 this.isFocusable = false
             }
 
             "box-only" -> {
-                // View receives events, children do not
                 this.isClickable = true
                 this.isFocusable = true
             }
@@ -218,7 +231,6 @@ private fun View.applyGradientBackground(gradientData: Map<String, Any>, cornerR
 
     val drawable = GradientDrawable()
 
-    // Apply gradient orientation based on type
     when (type) {
         "linear" -> {
             val startX = (gradientData["startX"] as? Number)?.toFloat() ?: 0f
@@ -226,7 +238,6 @@ private fun View.applyGradientBackground(gradientData: Map<String, Any>, cornerR
             val endX = (gradientData["endX"] as? Number)?.toFloat() ?: 1f
             val endY = (gradientData["endY"] as? Number)?.toFloat() ?: 1f
 
-            // Convert to Android gradient orientation
             val orientation = when {
                 startY == 0f && endY == 1f -> GradientDrawable.Orientation.TOP_BOTTOM
                 startY == 1f && endY == 0f -> GradientDrawable.Orientation.BOTTOM_TOP
@@ -247,12 +258,10 @@ private fun View.applyGradientBackground(gradientData: Map<String, Any>, cornerR
 
     drawable.colors = colors
 
-    // Apply corner radius if specified
     if (cornerRadius > 0) {
         drawable.cornerRadius = cornerRadius
     }
 
-    // Store gradient drawable
     this.setTag(R.id.dcf_gradient_drawable, drawable)
     this.background = drawable
 }
@@ -265,14 +274,12 @@ private fun View.applyAdaptiveDefaults() {
     try {
         when (this) {
             is android.widget.TextView -> {
-                // Text views get adaptive text color
                 val typedValue = TypedValue()
                 if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
                     this.setTextColor(typedValue.data)
                 }
             }
             else -> {
-                // Other views get adaptive background
                 val typedValue = TypedValue()
                 if (context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)) {
                     this.setBackgroundColor(typedValue.data)
@@ -280,7 +287,6 @@ private fun View.applyAdaptiveDefaults() {
             }
         }
     } catch (e: Exception) {
-        // Fallback to manual detection
         val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         when (this) {
             is android.widget.TextView -> {
@@ -303,7 +309,6 @@ fun View.applyAdaptiveBackgroundColor() {
         if (context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)) {
             this.setBackgroundColor(typedValue.data)
         } else {
-            // Fallback based on current theme
             val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
             this.setBackgroundColor(if (isDarkTheme) Color.BLACK else Color.WHITE)
         }
@@ -323,7 +328,6 @@ fun View.applyAdaptiveTextColor() {
             if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
                 this.setTextColor(typedValue.data)
             } else {
-                // Fallback based on current theme
                 val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
                 this.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
             }
@@ -361,8 +365,6 @@ fun View.applyAdaptiveAccentColor() {
 fun View.updateGradientFrame() {
     val gradientDrawable = this.getTag(R.id.dcf_gradient_drawable) as? GradientDrawable
     gradientDrawable?.let {
-        // Android handles this automatically unlike iOS
-        // But we can trigger a redraw if needed
         this.invalidate()
     }
 }

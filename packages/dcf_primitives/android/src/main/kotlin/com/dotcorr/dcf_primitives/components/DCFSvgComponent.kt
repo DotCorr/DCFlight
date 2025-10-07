@@ -27,10 +27,9 @@ class DCFSvgComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
         
-        // Set component identifier
+        
         imageView.setTag(R.id.dcf_component_type, "Svg")
         
-        // Apply initial props
         updateView(imageView, props)
         return imageView
     }
@@ -43,7 +42,6 @@ class DCFSvgComponent : DCFComponent() {
         val imageView = view as ImageView
         var hasUpdates = false
 
-        // source prop - matches iOS exactly
         props["source"]?.let { source ->
             when (source) {
                 is String -> {
@@ -51,7 +49,6 @@ class DCFSvgComponent : DCFComponent() {
                     hasUpdates = true
                 }
                 is Map<*, *> -> {
-                    // Handle object format like { uri: "..." }
                     (source["uri"] as? String)?.let { uri ->
                         loadSvgFromSource(imageView, uri)
                         hasUpdates = true
@@ -60,7 +57,6 @@ class DCFSvgComponent : DCFComponent() {
             }
         }
 
-        // width prop
         props["width"]?.let {
             val width = when (it) {
                 is Number -> it.toInt()
@@ -70,7 +66,6 @@ class DCFSvgComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        // height prop
         props["height"]?.let {
             val height = when (it) {
                 is Number -> it.toInt()
@@ -80,16 +75,13 @@ class DCFSvgComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        // adaptive prop - matches iOS adaptivity
         props["adaptive"]?.let { adaptive ->
             if (adaptive == true) {
-                // Apply adaptive background color for container
                 imageView.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(imageView.context))
                 hasUpdates = true
             }
         }
 
-        // Apply common view styling
         view.applyStyles(props)
 
         return hasUpdates
@@ -99,24 +91,20 @@ class DCFSvgComponent : DCFComponent() {
         try {
             when {
                 source.startsWith("asset://") -> {
-                    // Load from assets
                     val assetPath = source.removePrefix("asset://")
                     loadSvgFromAssets(imageView, assetPath)
                 }
                 
                 source.startsWith("drawable://") -> {
-                    // Load from drawable resources
                     val drawableName = source.removePrefix("drawable://")
                     loadSvgFromDrawable(imageView, drawableName)
                 }
                 
                 else -> {
-                    // Try as drawable resource name
                     loadSvgFromDrawable(imageView, source)
                 }
             }
         } catch (e: Exception) {
-            // 🚀 MATCH iOS: Use propagateEvent for onError
             propagateEvent(imageView, "onError", mapOf(
                 "error" to "SVG loading error: ${e.message}",
                 "source" to source
@@ -132,13 +120,11 @@ class DCFSvgComponent : DCFComponent() {
             imageView.setImageDrawable(drawable)
             inputStream.close()
             
-            // 🚀 MATCH iOS: Use propagateEvent for onLoad
             propagateEvent(imageView, "onLoad", mapOf(
                 "source" to assetPath,
                 "type" to "asset"
             ))
         } catch (e: Exception) {
-            // 🚀 MATCH iOS: Use propagateEvent for onError
             propagateEvent(imageView, "onError", mapOf(
                 "error" to "SVG not found: $assetPath",
                 "source" to assetPath
@@ -157,21 +143,18 @@ class DCFSvgComponent : DCFComponent() {
             if (resourceId != 0) {
                 imageView.setImageResource(resourceId)
                 
-                // 🚀 MATCH iOS: Use propagateEvent for onLoad
                 propagateEvent(imageView, "onLoad", mapOf(
                     "source" to drawableName,
                     "type" to "drawable",
                     "resourceId" to resourceId
                 ))
             } else {
-                // 🚀 MATCH iOS: Use propagateEvent for onError
                 propagateEvent(imageView, "onError", mapOf(
                     "error" to "SVG not found: $drawableName",
                     "source" to drawableName
                 ))
             }
         } catch (e: Exception) {
-            // 🚀 MATCH iOS: Use propagateEvent for onError
             propagateEvent(imageView, "onError", mapOf(
                 "error" to "Error loading SVG: ${e.message}",
                 "source" to drawableName
@@ -179,12 +162,10 @@ class DCFSvgComponent : DCFComponent() {
         }
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val imageView = view as? ImageView ?: return PointF(0f, 0f)
 
-        // Get drawable dimensions if available
         val drawable = imageView.drawable
         if (drawable != null) {
             val intrinsicWidth = drawable.intrinsicWidth.toFloat()
@@ -195,7 +176,6 @@ class DCFSvgComponent : DCFComponent() {
             }
         }
 
-        // Fallback to measured dimensions
         imageView.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -208,7 +188,6 @@ class DCFSvgComponent : DCFComponent() {
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // SVG components are typically leaf nodes and don't need special handling
     }
 }
 

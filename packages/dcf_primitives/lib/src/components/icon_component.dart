@@ -8,6 +8,59 @@
 import 'package:dcflight/dcflight.dart';
 export 'package:dcf_primitives/src/components/dictionary/dcf_icons_dict.dart';
 
+/// Icon load callback data
+class DCFIconLoadData {
+  /// Whether the load was successful
+  final bool success;
+  
+  /// Timestamp of the load event
+  final DateTime timestamp;
+
+  DCFIconLoadData({
+    required this.success,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFIconLoadData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFIconLoadData(
+      success: data['success'] as bool,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Icon error callback data
+class DCFIconErrorData {
+  /// Error message
+  final String message;
+  
+  /// Error code
+  final String? code;
+  
+  /// Timestamp of the error
+  final DateTime timestamp;
+
+  DCFIconErrorData({
+    required this.message,
+    this.code,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFIconErrorData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFIconErrorData(
+      message: data['message'] as String,
+      code: data['code'] as String?,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
 /// Icon properties
 class DCFIconProps extends Equatable {
   /// The name of the icon
@@ -75,11 +128,11 @@ class DCFIcon extends DCFStatelessComponent
   /// Event handlers
   final Map<String, dynamic>? events;
 
-  /// Load event handler - receives Map<dynamic, dynamic> with icon load data
-  final Function(Map<dynamic, dynamic>)? onLoad;
+  /// Load event handler - receives type-safe icon load data
+  final Function(DCFIconLoadData)? onLoad;
 
-  /// Error event handler - receives Map<dynamic, dynamic> with error data
-  final Function(Map<dynamic, dynamic>)? onError;
+  /// Error event handler - receives type-safe error data
+  final Function(DCFIconErrorData)? onError;
 
   /// Create an icon component
   DCFIcon({
@@ -98,11 +151,15 @@ class DCFIcon extends DCFStatelessComponent
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onLoad != null) {
-      eventMap['onLoad'] = onLoad;
+      eventMap['onLoad'] = (Map<dynamic, dynamic> data) {
+        onLoad!(DCFIconLoadData.fromMap(data));
+      };
     }
 
     if (onError != null) {
-      eventMap['onError'] = onError;
+      eventMap['onError'] = (Map<dynamic, dynamic> data) {
+        onError!(DCFIconErrorData.fromMap(data));
+      };
     }
 
     return DCFElement(

@@ -30,7 +30,6 @@ class DCFImageComponent : DCFComponent() {
     companion object {
         private const val TAG = "DCFImageComponent"
         
-        // Thread-safe image cache matching iOS implementation
         private val imageCache = ConcurrentHashMap<String, Drawable>()
         
         private fun getCachedImage(key: String): Drawable? = imageCache[key]
@@ -40,31 +39,22 @@ class DCFImageComponent : DCFComponent() {
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        // Create an image view - MATCH iOS UIImageView
         val imageView = ImageView(context)
         
-        // ANDROID FLASH FIX: Start invisible to prevent flash screen
-        imageView.visibility = View.INVISIBLE
-        imageView.alpha = 0f
         
-        // Apply initial styling - MATCH iOS
         imageView.scaleType = ImageView.ScaleType.CENTER_CROP // scaleAspectFill equivalent
         imageView.clipToOutline = true // clipsToBounds equivalent
         
-        // Set up adaptive background color for cases when no image is loaded
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {
-            // Use system background color that adapts to light/dark mode
             imageView.setBackgroundColor(Color.WHITE) // TODO: Use theme-aware color
         } else {
             imageView.setBackgroundColor(Color.TRANSPARENT)
         }
         
-        // Apply props - convert nullable to non-nullable
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         updateViewInternal(imageView, nonNullProps)
         
-        // Apply StyleSheet properties
         imageView.applyStyles(nonNullProps)
         
         Log.d(TAG, "Created image component")
@@ -75,7 +65,6 @@ class DCFImageComponent : DCFComponent() {
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val imageView = view as? ImageView ?: return false
         
-        // Convert nullable map to non-nullable for internal processing
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         return updateViewInternal(imageView, nonNullProps)
     }
@@ -85,11 +74,9 @@ class DCFImageComponent : DCFComponent() {
 
         Log.d(TAG, "Updating image view with props: $props")
 
-        // Set image source if specified - MATCH iOS exactly
         props["source"]?.let { sourceAny ->
             val source: String
             
-            // Handle different source types safely - MATCH iOS
             source = when (sourceAny) {
                 is String -> sourceAny
                 is Number -> sourceAny.toString()
@@ -99,7 +86,6 @@ class DCFImageComponent : DCFComponent() {
                 }
             }
             
-            // Validate source is not empty
             if (source.isEmpty()) {
                 propagateEvent(imageView, "onError", mapOf("error" to "Empty source"))
                 return false
@@ -108,7 +94,6 @@ class DCFImageComponent : DCFComponent() {
             loadImageFromSource(imageView, source)
         }
 
-        // Handle resize mode - MATCH iOS
         props["resizeMode"]?.let { mode ->
             val scaleType = when (mode.toString()) {
                 "cover" -> ImageView.ScaleType.CENTER_CROP  // scaleAspectFill
@@ -122,7 +107,6 @@ class DCFImageComponent : DCFComponent() {
             Log.d(TAG, "Set resize mode: $mode")
         }
 
-        // Apply StyleSheet properties
         imageView.applyStyles(props)
 
         return true
@@ -133,27 +117,21 @@ class DCFImageComponent : DCFComponent() {
         
         when {
             source.startsWith("http://") || source.startsWith("https://") -> {
-                // Network image - would need image loading library like Glide/Picasso
                 Log.d(TAG, "Loading network image: $source")
-                // For now, store the URL and use placeholder
                 imageView.setTag(R.id.dcf_image_source, source)
                 
-                // TODO: Implement actual network image loading
                 propagateEvent(imageView, "onLoadStart", mapOf("source" to source))
             }
             
             source.startsWith("file://") -> {
-                // Local file
                 loadImageFromFile(imageView, source.substring(7))
             }
             
             source.contains("/") -> {
-                // Asset path
                 loadImageFromAssets(imageView, source)
             }
             
             else -> {
-                // Drawable resource name
                 loadImageFromDrawable(imageView, source)
             }
         }
@@ -163,7 +141,6 @@ class DCFImageComponent : DCFComponent() {
         Log.d(TAG, "Loading image from file: $filePath")
         
         try {
-            // Check cache first
             val cachedImage = getCachedImage(filePath)
             if (cachedImage != null) {
                 imageView.setImageDrawable(cachedImage)
@@ -171,7 +148,6 @@ class DCFImageComponent : DCFComponent() {
                 return
             }
             
-            // Load from file system
             val drawable = Drawable.createFromPath(filePath)
             if (drawable != null) {
                 setCachedImage(drawable, filePath)
@@ -190,7 +166,6 @@ class DCFImageComponent : DCFComponent() {
         Log.d(TAG, "Loading image from assets: $assetPath")
         
         try {
-            // Check cache first
             val cachedImage = getCachedImage(assetPath)
             if (cachedImage != null) {
                 imageView.setImageDrawable(cachedImage)
@@ -198,7 +173,6 @@ class DCFImageComponent : DCFComponent() {
                 return
             }
             
-            // Load from assets
             val inputStream = imageView.context.assets.open(assetPath)
             val drawable = Drawable.createFromStream(inputStream, null)
             inputStream.close()
@@ -235,12 +209,10 @@ class DCFImageComponent : DCFComponent() {
         }
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val imageView = view as? ImageView ?: return PointF(0f, 0f)
 
-        // Get the drawable's intrinsic dimensions
         val drawable = imageView.drawable
         if (drawable != null) {
             val intrinsicWidth = drawable.intrinsicWidth.toFloat()
@@ -252,12 +224,10 @@ class DCFImageComponent : DCFComponent() {
             }
         }
 
-        // Fallback for images without intrinsic dimensions
         return PointF(0f, 0f)
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Image components are typically leaf nodes and don't need special handling
         Log.d(TAG, "Image component registered with shadow tree: $nodeId")
     }
 }

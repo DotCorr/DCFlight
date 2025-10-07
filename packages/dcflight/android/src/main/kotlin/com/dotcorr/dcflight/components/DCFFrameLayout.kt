@@ -26,23 +26,17 @@ class DCFFrameLayout @JvmOverloads constructor(
         private const val TAG = "DCFFrameLayout"
     }
 
-    // Track manually positioned children
     private val manuallyPositionedChildren = mutableSetOf<View>()
 
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        // Don't call super.onLayout() - we want full control like iOS
         
-        // For each child, check if it has been manually positioned
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             
-            // If this child was manually positioned via layout(), respect that
             if (manuallyPositionedChildren.contains(child)) {
-                // Child is already positioned manually - don't override
                 continue
             }
             
-            // For children not manually positioned, use default FrameLayout behavior
             val lp = child.layoutParams as FrameLayout.LayoutParams
             val childLeft = paddingLeft + lp.leftMargin
             val childTop = paddingTop + lp.topMargin

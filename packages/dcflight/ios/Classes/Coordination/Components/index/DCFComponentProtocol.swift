@@ -8,8 +8,6 @@
 import UIKit
 import yoga
 
-//Hey, if u are seing this.
-//Each individual componet extends this protocol and might seem to have dead code but they are not dead(currently is). These components implementing this protocol  are obliged to override these functions even if it seems like dead code or not to be doing anything. That is cause the framework is currently experimental and if all componets have this overriden although not used(you might as well remove it but be prepared to update your codebase when the need arises), it ensures your components are future proof. But meh, just yapping, you would figure it out.
 /// Protocol that all DCMAUI components must implement
 public protocol DCFComponent {
     /// Initialize the component
@@ -49,20 +47,16 @@ public struct YGNodeLayout {
     }
 }
 
-// Make all the extension methods public so they can be accessed from other modules
 public extension DCFComponent {
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // Default implementation - position and size the view
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // Default implementation - use view's intrinsic size or zero
         return view.intrinsicContentSize != .zero ? view.intrinsicContentSize : CGSize(width: 0, height: 0)
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Default implementation - store node ID on the view
         objc_setAssociatedObject(view, 
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
                                nodeId, 
@@ -75,8 +69,6 @@ public extension DCFComponent {
     }
 }
 
-// MARK: - 🚀 GLOBAL EVENT PROPAGATION SYSTEM
-// Universal functions that ANY class can use to propagate events to Dart
 
 /// Universal event propagation function - can be used by any class (delegates, components, helpers, etc.)
 /// Usage: propagateEvent(on: scrollView, eventName: "onScroll", data: ["offsetX": x, "offsetY": y]) { view, data in
@@ -85,10 +77,8 @@ public extension DCFComponent {
 public func propagateEvent(on view: UIView, eventName: String, data eventData: [String: Any] = [:], 
                           nativeAction: ((UIView, [String: Any]) -> Void)? = nil) {
     
-    // Execute optional native-side action first (for any native processing needed)
     nativeAction?(view, eventData)
     
-    // Get the stored event callback for this view (set up by the framework automatically)
     guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
             as? (String, String, [String: Any]) -> Void else {
         return
@@ -102,7 +92,6 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
         return
     }
     
-    // Check if this event type is registered - try both exact match and normalized versions
     let normalizedEventName = normalizeEventNameForPropagation(eventName)
     let eventRegistered = eventTypes.contains(eventName) || 
                          eventTypes.contains(normalizedEventName) ||
@@ -117,7 +106,6 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
 
 /// Helper function to normalize event names for propagation matching
 private func normalizeEventNameForPropagation(_ name: String) -> String {
-    // If already has "on" prefix and it's followed by uppercase letter, return as is
     if name.hasPrefix("on") && name.count > 2 {
         let thirdCharIndex = name.index(name.startIndex, offsetBy: 2)
         if name[thirdCharIndex].isUppercase {
@@ -125,7 +113,6 @@ private func normalizeEventNameForPropagation(_ name: String) -> String {
         }
     }
     
-    // Otherwise normalize: remove "on" if it exists, capitalize first letter, and add "on" prefix
     var processedName = name
     if processedName.hasPrefix("on") {
         processedName = String(processedName.dropFirst(2))

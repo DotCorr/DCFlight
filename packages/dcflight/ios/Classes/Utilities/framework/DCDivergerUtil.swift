@@ -5,12 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-//
-// DCDivergerUtil.swift
-//
-//
-// Created by Tahiru Agbanwa on 4/15/25.
-//
 
 import Flutter
 
