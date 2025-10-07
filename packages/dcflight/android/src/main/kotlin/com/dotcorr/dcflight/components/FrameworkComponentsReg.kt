@@ -24,7 +24,5 @@ object FrameworkComponentsReg {
      */
     @JvmStatic
     fun registerComponents() {
-        // Register the framework level components here
-        // Currently empty - primitives register themselves through Flutter plugin system
     }
 }

@@ -42,10 +42,8 @@ class YogaShadowTree private constructor() {
     private val screenRoots = ConcurrentHashMap<String, YogaNode>()
     private val screenRootIds = mutableSetOf<String>()
     
-    // PERFORMANCE FIX: Cache component instances to avoid creating new ones on every measure
     private val componentInstances = ConcurrentHashMap<String, DCFComponent>()
     
-    // Gap support now handled natively by Yoga 2.0+
     
     @Volatile
     private var isLayoutCalculating = false
@@ -53,13 +51,10 @@ class YogaShadowTree private constructor() {
     @Volatile
     private var isReconciling = false
     
-    // ENHANCEMENT: Web defaults configuration
     private var useWebDefaults = false
     
-    // CRITICAL FIX: Density scaling for cross-platform consistency
     private var densityScaleFactor: Float = 1.0f
     
-    // PERFORMANCE FIX: Reuse Handler instance instead of creating new ones
     private val mainHandler = Handler(Looper.getMainLooper())
 
     init {
@@ -79,7 +74,6 @@ class YogaShadowTree private constructor() {
         
         Log.d(TAG, "Initializing YogaShadowTree")
         
-        // CRITICAL FIX: Initialize density scale factor for cross-platform consistency
         updateDensityScaleFactor()
     }
     
@@ -123,7 +117,6 @@ class YogaShadowTree private constructor() {
     fun createNode(id: String, componentType: String) {
         val node = YogaNodeFactory.create()
         
-        // Apply default styles based on configuration - MATCH iOS
         applyDefaultNodeStyles(node, componentType)
         
         val context = mapOf(
@@ -135,7 +128,6 @@ class YogaShadowTree private constructor() {
         nodes[id] = node
         nodeTypes[id] = componentType
         
-        // Setup measure function like iOS
         setupMeasureFunction(id, node)
     }
 
@@ -169,14 +161,11 @@ class YogaShadowTree private constructor() {
         val childCount = node.childCount
         
         if (childCount == 0) {
-            // PERFORMANCE FIX: Capture references at setup time to avoid lookups in measure function
             val view = DCFLayoutManager.shared.getView(nodeId)
             val componentType = nodeTypes[nodeId] ?: "View"
             val componentInstance = getComponentInstance(componentType)
             
-            // Only set measure function if we have valid view and component
             if (view != null && componentInstance != null) {
-                // Set measure function for leaf nodes - MATCH iOS behavior
                 node.setMeasureFunction { yogaNode, width, widthMode, height, heightMode ->
                     val constraintWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
                         Float.POSITIVE_INFINITY
@@ -190,7 +179,6 @@ class YogaShadowTree private constructor() {
                         height
                     }
                     
-                    // PERFORMANCE FIX: Use cached component instance - no lookups!
                     val intrinsicSize = componentInstance.getIntrinsicSize(view, emptyMap())
                     
                     val finalWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
@@ -230,7 +218,6 @@ class YogaShadowTree private constructor() {
             return
         }
         
-        // Remove from old parent if exists - MATCH iOS
         nodeParents[childId]?.let { oldParentId ->
             nodes[oldParentId]?.let { oldParentNode ->
                 safeRemoveChildFromParent(oldParentNode, childNode, childId)
@@ -238,10 +225,8 @@ class YogaShadowTree private constructor() {
             }
         }
         
-        // Clear parent's measure function - MATCH iOS
         parentNode.setMeasureFunction(null)
         
-        // Add child at specified index
         val safeIndex = if (index != null) {
             kotlin.math.max(0, kotlin.math.min(index, parentNode.childCount))
         } else {
@@ -266,9 +251,7 @@ class YogaShadowTree private constructor() {
 
     @Synchronized
     fun removeNode(nodeId: String) {
-        // PERFORMANCE FIX: Defer removal if layout is calculating instead of busy-wait
         if (isLayoutCalculating) {
-            // Defer removal - will be processed after layout calculation completes
             mainHandler.postDelayed({
                 removeNode(nodeId)
             }, 16) // Retry after 1 frame
@@ -283,12 +266,10 @@ class YogaShadowTree private constructor() {
             return
         }
         
-        // Handle screen roots
         if (screenRootIds.contains(nodeId)) {
             screenRoots.remove(nodeId)
             screenRootIds.remove(nodeId)
         } else {
-            // Remove from parent
             nodeParents[nodeId]?.let { parentId ->
                 nodes[parentId]?.let { parentNode ->
                     safeRemoveChildFromParent(parentNode, node, nodeId)
@@ -297,10 +278,8 @@ class YogaShadowTree private constructor() {
             }
         }
         
-        // Remove all children safely
         safeRemoveAllChildren(node, nodeId)
         
-        // Clean up
         nodes.remove(nodeId)
         nodeParents.remove(nodeId)
         nodeTypes.remove(nodeId)
@@ -355,7 +334,6 @@ class YogaShadowTree private constructor() {
     fun updateNodeLayoutProps(nodeId: String, props: Map<String, Any?>) {
         val node = nodes[nodeId] ?: return
         
-        // Apply layout properties
         props.filterValues { it != null }.forEach { (key, value) ->
             applyLayoutProp(node, key, value!!, nodeId)
         }
@@ -381,11 +359,9 @@ class YogaShadowTree private constructor() {
                 return false
             }
             
-            // Update root dimensions
             mainRoot.setWidth(width)
             mainRoot.setHeight(height)
             
-            // Calculate main layout
             try {
                 mainRoot.calculateLayout(width, height)
                 Log.d(TAG, "Main root layout calculated successfully")
@@ -394,7 +370,6 @@ class YogaShadowTree private constructor() {
                 return false
             }
             
-            // Calculate screen root layouts
             for ((screenId, screenRoot) in screenRoots) {
                 screenRoot.setWidth(width)
                 screenRoot.setHeight(height)
@@ -408,12 +383,10 @@ class YogaShadowTree private constructor() {
                 }
             }
             
-            // ANDROID ARCHITECTURE FIX: Apply layouts immediately after calculation
             val layoutsToApply = mutableListOf<Pair<String, Rect>>()
             for ((nodeId, _) in nodes) {
                 val layout = getNodeLayout(nodeId)
                 if (layout != null) {
-                    // Only reject truly invalid layouts
                     if (isValidLayoutBounds(layout)) {
                         layoutsToApply.add(Pair(nodeId, layout))
                     } else {
@@ -422,9 +395,7 @@ class YogaShadowTree private constructor() {
                 }
             }
             
-            // GAP SUPPORT: Now handled natively by Yoga 2.0+
             
-            // Apply all layouts at once without making views visible
             applyLayoutsBatch(layoutsToApply)
             
             Log.d(TAG, "Layout calculation and application completed successfully")
@@ -456,21 +427,16 @@ class YogaShadowTree private constructor() {
     fun calculateLayoutForAllRoots() {
         Log.d(TAG, "Calculating layout for all roots")
         
-        // ROTATION FIX: Refresh density scale factor after rotation
         refreshDensityScaleFactor()
         
-        // Get current screen dimensions
         val displayMetrics = Resources.getSystem().displayMetrics
         val screenWidth = displayMetrics.widthPixels.toFloat()
         val screenHeight = displayMetrics.heightPixels.toFloat()
         
-        // Update all screen root dimensions first
         updateScreenRootDimensions(screenWidth, screenHeight)
         
-        // ROTATION FIX: Force all views to remeasure their intrinsic sizes
         forceIntrinsicSizeRecalculation()
         
-        // Calculate and apply layout with current dimensions
         val success = calculateAndApplyLayout(screenWidth, screenHeight)
         
         if (success) {
@@ -485,11 +451,8 @@ class YogaShadowTree private constructor() {
      * PERFORMANCE FIX: Only invalidate leaf nodes that actually need remeasuring
      */
     private fun forceIntrinsicSizeRecalculation() {
-        // PERFORMANCE FIX: Only invalidate leaf nodes with measure functions
-        // These are the only nodes that calculate intrinsic size from content
         var invalidatedCount = 0
         for ((viewId, node) in nodes) {
-            // Only process nodes with measure functions (leaf nodes like Text, Button, etc.)
             if (node.isMeasureDefined) {
                 val view = DCFLayoutManager.shared.getView(viewId)
                 view?.requestLayout()
@@ -519,24 +482,18 @@ class YogaShadowTree private constructor() {
     private fun validateNodeLayoutConfig(nodeId: String) {
         val node = nodes[nodeId] ?: return
         
-        // If node has children and undefined height, set auto height
         if (node.childCount > 0 && !node.height.unit.name.contains("POINT")) {
             node.setHeightAuto()
         }
     }
 
-    // MATCH iOS: Apply layouts in batch with proper visibility handling
     private fun applyLayoutsBatch(layouts: List<Pair<String, Rect>>) {
-        // PERFORMANCE FIX: Apply layouts synchronously but optimized
-        // We're already on the main thread (called from Yoga layout calculation)
-        // No need for Handler.post() which makes it async and breaks rendering
         
         for ((viewId, frame) in layouts) {
             val view = DCFLayoutManager.shared.getView(viewId)
             if (view != null) {
                 val wasUserInteractionEnabled = view.isEnabled
                 
-                // Apply layout synchronously - happens immediately
                 DCFLayoutManager.shared.applyLayout(
                     viewId = viewId,
                     left = frame.left.toFloat(),
@@ -545,19 +502,15 @@ class YogaShadowTree private constructor() {
                     height = frame.height().toFloat()
                 )
                 
-                // Restore interaction state only (not visibility)
-                // Views are visible by default - no need to force visibility
                 view.isEnabled = wasUserInteractionEnabled
             }
         }
         
-        // PERFORMANCE FIX: Single log after batch instead of per-view logging
         if (layouts.isNotEmpty()) {
             Log.d(TAG, "Applied ${layouts.size} layouts in batch")
         }
     }
 
-    // MATCH iOS applyLayoutToView exactly
     private fun applyLayoutToView(viewId: String, frame: Rect) {
         val view = DCFLayoutManager.shared.getView(viewId)
         val node = nodes[viewId]
@@ -568,15 +521,11 @@ class YogaShadowTree private constructor() {
         
         var finalFrame = frame
         
-        // Handle transforms like iOS (translateX, translateY, rotate, scale)
-        // This would require storing transform context, but for now apply basic layout
         
-        // PERFORMANCE FIX: Use reusable mainHandler instead of creating new Handler
         mainHandler.post {
             if (DCFLayoutManager.shared.getView(viewId) != null) {
                 val wasUserInteractionEnabled = view.isEnabled
                 
-                // Apply layout using layout manager - MATCH iOS frame setting
                 DCFLayoutManager.shared.applyLayout(
                     viewId = viewId,
                     left = finalFrame.left.toFloat(),
@@ -591,24 +540,18 @@ class YogaShadowTree private constructor() {
         }
     }
 
-    // MATCH iOS applyWebDefaults
     @Synchronized
     fun applyWebDefaults() {
         useWebDefaults = true
         
-        // Apply web defaults to root node
         rootNode?.let { root ->
-            // Web default: flex-direction: row (instead of column)
             root.setFlexDirection(YogaFlexDirection.ROW)
-            // Web default: align-content: stretch (instead of flex-start)
             root.setAlignContent(YogaAlign.STRETCH)
-            // Web default: flex-shrink: 1 (instead of 0)
             root.setFlexShrink(1.0f)
             
             Log.d(TAG, "Applied web defaults to root node")
         }
         
-        // Apply web defaults to all screen roots
         for ((_, screenRoot) in screenRoots) {
             screenRoot.setFlexDirection(YogaFlexDirection.ROW)
             screenRoot.setAlignContent(YogaAlign.STRETCH)
@@ -618,15 +561,12 @@ class YogaShadowTree private constructor() {
         Log.d(TAG, "Applied web defaults to ${screenRoots.size} screen roots")
     }
 
-    // MATCH iOS applyDefaultNodeStyles
     private fun applyDefaultNodeStyles(node: YogaNode, nodeType: String) {
         if (useWebDefaults) {
-            // Web defaults
             node.setFlexDirection(YogaFlexDirection.ROW)
             node.setAlignContent(YogaAlign.STRETCH)
             node.setFlexShrink(1.0f)
         } else {
-            // Yoga native defaults
             node.setFlexDirection(YogaFlexDirection.COLUMN)
             node.setAlignContent(YogaAlign.FLEX_START)
             node.setFlexShrink(0.0f)
@@ -634,15 +574,11 @@ class YogaShadowTree private constructor() {
     }
 
 
-    // MATCH iOS applyParentLayoutInheritance EXACTLY
     private fun applyParentLayoutInheritance(childNode: YogaNode, parentNode: YogaNode, childId: String) {
         val nodeType = nodeTypes[childId] ?: return
         
-        // Smart inheritance system - only apply to parent nodes that actually have children
-        // This matches iOS behavior and avoids hardcoded node types
         val isParentWithChildren = childNode.childCount > 0
         
-        // Only apply layout inheritance to nodes that are actually parent containers with children
         if (isParentWithChildren) {
             val childAlignItems = childNode.alignItems
             val childJustifyContent = childNode.justifyContent
@@ -652,30 +588,25 @@ class YogaShadowTree private constructor() {
             val parentJustifyContent = parentNode.justifyContent
             val parentAlignContent = parentNode.alignContent
             
-            // Only inherit alignItems if child has default value and parent has non-default
             if (childAlignItems == YogaAlign.STRETCH && parentAlignItems != YogaAlign.STRETCH) {
                 childNode.setAlignItems(parentAlignItems)
             }
             
-            // Only inherit justifyContent if child has default value and parent has non-default
             if (childJustifyContent == YogaJustify.FLEX_START && parentJustifyContent != YogaJustify.FLEX_START) {
                 childNode.setJustifyContent(parentJustifyContent)
             }
             
-            // Only inherit alignContent if child has default value and parent has non-default
             if (childAlignContent == YogaAlign.FLEX_START && parentAlignContent != YogaAlign.FLEX_START) {
                 childNode.setAlignContent(parentAlignContent)
             }
         }
     }
 
-    // Layout property application - MATCH iOS exactly
     private fun applyLayoutProp(node: YogaNode, key: String, value: Any, nodeId: String) {
         when (key) {
             "width" -> {
                 when (value) {
                     is Number -> {
-                        // CRITICAL FIX: Apply density scaling to match iOS behavior
                         val scaledValue = applyDensityScaling(value.toFloat())
                         node.setWidth(scaledValue)
                     }
@@ -692,7 +623,6 @@ class YogaShadowTree private constructor() {
             "height" -> {
                 when (value) {
                     is Number -> {
-                        // CRITICAL FIX: Apply density scaling to match iOS behavior
                         val scaledValue = applyDensityScaling(value.toFloat())
                         node.setHeight(scaledValue)
                     }
@@ -727,21 +657,18 @@ class YogaShadowTree private constructor() {
                 }
             }
             "gap" -> {
-                // YOGA 2.0+ GAP SUPPORT: Use native gap API with density scaling
                 if (value is Number) {
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setGap(YogaGutter.ALL, scaledValue)
                 }
             }
             "rowGap" -> {
-                // YOGA 2.0+ ROW GAP SUPPORT: Use native row gap API with density scaling
                 if (value is Number) {
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setGap(YogaGutter.ROW, scaledValue)
                 }
             }
             "columnGap" -> {
-                // YOGA 2.0+ COLUMN GAP SUPPORT: Use native column gap API with density scaling
                 if (value is Number) {
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setGap(YogaGutter.COLUMN, scaledValue)
@@ -779,70 +706,60 @@ class YogaShadowTree private constructor() {
             }
             "paddingTop" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPadding(YogaEdge.TOP, scaledValue)
                 }
             }
             "paddingRight" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPadding(YogaEdge.RIGHT, scaledValue)
                 }
             }
             "paddingBottom" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPadding(YogaEdge.BOTTOM, scaledValue)
                 }
             }
             "paddingLeft" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPadding(YogaEdge.LEFT, scaledValue)
                 }
             }
             "padding" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPadding(YogaEdge.ALL, scaledValue)
                 }
             }
             "marginTop" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setMargin(YogaEdge.TOP, scaledValue)
                 }
             }
             "marginRight" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setMargin(YogaEdge.RIGHT, scaledValue)
                 }
             }
             "marginBottom" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setMargin(YogaEdge.BOTTOM, scaledValue)
                 }
             }
             "marginLeft" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setMargin(YogaEdge.LEFT, scaledValue)
                 }
             }
             "margin" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setMargin(YogaEdge.ALL, scaledValue)
                 }
@@ -855,37 +772,31 @@ class YogaShadowTree private constructor() {
             }
             "top" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPosition(YogaEdge.TOP, scaledValue)
                 }
             }
             "right" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPosition(YogaEdge.RIGHT, scaledValue)
                 }
             }
             "bottom" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPosition(YogaEdge.BOTTOM, scaledValue)
                 }
             }
             "left" -> {
                 if (value is Number) {
-                    // CRITICAL FIX: Apply density scaling to match iOS behavior
                     val scaledValue = applyDensityScaling(value.toFloat())
                     node.setPosition(YogaEdge.LEFT, scaledValue)
                 }
             }
-            // Add more properties as needed matching iOS exactly
         }
     }
 
-    // Gap support now handled natively by Yoga 2.0+ - no workaround needed
 
     fun clearAll() {
         nodes.clear()
@@ -895,7 +806,6 @@ class YogaShadowTree private constructor() {
         screenRootIds.clear()
         
         // CRITICAL: Recreate the root node after clearing
-        // This prevents "Root node not found" errors during hot restart
         rootNode = YogaNodeFactory.create()
         rootNode?.let { root ->
             root.setDirection(YogaDirection.LTR)
@@ -930,15 +840,12 @@ class YogaShadowTree private constructor() {
      * This prevents views from getting stuck in full-screen mode
      */
     private fun isValidLayoutBounds(layout: Rect): Boolean {
-        // Check for reasonable bounds to prevent flash
         val width = layout.width()
         val height = layout.height()
         
-        // FIXED: Allow zero dimensions for hidden views, only reject negative or extreme values
         if (width < 0 || height < 0) return false
         if (width > 50000 || height > 50000) return false // Increased limit for large screens
         
-        // Check for NaN or infinite values
         if (!width.toFloat().isFinite() || !height.toFloat().isFinite()) return false
         if (width.toFloat().isNaN() || height.toFloat().isNaN()) return false
         

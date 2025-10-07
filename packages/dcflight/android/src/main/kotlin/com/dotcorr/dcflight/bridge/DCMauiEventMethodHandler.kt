@@ -31,7 +31,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             Log.d(TAG, "🚀 INITIALIZING METHOD CHANNEL: com.dcmaui.events")
             val channel = MethodChannel(binaryMessenger, "com.dcmaui.events")
             channel.setMethodCallHandler(shared)
-            // Store the method channel in the shared instance like iOS
             shared.methodChannel = channel
             Log.d(TAG, "✅ METHOD CHANNEL INITIALIZED AND STORED: ${shared.methodChannel}")
         }
@@ -41,7 +40,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         }
     }
 
-    // Store the method channel instance like iOS does
     internal var methodChannel: MethodChannel? = null
 
     private val eventCallbacks = ConcurrentHashMap<String, MutableMap<String, EventCallback>>()
@@ -201,7 +199,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         viewEventListeners.clear()
     }
 
-    // Handle addEventListeners calls (match iOS API)
     private fun handleAddEventListeners(args: Map<String, Any>?, result: Result) {
         val viewId = args?.get("viewId") as? String
         val eventTypes = args?.get("eventTypes") as? List<String>
@@ -217,15 +214,10 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             return
         }
 
-        // 🚀 UNIFIED EVENT SYSTEM: Use same tag system as propagateEvent (matches iOS)
-        // Store viewId and eventTypes on the view using resource IDs (not hash codes)
         view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
         view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, eventTypes.toSet())
 
-        // 🚀 CRITICAL FIX: Store event callback that sends to Flutter (matches iOS exactly)
-        // This is what was missing - Android propagateEvent expects to find this callback!
         val eventCallback: (String, Map<String, Any?>) -> Unit = { eventType, eventData ->
-            // Always use the shared instance to ensure the method channel is available
             shared.sendEventToFlutter(viewId, eventType, eventData)
         }
         view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, eventCallback)
@@ -244,11 +236,9 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             return false
         }
 
-        // Store viewId and eventTypes on the view
         view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
         view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, eventTypes.toSet())
 
-        // Store event callback that sends to Flutter
         val eventCallback: (String, Map<String, Any?>) -> Unit = { eventType, eventData ->
             shared.sendEventToFlutter(viewId, eventType, eventData)
         }
@@ -267,7 +257,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             Log.d(TAG, "🔍 METHOD CHANNEL STATUS: $methodChannel")
             Log.d(TAG, "🔍 IS CHANNEL NULL? ${methodChannel == null}")
             
-            // Use the stored method channel like iOS does
             methodChannel?.let { channel ->
                 val arguments = mapOf(
                     "viewId" to viewId,
@@ -277,7 +266,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
                 
                 Log.d(TAG, "📤 Calling method channel onEvent with arguments: $arguments")
                 
-                // Run on main thread like iOS
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     channel.invokeMethod("onEvent", arguments)
                 }
@@ -288,7 +276,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         }
     }
 
-    // Handle removeEventListeners calls (match iOS API)
     private fun handleRemoveEventListeners(args: Map<String, Any>?, result: Result) {
         val viewId = args?.get("viewId") as? String
         val eventTypes = args?.get("eventTypes") as? List<String>
@@ -300,7 +287,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
 
         val view = ViewRegistry.shared.getView(viewId)
         if (view != null) {
-            // Clean up stored data - use resource IDs like addEventListeners
             view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, null)
             view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, null)
             view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, null)
@@ -309,9 +295,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         result.success(true)
     }
 
-    // Normalize event name to follow React-style convention (match iOS)
     private fun normalizeEventName(name: String): String {
-        // If already has "on" prefix and it's followed by uppercase letter, return as is
         if (name.startsWith("on") && name.length > 2) {
             val thirdChar = name[2]
             if (thirdChar.isUpperCase()) {
@@ -319,7 +303,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             }
         }
         
-        // Otherwise normalize: remove "on" if it exists, capitalize first letter, and add "on" prefix
         var processedName = name
         if (processedName.startsWith("on")) {
             processedName = processedName.drop(2)

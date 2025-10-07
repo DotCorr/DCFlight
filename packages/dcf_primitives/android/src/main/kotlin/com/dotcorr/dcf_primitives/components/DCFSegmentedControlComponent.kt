@@ -35,12 +35,9 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val radioGroup = RadioGroup(context)
         radioGroup.orientation = LinearLayout.HORIZONTAL
         
-        // Let the system handle visibility naturally - no manual control
         
-        // Set component identifier
         radioGroup.setTag(R.id.dcf_component_type, "SegmentedControl")
         
-        // Apply initial props
         updateView(radioGroup, props)
         return radioGroup
     }
@@ -53,11 +50,9 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val radioGroup = view as RadioGroup
         var hasUpdates = false
 
-        // segments prop - array of segment items
         props["segments"]?.let { segments ->
             when (segments) {
                 is List<*> -> {
-                    // Clear existing segments
                     radioGroup.removeAllViews()
                     
                     segments.forEachIndexed { index, segment ->
@@ -72,7 +67,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
         }
 
-        // selectedIndex prop - matches iOS exactly
         props["selectedIndex"]?.let {
             val selectedIndex = when (it) {
                 is Number -> it.toInt()
@@ -87,7 +81,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
         }
 
-        // enabled prop
         props["enabled"]?.let {
             val enabled = when (it) {
                 is Boolean -> it
@@ -97,7 +90,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
             
             if (radioGroup.isEnabled != enabled) {
                 radioGroup.isEnabled = enabled
-                // Also update all child segments
                 for (i in 0 until radioGroup.childCount) {
                     radioGroup.getChildAt(i).isEnabled = enabled
                 }
@@ -105,31 +97,26 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
         }
 
-        // backgroundColor prop
         props["backgroundColor"]?.let {
             val colorInt = ColorUtilities.parseColor(it.toString())
             radioGroup.setBackgroundColor(colorInt)
             hasUpdates = true
         }
 
-        // selectedTintColor prop - color of selected segment background
         props["selectedTintColor"]?.let {
             val colorInt = ColorUtilities.parseColor(it.toString())
             applySelectedTintColor(radioGroup, colorInt)
             hasUpdates = true
         }
 
-        // tintColor prop - text color
         props["tintColor"]?.let {
             val colorInt = ColorUtilities.parseColor(it.toString())
             applyTintColor(radioGroup, colorInt)
             hasUpdates = true
         }
 
-        // adaptive prop - matches iOS adaptivity
         props["adaptive"]?.let { adaptive ->
             if (adaptive == true) {
-                // Apply adaptive colors
                 val backgroundColor = AdaptiveColorHelper.getSystemBackgroundColor(radioGroup.context)
                 val selectedColor = AdaptiveColorHelper.getSystemAccentColor(radioGroup.context)
                 val textColor = AdaptiveColorHelper.getSystemTextColor(radioGroup.context)
@@ -141,9 +128,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
         }
 
-        // Set up selection change listener
         radioGroup.setOnCheckedChangeListener { group, checkedId ->
-            // Find the index of the checked radio button
             val selectedIndex = (0 until group.childCount).firstOrNull { 
                 group.getChildAt(it).id == checkedId 
             } ?: -1
@@ -156,7 +141,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
         }
 
-        // Apply common view styling
         view.applyStyles(props)
 
         return hasUpdates
@@ -165,15 +149,12 @@ class DCFSegmentedControlComponent : DCFComponent() {
     private fun createSegmentButton(context: Context, segmentData: Map<String, Any?>, index: Int): RadioButton {
         val radioButton = RadioButton(context)
         
-        // Set unique ID for this segment
         radioButton.id = View.generateViewId()
         
-        // title prop
         segmentData["title"]?.let {
             radioButton.text = it.toString()
         }
         
-        // enabled prop for individual segment
         segmentData["enabled"]?.let {
             val enabled = when (it) {
                 is Boolean -> it
@@ -183,36 +164,27 @@ class DCFSegmentedControlComponent : DCFComponent() {
             radioButton.isEnabled = enabled
         }
         
-        // iconAsset prop - TODO: implement icon support if needed
         segmentData["iconAsset"]?.let {
-            // Could load drawable and set as compound drawable
-            // For now, just add icon indicator to text
             val iconName = it.toString()
             radioButton.text = "${radioButton.text} ⚡" // Placeholder for icon
         }
 
-        // Style the radio button to look like iOS segmented control
         styleSegmentButton(radioButton, index)
         
         return radioButton
     }
 
     private fun styleSegmentButton(radioButton: RadioButton, index: Int) {
-        // Remove default radio button appearance
         radioButton.buttonDrawable = null
         
-        // Set padding
         val padding = 16
         radioButton.setPadding(padding, padding/2, padding, padding/2)
         
-        // Center text
         radioButton.gravity = android.view.Gravity.CENTER
         
-        // Create background drawable that changes based on state
         val backgroundDrawable = createSegmentBackground()
         radioButton.background = backgroundDrawable
         
-        // Set text appearance
         radioButton.setTextColor(ContextCompat.getColorStateList(radioButton.context, android.R.color.primary_text_light))
         radioButton.typeface = Typeface.DEFAULT
     }
@@ -220,13 +192,11 @@ class DCFSegmentedControlComponent : DCFComponent() {
     private fun createSegmentBackground(): StateListDrawable {
         val stateList = StateListDrawable()
         
-        // Selected state background
         val selectedDrawable = GradientDrawable()
         selectedDrawable.setColor(Color.BLUE) // Default selected color
         selectedDrawable.cornerRadius = 8f
         stateList.addState(intArrayOf(android.R.attr.state_checked), selectedDrawable)
 
-        // Normal state background
         val normalDrawable = GradientDrawable()
         normalDrawable.setColor(Color.TRANSPARENT)
         normalDrawable.setStroke(2, Color.GRAY)
@@ -241,8 +211,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
             val radioButton = radioGroup.getChildAt(i) as? RadioButton
             radioButton?.let { button ->
                 val background = button.background as? StateListDrawable
-                // Update selected state color - this is simplified
-                // In a real implementation, you'd recreate the StateListDrawable
             }
         }
     }
@@ -254,16 +222,13 @@ class DCFSegmentedControlComponent : DCFComponent() {
         }
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
     
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val radioGroup = view as? RadioGroup ?: return PointF(0f, 0f)
         
-        // Calculate size based on number of segments and content
         val segments = props["segments"] as? List<*> ?: emptyList<Any>()
         val segmentCount = segments.size
         
-        // Default segment size
         val segmentWidth = 100f
         val segmentHeight = 32f
         
@@ -272,10 +237,8 @@ class DCFSegmentedControlComponent : DCFComponent() {
         return PointF(totalWidth, segmentHeight)
     }
 
-    // MARK: - Lifecycle Management - MATCH iOS
     
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Additional setup when view is registered, if needed
     }
 }
 

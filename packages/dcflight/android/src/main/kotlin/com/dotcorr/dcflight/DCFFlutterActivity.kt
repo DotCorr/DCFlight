@@ -35,21 +35,17 @@ open class DCFFlutterActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize SoLoader for Yoga native library
         if (!SoLoader.isInitialized()) {
             SoLoader.init(this, false)
             Log.d(TAG, "✅ SoLoader initialized")
         }
 
-        // Initialize DCFlight framework
         initializeFramework()
     }
     
     override fun onStart() {
         super.onStart()
         
-        // Only diverge once during app lifecycle, not every time activity starts
-        // This prevents clearing native UI when returning from background
         if (!isFrameworkDiverged) {
             Log.d(TAG, "First start - diverging to native UI")
             divergeToFlightSafely()
@@ -125,13 +121,10 @@ open class DCFFlutterActivity : FlutterActivity() {
         Log.d(TAG, "🔄 Configuration changed - handling rotation/layout update")
         
         try {
-            // Update screen utilities with new display metrics
             DCFScreenUtilities.refreshScreenDimensions()
             
-            // ROTATION FIX: Use the new rotation handling method
             DCFLayoutManager.shared.handleDeviceRotation()
             
-            // CRITICAL FIX: Measure root view before recalculating layout
             val rootView: View? = ViewRegistry.shared.getView("root")
             if (rootView != null) {
                 val displayMetrics = resources.displayMetrics
@@ -142,7 +135,6 @@ open class DCFFlutterActivity : FlutterActivity() {
                 Log.d(TAG, "🔄 Root view measured after rotation: ${rootView.measuredWidth}x${rootView.measuredHeight}")
             }
             
-            // Force intrinsic size recalculation for all components during rotation
             rootView?.post {
                 YogaShadowTree.shared.calculateLayoutForAllRoots()
                 Log.d(TAG, "🔄 Forced intrinsic size recalculation after rotation")
@@ -150,7 +142,6 @@ open class DCFFlutterActivity : FlutterActivity() {
             
             // CRITICAL: Force recursive invalidation after rotation to redraw all views
             if (rootView != null) {
-                // Recursively invalidate all views SYNCHRONOUSLY
                 fun invalidateAll(v: View) {
                     v.invalidate()
                     if (v is ViewGroup) {

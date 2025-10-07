@@ -15,12 +15,10 @@ import com.dotcorr.dcflight.utils.ColorUtilities
  * Utility functions for dcf_primitives components
  */
 
-// Re-export dpToPx from framework
 fun dpToPx(dp: Float, context: Context): Int {
     return com.dotcorr.dcflight.components.dpToPx(dp, context)
 }
 
-// Re-export parseColor from ColorUtilities
 fun parseColor(colorString: String): Int {
     return ColorUtilities.parseColor(colorString)
 }

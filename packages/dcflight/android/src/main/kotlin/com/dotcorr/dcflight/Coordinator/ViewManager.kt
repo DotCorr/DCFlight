@@ -34,7 +34,6 @@ class DCFViewManager private constructor() {
      */
     fun cleanupForHotRestart() {
         Log.d(TAG, "🔥 DCF_ENGINE: ViewManager hot restart cleanup called")
-        // Simplified cleanup - let existing systems handle the details
         Log.d(TAG, "🔥 DCF_ENGINE: ViewManager cleanup for hot restart completed")
     }
 
@@ -196,9 +195,7 @@ class DCFViewManager private constructor() {
             }
         }
 
-        // Update children in shadow tree - handle each child individually
         for (childId in childrenIds) {
-            // Children are managed through addChildNode calls
         }
 
         return true
