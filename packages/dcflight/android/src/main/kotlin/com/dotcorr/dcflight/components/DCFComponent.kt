@@ -21,7 +21,6 @@ abstract class DCFComponent {
     companion object {
         private const val TAG = "DCFComponent"
         
-        // View tag constants for event system
         const val TAG_VIEW_ID = "dcf_view_id"
         const val TAG_EVENT_TYPES = "dcf_event_types"  
         const val TAG_EVENT_CALLBACK = "dcf_event_callback"
@@ -65,7 +64,6 @@ abstract class DCFComponent {
      * Components can override this for specialized handling
      */
     open fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Default implementation does nothing
     }
 }
 
@@ -84,28 +82,22 @@ fun propagateEvent(
     if (view == null) return
 
     try {
-        // Execute native action first if provided
         nativeAction?.invoke(view, data)
 
-        // Get stored event information from view tags (set by addEventListeners)
         val viewId = view.getTag(com.dotcorr.dcflight.R.id.dcf_view_id) as? String
         val eventTypes = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_types) as? Set<String>
         val eventCallback = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_callback) as? (String, Map<String, Any?>) -> Unit
 
-        // 🚀 DEBUG: Log event propagation details
         android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventName=$eventName, viewId=$viewId")
         android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventTypes=$eventTypes")
         android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventCallback=$eventCallback")
 
-        // Check if this view is registered for events and this specific event type
         if (viewId != null && eventTypes != null && eventCallback != null) {
             val normalizedEventName = normalizeEventNameForPropagation(eventName)
             android.util.Log.d("DCFComponent", "🔥 propagateEvent: normalizedEventName=$normalizedEventName")
             
             if (eventTypes.contains(normalizedEventName) || eventTypes.contains(eventName)) {
                 android.util.Log.d("DCFComponent", "🚀 FIRING EVENT: $eventName to Flutter!")
-                // 🚀 CRITICAL FIX: Send ORIGINAL event name to Flutter, not normalized
-                // Flutter expects "onPress", not "press"
                 eventCallback(eventName, data)
             } else {
                 android.util.Log.w("DCFComponent", "❌ Event $eventName/$normalizedEventName not in registered types: $eventTypes")
@@ -114,7 +106,6 @@ fun propagateEvent(
             android.util.Log.w("DCFComponent", "❌ propagateEvent: Missing registration - viewId=$viewId, eventTypes=$eventTypes, callback=$eventCallback")
         }
     } catch (e: Exception) {
-        // Log error but don't crash
         android.util.Log.e("DCFComponent", "Error in propagateEvent: ${e.message}", e)
     }
 }
@@ -124,7 +115,6 @@ fun propagateEvent(
  * Matches iOS normalizeEventNameForPropagation helper function
  */
 fun normalizeEventNameForPropagation(eventName: String): String {
-    // Convert camelCase to lowercase for consistency
     return eventName.lowercase().replace("on", "").trim()
 }
 

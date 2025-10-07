@@ -27,23 +27,16 @@ class DCFSliderComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val seekBar = SeekBar(context)
         
-        // Let the system handle visibility naturally - no manual control
         
-        // Apply adaptive default styling - let OS handle light/dark mode
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {
-            // Use system colors that automatically adapt to light/dark mode
-            // SeekBar automatically uses theme colors in newer Android versions
         }
         
-        // Set component identifier for debugging
         seekBar.setTag(R.id.dcf_component_type, "Slider")
         
-        // Set up iOS-style onValueChange event
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && seekBar != null) {
-                    // 🚀 MATCH iOS: Use propagateEvent for onValueChange
                     propagateEvent(seekBar, "onValueChange", mapOf(
                         "value" to (progress / 100.0f),
                         "fromUser" to fromUser
@@ -52,14 +45,12 @@ class DCFSliderComponent : DCFComponent() {
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                // iOS equivalent of touchDown
                 if (seekBar != null) {
                     propagateEvent(seekBar, "onSlidingStart", mapOf())
                 }
             }
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                // iOS equivalent of touchUp
                 if (seekBar != null) {
                     propagateEvent(seekBar, "onSlidingComplete", mapOf(
                         "value" to (seekBar.progress / 100.0f)
@@ -68,7 +59,6 @@ class DCFSliderComponent : DCFComponent() {
             }
         })
         
-        // Apply initial props and return
         updateView(seekBar, props)
         return seekBar
     }
@@ -81,7 +71,6 @@ class DCFSliderComponent : DCFComponent() {
         val seekBar = view as SeekBar
         var hasUpdates = false
 
-        // 🚀 MATCH iOS UISlider props exactly
         props["value"]?.let {
             val value = when (it) {
                 is Number -> it.toFloat()
@@ -101,7 +90,6 @@ class DCFSliderComponent : DCFComponent() {
                 is String -> it.toFloatOrNull() ?: 0f
                 else -> 0f
             }
-            // SeekBar min is always 0, we handle offset in value calculation
             hasUpdates = true
         }
 
@@ -118,7 +106,6 @@ class DCFSliderComponent : DCFComponent() {
             }
         }
 
-        // iOS minimumTrackTintColor -> Android progress tint
         props["minimumTrackTintColor"]?.let {
             val colorStr = it as? String
             colorStr?.let { color ->
@@ -127,12 +114,10 @@ class DCFSliderComponent : DCFComponent() {
                     seekBar.progressTintList = ColorStateList.valueOf(colorInt)
                     hasUpdates = true
                 } catch (e: Exception) {
-                    // Invalid color format
                 }
             }
         }
 
-        // iOS maximumTrackTintColor -> Android progress background tint  
         props["maximumTrackTintColor"]?.let {
             val colorStr = it as? String
             colorStr?.let { color ->
@@ -141,12 +126,10 @@ class DCFSliderComponent : DCFComponent() {
                     seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
                     hasUpdates = true
                 } catch (e: Exception) {
-                    // Invalid color format
                 }
             }
         }
 
-        // iOS thumbTintColor -> Android thumb tint
         props["thumbTintColor"]?.let {
             val colorStr = it as? String
             colorStr?.let { color ->
@@ -155,23 +138,19 @@ class DCFSliderComponent : DCFComponent() {
                     seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
                     hasUpdates = true
                 } catch (e: Exception) {
-                    // Invalid color format
                 }
             }
         }
 
-        // Apply common view styling
         view.applyStyles(props)
 
         return hasUpdates
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val seekBar = view as? SeekBar ?: return PointF(0f, 0f)
 
-        // Measure the slider content
         seekBar.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -184,7 +163,6 @@ class DCFSliderComponent : DCFComponent() {
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Slider components are typically leaf nodes and don't need special handling
     }
 }
 

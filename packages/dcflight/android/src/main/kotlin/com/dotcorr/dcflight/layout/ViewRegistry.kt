@@ -80,7 +80,6 @@ class ViewRegistry private constructor() {
         val rootViewInfo = registry["root"]
         registry.clear()
         
-        // Restore root if it existed
         if (rootViewInfo != null) {
             registry["root"] = rootViewInfo
             Log.d(TAG, "Preserved root view during cleanup")

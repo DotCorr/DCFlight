@@ -24,7 +24,6 @@ object PrimitivesComponentsReg {
     fun registerComponents() {
         val registry = DCFComponentRegistry.shared
 
-        // Core components - EXACT 1:1 iOS MAPPING
         registry.registerComponent("View", DCFViewComponent::class.java)
         registry.registerComponent("Text", DCFTextComponent::class.java)
         registry.registerComponent("Image", DCFImageComponent::class.java)
@@ -36,14 +35,12 @@ object PrimitivesComponentsReg {
         registry.registerComponent("Spinner", DCFSpinnerComponent::class.java)
         registry.registerComponent("WebView", DCFWebViewComponent::class.java)
 
-        // Interactive components
         registry.registerComponent("Alert", DCFAlertComponent::class.java)
         registry.registerComponent("Dropdown", DCFDropdownComponent::class.java)
         registry.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
         registry.registerComponent("GestureDetector", DCFGestureDetectorComponent::class.java)
         registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
         
-        // Graphics and Media
         registry.registerComponent("Svg", DCFSvgComponent::class.java)
         registry.registerComponent("Icon", DCFIconComponent::class.java)
     }

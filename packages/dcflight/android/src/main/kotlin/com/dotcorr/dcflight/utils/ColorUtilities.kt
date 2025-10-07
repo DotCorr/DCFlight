@@ -48,7 +48,6 @@ object ColorUtilities {
             if (context.theme.resolveAttribute(attrId, typedValue, true)) {
                 typedValue.data
             } else {
-                // Fallback colors based on current theme
                 val isDarkTheme = isDarkTheme(context)
                 when (colorType) {
                     SystemColorType.BACKGROUND -> if (isDarkTheme) Color.BLACK else Color.WHITE
@@ -61,7 +60,6 @@ object ColorUtilities {
             }
         } catch (e: Exception) {
             Log.w(TAG, "Failed to resolve system color: $colorType", e)
-            // Return safe defaults
             when (colorType) {
                 SystemColorType.BACKGROUND -> Color.WHITE
                 SystemColorType.SURFACE -> Color.WHITE
@@ -108,41 +106,32 @@ object ColorUtilities {
 
         val hexString = fromHexString.trim()
 
-        // Handle transparent color explicitly
         if (hexString.equals("transparent", ignoreCase = true)) {
             return Color.TRANSPARENT
         }
 
-        // Handle Flutter Color object format: "Color(alpha: 1.0000, red: 0.0000, green: 0.0000, blue: 0.0000, colorSpace: ColorSpace.sRGB)"
         if (hexString.contains("Color(") && hexString.contains("alpha:")) {
             return parseFlutterColorObject(hexString)
         }
 
         var cleanHexString = hexString.trimStart('#')
 
-        // Special handling for Material colors from Flutter
-        // These come in as positive integer values
         try {
             val intValue = cleanHexString.toLongOrNull()
             if (intValue != null && intValue >= 0) {
-                // Check for transparent (0)
                 if (intValue == 0L) {
                     return Color.TRANSPARENT
                 }
 
-                // Convert the int to hex - Flutter uses ARGB format
                 cleanHexString = String.format("%08x", intValue)
             }
         } catch (e: Exception) {
-            // Not an integer, continue with string processing
         }
 
-        // Handle common color names
         getNamedColor(cleanHexString.lowercase())?.let {
             return it
         }
 
-        // For 3-character hex codes like #RGB
         if (cleanHexString.length == 3) {
             val r = cleanHexString[0].toString()
             val g = cleanHexString[1].toString()
@@ -153,13 +142,11 @@ object ColorUtilities {
         return try {
             when (cleanHexString.length) {
                 8 -> {
-                    // 8 characters: AARRGGBB format used by Flutter/Android
                     val alpha = cleanHexString.substring(0, 2).toInt(16)
                     val red = cleanHexString.substring(2, 4).toInt(16)
                     val green = cleanHexString.substring(4, 6).toInt(16)
                     val blue = cleanHexString.substring(6, 8).toInt(16)
 
-                    // If explicitly has alpha 0, return clear regardless of RGB values
                     if (alpha == 0) {
                         Color.TRANSPARENT
                     } else {
@@ -168,12 +155,10 @@ object ColorUtilities {
                 }
 
                 6 -> {
-                    // 6 characters: RRGGBB
                     val red = cleanHexString.substring(0, 2).toInt(16)
                     val green = cleanHexString.substring(2, 4).toInt(16)
                     val blue = cleanHexString.substring(4, 6).toInt(16)
 
-                    // Handle #000000 specially - check if it was meant to be transparent
                     if (red == 0 && green == 0 && blue == 0 &&
                         (hexString.contains("transparent") || hexString.contains("00000"))
                     ) {
@@ -238,7 +223,6 @@ object ColorUtilities {
     private fun parseFlutterColorObject(colorString: String): Int? {
         Log.d(TAG, "Parsing Flutter color object: $colorString")
 
-        // Use regex to extract color components
         val pattern = Pattern.compile(
             "alpha:\\s*([\\d.]+).*?red:\\s*([\\d.]+).*?green:\\s*([\\d.]+).*?blue:\\s*([\\d.]+)"
         )
@@ -279,10 +263,8 @@ object ColorUtilities {
         val b = Color.blue(from)
 
         return if (a == 255) {
-            // Fully opaque - return without alpha
             String.format("#%02X%02X%02X", r, g, b)
         } else {
-            // Include alpha
             String.format("#%02X%02X%02X%02X", r, g, b, a)
         }
     }
@@ -318,7 +300,6 @@ object ColorUtilities {
         val g2 = Color.green(color2)
         val b2 = Color.blue(color2)
 
-        // Small tolerance for floating point comparison
         val epsilon = 1
 
         return abs(a1 - a2) < epsilon &&

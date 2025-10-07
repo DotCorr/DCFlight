@@ -28,22 +28,15 @@ class DCFToggleComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val switchControl = SwitchCompat(context)
 
-        // Let the system handle visibility naturally - no manual control
         
-        // Apply adaptive theming like iOS
         val isAdaptive = props["adaptive"] as? Boolean ?: true
         if (isAdaptive) {
-            // Use system colors that adapt to light/dark mode
-            // Android handles this automatically with SwitchCompat
         }
 
-        // Store component type
         switchControl.setTag(R.id.dcf_component_type, "Toggle")
 
-        // Apply props
         updateView(switchControl, props)
 
-        // Apply StyleSheet properties (filter nulls for style extensions)
         val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
         switchControl.applyStyles(nonNullStyleProps)
 
@@ -51,7 +44,6 @@ class DCFToggleComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        // Convert nullable map to non-nullable for internal processing
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         return updateViewInternal(view, nonNullProps)
     }
@@ -59,7 +51,6 @@ class DCFToggleComponent : DCFComponent() {
     override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val switchControl = view as? SwitchCompat ?: return false
 
-        // Update value - EXACT iOS prop name
         props["value"]?.let { value ->
             val isOn = value as? Boolean ?: false
             val animated = props["animated"] as? Boolean ?: true
@@ -72,16 +63,13 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-        // Update enabled state - EXACT iOS prop name
         props["disabled"]?.let { disabled ->
             val isDisabled = disabled as? Boolean ?: false
             switchControl.isEnabled = !isDisabled
             switchControl.alpha = if (isDisabled) 0.5f else 1.0f
         }
 
-        // Update colors - EXACT iOS prop names
 
-        // Active track color (on tint color in iOS)
         props["activeTrackColor"]?.let { color ->
             val colorInt = parseColor(color as String)
             val states = arrayOf(
@@ -92,7 +80,6 @@ class DCFToggleComponent : DCFComponent() {
             switchControl.trackTintList = ColorStateList(states, colors)
         }
 
-        // Inactive track color (background color in iOS)
         props["inactiveTrackColor"]?.let { color ->
             val colorInt = parseColor(color as String)
             val currentTrackTint = switchControl.trackTintList
@@ -109,7 +96,6 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-        // Active thumb color
         props["activeThumbColor"]?.let { color ->
             val colorInt = parseColor(color as String)
             val states = arrayOf(
@@ -120,7 +106,6 @@ class DCFToggleComponent : DCFComponent() {
             switchControl.thumbTintList = ColorStateList(states, colors)
         }
 
-        // Inactive thumb color (Note: iOS UISwitch doesn't have separate inactive thumb color)
         props["inactiveThumbColor"]?.let { color ->
             val colorInt = parseColor(color as String)
             val currentThumbTint = switchControl.thumbTintList
@@ -140,10 +125,8 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-        // Handle value change callback
         props["onValueChange"]?.let { 
             switchControl.setOnCheckedChangeListener { _, isChecked ->
-                // 🚀 MATCH iOS: Use propagateEvent for onValueChange
                 propagateEvent(switchControl, "onValueChange", mapOf(
                     "value" to isChecked,
                     "timestamp" to System.currentTimeMillis() / 1000.0
@@ -151,7 +134,6 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-        // Accessibility
         props["accessibilityLabel"]?.let { label ->
             switchControl.contentDescription = label.toString()
         }
@@ -163,12 +145,10 @@ class DCFToggleComponent : DCFComponent() {
         return true
     }
 
-    // MARK: - Intrinsic Size Calculation - MATCH iOS
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val switchControl = view as? SwitchCompat ?: return PointF(0f, 0f)
 
-        // Measure the switch content
         switchControl.measure(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
@@ -181,6 +161,5 @@ class DCFToggleComponent : DCFComponent() {
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Toggle components are typically leaf nodes and don't need special handling
     }
 }

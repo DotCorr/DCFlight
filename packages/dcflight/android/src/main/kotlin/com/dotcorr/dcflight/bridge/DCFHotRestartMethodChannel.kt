@@ -28,7 +28,6 @@ class DCFHotRestartMethodChannel : MethodChannel.MethodCallHandler {
         @JvmField
         val shared = DCFHotRestartMethodChannel()
         
-        // Static session token for hot restart detection - survives Dart hot restarts
         @JvmStatic
         private var sessionToken: String? = null
         
@@ -49,7 +48,6 @@ class DCFHotRestartMethodChannel : MethodChannel.MethodCallHandler {
             }
 
             "createSessionToken" -> {
-                // Create a new session token with timestamp
                 val token = "dcf_session_${System.currentTimeMillis()}"
                 sessionToken = token
                 Log.d(TAG, "🔥 DCF_ENGINE: Created session token: $token")
@@ -82,19 +80,14 @@ class DCFHotRestartMethodChannel : MethodChannel.MethodCallHandler {
         
         Handler(Looper.getMainLooper()).post {
             try {
-                // HOT RESTART FIX: Prepare layout manager for hot restart to prevent flash
                 com.dotcorr.dcflight.layout.DCFLayoutManager.shared.prepareForHotRestart()
                 Log.d(TAG, "🔥 DCF_ENGINE: Layout manager prepared for hot restart")
                 
                 Log.d(TAG, "🔥 DCF_ENGINE: Clearing shadow tree and view registry")
                 
-                // Clear the YogaShadowTree - this is the most important
-                // It prevents "Node already exists" warnings
                 com.dotcorr.dcflight.layout.YogaShadowTree.shared.clearAll()
                 Log.d(TAG, "🔥 DCF_ENGINE: YogaShadowTree cleared")
                 
-                // Clear the view registry EXCEPT the root view
-                // This fixes the issue where the first view doesn't get cleared off the view manager
                 com.dotcorr.dcflight.layout.ViewRegistry.shared.clearAllExceptRoot()
                 Log.d(TAG, "🔥 DCF_ENGINE: ViewRegistry cleared (except root)")
                 
