@@ -10,7 +10,6 @@ import UIKit
 import Foundation
 import dcflight
 
-// 🚀 CLEAN TEXT INPUT COMPONENT - Uses only propagateEvent()
 class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UITextViewDelegate {
     private static let sharedInstance = DCFTextInputComponent()
     
@@ -27,7 +26,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textView = UITextView()
             textView.font = UIFont.systemFont(ofSize: 16)
             
-            // Apply adaptive default styling - let OS handle light/dark mode
             if isAdaptive {
                 if #available(iOS 13.0, *) {
                     textView.backgroundColor = UIColor.systemBackground
@@ -48,7 +46,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textField = UITextField()
             textField.font = UIFont.systemFont(ofSize: 16)
             
-            // Apply adaptive default styling - let OS handle light/dark mode
             if isAdaptive {
                 if #available(iOS 13.0, *) {
                     textField.backgroundColor = UIColor.systemBackground
@@ -62,13 +59,11 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 textField.textColor = UIColor.black
             }
             
-            // Remove default border style - let StyleSheet handle it
             textField.borderStyle = .none
             textField.delegate = DCFTextInputComponent.sharedInstance
             inputView = textField
         }
         
-        // Apply initial properties
         updateView(inputView, withProps: props)
         
         return inputView
@@ -85,17 +80,14 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
     
     private func updateTextField(_ textField: UITextField, withProps props: [String: Any]) -> Bool {
         
-        // Update text value
         if let value = props["value"] as? String {
             textField.text = value
         }
         
-        // Update placeholder
         if let placeholder = props["placeholder"] as? String {
             textField.placeholder = placeholder
         }
         
-        // Update placeholder color
         if let placeholderColor = props["placeholderTextColor"] as? String {
             textField.attributedPlaceholder = NSAttributedString(
                 string: textField.placeholder ?? "",
@@ -103,7 +95,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             )
         }
         
-        // Handle text color property - key fix for incremental updates
         if props.keys.contains("textColor") {
             if let textColor = props["textColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: textColor)
@@ -112,7 +103,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             }
         }
         
-        // Handle adaptive color only if explicitly provided and no textColor is set
         if props.keys.contains("adaptive") && !props.keys.contains("textColor") {
             let isAdaptive = props["adaptive"] as? Bool ?? true
             if isAdaptive {
@@ -124,48 +114,38 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             }
         }
         
-        // Update keyboard type
         if let keyboardType = props["keyboardType"] as? String {
             textField.keyboardType = mapKeyboardType(keyboardType)
         }
         
-        // Update return key type
         if let returnKeyType = props["returnKeyType"] as? String {
             textField.returnKeyType = mapReturnKeyType(returnKeyType)
         }
         
-        // Update auto-capitalization
         if let autoCapitalization = props["autoCapitalization"] as? String {
             textField.autocapitalizationType = mapAutoCapitalizationType(autoCapitalization)
         }
         
-        // Update secure text entry
         if let secureTextEntry = props["secureTextEntry"] as? Bool {
             textField.isSecureTextEntry = secureTextEntry
         }
         
-        // Update auto-correction
         if let autoCorrect = props["autoCorrect"] as? Bool {
             textField.autocorrectionType = autoCorrect ? .yes : .no
         }
         
-        // Update editable state
         if let editable = props["editable"] as? Bool {
             textField.isEnabled = editable
         }
         
-        // Update selection color (tint color)
         if let selectionColor = props["selectionColor"] as? String {
             textField.tintColor = ColorUtilities.color(fromHexString: selectionColor)
         }
         
-         // Update max length
         if let maxLength = props["maxLength"] as? Int {
-            // Store max length for delegate validation
             objc_setAssociatedObject(textField, UnsafeRawPointer(bitPattern: "maxLength".hashValue)!, maxLength, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
         
-        // Apply StyleSheet properties for TextField
         textField.applyStyles(props: props)
 
         return true
@@ -173,42 +153,34 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
     
     private func updateTextView(_ textView: UITextView, withProps props: [String: Any]) -> Bool {
         
-        // Update text value
         if let value = props["value"] as? String {
             textView.text = value
         }
         
-        // Update keyboard type
         if let keyboardType = props["keyboardType"] as? String {
             textView.keyboardType = mapKeyboardType(keyboardType)
         }
         
-        // Update return key type
         if let returnKeyType = props["returnKeyType"] as? String {
             textView.returnKeyType = mapReturnKeyType(returnKeyType)
         }
         
-        // Update auto-capitalization
         if let autoCapitalization = props["autoCapitalization"] as? String {
             textView.autocapitalizationType = mapAutoCapitalizationType(autoCapitalization)
         }
         
-        // Update auto-correction
         if let autoCorrect = props["autoCorrect"] as? Bool {
             textView.autocorrectionType = autoCorrect ? .yes : .no
         }
         
-        // Update editable state
         if let editable = props["editable"] as? Bool {
             textView.isEditable = editable
         }
         
-        // Update selection color (tint color)
         if let selectionColor = props["selectionColor"] as? String {
             textView.tintColor = ColorUtilities.color(fromHexString: selectionColor)
         }
         
-        // Handle text color property - key fix for incremental updates
         if props.keys.contains("textColor") {
             if let textColor = props["textColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: textColor)
@@ -217,7 +189,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             }
         }
         
-        // Handle adaptive color only if explicitly provided and no textColor is set
         if props.keys.contains("adaptive") && !props.keys.contains("textColor") {
             let isAdaptive = props["adaptive"] as? Bool ?? true
             if isAdaptive {
@@ -229,13 +200,11 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             }
         }
         
-        // Apply StyleSheet properties for TextView
         textView.applyStyles(props: props)
 
         return true
     }
     
-    // MARK: - Keyboard Type Mapping
     
     private func mapKeyboardType(_ type: String) -> UIKeyboardType {
         switch type {
@@ -304,10 +273,8 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
         }
     }
     
-    // MARK: - UITextFieldDelegate
     
     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        // Check max length
         if let maxLength = objc_getAssociatedObject(textField, UnsafeRawPointer(bitPattern: "maxLength".hashValue)!) as? Int {
             let currentText = textField.text ?? ""
             let newLength = currentText.count + string.count - range.length
@@ -316,7 +283,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             }
         }
         
-        // 🚀 CLEAN: Use propagateEvent()
         let currentText = textField.text ?? ""
         let newText = (currentText as NSString).replacingCharacters(in: range, with: string)
         propagateEvent(on: textField, eventName: "onChangeText", data: ["text": newText])
@@ -337,10 +303,8 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
         return true
     }
     
-    // MARK: - UITextViewDelegate
     
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
-        // 🚀 CLEAN: Use propagateEvent()
         let currentText = textView.text ?? ""
         let newText = (currentText as NSString).replacingCharacters(in: range, with: text)
         propagateEvent(on: textView, eventName: "onChangeText", data: ["text": newText])

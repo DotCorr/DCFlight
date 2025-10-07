@@ -11,7 +11,6 @@ import dcflight
 import CoreText
 
 class DCFTextComponent: NSObject, DCFComponent {
-    // Dictionary to cache loaded fonts
     internal static var fontCache = [String: UIFont]()
     
     required override init() {
@@ -19,14 +18,11 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create a label
         let label = UILabel()
         
-        // Apply adaptive default styling - let OS handle light/dark mode
         label.numberOfLines = 0
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
-            // Use system colors that automatically adapt to light/dark mode
             if #available(iOS 13.0, *) {
                 label.textColor = UIColor.label
             } else {
@@ -36,10 +32,8 @@ class DCFTextComponent: NSObject, DCFComponent {
             label.textColor = UIColor.black
         }
         
-        // Apply props
         updateView(label, withProps: props)
         
-        // Apply StyleSheet properties
         label.applyStyles(props: props)
         
         return label
@@ -51,33 +45,27 @@ class DCFTextComponent: NSObject, DCFComponent {
         }
         
         
-        // Set content if specified
         if let content = props["content"] as? String {
             label.text = content
         }
         
-        // Handle font properties only if they are provided (for incremental updates)
         let hasAnyFontProp = props["fontSize"] != nil || props["fontWeight"] != nil || 
                             props["fontFamily"] != nil || props["isFontAsset"] != nil
         
         if hasAnyFontProp {
             
-            // Get current font as fallback
             let currentFont = label.font ?? UIFont.systemFont(ofSize: UIFont.systemFontSize)
             let finalFontSize = props["fontSize"] as? CGFloat ?? currentFont.pointSize
             
-            // Determine font weight using centralized utility
             var finalFontWeight = UIFont.Weight.regular
             if let fontWeightString = props["fontWeight"] as? String {
                 finalFontWeight = fontWeightFromString(fontWeightString)
             }
             
-            // Check if font is from an asset
             let isFontAsset = props["isFontAsset"] as? Bool ?? false
             
             if let fontFamily = props["fontFamily"] as? String {
                 if isFontAsset {
-                    // Use the same asset resolution approach as SVG
                     let key = sharedFlutterViewController?.lookupKey(forAsset: fontFamily)
                     let mainBundle = Bundle.main
                     let path = mainBundle.path(forResource: key, ofType: nil)
@@ -86,14 +74,11 @@ class DCFTextComponent: NSObject, DCFComponent {
                         if let font = font {
                             label.font = font
                         } else {
-                            // Fallback to system font if custom font loading fails
                             label.font = UIFont.systemFont(ofSize: finalFontSize, weight: finalFontWeight)
                         }
                     }
                 } else {
-                    // Try to use a pre-installed font by name
                     if let font = UIFont(name: fontFamily, size: finalFontSize) {
-                        // Apply weight if needed
                         if finalFontWeight != .regular {
                             let descriptor = font.fontDescriptor.addingAttributes([
                                 .traits: [UIFontDescriptor.TraitKey.weight: finalFontWeight]
@@ -103,17 +88,14 @@ class DCFTextComponent: NSObject, DCFComponent {
                             label.font = font
                         }
                     } else {
-                        // Fallback to system font if font not found
                         label.font = UIFont.systemFont(ofSize: finalFontSize, weight: finalFontWeight)
                     }
                 }
             } else {
-                // Use system font with the specified size and weight
                 label.font = UIFont.systemFont(ofSize: finalFontSize, weight: finalFontWeight)
             }
         }
         
-        // Handle color property - this is the key fix for incremental updates
         if props.keys.contains("color") {
             if let color = props["color"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: color)
@@ -122,7 +104,6 @@ class DCFTextComponent: NSObject, DCFComponent {
             }
         }
         
-        // Handle adaptive color only if explicitly provided and no color is set
         if props.keys.contains("adaptive") && !props.keys.contains("color") {
             let isAdaptive = props["adaptive"] as? Bool ?? true
             if isAdaptive {
@@ -134,7 +115,6 @@ class DCFTextComponent: NSObject, DCFComponent {
             }
         }
         
-        // Set text alignment if specified (preserve current alignment if not in props)
         if let textAlign = props["textAlign"] as? String {
             switch textAlign {
             case "center":
@@ -148,18 +128,15 @@ class DCFTextComponent: NSObject, DCFComponent {
             }
         }
         
-        // Set number of lines if specified (preserve current numberOfLines if not in props)
         if let numberOfLines = props["numberOfLines"] as? Int {
             label.numberOfLines = numberOfLines
         }
         
-        // Apply StyleSheet properties
         label.applyStyles(props: props)
         
         return true
     }
     
-    // MARK: - Font Utility Functions
     
     private func fontWeightFromString(_ weight: String) -> UIFont.Weight {
         switch weight.lowercased() {
@@ -172,7 +149,6 @@ class DCFTextComponent: NSObject, DCFComponent {
         case "bold":           return .bold
         case "heavy":          return .heavy
         case "black":          return .black
-        // Legacy numeric support
         case "100":            return .ultraLight
         case "200":            return .thin
         case "300":            return .light
@@ -186,33 +162,26 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     private func loadFontFromAsset(_ fontAsset: String, path: String?, fontSize: CGFloat, weight: UIFont.Weight, completion: @escaping (UIFont?) -> Void) {
-        // Create a unique key for caching
         let cacheKey = "\(fontAsset)_\(fontSize)_\(weight.rawValue)"
         
-        // Check cache first
         if let cachedFont = DCFTextComponent.fontCache[cacheKey] {
             completion(cachedFont)
             return
         }
         
-        // Ensure we have a valid path
         guard let fontPath = path, !fontPath.isEmpty else {
             completion(nil)
             return
         }
         
-        // Check if the file exists
         guard FileManager.default.fileExists(atPath: fontPath) else {
             completion(nil)
             return
         }
         
-        // Load and register the font
         if registerFontFromPath(fontPath) {
-            // Try to get the font name from the file
             if let fontName = getFontNameFromPath(fontPath) {
                 if let font = UIFont(name: fontName, size: fontSize) {
-                    // Apply weight if needed
                     let finalFont: UIFont
                     if weight != .regular {
                         let descriptor = font.fontDescriptor.addingAttributes([
@@ -223,7 +192,6 @@ class DCFTextComponent: NSObject, DCFComponent {
                         finalFont = font
                     }
                     
-                    // Cache the font
                     DCFTextComponent.fontCache[cacheKey] = finalFont
                     
                     completion(finalFont)
@@ -232,11 +200,9 @@ class DCFTextComponent: NSObject, DCFComponent {
             }
         }
         
-        // If we reach here, something went wrong
         completion(nil)
     }
     
-    // Register a font with the system
     private func registerFontFromPath(_ path: String) -> Bool {
         guard let fontData = NSData(contentsOfFile: path) else {
             return false
@@ -263,7 +229,6 @@ class DCFTextComponent: NSObject, DCFComponent {
         return true
     }
     
-    // Get the font name from a font file
     private func getFontNameFromPath(_ path: String) -> String? {
         guard let fontData = NSData(contentsOfFile: path) else { return nil }
         guard let dataProvider = CGDataProvider(data: fontData) else { return nil }

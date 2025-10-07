@@ -14,6 +14,5 @@ import UIKit
     }
 
     @objc public static func registerComponents() {
-        // register the framework level components here
     }
 }

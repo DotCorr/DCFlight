@@ -22,14 +22,12 @@ class LayoutDebugging {
     
     /// Add a debug label to show dimensions
     func addDimensionLabel(to view: UIView, viewId: String) {
-        // Remove any existing labels first
         view.subviews.forEach { subview in
             if subview.tag == 99999 {
                 subview.removeFromSuperview()
             }
         }
         
-        // Create label with dimensions
         let label = UILabel()
         label.tag = 99999
         label.font = UIFont.systemFont(ofSize: 8)
@@ -39,50 +37,40 @@ class LayoutDebugging {
         label.numberOfLines = 2
         label.textAlignment = .center
         
-        // Add to view
         view.addSubview(label)
         
-        // Position at bottom-right corner
         label.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             label.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             label.trailingAnchor.constraint(equalTo: view.trailingAnchor)
         ])
         
-        // Ensure label doesn't interfere with user interaction
         label.isUserInteractionEnabled = false
     }
     
     /// Enable visual debugging for all views in hierarchy
     func enableVisualDebugging(for rootView: UIView) {
-        // Process the view hierarchy
         processViewHierarchy(rootView)
     }
     
     /// Enable visual debugging for all views in hierarchy except the root view
     func enableVisualDebuggingExceptRoot(for rootView: UIView) {
-        // Process the view hierarchy but skip the root
         for subview in rootView.subviews {
             addDebugBorder(to: subview, color: randomColor())
             
-            // Get view ID if available
             let viewId = subview.accessibilityIdentifier ?? "unknown"
             addDimensionLabel(to: subview, viewId: viewId)
             
-            // Process all subviews of this view
             processViewHierarchy(subview)
         }
     }
     
     private func processViewHierarchy(_ view: UIView) {
-        // Add debug elements to this view
         addDebugBorder(to: view, color: randomColor())
         
-        // Get view ID if available
         let viewId = view.accessibilityIdentifier ?? "unknown"
         addDimensionLabel(to: view, viewId: viewId)
         
-        // Process all subviews
         for subview in view.subviews {
             processViewHierarchy(subview)
         }
@@ -102,7 +90,6 @@ class LayoutDebugging {
         let frame = view.frame
         
         
-        // Check for explicit dimensions flag
         let hasExplicitDimensions = objc_getAssociatedObject(view, 
                                   UnsafeRawPointer(bitPattern: "hasExplicitDimensions".hashValue)!) as? Bool ?? false
         

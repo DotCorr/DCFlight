@@ -20,20 +20,17 @@ public class DCMauiLayoutMethodHandler: NSObject {
     
     /// Initialize with Flutter binary messenger
     func initialize(with binaryMessenger: FlutterBinaryMessenger) {
-        // Create method channel
         methodChannel = FlutterMethodChannel(
             name: "com.dcmaui.layout",
             binaryMessenger: binaryMessenger
         )
         
-        // Set up method handler
         methodChannel?.setMethodCallHandler(handleMethodCall)
         
     }
     
     /// Handle method calls from Flutter
     private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        // Handle methods - layout channel supports both incoming and outgoing messages
         switch call.method {
         case "getScreenDimensions":
             handleGetScreenDimensions(result: result)
@@ -46,7 +43,6 @@ public class DCMauiLayoutMethodHandler: NSObject {
         }
     }
     
-    // Get screen dimensions
     private func handleGetScreenDimensions(result: @escaping FlutterResult) {
         let bounds = UIScreen.main.bounds
         let dimensions = [
@@ -59,7 +55,6 @@ public class DCMauiLayoutMethodHandler: NSObject {
         result(dimensions)
     }
     
-    // Handle setUseWebDefaults method call
     private func handleSetUseWebDefaults(call: FlutterMethodCall, result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any],
               let enabled = args["enabled"] as? Bool else {
@@ -69,7 +64,6 @@ public class DCMauiLayoutMethodHandler: NSObject {
             return
         }
         
-        // Call DCFLayoutManager to set web defaults
         DCFLayoutManager.shared.setUseWebDefaults(enabled)
         result(true)
     }

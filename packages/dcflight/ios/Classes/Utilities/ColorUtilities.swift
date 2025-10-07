@@ -15,40 +15,32 @@ public class ColorUtilities {
     /// Format: "#RRGGBB" or "#RRGGBBAA" or "#AARRGGBB" (Android format)
     public static func color(fromHexString hexString: String) -> UIColor? {
 
-        // Handle transparent color explicitly
         if hexString.lowercased() == "transparent" {
             return UIColor.clear
         }
 
-        // Handle Flutter Color object format: "Color(alpha: 1.0000, red: 0.0000, green: 0.0000, blue: 0.0000, colorSpace: ColorSpace.sRGB)"
         if hexString.contains("Color(") && hexString.contains("alpha:") {
             return parseFlutterColorObject(hexString)
         }
 
         var cleanHexString = hexString.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Special handling for Material colors from Flutter
-        // These come in as positive integer values
         if let intValue = Int(cleanHexString), intValue >= 0 {
 
-            // Check for transparent (0)
             if intValue == 0 {
                 return UIColor.clear
             }
 
-            // Convert the int to hex - Flutter uses ARGB format
             let hexValue = String(format: "#%08x", intValue)
             cleanHexString = hexValue
         }
 
         cleanHexString = cleanHexString.replacingOccurrences(of: "#", with: "")
 
-        // Handle common color names
         if let namedColor = getNamedColor(cleanHexString.lowercased()) {
             return namedColor
         }
 
-        // For 3-character hex codes like #RGB
         if cleanHexString.count == 3 {
             let r = String(cleanHexString[cleanHexString.startIndex])
             let g = String(
@@ -73,7 +65,6 @@ public class ColorUtilities {
             green = CGFloat((rgbValue >> 8) & 0xFF) / 255.0
             blue = CGFloat(rgbValue & 0xFF) / 255.0
 
-            // If explicitly has alpha 0, return clear regardless of RGB values
             if alpha == 0 {
                 return UIColor.clear
             }
@@ -84,7 +75,6 @@ public class ColorUtilities {
             blue = CGFloat(rgbValue & 0xFF) / 255.0
             alpha = 1.0
 
-            // CRITICAL BUGFIX: Handle #000000 specially - check if it was meant to be transparent
             if red == 0 && green == 0 && blue == 0
                 && (hexString.contains("transparent") || hexString.contains("00000"))
             {
@@ -123,7 +113,6 @@ public class ColorUtilities {
 
     /// Check if a color string represents transparent
     static func isTransparent(_ colorString: String) -> Bool {
-        // Clean up the string for comparison
         let lowerString = colorString.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
         return lowerString == "transparent" || lowerString == "clear" || lowerString == "0x00000000"
@@ -133,7 +122,6 @@ public class ColorUtilities {
     /// Parse Flutter Color object format: "Color(alpha: 1.0000, red: 0.0000, green: 0.0000, blue: 0.0000, colorSpace: ColorSpace.sRGB)"
     private static func parseFlutterColorObject(_ colorString: String) -> UIColor? {
 
-        // Use regex to extract color components
         let pattern = #"alpha:\s*([\d.]+).*?red:\s*([\d.]+).*?green:\s*([\d.]+).*?blue:\s*([\d.]+)"#
 
         guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
@@ -144,7 +132,6 @@ public class ColorUtilities {
             return .magenta  // Return obvious color for debugging
         }
 
-        // Extract components
         let alphaRange = Range(match.range(at: 1), in: colorString)!
         let redRange = Range(match.range(at: 2), in: colorString)!
         let greenRange = Range(match.range(at: 3), in: colorString)!
@@ -180,10 +167,8 @@ public class ColorUtilities {
         let a = Int(alpha * 255)
 
         if a == 255 {
-            // Fully opaque - return without alpha
             return String(format: "#%02X%02X%02X", r, g, b)
         } else {
-            // Include alpha
             return String(format: "#%02X%02X%02X%02X", r, g, b, a)
         }
     }
