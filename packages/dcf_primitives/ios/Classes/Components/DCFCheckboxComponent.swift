@@ -9,7 +9,6 @@
 import UIKit
 import dcflight
 
-// 🚀 CHECKBOX COMPONENT - Custom checkbox with checked/unchecked states
 class DCFCheckboxComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFCheckboxComponent()
     
@@ -20,7 +19,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let checkbox = DCFCheckboxView()
         
-        // Apply adaptive theming
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
@@ -33,7 +31,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
                 checkbox.checkmarkColor = UIColor.white
             }
         }
-         // Apply initial color props if provided
         if let activeColor = props["activeColor"] as? String,
            let color = ColorUtilities.color(fromHexString: activeColor) {
             checkbox.checkedColor = color
@@ -49,13 +46,11 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.checkmarkColor = color
         }
 
-        // Setup event handling
         checkbox.addTarget(DCFCheckboxComponent.sharedInstance, action: #selector(checkboxTapped(_:)), for: .touchUpInside)
 
         updateView(checkbox, withProps: props)
         checkbox.applyStyles(props: props)
         
-        // Force immediate redraw to ensure visibility on first render
         checkbox.setNeedsDisplay()
         checkbox.layoutIfNeeded()
         
@@ -65,18 +60,15 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let checkbox = view as? DCFCheckboxView else { return false }
         
-        // Update checked state
         if let checked = props["checked"] as? Bool {
             checkbox.isChecked = checked
         }
         
-        // Update enabled state
         if let disabled = props["disabled"] as? Bool {
             checkbox.isEnabled = !disabled
             checkbox.alpha = disabled ? 0.5 : 1.0
         }
         
-        // Update colors
         if let checkedColor = props["checkedColor"] as? String {
             checkbox.checkedColor = ColorUtilities.color(fromHexString: checkedColor) ?? checkbox.checkedColor
         }
@@ -89,11 +81,9 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.checkmarkColor = ColorUtilities.color(fromHexString: checkmarkColor) ?? checkbox.checkmarkColor
         }
         
-        // Update size
         if let size = props["size"] as? CGFloat {
             checkbox.checkboxSize = size
         } else {
-            // Set default size based on size string
             let sizeString = props["size"] as? String ?? "medium"
             switch sizeString.lowercased() {
             case "small":
@@ -105,12 +95,10 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             }
         }
         
-        // Update border
         if let borderWidth = props["borderWidth"] as? CGFloat {
             checkbox.borderWidth = borderWidth
         }
         
-        // Force redraw to ensure visibility
         checkbox.setNeedsDisplay()
         checkbox.invalidateIntrinsicContentSize()
         
@@ -127,7 +115,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     }
 }
 
-// MARK: - Custom Checkbox View
 
 class DCFCheckboxView: UIControl {
     var isChecked: Bool = false {
@@ -186,7 +173,6 @@ class DCFCheckboxView: UIControl {
         backgroundColor = UIColor.clear
         isUserInteractionEnabled = true
         
-        // Add accessibility support
         isAccessibilityElement = true
         accessibilityTraits = .button
         accessibilityLabel = "Checkbox"
@@ -205,7 +191,6 @@ class DCFCheckboxView: UIControl {
             height: checkboxSize
         )
         
-        // Draw background
         context.setFillColor(isChecked ? checkedColor.cgColor : UIColor.clear.cgColor)
         context.setStrokeColor(isChecked ? checkedColor.cgColor : uncheckedColor.cgColor)
         context.setLineWidth(borderWidth)
@@ -221,7 +206,6 @@ class DCFCheckboxView: UIControl {
             context.strokePath()
         }
         
-        // Draw checkmark if checked
         if isChecked {
             context.setStrokeColor(checkmarkColor.cgColor)
             context.setLineWidth(2.0)
@@ -244,7 +228,6 @@ class DCFCheckboxView: UIControl {
         }
     }
     
-    // Update accessibility value when checked state changes
     private func updateAccessibility() {
         accessibilityValue = isChecked ? "Checked" : "Unchecked"
     }

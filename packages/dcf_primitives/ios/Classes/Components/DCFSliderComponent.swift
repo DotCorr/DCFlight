@@ -9,7 +9,6 @@
 import UIKit
 import dcflight
 
-// 🚀 SLIDER COMPONENT - Native UISlider with adaptive theming
 class DCFSliderComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFSliderComponent()
     
@@ -21,7 +20,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
         
         let slider = UISlider()
         
-        // Apply adaptive theming like DCFViewComponent
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
@@ -35,7 +33,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
             }
         }
         
-        // Setup event handling
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderValueChanged(_:)), for: .valueChanged)
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderTouchBegan(_:)), for: .touchDown)
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderTouchEnded(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
@@ -49,14 +46,12 @@ class DCFSliderComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let slider = view as? UISlider else { return false }
         
-        // Update value
         if let value = props["value"] as? Float {
             slider.value = value
         } else if let value = props["value"] as? Double {
             slider.value = Float(value)
         }
         
-        // Update range
         if let minValue = props["minimumValue"] as? Float {
             slider.minimumValue = minValue
         } else if let minValue = props["minimumValue"] as? Double {
@@ -69,18 +64,14 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.maximumValue = Float(maxValue)
         }
         
-        // Update step
         if let step = props["step"] as? Float {
-            // Note: UISlider doesn't have built-in step support, but we can handle it in the event
         }
         
-        // Update disabled state
         if let disabled = props["disabled"] as? Bool {
             slider.isEnabled = !disabled
             slider.alpha = disabled ? 0.5 : 1.0
         }
         
-        // Update colors
         if let minTrackColor = props["minimumTrackTintColor"] as? String,
            let color = ColorUtilities.color(fromHexString: minTrackColor) {
             slider.minimumTrackTintColor = color

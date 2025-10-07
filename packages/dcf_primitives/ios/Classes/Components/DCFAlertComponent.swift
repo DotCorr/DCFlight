@@ -9,12 +9,10 @@
 import UIKit
 import dcflight
 
-// Associated object keys for text field callbacks
 private struct AssociatedKeys {
     static var sourceView = "sourceView"
 }
 
-// 🚀 ALERT COMPONENT - Native UIAlertController wrapper
 class DCFAlertComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFAlertComponent()
     
@@ -25,7 +23,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let containerView = UIView()
         
-        // Apply adaptive theming
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             containerView.backgroundColor = UIColor.clear
@@ -40,7 +37,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // Check if alert should be shown
         if let visible = props["visible"] as? Bool, visible {
             presentAlert(from: view, props: props)
         }
@@ -49,29 +45,22 @@ class DCFAlertComponent: NSObject, DCFComponent {
         return true
     }
     
-    // MARK: - DCFComponent Protocol Methods
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        // Alert components handle their own layout through iOS alert presentation
-        // No additional layout application needed
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // Alert components don't have intrinsic size since they're presented
         return CGSize.zero
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Track node registration for debugging
     }
     
-    // MARK: - Native Alert Presentation
     
     
     private func presentAlert(from view: UIView, props: [String: Any]) {
         debugProps(props)
         
-        // Extract title and message from alertContent object (like actions)
         var title: String?
         var message: String?
         
@@ -86,7 +75,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
         
         let alertController = UIAlertController(title: title, message: message, preferredStyle: alertStyle)
         
-        // Add text fields if specified
         if let textFields = props["textFields"] as? [[String: Any]] {
             for (index, textFieldProps) in textFields.enumerated() {
                 alertController.addTextField { textField in
@@ -94,45 +82,38 @@ class DCFAlertComponent: NSObject, DCFComponent {
                 }
             }
             
-            // Fix alert sizing for text fields - based on Stack Overflow solution
             DispatchQueue.main.async {
                 self.resizeAlertForTextFields(alertController, textFieldCount: textFields.count)
             }
         }
         
-        // Add actions
         if let actions = props["actions"] as? [[String: Any]] {
             for actionProps in actions {
                 let action = createAlertAction(actionProps: actionProps, sourceView: view, alertController: alertController)
                 alertController.addAction(action)
             }
         } else {
-            // Default OK action if no actions provided
             let okAction = UIAlertAction(title: "OK", style: .default) { _ in
                 self.handleActionPress(on: view, handler: "ok", buttonIndex: 0, title: "OK", textFields: alertController.textFields)
             }
             alertController.addAction(okAction)
         }
         
-        // Configure dismissible behavior
         if !dismissible {
             alertController.isModalInPresentation = true
         }
         
-        // Configure for iPad (action sheet)
         if alertStyle == .actionSheet {
             if let popover = alertController.popoverPresentationController {
                 popover.sourceView = view
                 popover.sourceRect = view.bounds
                 
-                // Configure popover arrow direction
                 if let arrowDirection = props["popoverArrowDirection"] as? String {
                     popover.permittedArrowDirections = parseArrowDirection(arrowDirection)
                 }
             }
         }
         
-        // Present the alert
         if let topViewController = getTopViewController() {
             topViewController.present(alertController, animated: true) {
                 propagateEvent(on: view, eventName: "onShow", data: [:])
@@ -140,13 +121,10 @@ class DCFAlertComponent: NSObject, DCFComponent {
         }
     }
     
-    // MARK: - Text Field Configuration
     
     private func configureTextField(_ textField: UITextField, with props: [String: Any], sourceView: UIView, fieldIndex: Int) {
-        // Set associated object to track the source view
         objc_setAssociatedObject(textField, &AssociatedKeys.sourceView, sourceView, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // Configure text field properties
         if let placeholder = props["placeholder"] as? String {
             textField.placeholder = placeholder
         }
@@ -175,10 +153,8 @@ class DCFAlertComponent: NSObject, DCFComponent {
             textField.returnKeyType = parseReturnKeyType(returnKeyType)
         }
         
-        // Configure text field constraints to prevent clipping
         textField.translatesAutoresizingMaskIntoConstraints = false
         
-        // Add text change handler
         textField.addTarget(self, action: #selector(textFieldDidChange(_:)), for: .editingChanged)
         textField.tag = fieldIndex
     }
@@ -223,7 +199,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
             return .webSearch
         case "asciicapablenumberpad":
             return .asciiCapableNumberPad
-        // Legacy support with old naming
         case "default":
             return .default
         case "asciiCapable":
@@ -370,7 +345,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
     }
     
     private func parseColor(_ colorString: String) -> UIColor {
-        // Remove # if present
         let hex = colorString.hasPrefix("#") ? String(colorString.dropFirst()) : colorString
         
         var rgb: UInt64 = 0
@@ -433,7 +407,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
             "title": title
         ]
         
-        // Include text field values if present
         if let textFields = textFields, !textFields.isEmpty {
             let textFieldValues = textFields.map { $0.text ?? "" }
             eventData["textFieldValues"] = textFieldValues
@@ -449,11 +422,9 @@ class DCFAlertComponent: NSObject, DCFComponent {
         let buttonIndex = actionProps["buttonIndex"] as? Int ?? 0
         
         let action = UIAlertAction(title: title, style: style) { _ in
-            // Send to onActionPress handler with text field values
             self.handleActionPress(on: sourceView, handler: handler, buttonIndex: buttonIndex, title: title, textFields: alertController.textFields)
         }
         
-        // Configure action enabled state
         if let enabled = actionProps["enabled"] as? Bool {
             action.isEnabled = enabled
         }
@@ -517,11 +488,9 @@ class DCFAlertComponent: NSObject, DCFComponent {
     }
 }
 
-// MARK: - Alert Builder Extension
 
 extension DCFAlertComponent {
     
-    // Convenience method for simple alerts
     static func showSimpleAlert(title: String?, message: String?, from view: UIView) {
         let props: [String: Any] = [
             "visible": true,
@@ -533,7 +502,6 @@ extension DCFAlertComponent {
         DCFAlertComponent.sharedInstance.presentAlert(from: view, props: props)
     }
     
-    // Convenience method for confirmation alerts
     static func showConfirmationAlert(title: String?, message: String?, from view: UIView, onConfirm: @escaping () -> Void, onCancel: (() -> Void)? = nil) {
         let props: [String: Any] = [
             "visible": true,
@@ -556,13 +524,10 @@ extension DCFAlertComponent {
             ]
         ]
         
-        // Store callbacks for later use (in a real implementation, you'd want a better callback system)
-        // For now, this demonstrates the pattern
         DCFAlertComponent.sharedInstance.presentAlert(from: view, props: props)
     }
 }
 
-// MARK: - Alert Wrapper for Dismissal Tracking
 
 class DCFAlertWrapper: NSObject {
     weak var alertController: UIAlertController?
@@ -573,7 +538,6 @@ class DCFAlertWrapper: NSObject {
         self.sourceView = sourceView
         super.init()
         
-        // Set up dismissal observation
         NotificationCenter.default.addObserver(
             self, 
             selector: #selector(alertWillDisappear), 
@@ -583,7 +547,6 @@ class DCFAlertWrapper: NSObject {
     }
     
     @objc private func alertWillDisappear() {
-        // Check if alert is being dismissed
         if let alert = alertController, alert.isBeingDismissed {
             if let view = sourceView {
                 propagateEvent(on: view, eventName: "onDismiss", data: [:])
@@ -603,19 +566,15 @@ extension DCFAlertComponent {
         let message = props["message"] as? String
         let alertStyle = parseAlertStyle(props["style"] as? String)
         
-        // For now, create a simple modal presentation for custom alerts with children
-        // This allows rich content while maintaining the alert-like behavior
         let customAlertVC = UIViewController()
         customAlertVC.modalPresentationStyle = alertStyle == .actionSheet ? .popover : .overFullScreen
         customAlertVC.modalTransitionStyle = .crossDissolve
         
-        // Create background overlay
         let backgroundView = UIView()
         backgroundView.backgroundColor = UIColor.black.withAlphaComponent(0.4)
         backgroundView.translatesAutoresizingMaskIntoConstraints = false
         customAlertVC.view.addSubview(backgroundView)
         
-        // Create alert container
         let alertContainer = UIView()
         alertContainer.backgroundColor = UIColor.systemBackground
         alertContainer.layer.cornerRadius = 12
@@ -626,7 +585,6 @@ extension DCFAlertComponent {
         alertContainer.translatesAutoresizingMaskIntoConstraints = false
         customAlertVC.view.addSubview(alertContainer)
         
-        // Setup constraints
         NSLayoutConstraint.activate([
             backgroundView.topAnchor.constraint(equalTo: customAlertVC.view.topAnchor),
             backgroundView.leadingAnchor.constraint(equalTo: customAlertVC.view.leadingAnchor),
@@ -639,7 +597,6 @@ extension DCFAlertComponent {
             alertContainer.widthAnchor.constraint(greaterThanOrEqualToConstant: 250)
         ])
         
-        // Add title if provided
         var currentY: CGFloat = 20
         if let title = title, !title.isEmpty {
             let titleLabel = UILabel()
@@ -658,7 +615,6 @@ extension DCFAlertComponent {
             currentY += 40
         }
         
-        // Add message if provided
         if let message = message, !message.isEmpty {
             let messageLabel = UILabel()
             messageLabel.text = message
@@ -676,7 +632,6 @@ extension DCFAlertComponent {
             currentY += 40
         }
         
-        // Add children
         var lastChildView: UIView?
         for child in children {
             child.isHidden = false // Show the child in alert
@@ -699,7 +654,6 @@ extension DCFAlertComponent {
             lastChildView = child
         }
         
-        // Add actions as buttons
         let actionsStackView = UIStackView()
         actionsStackView.axis = alertStyle == .actionSheet ? .vertical : .horizontal
         actionsStackView.distribution = .fillEqually
@@ -713,12 +667,10 @@ extension DCFAlertComponent {
                 actionsStackView.addArrangedSubview(button)
             }
         } else {
-            // Default OK button
             let okButton = createDefaultOKButton(sourceView: view, alertVC: customAlertVC)
             actionsStackView.addArrangedSubview(okButton)
         }
         
-        // Setup actions constraints
         NSLayoutConstraint.activate([
             actionsStackView.topAnchor.constraint(equalTo: lastChildView?.bottomAnchor ?? alertContainer.topAnchor, constant: 20),
             actionsStackView.leadingAnchor.constraint(equalTo: alertContainer.leadingAnchor, constant: 16),
@@ -727,7 +679,6 @@ extension DCFAlertComponent {
             actionsStackView.heightAnchor.constraint(equalToConstant: 44)
         ])
         
-        // Present the custom alert
         if let topViewController = getTopViewController() {
             topViewController.present(customAlertVC, animated: true) {
                 propagateEvent(on: view, eventName: "onShow", data: [:])
@@ -771,7 +722,6 @@ extension DCFAlertComponent {
                 }
             }, for: .touchUpInside)
         } else {
-            // Fallback on earlier versions
         }
         
         return button
@@ -796,30 +746,23 @@ extension DCFAlertComponent {
                 }
             }, for: .touchUpInside)
         } else {
-            // Fallback on earlier versions
         }
         
         return button
     }
     
-    // MARK: - Standard Alert Actions
     
-    // MARK: - Alert Resizing for Text Fields
     
     private func resizeAlertForTextFields(_ alertController: UIAlertController, textFieldCount: Int) {
-        // Calculate additional height needed for text fields
         let textFieldHeight: CGFloat = 30.0 // Approximate height per text field
         let additionalHeight = CGFloat(textFieldCount) * textFieldHeight + 20.0 // Extra padding
         
-        // Get current screen height
         let screenHeight = UIScreen.main.bounds.height
         let maxAlertHeight = screenHeight * 0.8 // Max 80% of screen height
         
-        // Calculate desired height
         let baseAlertHeight: CGFloat = 150.0 // Base alert height
         let desiredHeight = min(baseAlertHeight + additionalHeight, maxAlertHeight)
         
-        // Apply height constraint
         let heightConstraint = NSLayoutConstraint(
             item: alertController.view!,
             attribute: .height,
@@ -833,7 +776,6 @@ extension DCFAlertComponent {
         
     }
     
-    // MARK: - Prop Debugging Helper
     
     private func debugProps(_ props: [String: Any]) {
         for (key, value) in props.sorted(by: { $0.key < $1.key }) {

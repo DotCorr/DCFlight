@@ -9,7 +9,6 @@
 import UIKit
 import dcflight
 
-// 🚀 CLEAN VIRTUALIZED SCROLL VIEW COMPONENT - Uses only propagateEvent() and prop-based commands
 class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     private static let sharedInstance = DCFScrollViewComponent()
     
@@ -18,18 +17,14 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        // Create a DCFScrollableView that separates layout from content size management
         let scrollView = DCFScrollableView()
         
-        // 🚀 CLEAN: Set shared instance as delegate to prevent deallocation
         scrollView.delegate = DCFScrollViewComponent.sharedInstance
         
-        // Apply basic configuration
         scrollView.showsVerticalScrollIndicator = true
         scrollView.showsHorizontalScrollIndicator = true
         scrollView.bounces = true
         
-        // Apply adaptive styling
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             if #available(iOS 13.0, *) {
@@ -41,10 +36,8 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             scrollView.backgroundColor = UIColor.clear
         }
         
-        // Apply props
         updateView(scrollView, withProps: props)
         
-        // Apply StyleSheet properties
         scrollView.applyStyles(props: props)
         
         return scrollView
@@ -53,13 +46,11 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let scrollView = view as? DCFScrollableView else { return false }
         
-        // Set shows indicator if specified
         if let showsScrollIndicator = props["showsScrollIndicator"] as? Bool {
             scrollView.showsVerticalScrollIndicator = showsScrollIndicator
             scrollView.showsHorizontalScrollIndicator = showsScrollIndicator
         }
         
-        // Set scroll indicator color if specified
         if let scrollIndicatorColorValue = props["scrollIndicatorColor"] {
             var indicatorColor: UIColor?
             
@@ -83,7 +74,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             }
         }
         
-        // Set scroll indicator size if specified  
         if let scrollIndicatorSize = props["scrollIndicatorSize"] {
             objc_setAssociatedObject(scrollView, 
                                    UnsafeRawPointer(bitPattern: "scrollIndicatorSize".hashValue)!, 
@@ -91,12 +81,10 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
                                    .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
         
-        // Set bounces if specified
         if let bounces = props["bounces"] as? Bool {
             scrollView.bounces = bounces
         }
         
-        // Set horizontal if specified
         if let horizontal = props["horizontal"] as? Bool {
             scrollView.isHorizontal = horizontal
             if horizontal {
@@ -112,22 +100,18 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             }
         }
         
-        // Set paging enabled if specified
         if let pagingEnabled = props["pagingEnabled"] as? Bool {
             scrollView.isPagingEnabled = pagingEnabled
         }
         
-        // Set scroll enabled if specified
         if let scrollEnabled = props["scrollEnabled"] as? Bool {
             scrollView.isScrollEnabled = scrollEnabled
         }
         
-        // Set clipping if specified
         if let clipsToBounds = props["clipsToBounds"] as? Bool {
             scrollView.clipsToBounds = clipsToBounds
         }
         
-        // Handle background color property
         if props.keys.contains("backgroundColor") {
             if let backgroundColor = props["backgroundColor"] as? String {
                 let uiColor = ColorUtilities.color(fromHexString: backgroundColor)
@@ -135,7 +119,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             }
         }
         
-        // Handle adaptive color only if explicitly provided and no backgroundColor is set
         if props.keys.contains("adaptive") && !props.keys.contains("backgroundColor") {
             let isAdaptive = props["adaptive"] as? Bool ?? true
             if isAdaptive {
@@ -147,7 +130,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             }
         }
         
-        // Apply styling properties
         if let borderRadius = props["borderRadius"] as? CGFloat {
             scrollView.layer.cornerRadius = borderRadius
             scrollView.clipsToBounds = true  
@@ -165,7 +147,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             scrollView.alpha = opacity
         }
         
-        // Store content offset and padding for VirtualizedList management
         if let contentOffsetStart = props["contentOffsetStart"] as? CGFloat, contentOffsetStart > 0 {
             scrollView.virtualizedContentOffsetStart = contentOffsetStart
         }
@@ -174,45 +155,34 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             scrollView.virtualizedContentPaddingTop = contentPaddingTop
         }
         
-        // ✅ HANDLE COMMANDS - New prop-based command pattern
         handleCommand(scrollView: scrollView, props: props)
         
-        // Apply StyleSheet properties
         scrollView.applyStyles(props: props)
         
         return true
     }
     
-    // Custom layout for DCFScrollableView - uses React Native's two-step approach
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         guard let scrollView = view as? DCFScrollableView else { return }
         
-        // Step 1: Let Yoga handle the scroll view frame layout
         let newFrame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
         scrollView.frame = newFrame
         
         
-        // Force layout of subviews first to get Yoga layout results
         scrollView.layoutIfNeeded()
         
-        // Step 2: Calculate content size based on Yoga layout results
-        // This is the key difference - we separate frame layout from content size
         DispatchQueue.main.async {
             scrollView.updateContentSizeFromYogaLayout()
         }
     }
     
-    // Add a view registration hook for content size updates
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Store node ID on the view
         objc_setAssociatedObject(view, 
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
                                nodeId, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // For DCFScrollableView, schedule content size update after Yoga layout
         if let scrollView = view as? DCFScrollableView {
-            // Store the nodeId on the scroll view for bridge communication
             scrollView.nodeId = nodeId
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -221,11 +191,7 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         }
     }
     
-    // MARK: - Event Handling
-    // Note: DCFScrollableView uses global propagateEvent() system
-    // No custom event methods needed - all handled by DCFComponentProtocol
     
-    // MARK: - Command Handling (New Prop-Based Pattern)
     
     /// Handle commands passed as props - the new declarative command pattern
     private func handleCommand(scrollView: DCFScrollableView, props: [String: Any]) {
@@ -233,7 +199,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             return
         }
         
-        // Handle composite command structure from Dart ScrollViewCommand.toMap()
         if let scrollToPositionData = commandData["scrollToPosition"] as? [String: Any] {
             if let x = scrollToPositionData["x"] as? Double, let y = scrollToPositionData["y"] as? Double {
                 let animated = scrollToPositionData["animated"] as? Bool ?? true
@@ -268,7 +233,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         }
     }
     
-    // MARK: - UIScrollViewDelegate Methods (Clean Global Event System)
     
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         propagateEvent(on: scrollView, eventName: "onScrollBeginDrag", data: [
@@ -324,7 +288,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         ])
     }
     
-    // MARK: - Content Size Change Handler (Simplified)
     
     /// Handle content size change notifications from DCFScrollableView
     func notifyContentSizeChange(_ scrollView: DCFScrollableView, size: CGSize) {

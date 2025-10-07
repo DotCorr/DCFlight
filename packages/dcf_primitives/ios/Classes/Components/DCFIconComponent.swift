@@ -9,7 +9,6 @@
 import UIKit
 import dcflight
 
-//Clone or copy this file with the accompanying dart side to create a custom icon package
 class DCFIconComponent: NSObject, DCFComponent {
     private let svgComponent = DCFSvgComponent()
 
@@ -22,7 +21,6 @@ class DCFIconComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
-        // Set up adaptive background color (icons typically transparent)
         let isAdaptive = props["adaptive"] as? Bool ?? true
         if isAdaptive {
             imageView.backgroundColor = UIColor.clear
@@ -32,7 +30,6 @@ class DCFIconComponent: NSObject, DCFComponent {
         
         updateView(imageView, withProps: props)
         
-        // Apply StyleSheet properties
         imageView.applyStyles(props: props)
         
         return imageView
@@ -44,13 +41,10 @@ class DCFIconComponent: NSObject, DCFComponent {
             return false 
         }
 
-        // Handle prop updates - some props might not include name/package for incremental updates
         var svgProps = props
         
-        // Check if we have name and package to set up the asset path
         if let iconName = props["name"] as? String, let packageName = props["package"] as? String {
             
-            // Use Flutter lookupKey to resolve logical asset path
             guard let key = sharedFlutterViewController?.lookupKey(forAsset: "assets/icons/\(iconName).svg", fromPackage: packageName) else {
                 return false
             }
@@ -59,18 +53,14 @@ class DCFIconComponent: NSObject, DCFComponent {
             
             svgProps["asset"] = path
         } else {
-            // For prop updates, we don't need to set the asset again
-            // The SVG component should handle updates to existing assets
         }
         
-        // Convert "color" prop to "tintColor" for SVG component
         if let color = props["color"] as? String {
             svgProps["tintColor"] = color
         }
         
         let result = svgComponent.updateView(imageView, withProps: svgProps)
         
-        // Apply StyleSheet properties
         imageView.applyStyles(props: props)
         
         return result

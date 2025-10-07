@@ -7,7 +7,4 @@
 
 
 import Flutter
-// this is a global variable to hold the shared FlutterViewController instance
-// use case:
-// Access app bundle info and flutter engine from anywhere in the framework
 public var sharedFlutterViewController: FlutterViewController?

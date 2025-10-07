@@ -45,7 +45,6 @@ class YogaShadowTree {
             let node = YGNodeNew()
             
             if let node = node {
-                // Apply default styles based on configuration
                 applyDefaultNodeStyles(to: node)
                 
                 let context: [String: Any] = [
@@ -487,17 +486,13 @@ class YogaShadowTree {
                 case "relative":
                     YGNodeStyleSetPositionType(node, YGPositionType.relative)
                 case "static":
-                    // ENHANCEMENT: Static position support
-                    // Static behaves like relative but ignores insets and doesn't form containing blocks
                     YGNodeStyleSetPositionType(node, YGPositionType.static)
-                    // Mark this node as static for special handling
                     updateNodeTransformContext(node: node, key: "positionType", value: "static")
                 default:
                     break
                 }
             }
         case "left":
-            // ENHANCEMENT: Static position ignores insets
             if !isStaticPositioned(node: node) {
                 if let left = convertToFloat(value) {
                     YGNodeStyleSetPosition(node, YGEdge.left, left)
@@ -507,7 +502,6 @@ class YogaShadowTree {
                 }
             }
         case "top":
-            // ENHANCEMENT: Static position ignores insets
             if !isStaticPositioned(node: node) {
                 if let top = convertToFloat(value) {
                     YGNodeStyleSetPosition(node, YGEdge.top, top)
@@ -517,7 +511,6 @@ class YogaShadowTree {
                 }
             }
         case "right":
-            // ENHANCEMENT: Static position ignores insets
             if !isStaticPositioned(node: node) {
                 if let right = convertToFloat(value) {
                     YGNodeStyleSetPosition(node, YGEdge.right, right)
@@ -527,7 +520,6 @@ class YogaShadowTree {
                 }
             }
         case "bottom":
-            // ENHANCEMENT: Static position ignores insets
             if !isStaticPositioned(node: node) {
                 if let bottom = convertToFloat(value) {
                     YGNodeStyleSetPosition(node, YGEdge.bottom, bottom)
@@ -885,7 +877,6 @@ class YogaShadowTree {
                 }
             }
             
-            // MARK: - Web Defaults Support
             
             /// Apply web defaults for cross-platform compatibility
             /// Web defaults: flex-direction: row, align-content: stretch, flex-shrink: 1
@@ -893,19 +884,14 @@ class YogaShadowTree {
                 syncQueue.sync {
                     useWebDefaults = true
                     
-                    // Apply web defaults to root node
                     if let root = rootNode {
-                        // Web default: flex-direction: row (instead of column)
                         YGNodeStyleSetFlexDirection(root, YGFlexDirection.row)
-                        // Web default: align-content: stretch (instead of flex-start)
                         YGNodeStyleSetAlignContent(root, YGAlign.stretch)
-                        // Web default: flex-shrink: 1 (instead of 0)
                         YGNodeStyleSetFlexShrink(root, 1.0)
                         
                         print("✅ YogaShadowTree: Applied web defaults to root node")
                     }
                     
-                    // Apply web defaults to all screen roots
                     for (_, screenRoot) in screenRoots {
                         YGNodeStyleSetFlexDirection(screenRoot, YGFlexDirection.row)
                         YGNodeStyleSetAlignContent(screenRoot, YGAlign.stretch) 
@@ -919,13 +905,10 @@ class YogaShadowTree {
             /// Apply default node styles based on configuration
             private func applyDefaultNodeStyles(to node: YGNodeRef) {
                 if useWebDefaults {
-                    // Web defaults
                     YGNodeStyleSetFlexDirection(node, YGFlexDirection.row)
                     YGNodeStyleSetAlignContent(node, YGAlign.stretch)
                     YGNodeStyleSetFlexShrink(node, 1.0)
-                    // Note: position defaults to relative (not static) for compatibility
                 } else {
-                    // Yoga native defaults
                     YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
                     YGNodeStyleSetAlignContent(node, YGAlign.flexStart)
                     YGNodeStyleSetFlexShrink(node, 0.0)
@@ -947,12 +930,9 @@ class YogaShadowTree {
             private func applyParentLayoutInheritance(childNode: YGNodeRef, parentNode: YGNodeRef, childId: String) {
                 guard let nodeType = nodeTypes[childId] else { return }
                 
-                // Smart inheritance system - only apply to parent nodes that actually have children
-                // This matches Android behavior and avoids hardcoded node types
                 
                 let isParentWithChildren = YGNodeGetChildCount(childNode) > 0
                 
-                // Only apply layout inheritance to nodes that are actually parent containers with children
                 if isParentWithChildren {
                     
                     let childAlignItems = YGNodeStyleGetAlignItems(childNode)
@@ -963,19 +943,16 @@ class YogaShadowTree {
                     let parentJustifyContent = YGNodeStyleGetJustifyContent(parentNode)
                     let parentAlignContent = YGNodeStyleGetAlignContent(parentNode)
                     
-                    // Only inherit alignItems if child has default value and parent has non-default
                     if childAlignItems == YGAlign.stretch && parentAlignItems != YGAlign.stretch {
                         YGNodeStyleSetAlignItems(childNode, parentAlignItems)
                         print("🔄 INHERIT: Parent \(childId) inherited alignItems=\(parentAlignItems) from parent")
                     }
                     
-                    // Only inherit justifyContent if child has default value and parent has non-default
                     if childJustifyContent == YGJustify.flexStart && parentJustifyContent != YGJustify.flexStart {
                         YGNodeStyleSetJustifyContent(childNode, parentJustifyContent)
                         print("🔄 INHERIT: Parent \(childId) inherited justifyContent=\(parentJustifyContent) from parent")
                     }
                     
-                    // Only inherit alignContent if child has default value and parent has non-default
                     if childAlignContent == YGAlign.flexStart && parentAlignContent != YGAlign.flexStart {
                         YGNodeStyleSetAlignContent(childNode, parentAlignContent)
                         print("🔄 INHERIT: Parent \(childId) inherited alignContent=\(parentAlignContent) from parent")
@@ -986,11 +963,7 @@ class YogaShadowTree {
                     print("🔄 LAYOUT: Leaf node \(childId) (\(nodeType)) positioned via parent flex layout (no inheritance)")
                 }
                 
-                // NEVER override alignSelf for any components - let flex layout work naturally
-                // This allows proper layout flow and prevents safe area positioning issues
                 
-                // NEVER override alignSelf for components - let flex layout work naturally
-                // This allows proper layout flow and prevents safe area positioning issues
                 print("🔄 LAYOUT: Child \(childId) (\(nodeType)) positioned via parent flex layout (no alignSelf override)")
             }
             
@@ -1015,7 +988,6 @@ extension YogaShadowTree {
                 return
             }
             
-            // Skip if reconciliation is in progress
             if self.isReconciling {
                 print("⏸️ YogaShadowTree: Layout recalculation deferred for '\(nodeId)' - reconciliation in progress")
                 return
@@ -1026,15 +998,12 @@ extension YogaShadowTree {
             
             print("🔄 YogaShadowTree: Recalculating layout for node '\(nodeId)'")
             
-            // Find the root node for this calculation
             let rootNode = self.findRootForNode(nodeId: nodeId)
             
-            // Get current screen dimensions
             let screenBounds = UIScreen.main.bounds
             
             do {
                 try {
-                    // Recalculate layout from the root
                     YGNodeCalculateLayout(rootNode, Float(screenBounds.width), Float(screenBounds.height), YGDirection.LTR)
                 }()
                 print("✅ YogaShadowTree: Layout recalculated for '\(nodeId)' and children")
@@ -1043,7 +1012,6 @@ extension YogaShadowTree {
                 return
             }
             
-            // Apply the updated layout to affected views
             DispatchQueue.main.async {
                 self.applyLayoutForSubtree(nodeId: nodeId)
             }
@@ -1052,22 +1020,18 @@ extension YogaShadowTree {
     
     /// Find the root node for a given node (could be main root or screen root)
     private func findRootForNode(nodeId: String) -> YGNodeRef {
-        // Check if this node is itself a screen root
         if screenRootIds.contains(nodeId) {
             return nodes[nodeId]!
         }
         
-        // Walk up the parent chain to find the root
         var currentId = nodeId
         while let parentId = nodeParents[currentId] {
-            // If parent is a screen root, that's our root
             if screenRootIds.contains(parentId) {
                 return nodes[parentId]!
             }
             currentId = parentId
         }
         
-        // Default to main root
         return nodes["root"]!
     }
     
@@ -1075,16 +1039,13 @@ extension YogaShadowTree {
     private func applyLayoutForSubtree(nodeId: String) {
         guard let node = nodes[nodeId] else { return }
         
-        // Apply layout to this node
         if let layout = getNodeLayout(nodeId: nodeId) {
             applyLayoutToView(viewId: nodeId, frame: layout)
         }
         
-        // Recursively apply to all children
         let childCount = YGNodeGetChildCount(node)
         for i in 0..<childCount {
             if let childNode = YGNodeGetChild(node, i) {
-                // Find the child's ID
                 for (childId, nodeRef) in nodes {
                     if nodeRef == childNode {
                         applyLayoutForSubtree(nodeId: childId)
@@ -1105,7 +1066,6 @@ extension YogaShadowTree {
             
             print("🔧 YogaShadowTree: Updating '\(property)' to \(value) for node '\(nodeId)'")
             
-            // Apply the property change
             switch property {
             case "width":
                 YGNodeStyleSetWidth(node, value)
