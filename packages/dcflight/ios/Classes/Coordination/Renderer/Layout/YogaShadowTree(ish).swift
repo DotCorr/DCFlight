@@ -18,11 +18,12 @@ class YogaShadowTree {
     private var screenRoots = [String: YGNodeRef]()
     private var screenRootIds = Set<String>()
     
+    private var componentInstances = [String: DCFComponent]()
+    
     private let syncQueue = DispatchQueue(label: "YogaShadowTree.sync", qos: .userInitiated)
     private var isLayoutCalculating = false
     private var isReconciling = false
     
-    // ENHANCEMENT: Web defaults configuration
     private var useWebDefaults = false
     
     private init() {
@@ -90,6 +91,20 @@ class YogaShadowTree {
         }
     }
     
+    private func getComponentInstance(for componentType: String) -> DCFComponent? {
+        if let cached = componentInstances[componentType] {
+            return cached
+        }
+        
+        guard let componentClass = DCFComponentRegistry.shared.getComponent(componentType) else {
+            return nil
+        }
+        
+        let instance = componentClass.init()
+        componentInstances[componentType] = instance
+        return instance
+    }
+    
     private func setupMeasureFunction(nodeId: String, node: YGNodeRef) {
         let childCount = YGNodeGetChildCount(node)
         
@@ -108,14 +123,11 @@ class YogaShadowTree {
                     height: heightMode == YGMeasureMode.undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(height)
                 )
                 
-                let props = contextDict["props"] as? [String: Any] ?? [:]
-                
-                guard let componentClass = DCFComponentRegistry.shared.getComponent(componentType) else {
+                guard let componentInstance = YogaShadowTree.shared.getComponentInstance(for: componentType) else {
                     return YGSize(width: Float(constraintSize.width), height: Float(constraintSize.height))
                 }
                 
-                let componentInstance = componentClass.init()
-                let intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: props)
+                let intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: [:])
                 
                 let finalWidth = widthMode == YGMeasureMode.undefined ? intrinsicSize.width : min(intrinsicSize.width, constraintSize.width)
                 let finalHeight = heightMode == YGMeasureMode.undefined ? intrinsicSize.height : min(intrinsicSize.height, constraintSize.height)
