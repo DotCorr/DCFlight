@@ -171,13 +171,14 @@ class DCMauiBridgeImpl private constructor() {
 
     fun deleteView(viewId: String): Boolean {
         return try {
+            deleteChildrenRecursively(viewId)
+            
             val view = ViewRegistry.shared.getView(viewId)
             if (view != null) {
                 val parentView = view.parent as? ViewGroup
                 parentView?.removeView(view)
             }
             
-            deleteChildrenRecursively(viewId)
             cleanupHierarchyReferences(viewId)
             
             ViewRegistry.shared.removeView(viewId)
@@ -434,7 +435,6 @@ class DCMauiBridgeImpl private constructor() {
                 invalidateAll(root)
                 Log.d(TAG, "🔥 BATCH_COMMIT: Forced recursive invalidation")
                 
-                // CRITICAL: Force layout recalculation to fix last view rendering
                 root.post {
                     YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
                     Log.d(TAG, "🔥 BATCH_COMMIT: Forced layout recalculation on next frame")
