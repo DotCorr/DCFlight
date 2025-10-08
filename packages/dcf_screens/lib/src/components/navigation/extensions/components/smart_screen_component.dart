@@ -10,7 +10,7 @@ import "package:dcflight/dcflight.dart";
 
 /// 🎯 DCFEasyScreen - Simple wrapper that reduces boilerplate
 /// while keeping your existing working pattern
-class DCFEasyScreen extends DCFStatefulComponent with EquatableMixin {
+class DCFScreenView extends DCFStatefulComponent with EquatableMixin {
   final String route;
   final DCFPresentationStyle? presentationStyle;
   final DCFComponentNode Function() builder;
@@ -38,7 +38,7 @@ class DCFEasyScreen extends DCFStatefulComponent with EquatableMixin {
   final Function(Map<dynamic, dynamic>)? onHeaderActionPress;
   final Map<String, dynamic>? customEvents;
 
-  DCFEasyScreen({
+  DCFScreenView({
     super.key,
     required this.route,
     this.presentationStyle,

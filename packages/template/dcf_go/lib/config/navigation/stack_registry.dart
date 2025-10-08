@@ -13,7 +13,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
     return DCFFragment(
       children: [
         // 🏠 HOME SCREEN - Always rendered, automatic handling
-        DCFEasyScreen(
+        DCFScreenView(
           route: "home",
           alwaysRender: true, // Skip suspense for home
           pushConfig: DCFPushConfig(
@@ -44,7 +44,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
         ),
 
         // 👤 PROFILE SCREEN - Automatic suspense!
-        DCFEasyScreen(
+        DCFScreenView(
           route: "profile",
           // presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
@@ -71,7 +71,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
         ),
 
         // ⚙️ SETTINGS SCREEN - Automatic suspense!
-        DCFEasyScreen(
+        DCFScreenView(
           route: "profile/settings",
           pushConfig: DCFPushConfig(
             title: "Settings",
@@ -94,7 +94,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
           builder: () => SettingsScreen(),
         ),
 
-        DCFEasyScreen(
+        DCFScreenView(
           route: "home/animated_modal",
           pushConfig: DCFPushConfig(
             title: "Animated Modal",
@@ -105,7 +105,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
                   AnimatedModalScreen(), // Only creates when actually navigated to!
         ),
 
-        DCFEasyScreen(
+        DCFScreenView(
           route: "home/website",
           modalConfig: DCFModalConfig(
             allowsBackgroundDismiss: true,
@@ -117,7 +117,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
         ),
 
         // 🧪 ANIMATION TEST - Test reconciliation fix
-        DCFEasyScreen(
+        DCFScreenView(
           route: "home/animation_test",
           modalConfig: DCFModalConfig(
             allowsBackgroundDismiss: true,
@@ -129,7 +129,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
         ),
 
         // 🔥 HOT RELOAD TEST - Test hot reload functionality
-        DCFEasyScreen(
+        DCFScreenView(
           route: "home/hot_reload_test",
           pushConfig: DCFPushConfig(
             title: "Hot Reload Test",
