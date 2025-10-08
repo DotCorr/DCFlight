@@ -196,15 +196,53 @@ class DCFViewManager {
             return false
         }
         
+        // 🎯 CRITICAL FIX: Check if this is a screen component
+        let childIsScreen = YogaShadowTree.shared.isScreenRoot(childId)
+        let parentIsScreen = YogaShadowTree.shared.isScreenRoot(parentId)
+        
+        // Screens should be managed by their respective navigation components, not the general view manager
+        if childIsScreen {
+            print("🚫 DCFViewManager: Skipping attachment for screen '\(childId)' - screens are managed by navigation controllers")
+            return true
+        }
+        
+        // 🎯 CRITICAL FIX: Check if this is a view controller hierarchy issue
+        if let childViewController = childView.next as? UIViewController,
+           let parentViewController = parentView.next as? UIViewController {
+            
+            // If child is already in a navigation controller, don't reattach
+            if childViewController.navigationController != nil && parentViewController.navigationController != nil {
+                print("🔧 DCFViewManager: Skipping attachment - child '\(childId)' already in navigation hierarchy")
+                return true
+            }
+            
+            // If child has a parent view controller, remove it properly
+            if childViewController.parent != nil {
+                print("🔧 DCFViewManager: Removing child '\(childId)' from existing view controller hierarchy")
+                childViewController.willMove(toParent: nil)
+                childViewController.view.removeFromSuperview()
+                childViewController.removeFromParent()
+            }
+        }
+        
+        // 🎯 CRITICAL FIX: Remove from existing parent before attaching to new parent
+        if childView.superview != nil {
+            print("🔧 DCFViewManager: Removing child '\(childId)' from existing parent before reattaching")
+            childView.removeFromSuperview()
+        }
+        
+        // 🎯 CRITICAL FIX: Check if parent is already the superview
+        if childView.superview == parentView {
+            print("🔧 DCFViewManager: Child '\(childId)' already attached to parent '\(parentId)' - skipping")
+            return true
+        }
+        
         if index >= 0 && index < parentView.subviews.count {
             parentView.insertSubview(childView, at: index)
         } else {
             parentView.addSubview(childView)
         }
         print("🔗 DCFViewManager: Attached view '\(childId)' to parent '\(parentId)' at index \(index)")
-        
-        let childIsScreen = YogaShadowTree.shared.isScreenRoot(childId)
-        let parentIsScreen = YogaShadowTree.shared.isScreenRoot(parentId)
         
         if !childIsScreen {
             DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)

@@ -206,6 +206,11 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
         // 🎯 CRITICAL FIX: Properly set as root view controller
         navigationController.setViewControllers([screenContainer.viewController], animated: false)
 
+        // 🎯 CRITICAL FIX: Ensure the navigation controller's view is properly configured
+        navigationController.view.backgroundColor = UIColor.systemBackground
+        navigationController.view.frame = UIScreen.main.bounds
+        navigationController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
         // Fire initial lifecycle events (like DCFTabNavigatorComponent does)
         DispatchQueue.main.async {
             propagateEvent(
