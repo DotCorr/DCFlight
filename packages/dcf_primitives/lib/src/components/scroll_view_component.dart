@@ -217,15 +217,12 @@ class DCFScrollView extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Build comprehensive events map
     final eventMap = <String, dynamic>{};
 
-    // Add base events if provided
     if (events != null) {
       eventMap.addAll(events!);
     }
 
-    // Add specific event handlers
     if (onScroll != null) {
       eventMap['onScroll'] = (Map<dynamic, dynamic> data) {
         onScroll!(DCFScrollViewScrollData.fromMap(data));
@@ -252,9 +249,7 @@ class DCFScrollView extends DCFStatelessComponent
       };
     }
 
-    // Build props map
     final props = <String, dynamic>{
-      // Scroll behavior
       'horizontal': horizontal,
       'showsScrollIndicator': showsScrollIndicator,
       'scrollEnabled': scrollEnabled,
@@ -263,7 +258,6 @@ class DCFScrollView extends DCFStatelessComponent
       'pagingEnabled': pagingEnabled,
       'keyboardDismissMode': keyboardDismissMode,
 
-      // Styling
       if (contentInset != null) 'contentInset': contentInset!.toMap(),
       if (scrollIndicatorColor != null)
         'scrollIndicatorColor':
@@ -271,15 +265,12 @@ class DCFScrollView extends DCFStatelessComponent
       'scrollIndicatorSize': scrollIndicatorSize,
       'contentContainerStyle': contentContainerStyle.toMap(),
 
-      // Layout and style
       ...layout.toMap(),
       ...styleSheet.toMap(),
 
-      // Events
       ...eventMap,
     };
 
-    // Add command props if command has actions
     if (command != null && command!.hasCommands) {
       props['command'] = command!.toMap();
     }

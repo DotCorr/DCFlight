@@ -32,7 +32,6 @@ class HotReloadDetector {
     
     DCFLogger.debug('HOT_RELOAD', 'Initializing hot reload detection system');
     
-    // Set up automatic hot reload detection using Flutter's reassembly callback
     WidgetsBinding.instance.addObserver(_HotReloadObserver(this));
     
     _isInitialized = true;
@@ -59,10 +58,8 @@ class HotReloadDetector {
     DCFLogger.debug('HOT_RELOAD', '🔥 REAL Hot reload detected! Triggering VDOM tree re-render...');
     
     try {
-      // Add a small delay to ensure Flutter has finished its reassembly
       await Future.delayed(Duration(milliseconds: 50));
       
-      // Trigger full VDOM tree re-render while preserving navigation state
       await _triggerVDOMHotReload();
       
       DCFLogger.debug('HOT_RELOAD', '✅ VDOM hot reload completed successfully');
@@ -75,10 +72,8 @@ class HotReloadDetector {
   Future<void> _triggerVDOMHotReload() async {
     final vdom = DCFEngineAPI.instance;
     
-    // Wait for VDOM to be ready
     await vdom.isReady;
     
-    // Get access to the internal engine to trigger hot reload
     await vdom.forceFullTreeReRender();
   }
 }
@@ -98,7 +93,6 @@ class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
   @override
   void initState() {
     super.initState();
-    // Initialize hot reload detection when this widget is created
     HotReloadDetector.instance.initialize();
   }
   
@@ -111,7 +105,6 @@ class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
   @override
   void reassemble() {
     super.reassemble();
-    // This is called during hot reload
     HotReloadDetector.instance.handleHotReload();
   }
   
@@ -141,12 +134,10 @@ class _HotReloadObserver extends WidgetsBindingObserver {
   
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Not used for hot reload detection
   }
   
   @override
   Future<bool> didPushRoute(String route) async {
-    // Potential hot reload indicator
     if (kDebugMode) {
       _detector.handleHotReload();
     }
@@ -155,7 +146,6 @@ class _HotReloadObserver extends WidgetsBindingObserver {
   
   @override
   void didHaveMemoryPressure() {
-    // Not used for hot reload detection
   }
 }
 

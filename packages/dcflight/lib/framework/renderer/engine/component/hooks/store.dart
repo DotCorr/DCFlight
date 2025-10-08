@@ -51,15 +51,12 @@ class Store<T> {
   void setState(T newState) {
     _trackDirectAccess();
 
-    // Skip update if state is identical (for references) or equal (for values)
     if (identical(_state, newState) || _state == newState) {
       return;
     }
 
-    // Update state
     _state = newState;
 
-    // Notify listeners
     _notifyListeners();
   }
 
@@ -71,7 +68,6 @@ class Store<T> {
 
   /// Register a listener (used by hooks)
   void subscribe(void Function(T) listener) {
-    // Prevent duplicate listeners for the same function
     if (!_listeners.contains(listener)) {
       _listeners.add(listener);
     } else {}
@@ -99,7 +95,6 @@ class Store<T> {
   void _trackDirectAccess() {
     if (!kDebugMode) return;
 
-    // Get current component from stack trace
     final stackTrace = StackTrace.current;
     final componentInfo = _extractComponentFromStackTrace(stackTrace);
 
@@ -121,7 +116,6 @@ class Store<T> {
 
       _componentAccess[componentId] = access;
 
-      // Check for mixed usage patterns across components
       _validateUsagePatterns();
     }
   }
@@ -131,13 +125,11 @@ class Store<T> {
     final lines = stackTrace.toString().split('\n');
 
     for (final line in lines) {
-      // Look for component render methods, build methods, or component class patterns
       if (line.contains('.render') ||
           line.contains('.build') ||
           line.contains('Component.') ||
           line.contains('.setState') ||
           line.contains('.state')) {
-        // Extract component type from various patterns
         final patterns = [
           RegExp(r'(\w+Component)\.'), // SomeComponent.method
           RegExp(r'(\w+Component)\s'), // SomeComponent space
@@ -148,7 +140,6 @@ class Store<T> {
           final match = pattern.firstMatch(line);
           if (match != null) {
             final componentType = match.group(1)!;
-            // Create a simple ID based on component type and current time
             final componentId = '${componentType}_${_componentIdCounter++}';
             return (componentId, componentType);
           }

@@ -13,9 +13,7 @@ import 'package:dcflight/framework/renderer/engine/component/component_node.dart
 import 'package:equatable/equatable.dart';
 import 'hooks/state_hook.dart';
 
-// ignore: must_be_immutable
 abstract class DCFStatefulComponent extends DCFComponentNode with EquatableMixin {
-  // Keep instanceId for internal tracking only (not for reconciliation)
   final String instanceId;
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
@@ -293,7 +291,6 @@ abstract class DCFStatefulComponent extends DCFComponentNode with EquatableMixin
   }
 }
 
-// ignore: must_be_immutable
 abstract class DCFStatelessComponent extends DCFComponentNode with EquatableMixin {
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;

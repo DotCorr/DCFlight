@@ -1,5 +1,3 @@
-// MARKINGS - Pass safe test cases
-// ignore_for_file: unnecessary_type_check
 
 /*
  * Copyright (c) Dotcorr Studio. and affiliates.
@@ -91,7 +89,6 @@ class DCFEngine {
 
       _nativeBridge.setEventHandler(_handleNativeEvent);
 
-      // Initialize concurrent processing
       await _initializeConcurrentProcessing();
 
       _readyCompleter.complete();
@@ -106,35 +103,9 @@ class DCFEngine {
 
   /// Initialize concurrent processing capabilities
   Future<void> _initializeConcurrentProcessing() async {
-    // This must be set to true before using this feature
-    // But this is not ready. It would be delegated to app layer if developers
-    // try {
-    //   // Try to create worker isolates
-    //   for (int i = 0; i < _maxWorkers; i++) {
-    //     final receivePort = ReceivePort();
-    //     final isolate = await Isolate.spawn(
-    //       _workerIsolateEntry,
-    //       receivePort.sendPort,
-    //       debugName: 'VDomWorker-$i',
-    //     );
 
-    //     _workerIsolates.add(isolate);
-    //     _workerAvailable.add(true);
 
-    //     // Get the worker's send port
-    //     final sendPort = await receivePort.first as SendPort;
-    //     _workerPorts.add(sendPort);
-    //   }
 
-    //   _concurrentEnabled = true;
-    //   EngineDebugLogger.log('VDOM_CONCURRENT',
-    //       'Concurrent processing enabled with $_maxWorkers workers');
-    // } catch (e) {
-    //   EngineDebugLogger.log('VDOM_CONCURRENT_ERROR',
-    //       'Failed to initialize concurrent processing: $e');
-    //   _concurrentEnabled = false;
-    //   // Continue without concurrent processing
-    // }
   }
 
   Future<void> get isReady => _readyCompleter.future;
@@ -156,13 +127,11 @@ class DCFEngine {
     EngineDebugLogger.logMount(component, context: 'registerComponent');
 
     if (component is DCFStatefulComponent) {
-      // StatefulComponents need tracking for hooks and updates
       _statefulComponents[component.instanceId] = component;
       component.scheduleUpdate = () => _scheduleComponentUpdate(component);
       EngineDebugLogger.log('COMPONENT_REGISTER',
           'Registered StatefulComponent: ${component.instanceId}');
     }
-    // StatelessComponents don't need tracking - they're purely functional
 
     if (component is ErrorBoundary) {
       _errorBoundaries[component.instanceId] = component;
@@ -186,7 +155,6 @@ class DCFEngine {
     }
 
     if (node is DCFElement) {
-      // O(1) - Try multiple event handler formats
       final eventHandlerKeys = [
         eventType,
         'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
@@ -229,7 +197,6 @@ class DCFEngine {
           'EVENT_HANDLER_RETRY', 'Retrying with different signature');
     }
 
-    // O(1) - Handle special event types
     if (eventData.containsKey('width') && eventData.containsKey('height')) {
       try {
         final width = eventData['width'] as double? ?? 0.0;
@@ -239,21 +206,17 @@ class DCFEngine {
             'EVENT_HANDLER_SUCCESS', 'Content size change handler executed');
         return;
       } catch (e) {
-        // Continue to next pattern
       }
     }
 
-    // O(1) - Try with no parameters
     try {
       Function.apply(handler, []);
       EngineDebugLogger.log(
           'EVENT_HANDLER_SUCCESS', 'Parameter-less handler executed');
       return;
     } catch (e) {
-      // Continue to final fallback
     }
 
-    // O(1) - Final fallback
     try {
       (handler as dynamic)(eventData);
       EngineDebugLogger.log(
@@ -270,30 +233,21 @@ class DCFEngine {
   /// React reconciliation: when to replace vs update at same position
   bool _shouldReplaceAtSamePosition(
       DCFComponentNode oldChild, DCFComponentNode newChild) {
-    // Rule 1: Different types = replace
     if (oldChild.runtimeType != newChild.runtimeType) {
       return true;
     }
 
-    // Rule 2: Different keys = replace
     if (oldChild.key != newChild.key) {
       return true;
     }
 
-    // Rule 3: EFFICIENT UPDATE - Only replace for major structural changes
-    // For StatelessComponent and StatefulComponent, always try to update first
-    // Only replace if reconciliation actually fails or there are critical differences
 
-    // For Elements, check if it's a completely different element type/structure
     if (oldChild is DCFElement && newChild is DCFElement) {
-      // Different element types should replace
       if (oldChild.type != newChild.type) {
         return true;
       }
     }
 
-    // Default: Try to update efficiently instead of replacing
-    // This preserves component state and avoids unnecessary re-renders
     return false;
   }
 
@@ -301,7 +255,6 @@ class DCFEngine {
   void _scheduleComponentUpdate(DCFStatefulComponent component) {
     EngineDebugLogger.logUpdate(component, 'State change triggered update');
 
-    // O(1) - Check for custom state change handler
     final customHandler = VDomExtensionRegistry.instance
         .getStateChangeHandler(component.runtimeType);
     if (customHandler != null) {
@@ -329,14 +282,12 @@ class DCFEngine {
     EngineDebugLogger.log('SCHEDULE_UPDATE',
         'Scheduling priority-based update for component: ${component.instanceId}');
 
-    // O(1) - Verify component is still registered
     if (!_statefulComponents.containsKey(component.instanceId)) {
       EngineDebugLogger.log('COMPONENT_REREGISTER',
           'Re-registering untracked component: ${component.instanceId}');
       registerComponent(component);
     }
 
-    // O(1) - Calculate priority and add to update queue
     final priority = PriorityUtils.getComponentPriority(component);
     _componentPriorities[component.instanceId] = priority;
     final wasEmpty = _pendingUpdates.isEmpty;
@@ -351,7 +302,6 @@ class DCFEngine {
           'WasEmpty': wasEmpty
         });
 
-    // O(1) - Schedule update with priority-based timing
     if (!_isUpdateScheduled) {
       _isUpdateScheduled = true;
       EngineDebugLogger.log(
@@ -361,7 +311,6 @@ class DCFEngine {
       _updateTimer?.cancel();
       _updateTimer = Timer(delay, _processPendingUpdates);
     } else {
-      // O(1) - Check if we should interrupt current scheduling for higher priority
       final currentHighestPriority = PriorityUtils.getHighestPriority(
           _componentPriorities.values.toList());
       if (PriorityUtils.shouldInterrupt(priority, currentHighestPriority)) {
@@ -414,26 +363,22 @@ class DCFEngine {
       final updateCount = _pendingUpdates.length;
       final startTime = DateTime.now();
 
-      // Decide whether to use concurrent processing
       if (_concurrentEnabled && updateCount >= _concurrentThreshold) {
         await _processPendingUpdatesConcurrently();
       } else {
         await _processPendingUpdatesSerially();
       }
 
-      // Track performance
       final processingTime = DateTime.now().difference(startTime);
       _updatePerformanceStats(
           updateCount >= _concurrentThreshold, processingTime);
 
-      // O(1) - Check if new updates were scheduled during processing
       if (_pendingUpdates.isNotEmpty) {
         EngineDebugLogger.log('BATCH_NEW_UPDATES',
             'New updates scheduled during batch, processing in next cycle',
             extra: {'NewUpdatesCount': _pendingUpdates.length});
         _isUpdateScheduled = false;
 
-        // O(1) - Schedule next batch with highest priority delay
         final nextHighestPriority = PriorityUtils.getHighestPriority(
             _componentPriorities.values.toList());
         final delay = Duration(milliseconds: nextHighestPriority.delayMs);
@@ -454,7 +399,6 @@ class DCFEngine {
     EngineDebugLogger.log(
         'BATCH_CONCURRENT', 'Processing updates concurrently');
 
-    // O(n log n) - Sort updates by priority
     final sortedUpdates = PriorityUtils.sortByPriority(
         _pendingUpdates.toList(), _componentPriorities);
 
@@ -464,12 +408,10 @@ class DCFEngine {
     EngineDebugLogger.log('BATCH_PRIORITY_SORTED',
         'Sorted ${sortedUpdates.length} updates by priority');
 
-    // O(1) - Start batch update in native layer
     EngineDebugLogger.logBridge('START_BATCH', 'root');
     await _nativeBridge.startBatchUpdate();
 
     try {
-      // Process updates in parallel batches
       final batchSize =
           (_maxWorkers * 2); // Process more than workers to keep them busy
       for (int i = 0; i < sortedUpdates.length; i += batchSize) {
@@ -478,17 +420,14 @@ class DCFEngine {
             : sortedUpdates.length;
         final batch = sortedUpdates.sublist(i, batchEnd);
 
-        // Process batch concurrently
         final futures = <Future>[];
         for (final componentId in batch) {
           futures.add(_updateComponentById(componentId));
         }
 
-        // Wait for all in batch to complete
         await Future.wait(futures);
       }
 
-      // O(1) - Commit all batched updates at once
       EngineDebugLogger.logBridge('COMMIT_BATCH', 'root');
       await _nativeBridge.commitBatchUpdate();
       EngineDebugLogger.log('BATCH_COMMIT_SUCCESS',
@@ -498,7 +437,6 @@ class DCFEngine {
           (_performanceStats['totalConcurrentUpdates'] as int) +
               sortedUpdates.length;
     } catch (e) {
-      // O(1) - Cancel batch if there's an error
       EngineDebugLogger.logBridge('CANCEL_BATCH', 'root',
           data: {'Error': e.toString()});
       await _nativeBridge.cancelBatchUpdate();
@@ -513,7 +451,6 @@ class DCFEngine {
   Future<void> _processPendingUpdatesSerially() async {
     EngineDebugLogger.log('BATCH_SERIAL', 'Processing updates serially');
 
-    // O(n log n) - Sort updates by priority
     final sortedUpdates = PriorityUtils.sortByPriority(
         _pendingUpdates.toList(), _componentPriorities);
 
@@ -523,19 +460,16 @@ class DCFEngine {
     EngineDebugLogger.log('BATCH_PRIORITY_SORTED',
         'Sorted ${sortedUpdates.length} updates by priority');
 
-    // O(1) - Start batch update in native layer
     EngineDebugLogger.logBridge('START_BATCH', 'root');
     await _nativeBridge.startBatchUpdate();
 
     try {
-      // O(n * m) where n = updates, m = average update complexity
       for (final componentId in sortedUpdates) {
         EngineDebugLogger.log(
             'BATCH_PROCESS_COMPONENT', 'Processing update for: $componentId');
         await _updateComponentById(componentId);
       }
 
-      // O(1) - Commit all batched updates at once
       EngineDebugLogger.logBridge('COMMIT_BATCH', 'root');
       await _nativeBridge.commitBatchUpdate();
       EngineDebugLogger.log('BATCH_COMMIT_SUCCESS',
@@ -545,7 +479,6 @@ class DCFEngine {
           (_performanceStats['totalSerialUpdates'] as int) +
               sortedUpdates.length;
     } catch (e) {
-      // O(1) - Cancel batch if there's an error
       EngineDebugLogger.logBridge('CANCEL_BATCH', 'root',
           data: {'Error': e.toString()});
       await _nativeBridge.cancelBatchUpdate();
@@ -561,7 +494,6 @@ class DCFEngine {
     EngineDebugLogger.log('COMPONENT_UPDATE_START',
         'Starting update for component: $componentId');
 
-    // Component lookup - only StatefulComponents can be updated
     final component = _statefulComponents[componentId];
     if (component == null) {
       EngineDebugLogger.log('COMPONENT_UPDATE_NOT_FOUND',
@@ -570,7 +502,6 @@ class DCFEngine {
     }
 
     try {
-      // O(1) - Call lifecycle interceptor before update
       final lifecycleInterceptor = VDomExtensionRegistry.instance
           .getLifecycleInterceptor(component.runtimeType);
       if (lifecycleInterceptor != null) {
@@ -584,31 +515,26 @@ class DCFEngine {
         lifecycleInterceptor.beforeUpdate(component, context);
       }
 
-      // O(1) - Perform component-specific update preparation
       if (component is DCFStatefulComponent) {
         EngineDebugLogger.log(
             'COMPONENT_PREPARE', 'Preparing StatefulComponent for render');
         component.prepareForRender();
       }
 
-      // O(1) - Store the previous rendered node before re-rendering
       final oldRenderedNode = component.renderedNode;
       EngineDebugLogger.log('COMPONENT_OLD_NODE', 'Stored old rendered node',
           extra: {'HasOldNode': oldRenderedNode != null});
 
       _previousRenderedNodes[componentId] = oldRenderedNode;
 
-      // O(component render complexity) - Force re-render by clearing cached rendered node
       component.renderedNode = null;
       final newRenderedNode = component.renderedNode;
 
       EngineDebugLogger.log('COMPONENT_NEW_NODE', 'Generated new rendered node',
           component: newRenderedNode.runtimeType.toString());
 
-      // O(1) - Set parent relationship for the new rendered node
       newRenderedNode.parent = component;
 
-      // O(tree depth) - Reconcile trees to apply minimal changes
       final previousRenderedNode = _previousRenderedNodes[componentId];
       if (previousRenderedNode != null) {
         EngineDebugLogger.log(
@@ -656,7 +582,6 @@ class DCFEngine {
         }
       }
 
-      // O(hooks count) - Run lifecycle methods with phased effects
       EngineDebugLogger.log(
           'LIFECYCLE_DID_UPDATE', 'Calling componentDidUpdate');
       component.componentDidUpdate({});
@@ -677,7 +602,6 @@ class DCFEngine {
         component.runInsertionEffects();
       }
 
-      // O(1) - Call lifecycle interceptor after update
       if (lifecycleInterceptor != null) {
         EngineDebugLogger.log(
             'LIFECYCLE_INTERCEPTOR', 'Calling afterUpdate interceptor');
@@ -706,11 +630,9 @@ class DCFEngine {
         viewId: node.effectiveNativeViewId, parentId: parentViewId);
 
     try {
-      // O(children count) - Handle Fragment nodes
       if (node is DCFFragment) {
         EngineDebugLogger.log('RENDER_FRAGMENT', 'Rendering fragment node');
 
-        // O(1) - Call lifecycle interceptor before mount
         final lifecycleInterceptor = VDomExtensionRegistry.instance
             .getLifecycleInterceptor(node.runtimeType);
         if (lifecycleInterceptor != null) {
@@ -722,15 +644,10 @@ class DCFEngine {
           lifecycleInterceptor.beforeMount(node, context);
         }
 
-        // O(1) - Mount the fragment
         if (!node.isMounted) {
           EngineDebugLogger.logMount(node, context: 'Fragment mounting');
           node.mount(node.parent);
         }
-        // Todo: Remove this and handle diffrently not in the engine
-        // portals have no place in the engine logic, they are handled by the portal manager
-        // or somewhere but not in the engine as the engine is dedicated to rendering
-        // O(1) - Check if this fragment is a portal placeholder
         if (node.metadata != null &&
             node.metadata!['isPortalPlaceholder'] == true) {
           EngineDebugLogger.log(
@@ -746,7 +663,6 @@ class DCFEngine {
           }
         }
 
-        // O(1) - Check if this fragment is a portal target
         if (node.metadata != null && node.metadata!['isPortalTarget'] == true) {
           final targetId = node.metadata!['targetId'] as String?;
           EngineDebugLogger.log(
@@ -754,7 +670,6 @@ class DCFEngine {
               extra: {'TargetId': targetId});
         }
 
-        // O(children count * render complexity) - Regular fragment - render children directly to parent
         int childIndex = index ?? 0;
         final childIds = <String>[];
 
@@ -769,13 +684,11 @@ class DCFEngine {
           }
         }
 
-        // O(1) - Store child IDs for cleanup later
         node.childViewIds = childIds;
         EngineDebugLogger.log(
             'FRAGMENT_CHILDREN_COMPLETE', 'Fragment children rendered',
             extra: {'ChildCount': childIds.length, 'ChildIds': childIds});
 
-        // O(1) - Call lifecycle interceptor after mount
         if (lifecycleInterceptor != null) {
           final context = VDomLifecycleContext(
             scheduleUpdate: () {},
@@ -788,13 +701,11 @@ class DCFEngine {
         return null; // Fragments don't have their own native view ID
       }
 
-      // O(component render complexity + children render complexity) - Handle Component nodes with enhanced phased effects
       if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
         EngineDebugLogger.log('RENDER_COMPONENT', 'Rendering component node',
             component: node.runtimeType.toString());
 
         try {
-          // O(1) - Call lifecycle interceptor before mount
           final lifecycleInterceptor = VDomExtensionRegistry.instance
               .getLifecycleInterceptor(node.runtimeType);
           if (lifecycleInterceptor != null) {
@@ -807,10 +718,8 @@ class DCFEngine {
             lifecycleInterceptor.beforeMount(node, context);
           }
 
-          // O(1) - Register the component
           registerComponent(node);
 
-          // O(component render complexity) - Get the rendered content
           final renderedNode = node.renderedNode;
           if (renderedNode == null) {
             EngineDebugLogger.logRender('ERROR', node,
@@ -822,20 +731,16 @@ class DCFEngine {
               'COMPONENT_RENDERED_NODE', 'Component rendered content',
               extra: {'RenderedType': renderedNode.runtimeType.toString()});
 
-          // O(1) - Set parent relationship
           renderedNode.parent = node;
 
-          // O(rendered tree complexity) - Render the content
           final viewId = await renderToNative(renderedNode,
               parentViewId: parentViewId, index: index);
 
-          // O(1) - Store the view ID
           node.contentViewId = viewId;
           EngineDebugLogger.log(
               'COMPONENT_VIEW_ID', 'Component view ID assigned',
               extra: {'ViewId': viewId});
 
-          // O(hooks count) - Enhanced: Mount component with phased effects
           if (node is DCFStatefulComponent && !node.isMounted) {
             EngineDebugLogger.log('LIFECYCLE_DID_MOUNT',
                 'Calling componentDidMount for StatefulComponent');
@@ -845,7 +750,6 @@ class DCFEngine {
                 'LIFECYCLE_EFFECTS_IMMEDIATE', 'Running immediate effects');
             node.runEffectsAfterRender();
 
-            // O(1) - Queue for later effect phases
             _componentsWaitingForLayout.add(node.instanceId);
             _componentsWaitingForInsertion.add(node.instanceId);
 
@@ -856,7 +760,6 @@ class DCFEngine {
             node.componentDidMount();
           }
 
-          // O(1) - Call lifecycle interceptor after mount
           if (lifecycleInterceptor != null) {
             final context = VDomLifecycleContext(
               scheduleUpdate: () =>
@@ -872,7 +775,6 @@ class DCFEngine {
         } catch (error, stackTrace) {
           EngineDebugLogger.logRender('ERROR', node, error: error.toString());
 
-          // O(tree depth) - Try to find nearest error boundary
           final errorBoundary = _findNearestErrorBoundary(node);
           if (errorBoundary != null) {
             EngineDebugLogger.log('ERROR_BOUNDARY_HANDLE',
@@ -886,14 +788,12 @@ class DCFEngine {
           rethrow;
         }
       }
-      // O(element render complexity + children render complexity) - Handle Element nodes
       else if (node is DCFElement) {
         EngineDebugLogger.log('RENDER_ELEMENT', 'Rendering element node',
             extra: {'ElementType': node.type});
         return await _renderElementToNative(node,
             parentViewId: parentViewId, index: index);
       }
-      // O(1) - Handle EmptyVDomNode
       else if (node is EmptyVDomNode) {
         EngineDebugLogger.log('RENDER_EMPTY', 'Rendering empty node');
         return null; // Empty nodes don't create native views
@@ -937,7 +837,6 @@ class DCFEngine {
     _isTreeComplete = true;
     EngineDebugLogger.log('TREE_COMPLETE', 'Component tree marked as complete');
 
-    // O(waiting components count) - Run insertion effects for all waiting components
     for (final componentId in _componentsWaitingForInsertion) {
       final component = _statefulComponents[componentId];
       if (component != null) {
@@ -970,16 +869,13 @@ class DCFEngine {
           'Index': index
         });
 
-    // O(1) - Use existing view ID or generate a new one
     final viewId = element.nativeViewId ?? _generateViewId();
 
-    // O(1) - Store map from view ID to node
     _nodesByViewId[viewId] = element;
     element.nativeViewId = viewId;
     EngineDebugLogger.log('ELEMENT_VIEW_MAPPING', 'Mapped element to view ID',
         extra: {'ViewId': viewId, 'ElementType': element.type});
 
-    // O(1) - Create the view
     EngineDebugLogger.logBridge('CREATE_VIEW', viewId, data: {
       'ElementType': element.type,
       'Props': element.elementProps.keys.toList()
@@ -993,14 +889,12 @@ class DCFEngine {
       return null;
     }
 
-    // O(1) - If parent is specified, attach to parent
     if (parentViewId != null) {
       EngineDebugLogger.logBridge('ATTACH_VIEW', viewId,
           data: {'ParentViewId': parentViewId, 'Index': index ?? 0});
       await _nativeBridge.attachView(viewId, parentViewId, index ?? 0);
     }
 
-    // O(event types count) - Register event listeners
     final eventTypes = element.eventTypes;
     if (eventTypes.isNotEmpty) {
       EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', viewId,
@@ -1008,7 +902,6 @@ class DCFEngine {
       await _nativeBridge.addEventListeners(viewId, eventTypes);
     }
 
-    // O(children count * child render complexity) - Render children
     final childIds = <String>[];
     EngineDebugLogger.log('ELEMENT_CHILDREN_START',
         'Rendering ${element.children.length} children');
@@ -1021,7 +914,6 @@ class DCFEngine {
       }
     }
 
-    // O(children count) - Set children order
     if (childIds.isNotEmpty) {
       EngineDebugLogger.logBridge('SET_CHILDREN', viewId,
           data: {'ChildIds': childIds});
@@ -1039,7 +931,6 @@ class DCFEngine {
     EngineDebugLogger.logReconcile('START', oldNode, newNode,
         reason: 'Beginning reconciliation');
 
-    // O(1) - Check for custom reconciliation handler first
     final customHandler = VDomExtensionRegistry.instance
         .getReconciliationHandler(newNode.runtimeType);
     if (customHandler != null && customHandler.shouldHandle(oldNode, newNode)) {
@@ -1060,10 +951,8 @@ class DCFEngine {
       return;
     }
 
-    // O(1) - Transfer important parent reference first
     newNode.parent = oldNode.parent;
 
-    // O(1) - If the node types are completely different, replace the node entirely
     if (oldNode.runtimeType != newNode.runtimeType) {
       EngineDebugLogger.logReconcile('REPLACE_TYPE', oldNode, newNode,
           reason: 'Different node types');
@@ -1071,7 +960,6 @@ class DCFEngine {
       return;
     }
 
-    // O(1) - Critical hot reload fix: If the keys are different, replace the component entirely
     if (oldNode.key != newNode.key) {
       EngineDebugLogger.logReconcile('REPLACE_KEY', oldNode, newNode,
           reason: 'Different keys - hot reload fix');
@@ -1079,7 +967,6 @@ class DCFEngine {
       return;
     }
 
-    // O(element reconciliation complexity) - Handle different node types
     if (oldNode is DCFElement && newNode is DCFElement) {
       if (oldNode.type != newNode.type) {
         EngineDebugLogger.logReconcile('REPLACE_ELEMENT_TYPE', oldNode, newNode,
@@ -1091,7 +978,6 @@ class DCFEngine {
         await _reconcileElement(oldNode, newNode);
       }
     }
-    // O(component reconciliation complexity) - Handle component nodes
     else if (oldNode is DCFStatefulComponent && newNode is DCFStatefulComponent) {
       if (oldNode == newNode) {
         newNode.nativeViewId = oldNode.nativeViewId;
@@ -1108,55 +994,42 @@ class DCFEngine {
       EngineDebugLogger.logReconcile('UPDATE_STATEFUL', oldNode, newNode,
           reason: 'Reconciling StatefulComponent');
 
-      // O(1) - Transfer important properties between nodes
       newNode.nativeViewId = oldNode.nativeViewId;
       newNode.contentViewId = oldNode.contentViewId;
 
-      // O(1) - Update component tracking
       _statefulComponents[newNode.instanceId] = newNode;
       newNode.scheduleUpdate = () => _scheduleComponentUpdate(newNode);
 
-      // O(1) - Register the new component instance
       registerComponent(newNode);
 
-      // O(rendered tree size) - Handle reconciliation of the rendered trees
       final oldRenderedNode = oldNode.renderedNode;
       final newRenderedNode = newNode.renderedNode;
 
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
-    // Handle stateless components (React functional components - no internal tracking needed)
     else if (oldNode is DCFStatelessComponent && newNode is DCFStatelessComponent) {
       EngineDebugLogger.logReconcile('UPDATE_STATELESS', oldNode, newNode,
           reason:
               'StatelessComponent reconciliation - always check rendered content');
 
-      // O(1) - Transfer important properties between nodes
       newNode.nativeViewId = oldNode.nativeViewId;
       newNode.contentViewId = oldNode.contentViewId;
 
-      // O(1) - Register the new component instance
       registerComponent(newNode);
 
-      // ✅ ALWAYS reconcile rendered content to ensure prop updates are applied efficiently
-      // Don't early exit based on component equality - let the rendered tree reconciliation
-      // handle the efficient diffing of actual changes
       final oldRenderedNode = oldNode.renderedNode;
       final newRenderedNode = newNode.renderedNode;
 
       await _reconcile(oldRenderedNode, newRenderedNode);
     }
 
-    // O(fragment children reconciliation) - Handle Fragment nodes
     else if (oldNode is DCFFragment && newNode is DCFFragment) {
       EngineDebugLogger.logReconcile('UPDATE_FRAGMENT', oldNode, newNode,
           reason: 'Reconciling Fragment');
 
-      // O(1) - Transfer children relationships
       newNode.parent = oldNode.parent;
       newNode.childViewIds = oldNode.childViewIds;
 
-      // O(children reconciliation complexity) - Reconcile fragment children directly
       if (oldNode.children.isNotEmpty || newNode.children.isNotEmpty) {
         final parentViewId = _findParentViewId(oldNode); // O(tree depth)
         if (parentViewId != null) {
@@ -1172,7 +1045,6 @@ class DCFEngine {
         }
       }
     }
-    // O(1) - Handle empty nodes
     else if (oldNode is EmptyVDomNode && newNode is EmptyVDomNode) {
       EngineDebugLogger.logReconcile('SKIP_EMPTY', oldNode, newNode,
           reason: 'Both nodes are empty');
@@ -1193,7 +1065,6 @@ class DCFEngine {
           'OldViewId': oldNode.effectiveNativeViewId
         });
 
-    // O(1) - Call lifecycle interceptor before unmount
     final lifecycleInterceptor = VDomExtensionRegistry.instance
         .getLifecycleInterceptor(oldNode.runtimeType);
     if (lifecycleInterceptor != null) {
@@ -1205,17 +1076,14 @@ class DCFEngine {
       lifecycleInterceptor.beforeUnmount(oldNode, context);
     }
 
-    // O(disposal complexity) - Properly dispose of old component instances
     await _disposeOldComponent(oldNode);
 
-    // O(1) - Can't replace if the old node has no view ID
     if (oldNode.effectiveNativeViewId == null) {
       EngineDebugLogger.log(
           'REPLACE_NODE_NO_VIEW_ID', 'Old node has no view ID, cannot replace');
       return;
     }
 
-    // O(tree depth) - Find parent info for placing the new node
     final parentViewId = _findParentViewId(oldNode);
     if (parentViewId == null) {
       EngineDebugLogger.log(
@@ -1223,12 +1091,10 @@ class DCFEngine {
       return;
     }
 
-    // O(siblings count) - Find index of node in parent
     final index = _findNodeIndexInParent(oldNode);
     EngineDebugLogger.log('REPLACE_NODE_POSITION', 'Found replacement position',
         extra: {'ParentViewId': parentViewId, 'Index': index});
 
-    // O(1) - Temporarily exit batch mode to ensure atomic delete+create
     final wasBatchMode = _batchUpdateInProgress;
     if (wasBatchMode) {
       EngineDebugLogger.log('REPLACE_BATCH_PAUSE',
@@ -1238,7 +1104,6 @@ class DCFEngine {
     }
 
     try {
-      // O(1) - Store the old view ID and event types for reuse
       final oldViewId = oldNode.effectiveNativeViewId!;
       final oldEventTypes =
           (oldNode is DCFElement) ? oldNode.eventTypes : <String>[];
@@ -1248,7 +1113,6 @@ class DCFEngine {
       EngineDebugLogger.log('REPLACE_EVENT_TYPES', 'Comparing event types',
           extra: {'OldEvents': oldEventTypes, 'NewEvents': newEventTypes});
 
-      // O(tree render complexity) - Special case: component that renders a fragment
       if (newNode is DCFStatefulComponent || newNode is DCFStatelessComponent) {
         final renderedNode = newNode.renderedNode;
         if (renderedNode is DCFFragment) {
@@ -1264,16 +1128,13 @@ class DCFEngine {
         }
       }
 
-      // O(1) - Reuse the same view ID to preserve native event listener connections
       newNode.nativeViewId = oldViewId;
       EngineDebugLogger.log(
           'REPLACE_REUSE_VIEW_ID', 'Reusing view ID for event preservation',
           extra: {'ViewId': oldViewId});
 
-      // O(1) - Update the mapping to point to the new node immediately
       _nodesByViewId[oldViewId] = newNode;
 
-      // O(event types count) - Only update event listeners if they changed
       final oldEventSet = Set<String>.from(oldEventTypes);
       final newEventSet = Set<String>.from(newEventTypes);
 
@@ -1282,7 +1143,6 @@ class DCFEngine {
         EngineDebugLogger.log(
             'REPLACE_UPDATE_EVENTS', 'Updating event listeners');
 
-        // O(removed events count) - Remove old event listeners that are no longer needed
         final eventsToRemove = oldEventSet.difference(newEventSet);
         if (eventsToRemove.isNotEmpty) {
           EngineDebugLogger.logBridge('REMOVE_EVENT_LISTENERS', oldViewId,
@@ -1291,7 +1151,6 @@ class DCFEngine {
               oldViewId, eventsToRemove.toList());
         }
 
-        // O(added events count) - Add new event listeners
         final eventsToAdd = newEventSet.difference(oldEventSet);
         if (eventsToAdd.isNotEmpty) {
           EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', oldViewId,
@@ -1301,11 +1160,9 @@ class DCFEngine {
         }
       }
 
-      // O(1) - Delete the old view completely
       EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
       await _nativeBridge.deleteView(oldViewId);
 
-      // O(tree render complexity) - Create the new view with the preserved view ID
       final newViewId = await renderToNative(newNode,
           parentViewId: parentViewId, index: index);
 
@@ -1318,7 +1175,6 @@ class DCFEngine {
             'Node replacement failed - no view ID returned');
       }
     } finally {
-      // O(1) - Resume batch mode if we were previously in batch mode
       if (wasBatchMode) {
         EngineDebugLogger.log('REPLACE_BATCH_RESUME', 'Resuming batch mode');
         await _nativeBridge.startBatchUpdate();
@@ -1326,7 +1182,6 @@ class DCFEngine {
       }
     }
 
-    // O(1) - Call lifecycle interceptor after unmount
     if (lifecycleInterceptor != null) {
       final context = VDomLifecycleContext(
         scheduleUpdate: () {},
@@ -1342,7 +1197,6 @@ class DCFEngine {
     EngineDebugLogger.logUnmount(oldNode, context: 'Disposing old component');
 
     try {
-      // O(1) - Call lifecycle interceptor before unmount
       final lifecycleInterceptor = VDomExtensionRegistry.instance
           .getLifecycleInterceptor(oldNode.runtimeType);
       if (lifecycleInterceptor != null) {
@@ -1354,22 +1208,18 @@ class DCFEngine {
         lifecycleInterceptor.beforeUnmount(oldNode, context);
       }
 
-      // O(hooks count) - Handle StatefulComponent disposal
       if (oldNode is DCFStatefulComponent) {
         EngineDebugLogger.log('DISPOSE_STATEFUL', 'Disposing StatefulComponent',
             extra: {'InstanceId': oldNode.instanceId});
 
-        // O(1) - Remove from component tracking first to prevent further updates
         _statefulComponents.remove(oldNode.instanceId);
         _pendingUpdates.remove(oldNode.instanceId);
         _previousRenderedNodes.remove(oldNode.instanceId);
         _componentPriorities.remove(oldNode.instanceId);
 
-        // O(1) - Remove from effect queues
         _componentsWaitingForLayout.remove(oldNode.instanceId);
         _componentsWaitingForInsertion.remove(oldNode.instanceId);
 
-        // O(hooks count) - Call lifecycle cleanup
         try {
           oldNode.componentWillUnmount();
           EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
@@ -1380,18 +1230,14 @@ class DCFEngine {
               extra: {'Error': e.toString()});
         }
 
-        // O(rendered tree size) - Recursively dispose rendered content
         await _disposeOldComponent(oldNode.renderedNode);
       }
-      // Handle StatelessComponent disposal (React functional components)
       else if (oldNode is DCFStatelessComponent) {
         EngineDebugLogger.log(
             'DISPOSE_STATELESS', 'Disposing StatelessComponent',
             extra: {'ComponentType': oldNode.runtimeType.toString()});
 
-        // No internal tracking to remove - StatelessComponents are stateless
 
-        // Call lifecycle cleanup
         try {
           oldNode.componentWillUnmount();
           EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
@@ -1402,10 +1248,8 @@ class DCFEngine {
               extra: {'Error': e.toString()});
         }
 
-        // O(rendered tree size) - Recursively dispose rendered content
         await _disposeOldComponent(oldNode.renderedNode);
       }
-      // O(children count * disposal complexity) - Handle DCFElement disposal
       else if (oldNode is DCFElement) {
         EngineDebugLogger.log('DISPOSE_ELEMENT', 'Disposing DCFElement',
             extra: {
@@ -1413,13 +1257,11 @@ class DCFEngine {
               'ChildCount': oldNode.children.length
             });
 
-        // Recursively dispose child components
         for (final child in oldNode.children) {
           await _disposeOldComponent(child);
         }
       }
 
-      // O(1) - Remove from view tracking
       if (oldNode.effectiveNativeViewId != null) {
         _nodesByViewId.remove(oldNode.effectiveNativeViewId);
         EngineDebugLogger.log(
@@ -1427,7 +1269,6 @@ class DCFEngine {
             extra: {'ViewId': oldNode.effectiveNativeViewId});
       }
 
-      // O(1) - Call lifecycle interceptor after unmount
       if (lifecycleInterceptor != null) {
         final context = VDomLifecycleContext(
           scheduleUpdate: () {},
@@ -1450,14 +1291,12 @@ class DCFEngine {
     EngineDebugLogger.log('CREATE_ROOT_START', 'Creating root component',
         component: component.runtimeType.toString());
 
-    // O(tree disposal complexity) - On hot restart, tear down old VDOM state
     if (rootComponent != null && rootComponent != component) {
       EngineDebugLogger.log('CREATE_ROOT_HOT_RESTART',
           'Hot restart detected. Tearing down old VDOM state.');
 
       await _disposeOldComponent(rootComponent!);
 
-      // Clear all VDOM tracking maps
       _statefulComponents.clear();
       _nodesByViewId.clear();
       _previousRenderedNodes.clear();
@@ -1465,7 +1304,6 @@ class DCFEngine {
       _componentPriorities.clear();
       _errorBoundaries.clear();
 
-      // O(1) - Clear effect queues
       _componentsWaitingForLayout.clear();
       _componentsWaitingForInsertion.clear();
       _isTreeComplete = false;
@@ -1476,7 +1314,6 @@ class DCFEngine {
 
       rootComponent = component;
       
-      // CRITICAL FIX: Wrap initial mount in batch for atomic rendering
       await _nativeBridge.startBatchUpdate();
       await renderToNative(component, parentViewId: "root");
       await _nativeBridge.commitBatchUpdate();
@@ -1490,7 +1327,6 @@ class DCFEngine {
           'CREATE_ROOT_FIRST', 'Creating first root component');
       rootComponent = component;
 
-      // CRITICAL FIX: Wrap initial mount in batch for atomic rendering
       await _nativeBridge.startBatchUpdate();
       final viewId = await renderToNative(component, parentViewId: "root");
       await _nativeBridge.commitBatchUpdate();
@@ -1516,13 +1352,10 @@ class DCFEngine {
         'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
 
     try {
-      // Simply mark all stateful components as needing update
-      // This is exactly what happens during normal state changes
       for (final component in _statefulComponents.values) {
         _scheduleComponentUpdate(component);
       }
 
-      // Process all pending updates - this will naturally re-render everything
       await _processPendingUpdates();
 
       EngineDebugLogger.log(
@@ -1538,7 +1371,6 @@ class DCFEngine {
   String? _findParentViewId(DCFComponentNode node) {
     DCFComponentNode? current = node.parent;
 
-    // Find the first parent with a native view ID
     while (current != null) {
       final viewId = current.effectiveNativeViewId;
       if (viewId != null && viewId.isNotEmpty) {
@@ -1563,7 +1395,6 @@ class DCFEngine {
       return 0;
     }
 
-    // Handle different parent types
     if (node.parent is DCFElement) {
       final parent = node.parent as DCFElement;
       return parent.children.indexOf(node);
@@ -1572,8 +1403,6 @@ class DCFEngine {
       return parent.children.indexOf(node);
     } else if (node.parent is DCFStatefulComponent ||
         node.parent is DCFStatelessComponent) {
-      // Component is the direct child of another component
-      // In this case, it takes the place of its parent's rendered content
       return _findNodeIndexInParent(node.parent!);
     }
 
@@ -1589,17 +1418,13 @@ class DCFEngine {
       'ViewId': oldElement.nativeViewId
     });
 
-    // O(props count + event types count + children reconciliation) - Update properties if the element has a native view
     if (oldElement.nativeViewId != null) {
-      // O(1) - Copy native view ID to new element for tracking
       newElement.nativeViewId = oldElement.nativeViewId;
 
-      // O(1) - Always update the tracking map to maintain event handler lookup
       _nodesByViewId[oldElement.nativeViewId!] = newElement;
       EngineDebugLogger.log(
           'RECONCILE_UPDATE_TRACKING', 'Updated node tracking map');
 
-      // O(event types count) - Handle event registration changes during reconciliation
       final oldEventTypes = oldElement.eventTypes;
       final newEventTypes = newElement.eventTypes;
 
@@ -1631,11 +1456,9 @@ class DCFEngine {
         }
       }
 
-      // O(props count) - Find changed props using proper diffing algorithm
       final changedProps = _diffProps(
           oldElement.type, oldElement.elementProps, newElement.elementProps);
 
-      // O(1) - Update props if there are changes
       if (changedProps.isNotEmpty) {
         EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
             data: {'ChangedProps': changedProps.keys.toList()});
@@ -1645,7 +1468,6 @@ class DCFEngine {
             'RECONCILE_NO_PROP_CHANGES', 'No prop changes detected');
       }
 
-      // O(children reconciliation complexity) - Reconcile children with the most efficient algorithm
       EngineDebugLogger.log(
           'RECONCILE_CHILDREN_START', 'Starting children reconciliation',
           extra: {
@@ -1667,7 +1489,6 @@ class DCFEngine {
     int changedCount = 0;
     int removedCount = 0;
 
-    // O(new props count) - Find added or changed props
     for (final entry in newProps.entries) {
       final key = entry.key;
       final value = entry.value;
@@ -1683,7 +1504,6 @@ class DCFEngine {
       }
     }
 
-    // O(old props count) - Find removed props
     for (final key in oldProps.keys) {
       if (!newProps.containsKey(key) && oldProps[key] is! Function) {
         changedProps[key] = null;
@@ -1691,7 +1511,6 @@ class DCFEngine {
       }
     }
 
-    // O(old props count) - Handle event handlers - preserve them if not changed
     for (final key in oldProps.keys) {
       if (key.startsWith('on') &&
           oldProps[key] is Function &&
@@ -1708,7 +1527,6 @@ class DCFEngine {
           'Total': changedProps.length
         });
 
-    // ✅ GENERIC: Check for registered prop diff interceptors
     final interceptors =
         VDomExtensionRegistry.instance.getPropDiffInterceptors();
     for (final interceptor in interceptors) {
@@ -1735,14 +1553,12 @@ class DCFEngine {
           'ViewId': oldElement.nativeViewId
         });
 
-    // O(1) - Fast path: no children
     if (oldChildren.isEmpty && newChildren.isEmpty) {
       EngineDebugLogger.log(
           'RECONCILE_CHILDREN_EMPTY', 'No children to reconcile');
       return;
     }
 
-    // O(children count) - Check if children have keys for optimized reconciliation
     final hasKeys = _childrenHaveKeys(newChildren);
     EngineDebugLogger.log(
         'RECONCILE_CHILDREN_STRATEGY', 'Choosing reconciliation strategy',
@@ -1761,7 +1577,6 @@ class DCFEngine {
   bool _childrenHaveKeys(List<DCFComponentNode> children) {
     if (children.isEmpty) return false;
 
-    // Only use keyed reconciliation if ALL children have keys
     for (var child in children) {
       if (child.key == null) return false;
     }
@@ -1804,7 +1619,6 @@ class DCFEngine {
           'NewCount': newChildren.length
         });
 
-    // O(old children count) - Create map of old children by key for O(1) lookup
     final oldChildrenMap = <String?, DCFComponentNode>{};
     final oldChildOrderByKey = <String?, int>{};
     for (int i = 0; i < oldChildren.length; i++) {
@@ -1821,7 +1635,6 @@ class DCFEngine {
     final processedOldChildren = <DCFComponentNode>{};
     bool hasStructuralChanges = false;
 
-    // O(new children count * reconciliation complexity) - Process each new child
     for (int i = 0; i < newChildren.length; i++) {
       final newChild = newChildren[i];
       final key = _getNodeKey(newChild, i);
@@ -1861,7 +1674,6 @@ class DCFEngine {
       }
     }
 
-    // O(unprocessed children count) - Remove old children that aren't in the new list
     for (var oldChild in oldChildren) {
       if (!processedOldChildren.contains(oldChild)) {
         hasStructuralChanges = true;
@@ -1887,7 +1699,6 @@ class DCFEngine {
       }
     }
 
-    // O(children count) - Only call setChildren if there were structural changes
     if (hasStructuralChanges && updatedChildIds.isNotEmpty) {
       EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
         'ChildIds': updatedChildIds,
@@ -1921,7 +1732,6 @@ class DCFEngine {
     final commonLength = math.min(oldChildren.length, newChildren.length);
     bool hasStructuralChanges = false;
 
-    // O(common length * reconciliation complexity) - Update common children
     for (int i = 0; i < commonLength; i++) {
       final oldChild = oldChildren[i];
       final newChild = newChildren[i];
@@ -1929,8 +1739,6 @@ class DCFEngine {
       EngineDebugLogger.log(
           'RECONCILE_SIMPLE_UPDATE', 'Updating child at index $i');
 
-      // Smart conditional rendering: if same position but very different components,
-      // replace instead of reconcile to prevent state bleeding
       if (_shouldReplaceAtSamePosition(oldChild, newChild)) {
         EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE',
             'Replacing child at index $i due to conditional rendering pattern');
@@ -1959,7 +1767,6 @@ class DCFEngine {
         }
       }
     } else if (oldChildren.length > newChildren.length) {
-      // O(old - common) - Remove extra old children
       hasStructuralChanges = true;
       EngineDebugLogger.log('RECONCILE_SIMPLE_REMOVE',
           'Removing ${oldChildren.length - commonLength} old children');
@@ -1986,7 +1793,6 @@ class DCFEngine {
       }
     }
 
-    // O(children count) - Only call setChildren if there were structural changes
     if (hasStructuralChanges && updatedChildIds.isNotEmpty) {
       EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
         'ChildIds': updatedChildIds,
@@ -2109,7 +1915,6 @@ class DCFEngine {
     await _nativeBridge.setChildren(viewId, childIds);
   }
 
-  //? review (legacy -no more needed)
   /// O(view count) - Delete views (for portal cleanup)
   Future<void> deleteViews(List<String> viewIds) async {
     await isReady;
@@ -2144,7 +1949,6 @@ class DCFEngine {
       'ComponentsWaitingForInsertion': _componentsWaitingForInsertion.length,
     });
 
-    // O(priorities count) - Print priority statistics
     final priorityStats = <String, int>{};
     for (final priority in _componentPriorities.values) {
       priorityStats[priority.name] = (priorityStats[priority.name] ?? 0) + 1;
@@ -2169,7 +1973,6 @@ class DCFEngine {
   Map<String, dynamic> getPriorityStats() {
     final stats = <String, dynamic>{};
 
-    // O(priorities count) - Count components by priority
     final priorityCounts = <ComponentPriority, int>{};
     for (final priority in _componentPriorities.values) {
       priorityCounts[priority] = (priorityCounts[priority] ?? 0) + 1;
@@ -2211,7 +2014,6 @@ class DCFEngine {
     EngineDebugLogger.log(
         'FLUSH_HIGH_PRIORITY', 'Flushing high priority updates');
 
-    // O(priorities count) - Check if we have high priority updates
     final hasHighPriority = _componentPriorities.values.any((priority) =>
         priority == ComponentPriority.immediate ||
         priority == ComponentPriority.high);
@@ -2269,7 +2071,6 @@ class DCFEngine {
   /// Update performance statistics
   void _updatePerformanceStats(bool wasConcurrent, Duration processingTime) {
     if (wasConcurrent) {
-      // Update concurrent averages
       final currentAvg = _performanceStats['averageConcurrentTime'] as double;
       final totalConcurrent =
           _performanceStats['totalConcurrentUpdates'] as int;
@@ -2283,7 +2084,6 @@ class DCFEngine {
             processingTime.inMilliseconds.toDouble();
       }
     } else {
-      // Update serial averages
       final currentAvg = _performanceStats['averageSerialTime'] as double;
       final totalSerial = _performanceStats['totalSerialUpdates'] as int;
 
@@ -2297,7 +2097,6 @@ class DCFEngine {
       }
     }
 
-    // Calculate efficiency
     final avgConcurrent = _performanceStats['averageConcurrentTime'] as double;
     final avgSerial = _performanceStats['averageSerialTime'] as double;
 
@@ -2320,7 +2119,6 @@ class DCFEngine {
     EngineDebugLogger.log(
         'VDOM_CONCURRENT_SHUTDOWN', 'Shutting down concurrent processing');
 
-    // Kill all worker isolates
     for (final isolate in _workerIsolates) {
       try {
         isolate.kill();
@@ -2330,7 +2128,6 @@ class DCFEngine {
       }
     }
 
-    // Clear collections
     _workerIsolates.clear();
     _workerPorts.clear();
     _workerAvailable.clear();
@@ -2342,7 +2139,6 @@ class DCFEngine {
 
   /// Worker isolate entry point - handles real concurrent processing
   /// ? Experimental --dead for now
-  // ignore: unused_element
   static void _workerIsolateEntry(SendPort mainSendPort) {
     final receivePort = ReceivePort();
     mainSendPort.send(receivePort.sendPort);
@@ -2378,7 +2174,6 @@ class DCFEngine {
 
         final processingTime = DateTime.now().difference(startTime);
 
-        // Send result back to main thread
         mainSendPort.send({
           'type': 'result',
           'id': taskId,
@@ -2387,7 +2182,6 @@ class DCFEngine {
           'processingTimeMs': processingTime.inMilliseconds,
         });
       } catch (e) {
-        // Send error back to main thread
         final Map<String, dynamic> safeMessageData =
             message is Map<String, dynamic> ? message : {};
         mainSendPort.send({
@@ -2416,18 +2210,15 @@ class DCFEngine {
       };
     }
 
-    // Simulate heavy tree diffing algorithm
     await Future.delayed(Duration(milliseconds: 5)); // Simulate CPU work
 
     final changes = <Map<String, dynamic>>[];
 
-    // Compare tree structures
     if (oldTree['type'] != newTree['type']) {
       changes
           .add({'action': 'replace', 'oldNode': oldTree, 'newNode': newTree});
     }
 
-    // Compare props
     final oldProps = oldTree['props'] as Map<String, dynamic>? ?? {};
     final newProps = newTree['props'] as Map<String, dynamic>? ?? {};
 
@@ -2436,7 +2227,6 @@ class DCFEngine {
       changes.add({'action': 'updateProps', 'diff': propsDiff});
     }
 
-    // Compare children
     final oldChildren = oldTree['children'] as List<dynamic>? ?? [];
     final newChildren = newTree['children'] as List<dynamic>? ?? [];
 
@@ -2461,7 +2251,6 @@ class DCFEngine {
     final oldProps = data['oldProps'] as Map<String, dynamic>;
     final newProps = data['newProps'] as Map<String, dynamic>;
 
-    // Simulate heavy props comparison
     await Future.delayed(Duration(milliseconds: 2));
 
     return _computeDeepPropsDiff(oldProps, newProps);
@@ -2473,7 +2262,6 @@ class DCFEngine {
     final items = data['items'] as List<dynamic>;
     final operations = data['operations'] as List<String>? ?? [];
 
-    // Simulate heavy list processing
     await Future.delayed(Duration(milliseconds: items.length ~/ 100));
 
     final processedItems = List<dynamic>.from(items);
@@ -2509,12 +2297,10 @@ class DCFEngine {
       Map<String, dynamic> data) async {
     final component = data['component'] as Map<String, dynamic>;
 
-    // Simulate heavy serialization work
     await Future.delayed(Duration(milliseconds: 3));
 
     final serialized = <String, dynamic>{};
 
-    // Deep clone component data
     for (final entry in component.entries) {
       serialized[entry.key] = _deepCloneValue(entry.value);
     }
@@ -2534,7 +2320,6 @@ class DCFEngine {
       Map<String, dynamic> oldProps, Map<String, dynamic> newProps) {
     final diff = <String, dynamic>{};
 
-    // Check for changed or new props
     for (final key in newProps.keys) {
       if (!oldProps.containsKey(key)) {
         diff[key] = {'action': 'add', 'value': newProps[key]};
@@ -2547,7 +2332,6 @@ class DCFEngine {
       }
     }
 
-    // Check for removed props
     for (final key in oldProps.keys) {
       if (!newProps.containsKey(key)) {
         diff[key] = {'action': 'remove', 'oldValue': oldProps[key]};

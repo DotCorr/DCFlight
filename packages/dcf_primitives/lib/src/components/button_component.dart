@@ -122,7 +122,6 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
 
   @override
   DCFComponentNode render() {
-    // Create an events map for the onPress handler
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onPress != null) {
@@ -137,7 +136,6 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
       };
     }
 
-    // Serialize command if provided
     Map<String, dynamic> props = {
       ...buttonProps?.toMap()??{},
       ...layout.toMap(),

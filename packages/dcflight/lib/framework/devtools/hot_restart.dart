@@ -16,31 +16,24 @@ class HotRestartDetector {
   
   /// Check if a hot restart occurred and cleanup if needed
   static Future<bool> detectAndCleanup() async {
-    // Only run in debug mode
     if (!kDebugMode) {
       return false;
     }
     
     try {
-      // Check if we have a persisted session token in native memory
       final sessionToken = await _channel.invokeMethod<String>('getSessionToken');
       
       if (sessionToken != null) {
-        // Hot restart detected - native memory persisted while Dart was wiped
         
-        // Trigger native cleanup
         await _cleanupNativeViews();
         
         return true;
       } else {
-        // Fresh cold start - no session token found
         
-        // Create new session token for future hot restart detection
         await _createSessionToken();
         return false;
       }
     } catch (e) {
-      // Platform channel not available or other error
       return false;
     }
   }

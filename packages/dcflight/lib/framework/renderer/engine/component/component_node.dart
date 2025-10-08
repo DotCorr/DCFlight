@@ -34,12 +34,10 @@ abstract class DCFComponentNode {
       return (this as ComponentPriorityInterface).priority;
     }
 
-    // Check rendered node for priority
     if (_renderedNode != null && _renderedNode is ComponentPriorityInterface) {
       return (_renderedNode as ComponentPriorityInterface).priority;
     }
 
-    // Default priority
     return ComponentPriority.normal;
   }
 
@@ -51,12 +49,10 @@ abstract class DCFComponentNode {
 
   /// Called when the node is mounted (lifecycle method)
   void componentDidMount() {
-    // Base implementation does nothing
   }
 
   /// Called when the node will unmount (lifecycle method)
   void componentWillUnmount() {
-    // Base implementation does nothing
   }
 
   /// Get the rendered node (for component-like nodes)
@@ -72,7 +68,6 @@ abstract class DCFComponentNode {
 
   /// Get effective native view ID (may be from rendered content)
   String? get effectiveNativeViewId {
-    // For component nodes, the native view ID is the ID of their rendered content
     return contentViewId ?? nativeViewId;
   }
 
@@ -98,11 +93,9 @@ class EmptyVDomNode extends DCFComponentNode with EquatableMixin {
   @override
   void mount(DCFComponentNode? parent) {
     this.parent = parent;
-    // Empty node has no additional mounting logic
   }
 
   @override
   void unmount() {
-    // Empty node has no cleanup logic
   }
 }

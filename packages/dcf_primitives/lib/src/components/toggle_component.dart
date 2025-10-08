@@ -99,7 +99,6 @@ class DCFToggle extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onValueChange != null) {
@@ -118,7 +117,6 @@ class DCFToggle extends DCFStatelessComponent
       ...eventMap,
     };
 
-    // Add color properties if provided
     if (activeTrackColor != null) {
       props['activeTrackColor'] =
           '#${activeTrackColor!.value.toRadixString(16).padLeft(8, '0')}';

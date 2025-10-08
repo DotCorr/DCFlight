@@ -1,4 +1,3 @@
-// ignore_for_file: avoid_print
 
 import 'package:dcflight/dcflight.dart';
 
@@ -45,7 +44,6 @@ class EngineDebugLogger {
       'NewKey': newNode.key ?? 'null',
     });
     
-    // Track reconciliation history
     final type = newNode.runtimeType.toString();
     _reconcileHistory[type] = (_reconcileHistory[type] ?? [])..add(decision);
   }
@@ -123,7 +121,6 @@ class EngineDebugLogger {
     if (node is DCFElement) {
       desc += ', elementType:${node.type}';
       
-      // Log important props
       final props = <String>[];
       if (node.elementProps.containsKey('selectedValue')) {
         props.add('selectedValue:${node.elementProps['selectedValue']}');

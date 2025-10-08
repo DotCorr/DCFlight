@@ -10,7 +10,6 @@ import 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 
 /// Layout properties for components
 class DCFLayout extends Equatable {
-  // Width and height
   final dynamic width;
   final dynamic height;
   final dynamic minWidth;
@@ -18,7 +17,6 @@ class DCFLayout extends Equatable {
   final dynamic minHeight;
   final dynamic maxHeight;
 
-  // Margin
   final dynamic margin;
   final dynamic marginTop;
   final dynamic marginRight;
@@ -27,7 +25,6 @@ class DCFLayout extends Equatable {
   final dynamic marginHorizontal;
   final dynamic marginVertical;
 
-  // Padding
   final dynamic padding;
   final dynamic paddingTop;
   final dynamic paddingRight;
@@ -36,53 +33,42 @@ class DCFLayout extends Equatable {
   final dynamic paddingHorizontal;
   final dynamic paddingVertical;
 
-  // Position - use absoluteLayout for absolute positioning
   final YogaPositionType? position;
 
-  // Absolute positioning properties - grouped for better DX
   final AbsoluteLayout? absoluteLayout;
 
-  // Transform properties - can be applied to any element, not just absolute positioned
   final double?
       rotateInDegrees; // Rotation in degrees (more intuitive than radians for most developers)
   final double? scale; // Uniform scale factor for both x and y axes
   final double? scaleX; // Scale factor for x axis only
   final double? scaleY; // Scale factor for y axis only
 
-  // Flex properties
   final YogaFlexDirection? flexDirection;
   final YogaJustifyContent? justifyContent;
   final YogaAlign? alignItems;
   final YogaAlign? alignSelf;
   final YogaAlign? alignContent;
   final YogaWrap? flexWrap;
-  // Another reminder that module dev should be always be sure to set leaf nodes to have a default felx value of one
-  // Not doing this might possiby confuse developers as they expect leaf nodes to fill by default the available space from their parent
   final double? flex;
   final double? flexGrow;
   final double? flexShrink;
   final dynamic flexBasis;
 
-  // Display and overflow
   final YogaDisplay? display;
   final YogaOverflow? overflow;
 
-  // Direction
   final YogaDirection? direction;
 
-  // Modern layout properties
   final double? aspectRatio;
   final dynamic gap;
   final dynamic rowGap;
   final dynamic columnGap;
 
   @Deprecated("Use borderWidth from style instead")
-  // Border (although visual, it affects layout)
   final dynamic borderWidth;
 
   /// Create layout props with the specified values
   const DCFLayout({
-    // Default to flexible sizing for proper layout composition
     this.width = '100%', // Default to 100% width for proper nesting
     this.height, // No default height - let flex layout handle it
     this.minWidth,
@@ -181,17 +167,14 @@ class DCFLayout extends Equatable {
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
 
-    // Always include default width and height if not specified
     map['width'] = width;
     map['height'] = height;
 
-    // Add dimension properties
     if (minWidth != null) map['minWidth'] = minWidth;
     if (maxWidth != null) map['maxWidth'] = maxWidth;
     if (minHeight != null) map['minHeight'] = minHeight;
     if (maxHeight != null) map['maxHeight'] = maxHeight;
 
-    // Add margin properties
     if (margin != null) map['margin'] = margin;
     if (marginTop != null) map['marginTop'] = marginTop;
     if (marginRight != null) map['marginRight'] = marginRight;
@@ -206,7 +189,6 @@ class DCFLayout extends Equatable {
       map['marginBottom'] = marginVertical;
     }
 
-    // Add padding properties
     if (padding != null) map['padding'] = padding;
     if (paddingTop != null) map['paddingTop'] = paddingTop;
     if (paddingRight != null) map['paddingRight'] = paddingRight;
@@ -221,21 +203,17 @@ class DCFLayout extends Equatable {
       map['paddingBottom'] = paddingVertical;
     }
 
-    // Add position properties
     if (position != null) map['position'] = position.toString().split('.').last;
 
-    // Add absolute layout properties if set
     if (absoluteLayout != null) {
       map.addAll(absoluteLayout!.toMap());
     }
 
-    // Add transform properties
     if (rotateInDegrees != null) map['rotateInDegrees'] = rotateInDegrees;
     if (scale != null) map['scale'] = scale;
     if (scaleX != null) map['scaleX'] = scaleX;
     if (scaleY != null) map['scaleY'] = scaleY;
 
-    // Add flex properties
     if (flexDirection != null) {
       map['flexDirection'] = flexDirection.toString().split('.').last;
     }
@@ -257,22 +235,18 @@ class DCFLayout extends Equatable {
     if (flexShrink != null) map['flexShrink'] = flexShrink;
     if (flexBasis != null) map['flexBasis'] = flexBasis;
 
-    // Add display and overflow properties
     if (display != null) map['display'] = display.toString().split('.').last;
     if (overflow != null) map['overflow'] = overflow.toString().split('.').last;
 
-    // Add direction property
     if (direction != null) {
       map['direction'] = direction.toString().split('.').last;
     }
 
-    // Add modern layout properties
     if (aspectRatio != null) map['aspectRatio'] = aspectRatio;
     if (gap != null) map['gap'] = gap;
     if (rowGap != null) map['rowGap'] = rowGap;
     if (columnGap != null) map['columnGap'] = columnGap;
 
-    // Add border width (affects layout)
     if (borderWidth != null) map['borderWidth'] = borderWidth;
 
     return map;
@@ -475,15 +449,12 @@ class DCFLayout extends Equatable {
   static dynamic parseDimensionValue(dynamic value) {
     if (value == null) return null;
 
-    // If it's already a number, return it directly
     if (value is num) return value.toDouble();
 
-    // Handle percentage strings
     if (value is String && value.endsWith('%')) {
       return value; // Keep percentage strings as-is for native handling
     }
 
-    // Try to parse as a number
     if (value is String) {
       try {
         return double.parse(value);
@@ -550,7 +521,6 @@ class DCFLayout extends Equatable {
         gap,
         rowGap,
         columnGap,
-        // ignore: deprecated_member_use_from_same_package
         borderWidth,
       ];
 }

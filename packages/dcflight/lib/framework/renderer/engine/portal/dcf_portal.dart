@@ -54,7 +54,6 @@ class DCFPortal extends DCFStatefulComponent
     final portalIdState = useState<String?>(null, 'portalId');
     final portalManager = EnhancedPortalManager.instance;
 
-    // Effect to create portal on mount and handle updates
     useEffect(() {
       Future<void> createPortal() async {
         try {
@@ -73,7 +72,6 @@ class DCFPortal extends DCFStatefulComponent
 
       createPortal();
 
-      // Cleanup function
       return () {
         if (portalIdState.state != null) {
           portalManager.removePortal(portalIdState.state!).catchError((e) {});
@@ -81,10 +79,8 @@ class DCFPortal extends DCFStatefulComponent
       };
     }, dependencies: []); // Only run once on mount/unmount
 
-    // Separate effect to update portal when properties change
     useEffect(() {
       if (portalIdState.state != null) {
-        // Use a microtask to ensure the update happens after the current render cycle
         Future.microtask(() {
           try {
             portalManager.updatePortal(
@@ -98,14 +94,11 @@ class DCFPortal extends DCFStatefulComponent
         });
       }
 
-      // Return cleanup function for this effect
       return () {};
     }, dependencies: [
       '${children.length}-${children.map((c) => c.runtimeType).join(',')}'
     ]); // Use string-based dependency that changes with content
 
-    // Return a placeholder fragment that doesn't render anything
-    // The actual content is rendered through the portal system
     return DCFFragment(
       children: [],
       metadata: {
@@ -147,7 +140,6 @@ class DCFPortalTarget extends DCFStatefulComponent
     final elementRef = useRef<DCFElement?>(null);
     final isRegisteredRef = useRef<bool>(false);
 
-    // Effect to register/unregister target after the element is created and has a view ID
     useEffect(() {
       void attemptRegistration() {
         final isRegistered = isRegisteredRef.current ?? false;
@@ -166,11 +158,8 @@ class DCFPortalTarget extends DCFStatefulComponent
         }
       }
 
-      // Try to register immediately if view ID is already available
       attemptRegistration();
 
-      // Set up a polling mechanism to check for view ID assignment
-      // This is necessary because the view ID is assigned asynchronously during rendering
       Timer? pollTimer;
       final isRegistered = isRegisteredRef.current ?? false;
       if (!isRegistered) {
@@ -182,7 +171,6 @@ class DCFPortalTarget extends DCFStatefulComponent
           }
         });
 
-        // Cancel polling after 1 second to avoid infinite polling
         Timer(Duration(seconds: 1), () {
           pollTimer?.cancel();
           final finalRegistered = isRegisteredRef.current ?? false;
@@ -190,12 +178,10 @@ class DCFPortalTarget extends DCFStatefulComponent
         });
       }
 
-      // Cleanup function
       return () {
         pollTimer?.cancel();
         final isRegistered = isRegisteredRef.current ?? false;
         if (isRegistered) {
-          // Delay unregistration to allow portal cleanup to complete
           Future.microtask(() {
             portalManager.unregisterTarget(targetId);
           });
@@ -204,7 +190,6 @@ class DCFPortalTarget extends DCFStatefulComponent
       };
     }, dependencies: [targetId]); // Only depend on targetId
 
-    // Create the element that will be our portal target
     final element = DCFElement(
       type: 'View', // Use View component to create a native container
       elementProps: {
@@ -218,7 +203,6 @@ class DCFPortalTarget extends DCFStatefulComponent
       children: children,
     );
 
-    // Store reference to the element so we can access its view ID later
     elementRef.current = element;
 
     return element;

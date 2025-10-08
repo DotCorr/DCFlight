@@ -15,7 +15,6 @@ class ColorUtils {
   /// Convert a Color to hex string
   /// Returns 'transparent' for transparent colors, otherwise returns '#RRGGBB'
   static String colorToHex(Color color) {
-    // Check for transparency first (same pattern as in style_properties.dart)
     final alpha = (color.a * 255.0).round() & 0xff;
     if (alpha == 0) {
       return 'transparent';

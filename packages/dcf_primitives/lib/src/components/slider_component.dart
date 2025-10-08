@@ -165,7 +165,6 @@ class DCFSlider extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onValueChange != null) {
@@ -197,12 +196,10 @@ class DCFSlider extends DCFStatelessComponent
       ...eventMap,
     };
 
-    // Add optional properties
     if (step != null) {
       props['step'] = step;
     }
 
-    // Add color properties if provided
     if (minimumTrackTintColor != null) {
       props['minimumTrackTintColor'] =
           '#${minimumTrackTintColor!.value.toRadixString(16).padLeft(8, '0')}';

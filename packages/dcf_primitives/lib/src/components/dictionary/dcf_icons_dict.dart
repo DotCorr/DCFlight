@@ -7,8 +7,6 @@
 
 
 
-// All these icons were extracted from forui_assets
-// @https://forui.dev
 class DCFIcons {
   static const String aArrowDown = "a-arrow-down";
   static const String aArrowUp = "a-arrow-up";

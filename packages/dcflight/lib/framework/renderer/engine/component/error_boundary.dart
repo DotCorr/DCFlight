@@ -27,11 +27,9 @@ abstract class ErrorBoundary extends DCFStatefulComponent {
     _stackTrace = stackTrace;
     _hasError = true;
 
-    // Log the error
     developer.log('Error caught by ErrorBoundary: $error',
         name: 'ErrorBoundary', error: error, stackTrace: stackTrace);
 
-    // Trigger a re-render directly
     scheduleUpdate();
   }
 
@@ -41,7 +39,6 @@ abstract class ErrorBoundary extends DCFStatefulComponent {
     _stackTrace = null;
     _hasError = false;
 
-    // Trigger a re-render directly
     scheduleUpdate();
   }
 

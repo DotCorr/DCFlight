@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// Main entry point for the DCFlight framework
 library;
 
 import 'dart:io';
@@ -47,16 +46,12 @@ export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
         ElementVisitor,
         WidgetInspectorService;
 export 'dart:async';
-// Core Infrastructure
 export 'framework/renderer/engine/index.dart';
-// Developer tools
 export 'framework/devtools/hot_reload_listener.dart';
 
-// Native Bridge System
 export 'framework/renderer/interface/interface.dart';
 export 'framework/renderer/interface/interface_impl.dart';
 
-// Core Constants and Properties - explicitly exported for component developers
 export 'framework/constants/layout/yoga_enums.dart';
 export 'framework/constants/layout/layout_properties.dart';
 export 'framework/constants/layout/layout_config.dart'; 
@@ -64,11 +59,9 @@ export 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 export 'framework/constants/style/style_properties.dart';
 export 'framework/constants/style/color_utils.dart';
 
-// Utilities
 export 'framework/utilities/screen_utilities.dart';
 export 'framework/utils/dcf_logger.dart';
 
-// DevTools (debug mode only)
 export 'framework/devtools/hot_restart.dart';
 export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
@@ -99,18 +92,13 @@ class DCFlight {
   static Future<bool> _initialize() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Initialize platform dispatcher
     final bridge = NativeBridgeFactory.create();
-    // PlatformDispatcher.initializeInstance(bridge);
     await bridge.initialize();
 
-    // Initialize screen utilities
     ScreenUtilities.instance.refreshDimensions();
 
-    // Initialize VDOM API with the bridge (handles hot restart cleanup internally)
     await DCFEngineAPI.instance.init(bridge);
 
-    // Register core plugin
     PluginRegistry.instance.registerPlugin(CorePlugin.instance);
 
     return true;
@@ -118,7 +106,6 @@ class DCFlight {
 
   /// Get project identifier for log isolation
   static String _getProjectId() {
-    // Try to get project name from pubspec.yaml or use current directory name
     try {
       final currentDir = Directory.current;
       final pubspecFile = File('${currentDir.path}/pubspec.yaml');
@@ -129,7 +116,6 @@ class DCFlight {
           return nameMatch.group(1)!;
         }
       }
-      // Fallback to directory name
       return currentDir.path.split('/').last;
     } catch (e) {
       return 'unknown_project';
@@ -140,35 +126,26 @@ class DCFlight {
   static Future<void> go({required DCFComponentNode app}) async {
     await _initialize();
 
-    // Set unique identifiers for log isolation
     DCFLogger.setInstanceId(DateTime.now().millisecondsSinceEpoch.toString());
     DCFLogger.setProjectId(_getProjectId());
 
-    // Start hot reload listener in debug mode
     if (!const bool.fromEnvironment('dart.vm.product')) {
       print('🔥 DCFlight: Starting hot reload listener...');
       await HotReloadListener.start();
       print('🔥 DCFlight: Hot reload listener started successfully');
     }
 
-    // Check for hot restart and cleanup if needed (debug mode only)
     final wasHotRestart = await HotRestartDetector.detectAndCleanup();
 
-    // Get the VDOM API instance
     final vdom = DCFEngineAPI.instance;
 
-    // Create our main app component
     final mainApp = app;
 
-    // Create root with this component
     await vdom.createRoot(mainApp);
 
     if (wasHotRestart) {}
 
-    // Wait for the VDom to be ready
     vdom.isReady.whenComplete(() async {
-      // Previously, we had to call `calculateLayout` manually.
-      // Now, layout is automatically calculated when layout props change at the native side 🤯.
     });
   }
 }

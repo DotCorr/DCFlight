@@ -21,7 +21,6 @@ class HotReloadListener {
   static Future<void> start() async {
     print('🔥 HotReloadListener.start() called');
     
-    // Prevent multiple instances
     if (_isRunning && _server != null) {
       print('🔥 Hot reload listener already running, stopping previous instance...');
       await stop();
@@ -29,7 +28,6 @@ class HotReloadListener {
     
     try {
       print('🔥 Attempting to bind server to port $_port...');
-      // For better emulator compatibility, try different binding approaches
       try {
         print('🔥 Trying to bind to 0.0.0.0...');
         _server = await HttpServer.bind('0.0.0.0', _port);
@@ -48,7 +46,6 @@ class HotReloadListener {
       _server!.listen((HttpRequest request) async {
         print('🔥 Received ${request.method} request: ${request.uri.path}');
         
-        // Handle CORS for development
         request.response.headers.add('Access-Control-Allow-Origin', '*');
         request.response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         request.response.headers.add('Access-Control-Allow-Headers', 'Content-Type');
@@ -63,10 +60,8 @@ class HotReloadListener {
           try {
             print('🔥 Hot reload request received from watcher (Instance: $_instanceId)');
             
-            // Trigger the manual hot reload
             triggerManualHotReload();
             
-            // Send success response
             request.response.statusCode = 200;
             request.response.headers.contentType = ContentType.json;
             request.response.write(jsonEncode({
@@ -85,7 +80,6 @@ class HotReloadListener {
             }));
           }
         } else {
-          // Health check endpoint
           request.response.statusCode = 200;
           request.response.write(jsonEncode({
             'status': 'listening',

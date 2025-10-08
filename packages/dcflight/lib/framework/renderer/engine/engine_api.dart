@@ -26,13 +26,11 @@ class DCFEngineAPI {
   
   /// Private constructor
   DCFEngineAPI._() {
-    // Will be initialized explicitly with init()
   }
   
   /// Initialize the VDOM API with a platform interface
   Future<void> init(PlatformInterface platformInterface) async {
     try {
-      // If already initialized (hot restart), reset first
       if (_vdom != null) {
         await _resetForHotRestart();
       }
@@ -40,7 +38,6 @@ class DCFEngineAPI {
       _vdom = DCFEngine(platformInterface);
       await _vdom!.isReady;
       
-      // Create new completer if previous one was completed
       if (_readyCompleter.isCompleted) {
         _readyCompleter = Completer<void>();
       }
@@ -57,13 +54,10 @@ class DCFEngineAPI {
   Future<void> _resetForHotRestart() async {
     if (_vdom != null) {
       try {
-        // Try to cleanup native views before disposing engine
         await _vdom!.forceFullTreeReRender();
         
-        // Dispose of old engine and its resources
         _vdom = null;
         
-        // Reset completer for new initialization
         if (!_readyCompleter.isCompleted) {
           _readyCompleter.complete();
         }
@@ -71,7 +65,6 @@ class DCFEngineAPI {
         print("🔄 DCFEngineAPI: Hot restart cleanup completed");
       } catch (e) {
         print("⚠️  DCFEngineAPI: Hot restart cleanup error: $e");
-        // Continue with reset even if cleanup fails
         _vdom = null;
         if (!_readyCompleter.isCompleted) {
           _readyCompleter.complete();

@@ -101,7 +101,6 @@ class DCFCheckbox extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onValueChange != null) {
@@ -120,7 +119,6 @@ class DCFCheckbox extends DCFStatelessComponent
       ...eventMap,
     };
 
-    // Add color properties if provided
     if (activeColor != null) {
       props['activeColor'] =
           '#${activeColor!.value.toRadixString(16).padLeft(8, '0')}';

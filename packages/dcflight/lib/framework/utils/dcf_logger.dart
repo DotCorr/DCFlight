@@ -103,13 +103,11 @@ class DCFLogger {
     final levelIcon = _getLevelIcon(level);
     final levelName = level.name.toUpperCase().padRight(7);
     
-    // Build identifier string
     final identifiers = <String>[];
     if (_projectId != null) identifiers.add('P:$_projectId');
     if (_instanceId != null) identifiers.add('I:$_instanceId');
     final idString = identifiers.isNotEmpty ? '[${identifiers.join('|')}]' : '';
     
-    // Format: [TIMESTAMP] LEVEL_ICON LEVEL TAG: MESSAGE
     print('[$timestamp]$idString $levelIcon $levelName $tag: $message');
   }
   

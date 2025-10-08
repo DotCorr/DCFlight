@@ -166,7 +166,6 @@ class DCFSegmentedControl extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Create an events map for the onSelectionChange handler
     Map<dynamic, dynamic> eventMap = events ?? {};
 
     if (onSelectionChange != null) {

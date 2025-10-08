@@ -25,7 +25,6 @@ class MemoHook<T> extends Hook {
       return;
     }
     dependencies = newDependencies;
-    // Re-create the value if dependencies change
     _value = create();
   }
 
