@@ -171,6 +171,12 @@ class DCMauiBridgeImpl private constructor() {
 
     fun deleteView(viewId: String): Boolean {
         return try {
+            val view = ViewRegistry.shared.getView(viewId)
+            if (view != null) {
+                val parentView = view.parent as? ViewGroup
+                parentView?.removeView(view)
+            }
+            
             deleteChildrenRecursively(viewId)
             cleanupHierarchyReferences(viewId)
             
