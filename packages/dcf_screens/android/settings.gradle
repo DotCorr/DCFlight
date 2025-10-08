@@ -1,0 +1,2 @@
+include ':dcflight'
+project(':dcflight').projectDir = new File('../../dcflight/android')
