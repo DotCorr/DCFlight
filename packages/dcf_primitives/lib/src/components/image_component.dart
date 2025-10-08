@@ -154,7 +154,6 @@ class DCFImage extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onLoad != null) {
@@ -169,7 +168,6 @@ class DCFImage extends DCFStatelessComponent
       };
     }
 
-    // Serialize command if provided
     Map<String, dynamic> props = {
       ...imageProps.toMap(),
       ...layout.toMap(),

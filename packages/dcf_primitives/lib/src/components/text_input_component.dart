@@ -252,7 +252,6 @@ class DCFTextInput extends DCFStatelessComponent
   DCFComponentNode render() {
     final events = <String, dynamic>{};
 
-    // Add specific event handlers
     if (onChangeText != null) events['onChangeText'] = onChangeText;
     if (onFocus != null) {
       events['onFocus'] = (Map<dynamic, dynamic> data) {

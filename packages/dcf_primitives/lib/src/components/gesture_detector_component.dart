@@ -213,7 +213,6 @@ class DCFGestureDetector extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onTap != null) {

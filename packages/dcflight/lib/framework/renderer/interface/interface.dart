@@ -51,11 +51,7 @@ abstract class PlatformInterface {
   /// Set a global event handler for all events
   void setEventHandler(Function(String viewId, String eventType, Map<String, dynamic> eventData) handler);
 
-  // REMOVED: updateViewLayout and calculateLayout methods
-  // Layout is now calculated automatically when layout props change
 
-  // REMOVED: callComponentMethod - replaced with prop-based commands
-  // Components now handle imperative operations through command props
 
   /// Start a batch update (multiple operations that will be applied atomically)
   Future<bool> startBatchUpdate();

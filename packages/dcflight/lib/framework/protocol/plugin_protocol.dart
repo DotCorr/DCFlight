@@ -39,7 +39,6 @@ class PluginRegistry {
   void registerPlugin(DCFPlugin plugin) {
     _plugins[plugin.name] = plugin;
     
-    // Initialize plugin
     plugin.initialize();
   }
   
@@ -77,7 +76,5 @@ class CorePlugin extends DCFPlugin {
   
   @override
   void registerComponents() {
-    // In the modularized version, the core plugin doesn't register components
-    // Each component should be registered by its own plugin
   }
 }

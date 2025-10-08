@@ -50,7 +50,6 @@ class DCFFragment extends DCFComponentNode with EquatableMixin {
     this.parent = parent;
     _isMounted = true;
     
-    // Mount all children with this fragment as their parent
     for (final child in children) {
       child.mount(this);
     }
@@ -60,12 +59,10 @@ class DCFFragment extends DCFComponentNode with EquatableMixin {
   void unmount() {
     _isMounted = false;
     
-    // Unmount all children
     for (final child in children) {
       child.unmount();
     }
     
-    // Clear child view IDs
     childViewIds.clear();
   }
 

@@ -56,7 +56,6 @@ class DCFSuspense extends DCFStatelessComponent with EquatableMixin {
         print("🏗️ DCFSuspense[$name]: Rendering children (active)");
       }
 
-      // Render the actual children
       return DCFView(
         layout: layout ?? DCFLayout(),
         styleSheet: styleSheet ?? DCFStyleSheet(),
@@ -67,7 +66,6 @@ class DCFSuspense extends DCFStatelessComponent with EquatableMixin {
         print("⏸️ DCFSuspense[$name]: Rendering fallback (suspended)");
       }
 
-      // Render fallback or empty view
       if (fallback != null) {
         return DCFView(
           layout: layout ?? DCFLayout(flex: 1),
@@ -75,7 +73,6 @@ class DCFSuspense extends DCFStatelessComponent with EquatableMixin {
           children: [fallback!()],
         );
       } else {
-        // Empty container - no children rendered
         return DCFView(
           layout: layout ?? DCFLayout(flex: 1),
           styleSheet: styleSheet ?? DCFStyleSheet(),

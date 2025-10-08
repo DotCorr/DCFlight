@@ -67,7 +67,6 @@ class DCFIconProps extends Equatable {
   final String name;
 
   /// Size of the icon
-  // final double size;
 
   /// Color of the icon
   final Color? color;
@@ -81,7 +80,6 @@ class DCFIconProps extends Equatable {
   /// Create icon props
   const DCFIconProps({
     required this.name,
-    // this.size = 24.0,
     this.color,
     this.package = 'dcf_primitives',
     this.adaptive = true,
@@ -91,7 +89,6 @@ class DCFIconProps extends Equatable {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      // 'size': size,
       'package': package,
       'isRelativePath': false,
       'adaptive': adaptive,
@@ -147,7 +144,6 @@ class DCFIcon extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
-    // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onLoad != null) {

@@ -61,7 +61,6 @@ class PriorityUtils {
       return component.priority;
     }
 
-    // Smart defaults based on component type
     final typeName = component.runtimeType.toString().toLowerCase();
 
     if (typeName.contains('input') ||

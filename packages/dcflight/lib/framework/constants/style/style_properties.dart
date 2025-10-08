@@ -11,7 +11,6 @@ import 'hit_slop.dart';
 
 /// StyleSheet for visual styling properties
 class DCFStyleSheet extends Equatable {
-  // Border styles
   final dynamic borderRadius;
   final dynamic borderTopLeftRadius;
   final dynamic borderTopRightRadius;
@@ -20,12 +19,10 @@ class DCFStyleSheet extends Equatable {
   final Color? borderColor;
   final dynamic borderWidth;
 
-  // Background and opacity
   final Color? backgroundColor;
   final DCFGradient? backgroundGradient;
   final double? opacity;
 
-  // Shadow properties
   final Color? shadowColor;
   final double? shadowOpacity;
   final dynamic shadowRadius;
@@ -33,10 +30,8 @@ class DCFStyleSheet extends Equatable {
   final dynamic shadowOffsetY;
   final dynamic elevation;
 
-  // Hit area expansion
   final DCFHitSlop? hitSlop;
 
-  // Accessibility properties
   final bool? accessible;
   final String? accessibilityLabel;
   final String? testID;
@@ -72,7 +67,6 @@ class DCFStyleSheet extends Equatable {
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
 
-    // CRITICAL FIX: Add border style properties FIRST (they need to be applied before gradients)
     if (borderRadius != null) map['borderRadius'] = borderRadius;
     if (borderTopLeftRadius != null) {
       map['borderTopLeftRadius'] = borderTopLeftRadius;
@@ -91,20 +85,16 @@ class DCFStyleSheet extends Equatable {
     }
     if (borderWidth != null) map['borderWidth'] = borderWidth;
 
-    // Add background color - this will be overridden by gradient if both are present
     if (backgroundColor != null) {
       map['backgroundColor'] = _colorToString(backgroundColor!);
     }
 
-    // CRITICAL FIX: Add gradient AFTER backgroundColor so it can reference border radius
-    // The native side will handle precedence correctly
     if (backgroundGradient != null) {
       map['backgroundGradient'] = backgroundGradient!.toMap();
     }
 
     if (opacity != null) map['opacity'] = opacity;
 
-    // Add shadow properties
     if (shadowColor != null) {
       map['shadowColor'] = _colorToString(shadowColor!);
     }
@@ -114,10 +104,8 @@ class DCFStyleSheet extends Equatable {
     if (shadowOffsetY != null) map['shadowOffsetY'] = shadowOffsetY;
     if (elevation != null) map['elevation'] = elevation;
 
-    // Add hit slop
     if (hitSlop != null) map['hitSlop'] = hitSlop!.toMap();
 
-    // Add accessibility properties
     if (accessible != null) map['accessible'] = accessible;
     if (accessibilityLabel != null) {
       map['accessibilityLabel'] = accessibilityLabel;
@@ -130,16 +118,13 @@ class DCFStyleSheet extends Equatable {
 
   /// CRITICAL FIX: Centralized color conversion to ensure consistency
   String _colorToString(Color color) {
-    // Check for transparency first (same pattern across all color conversions)
     final alpha = (color.a * 255.0).round() & 0xff;
     if (alpha == 0) {
       return 'transparent';
     } else if (alpha == 255) {
-      // Fully opaque - use standard hex format
       final hexValue = color.toARGB32() & 0xFFFFFF;
       return '#${hexValue.toRadixString(16).padLeft(6, '0')}';
     } else {
-      // Semi-transparent - include alpha in ARGB format
       final argbValue = color.toARGB32();
       return '#${argbValue.toRadixString(16).padLeft(8, '0')}';
     }
@@ -230,13 +215,11 @@ class DCFStyleSheet extends Equatable {
   List<String> validateStyles() {
     final warnings = <String>[];
 
-    // Check for potential conflicts
     if (backgroundColor != null && backgroundGradient != null) {
       warnings.add(
           'Both backgroundColor and backgroundGradient are set. backgroundGradient will take precedence.');
     }
 
-    // Check for border radius conflicts
     if (borderRadius != null &&
         (borderTopLeftRadius != null ||
             borderTopRightRadius != null ||
@@ -246,7 +229,6 @@ class DCFStyleSheet extends Equatable {
           'Both borderRadius and specific corner radii are set. Specific corners will take precedence.');
     }
 
-    // Check for shadow/elevation conflicts
     if (elevation != null &&
         (shadowColor != null ||
             shadowOpacity != null ||
@@ -285,7 +267,6 @@ class DCFStyleSheet extends Equatable {
         borderTopRightRadius != null ||
         borderBottomLeftRadius != null ||
         borderBottomRightRadius != null) {
-      // Return the first specified corner radius as they should all be the same for consistency
       return (borderTopLeftRadius ??
               borderTopRightRadius ??
               borderBottomLeftRadius ??

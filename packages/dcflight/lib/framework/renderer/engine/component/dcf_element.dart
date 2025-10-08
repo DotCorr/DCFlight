@@ -24,7 +24,6 @@ class DCFElement extends DCFComponentNode with EquatableMixin {
     required this.elementProps,
     this.children = const [],
   }) {
-    // Set parent reference for children
     for (var child in children) {
       child.parent = this;
     }
@@ -65,15 +64,11 @@ class DCFElement extends DCFComponentNode with EquatableMixin {
   List<String> get eventTypes {
     final List<String> types = [];
 
-    // Extract event types from elementProps with direct event names (e.g., 'onPress')
     for (final key in elementProps.keys) {
       if (elementProps[key] is Function) {
-        // Check for direct event format (e.g., 'onPress')
         if (key.startsWith('on') && key.length > 2) {
-          // Use the event name directly (onPress -> onPress)
           types.add(key);
           
-          // Also add the base event name without 'on' prefix for compatibility
           final eventName = key.substring(2, 3).toLowerCase() + key.substring(3);
           if (!types.contains(eventName)) {
             types.add(eventName);
@@ -89,7 +84,6 @@ class DCFElement extends DCFComponentNode with EquatableMixin {
   void mount(DCFComponentNode? parent) {
     this.parent = parent;
 
-    // Call mount on children
     for (final child in children) {
       child.mount(this);
     }
@@ -97,7 +91,6 @@ class DCFElement extends DCFComponentNode with EquatableMixin {
 
   @override
   void unmount() {
-    // Unmount all children first
     for (final child in children) {
       child.unmount();
     }

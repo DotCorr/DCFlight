@@ -24,7 +24,6 @@ class LayoutConfig {
     useWebDefaults = true;
     
     try {
-      // Call native DCFLayoutManager via layout channel
       await PlatformInterfaceImpl.layoutChannel.invokeMethod('setUseWebDefaults', {
         'enabled': true
       });
@@ -39,7 +38,6 @@ class LayoutConfig {
     useWebDefaults = false;
     
     try {
-      // Call native DCFLayoutManager via layout channel
       await PlatformInterfaceImpl.layoutChannel.invokeMethod('setUseWebDefaults', {
         'enabled': false
       });
@@ -57,16 +55,13 @@ class LayoutConfig {
 
 /// Default layout configuration values
 class LayoutDefaults {
-  // Yoga native defaults
   static const yogaFlexDirection = 'column';
   static const yogaAlignContent = 'flex-start';
   static const yogaFlexShrink = 0.0;
   static const yogaPosition = 'relative';
   
-  // Web defaults
   static const webFlexDirection = 'row';
   static const webAlignContent = 'stretch';
   static const webFlexShrink = 1.0;
-  // Note: position still 'relative' for compatibility
   static const webPosition = 'relative';
 }

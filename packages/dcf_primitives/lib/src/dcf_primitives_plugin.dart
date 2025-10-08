@@ -6,8 +6,6 @@
  */
 
 
-// Fully depracated file, kept for reference
-// Registration of components now happens at the native side.
 
 import 'package:dcflight/dcflight.dart';
 
@@ -27,10 +25,5 @@ class DCFPrimitivesPlugin extends DCFPlugin {
   
   @override
   void registerComponents() {
-// Primitives don't need explicit registration
-    // since they work directly with the reconciler as Component instances.
-    //
-    // If we need to register factory methods in the future, we can use:
-    // ComponentRegistry.instance.registerComponent('ComponentName', factoryFunction);
   }
 }

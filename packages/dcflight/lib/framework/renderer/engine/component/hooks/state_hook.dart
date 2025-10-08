@@ -33,12 +33,10 @@ class StateHook<T> extends Hook {
   /// Set the value and trigger update
   void setState(T newValue) {
     print("🔥 STATE_HOOK: setState called - old: $_value, new: $newValue");
-    // Only update and trigger render if value actually changed
     if (_value != newValue) {
       print("🔥 STATE_HOOK: Value changed, updating and scheduling render");
       _value = newValue;
       
-      // Schedule a component update
       print("🔥 STATE_HOOK: Calling _scheduleUpdate");
       _scheduleUpdate();
       print("🔥 STATE_HOOK: _scheduleUpdate completed");
@@ -49,7 +47,6 @@ class StateHook<T> extends Hook {
   
   @override
   void dispose() {
-    // Nothing to dispose for simple state
   }
   
   @override
@@ -83,39 +80,31 @@ class EffectHook extends Hook {
 
   /// Run the effect if needed based on dependency changes
   void runEffect() {
-    // Run effect if first time or dependencies changed
     if (_prevDeps == null || !_areEqualDeps(_dependencies, _prevDeps!)) {
       
-      // Clean up previous effect if needed
       if (_cleanup != null) {
         try {
           _cleanup!();
         } catch (e) {
-          // Silently handle cleanup errors
         }
         _cleanup = null;
       }
 
-      // Run the effect and store cleanup
       try {
         _cleanup = _effect();
       } catch (e) {
-        // Silently handle effect errors
       }
       
-      // Update previous dependencies
       _prevDeps = List<dynamic>.from(_dependencies);
     }
   }
 
   @override
   void dispose() {
-    // Run cleanup if it exists
     if (_cleanup != null) {
       try {
         _cleanup!();
       } catch (e) {
-        // Silently handle cleanup errors
       }
       _cleanup = null;
     }
@@ -187,7 +176,6 @@ class RefHook<T> extends Hook {
   
   @override
   void dispose() {
-    // Nothing to dispose for refs
   }
 }
 
@@ -217,21 +205,17 @@ class StoreHook<T> extends Hook {
 
   /// Create a store hook
   StoreHook(this._store, this._onChange, [this._componentId, this._componentType]) {
-    // Track hook access for usage validation
     if (_componentId != null && _componentType != null) {
       _store.trackHookAccess(_componentId, _componentType);
     }
     
-    // Create listener function that triggers component update with debouncing
     _listener = (T _) {
-      // Prevent multiple rapid-fire updates by debouncing
       if (_updatePending) {
         return;
       }
       
       _updatePending = true;
       
-      // Use microtask to batch multiple store updates together
       Future.microtask(() {
         if (_updatePending && _isSubscribed) {
           _updatePending = false;
@@ -240,7 +224,6 @@ class StoreHook<T> extends Hook {
       });
     };
     
-    // Subscribe to store changes only once
     if (!_isSubscribed) {
       _store.subscribe(_listener);
       _isSubscribed = true;
@@ -262,7 +245,6 @@ class StoreHook<T> extends Hook {
 
   @override
   void dispose() {
-    // Unsubscribe from store on disposal
     if (_isSubscribed) {
       _store.unsubscribe(_listener);
       _isSubscribed = false;

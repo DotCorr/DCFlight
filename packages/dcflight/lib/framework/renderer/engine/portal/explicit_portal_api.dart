@@ -88,7 +88,6 @@ class ExplicitPortalAPI {
   
   /// Check if a portal exists
   static bool exists(String portalId) {
-    // We'll use the debug info to check if portal exists since _activePortals is private
     final debugInfo = _portalManager.getDebugInfo();
     final portals = debugInfo['portals'] as List<String>? ?? [];
     return portals.contains(portalId);
@@ -169,7 +168,6 @@ class PortalController {
     Function(String portalId)? onMount,
     Function(String portalId)? onUnmount,
   }) async {
-    // Hide existing content first
     await hide();
     
     _currentPortalId = await ExplicitPortalAPI.add(
@@ -236,7 +234,6 @@ mixin PortalHookMixin on DCFStatefulComponent {
     if (!_portalControllers.containsKey(targetId)) {
       _portalControllers[targetId] = PortalController(targetId);
       
-      // Set up cleanup on unmount using useEffect
       useEffect(() {
         return () {
           _portalControllers[targetId]?.hide();

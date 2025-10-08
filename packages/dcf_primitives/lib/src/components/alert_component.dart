@@ -10,22 +10,18 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 
 /// Alert text field configuration with full parity to DCFTextInput
 class DCFAlertTextField {
-  // Basic text properties
   final String? placeholder;
   final String? text;
   final String? defaultValue;
   final Color? placeholderTextColor;
   
-  // Security and type
   final bool secureTextEntry;
   
-  // Keyboard configuration
   final DCFKeyboardType keyboardType;
   final DCFAutoCapitalizationType autoCapitalization;
   final DCFReturnKeyType returnKeyType;
   final DCFTextContentType textContentType;
   
-  // Behavior configuration
   final bool autoCorrect;
   final bool autoFocus;
   final bool clearButtonMode;
@@ -35,12 +31,10 @@ class DCFAlertTextField {
   final bool selectTextOnFocus;
   final bool spellCheck;
   
-  // Text limits and display
   final int? maxLength;
   final int? numberOfLines;
   final bool multiline;
   
-  // Styling
   final String? textAlign;
   final Color? textColor;
   final Color? selectionColor;
@@ -49,22 +43,18 @@ class DCFAlertTextField {
   final String? fontFamily;
 
   const DCFAlertTextField({
-    // Basic text properties
     this.placeholder,
     this.text,
     this.defaultValue,
     this.placeholderTextColor,
     
-    // Security and type
     this.secureTextEntry = false,
     
-    // Keyboard configuration
     this.keyboardType = DCFKeyboardType.defaultType,
     this.autoCapitalization = DCFAutoCapitalizationType.sentences,
     this.returnKeyType = DCFReturnKeyType.defaultReturn,
     this.textContentType = DCFTextContentType.none,
     
-    // Behavior configuration
     this.autoCorrect = true,
     this.autoFocus = false,
     this.clearButtonMode = false,
@@ -74,12 +64,10 @@ class DCFAlertTextField {
     this.selectTextOnFocus = false,
     this.spellCheck = true,
     
-    // Text limits and display
     this.maxLength,
     this.numberOfLines = 1,
     this.multiline = false,
     
-    // Styling
     this.textAlign,
     this.textColor,
     this.selectionColor,
@@ -88,7 +76,6 @@ class DCFAlertTextField {
     this.fontFamily,
   });
 
-  // Convenience constructor for secure text (password) fields
   const DCFAlertTextField.secure({
     this.placeholder,
     this.text,
@@ -119,23 +106,19 @@ class DCFAlertTextField {
 
   Map<String, dynamic> toMap() {
     return {
-      // Basic text properties
       'placeholder': placeholder,
       'text': text,
       'defaultValue': defaultValue,
       if (placeholderTextColor != null) 
         'placeholderTextColor': '#${placeholderTextColor!.toARGB32().toRadixString(16).padLeft(8, '0')}',
       
-      // Security and type
       'secureTextEntry': secureTextEntry,
       
-      // Keyboard configuration  
       'keyboardType': keyboardType.name,
       'autoCapitalization': autoCapitalization.name,
       'returnKeyType': returnKeyType.name,
       'textContentType': textContentType.name,
       
-      // Behavior configuration
       'autoCorrect': autoCorrect,
       'autoFocus': autoFocus,
       'clearButtonMode': clearButtonMode,
@@ -145,12 +128,10 @@ class DCFAlertTextField {
       'selectTextOnFocus': selectTextOnFocus,
       'spellCheck': spellCheck,
       
-      // Text limits and display
       'maxLength': maxLength,
       'numberOfLines': numberOfLines,
       'multiline': multiline,
       
-      // Styling
       'textAlign': textAlign,
       if (textColor != null) 
         'textColor': '#${textColor!.toARGB32().toRadixString(16).padLeft(8, '0')}',
@@ -162,7 +143,6 @@ class DCFAlertTextField {
     };
   }
   
-  // Convenience constructor for email input
   const DCFAlertTextField.email({
     this.placeholder = 'Email',
     this.text,
@@ -191,7 +171,6 @@ class DCFAlertTextField {
        textContentType = DCFTextContentType.emailAddress,
        autoCorrect = false;
        
-  // Convenience constructor for phone number input
   const DCFAlertTextField.phone({
     this.placeholder = 'Phone Number',
     this.text,
@@ -323,7 +302,6 @@ class DCFAlert extends DCFStatelessComponent {
 
   @override
   DCFComponentNode render() {
-    // Create an events map for callbacks
     Map<String, dynamic> eventMap = {};
     
     if (onShow != null) {
@@ -342,7 +320,6 @@ class DCFAlert extends DCFStatelessComponent {
       eventMap['onTextFieldChange'] = onTextFieldChange;
     }
 
-    // Build props map
     Map<String, dynamic> props = {
       'visible': visible,
       'style': style.value,
@@ -350,22 +327,18 @@ class DCFAlert extends DCFStatelessComponent {
       'adaptive': adaptive,
     };
     
-    // Add event handlers
     props.addAll(eventMap);
 
-    // Always include alert content as a structured object (like actions)
     Map<String, dynamic> alertContent = {
       'title': title,
       'message': message,
     };
     props['alertContent'] = alertContent;
 
-    // Add textFields if present
     if (textFields != null && textFields!.isNotEmpty) {
       props['textFields'] = textFields!.map((textField) => textField.toMap()).toList();
     }
 
-    // Add actions if present (always send as array like we do now)
     if (actions != null && actions!.isNotEmpty) {
       props['actions'] = actions!.map((action) => action.toMap()).toList();
     }
@@ -512,7 +485,6 @@ class DCFAlert extends DCFStatelessComponent {
         }
       },
       onTextFieldChange: onTextChange != null ? (data) {
-        // Track current field values
         List<String> currentValues = ['', ''];  // username, password
         if (data['fieldIndex'] == 0) {
           currentValues[0] = data['text'] ?? '';

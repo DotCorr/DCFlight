@@ -56,7 +56,6 @@ class EnhancedPortalManager {
       priority: priority,
     );
     
-    // Process any queued portals for this target immediately
     Future.microtask(() => _processQueuedPortalsForTarget(targetId));
   }
 
@@ -64,7 +63,6 @@ class EnhancedPortalManager {
   Future<void> unregisterTarget(String targetId) async {
     await _executeWithLock(() async {
       
-      // Clean up all portals for this target
       final portalsToCleanup = _activePortals.values
           .where((portal) => portal.targetId == targetId)
           .toList();
@@ -122,10 +120,8 @@ class EnhancedPortalManager {
       }
       
       
-      // Clean up existing content
       await _cleanupPortalContent(portal);
       
-      // Update portal instance
       final updatedPortal = portal.copyWith(
         children: children,
         metadata: metadata,
@@ -134,7 +130,6 @@ class EnhancedPortalManager {
       
       _activePortals[portalId] = updatedPortal;
       
-      // Re-render with new content
       await _renderPortalContent(updatedPortal);
     });
   }
@@ -195,7 +190,6 @@ class EnhancedPortalManager {
   /// Execute operation with lock to prevent race conditions
   Future<void> _executeWithLock(Future<void> Function() operation) async {
     if (_operationInProgress) {
-      // Queue the operation
       final completer = Completer<void>();
       _pendingOperations.add(() async {
         await operation();
@@ -209,7 +203,6 @@ class EnhancedPortalManager {
     try {
       await operation();
       
-      // Process any pending operations
       while (_pendingOperations.isNotEmpty) {
         final pendingOp = _pendingOperations.removeAt(0);
         await pendingOp();
@@ -222,10 +215,6 @@ class EnhancedPortalManager {
   /// Register a portal instance
   Future<void> _registerPortalInstance(PortalInstance portal) async {
     
-    // CRITICAL FIX: Before registering a new portal, check if there are any orphaned
-    // portals for the same target that should be cleaned up. This handles the case
-    // where portal components are conditionally rendered and old instances aren't
-    // properly cleaned up.
     await _cleanupOrphanedPortalsForTarget(portal.targetId);
     
     _activePortals[portal.portalId] = portal;
@@ -253,7 +242,6 @@ class EnhancedPortalManager {
     
     try {
       
-      // Render each child as a separate tree
       final renderedViewIds = <String>[];
       
       for (int i = 0; i < portal.children.length; i++) {
@@ -274,10 +262,8 @@ class EnhancedPortalManager {
       }
       
       if (renderedViewIds.isNotEmpty) {
-        // Store rendered view IDs for cleanup
         portal.renderedViewIds = renderedViewIds;
         
-        // Update target with all portal content organized by priority
         await _updateTargetWithPortalContent(target);
       }
     } catch (e) {
@@ -287,10 +273,8 @@ class EnhancedPortalManager {
   /// Update target with all portal content, respecting priority
   Future<void> _updateTargetWithPortalContent(PortalTarget target) async {
     try {
-      // Get all portals for this target, sorted by priority
       final portals = getPortalsForTarget(target.targetId);
       
-      // Collect all rendered view IDs in priority order
       final allPortalViewIds = <String>[];
       for (final portal in portals) {
         if (portal.renderedViewIds.isNotEmpty) {
@@ -298,17 +282,14 @@ class EnhancedPortalManager {
         }
       }
       
-      // Get existing non-portal children
       final currentChildren = await _vdomApi.getCurrentChildren(target.nativeViewId);
       final existingChildren = currentChildren
           .where((viewId) => !_isPortalViewId(viewId))
           .toList();
       
-      // Combine existing + portal content
       final newChildren = [...existingChildren, ...allPortalViewIds];
       
       
-      // Update target container
       await _vdomApi.updateViewChildren(target.nativeViewId, newChildren);
     } catch (e) {
     }
@@ -379,18 +360,14 @@ class EnhancedPortalManager {
     
     try {
       
-      // Store view IDs to delete
       final viewIdsToDelete = List<String>.from(portal.renderedViewIds);
       
-      // Clear rendered view IDs first
       portal.renderedViewIds.clear();
       
       final target = _portalTargets[portal.targetId];
       if (target != null) {
-        // Update target by removing portal content
         await _updateTargetWithPortalContent(target);
         
-        // Explicitly delete the orphaned views
         try {
           await _vdomApi.deleteViews(viewIdsToDelete);
         } catch (e) {
@@ -410,10 +387,8 @@ class EnhancedPortalManager {
     
     if (portalsForTarget.length > 2) { // Allow some reasonable number
       
-      // Sort by creation time (older portal IDs have smaller timestamps)
       portalsForTarget.sort((a, b) => a.portalId.compareTo(b.portalId));
       
-      // Keep only the 2 most recent portals, cleanup the rest
       final portalsToCleanup = portalsForTarget.take(portalsForTarget.length - 2).toList();
       
       for (final portal in portalsToCleanup) {

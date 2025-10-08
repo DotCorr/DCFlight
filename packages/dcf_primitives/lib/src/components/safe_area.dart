@@ -49,34 +49,27 @@ class DCFSafeArea extends DCFStatefulComponent {
     final screenUtils = ScreenUtilities.instance;
     final orientationFlag = useState<int>(0);
 
-    // CRITICAL FIX: Use a more reliable orientation change detection
     useEffect(() {
       void onDimensionChange() {
-        // Force re-render with a flag increment to ensure proper layout recalculation
         orientationFlag.setState(orientationFlag.state + 1);
 
-        // Additional delay to ensure native layout completion
         Future.delayed(Duration(milliseconds: 100), () {
           scheduleUpdate();
         });
       }
 
-      // Add listener for dimension changes
       screenUtils.addDimensionChangeListener(onDimensionChange);
 
-      // Cleanup function
       return () {
         screenUtils.removeDimensionChangeListener(onDimensionChange);
       };
     }, dependencies: []); // Empty dependencies = run once on mount
 
-    // CRITICAL FIX: Calculate safe area with orientation consideration
     final double topPadding = top ? screenUtils.safeAreaTop : 0.0;
     final double bottomPadding = bottom ? screenUtils.safeAreaBottom : 0.0;
     final double leftPadding = left ? screenUtils.safeAreaLeft : 0.0;
     final double rightPadding = right ? screenUtils.safeAreaRight : 0.0;
 
-    // CRITICAL FIX: Create layout that forces proper bounds
     final enhancedLayout = DCFLayout(
         flex: layout.flex ?? 1,
         width: layout.width ?? "100%",

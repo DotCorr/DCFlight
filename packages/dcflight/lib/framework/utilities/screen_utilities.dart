@@ -48,10 +48,8 @@ class ScreenUtilities {
 
   /// Private constructor
   ScreenUtilities._() {
-    // Set up the method channel handler
     _methodChannel.setMethodCallHandler(_handleMethodCall);
 
-    // Initial refresh
     refreshDimensions();
   }
 
@@ -59,13 +57,11 @@ class ScreenUtilities {
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'dimensionsChanged':
-        // Update dimensions from native values
         final Map<dynamic, dynamic> args = call.arguments;
 
         final newWidth = args['width'] as double;
         final newHeight = args['height'] as double;
 
-        // Only process if dimensions actually changed
         if (newWidth != _screenWidth || newHeight != _screenHeight) {
           _previousWidth = _screenWidth;
           _previousHeight = _screenHeight;
@@ -79,25 +75,21 @@ class ScreenUtilities {
           _safeAreaLeft = args['safeAreaLeft'] as double? ?? 0.0;
           _safeAreaRight = args['safeAreaRight'] as double? ?? 0.0;
 
-          // Log the change with more detail
           final changeType = _determineChangeType();
           developer.log(
               'Screen dimensions changed ($changeType): ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
               name: 'ScreenUtilities');
 
-          // Notify listeners
           _notifyDimensionChangeListeners();
         }
         return null;
         
       case 'onDimensionChange':
-        // Handle dimension changes from enhanced window size detection
         final Map<dynamic, dynamic> args = call.arguments;
         
         final newWidth = args['width'] as double;
         final newHeight = args['height'] as double;
         
-        // Only process if dimensions actually changed
         if (newWidth != _screenWidth || newHeight != _screenHeight) {
           _previousWidth = _screenWidth;
           _previousHeight = _screenHeight;
@@ -114,7 +106,6 @@ class ScreenUtilities {
               'Window size changed: ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
               name: 'ScreenUtilities');
 
-          // Notify listeners
           _notifyDimensionChangeListeners();
         }
         return null;
@@ -162,7 +153,6 @@ class ScreenUtilities {
             'Screen dimensions refreshed: $_screenWidth x $_screenHeight',
             name: 'ScreenUtilities');
 
-        // Only notify if dimensions actually changed
         if (_previousWidth != _screenWidth || _previousHeight != _screenHeight) {
           _notifyDimensionChangeListeners();
         }
@@ -170,7 +160,6 @@ class ScreenUtilities {
     } catch (e) {
       developer.log('Failed to refresh screen dimensions: $e', name: 'ScreenUtilities');
       
-      // Fallback to reasonable defaults if needed
       if (_screenWidth == 0 || _screenHeight == 0) {
         _screenWidth = 400;
         _screenHeight = 800;
@@ -260,7 +249,6 @@ class ScreenUtilities {
     final wasLandscape = _previousWidth > _previousHeight;
     final isLandscape = _screenWidth > _screenHeight;
     
-    // Same orientation but different size = window resize
     return wasLandscape == isLandscape && 
            (_previousWidth != _screenWidth || _previousHeight != _screenHeight);
   }

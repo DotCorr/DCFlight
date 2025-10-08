@@ -9,5 +9,3 @@
 
 
 
-// Registeration of components happen at the native side now. 
-// This directory files are deprecated and are onlyt used for reference incase i have to reimplement them for ARCH2 (Move old Arch from DCMAUI(Old private framework) to new as new arch).

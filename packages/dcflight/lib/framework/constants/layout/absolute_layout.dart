@@ -9,13 +9,11 @@
 /// Absolute layout properties for positioning elements
 /// When using absolute positioning, these properties work together to precisely position elements
 class AbsoluteLayout {
-  // Position values - can be numeric or percentage strings (e.g., "50%")
   final dynamic left;
   final dynamic top; 
   final dynamic right;
   final dynamic bottom;
   
-  // Translation properties - useful for centering with percentage positioning
   final dynamic translateX;       // Translation offset on X axis
   final dynamic translateY;       // Translation offset on Y axis
 
