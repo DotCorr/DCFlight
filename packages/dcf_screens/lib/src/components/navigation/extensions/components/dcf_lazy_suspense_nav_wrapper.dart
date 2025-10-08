@@ -1,5 +1,6 @@
 // 🎯 DCFLazySuspense - Suspense with built-in navigation awareness
 import 'package:dcflight/dcflight.dart';
+import 'package:dcf_primitives/dcf_primitives.dart';
 
 ///
 /// This variant automatically determines when to render based on

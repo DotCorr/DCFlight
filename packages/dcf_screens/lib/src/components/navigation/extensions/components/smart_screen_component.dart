@@ -7,6 +7,7 @@
 
 import "package:dcf_screens/dcf_screens.dart";
 import "package:dcflight/dcflight.dart";
+import "package:dcf_primitives/dcf_primitives.dart";
 
 /// 🎯 DCFEasyScreen - Simple wrapper that reduces boilerplate
 /// while keeping your existing working pattern

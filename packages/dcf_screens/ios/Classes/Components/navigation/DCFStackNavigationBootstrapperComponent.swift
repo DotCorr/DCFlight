@@ -176,6 +176,14 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
         print(
             "🎯 DCFStackNavigationBootstrapperComponent: Setting up initial screen '\(screenName)'")
 
+        // 🎯 CRITICAL FIX: Remove from any existing parent before setting up
+        if screenContainer.viewController.parent != nil {
+            print("🔧 DCFStackNavigationBootstrapperComponent: Removing view controller from existing parent")
+            screenContainer.viewController.willMove(toParent: nil)
+            screenContainer.viewController.view.removeFromSuperview()
+            screenContainer.viewController.removeFromParent()
+        }
+
         // Ensure content view is ready
         screenContainer.contentView.isHidden = false
         screenContainer.contentView.alpha = 1.0
@@ -195,8 +203,8 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
             )
         }
 
-        // Set as root view controller of the navigation controller
-        navigationController.viewControllers = [screenContainer.viewController]
+        // 🎯 CRITICAL FIX: Properly set as root view controller
+        navigationController.setViewControllers([screenContainer.viewController], animated: false)
 
         // Fire initial lifecycle events (like DCFTabNavigatorComponent does)
         DispatchQueue.main.async {
