@@ -106,6 +106,21 @@ object DCDivergerUtil {
                 } else {
                     Log.w(TAG, "Activity is not a LifecycleOwner, Compose may not work properly")
                 }
+                
+                // Also attach SavedStateRegistryOwner for Compose support
+                if (activity is androidx.savedstate.SavedStateRegistryOwner) {
+                    try {
+                        // Use reflection to set ViewTreeSavedStateRegistryOwner if available
+                        val viewTreeSavedStateRegistryOwnerClass = Class.forName("androidx.savedstate.ViewTreeSavedStateRegistryOwner")
+                        val setMethod = viewTreeSavedStateRegistryOwnerClass.getMethod("set", View::class.java, androidx.savedstate.SavedStateRegistryOwner::class.java)
+                        setMethod.invoke(null, this, activity)
+                        Log.d(TAG, "✅ ViewTreeSavedStateRegistryOwner attached to root view via reflection")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "ViewTreeSavedStateRegistryOwner not available, Compose may not work properly", e)
+                    }
+                } else {
+                    Log.w(TAG, "Activity is not a SavedStateRegistryOwner, Compose may not work properly")
+                }
             }
 
             if (activity is FlutterActivity) {
