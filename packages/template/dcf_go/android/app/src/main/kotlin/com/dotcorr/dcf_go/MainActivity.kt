@@ -16,5 +16,4 @@ import com.dotcorr.dcflight.DCFFlutterActivity
  */
 class MainActivity : DCFFlutterActivity() {
     // Framework handles all initialization and setup
-    // Just like iOS where DCFAppDelegate handles everything
 }

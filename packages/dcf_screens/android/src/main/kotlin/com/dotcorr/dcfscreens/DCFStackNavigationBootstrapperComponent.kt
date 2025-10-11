@@ -28,16 +28,6 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         Log.d(TAG, "Creating stack navigation bootstrapper component")
         
-        // Create a proper ViewGroup container that can hold child views
-        val navigationContainer = FrameLayout(context).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            // Ensure it's a proper ViewGroup
-            id = View.generateViewId()
-        }
-        
         // Extract navigation properties
         val initialScreen = props["initialScreen"] as? String
         val hideNavigationBar = props["hideNavigationBar"] as? Boolean ?: false
@@ -45,11 +35,208 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         
         Log.d(TAG, "StackNavigationBootstrapper created - initialScreen: $initialScreen, hideNavBar: $hideNavigationBar, animationDuration: $animationDuration")
         
-        // Set up initial navigation with retry mechanism
-        setupInitialNavigationWithRetry(initialScreen, retryCount = 0, maxRetries = 10)
+        // Create a hidden placeholder view (like iOS)
+        val placeholderView = FrameLayout(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            visibility = View.GONE
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
         
-        return navigationContainer
+        // Set up the navigation system (like iOS creates UINavigationController)
+        setupNavigationSystem(context, initialScreen, hideNavigationBar)
+        
+        return placeholderView
     }
+    
+    private fun setupNavigationSystem(context: Context, initialScreen: String?, hideNavigationBar: Boolean) {
+        Log.d(TAG, "Setting up navigation system")
+        
+        // Try to get Activity from context first
+        var activity = when (context) {
+            is android.app.Activity -> context
+            is android.content.ContextWrapper -> {
+                var ctx = context.baseContext
+                while (ctx is android.content.ContextWrapper && ctx !is android.app.Activity) {
+                    ctx = ctx.baseContext
+                }
+                ctx as? android.app.Activity
+            }
+            else -> null
+        }
+        
+        // If we couldn't get Activity from context, try to get it from Flutter engine
+        if (activity == null) {
+            Log.d(TAG, "Could not find Activity from context, trying Flutter engine...")
+            activity = getActivityFromFlutterEngine()
+        }
+        
+        // If we still couldn't get Activity, try to get it from the plugin
+        if (activity == null) {
+            Log.d(TAG, "Could not find Activity from Flutter engine, trying plugin...")
+            activity = com.dotcorr.dcfscreens.DcfScreensPlugin.getActivity()
+            if (activity != null) {
+                Log.d(TAG, "✅ Found Activity from plugin: ${activity!!.javaClass.simpleName}")
+            }
+        }
+        
+        if (activity != null) {
+            // Initialize the navigation controller with the Activity
+            DCFAndroidNavigationController.shared.initialize(activity)
+            Log.d(TAG, "Android Navigation Controller initialized with activity: ${activity.javaClass.simpleName}")
+            
+            // 🎯 CRITICAL: Replace the root of the Activity with our navigation controller
+            // This is the Android equivalent of iOS replaceRoot(controller: navigationController)
+            replaceActivityRoot(activity, initialScreen)
+            
+            Log.d(TAG, "Activity root replaced with navigation controller")
+        } else {
+            Log.w(TAG, "Could not find Activity from any source")
+            // Initialize with context anyway - DCFScreenComponent will handle Activity initialization
+            DCFAndroidNavigationController.shared.initialize(context)
+            Log.w(TAG, "Navigation controller initialized with context, will be upgraded to Activity later")
+            
+            // Set up a delayed retry mechanism to try to get the Activity later
+            setupDelayedActivityInitialization(initialScreen)
+        }
+        
+        Log.d(TAG, "Navigation system setup complete")
+    }
+    
+    /**
+     * Try to get Activity from Flutter engine using multiple strategies
+     */
+    private fun getActivityFromFlutterEngine(): android.app.Activity? {
+        // Strategy 1: Try to get Activity from Flutter engine using reflection
+        try {
+            val flutterEngine = io.flutter.embedding.engine.FlutterEngineCache.getInstance().get("main")
+            flutterEngine?.let { engine ->
+                // Try to get the Activity from the engine's context using reflection
+                val contextField = engine.javaClass.getDeclaredField("context")
+                contextField.isAccessible = true
+                val engineContext = contextField.get(engine) as? Context
+                if (engineContext is android.app.Activity) {
+                    Log.d(TAG, "Found Activity from Flutter engine context: ${engineContext.javaClass.simpleName}")
+                    return engineContext
+                }
+                
+                // Try to unwrap the context
+                if (engineContext is android.content.ContextWrapper) {
+                    var ctx = engineContext.baseContext
+                    while (ctx is android.content.ContextWrapper && ctx !is android.app.Activity) {
+                        ctx = ctx.baseContext
+                    }
+                    if (ctx is android.app.Activity) {
+                        Log.d(TAG, "Found Activity from Flutter engine unwrapped context: ${ctx.javaClass.simpleName}")
+                        return ctx
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not get Activity from Flutter engine context: ${e.message}")
+        }
+        
+        // Strategy 2: Try to get Activity from Flutter engine using activity field
+        try {
+            val flutterEngine = io.flutter.embedding.engine.FlutterEngineCache.getInstance().get("main")
+            flutterEngine?.let { engine ->
+                // Try to get the Activity from the engine's activity field
+                val activityField = engine.javaClass.getDeclaredField("activity")
+                activityField.isAccessible = true
+                val engineActivity = activityField.get(engine) as? android.app.Activity
+                if (engineActivity != null) {
+                    Log.d(TAG, "Found Activity from Flutter engine activity: ${engineActivity.javaClass.simpleName}")
+                    return engineActivity
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not get Activity from Flutter engine activity: ${e.message}")
+        }
+        
+        // Strategy 3: Try to get Activity from Flutter engine's activity registry
+        try {
+            val flutterEngine = io.flutter.embedding.engine.FlutterEngineCache.getInstance().get("main")
+            flutterEngine?.let { engine ->
+                // Try to get the Activity from the engine's activity registry
+                val activityRegistryField = engine.javaClass.getDeclaredField("activityRegistry")
+                activityRegistryField.isAccessible = true
+                val activityRegistry = activityRegistryField.get(engine)
+                
+                // Try to get the current activity from the registry
+                if (activityRegistry != null) {
+                    val getCurrentActivityMethod = activityRegistry.javaClass.getDeclaredMethod("getCurrentActivity")
+                    getCurrentActivityMethod.isAccessible = true
+                    val currentActivity = getCurrentActivityMethod.invoke(activityRegistry) as? android.app.Activity
+                    if (currentActivity != null) {
+                        Log.d(TAG, "Found Activity from Flutter engine activity registry: ${currentActivity.javaClass.simpleName}")
+                        return currentActivity
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not get Activity from Flutter engine activity registry: ${e.message}")
+        }
+        
+        // Strategy 4: Try to get Activity from Flutter engine's plugin registry
+        try {
+            val flutterEngine = io.flutter.embedding.engine.FlutterEngineCache.getInstance().get("main")
+            flutterEngine?.let { engine ->
+                // Try to get the Activity from the engine's plugin registry
+                val pluginRegistryField = engine.javaClass.getDeclaredField("pluginRegistry")
+                pluginRegistryField.isAccessible = true
+                val pluginRegistry = pluginRegistryField.get(engine)
+                
+                // Try to get the activity from the plugin registry
+                if (pluginRegistry != null) {
+                    val getActivityMethod = pluginRegistry.javaClass.getDeclaredMethod("getActivity")
+                    getActivityMethod.isAccessible = true
+                    val activity = getActivityMethod.invoke(pluginRegistry) as? android.app.Activity
+                    if (activity != null) {
+                        Log.d(TAG, "Found Activity from Flutter engine plugin registry: ${activity.javaClass.simpleName}")
+                        return activity
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not get Activity from Flutter engine plugin registry: ${e.message}")
+        }
+        
+        Log.w(TAG, "Could not get Activity from Flutter engine")
+        return null
+    }
+    
+    /**
+     * Android equivalent of iOS replaceRoot(controller: navigationController)
+     * This replaces the Activity's root view with our navigation controller
+     */
+    private fun replaceActivityRoot(activity: android.app.Activity, initialScreen: String?) {
+        try {
+            Log.d(TAG, "Replacing Activity root with navigation controller")
+            
+            // Get the navigation controller's root view
+            val navigationController = DCFAndroidNavigationController.shared
+            val rootView = navigationController.getRootView()
+            
+            if (rootView != null) {
+                // Set the navigation controller as the root view of the Activity
+                activity.setContentView(rootView)
+                Log.d(TAG, "✅ Activity root successfully replaced with navigation controller")
+                
+                // Set up initial screen if provided
+                if (initialScreen != null) {
+                    navigationController.pushScreen(initialScreen)
+                    Log.d(TAG, "Initial screen '$initialScreen' pushed to navigation stack")
+                }
+            } else {
+                Log.e(TAG, "❌ Navigation controller root view is null")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to replace Activity root: ${e.message}")
+        }
+    }
+    
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         Log.d(TAG, "Updating stack navigation bootstrapper component")
@@ -103,24 +290,46 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
     private fun handleNavigationCommand(command: Map<String, Any?>) {
         val action = command["action"] as? String
         val targetRoute = command["targetRoute"] as? String
+        val title = command["title"] as? String
+        val hideNavigationBar = command["hideNavigationBar"] as? Boolean ?: false
+        val prefixActions = command["prefixActions"] as? List<Map<String, Any?>>
+        val suffixActions = command["suffixActions"] as? List<Map<String, Any?>>
         
         Log.d(TAG, "Handling navigation command: $action -> $targetRoute")
         
         when (action) {
             "navigateToRoute" -> {
-                navigateToScreen(targetRoute)
+                DCFAndroidNavigationController.shared.pushScreen(
+                    route = targetRoute ?: "",
+                    title = title,
+                    hideNavigationBar = hideNavigationBar,
+                    prefixActions = prefixActions,
+                    suffixActions = suffixActions
+                )
             }
             "push" -> {
-                navigateToScreen(targetRoute)
+                DCFAndroidNavigationController.shared.pushScreen(
+                    route = targetRoute ?: "",
+                    title = title,
+                    hideNavigationBar = hideNavigationBar,
+                    prefixActions = prefixActions,
+                    suffixActions = suffixActions
+                )
             }
             "pop" -> {
-                goBack()
+                DCFAndroidNavigationController.shared.popScreen()
             }
             "replace" -> {
-                navigateToScreen(targetRoute)
+                DCFAndroidNavigationController.shared.replaceScreen(
+                    route = targetRoute ?: "",
+                    title = title,
+                    hideNavigationBar = hideNavigationBar,
+                    prefixActions = prefixActions,
+                    suffixActions = suffixActions
+                )
             }
             "popToRoot" -> {
-                navigateToScreen("home")
+                DCFAndroidNavigationController.shared.popToRoot()
             }
             else -> {
                 Log.w(TAG, "Unknown navigation action: $action")
@@ -158,35 +367,11 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
     private fun setupInitialScreen(screenContainer: DCFScreenContainer) {
         Log.d(TAG, "Setting up initial screen '${screenContainer.route}'")
         
-        // Hide all other screens first
-        DCFScreenComponent.getAllScreenContainers().forEach { (route, container) ->
-            if (route != screenContainer.route) {
-                container.view.visibility = View.GONE
-                Log.d(TAG, "Hiding screen: $route")
-            }
-        }
-        
-        // Make the initial screen visible
-        screenContainer.view.visibility = View.VISIBLE
-        screenContainer.view.alpha = 1.0f
-        
-        // Ensure the screen is properly sized
-        screenContainer.view.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
-        
-        // Fire initial lifecycle events
-        propagateEvent(
-            view = screenContainer.view,
-            eventName = "onAppear",
-            data = mapOf("route" to screenContainer.route, "isInitial" to true)
-        )
-        
-        propagateEvent(
-            view = screenContainer.view,
-            eventName = "onActivate",
-            data = mapOf("route" to screenContainer.route, "isInitial" to true)
+        // Use the navigation controller to set up the initial screen
+        DCFAndroidNavigationController.shared.pushScreen(
+            route = screenContainer.route,
+            title = screenContainer.route,
+            hideNavigationBar = false
         )
         
         Log.d(TAG, "Initial screen '${screenContainer.route}' ready")
@@ -197,48 +382,63 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         
         Log.d(TAG, "Navigating to screen: $screenName")
         
-        // Hide all screens first
-        val allScreens = DCFScreenComponent.getAllScreenContainers()
-        allScreens.forEach { (route, container) ->
-            if (route != screenName) {
-                container.view.visibility = View.GONE
-                Log.d(TAG, "Hiding screen: $route")
-            }
-        }
-        
-        // Show the target screen
-        val screenContainer = DCFScreenComponent.getScreenContainer(screenName)
-        if (screenContainer != null) {
-            screenContainer.view.visibility = View.VISIBLE
-            screenContainer.view.alpha = 1.0f
-            
-            // Ensure the screen is properly sized
-            screenContainer.view.layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            
-            // Fire navigation events
-            propagateEvent(
-                view = screenContainer.view,
-                eventName = "onAppear",
-                data = mapOf("route" to screenName)
-            )
-            
-            propagateEvent(
-                view = screenContainer.view,
-                eventName = "onActivate",
-                data = mapOf("route" to screenName)
-            )
-            
-            Log.d(TAG, "Successfully navigated to screen: $screenName")
-        } else {
-            Log.e(TAG, "Screen '$screenName' not found for navigation")
-        }
+        // Use the navigation controller for proper navigation
+        DCFAndroidNavigationController.shared.pushScreen(
+            route = screenName,
+            title = screenName,
+            hideNavigationBar = false
+        )
     }
     
     private fun goBack() {
         Log.d(TAG, "Going back in navigation stack")
-        // TODO: Implement actual back navigation logic
+        DCFAndroidNavigationController.shared.goBack()
+    }
+    
+    /**
+     * Set up delayed Activity initialization with retry mechanism
+     */
+    private fun setupDelayedActivityInitialization(initialScreen: String?) {
+        Log.d(TAG, "Setting up delayed Activity initialization")
+        
+        // Retry every 100ms for up to 5 seconds (50 attempts)
+        var attemptCount = 0
+        val maxAttempts = 50
+        val retryDelay = 100L
+        
+        val retryRunnable = object : Runnable {
+            override fun run() {
+                attemptCount++
+                Log.d(TAG, "Delayed Activity initialization attempt $attemptCount/$maxAttempts")
+                
+                // Try to get Activity from Flutter engine again
+                var activity = getActivityFromFlutterEngine()
+                
+                // If not found from Flutter engine, try the plugin
+                if (activity == null) {
+                    activity = com.dotcorr.dcfscreens.DcfScreensPlugin.getActivity()
+                }
+                
+                if (activity != null) {
+                    Log.d(TAG, "✅ Found Activity on delayed attempt $attemptCount: ${activity.javaClass.simpleName}")
+                    
+                    // Initialize the navigation controller with the Activity
+                    DCFAndroidNavigationController.shared.initialize(activity)
+                    
+                    // Replace the root of the Activity with our navigation controller
+                    replaceActivityRoot(activity, initialScreen)
+                    
+                    Log.d(TAG, "✅ Delayed Activity initialization successful")
+                } else if (attemptCount < maxAttempts) {
+                    // Schedule next retry
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, retryDelay)
+                } else {
+                    Log.e(TAG, "❌ Failed to find Activity after $maxAttempts attempts")
+                }
+            }
+        }
+        
+        // Start the retry mechanism
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(retryRunnable, retryDelay)
     }
 }
