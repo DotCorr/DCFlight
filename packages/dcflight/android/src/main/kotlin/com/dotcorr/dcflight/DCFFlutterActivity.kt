@@ -12,6 +12,12 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
 import com.facebook.soloader.SoLoader
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -24,7 +30,7 @@ import com.dotcorr.dcflight.utils.DCFScreenUtilities
  * DCFFlutterActivity - Base activity for DCFlight apps
  * Matches iOS DCFAppDelegate pattern for framework initialization
  */
-open class DCFFlutterActivity : FlutterActivity() {
+open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateRegistryOwner {
 
     companion object {
         private const val TAG = "DCFlight"
@@ -32,8 +38,22 @@ open class DCFFlutterActivity : FlutterActivity() {
         private var isFrameworkDiverged = false
     }
 
+    // Lifecycle support for Compose
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+
+    override val lifecycle: Lifecycle
+        get() = lifecycleRegistry
+
+    override val savedStateRegistry: SavedStateRegistry
+        get() = savedStateRegistryController.savedStateRegistry
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize lifecycle and saved state for Compose support
+        savedStateRegistryController.performRestore(savedInstanceState)
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
 
         if (!SoLoader.isInitialized()) {
             SoLoader.init(this, false)
@@ -45,6 +65,7 @@ open class DCFFlutterActivity : FlutterActivity() {
     
     override fun onStart() {
         super.onStart()
+        lifecycleRegistry.currentState = Lifecycle.State.STARTED
         
         if (!isFrameworkDiverged) {
             Log.d(TAG, "First start - diverging to native UI")
@@ -52,6 +73,21 @@ open class DCFFlutterActivity : FlutterActivity() {
         } else {
             Log.d(TAG, "Activity restarted - preserving existing native UI")
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+    }
+
+    override fun onPause() {
+        super.onPause()
+        lifecycleRegistry.currentState = Lifecycle.State.STARTED
+    }
+
+    override fun onStop() {
+        super.onStop()
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
     }
     
     /**
@@ -163,7 +199,13 @@ open class DCFFlutterActivity : FlutterActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         Log.d(TAG, "🧹 Activity destroyed")
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        savedStateRegistryController.performSave(outState)
     }
 }
 

@@ -4,12 +4,13 @@ import android.content.Context
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
+import com.dotcorr.dcflight.components.DCFComponent
 
 /**
  * DCFScreenComponent for Android using Jetpack Compose Navigation
  * This follows the same pattern as iOS but uses Android's native navigation
  */
-class DCFScreenComponent {
+class DCFScreenComponent : DCFComponent() {
     
     companion object {
         private const val TAG = "DCFScreenComponent"
@@ -25,7 +26,7 @@ class DCFScreenComponent {
         }
     }
     
-    fun createView(context: Context, props: Map<String, Any?>): View {
+    override fun createView(context: Context, props: Map<String, Any?>): View {
         Log.d(TAG, "Creating screen component")
         
         val route = props["route"] as? String ?: "unknown"
@@ -46,6 +47,11 @@ class DCFScreenComponent {
         Log.d(TAG, "Screen created - route: $route, style: $presentationStyle")
         
         return screenContainer
+    }
+    
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Screen components typically don't need updates
+        return false
     }
 }
 
