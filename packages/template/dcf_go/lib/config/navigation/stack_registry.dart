@@ -49,7 +49,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
           // presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Profile",
-            backButtonTitle: "Home",
+            backButtonTitle: "Test",
             suffixActions: [
               DCFPushHeaderActionConfig.withSVGPackage(
                 title: "Settings",

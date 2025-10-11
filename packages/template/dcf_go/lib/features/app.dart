@@ -6,7 +6,6 @@ class HomeScreen extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFSafeArea(
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
       layout: DCFLayout(
         flex: 1,
         padding: 20,
