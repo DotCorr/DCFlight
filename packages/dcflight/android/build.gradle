@@ -54,6 +54,11 @@ android {
         implementation 'com.google.android.material:material:1.11.0'
         implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
+        // Lifecycle support for Compose
+        implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.5'
+        implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.5'
+        implementation 'androidx.savedstate:savedstate-ktx:1.2.1'
+
         // Yoga layout engine - Updated to 2.0+ for gap support
         implementation 'com.facebook.yoga:yoga:2.0.0'
         implementation 'com.facebook.soloader:soloader:0.10.4'

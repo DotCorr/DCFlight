@@ -1,6 +1,7 @@
 package com.dotcorr.dcfscreens
 
 import android.util.Log
+import com.dotcorr.dcflight.components.DCFComponentRegistry
 
 object DCFScreensComponentsReg {
     private const val TAG = "DCFScreensComponentsReg"
@@ -9,8 +10,17 @@ object DCFScreensComponentsReg {
         try {
             Log.d(TAG, "Registering DCFScreens components")
             
-            // Register components here
-            // This will be implemented with proper Android Navigation APIs
+            // Register Screen component
+            DCFComponentRegistry.shared.registerComponent(
+                "Screen", 
+                componentClass = DCFScreenComponent::class.java
+            )
+            
+            // Register StackNavigationBootstrapper component
+            DCFComponentRegistry.shared.registerComponent(
+                "StackNavigationBootstrapper", 
+                componentClass = DCFStackNavigationBootstrapperComponent::class.java
+            )
             
             Log.d(TAG, "DCFScreens components registered successfully")
         } catch (e: Exception) {

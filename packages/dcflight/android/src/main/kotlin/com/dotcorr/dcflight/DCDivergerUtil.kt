@@ -14,6 +14,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.lifecycle.LifecycleOwner
 import com.dotcorr.dcflight.components.DCFFrameLayout
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.FlutterView
@@ -90,6 +91,21 @@ object DCDivergerUtil {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
+                
+                // Attach lifecycle owner for Compose support
+                if (activity is LifecycleOwner) {
+                    try {
+                        // Use reflection to set ViewTreeLifecycleOwner if available
+                        val viewTreeLifecycleOwnerClass = Class.forName("androidx.lifecycle.ViewTreeLifecycleOwner")
+                        val setMethod = viewTreeLifecycleOwnerClass.getMethod("set", View::class.java, LifecycleOwner::class.java)
+                        setMethod.invoke(null, this, activity)
+                        Log.d(TAG, "✅ ViewTreeLifecycleOwner attached to root view via reflection")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "ViewTreeLifecycleOwner not available, Compose may not work properly", e)
+                    }
+                } else {
+                    Log.w(TAG, "Activity is not a LifecycleOwner, Compose may not work properly")
+                }
             }
 
             if (activity is FlutterActivity) {
