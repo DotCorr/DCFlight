@@ -63,12 +63,26 @@ class DCFAndroidNavigationController private constructor() {
     }
     
     fun pushScreen(route: String, title: String? = null) {
-        Log.d(TAG, "Pushing screen: $route")
-        
+        Log.d(TAG, "Pushing screen: $route with title: $title")
+
         navController?.let { controller ->
             try {
-                controller.navigate(route)
-                Log.d(TAG, "✅ Successfully navigated to $route")
+                // Check if we can navigate to this route
+                val currentRoute = controller.currentDestination?.route
+                Log.d(TAG, "Current route: $currentRoute, navigating to: $route")
+                
+                // Check if the route exists in the navigation graph
+                val graph = controller.graph
+                val destination = graph.findNode(route)
+                
+                if (destination != null) {
+                    controller.navigate(route)
+                    Log.d(TAG, "✅ Successfully navigated to $route")
+                } else {
+                    Log.w(TAG, "⚠️ Route '$route' not found in navigation graph")
+                    // For now, just log that the route wasn't found
+                    Log.d(TAG, "Route '$route' is not registered in the navigation graph")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to navigate to $route", e)
             }
