@@ -15,7 +15,7 @@ class MyApp extends DCFStatefulComponent {
       screenRegistryComponents: StackScreenRegistry(),
       navigationBarStyle: DCFNavigationBarStyle(
         backgroundColor: Colors.orange.shade400,
-        titleColor: Colors.white,
+        titleColor: Colors.blueAccent,
         backButtonColor: Colors.white,
       ),
       onNavigationChange: (data) {
