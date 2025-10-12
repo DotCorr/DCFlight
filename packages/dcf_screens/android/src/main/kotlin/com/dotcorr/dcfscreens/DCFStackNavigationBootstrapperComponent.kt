@@ -86,29 +86,44 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         
         val screenView = screenContainer.view
         
-        // Remove from external parent only (not navigation container)
-        val currentParent = screenView.parent as? ViewGroup
-        if (currentParent != null && currentParent != container) {
-            currentParent.removeView(screenView)
-            Log.d(TAG, "Removed screen from external parent")
+        // CRITICAL: Hide ALL screens in root (ensures no overlays)
+        val rootView = container.rootView as? ViewGroup
+        if (rootView != null) {
+            for (i in 0 until rootView.childCount) {
+                val child = rootView.getChildAt(i)
+                // Hide all DCFScreenComponent views (but not the nav container)
+                if (child != container && child is ViewGroup) {
+                    child.visibility = View.GONE
+                    Log.d(TAG, "🔒 Hidden sibling screen view at index $i")
+                }
+            }
         }
         
-        // Add to container if not already there
-        if (screenView.parent != container) {
-            container.addView(screenView, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            ))
-            Log.d(TAG, "Added initial screen to navigation container")
+        // CRITICAL: Remove from ANY parent (including root) before adding to nav container
+        val currentParent = screenView.parent as? ViewGroup
+        if (currentParent != null) {
+            currentParent.removeView(screenView)
+            Log.d(TAG, "Removed screen from parent: $currentParent")
         }
+        
+        // Clear navigation container and add only the initial screen
+        container.removeAllViews()
+        container.addView(screenView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
         
         screenView.visibility = View.VISIBLE
         screenView.bringToFront()
         
+        // Bring navigation container to front (above all sibling screen views in root)
+        container.bringToFront()
+        container.requestLayout()
+        
         navigationStack.clear()
         navigationStack.add(initialScreen)
         
-        Log.d(TAG, "Initial screen added to container. Stack: $navigationStack")
+        Log.d(TAG, "✅ Initial screen added. Stack: $navigationStack")
     }
 
     // Make this public so DCFScreenComponent can call it (like iOS UINavigationController.pushViewController)
@@ -135,7 +150,21 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         
         val screenView = screenContainer.view
         
-        // Hide the current top screen (if any)
+        // CRITICAL: Hide ALL screens in root (not just the current one in the stack)
+        // This ensures no sibling screens are visible over the nav container
+        val rootView = container.rootView as? ViewGroup
+        if (rootView != null) {
+            for (i in 0 until rootView.childCount) {
+                val child = rootView.getChildAt(i)
+                // Hide all DCFScreenComponent views (but not the nav container)
+                if (child != container && child is ViewGroup) {
+                    child.visibility = View.GONE
+                    Log.d(TAG, "🔒 Hidden sibling screen view at index $i")
+                }
+            }
+        }
+        
+        // Hide the current top screen (if any) from navigation stack
         if (navigationStack.isNotEmpty()) {
             val currentRoute = navigationStack.last()
             val currentScreenContainer = DCFScreenComponent.getScreenContainer(currentRoute)
@@ -143,25 +172,27 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
             Log.d(TAG, "Hidden previous screen: $currentRoute")
         }
         
-        // Remove from old parent ONLY if it's not already in navigation container
+        // CRITICAL: Remove from ANY parent (especially root!) before adding to nav container
         val currentParent = screenView.parent as? ViewGroup
-        if (currentParent != null && currentParent != container) {
+        if (currentParent != null) {
             currentParent.removeView(screenView)
-            Log.d(TAG, "Removed screen from external parent (not navigation container)")
+            Log.d(TAG, "Removed screen from parent: $currentParent")
         }
         
-        // Add new screen if not already in container (maintains stack)
-        if (screenView.parent != container) {
-            container.addView(screenView, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            ))
-            Log.d(TAG, "Added screen to navigation container")
-        }
+        // Clear container and add ONLY the new screen (like iOS replaces view controller)
+        container.removeAllViews()
+        container.addView(screenView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
         
         // Show and bring to front
         screenView.visibility = View.VISIBLE
         screenView.bringToFront()
+        
+        // CRITICAL: Bring navigation container to front (above ALL sibling screen views in root)
+        container.bringToFront()
+        container.requestLayout()
         
         // Update navigation stack
         navigationStack.add(routeName)
@@ -183,17 +214,7 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
             return
         }
         
-        // Get current route before removing from stack
-        val currentRoute = navigationStack.last()
-        
-        // Hide current screen (don't remove from container - keep in stack!)
-        val currentScreenContainer = DCFScreenComponent.getScreenContainer(currentRoute)
-        if (currentScreenContainer != null) {
-            currentScreenContainer.view.visibility = View.GONE
-            Log.d(TAG, "Hidden current screen: $currentRoute")
-        }
-        
-        // Remove current route from navigation stack
+        // Remove current route from stack
         navigationStack.removeAt(navigationStack.size - 1)
         
         // Show previous screen
@@ -205,8 +226,40 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         }
         
         val previousView = previousScreenContainer.view
+        
+        // CRITICAL: Hide ALL screens in root (ensures no overlays)
+        val rootView = container.rootView as? ViewGroup
+        if (rootView != null) {
+            for (i in 0 until rootView.childCount) {
+                val child = rootView.getChildAt(i)
+                // Hide all DCFScreenComponent views (but not the nav container)
+                if (child != container && child is ViewGroup) {
+                    child.visibility = View.GONE
+                    Log.d(TAG, "🔒 Hidden sibling screen view at index $i")
+                }
+            }
+        }
+        
+        // CRITICAL: Remove from ANY parent before adding to nav container
+        val currentParent = previousView.parent as? ViewGroup
+        if (currentParent != null) {
+            currentParent.removeView(previousView)
+            Log.d(TAG, "Removed previous screen from parent: $currentParent")
+        }
+        
+        // Clear container and add ONLY the previous screen
+        container.removeAllViews()
+        container.addView(previousView, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ))
+        
         previousView.visibility = View.VISIBLE
         previousView.bringToFront()
+        
+        // CRITICAL: Bring navigation container to front (above ALL sibling screen views in root)
+        container.bringToFront()
+        container.requestLayout()
         
         Log.d(TAG, "✅ Went back to $previousRoute. Stack: $navigationStack")
     }
