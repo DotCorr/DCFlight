@@ -121,7 +121,7 @@ class AnimatedModalScreen extends DCFStatefulComponent {
                   ),
                   // Pure UI thread opacity animation using ReanimatedView
                   ReanimatedView(
-                    key: "opacity_box",
+                   
                     layout: DCFLayout(width: "50%", height: 80),
                     styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
                     animatedStyle: opacityStyle,
@@ -141,7 +141,7 @@ class AnimatedModalScreen extends DCFStatefulComponent {
                   ),
                   // Pure UI thread animated drawer using ReanimatedView
                   ReanimatedView(
-                    key: "drawer_panel",
+                  
                     layout: DCFLayout(
                       position: YogaPositionType.absolute,
                       absoluteLayout: AbsoluteLayout(left: 0, top: 40),
@@ -636,3 +636,4 @@ class AnimatedModalScreen extends DCFStatefulComponent {
     );
   }
 }
+

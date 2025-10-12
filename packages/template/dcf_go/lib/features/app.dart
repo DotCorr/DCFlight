@@ -12,6 +12,7 @@ class HomeScreen extends DCFStatelessComponent {
         justifyContent: YogaJustifyContent.center,
         alignItems: YogaAlign.center,
       ),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.indigo.shade100),
       children: [
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Profile"),
@@ -261,3 +262,4 @@ class SettingsScreen extends DCFStatefulComponent {
     );
   }
 }
+
