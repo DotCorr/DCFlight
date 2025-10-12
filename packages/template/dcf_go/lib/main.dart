@@ -2,7 +2,6 @@ import 'package:dcf_go/config/navigation/stack_registry.dart';
 import 'package:dcf_screens/dcf_screens.dart';
 import 'package:dcflight/dcflight.dart';
 
-
 void main() async {
   await DCFlight.go(app: MyApp());
 }
@@ -30,3 +29,4 @@ class MyApp extends DCFStatefulComponent {
   @override
   List<Object?> get props => [];
 }
+
