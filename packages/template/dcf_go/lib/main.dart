@@ -15,7 +15,7 @@ class MyApp extends DCFStatefulComponent {
       navigationBarStyle: DCFNavigationBarStyle(
         backgroundColor: Colors.orange.shade400,
         titleColor: Colors.blueAccent,
-        backButtonColor: Colors.white,
+        backButtonColor: Colors.pink,
       ),
       onNavigationChange: (data) {
         print("🧭 Navigation changed: $data");
