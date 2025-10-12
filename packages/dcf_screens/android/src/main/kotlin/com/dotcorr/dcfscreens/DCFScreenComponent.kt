@@ -140,14 +140,15 @@ class DCFScreenComponent : DCFComponent() {
         if (screenContainer != null) {
             Log.d(TAG, "✅ Found registered container for route: $route")
             
-            // Actually navigate to the registered container (like iOS does)
-            // This is where we implement the actual navigation logic
-            Log.d(TAG, "🎯 DCFScreenComponent: Navigating to container for route: $route")
-            
-            // The actual navigation will be handled by the DCFlight framework
-            // which will replace the Flutter view hierarchy with native navigation
-            // This is the key difference from iOS - we let DCFlight handle the navigation
-            Log.d(TAG, "✅ DCFScreenComponent: Navigation command processed for route: $route")
+            // Get the navigation bootstrapper and call its navigate method (like iOS calls navigationController.pushViewController)
+            val navigationBootstrapper = DCFStackNavigationBootstrapperComponent.getSharedInstance()
+            if (navigationBootstrapper != null) {
+                Log.d(TAG, "🎯 DCFScreenComponent: Calling bootstrapper.navigateToRoute('$route')")
+                // Directly call the public method (like iOS calls navigationController.pushViewController)
+                navigationBootstrapper.navigateToRoute(route)
+            } else {
+                Log.e(TAG, "❌ Navigation bootstrapper not found!")
+            }
         } else {
             Log.e(TAG, "❌ No registered container found for route: $route")
             Log.d(TAG, "📋 Available routes: ${getAllRoutes()}")
@@ -246,3 +247,4 @@ class DCFScreenContainer(
         Log.d("DCFScreenContainer", "Updated header config for '$route': $config")
     }
 }
+
