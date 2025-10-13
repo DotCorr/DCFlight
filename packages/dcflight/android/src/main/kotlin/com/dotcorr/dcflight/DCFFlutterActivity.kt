@@ -28,7 +28,7 @@ import com.dotcorr.dcflight.utils.DCFScreenUtilities
 
 /**
  * DCFFlutterActivity - Base activity for DCFlight apps
- * Matches iOS DCFAppDelegate pattern for framework initialization
+ * framework initialization
  */
 open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateRegistryOwner {
 

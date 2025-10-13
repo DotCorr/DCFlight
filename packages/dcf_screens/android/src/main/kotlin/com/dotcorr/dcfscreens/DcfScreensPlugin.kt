@@ -1,91 +1,46 @@
+
+/*
+ * Copyright (c) Dotcorr Studio. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
 package com.dotcorr.dcfscreens
 
-import android.app.Activity
-import androidx.annotation.NonNull
-import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.embedding.engine.plugins.activity.ActivityAware
-import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
-import io.flutter.plugin.common.MethodCall
-import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-import io.flutter.plugin.common.MethodChannel.Result
 import android.util.Log
+import io.flutter.embedding.engine.plugins.FlutterPlugin
 
-class DcfScreensPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
-    private lateinit var channel: MethodChannel
-    private var activity: Activity? = null
+class DcfScreensPlugin : FlutterPlugin {
 
     companion object {
         private const val TAG = "DcfScreensPlugin"
-        private var instance: DcfScreensPlugin? = null
-        
-        fun getInstance(): DcfScreensPlugin? = instance
-        fun getActivity(): Activity? = instance?.activity
+        private var isRegistered = false
     }
 
-    override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        Log.d(TAG, "onAttachedToEngine called")
-        
-        // Store the instance
-        instance = this
-        
-        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "dcf_screens")
-        channel.setMethodCallHandler(this)
-        
-        // Register dcf_screens components
-        registerComponents()
-        
-        Log.d(TAG, "DCFScreens plugin initialized")
-    }
+    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+        Log.d(TAG, "DcfScreensPlugin: onAttachedToEngine called")
 
-    override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-        when (call.method) {
-            "getPlatformVersion" -> {
-                result.success("Android ${android.os.Build.VERSION.RELEASE}")
-            }
-            else -> {
-                result.notImplemented()
-            }
+        if (!isRegistered) {
+            registerPrimitiveComponents()
         }
     }
 
-    override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-        channel.setMethodCallHandler(null)
-        instance = null
-        activity = null
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        Log.d(TAG, "DcfScreensPlugin: onDetachedFromEngine called")
     }
-    
-    // ActivityAware implementation
-    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        Log.d(TAG, "onAttachedToActivity called")
-        activity = binding.activity
-        Log.d(TAG, "✅ Activity attached: ${activity!!.javaClass.simpleName}")
-    }
-    
-    override fun onDetachedFromActivityForConfigChanges() {
-        Log.d(TAG, "onDetachedFromActivityForConfigChanges called")
-        activity = null
-    }
-    
-    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        Log.d(TAG, "onReattachedToActivityForConfigChanges called")
-        activity = binding.activity
-        Log.d(TAG, "✅ Activity reattached: ${activity!!.javaClass.simpleName}")
-    }
-    
-    override fun onDetachedFromActivity() {
-        Log.d(TAG, "onDetachedFromActivity called")
-        activity = null
-    }
-    
-    private fun registerComponents() {
+
+    private fun registerPrimitiveComponents() {
+        Log.d(TAG, "Registering primitive components with DCFlight framework")
+
         try {
-            // Register dcf_screens specific components
-            DCFScreensComponentsReg.registerComponents()
-            Log.d(TAG, "DCFScreens components registered")
+            //ScreenComponentsReg.registerComponents()
+            isRegistered = true
+            Log.d(TAG, "✅ DcfScreensPlugin: Successfully registered primitive components")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to register DCFScreens components", e)
+            Log.e(TAG, "❌ DcfScreensPlugin: Failed to register primitive components", e)
         }
     }
 }
+
