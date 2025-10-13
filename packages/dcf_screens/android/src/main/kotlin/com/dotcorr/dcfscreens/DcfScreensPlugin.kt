@@ -10,6 +10,7 @@ package com.dotcorr.dcfscreens
 
 import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import com.dotcorr.dcfscreens.components.navigation.ScreenComponentsReg
 
 
 class DcfScreensPlugin : FlutterPlugin {
@@ -35,7 +36,7 @@ class DcfScreensPlugin : FlutterPlugin {
         Log.d(TAG, "Registering primitive components with DCFlight framework")
 
         try {
-            //ScreenComponentsReg.registerComponents()
+            ScreenComponentsReg.registerComponents()
             isRegistered = true
             Log.d(TAG, "✅ DcfScreensPlugin: Successfully registered primitive components")
         } catch (e: Exception) {
