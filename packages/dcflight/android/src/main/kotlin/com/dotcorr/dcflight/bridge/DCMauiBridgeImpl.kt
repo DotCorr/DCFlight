@@ -298,8 +298,13 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * ⭐ OPTIMIZED: Commit a batch of operations atomically with improved performance
+     * Now accepts pre-serialized JSON strings to eliminate native JSON parsing overhead
+     */
     fun commitBatchUpdate(operations: List<Map<String, Any>>): Boolean {
-        Log.d(TAG, "🔥 BATCH: Committing ${operations.size} operations (REACT-LIKE ATOMIC)")
+        val startTime = System.currentTimeMillis()
+        Log.d(TAG, "🔥 BATCH: Committing ${operations.size} operations (OPTIMIZED ATOMIC)")
         
         data class CreateOp(val viewId: String, val viewType: String, val propsJson: String)
         data class UpdateOp(val viewId: String, val propsJson: String)
@@ -311,100 +316,119 @@ class DCMauiBridgeImpl private constructor() {
         val attachOps = mutableListOf<AttachOp>()
         val eventOps = mutableListOf<AddEventListenersOp>()
         
-            operations.forEach { operation ->
-                val operationType = operation["operation"] as? String
-                if (operationType != null) {
-                    when (operationType) {
-                        "createView" -> {
-                            val viewId = operation["viewId"] as? String
-                            val viewType = operation["viewType"] as? String  
+        // ⭐ OPTIMIZATION: Parse phase - collect all operations
+        val parseStartTime = System.currentTimeMillis()
+        
+        operations.forEach { operation ->
+            val operationType = operation["operation"] as? String
+            
+            when (operationType) {
+                "createView" -> {
+                    val viewId = operation["viewId"] as? String
+                    val viewType = operation["viewType"] as? String
+                    
+                    if (viewId != null && viewType != null) {
+                        // ⭐ OPTIMIZATION: Check for pre-serialized JSON first (from Dart)
+                        val propsJson = operation["propsJson"] as? String ?: run {
+                            // Legacy fallback: serialize on native side
                             val props = operation["props"] as? Map<String, Any>
-                            if (viewId != null && viewType != null && props != null) {
-                                val propsJson = JSONObject(props).toString()
-                            createOps.add(CreateOp(viewId, viewType, propsJson))
+                            if (props != null) {
+                                JSONObject(props).toString()
+                            } else {
+                                "{}"
                             }
                         }
-                        "updateView" -> {
-                            val viewId = operation["viewId"] as? String
-                            val props = operation["props"] as? Map<String, Any>
-                            if (viewId != null && props != null) {
-                                val propsJson = JSONObject(props).toString()
-                            updateOps.add(UpdateOp(viewId, propsJson))
-                            }
-                        }
-                        "attachView" -> {
-                            val childId = operation["childId"] as? String
-                            val parentId = operation["parentId"] as? String
-                            val index = operation["index"] as? Int
-                            if (childId != null && parentId != null && index != null) {
-                            attachOps.add(AttachOp(childId, parentId, index))
-                        }
-                            }
-                    "addEventListeners" -> {
-                        val viewId = operation["viewId"] as? String
-                        val eventTypes = operation["eventTypes"] as? List<String>
-                        if (viewId != null && eventTypes != null) {
-                            eventOps.add(AddEventListenersOp(viewId, eventTypes))
-                        }
-                        }
+                        createOps.add(CreateOp(viewId, viewType, propsJson))
                     }
-                } else {
-                    val type = operation["type"] as? String
-                    val args = operation["args"] as? Map<String, Any>
-                    if (type != null && args != null) {
-                        when (type) {
-                            "createView" -> {
-                                val viewId = args["viewId"] as? String
-                                val viewType = args["viewType"] as? String
-                                val propsJson = args["propsJson"] as? String
-                                if (viewId != null && viewType != null && propsJson != null) {
-                                createOps.add(CreateOp(viewId, viewType, propsJson))
-                                }
-                            }
-                            "updateView" -> {
-                                val viewId = args["viewId"] as? String
-                                val propsJson = args["propsJson"] as? String
-                                if (viewId != null && propsJson != null) {
-                                updateOps.add(UpdateOp(viewId, propsJson))
-                                }
-                            }
-                            "attachView" -> {
-                                val childId = args["childId"] as? String
-                                val parentId = args["parentId"] as? String
-                                val index = args["index"] as? Int
-                                if (childId != null && parentId != null && index != null) {
-                                attachOps.add(AttachOp(childId, parentId, index))
+                }
+                
+                "updateView" -> {
+                    val viewId = operation["viewId"] as? String
+                    
+                    if (viewId != null) {
+                        // ⭐ OPTIMIZATION: Check for pre-serialized JSON first (from Dart)
+                        val propsJson = operation["propsJson"] as? String ?: run {
+                            // Legacy fallback: serialize on native side
+                            val props = operation["props"] as? Map<String, Any>
+                            if (props != null) {
+                                JSONObject(props).toString()
+                            } else {
+                                "{}"
                             }
                         }
+                        updateOps.add(UpdateOp(viewId, propsJson))
+                    }
+                }
+                
+                "attachView" -> {
+                    val childId = operation["childId"] as? String
+                    val parentId = operation["parentId"] as? String
+                    val index = operation["index"] as? Int
+                    if (childId != null && parentId != null && index != null) {
+                        attachOps.add(AttachOp(childId, parentId, index))
+                    }
+                }
+                
+                "addEventListeners" -> {
+                    val viewId = operation["viewId"] as? String
+                    val eventTypes = operation["eventTypes"] as? List<String>
+                    if (viewId != null && eventTypes != null) {
+                        eventOps.add(AddEventListenersOp(viewId, eventTypes))
                     }
                 }
             }
         }
         
+        val parseTime = System.currentTimeMillis() - parseStartTime
+        Log.d(TAG, "📊 BATCH_TIMING: Parse phase completed in ${parseTime}ms")
         Log.d(TAG, "🔥 BATCH: Collected ${createOps.size} creates, ${updateOps.size} updates, ${attachOps.size} attaches, ${eventOps.size} event registrations")
         
-        return try {
+        try {
+            // ⭐ OPTIMIZATION: Execute phase - process all operations with minimal overhead
+            val createStartTime = System.currentTimeMillis()
             
+            // Create all views (props are already JSON strings - no serialization needed!)
             createOps.forEach { op ->
-                Log.d(TAG, "🔥 BATCH_COMMIT: Creating ${op.viewId}")
                 createView(op.viewId, op.viewType, op.propsJson)
             }
             
+            val createTime = System.currentTimeMillis() - createStartTime
+            Log.d(TAG, "📊 BATCH_TIMING: Create phase completed in ${createTime}ms (${createOps.size} views)")
+            
+            val updateStartTime = System.currentTimeMillis()
+            
+            // Update all views (props are already JSON strings - no serialization needed!)
             updateOps.forEach { op ->
-                Log.d(TAG, "🔥 BATCH_COMMIT: Updating ${op.viewId}")
                 updateView(op.viewId, op.propsJson)
             }
             
+            val updateTime = System.currentTimeMillis() - updateStartTime
+            Log.d(TAG, "📊 BATCH_TIMING: Update phase completed in ${updateTime}ms (${updateOps.size} views)")
+            
+            val attachStartTime = System.currentTimeMillis()
+            
+            // Attach all views to hierarchy
             attachOps.forEach { op ->
-                Log.d(TAG, "🔥 BATCH_COMMIT: Attaching ${op.childId} to ${op.parentId}")
                 attachView(op.childId, op.parentId, op.index)
             }
             
+            val attachTime = System.currentTimeMillis() - attachStartTime
+            Log.d(TAG, "📊 BATCH_TIMING: Attach phase completed in ${attachTime}ms (${attachOps.size} attachments)")
+            
+            val eventsStartTime = System.currentTimeMillis()
+            
+            // Register all event listeners
             eventOps.forEach { op ->
                 Log.d(TAG, "🔥 BATCH_COMMIT: Registering event listeners for ${op.viewId}")
                 DCMauiEventMethodHandler.shared.addEventListenersForBatch(op.viewId, op.eventTypes)
             }
             
+            val eventsTime = System.currentTimeMillis() - eventsStartTime
+            Log.d(TAG, "📊 BATCH_TIMING: Events phase completed in ${eventsTime}ms (${eventOps.size} registrations)")
+            
+            val layoutStartTime = System.currentTimeMillis()
+            
+            // ⭐ OPTIMIZATION: Single layout calculation after all view operations
             Log.d(TAG, "🔥 BATCH_COMMIT: Triggering SYNCHRONOUS layout calculation")
             
             val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
@@ -421,6 +445,9 @@ class DCMauiBridgeImpl private constructor() {
             }
             
             val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
+            
+            val layoutTime = System.currentTimeMillis() - layoutStartTime
+            Log.d(TAG, "📊 BATCH_TIMING: Layout phase completed in ${layoutTime}ms")
             Log.d(TAG, "🔥 BATCH_COMMIT: Layout calculation completed synchronously: $layoutSuccess")
             
             rootView?.let { root ->
@@ -441,11 +468,14 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
             
+            val totalTime = System.currentTimeMillis() - startTime
+            Log.d(TAG, "📊 BATCH_TIMING: ✅ TOTAL BATCH COMMIT TIME: ${totalTime}ms for ${operations.size} operations")
             Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
-            true
+            
+            return true
         } catch (e: Exception) {
             Log.e(TAG, "🔥 BATCH_COMMIT: Failed during atomic commit", e)
-            false
+            return false
         }
     }
 
