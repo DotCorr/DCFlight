@@ -13,7 +13,7 @@ class MyApp extends DCFStatefulComponent {
       initialScreen: "home",
       screenRegistryComponents: StackScreenRegistry(),
       navigationBarStyle: DCFNavigationBarStyle(
-        backgroundColor: Colors.orange.shade400,
+        backgroundColor: Colors.indigo.shade400,
         titleColor: Colors.blueAccent,
         backButtonColor: Colors.pink,
       ),
