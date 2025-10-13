@@ -305,16 +305,21 @@ import Foundation
         return true
     }
     
-    /// Commit a batch of operations atomically
+    /// Commit a batch of operations atomically with optimized processing
+    /// ⭐ OPTIMIZED: Now accepts pre-serialized JSON strings to eliminate native JSON parsing overhead
     @objc func commitBatchUpdate(updates: [[String: Any]]) -> Bool {
-        NSLog("🚨🚨🚨 iOS_BRIDGE: COMMIT BATCH UPDATE CALLED WITH %d UPDATES", updates.count)
+        let startTime = CFAbsoluteTimeGetCurrent()
+        NSLog("🚨 iOS_BRIDGE: COMMIT BATCH UPDATE CALLED WITH %d UPDATES", updates.count)
         print("🔥 iOS_BRIDGE: commitBatchUpdate called with \(updates.count) updates")
         
-        var createOps: [(viewId: String, viewType: String, props: [String: Any])] = []
-        var updateOps: [(viewId: String, props: [String: Any])] = []
+        // ⭐ OPTIMIZATION: Separate pre-serialized JSON operations from legacy Map operations
+        var createOps: [(viewId: String, viewType: String, propsJson: String)] = []
+        var updateOps: [(viewId: String, propsJson: String)] = []
         var attachOps: [(childId: String, parentId: String, index: Int)] = []
         var eventOps: [(viewId: String, eventTypes: [String])] = []
         
+        // Parse phase - collect all operations
+        let parseStartTime = CFAbsoluteTimeGetCurrent()
         for operation in updates {
             guard let operationType = operation["operation"] as? String else {
                 continue
@@ -323,15 +328,35 @@ import Foundation
             switch operationType {
             case "createView":
                 if let viewId = operation["viewId"] as? String,
-                   let viewType = operation["viewType"] as? String,
-                   let props = operation["props"] as? [String: Any] {
-                    createOps.append((viewId, viewType, props))
+                   let viewType = operation["viewType"] as? String {
+                    // ⭐ OPTIMIZATION: Check for pre-serialized JSON first
+                    if let propsJson = operation["propsJson"] as? String {
+                        createOps.append((viewId, viewType, propsJson))
+                    } else if let props = operation["props"] as? [String: Any] {
+                        // Legacy fallback: serialize on native side
+                        guard let propsData = try? JSONSerialization.data(withJSONObject: props),
+                              let propsJson = String(data: propsData, encoding: .utf8) else {
+                            print("❌ Failed to serialize props for \(viewId)")
+                            continue
+                        }
+                        createOps.append((viewId, viewType, propsJson))
+                    }
                 }
                 
             case "updateView":
-                if let viewId = operation["viewId"] as? String,
-                   let props = operation["props"] as? [String: Any] {
-                    updateOps.append((viewId, props))
+                if let viewId = operation["viewId"] as? String {
+                    // ⭐ OPTIMIZATION: Check for pre-serialized JSON first
+                    if let propsJson = operation["propsJson"] as? String {
+                        updateOps.append((viewId, propsJson))
+                    } else if let props = operation["props"] as? [String: Any] {
+                        // Legacy fallback: serialize on native side
+                        guard let propsData = try? JSONSerialization.data(withJSONObject: props),
+                              let propsJson = String(data: propsData, encoding: .utf8) else {
+                            print("❌ Failed to serialize props for \(viewId)")
+                            continue
+                        }
+                        updateOps.append((viewId, propsJson))
+                    }
                 }
                 
             case "attachView":
@@ -352,53 +377,74 @@ import Foundation
             }
         }
         
+        let parseTime = (CFAbsoluteTimeGetCurrent() - parseStartTime) * 1000
+        print("📊 iOS_BATCH_TIMING: Parse phase completed in \(String(format: "%.2f", parseTime))ms")
         print("🔥 iOS_BRIDGE: Collected \(createOps.count) creates, \(updateOps.count) updates, \(attachOps.count) attaches, \(eventOps.count) event registrations")
         
+        // ⭐ OPTIMIZATION: Execute phase - process all operations with minimal overhead
         do {
+            let createStartTime = CFAbsoluteTimeGetCurrent()
+            
+            // Create all views (props are already JSON strings - no serialization needed!)
             for op in createOps {
-                print("🔥 iOS_BATCH_COMMIT: Creating \(op.viewId)")
-                guard let propsData = try? JSONSerialization.data(withJSONObject: op.props),
-                      let propsJson = String(data: propsData, encoding: .utf8) else {
-                    print("❌ Failed to serialize props for \(op.viewId)")
-                    return false
-                }
-                if !createView(viewId: op.viewId, viewType: op.viewType, propsJson: propsJson) {
+                if !createView(viewId: op.viewId, viewType: op.viewType, propsJson: op.propsJson) {
                     print("❌ Failed to create view \(op.viewId)")
                     return false
                 }
             }
             
+            let createTime = (CFAbsoluteTimeGetCurrent() - createStartTime) * 1000
+            print("� iOS_BATCH_TIMING: Create phase completed in \(String(format: "%.2f", createTime))ms (\(createOps.count) views)")
+            
+            let updateStartTime = CFAbsoluteTimeGetCurrent()
+            
+            // Update all views (props are already JSON strings - no serialization needed!)
             for op in updateOps {
-                print("🔥 iOS_BATCH_COMMIT: Updating \(op.viewId)")
-                guard let propsData = try? JSONSerialization.data(withJSONObject: op.props),
-                      let propsJson = String(data: propsData, encoding: .utf8) else {
-                    print("❌ Failed to serialize props for \(op.viewId)")
-                    return false
-                }
-                if !updateView(viewId: op.viewId, propsJson: propsJson) {
+                if !updateView(viewId: op.viewId, propsJson: op.propsJson) {
                     print("❌ Failed to update view \(op.viewId)")
                     return false
                 }
             }
             
+            let updateTime = (CFAbsoluteTimeGetCurrent() - updateStartTime) * 1000
+            print("� iOS_BATCH_TIMING: Update phase completed in \(String(format: "%.2f", updateTime))ms (\(updateOps.count) views)")
+            
+            let attachStartTime = CFAbsoluteTimeGetCurrent()
+            
+            // Attach all views to hierarchy
             for op in attachOps {
-                print("🔥 iOS_BATCH_COMMIT: Attaching \(op.childId) to \(op.parentId)")
                 if !attachView(childId: op.childId, parentId: op.parentId, index: op.index) {
                     print("❌ Failed to attach \(op.childId) to \(op.parentId)")
                     return false
                 }
             }
             
+            let attachTime = (CFAbsoluteTimeGetCurrent() - attachStartTime) * 1000
+            print("� iOS_BATCH_TIMING: Attach phase completed in \(String(format: "%.2f", attachTime))ms (\(attachOps.count) attachments)")
+            
+            let eventsStartTime = CFAbsoluteTimeGetCurrent()
+            
+            // Register all event listeners
             for op in eventOps {
-                print("🔥 iOS_BATCH_COMMIT: Registering event listeners for \(op.viewId)")
                 DCMauiEventMethodHandler.shared.addEventListenersForBatch(viewId: op.viewId, eventTypes: op.eventTypes)
             }
             
+            let eventsTime = (CFAbsoluteTimeGetCurrent() - eventsStartTime) * 1000
+            print("📊 iOS_BATCH_TIMING: Events phase completed in \(String(format: "%.2f", eventsTime))ms (\(eventOps.count) registrations)")
+            
+            let layoutStartTime = CFAbsoluteTimeGetCurrent()
+            
+            // ⭐ OPTIMIZATION: Single layout calculation after all view operations
             print("🔥 iOS_BATCH_COMMIT: Triggering layout calculation")
             DCFLayoutManager.shared.calculateLayoutNow()
-            print("🔥 iOS_BATCH_COMMIT: Layout calculation completed")
             
+            let layoutTime = (CFAbsoluteTimeGetCurrent() - layoutStartTime) * 1000
+            print("� iOS_BATCH_TIMING: Layout phase completed in \(String(format: "%.2f", layoutTime))ms")
+            
+            let totalTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+            print("📊 iOS_BATCH_TIMING: ✅ TOTAL BATCH COMMIT TIME: \(String(format: "%.2f", totalTime))ms for \(updates.count) operations")
             print("🔥 iOS_BATCH_COMMIT: Successfully committed all operations atomically")
+            
             return true
         } catch {
             print("❌ iOS_BATCH_COMMIT: Failed during atomic commit: \(error)")

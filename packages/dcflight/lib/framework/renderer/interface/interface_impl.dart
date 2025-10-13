@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
 import 'package:dcflight/framework/renderer/interface/interface_util.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -76,11 +77,13 @@ class PlatformInterfaceImpl implements PlatformInterface {
       String viewId, String type, Map<String, dynamic> props) async {
     if (_batchUpdateInProgress) {
       final processedProps = preprocessProps(props);
+      // ⭐ OPTIMIZATION: Pre-serialize to JSON on Dart side to avoid native JSON parsing
+      final propsJson = jsonEncode(processedProps);
       _pendingBatchUpdates.add({
         'operation': 'createView',
         'viewId': viewId,
         'viewType': type,
-        'props': processedProps,
+        'propsJson': propsJson,  // Pre-serialized JSON string
       });
       return true;
     }
@@ -108,10 +111,12 @@ class PlatformInterfaceImpl implements PlatformInterface {
     if (_batchUpdateInProgress) {
       print('🔥 FLUTTER_BRIDGE: Adding updateView to batch - viewId: $viewId');
       final processedProps = preprocessProps(propPatches);
+      // ⭐ OPTIMIZATION: Pre-serialize to JSON on Dart side to avoid native JSON parsing
+      final propsJson = jsonEncode(processedProps);
       _pendingBatchUpdates.add({
         'operation': 'updateView',
         'viewId': viewId,
-        'props': processedProps,
+        'propsJson': propsJson,  // Pre-serialized JSON string
       });
       return true;
     }
@@ -170,6 +175,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   Future<bool> attachView(String childId, String parentId, int index) async {
     if (_batchUpdateInProgress) {
       print('🔥 FLUTTER_BRIDGE: Adding attachView to batch - child: $childId, parent: $parentId, index: $index');
+      // No props serialization needed for attachView - just metadata
       _pendingBatchUpdates.add({
         'operation': 'attachView',
         'childId': childId,
