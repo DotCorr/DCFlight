@@ -7,13 +7,18 @@
 
 package com.dotcorr.dcf_go
 
+import android.os.Bundle
 import com.dotcorr.dcflight.DCFFlutterActivity
 
 /**
  * MainActivity for DCF Go template app
  * Extends DCFFlutterActivity to handle framework initialization
- * This matches iOS pattern where AppDelegate extends DCFAppDelegate
  */
 class MainActivity : DCFFlutterActivity() {
-    // Framework handles all initialization and setup
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Discard any persisted Activity state to avoid inconsistencies
+        // Pass null to super.onCreate() instead of savedInstanceState
+        super.onCreate(null)
+    }
 }
