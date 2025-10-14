@@ -141,13 +141,13 @@ object DCDivergerUtil {
 
     private fun initializeDCFlightSystems(activity: Activity, binaryMessenger: BinaryMessenger) {
         try {
-            val context = activity.applicationContext
-
-            DCMauiBridgeImpl.shared.setContext(context)
+            // CRITICAL: Pass the Activity itself, not applicationContext
+            // The bootstrapper needs Activity.setContentView() to replace root
+            DCMauiBridgeImpl.shared.setContext(activity)
 
             Log.d(TAG, "Ensuring DCFlight systems are initialized")
 
-            DCFScreenUtilities.initialize(binaryMessenger, context)
+            DCFScreenUtilities.initialize(binaryMessenger, activity)
 
             rootView?.let { root ->
                 com.dotcorr.dcflight.layout.ViewRegistry.shared.registerView(root, "root", "View")
