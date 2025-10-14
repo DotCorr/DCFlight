@@ -39,6 +39,10 @@ object DCFScreenRegistry {
         return routeRegistry.keys.toList()
     }
     
+    fun getAllScreens(): Map<String, ScreenContainer> {
+        return routeRegistry.toMap()
+    }
+    
     fun pushRoute(route: String) {
         synchronized(stackLock) {
             currentRouteStack.add(route)

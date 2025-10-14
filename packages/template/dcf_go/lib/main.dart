@@ -12,10 +12,7 @@ class MyApp extends DCFStatefulComponent {
     return DCFStackNavigationRoot(
       initialScreen: "home",
       screenRegistryComponents: StackScreenRegistry(),
-      navigationBarStyle: DCFNavigationBarStyle(
-        backgroundColor: Colors.indigo.shade400,
-        titleColor: Colors.blueAccent,
-        backButtonColor: Colors.pink,
+      navigationBarStyle: DCFNavigationBarStyle(translucent: true
       ),
       onNavigationChange: (data) {
         print("🧭 Navigation changed: $data");
