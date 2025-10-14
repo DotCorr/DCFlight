@@ -8,8 +8,11 @@
 package com.dotcorr.dcfscreens.components.navigation
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
 import androidx.navigation.NavHostController
@@ -20,9 +23,10 @@ import com.dotcorr.dcfscreens.components.navigation.utils.LifecycleEventHelper
 
 /**
  * Main screen component for DCF_Screens navigation
- * Uses Jetpack Compose Navigation with ComposeView
+ * Returns a FrameLayout container that can hold traditional Android Views
  * 
- * ComposeView IS an Android View, so it integrates perfectly with DCFlight!
+ * CRITICAL: We CANNOT return ComposeView because DCFlight's bridge will try
+ * to attach View children to it, which is not allowed.
  */
 class DCFScreenComponent : DCFComponent() {
     
@@ -37,7 +41,7 @@ class DCFScreenComponent : DCFComponent() {
         
         if (route == null) {
             Log.e(TAG, "❌ Missing required prop 'route'")
-            return ComposeView(context)
+            return FrameLayout(context) // Return ViewGroup, not ComposeView
         }
         
         Log.d(TAG, "🔧 Creating screen for route '$route'")
@@ -47,11 +51,18 @@ class DCFScreenComponent : DCFComponent() {
         if (existingContainer != null) {
             Log.d(TAG, "♻️ Reusing existing container for route '$route'")
             configureScreen(existingContainer, props)
-            return existingContainer.composeView ?: ComposeView(context)
+            return existingContainer.frameLayout ?: FrameLayout(context)
         }
         
-        // Create new screen container
+        // Create new screen container with a FrameLayout (ViewGroup)
         val viewId = props["viewId"] as? String ?: "screen_$route"
+        val frameLayout = FrameLayout(context).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+        
         val screenContainer = ScreenContainer(
             route = route,
             presentationStyle = presentationStyle,
@@ -59,7 +70,8 @@ class DCFScreenComponent : DCFComponent() {
                 // This will be filled by DCFlight's VDOM
                 ScreenContentPlaceholder(route = route)
             },
-            viewId = viewId
+            viewId = viewId,
+            frameLayout = frameLayout
         )
         
         // Configure and register
@@ -68,20 +80,106 @@ class DCFScreenComponent : DCFComponent() {
         
         Log.d(TAG, "✅ Registered screen: $route")
         
-        // Return a ComposeView (which IS an Android View)
-        return ComposeView(context).apply {
-            screenContainer.composeView = this
-            // Content will be set by the NavigationHost
-        }
+        // Return the FrameLayout (ViewGroup that can accept View children)
+        return frameLayout
     }
     
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val route = props["route"] as? String ?: return false
-        val screenContainer = DCFScreenRegistry.getScreen(route) ?: return false
+        Log.d(TAG, "🔵 updateView called with props: $props")
+        
+        // Like iOS: Try to find existing screen container from view first
+        val screenContainer = findScreenContainerForView(view) 
+            ?: run {
+                // If not found, route must be in props (initial creation case)
+                val route = props["route"] as? String
+                if (route == null) {
+                    Log.w(TAG, "⚠️ No route in props and view not in registry")
+                    return false
+                }
+                
+                Log.d(TAG, "🔵 Looking up container for route: $route")
+                DCFScreenRegistry.getScreen(route)
+            }
+        
+        if (screenContainer == null) {
+            Log.w(TAG, "⚠️ Screen container not found")
+            return false
+        }
+        
+        val route = screenContainer.route
+        Log.d(TAG, "✅ Updating screen for route: $route")
         
         configureScreen(screenContainer, props)
+        
+        // Process navigation commands sent via props
+        val navCommand = props["routeNavigationCommand"] as? Map<*, *>
+        Log.d(TAG, "📍 updateView - route: $route, hasNavCommand: ${navCommand != null}")
+        if (navCommand != null) {
+            Log.d(TAG, "🔍 Navigation command: $navCommand")
+            processNavigationCommand(navCommand)
+        }
+        
         Log.d(TAG, "✅ Updated screen: $route")
         return true
+    }
+    
+    /**
+     * Find which screen container this view belongs to
+     * Like iOS findScreenContainer(for: view)
+     */
+    private fun findScreenContainerForView(view: View): ScreenContainer? {
+        // Check all registered screens to see if this view matches
+        for ((route, container) in DCFScreenRegistry.getAllScreens()) {
+            if (container.frameLayout == view) {
+                Log.d(TAG, "📍 Found container for view: route=$route")
+                return container
+            }
+        }
+        return null
+    }
+    
+    /**
+     * Process navigation commands sent via props from Flutter
+     */
+    private fun processNavigationCommand(navCommand: Map<*, *>) {
+        // Handle navigateToRoute
+        navCommand["navigateToRoute"]?.let { route ->
+            if (route is String) {
+                val animated = navCommand["animated"] as? Boolean ?: true
+                navigateToRoute(route, null)
+                return
+            }
+        }
+        
+        // Handle presentModalRoute
+        navCommand["presentModalRoute"]?.let { modalCommand ->
+            if (modalCommand is Map<*, *>) {
+                val route = modalCommand["route"] as? String
+                val animated = modalCommand["animated"] as? Boolean ?: true
+                if (route != null) {
+                    presentModal(route, null)
+                    return
+                }
+            }
+        }
+        
+        // Handle popToRoute
+        navCommand["popToRoute"]?.let { route ->
+            if (route is String) {
+                popToRoute(route)
+                return
+            }
+        }
+        
+        // Handle replaceRoute
+        navCommand["replaceRoute"]?.let { route ->
+            if (route is String) {
+                replaceCurrentRoute(route, null)
+                return
+            }
+        }
+        
+        Log.w(TAG, "⚠️ Unknown navigation command: $navCommand")
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
@@ -161,6 +259,17 @@ class DCFScreenComponent : DCFComponent() {
         
         navController?.navigate(route)
         DCFScreenRegistry.pushRoute(route)
+        
+        // CRITICAL: Bring the screen to front so it's visible!
+        // All screens are siblings in root ViewGroup, Z-order determines visibility
+        screenContainer.frameLayout?.let { frameLayout ->
+            Handler(Looper.getMainLooper()).post {
+                frameLayout.bringToFront()
+                frameLayout.requestLayout()
+                Log.d(TAG, "🎯 Screen '$route' brought to front")
+            }
+        }
+        
         LifecycleEventHelper.fireOnAppear(screenContainer)
     }
     

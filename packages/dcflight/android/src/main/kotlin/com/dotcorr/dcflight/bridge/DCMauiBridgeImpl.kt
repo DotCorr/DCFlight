@@ -140,6 +140,15 @@ class DCMauiBridgeImpl private constructor() {
             val layoutProps = extractLayoutProps(props)
             val nonLayoutProps = props.filter { !layoutProps.containsKey(it.key) }
 
+            // Debug logging for Screen components
+            if (viewType == "Screen") {
+                Log.d(TAG, "🔍 UPDATE_VIEW Screen - viewId: $viewId")
+                Log.d(TAG, "🔍 All props: $props")
+                Log.d(TAG, "🔍 Layout props: $layoutProps")
+                Log.d(TAG, "🔍 Non-layout props: $nonLayoutProps")
+                Log.d(TAG, "🔍 Has routeNavigationCommand: ${props.containsKey("routeNavigationCommand")}")
+            }
+
             if (layoutProps.isNotEmpty()) {
                 val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
                 
@@ -157,8 +166,14 @@ class DCMauiBridgeImpl private constructor() {
             if (nonLayoutProps.isNotEmpty()) {
                 val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
                 if (componentClass != null) {
-                    val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-                    componentInstance.updateView(view, nonLayoutProps)
+                    try {
+                        val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                        componentInstance.updateView(view, nonLayoutProps)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ Error calling updateView on $viewType component", e)
+                    }
+                } else {
+                    Log.w(TAG, "⚠️ Component class not found for type: $viewType")
                 }
             }
 

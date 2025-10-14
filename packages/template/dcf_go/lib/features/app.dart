@@ -12,7 +12,7 @@ class HomeScreen extends DCFStatelessComponent {
         justifyContent: YogaJustifyContent.center,
         alignItems: YogaAlign.center,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.indigo.shade100),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.red.shade100),
       children: [
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Profile"),
@@ -110,6 +110,7 @@ class ProfileScreen extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.green.shade100),
       layout: DCFLayout(
         flex: 1,
         padding: 20,

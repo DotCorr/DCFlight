@@ -12,19 +12,15 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.unit.dp
-import androidx.navigation.compose.rememberNavController
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcfscreens.components.navigation.models.ScreenContainer
 import com.dotcorr.dcfscreens.components.navigation.registry.DCFScreenRegistry
 
 /**
  * Root navigation bootstrapper component
- * Creates the NavHostController and sets up initial screen
+ * Creates a FrameLayout container that holds the initial screen
  */
 class DCFStackNavigationBootstrapperComponent : DCFComponent() {
     
@@ -39,37 +35,30 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         
         if (initialScreen == null) {
             Log.e(TAG, "❌ Missing required prop 'initialScreen'")
-            return ComposeView(context)
+            return FrameLayout(context)
         }
         
         Log.d(TAG, "🚀 Setting up navigation with initial screen: $initialScreen")
         
-        // Create ComposeView (which IS an Android View!)
-        val composeView = ComposeView(context)
-        
-        // Set Compose content
-        composeView.setContent {
-            val navController = rememberNavController()
-            
-            // Store navController globally for navigation commands
-            LaunchedEffect(navController) {
-                DCFScreenComponent.navController = navController
-                Log.d(TAG, "✅ NavController initialized")
-            }
-            
-            // NavigationHost will be added here
-            // For now, just a placeholder
-            Text(
-                text = "DCF Navigation Ready: $initialScreen",
-                modifier = Modifier.padding(16.dp)
+        // Create a simple FrameLayout that will hold the initial screen
+        // This is just a container - the actual screen FrameLayout will be attached by DCFlight's bridge
+        val containerLayout = FrameLayout(context).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
             )
         }
         
-        // Setup initial screen with retry logic
-        setupInitialScreenWithRetry(initialScreen, retryCount = 0, maxRetries = MAX_RETRIES)
+        // Set up initial screen with retry logic
+        setupInitialScreenWithRetry(
+            initialScreen = initialScreen,
+            container = containerLayout,
+            retryCount = 0,
+            maxRetries = MAX_RETRIES
+        )
         
         Log.d(TAG, "✅ Navigation bootstrapper created")
-        return composeView
+        return containerLayout
     }
     
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
@@ -77,13 +66,30 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         return true
     }
     
-    private fun setupInitialScreenWithRetry(initialScreen: String, retryCount: Int, maxRetries: Int) {
-        if (DCFScreenRegistry.hasScreen(initialScreen)) {
+    private fun setupInitialScreenWithRetry(
+        initialScreen: String,
+        container: FrameLayout,
+        retryCount: Int,
+        maxRetries: Int
+    ) {
+        val screenContainer = DCFScreenRegistry.getScreen(initialScreen)
+        if (screenContainer != null && screenContainer.frameLayout != null) {
             Log.d(TAG, "✅ Initial screen '$initialScreen' found!")
             DCFScreenRegistry.pushRoute(initialScreen)
             
-            // Navigate to initial screen
-            DCFScreenComponent.navController?.navigate(initialScreen)
+            // CRITICAL: Don't manually add the screen to our container!
+            // The bridge will attach all screens to root as siblings.
+            // Instead, bring the initial screen to the front to make it visible!
+            val screenFrameLayout = screenContainer.frameLayout!!
+            
+            // Bring to front makes it the topmost child in its parent (root)
+            // This makes it visible above other screens
+            Handler(Looper.getMainLooper()).post {
+                screenFrameLayout.bringToFront()
+                screenFrameLayout.requestLayout()
+                Log.d(TAG, "🎯 Initial screen brought to front and displayed!")
+            }
+            
             return
         }
         
@@ -92,7 +98,7 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
             Log.d(TAG, "⏳ Screen '$initialScreen' not ready, retry ${retryCount + 1}/$maxRetries in ${delayMs}ms")
             
             Handler(Looper.getMainLooper()).postDelayed({
-                setupInitialScreenWithRetry(initialScreen, retryCount + 1, maxRetries)
+                setupInitialScreenWithRetry(initialScreen, container, retryCount + 1, maxRetries)
             }, delayMs)
         } else {
             Log.e(TAG, "❌ Failed to find initial screen '$initialScreen' after $maxRetries attempts")

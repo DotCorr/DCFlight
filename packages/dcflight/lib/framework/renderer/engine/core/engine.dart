@@ -206,6 +206,7 @@ class DCFEngine {
             'EVENT_HANDLER_SUCCESS', 'Content size change handler executed');
         return;
       } catch (e) {
+        rethrow;
       }
     }
 
