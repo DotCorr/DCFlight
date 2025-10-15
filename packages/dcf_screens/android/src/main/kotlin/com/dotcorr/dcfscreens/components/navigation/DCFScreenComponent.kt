@@ -286,6 +286,7 @@ class DCFScreenComponent : DCFComponent() {
             )
             setBackgroundColor(android.graphics.Color.WHITE)
             elevation = 4f
+            tag = "NavigationBar" // Tag to preserve during setChildren
         }
         
         // Configure title
@@ -512,6 +513,45 @@ class DCFScreenComponent : DCFComponent() {
                 Log.d(TAG, "📡 Header action event: $eventData")
             }
         }
+    }
+    
+    /**
+     * Set children views for a screen container
+     * This is CRITICAL for rendering screen content - like iOS setChildren
+     */
+    fun setChildren(view: View, childViews: List<View>, viewId: String): Boolean {
+        val screenContainer = findScreenContainerForView(view)
+        if (screenContainer == null) {
+            Log.e(TAG, "❌ Could not find screen container for setChildren")
+            return false
+        }
+        
+        Log.d(TAG, "📱 Setting ${childViews.size} children for route '${screenContainer.route}'")
+        
+        val frameLayout = screenContainer.frameLayout ?: return false
+        
+        // Remove existing children (except navigation bar)
+        val childCount = frameLayout.childCount
+        for (i in childCount - 1 downTo 0) {
+            val child = frameLayout.getChildAt(i)
+            if (child.tag != "NavigationBar") { // Keep navigation bar
+                frameLayout.removeViewAt(i)
+            }
+        }
+        
+        // Add new children
+        for (childView in childViews) {
+            frameLayout.addView(childView)
+            childView.layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            childView.visibility = View.VISIBLE
+            childView.alpha = 1.0f
+        }
+        
+        Log.d(TAG, "✅ Added ${childViews.size} children to screen: ${screenContainer.route}")
+        return true
     }
     
     // MARK: - Navigation Methods

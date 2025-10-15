@@ -218,9 +218,14 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
+            Log.d(TAG, "🔍 attachView: child='$childId' (type=${childView.javaClass.simpleName}), parent='$parentId' (type=${parentView.javaClass.simpleName})")
+            Log.d(TAG, "🔍 parentView is ViewGroup? ${parentView is ViewGroup}")
+            
             val parentViewGroup = parentView as? ViewGroup
             if (parentViewGroup == null) {
-                Log.e(TAG, "Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
+                Log.e(TAG, "❌ Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
+                Log.e(TAG, "❌ Parent view class: ${parentView.javaClass.name}")
+                Log.e(TAG, "❌ Parent view superclass: ${parentView.javaClass.superclass?.name}")
                 return false
             }
 
@@ -237,7 +242,6 @@ class DCMauiBridgeImpl private constructor() {
                         parentViewGroup.addView(childView)
                         Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
                     }
-                    
                     
                     Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
                 } catch (e: Exception) {
@@ -283,14 +287,62 @@ class DCMauiBridgeImpl private constructor() {
 
     fun setChildren(viewId: String, childrenIds: List<String>): Boolean {
         return try {
+            Log.d(TAG, "🔧 setChildren called: viewId='$viewId', children=${childrenIds.size}")
             val parentView = ViewRegistry.shared.getView(viewId)
+            
+            if (parentView == null) {
+                Log.e(TAG, "❌ setChildren: parent view '$viewId' not found in registry")
+                return false
+            }
+            
+            Log.d(TAG, "🔍 setChildren: parentView type=${parentView.javaClass.simpleName}, is ViewGroup? ${parentView is ViewGroup}")
             val parentViewGroup = parentView as? ViewGroup
 
             if (parentViewGroup == null) {
-                Log.e(TAG, "Parent view '$viewId' is not a ViewGroup")
+                Log.e(TAG, "❌ setChildren: Parent view '$viewId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
                 return false
             }
 
+            // Check if this is a DCFScreenComponent's FrameLayout (has DCFScreen tag)
+            if (parentViewGroup.tag == "DCFScreen") {
+                Log.d(TAG, "🎯 Using custom setChildren for DCFScreen: $viewId")
+                val childViews = childrenIds.mapNotNull { childId ->
+                    ViewRegistry.shared.getView(childId)
+                }
+                
+                // Remove existing children (except navigation bar)
+                val childCount = parentViewGroup.childCount
+                for (i in childCount - 1 downTo 0) {
+                    val child = parentViewGroup.getChildAt(i)
+                    if (child.tag != "NavigationBar") { // Keep navigation bar
+                        parentViewGroup.removeViewAt(i)
+                    }
+                }
+                
+                // Add new children
+                childViews.forEach { childView ->
+                    parentViewGroup.addView(childView)
+                    childView.layoutParams = android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+                    childView.visibility = android.view.View.VISIBLE
+                    childView.alpha = 1.0f
+                }
+                
+                // Update view hierarchy
+                viewHierarchy[viewId]?.clear()
+                childrenIds.forEach { childId ->
+                    childToParent[childId] = viewId
+                    viewHierarchy.getOrPut(viewId) { mutableListOf() }.add(childId)
+                    DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = childrenIds.indexOf(childId))
+                }
+                
+                Log.d(TAG, "✅ Added ${childViews.size} children to DCFScreen: $viewId")
+                return true
+            }
+
+            // Fallback to default behavior
             parentViewGroup.removeAllViews()
             viewHierarchy[viewId]?.clear()
 
@@ -312,6 +364,7 @@ class DCMauiBridgeImpl private constructor() {
             false
         }
     }
+
 
     /**
      * ⭐ OPTIMIZED: Commit a batch of operations atomically with improved performance
