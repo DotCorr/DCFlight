@@ -8,6 +8,7 @@
 package com.dotcorr.dcfscreens.components.navigation
 
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -15,6 +16,7 @@ import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcfscreens.components.navigation.models.ScreenContainer
@@ -236,6 +238,19 @@ class DCFScreenComponent : DCFComponent() {
         screenContainer.onActivate = props["onActivate"] as? ((Map<String, Any?>) -> Unit)
         screenContainer.onDeactivate = props["onDeactivate"] as? ((Map<String, Any?>) -> Unit)
         screenContainer.onReceiveParams = props["onReceiveParams"] as? ((Map<String, Any?>) -> Unit)
+        
+        // CRITICAL: Create navigation bar for this screen if it has header actions
+        val pushConfig = screenContainer.pushConfig
+        if (pushConfig != null) {
+            val hasPrefixActions = (pushConfig["prefixActions"] as? List<*>)?.isNotEmpty() == true
+            val hasSuffixActions = (pushConfig["suffixActions"] as? List<*>)?.isNotEmpty() == true
+            val hasTitle = pushConfig["title"] as? String != null
+            
+            if (hasPrefixActions || hasSuffixActions || hasTitle) {
+                Log.d(TAG, "🎯 Screen '${screenContainer.route}' has navigation bar config - creating navigation bar")
+                createNavigationBarForScreen(screenContainer, pushConfig)
+            }
+        }
     }
     
     private fun extractPushConfig(props: Map<String, Any?>): Map<String, Any?>? {
@@ -253,6 +268,250 @@ class DCFScreenComponent : DCFComponent() {
         return mapOf(
             "presentationStyle" to (modalConfig["presentationStyle"] as? String ?: "fullScreen")
         )
+    }
+    
+    /**
+     * Create navigation bar for a screen with header actions
+     * This is internal to the screen - no separate component needed
+     */
+    private fun createNavigationBarForScreen(screenContainer: ScreenContainer, pushConfig: Map<String, Any?>) {
+        val frameLayout = screenContainer.frameLayout ?: return
+        val context = frameLayout.context
+        
+        // Create a Toolbar directly (like iOS creates UINavigationController internally)
+        val toolbar = androidx.appcompat.widget.Toolbar(context).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
+            setBackgroundColor(android.graphics.Color.WHITE)
+            elevation = 4f
+        }
+        
+        // Configure title
+        val title = pushConfig["title"] as? String
+        if (title != null) {
+            toolbar.title = title
+            Log.d(TAG, "✅ Set navigation bar title: $title")
+        }
+        
+        // Configure prefix actions (left side)
+        val prefixActions = pushConfig["prefixActions"] as? List<*>
+        if (prefixActions != null && prefixActions.isNotEmpty()) {
+            Log.d(TAG, "🎯 Found ${prefixActions.size} prefix actions")
+            configurePrefixActions(toolbar, prefixActions)
+        }
+        
+        // Configure suffix actions (right side)
+        val suffixActions = pushConfig["suffixActions"] as? List<*>
+        if (suffixActions != null && suffixActions.isNotEmpty()) {
+            Log.d(TAG, "🎯 Found ${suffixActions.size} suffix actions")
+            configureSuffixActions(toolbar, suffixActions)
+        }
+        
+        // Configure back button
+        val hideBackButton = pushConfig["hideBackButton"] as? Boolean ?: false
+        if (!hideBackButton && DCFScreenRegistry.getNavigationStack().size > 1) {
+            // Show back button for non-root screens
+            toolbar.setNavigationOnClickListener {
+                Log.d(TAG, "⬅️ Back button pressed")
+                // Trigger back navigation through the existing navigation system
+                popCurrentRoute()
+            }
+            Log.d(TAG, "✅ Back button configured")
+        } else {
+            toolbar.navigationIcon = null
+            Log.d(TAG, "ℹ️ Back button hidden or not needed")
+        }
+        
+        // Add toolbar to the top of the screen's FrameLayout
+        frameLayout.addView(toolbar, 0) // Insert at index 0 (top)
+        
+        // Adjust content padding to account for navigation bar
+        val navigationBarHeight = 56 // Standard Android toolbar height
+        frameLayout.setPadding(0, navigationBarHeight, 0, 0)
+        
+        Log.d(TAG, "✅ Created internal navigation bar for screen: ${screenContainer.route}")
+    }
+    
+    private fun configurePrefixActions(toolbar: androidx.appcompat.widget.Toolbar, prefixActions: List<*>) {
+        val menu = toolbar.menu
+        menu.clear()
+        
+        for ((index, action) in prefixActions.withIndex()) {
+            if (action is Map<*, *>) {
+                val title = action["title"] as? String ?: "Action $index"
+                val actionId = action["actionId"] as? String ?: "prefix_$index"
+                val enabled = action["enabled"] as? Boolean ?: true
+                val icon = action["icon"] as? Map<*, *>
+                
+                val menuItem = menu.add(0, actionId.hashCode(), 0, title)
+                menuItem.isEnabled = enabled
+                
+                // Configure icon if provided
+                if (icon != null) {
+                    configureActionIcon(menuItem, icon, toolbar.context)
+                }
+                
+                // Set click listener
+                menuItem.setOnMenuItemClickListener {
+                    Log.d(TAG, "🎯 Prefix action pressed: $actionId")
+                    fireHeaderActionEvent(actionId, action)
+                    true
+                }
+                
+                Log.d(TAG, "✅ Added prefix action: $title ($actionId)")
+            }
+        }
+    }
+    
+    private fun configureSuffixActions(toolbar: androidx.appcompat.widget.Toolbar, suffixActions: List<*>) {
+        val menu = toolbar.menu
+        
+        for ((index, action) in suffixActions.withIndex()) {
+            if (action is Map<*, *>) {
+                val title = action["title"] as? String ?: "Action $index"
+                val actionId = action["actionId"] as? String ?: "suffix_$index"
+                val enabled = action["enabled"] as? Boolean ?: true
+                val icon = action["icon"] as? Map<*, *>
+                
+                val menuItem = menu.add(0, actionId.hashCode(), 0, title)
+                menuItem.isEnabled = enabled
+                menuItem.setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS)
+                
+                // Configure icon if provided
+                if (icon != null) {
+                    configureActionIcon(menuItem, icon, toolbar.context)
+                }
+                
+                // Set click listener
+                menuItem.setOnMenuItemClickListener {
+                    Log.d(TAG, "🎯 Suffix action pressed: $actionId")
+                    fireHeaderActionEvent(actionId, action)
+                    true
+                }
+                
+                Log.d(TAG, "✅ Added suffix action: $title ($actionId)")
+            }
+        }
+    }
+    
+    private fun configureActionIcon(menuItem: android.view.MenuItem, icon: Map<*, *>, context: Context) {
+        val iconType = icon["type"] as? String ?: "text"
+        
+        when (iconType) {
+            "sf" -> {
+                // SF Symbol equivalent - use Android system icons
+                val symbolName = icon["name"] as? String
+                if (symbolName != null) {
+                    val drawable = getSystemIcon(symbolName, context)
+                    if (drawable != null) {
+                        menuItem.icon = drawable
+                        Log.d(TAG, "✅ Set SF symbol icon: $symbolName")
+                    }
+                }
+            }
+            "package" -> {
+                // Package icon - load from assets
+                val packageName = icon["package"] as? String
+                val iconName = icon["name"] as? String
+                if (packageName != null && iconName != null) {
+                    val drawable = loadPackageIcon(packageName, iconName)
+                    if (drawable != null) {
+                        menuItem.icon = drawable
+                        Log.d(TAG, "✅ Set package icon: $packageName/$iconName")
+                    }
+                }
+            }
+            "svg" -> {
+                // SVG icon - load from assets
+                val assetPath = icon["assetPath"] as? String
+                if (assetPath != null) {
+                    val drawable = loadSVGIcon(assetPath)
+                    if (drawable != null) {
+                        menuItem.icon = drawable
+                        Log.d(TAG, "✅ Set SVG icon: $assetPath")
+                    }
+                }
+            }
+            "text" -> {
+                // Text-only button - no icon
+                Log.d(TAG, "ℹ️ Text-only action, no icon")
+            }
+            else -> {
+                Log.w(TAG, "⚠️ Unknown icon type: $iconType")
+            }
+        }
+    }
+    
+    private fun getSystemIcon(symbolName: String, context: Context): Drawable? {
+        // Map SF Symbol names to Android system icons
+        val iconMap = mapOf(
+            "settings" to android.R.drawable.ic_menu_preferences,
+            "gear" to android.R.drawable.ic_menu_preferences,
+            "pencil" to android.R.drawable.ic_menu_edit,
+            "edit" to android.R.drawable.ic_menu_edit,
+            "plus" to android.R.drawable.ic_menu_add,
+            "add" to android.R.drawable.ic_menu_add,
+            "trash" to android.R.drawable.ic_menu_delete,
+            "delete" to android.R.drawable.ic_menu_delete,
+            "share" to android.R.drawable.ic_menu_share,
+            "info" to android.R.drawable.ic_menu_info_details,
+            "help" to android.R.drawable.ic_menu_help,
+            "search" to android.R.drawable.ic_menu_search,
+            "home" to android.R.drawable.ic_menu_manage,
+            "back" to android.R.drawable.ic_menu_revert,
+            "forward" to android.R.drawable.ic_menu_send,
+            "refresh" to android.R.drawable.ic_menu_rotate,
+            "close" to android.R.drawable.ic_menu_close_clear_cancel,
+            "cancel" to android.R.drawable.ic_menu_close_clear_cancel,
+            "done" to android.R.drawable.ic_menu_send,
+            "checkmark" to android.R.drawable.ic_menu_send
+        )
+        
+        val iconRes = iconMap[symbolName.lowercase()]
+        return if (iconRes != null) {
+            try {
+                ContextCompat.getDrawable(context, iconRes)
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Failed to load system icon: $symbolName")
+                null
+            }
+        } else {
+            Log.w(TAG, "⚠️ Unknown SF symbol: $symbolName")
+            null
+        }
+    }
+    
+    private fun loadPackageIcon(packageName: String, iconName: String): Drawable? {
+        // TODO: Implement package icon loading
+        Log.d(TAG, "📦 Package icon loading not implemented: $packageName/$iconName")
+        return null
+    }
+    
+    private fun loadSVGIcon(assetPath: String): Drawable? {
+        // TODO: Implement SVG icon loading
+        Log.d(TAG, "🎨 SVG icon loading not implemented: $assetPath")
+        return null
+    }
+    
+    private fun fireHeaderActionEvent(actionId: String, action: Map<*, *>) {
+        // Find the current screen container to fire the event
+        val currentRoute = DCFScreenRegistry.getCurrentRoute()
+        if (currentRoute != null) {
+            val screenContainer = DCFScreenRegistry.getScreen(currentRoute)
+            if (screenContainer != null) {
+                // Fire the header action press event
+                val eventData = mapOf(
+                    "actionId" to actionId,
+                    "title" to (action["title"] as? String ?: ""),
+                    "screenName" to currentRoute
+                )
+                
+                // TODO: Implement proper event firing mechanism
+                Log.d(TAG, "📡 Header action event: $eventData")
+            }
+        }
     }
     
     // MARK: - Navigation Methods
