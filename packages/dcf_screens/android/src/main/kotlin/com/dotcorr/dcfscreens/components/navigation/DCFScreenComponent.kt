@@ -61,6 +61,8 @@ class DCFScreenComponent : DCFComponent() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
+            // CRITICAL: Set elevation to ensure screens appear on top of bootstrapper
+            elevation = 10f // Higher z-index than bootstrapper view
         }
         
         val screenContainer = ScreenContainer(
@@ -261,21 +263,47 @@ class DCFScreenComponent : DCFComponent() {
         DCFScreenRegistry.pushRoute(route)
         
         // CRITICAL: iOS-like navigation - hide all screens EXCEPT the target
-        Handler(Looper.getMainLooper()).post {
-            // Hide all screens except the target
-            for ((screenRoute, container) in DCFScreenRegistry.getAllScreens()) {
-                if (screenRoute != route) {
-                    container.frameLayout?.visibility = View.GONE
-                    Log.d(TAG, "🙈 Hidden screen: $screenRoute")
+        // IMPORTANT: Set target VISIBLE FIRST, then hide others
+        // This ensures the target's FrameLayout is visible when Flutter renders content
+        
+        // Step 1: Make target visible FIRST
+        screenContainer.frameLayout?.let { frameLayout ->
+            frameLayout.visibility = View.VISIBLE
+            frameLayout.bringToFront()
+            Log.d(TAG, "👁️ Showing screen '$route' (BEFORE hiding others)")
+            Log.d(TAG, "   frameLayout visibility: ${frameLayout.visibility}, childCount: ${frameLayout.childCount}, parent: ${frameLayout.parent?.javaClass?.simpleName}")
+        }
+        
+        // Step 2: Hide all other screens
+        for ((screenRoute, container) in DCFScreenRegistry.getAllScreens()) {
+            if (screenRoute != route) {
+                container.frameLayout?.let { fl ->
+                    fl.visibility = View.GONE
+                    Log.d(TAG, "🙈 Hidden screen: $screenRoute (childCount: ${fl.childCount})")
                 }
             }
+        }
+        
+        // Step 3: Force layout and trigger lifecycle
+        screenContainer.frameLayout?.let { frameLayout ->
+            frameLayout.requestLayout()
+            frameLayout.invalidate() // Force immediate redraw
+            Log.d(TAG, "✅ Screen '$route' ready for content")
             
-            // Show only the target screen
-            screenContainer.frameLayout?.let { frameLayout ->
-                frameLayout.visibility = View.VISIBLE
-                frameLayout.bringToFront()
-                frameLayout.requestLayout()
-                Log.d(TAG, "👁️ Showing screen '$route'")
+            // DEBUG: Log root view's children visibility
+            val rootView = frameLayout.parent as? android.view.ViewGroup
+            if (rootView != null) {
+                Log.d(TAG, "🔍 ROOT VIEW has ${rootView.childCount} children:")
+                for (i in 0 until rootView.childCount) {
+                    val child = rootView.getChildAt(i)
+                    val visibility = when (child.visibility) {
+                        View.VISIBLE -> "VISIBLE"
+                        View.GONE -> "GONE"
+                        View.INVISIBLE -> "INVISIBLE"
+                        else -> "UNKNOWN"
+                    }
+                    Log.d(TAG, "   Child $i: $visibility (${child.javaClass.simpleName})")
+                }
             }
         }
         
