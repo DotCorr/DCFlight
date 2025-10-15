@@ -262,49 +262,28 @@ class DCFScreenComponent : DCFComponent() {
         navController?.navigate(route)
         DCFScreenRegistry.pushRoute(route)
         
-        // CRITICAL: iOS-like navigation - hide all screens EXCEPT the target
-        // IMPORTANT: Set target VISIBLE FIRST, then hide others
-        // This ensures the target's FrameLayout is visible when Flutter renders content
+        // CRITICAL FIX: Use iOS UINavigationController pattern
+        // Remove all screens from root, then add ONLY the target screen
+        // This prevents multiple screens rendering on top of each other
         
-        // Step 1: Make target visible FIRST
-        screenContainer.frameLayout?.let { frameLayout ->
-            frameLayout.visibility = View.VISIBLE
-            frameLayout.bringToFront()
-            Log.d(TAG, "👁️ Showing screen '$route' (BEFORE hiding others)")
-            Log.d(TAG, "   frameLayout visibility: ${frameLayout.visibility}, childCount: ${frameLayout.childCount}, parent: ${frameLayout.parent?.javaClass?.simpleName}")
-        }
-        
-        // Step 2: Hide all other screens
-        for ((screenRoute, container) in DCFScreenRegistry.getAllScreens()) {
-            if (screenRoute != route) {
-                container.frameLayout?.let { fl ->
-                    fl.visibility = View.GONE
-                    Log.d(TAG, "🙈 Hidden screen: $screenRoute (childCount: ${fl.childCount})")
-                }
-            }
-        }
-        
-        // Step 3: Force layout and trigger lifecycle
-        screenContainer.frameLayout?.let { frameLayout ->
-            frameLayout.requestLayout()
-            frameLayout.invalidate() // Force immediate redraw
-            Log.d(TAG, "✅ Screen '$route' ready for content")
+        val rootView = screenContainer.frameLayout?.parent as? FrameLayout
+        if (rootView != null) {
+            Log.d(TAG, "� Removing all screens from root (iOS replaceRoot pattern)")
             
-            // DEBUG: Log root view's children visibility
-            val rootView = frameLayout.parent as? android.view.ViewGroup
-            if (rootView != null) {
-                Log.d(TAG, "🔍 ROOT VIEW has ${rootView.childCount} children:")
-                for (i in 0 until rootView.childCount) {
-                    val child = rootView.getChildAt(i)
-                    val visibility = when (child.visibility) {
-                        View.VISIBLE -> "VISIBLE"
-                        View.GONE -> "GONE"
-                        View.INVISIBLE -> "INVISIBLE"
-                        else -> "UNKNOWN"
-                    }
-                    Log.d(TAG, "   Child $i: $visibility (${child.javaClass.simpleName})")
-                }
+            // Remove ALL children from root
+            rootView.removeAllViews()
+            
+            // Add ONLY the target screen
+            screenContainer.frameLayout?.let { frameLayout ->
+                rootView.addView(frameLayout)
+                frameLayout.visibility = View.VISIBLE
+                frameLayout.bringToFront()
+                frameLayout.requestLayout()
+                frameLayout.invalidate()
+                Log.d(TAG, "✅ Added ONLY screen '$route' to root (iOS pattern)")
             }
+        } else {
+            Log.e(TAG, "❌ Root view is not FrameLayout or null!")
         }
         
         LifecycleEventHelper.fireOnAppear(screenContainer)
