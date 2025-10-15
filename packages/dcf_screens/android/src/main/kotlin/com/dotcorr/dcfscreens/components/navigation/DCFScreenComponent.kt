@@ -260,13 +260,22 @@ class DCFScreenComponent : DCFComponent() {
         navController?.navigate(route)
         DCFScreenRegistry.pushRoute(route)
         
-        // CRITICAL: Bring the screen to front so it's visible!
-        // All screens are siblings in root ViewGroup, Z-order determines visibility
-        screenContainer.frameLayout?.let { frameLayout ->
-            Handler(Looper.getMainLooper()).post {
+        // CRITICAL: iOS-like navigation - hide all screens EXCEPT the target
+        Handler(Looper.getMainLooper()).post {
+            // Hide all screens except the target
+            for ((screenRoute, container) in DCFScreenRegistry.getAllScreens()) {
+                if (screenRoute != route) {
+                    container.frameLayout?.visibility = View.GONE
+                    Log.d(TAG, "🙈 Hidden screen: $screenRoute")
+                }
+            }
+            
+            // Show only the target screen
+            screenContainer.frameLayout?.let { frameLayout ->
+                frameLayout.visibility = View.VISIBLE
                 frameLayout.bringToFront()
                 frameLayout.requestLayout()
-                Log.d(TAG, "🎯 Screen '$route' brought to front")
+                Log.d(TAG, "👁️ Showing screen '$route'")
             }
         }
         
