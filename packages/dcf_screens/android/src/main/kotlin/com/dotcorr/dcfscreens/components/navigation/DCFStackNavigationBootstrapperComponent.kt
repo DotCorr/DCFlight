@@ -42,35 +42,33 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         
         Log.d(TAG, "🚀 Setting up stack navigation with initial screen: $initialScreen")
         
-        // Create the navigation container - this will become the Activity's content view
-        // Just like iOS creates UINavigationController
-        val navigationContainer = FrameLayout(context).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-            id = View.generateViewId() // Give it a proper ID
-        }
-        
         // CRITICAL: Clear any existing navigation stack (for hot restarts)
         DCFScreenRegistry.clearStack()
         Log.d(TAG, "🧹 Cleared existing navigation stack")
         
-        // Set up initial screen with retry logic (same as iOS)
-        setupInitialScreenWithRetry(
-            navigationContainer = navigationContainer,
-            initialScreen = initialScreen,
-            retryCount = 0
-        )
+        // CRITICAL: Get the existing "root" view from the registry
+        // This is the DCFFrameLayout that was created by DCDivergerUtil
+        val existingRoot = com.dotcorr.dcflight.layout.ViewRegistry.shared.getView("root") as? FrameLayout
         
-        // CRITICAL: Replace the Activity's root content view (like iOS replaceRoot)
-        // This makes our navigation container the ENTIRE screen
-        Handler(Looper.getMainLooper()).post {
-            replaceActivityContentView(context, navigationContainer)
+        if (existingRoot != null) {
+            Log.d(TAG, "✅ Found existing root view, will use it as navigation container")
+            
+            // Clear any existing children from the root
+            existingRoot.removeAllViews()
+            
+            // Set up initial screen with retry logic
+            setupInitialScreenWithRetry(
+                navigationContainer = existingRoot,
+                initialScreen = initialScreen,
+                retryCount = 0
+            )
+            
+            Log.d(TAG, "✅ Bootstrapped navigation using existing root view")
+        } else {
+            Log.e(TAG, "❌ No root view found in registry!")
         }
         
-        // Return a hidden placeholder (same as iOS)
-        // The actual navigation container is set as Activity content view
+        // Return a hidden placeholder (bootstrapper doesn't need its own view)
         return View(context).apply {
             layoutParams = FrameLayout.LayoutParams(0, 0)
             visibility = View.GONE
@@ -80,22 +78,6 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         // No updates needed for root navigation component
         return true
-    }
-    
-    /**
-     * Replace the Activity's content view with our navigation container
-     * EXACTLY like iOS: replaceRoot(controller: navigationController)
-     */
-    private fun replaceActivityContentView(context: Context, navigationContainer: FrameLayout) {
-        val activity = context as? Activity
-        if (activity == null) {
-            Log.e(TAG, "❌ Context is not an Activity, cannot replace root view")
-            return
-        }
-        
-        Log.d(TAG, "🔄 Replacing Activity content view with navigation container")
-        activity.setContentView(navigationContainer)
-        Log.d(TAG, "✅ Navigation container is now the Activity's root view")
     }
     
     /**
@@ -114,22 +96,21 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
             // Push to navigation stack
             DCFScreenRegistry.pushRoute(initialScreen)
             
-            // Add the screen's FrameLayout to our navigation container
+            // CRITICAL: Hide all screens EXCEPT the initial screen (iOS pattern - only top screen visible)
+            for ((route, container) in DCFScreenRegistry.getAllScreens()) {
+                if (route != initialScreen) {
+                    container.frameLayout?.visibility = View.GONE
+                    Log.d(TAG, "🙈 Initially hiding screen: $route")
+                }
+            }
+            
+            // Show only the initial screen
             val screenFrameLayout = screenContainer.frameLayout!!
-            
-            // Remove from any existing parent first
-            (screenFrameLayout.parent as? android.view.ViewGroup)?.removeView(screenFrameLayout)
-            
-            // Add to navigation container
-            navigationContainer.addView(screenFrameLayout, FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            ))
-            
             screenFrameLayout.visibility = View.VISIBLE
             screenFrameLayout.requestLayout()
             
-            Log.d(TAG, "✅ Initial screen '$initialScreen' added to navigation container")
+            Log.d(TAG, "✅ Initial screen '$initialScreen' set as visible")
+            Log.d(TAG, "✅ Bootstrapped navigation using existing root view")
             return
         }
         
