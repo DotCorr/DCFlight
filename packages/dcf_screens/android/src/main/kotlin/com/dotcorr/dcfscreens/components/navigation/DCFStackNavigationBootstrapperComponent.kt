@@ -18,7 +18,7 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcfscreens.components.navigation.registry.DCFScreenRegistry
 
 /**
- * This is the ROOT navigation component - it REPLACES the entire Activity content
+ * ROOT navigation component - it REPLACES the entire Activity content
  */
 class DCFStackNavigationBootstrapperComponent : DCFComponent() {
     
