@@ -301,7 +301,7 @@ class DCFLayoutManager private constructor() {
 
                     // CRITICAL: DON'T force visibility for Screen components (managed by navigation)
                     // Only force visibility for regular views (buttons, text, etc.)
-                    val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true
+                    val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
                     if (!isScreen) {
                         view.visibility = View.VISIBLE
                         view.alpha = 1.0f
