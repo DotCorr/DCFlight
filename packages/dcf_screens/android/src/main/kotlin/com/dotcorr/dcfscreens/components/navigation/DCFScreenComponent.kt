@@ -60,9 +60,19 @@ class DCFScreenComponent : DCFComponent() {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
-            )
+            ).apply {
+                // CRITICAL: All screens MUST be positioned at 0,0 to overlap properly
+                setMargins(0, 0, 0, 0)
+            }
             // CRITICAL: Set elevation to ensure screens appear on top of bootstrapper
             elevation = 10f // Higher z-index than bootstrapper view
+            // CRITICAL: Position at origin so all screens overlap
+            x = 0f
+            y = 0f
+            // CRITICAL: Tag as screen so LayoutManager doesn't force visibility
+            tag = "DCFScreen"
+            // CRITICAL: Start GONE - bootstrapper will show the initial screen
+            visibility = View.GONE
         }
         
         val screenContainer = ScreenContainer(
@@ -262,31 +272,42 @@ class DCFScreenComponent : DCFComponent() {
         navController?.navigate(route)
         DCFScreenRegistry.pushRoute(route)
         
-        // CRITICAL FIX: Use iOS UINavigationController pattern
-        // Remove all screens from root, then add ONLY the target screen
-        // This prevents multiple screens rendering on top of each other
+        // CRITICAL FIX: Toggle visibility instead of removing/adding views
+        // All screens are already attached to root with content
+        // Just show target screen and hide all others (iOS UINavigationController pattern)
         
-        val rootView = screenContainer.frameLayout?.parent as? FrameLayout
-        if (rootView != null) {
-            Log.d(TAG, "� Removing all screens from root (iOS replaceRoot pattern)")
-            
-            // Remove ALL children from root
-            rootView.removeAllViews()
-            
-            // Add ONLY the target screen
-            screenContainer.frameLayout?.let { frameLayout ->
-                rootView.addView(frameLayout)
-                frameLayout.visibility = View.VISIBLE
-                frameLayout.bringToFront()
-                frameLayout.requestLayout()
-                frameLayout.invalidate()
-                Log.d(TAG, "✅ Added ONLY screen '$route' to root (iOS pattern)")
+        // Hide all screens first
+        for (r in DCFScreenRegistry.getAllRoutes()) {
+            if (r != route) {
+                val container = DCFScreenRegistry.getScreen(r)
+                if (container?.frameLayout != null) {
+                    val currentVisibility = container.frameLayout!!.visibility
+                    container.frameLayout!!.visibility = View.GONE
+                    Log.d(TAG, "🙈 Hiding screen: $r (was ${visibilityToString(currentVisibility)}, now ${visibilityToString(container.frameLayout!!.visibility)})")
+                }
             }
-        } else {
-            Log.e(TAG, "❌ Root view is not FrameLayout or null!")
         }
         
+        // Show target screen
+        screenContainer.frameLayout?.let { frameLayout ->
+            val currentVisibility = frameLayout.visibility
+            frameLayout.visibility = View.VISIBLE
+            frameLayout.bringToFront()
+            frameLayout.requestLayout()
+            frameLayout.invalidate()
+            Log.d(TAG, "👁️ Showing screen: $route (was ${visibilityToString(currentVisibility)}, now ${visibilityToString(frameLayout.visibility)}, parent=${frameLayout.parent}, childCount=${frameLayout.childCount})")
+        } ?: Log.e(TAG, "❌ ERROR: frameLayout is NULL for route: $route")
+        
         LifecycleEventHelper.fireOnAppear(screenContainer)
+    }
+    
+    private fun visibilityToString(visibility: Int): String {
+        return when (visibility) {
+            View.VISIBLE -> "VISIBLE"
+            View.INVISIBLE -> "INVISIBLE"
+            View.GONE -> "GONE"
+            else -> "UNKNOWN($visibility)"
+        }
     }
     
     private fun popCurrentRoute() {
