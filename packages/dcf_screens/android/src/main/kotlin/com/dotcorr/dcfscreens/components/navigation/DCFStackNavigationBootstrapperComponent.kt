@@ -53,8 +53,8 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         if (existingRoot != null) {
             Log.d(TAG, "✅ Found existing root view, will use it as navigation container")
             
-            // Clear any existing children from the root
-            existingRoot.removeAllViews()
+            // DON'T remove children - the screen FrameLayouts are already attached!
+            // Just set up visibility management
             
             // Set up initial screen with retry logic
             setupInitialScreenWithRetry(
@@ -68,15 +68,32 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
             Log.e(TAG, "❌ No root view found in registry!")
         }
         
-        // Return a hidden placeholder (bootstrapper doesn't need its own view)
+        // Return a placeholder that will be GONE and stay hidden
+        // CRITICAL FIX: Use GONE (completely removed from layout) and add viewTreeObserver
+        //to force it back to GONE if Android tries to make it visible
         return View(context).apply {
             layoutParams = FrameLayout.LayoutParams(0, 0)
             visibility = View.GONE
+            
+            // Add listener to force GONE if visibility changes
+            viewTreeObserver.addOnGlobalLayoutListener {
+                if (visibility != View.GONE) {
+                    visibility = View.GONE
+                    Log.d(TAG, "🔒 Forced bootstrapper back to GONE")
+                }
+            }
         }
     }
     
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        // No updates needed for root navigation component
+        // CRITICAL: Force bootstrapper to stay INVISIBLE (prevent Android from making it visible)
+        if (view.visibility != View.INVISIBLE) {
+            view.visibility = View.INVISIBLE
+            view.alpha = 0f
+            view.isClickable = false
+            view.isFocusable = false
+            Log.d(TAG, "🔒 Forced bootstrapper back to INVISIBLE (was ${view.visibility})")
+        }
         return true
     }
     
@@ -107,7 +124,9 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
             // Show only the initial screen
             val screenFrameLayout = screenContainer.frameLayout!!
             screenFrameLayout.visibility = View.VISIBLE
+            screenFrameLayout.bringToFront()
             screenFrameLayout.requestLayout()
+            screenFrameLayout.invalidate() // Force immediate redraw
             
             Log.d(TAG, "✅ Initial screen '$initialScreen' set as visible")
             Log.d(TAG, "✅ Bootstrapped navigation using existing root view")
