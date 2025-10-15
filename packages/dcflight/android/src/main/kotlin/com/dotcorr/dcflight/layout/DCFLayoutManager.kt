@@ -2,20 +2,7 @@
  * Copyright (c) Dotcorr Studio. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
- *             // Use the synchronized calculateAndApplyLayout method
-            // This will automatically defer if reconciliation is in progress
-            val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
-
-            // Update flag on main thread
-            mainHandler.post {
-                needsLayoutCalculation.set(false)
-                if (success) {
-                } else {
-                    // Reschedule if deferred due to reconciliation
-                    needsLayoutCalculation.set(true)
-                    scheduleLayoutCalculation()
-                }
-            }the root directory of this source tree.
+ * LICENSE file in the root directory of this source tree.
  */
 
 package com.dotcorr.dcflight.layout
@@ -37,10 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 
-/**
- * EXACT iOS DCFLayoutManager port for Android
- * Matches iOS DCFLayoutManager.swift behavior 1:1
- */
+
 class DCFLayoutManager private constructor() {
 
     companion object {
@@ -264,7 +248,7 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
-     * FLASH SCREEN FIX: Apply layout without making view visible
+     * Apply layout without making view visible
      * Used for batch layout application to prevent flash
      */
     fun applyLayoutWithoutVisibility(viewId: String, left: Float, top: Float, width: Float, height: Float): Boolean {
@@ -315,9 +299,13 @@ class DCFLayoutManager private constructor() {
                         parent.setChildManuallyPositioned(view, true)
                     }
 
-                    // CRITICAL: Ensure view is visible BEFORE measurement (required for proper text rendering)
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
+                    // CRITICAL: DON'T force visibility for Screen components (managed by navigation)
+                    // Only force visibility for regular views (buttons, text, etc.)
+                    val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true
+                    if (!isScreen) {
+                        view.visibility = View.VISIBLE
+                        view.alpha = 1.0f
+                    }
 
                     // CRITICAL: Measure view with exact dimensions (required for proper rendering)
                     val width = safeFrame.width()
@@ -345,8 +333,13 @@ class DCFLayoutManager private constructor() {
                             parent.setChildManuallyPositioned(view, true)
                         }
                         
-                        view.visibility = View.VISIBLE
-                        view.alpha = 1.0f
+                        // CRITICAL: DON'T force visibility for Screen components (managed by navigation)
+                        // Only force visibility for regular views (buttons, text, etc.)
+                        val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true
+                        if (!isScreen) {
+                            view.visibility = View.VISIBLE
+                            view.alpha = 1.0f
+                        }
                         
                         val width = safeFrame.width()
                         val height = safeFrame.height()

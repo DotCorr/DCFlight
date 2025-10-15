@@ -18,11 +18,6 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcfscreens.components.navigation.registry.DCFScreenRegistry
 
 /**
- * Stack navigation bootstrapper - EXACTLY like iOS UINavigationController pattern
- * 
- * iOS: Creates UINavigationController, sets initial screen, calls replaceRoot()
- * Android: Creates FrameLayout container, sets initial screen, replaces Activity content view
- * 
  * This is the ROOT navigation component - it REPLACES the entire Activity content
  */
 class DCFStackNavigationBootstrapperComponent : DCFComponent() {
