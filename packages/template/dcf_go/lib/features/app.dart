@@ -17,7 +17,7 @@ class HomeScreen extends DCFStatelessComponent {
         DCFButton(
           buttonProps: DCFButtonProps(title: "Go to Profile"),
           onPress: (data) {
-            AppNavigation.navigateTo("profile", fromScreen: "home");
+            AppNavigation.navigateTo("home/profile", fromScreen: "home");
           },
           layout: DCFLayout(marginBottom: 16, width: "80%"),
         ),
