@@ -40,6 +40,9 @@ class DCMauiBridgeImpl private constructor() {
     private val childToParent = ConcurrentHashMap<String, String>()
     private var appContext: Context? = null
     private var isInitialized = false
+    
+    // Queue for setChildren calls that need to be processed after batch completion
+    private val pendingSetChildren = ConcurrentHashMap<String, List<String>>()
 
     fun setContext(context: Context) {
         appContext = context
@@ -292,12 +295,9 @@ class DCMauiBridgeImpl private constructor() {
             
             if (parentView == null) {
                 Log.e(TAG, "❌ setChildren: parent view '$viewId' not found in registry")
-                // CRITICAL: Delay setChildren if view not found - it might be created in batch processing
-                Log.d(TAG, "⏳ Delaying setChildren for view '$viewId' - will retry after batch processing")
-                Handler(Looper.getMainLooper()).postDelayed({
-                    Log.d(TAG, "🔄 Retrying setChildren for view '$viewId' after delay")
-                    setChildren(viewId, childrenIds)
-                }, 100) // Retry after 100ms
+                // CRITICAL: Queue setChildren for processing after batch completion
+                Log.d(TAG, "⏳ Queuing setChildren for view '$viewId' - will process after batch completion")
+                pendingSetChildren[viewId] = childrenIds
                 return false
             }
             
@@ -546,6 +546,9 @@ class DCMauiBridgeImpl private constructor() {
             Log.d(TAG, "📊 BATCH_TIMING: ✅ TOTAL BATCH COMMIT TIME: ${totalTime}ms for ${operations.size} operations")
             Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
             
+            // Process queued setChildren calls after batch completion
+            processQueuedSetChildren()
+            
             return true
         } catch (e: Exception) {
             Log.e(TAG, "🔥 BATCH_COMMIT: Failed during atomic commit", e)
@@ -566,6 +569,22 @@ class DCMauiBridgeImpl private constructor() {
         val parentId = childToParent[viewId]
         if (parentId != null) {
             viewHierarchy[parentId]?.remove(viewId)
+        }
+    }
+    
+    private fun processQueuedSetChildren() {
+        if (pendingSetChildren.isEmpty()) {
+            return
+        }
+        
+        Log.d(TAG, "🔄 Processing ${pendingSetChildren.size} queued setChildren calls")
+        
+        val queuedCalls = pendingSetChildren.toMap()
+        pendingSetChildren.clear()
+        
+        queuedCalls.forEach { (viewId, childrenIds) ->
+            Log.d(TAG, "🔄 Processing queued setChildren for view '$viewId' with ${childrenIds.size} children")
+            setChildren(viewId, childrenIds)
         }
     }
 
