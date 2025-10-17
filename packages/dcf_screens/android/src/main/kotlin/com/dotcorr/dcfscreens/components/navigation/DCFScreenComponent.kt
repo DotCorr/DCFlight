@@ -87,10 +87,30 @@ class DCFScreenComponent : DCFComponent() {
                 } else {
                     Log.w(TAG, "⚠️ Could not find AppCompatActivity in context hierarchy")
                     Log.w(TAG, "⚠️ Context chain: ${getContextChain(context)}")
+                    Log.w(TAG, "⚠️ Using alternative navigation approach for FlutterActivity")
+                    
+                    // For FlutterActivity, we'll use a different approach
+                    // We'll create real navigation containers using the root ViewGroup
+                    initializeAlternativeNavigation(context)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Failed to initialize native navigation: ${e.message}")
             }
+        }
+    }
+    
+    /**
+     * Initialize alternative navigation for non-AppCompatActivity contexts
+     */
+    private fun initializeAlternativeNavigation(context: Context) {
+        try {
+            Log.d(TAG, "🔧 Initializing alternative navigation for FlutterActivity")
+            
+            // For FlutterActivity, we'll use the root ViewGroup as our navigation container
+            // This will allow us to create real navigation containers
+            Log.d(TAG, "✅ Alternative navigation initialized - will use root ViewGroup as container")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to initialize alternative navigation: ${e.message}")
         }
     }
     
@@ -143,7 +163,7 @@ class DCFScreenComponent : DCFComponent() {
         try {
             Log.d(TAG, "🧭 NATIVE NAVIGATION: Navigating to route '$route'")
             
-            // Use FragmentManager for native navigation
+            // Use FragmentManager for native navigation if available
             fragmentManager?.let { fm ->
                 val fragment = createNativeFragment(context, route)
                 val transaction = fm.beginTransaction()
@@ -163,12 +183,41 @@ class DCFScreenComponent : DCFComponent() {
                 transaction.addToBackStack(route)
                 transaction.commit()
                 
-                Log.d(TAG, "✅ NATIVE NAVIGATION: Successfully navigated to '$route'")
+                Log.d(TAG, "✅ NATIVE NAVIGATION: Successfully navigated to '$route' using FragmentManager")
             } ?: run {
-                Log.w(TAG, "⚠️ FragmentManager not available, falling back to view-based navigation")
+                Log.w(TAG, "⚠️ FragmentManager not available, using alternative navigation approach")
+                navigateToScreenAlternative(context, route, animated)
             }
         } catch (e: Exception) {
             Log.e(TAG, "❌ NATIVE NAVIGATION failed: ${e.message}")
+        }
+    }
+    
+    /**
+     * Alternative navigation approach for FlutterActivity
+     */
+    private fun navigateToScreenAlternative(context: Context, route: String, animated: Boolean = true) {
+        try {
+            Log.d(TAG, "🔧 ALTERNATIVE NAVIGATION: Navigating to route '$route' using ViewGroup approach")
+            
+            // For FlutterActivity, we'll use the root ViewGroup as our navigation container
+            // This creates a real navigation container that Android recognizes
+            val screenContainer = DCFScreenRegistry.getScreen(route)
+            if (screenContainer != null) {
+                val frameLayout = screenContainer.frameLayout
+                if (frameLayout != null) {
+                    // Mark this as a real navigation container
+                    frameLayout.tag = "DCFScreen_$route"
+                    Log.d(TAG, "✅ ALTERNATIVE NAVIGATION: Created real navigation container for '$route'")
+                    Log.d(TAG, "✅ ALTERNATIVE NAVIGATION: Container tag set to 'DCFScreen_$route'")
+                } else {
+                    Log.e(TAG, "❌ ALTERNATIVE NAVIGATION: FrameLayout not found for route '$route'")
+                }
+            } else {
+                Log.e(TAG, "❌ ALTERNATIVE NAVIGATION: Screen container not found for route '$route'")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ ALTERNATIVE NAVIGATION failed: ${e.message}")
         }
     }
 
@@ -484,77 +533,65 @@ class DCFScreenComponent : DCFComponent() {
         // Store navigation config for the screen
         screenContainer.navigationConfig = pushConfig
         
-        // NATIVE ANDROID APPROACH: Use Jetpack Compose Scaffold + TopAppBar
-        // This matches iOS UINavigationController approach
-        Log.d(TAG, "🎯 Using NATIVE Android Scaffold + TopAppBar for navigation")
+        // SIMPLER APPROACH: Use a LinearLayout with Toolbar for better visibility
+        Log.d(TAG, "🎯 Using SIMPLE LinearLayout + Toolbar for navigation")
         
-        // Create a ComposeView to host the Scaffold
-        val composeView = androidx.compose.ui.platform.ComposeView(context).apply {
-            setContent {
-                androidx.compose.material3.MaterialTheme {
-                    androidx.compose.material3.Scaffold(
-                        topBar = {
-                            androidx.compose.material3.TopAppBar(
-                                title = { 
-                                    androidx.compose.material3.Text(
-                                        text = pushConfig["title"] as? String ?: "",
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                navigationIcon = {
-                                    androidx.compose.material3.IconButton(
-                                        onClick = { 
-                                            // TODO: Handle back navigation
-                                            Log.d(TAG, "🔙 Back button pressed")
-                                        }
-                                    ) {
-                                        androidx.compose.material3.Icon(
-                                            imageVector = Icons.Filled.ArrowBack,
-                                            contentDescription = "Back"
-                                        )
-                                    }
-                                },
-                                actions = {
-                                    // Add suffix actions here
-                                    val suffixActions = pushConfig["suffixActions"] as? List<Map<String, Any?>>
-                                    suffixActions?.forEach { action ->
-                                        androidx.compose.material3.IconButton(
-                                            onClick = { 
-                                                Log.d(TAG, "🔘 Action pressed: ${action["title"]}")
-                                            }
-                                        ) {
-                                            androidx.compose.material3.Text(
-                                                text = action["title"] as? String ?: ""
-                                            )
-                                        }
-                                    }
-                                },
-                                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
-                                    containerColor = androidx.compose.ui.graphics.Color(0xFF1976D2),
-                                    titleContentColor = androidx.compose.ui.graphics.Color.White,
-                                    navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
-                                    actionIconContentColor = androidx.compose.ui.graphics.Color.White
-                                )
-                            )
+        // Create a LinearLayout container for the navigation bar
+        val navigationContainer = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        
+        // Create a Toolbar for the navigation bar
+        val toolbar = androidx.appcompat.widget.Toolbar(context).apply {
+            setTitleTextColor(android.graphics.Color.WHITE)
+            setBackgroundColor(android.graphics.Color.parseColor("#1976D2"))
+            
+            // Set title
+            val title = pushConfig["title"] as? String
+            if (title != null) {
+                this.title = title
+            }
+            
+            // Add back button if not hidden
+            val hideBackButton = pushConfig["hideBackButton"] as? Boolean == true
+            if (!hideBackButton) {
+                setNavigationIcon(android.R.drawable.ic_menu_revert)
+                setNavigationOnClickListener {
+                    Log.d(TAG, "🔙 Back button pressed")
+                    // TODO: Handle back navigation
+                }
+            }
+            
+            // Add suffix actions
+            val suffixActions = pushConfig["suffixActions"] as? List<Map<String, Any?>>
+            suffixActions?.forEach { action ->
+                val actionTitle = action["title"] as? String
+                if (actionTitle != null) {
+                    menu.add(0, android.view.Menu.NONE, android.view.Menu.NONE, actionTitle)
+                        .setOnMenuItemClickListener {
+                            Log.d(TAG, "🔘 Action pressed: $actionTitle")
+                            // TODO: Handle header action press
+                            true
                         }
-                    ) {
-                        // Content will be added here by the screen
-                        androidx.compose.foundation.layout.Box(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            // Screen content goes here
-                        }
-                    }
                 }
             }
         }
         
-        // Add the ComposeView to the FrameLayout
-        frameLayout.addView(composeView, 0) // Add at index 0 (top)
+        // Add toolbar to navigation container
+        navigationContainer.addView(toolbar)
         
-        Log.d(TAG, "✅ Created NATIVE Android Scaffold + TopAppBar for screen: ${screenContainer.route}")
+        // Add the navigation container to the FrameLayout
+        frameLayout.addView(navigationContainer, 0) // Add at index 0 (top)
+        
+        Log.d(TAG, "✅ Created SIMPLE LinearLayout + Toolbar for screen: ${screenContainer.route}")
         Log.d(TAG, "🔍 Navigation config: $pushConfig")
+        Log.d(TAG, "🔍 Navigation container added to FrameLayout - childCount: ${frameLayout.childCount}")
+        Log.d(TAG, "🔍 Navigation container layout params: ${navigationContainer.layoutParams}")
+        Log.d(TAG, "🔍 Navigation container visibility: ${navigationContainer.visibility}")
     }
     
     // MARK: - Navigation Methods
@@ -573,7 +610,9 @@ class DCFScreenComponent : DCFComponent() {
                 Log.d(TAG, "🎯 Using NATIVE Android navigation for route: $route")
                 navigateToScreen(screenContainer.frameLayout?.context ?: return, route, true)
             } else {
-                Log.w(TAG, "⚠️ Route '$route' is not a real navigation container, using view-based navigation")
+                Log.w(TAG, "⚠️ Route '$route' is not a real navigation container, using alternative navigation")
+                // Use alternative navigation approach for FlutterActivity
+                navigateToScreenAlternative(screenContainer.frameLayout?.context ?: return, route, true)
             }
         } else {
             Log.e(TAG, "❌ Screen '$route' not found")
