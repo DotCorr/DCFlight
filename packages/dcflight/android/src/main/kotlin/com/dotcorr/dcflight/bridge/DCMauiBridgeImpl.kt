@@ -292,6 +292,12 @@ class DCMauiBridgeImpl private constructor() {
             
             if (parentView == null) {
                 Log.e(TAG, "❌ setChildren: parent view '$viewId' not found in registry")
+                // CRITICAL: Delay setChildren if view not found - it might be created in batch processing
+                Log.d(TAG, "⏳ Delaying setChildren for view '$viewId' - will retry after batch processing")
+                Handler(Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "🔄 Retrying setChildren for view '$viewId' after delay")
+                    setChildren(viewId, childrenIds)
+                }, 100) // Retry after 100ms
                 return false
             }
             
