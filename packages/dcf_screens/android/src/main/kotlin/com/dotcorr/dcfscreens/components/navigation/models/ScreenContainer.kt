@@ -22,6 +22,7 @@ data class ScreenContainer(
     val viewId: String,
     var pushConfig: Map<String, Any?>? = null,
     var modalConfig: Map<String, Any?>? = null,
+    var navigationConfig: Map<String, Any?>? = null, // Native navigation configuration
     var frameLayout: FrameLayout? = null, // Changed from composeView to frameLayout
     var onAppear: ((Map<String, Any?>) -> Unit)? = null,
     var onDisappear: ((Map<String, Any?>) -> Unit)? = null,

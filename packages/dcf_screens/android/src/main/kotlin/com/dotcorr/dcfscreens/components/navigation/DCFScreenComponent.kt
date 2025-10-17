@@ -15,6 +15,11 @@ import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
@@ -30,6 +35,7 @@ import com.dotcorr.dcfscreens.components.navigation.utils.LifecycleEventHelper
  * CRITICAL: We CANNOT return ComposeView because DCFlight's bridge will try
  * to attach View children to it, which is not allowed.
  */
+@androidx.compose.material3.ExperimentalMaterial3Api
 class DCFScreenComponent : DCFComponent() {
     
     companion object {
@@ -289,115 +295,108 @@ class DCFScreenComponent : DCFComponent() {
     /**
      * Create navigation bar for a screen with header actions
      * This is internal to the screen - no separate component needed
+     * 
+     * ANDROID NATIVE APPROACH: Use Jetpack Compose Scaffold + TopAppBar
+     * This matches iOS UINavigationController approach
      */
+    private fun getCurrentActiveRoute(): String? {
+        return DCFScreenRegistry.getCurrentRoute()
+    }
+    
+    @androidx.compose.material3.ExperimentalMaterial3Api
     private fun createNavigationBarForScreen(screenContainer: ScreenContainer, pushConfig: Map<String, Any?>) {
         val frameLayout = screenContainer.frameLayout ?: return
         val context = frameLayout.context
 
-        // Create a simple LinearLayout navigation bar (avoiding all AppCompat issues)
-        val navBar = android.widget.LinearLayout(context).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                120 // Fixed height instead of WRAP_CONTENT
-            )
-            orientation = android.widget.LinearLayout.HORIZONTAL
-            setBackgroundColor(android.graphics.Color.RED) // Make it RED so we can see it!
-            setPadding(16, 16, 16, 16)
-            elevation = 8f
-            tag = "NavigationBar" // Tag to preserve during setChildren
-            
-            // Force visibility
-            visibility = View.VISIBLE
+        Log.d(TAG, "🎯 Creating NATIVE Android navigation bar for screen: ${screenContainer.route}")
+        
+        // Only create navigation bar for VISIBLE screens or if this is the active screen
+        val isActiveScreen = screenContainer.route == getCurrentActiveRoute()
+        if (frameLayout.visibility != android.view.View.VISIBLE && !isActiveScreen) {
+            Log.d(TAG, "⏸️ Skipping navigation bar for hidden screen: ${screenContainer.route}")
+            // Store navigation config for the screen
+            screenContainer.navigationConfig = pushConfig
+            return
         }
-
-        // Configure back button
-        val hideBackButton = pushConfig["hideBackButton"] as? Boolean ?: false
-        if (!hideBackButton && DCFScreenRegistry.getNavigationStack().size > 1) {
-            val backButton = android.widget.Button(context).apply {
-                text = "←"
-                setOnClickListener {
-                    Log.d(TAG, "⬅️ Back button pressed")
-                    popCurrentRoute()
-                }
-            }
-            navBar.addView(backButton)
-            Log.d(TAG, "✅ Back button configured")
+        
+        if (isActiveScreen) {
+            Log.d(TAG, "🎯 Creating navigation bar for ACTIVE screen: ${screenContainer.route}")
         }
-
-        // Configure title
-        val title = pushConfig["title"] as? String
-        if (title != null) {
-            val titleView = android.widget.TextView(context).apply {
-                text = title
-                textSize = 18f
-                setTextColor(android.graphics.Color.BLACK)
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    weight = 1f
-                    gravity = android.view.Gravity.CENTER
-                }
-            }
-            navBar.addView(titleView)
-            Log.d(TAG, "✅ Set navigation bar title: $title")
-        }
-
-        // Configure prefix actions (left side)
-        val prefixActions = pushConfig["prefixActions"] as? List<*>
-        if (prefixActions != null && prefixActions.isNotEmpty()) {
-            Log.d(TAG, "🎯 Found ${prefixActions.size} prefix actions")
-            for (action in prefixActions) {
-                val actionMap = action as? Map<*, *> ?: continue
-                val actionTitle = actionMap["title"] as? String ?: "Action"
-                val actionId = actionMap["actionId"] as? String ?: "action"
-                
-                val actionButton = android.widget.Button(context).apply {
-                    text = actionTitle
-                    setOnClickListener {
-                        Log.d(TAG, "🎯 Prefix action pressed: $actionTitle ($actionId)")
-                        // TODO: Propagate action press event to Flutter
+        
+        // Store navigation config for the screen
+        screenContainer.navigationConfig = pushConfig
+        
+        // NATIVE ANDROID APPROACH: Use Jetpack Compose Scaffold + TopAppBar
+        // This matches iOS UINavigationController approach
+        Log.d(TAG, "🎯 Using NATIVE Android Scaffold + TopAppBar for navigation")
+        
+        // Create a ComposeView to host the Scaffold
+        val composeView = androidx.compose.ui.platform.ComposeView(context).apply {
+            setContent {
+                androidx.compose.material3.MaterialTheme {
+                    androidx.compose.material3.Scaffold(
+                        topBar = {
+                            androidx.compose.material3.TopAppBar(
+                                title = { 
+                                    androidx.compose.material3.Text(
+                                        text = pushConfig["title"] as? String ?: "",
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
+                                navigationIcon = {
+                                    androidx.compose.material3.IconButton(
+                                        onClick = { 
+                                            // TODO: Handle back navigation
+                                            Log.d(TAG, "🔙 Back button pressed")
+                                        }
+                                    ) {
+                                        androidx.compose.material3.Icon(
+                                            imageVector = Icons.Filled.ArrowBack,
+                                            contentDescription = "Back"
+                                        )
+                                    }
+                                },
+                                actions = {
+                                    // Add suffix actions here
+                                    val suffixActions = pushConfig["suffixActions"] as? List<Map<String, Any?>>
+                                    suffixActions?.forEach { action ->
+                                        androidx.compose.material3.IconButton(
+                                            onClick = { 
+                                                Log.d(TAG, "🔘 Action pressed: ${action["title"]}")
+                                            }
+                                        ) {
+                                            androidx.compose.material3.Text(
+                                                text = action["title"] as? String ?: ""
+                                            )
+                                        }
+                                    }
+                                },
+                                colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                                    containerColor = androidx.compose.ui.graphics.Color(0xFF1976D2),
+                                    titleContentColor = androidx.compose.ui.graphics.Color.White,
+                                    navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
+                                    actionIconContentColor = androidx.compose.ui.graphics.Color.White
+                                )
+                            )
+                        }
+                    ) {
+                        // Content will be added here by the screen
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            // Screen content goes here
+                        }
                     }
                 }
-                navBar.addView(actionButton)
-                Log.d(TAG, "✅ Added prefix action: $actionTitle ($actionId)")
             }
         }
-
-        // Configure suffix actions (right side)
-        val suffixActions = pushConfig["suffixActions"] as? List<*>
-        if (suffixActions != null && suffixActions.isNotEmpty()) {
-            Log.d(TAG, "🎯 Found ${suffixActions.size} suffix actions")
-            for (action in suffixActions) {
-                val actionMap = action as? Map<*, *> ?: continue
-                val actionTitle = actionMap["title"] as? String ?: "Action"
-                val actionId = actionMap["actionId"] as? String ?: "action"
-                
-                val actionButton = android.widget.Button(context).apply {
-                    text = actionTitle
-                    setOnClickListener {
-                        Log.d(TAG, "🎯 Suffix action pressed: $actionTitle ($actionId)")
-                        // TODO: Propagate action press event to Flutter
-                    }
-                }
-                navBar.addView(actionButton)
-                Log.d(TAG, "✅ Added suffix action: $actionTitle ($actionId)")
-            }
-        }
-
-        // Add navigation bar to the top of the screen's FrameLayout
-        frameLayout.addView(navBar, 0) // Insert at index 0 (top)
-
-        // Adjust content padding to account for navigation bar
-        val navigationBarHeight = 120 // Height for our custom navigation bar
-        frameLayout.setPadding(0, navigationBarHeight, 0, 0)
-
-        Log.d(TAG, "✅ Created SIMPLE navigation bar for screen: ${screenContainer.route}")
-        Log.d(TAG, "🔍 Navigation bar added to FrameLayout with ${frameLayout.childCount} children")
-        Log.d(TAG, "🔍 FrameLayout dimensions: ${frameLayout.width}x${frameLayout.height}")
-        Log.d(TAG, "🔍 Navigation bar dimensions: ${navBar.width}x${navBar.height}")
-        Log.d(TAG, "🔍 Navigation bar visibility: ${navBar.visibility}")
-        Log.d(TAG, "🔍 Navigation bar background: ${navBar.background}")
+        
+        // Add the ComposeView to the FrameLayout
+        frameLayout.addView(composeView, 0) // Add at index 0 (top)
+        
+        Log.d(TAG, "✅ Created NATIVE Android Scaffold + TopAppBar for screen: ${screenContainer.route}")
+        Log.d(TAG, "🔍 Navigation config: $pushConfig")
     }
     
     // MARK: - Navigation Methods
