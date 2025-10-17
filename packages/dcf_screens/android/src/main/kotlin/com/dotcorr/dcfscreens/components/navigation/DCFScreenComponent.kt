@@ -23,6 +23,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination
+import androidx.navigation.NavOptions
+import androidx.navigation.NavBackStackEntry
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentTransaction
+import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcfscreens.components.navigation.models.ScreenContainer
 import com.dotcorr.dcfscreens.components.navigation.registry.DCFScreenRegistry
@@ -41,11 +50,160 @@ class DCFScreenComponent : DCFComponent() {
     companion object {
         private const val TAG = "DCFScreenComponent"
         var navController: NavHostController? = null
+        var nativeNavController: NavController? = null
+        var fragmentManager: FragmentManager? = null
     }
     
+    /**
+     * Initialize native Android navigation
+     */
+    private fun initializeNativeNavigation(context: Context) {
+        if (nativeNavController == null) {
+            try {
+                Log.d(TAG, "🔍 Context type: ${context.javaClass.simpleName}")
+                Log.d(TAG, "🔍 Context hierarchy: ${context.javaClass.name}")
+                
+                // Try to get FragmentManager from different context types
+                val activity = when (context) {
+                    is AppCompatActivity -> context
+                    is android.app.Activity -> context as? AppCompatActivity
+                    else -> {
+                        // Try to get activity from context
+                        var currentContext = context
+                        while (currentContext is android.content.ContextWrapper) {
+                            if (currentContext is AppCompatActivity) {
+                                currentContext
+                            } else {
+                                currentContext = currentContext.baseContext
+                            }
+                        }
+                        null
+                    }
+                }
+                
+                if (activity != null) {
+                    fragmentManager = activity.supportFragmentManager
+                    Log.d(TAG, "✅ Initialized native navigation with FragmentManager from ${activity.javaClass.simpleName}")
+                } else {
+                    Log.w(TAG, "⚠️ Could not find AppCompatActivity in context hierarchy")
+                    Log.w(TAG, "⚠️ Context chain: ${getContextChain(context)}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Failed to initialize native navigation: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Get context chain for debugging
+     */
+    private fun getContextChain(context: Context): String {
+        val chain = mutableListOf<String>()
+        var currentContext = context
+        var depth = 0
+        
+        while (currentContext is android.content.ContextWrapper && depth < 10) {
+            chain.add(currentContext.javaClass.simpleName)
+            currentContext = currentContext.baseContext
+            depth++
+        }
+        chain.add(currentContext.javaClass.simpleName)
+        
+        return chain.joinToString(" -> ")
+    }
+
+    /**
+     * Create a native Android Fragment for the screen
+     */
+    private fun createNativeFragment(context: Context, route: String): Fragment {
+        return object : Fragment() {
+            override fun onCreateView(
+                inflater: android.view.LayoutInflater,
+                container: android.view.ViewGroup?,
+                savedInstanceState: android.os.Bundle?
+            ): View? {
+                Log.d(TAG, "🏗️ Creating native Fragment for route: $route")
+                
+                // Create a FrameLayout container for the screen content
+                val frameLayout = FrameLayout(context)
+                frameLayout.id = View.generateViewId()
+                frameLayout.tag = "DCFScreen_$route"
+                
+                // Set up the fragment with proper lifecycle
+                Log.d(TAG, "✅ Created native Fragment container for route: $route")
+                return frameLayout
+            }
+        }
+    }
+
+    /**
+     * Navigate using native Android navigation APIs
+     */
+    fun navigateToScreen(context: Context, route: String, animated: Boolean = true) {
+        try {
+            Log.d(TAG, "🧭 NATIVE NAVIGATION: Navigating to route '$route'")
+            
+            // Use FragmentManager for native navigation
+            fragmentManager?.let { fm ->
+                val fragment = createNativeFragment(context, route)
+                val transaction = fm.beginTransaction()
+                
+                if (animated) {
+                    // Add slide animation
+                    transaction.setCustomAnimations(
+                        android.R.anim.slide_in_left,
+                        android.R.anim.slide_out_right,
+                        android.R.anim.slide_in_left,
+                        android.R.anim.slide_out_right
+                    )
+                }
+                
+                // Replace current fragment
+                transaction.replace(android.R.id.content, fragment, "screen_$route")
+                transaction.addToBackStack(route)
+                transaction.commit()
+                
+                Log.d(TAG, "✅ NATIVE NAVIGATION: Successfully navigated to '$route'")
+            } ?: run {
+                Log.w(TAG, "⚠️ FragmentManager not available, falling back to view-based navigation")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ NATIVE NAVIGATION failed: ${e.message}")
+        }
+    }
+
+    /**
+     * Check if we're on a real navigation container
+     */
+    fun isOnRealNavigationContainer(route: String): Boolean {
+        val screenContainer = DCFScreenRegistry.getScreen(route)
+        if (screenContainer == null) {
+            Log.d(TAG, "❌ Screen '$route' not found in registry")
+            return false
+        }
+        
+        val frameLayout = screenContainer.frameLayout
+        if (frameLayout == null) {
+            Log.d(TAG, "❌ Screen '$route' has no FrameLayout")
+            return false
+        }
+        
+        // Check if this is a real navigation container
+        val isRealContainer = frameLayout.tag == "DCFScreen_$route"
+        Log.d(TAG, "🔍 Screen '$route' is real container: $isRealContainer")
+        Log.d(TAG, "🔍 Screen '$route' tag: ${frameLayout.tag}")
+        Log.d(TAG, "🔍 Screen '$route' parent: ${frameLayout.parent?.javaClass?.simpleName}")
+        Log.d(TAG, "🔍 Screen '$route' childCount: ${frameLayout.childCount}")
+        
+        return isRealContainer
+    }
+
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val route = props["route"] as? String
         val presentationStyle = props["presentationStyle"] as? String ?: "push"
+        
+        // Initialize native navigation
+        initializeNativeNavigation(context)
         
         if (route == null) {
             Log.e(TAG, "❌ Missing required prop 'route'")
@@ -403,8 +561,21 @@ class DCFScreenComponent : DCFComponent() {
     
     private fun navigateToRoute(route: String, params: Map<String, Any?>?) {
         Log.d(TAG, "🧭 Navigate to: $route")
+        
+        // Check if we're on a real navigation container
+        val isRealContainer = isOnRealNavigationContainer(route)
+        Log.d(TAG, "🔍 Is '$route' a real navigation container? $isRealContainer")
+        
+        // Use native Android navigation
         val screenContainer = DCFScreenRegistry.getScreen(route)
-        if (screenContainer == null) {
+        if (screenContainer != null) {
+            if (isRealContainer) {
+                Log.d(TAG, "🎯 Using NATIVE Android navigation for route: $route")
+                navigateToScreen(screenContainer.frameLayout?.context ?: return, route, true)
+            } else {
+                Log.w(TAG, "⚠️ Route '$route' is not a real navigation container, using view-based navigation")
+            }
+        } else {
             Log.e(TAG, "❌ Screen '$route' not found")
             return
         }
@@ -551,6 +722,7 @@ class DCFScreenComponent : DCFComponent() {
         // TODO: Implement proper modal dismissal
         popCurrentRoute()
     }
+    
 }
 
 @Composable
