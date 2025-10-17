@@ -19,6 +19,9 @@ import Foundation
     private var viewHierarchy = [String: [String]]() // parent ID -> child IDs
     private var childToParent = [String: String]() // child ID -> parent ID
     
+    // Queue for setChildren calls that need to be processed after batch completion
+    private var pendingSetChildren = [String: [String]]()
+    
     private override init() {
         super.init()
     }
@@ -181,7 +184,13 @@ import Foundation
             return false
         }
         
+        print("🔧 iOS setChildren called: viewId='\(viewId)', children=\(childrenIds.count)")
+        
         guard let parentView = self.views[viewId] else {
+            print("❌ iOS setChildren: parent view '\(viewId)' not found in registry")
+            // CRITICAL: Queue setChildren for processing after batch completion
+            print("⏳ iOS Queuing setChildren for view '\(viewId)' - will process after batch completion")
+            pendingSetChildren[viewId] = childrenIds
             return false
         }
         
@@ -253,6 +262,27 @@ import Foundation
         childToParent.removeValue(forKey: viewId)
         
         viewHierarchy.removeValue(forKey: viewId)
+    }
+    
+    /// Process queued setChildren calls after batch completion
+    private func processQueuedSetChildren() {
+        if pendingSetChildren.isEmpty {
+            return
+        }
+        
+        print("🔄 iOS Processing \(pendingSetChildren.count) queued setChildren calls")
+        
+        let queuedCalls = pendingSetChildren
+        pendingSetChildren.removeAll()
+        
+        for (viewId, childrenIds) in queuedCalls {
+            print("🔄 iOS Processing queued setChildren for view '\(viewId)' with \(childrenIds.count) children")
+            if let parentView = self.views[viewId] {
+                _ = setChildrenNormally(parentView: parentView, viewId: viewId, childrenIds: childrenIds)
+            } else {
+                print("❌ iOS Queued setChildren failed: parent view '\(viewId)' still not found")
+            }
+        }
     }
     
     @objc func getChildrenIds(viewId: String) -> [String] {
@@ -444,6 +474,9 @@ import Foundation
             let totalTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
             print("📊 iOS_BATCH_TIMING: ✅ TOTAL BATCH COMMIT TIME: \(String(format: "%.2f", totalTime))ms for \(updates.count) operations")
             print("🔥 iOS_BATCH_COMMIT: Successfully committed all operations atomically")
+            
+            // Process queued setChildren calls after batch completion
+            processQueuedSetChildren()
             
             return true
         } catch {
