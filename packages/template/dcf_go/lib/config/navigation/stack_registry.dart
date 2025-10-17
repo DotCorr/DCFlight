@@ -45,7 +45,7 @@ class StackScreenRegistry extends DCFStatelessComponent {
 
         // 👤 PROFILE SCREEN - Automatic suspense!
         DCFScreenView(
-          route: "profile",
+          route: "home/profile",
           // presentationStyle: DCFPresentationStyle.push,
           pushConfig: DCFPushConfig(
             title: "Profile",
