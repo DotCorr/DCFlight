@@ -1,0 +1,58 @@
+# FFI Generation for iOS Objective-C APIs
+# Generates bindings for entire Apple/Swift framework
+
+name: IOSObjectiveCFFI
+description: FFI bindings for iOS Objective-C APIs - UIKit, Foundation, CoreGraphics
+output: 'lib/ffi/ios_objc_ffi.dart'
+language: objc
+
+headers:
+  entry-points:
+    - '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/UIKit.framework/Headers/UIKit.h'
+
+objc-interfaces:
+  include:
+    # UIKit Classes
+    - 'UIView'
+    - 'UIViewController'
+    - 'UIScrollView'
+    - 'UILabel'
+    - 'UIButton'
+    - 'UIImageView'
+    - 'UITextField'
+    - 'UISwitch'
+    - 'UISlider'
+    - 'UISegmentedControl'
+    - 'UIAlertController'
+    - 'UIActivityIndicatorView'
+    - 'WKWebView'
+    
+    # Foundation Classes
+    - 'NSString'
+    - 'NSNumber'
+    - 'NSArray'
+    - 'NSDictionary'
+    - 'NSData'
+    
+    # CoreGraphics Types
+    - 'CGRect'
+    - 'CGSize'
+    - 'CGPoint'
+    - 'CGAffineTransform'
+    - 'UIColor'
+    - 'CGColor'
+
+compiler-opts:
+  - '-I/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/UIKit.framework/Headers'
+  - '-I/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/Foundation.framework/Headers'
+  - '-I/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/CoreGraphics.framework/Headers'
+  - '-I/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/QuartzCore.framework/Headers'
+  - '-I/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/WebKit.framework/Headers'
+  - '-isysroot'
+  - '/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk'
+
+preamble: |
+  /*
+   * Generated iOS Objective-C FFI bindings
+   * Complete Apple/Swift framework bindings
+   */

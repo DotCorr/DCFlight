@@ -1,0 +1,19 @@
+# FFI Generation for Yoga Layout Engine
+
+name: YogaFFI
+description: FFI bindings for Yoga layout engine
+output: 'lib/ffi/yoga_ffi.dart'
+
+headers:
+  entry-points:
+    - 'yoga_headers/YGNode.h'
+    - 'yoga_headers/YGNodeStyle.h'
+    - 'yoga_headers/YGNodeLayout.h'
+
+compiler-opts:
+  - '-Iyoga_headers'
+
+preamble: |
+  /*
+   * Generated Yoga FFI bindings
+   */

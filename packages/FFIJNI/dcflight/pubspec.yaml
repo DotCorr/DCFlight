@@ -1,6 +1,6 @@
 name: dcflight
-description: "Build Native App UIs with Dart"
-version: 0.0.2
+description: "Pure Dart Native UI Framework with FFI"
+version: 0.0.3
 homepage: https://github.com/Dotcorr/dcflight
 repository: https://github.com/Dotcorr/dcflight
 
@@ -11,22 +11,63 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # framework dependencies (prod)
+  # FFI dependencies
+  ffi: ^2.1.0
+  # Framework dependencies
   equatable: ^2.0.7
-
-  # Note: dcflight does NOT depend on dcf_primitives
-  # The primitives are a separate plugin that depends on dcflight
+  objective_c: ^8.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  # FFI generation
+  ffigen: ^12.0.0
+  jnigen: ^0.4.0
 
 flutter:
   plugin:
     platforms:
       ios:
-        pluginClass: DCFAppDelegate
+        pluginClass: DCFAppDelegate  # Only divergence code
       android:
-        package: com.dotcorr.dcflight
+        package: com.dotcorr.dcflight  # Only divergence code
         pluginClass: DcflightPlugin
+
+# FFI generation configuration
+ffigen:
+  output: 'lib/ffi/native_apis_ffi.dart'
+  headers:
+    # Yoga C API
+    yoga:
+      headers:
+        - 'yoga.h'
+    # iOS APIs
+    ios:
+      headers:
+        - 'UIKit/UIKit.h'
+        - 'Foundation/Foundation.h'
+        - 'CoreGraphics/CoreGraphics.h'
+        - 'QuartzCore/QuartzCore.h'
+      frameworks:
+        - UIKit
+        - Foundation
+        - CoreGraphics
+        - QuartzCore
+    # Android APIs
+    android:
+      headers:
+        - 'jni.h'
+        - 'android/view/View.h'
+        - 'android/widget/TextView.h'
+        - 'android/widget/Button.h'
+        - 'android/widget/ImageView.h'
+        - 'android/widget/EditText.h'
+        - 'android/widget/Switch.h'
+        - 'android/widget/SeekBar.h'
+        - 'android/widget/Spinner.h'
+        - 'android/app/AlertDialog.h'
+        - 'android/widget/ProgressBar.h'
+        - 'android/webkit/WebView.h'
+      libraries:
+        - yoga
