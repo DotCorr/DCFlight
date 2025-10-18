@@ -34,11 +34,63 @@ class DCFScreenComponent : DCFComponent() {
         Log.d(TAG, "🔧 DCFScreenComponent: Creating screen for route '$route' with style '$presentationStyle'")
 
         // Create or get existing screen container
-        val screenContainer = DCFScreenRegistry.getScreenContainer(route) ?: run {
+        val screenContainer = DCFScreenRegistry().getScreenContainer(route) ?: run {
             val container = ScreenContainer(route, presentationStyle)
-            DCFScreenRegistry.registerScreen(container)
+            DCFScreenRegistry().registerScreen(route, container)
             container
         }
+
+        // Create native Android layout with AppBar
+        val rootLayout = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // Create AppBar for native Android navigation
+        val appBar = androidx.appcompat.widget.Toolbar(context).apply {
+            setTitleTextColor(android.graphics.Color.WHITE)
+            setBackgroundColor(android.graphics.Color.parseColor("#2196F3"))
+            elevation = 8f
+        }
+
+        // Set title from navigationBarConfig or use route as fallback
+        val navigationBarConfig = props["navigationBarConfig"] as? Map<String, Any?>
+        val title = navigationBarConfig?.get("title") as? String ?: route.replace("/", " ").replaceFirstChar { it.uppercase() }
+        appBar.title = title
+
+        // Add back button based on navigationBarConfig
+        val showBackButton = navigationBarConfig?.get("showBackButton") as? Boolean ?: (route != "home")
+        if (showBackButton) {
+            appBar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
+            appBar.setNavigationOnClickListener {
+                Log.d(TAG, "🔙 DCFScreenComponent: Back button pressed for route '$route'")
+                // Handle back navigation using command system
+                NavigationManager().pop(route)
+            }
+        }
+
+        // Create content container
+        val contentContainer = android.widget.FrameLayout(context).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        }
+
+        // Add views to root layout
+        rootLayout.addView(appBar)
+        rootLayout.addView(contentContainer)
+
+        // Store the content container as the screen's content view
+        screenContainer.contentView = contentContainer
+        
+        // Set route as tag for easier lookup
+        rootLayout.tag = route
+        contentContainer.tag = route
 
         // Configure screen based on presentation style
         configureScreen(screenContainer, props)
@@ -49,7 +101,7 @@ class DCFScreenComponent : DCFComponent() {
         // Handle any navigation commands
         handleRouteNavigationCommand(screenContainer, props)
 
-        return screenContainer.contentView
+        return rootLayout
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
@@ -92,7 +144,7 @@ class DCFScreenComponent : DCFComponent() {
             "badge" to (props["badge"] as? String),
             "enabled" to (props["enabled"] as? Boolean ?: true),
             "index" to (props["index"] as? Int)
-        ).filterValues { it != null }
+        ).filterValues { it != null } as Map<String, Any>
     }
 
     private fun configurePushScreen(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -107,7 +159,7 @@ class DCFScreenComponent : DCFComponent() {
             "largeTitleDisplayMode" to (props["largeTitleDisplayMode"] as? Boolean ?: false),
             "prefixActions" to (props["prefixActions"] as? List<Map<String, Any?>>),
             "suffixActions" to (props["suffixActions"] as? List<Map<String, Any?>>)
-        ).filterValues { it != null }
+        ).filterValues { it != null } as Map<String, Any>
     }
 
     private fun configureModalScreen(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -119,7 +171,7 @@ class DCFScreenComponent : DCFComponent() {
             "showDragIndicator" to (props["showDragIndicator"] as? Boolean ?: true),
             "cornerRadius" to (props["cornerRadius"] as? Double),
             "transitionStyle" to (props["transitionStyle"] as? String)
-        ).filterValues { it != null }
+        ).filterValues { it != null } as Map<String, Any>
     }
 
     private fun configureSheetScreen(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -131,7 +183,7 @@ class DCFScreenComponent : DCFComponent() {
             "detents" to (props["detents"] as? List<String>),
             "showDragIndicator" to (props["showDragIndicator"] as? Boolean ?: true),
             "cornerRadius" to (props["cornerRadius"] as? Double)
-        ).filterValues { it != null }
+        ).filterValues { it != null } as Map<String, Any>
     }
 
     private fun configurePopoverScreen(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -144,7 +196,7 @@ class DCFScreenComponent : DCFComponent() {
             "preferredHeight" to (props["preferredHeight"] as? Double),
             "permittedArrowDirections" to (props["permittedArrowDirections"] as? List<String>),
             "dismissOnOutsideTap" to (props["dismissOnOutsideTap"] as? Boolean ?: true)
-        ).filterValues { it != null }
+        ).filterValues { it != null } as Map<String, Any>
     }
 
     private fun configureOverlayScreen(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -157,7 +209,7 @@ class DCFScreenComponent : DCFComponent() {
             "dismissOnTap" to (props["dismissOnTap"] as? Boolean ?: true),
             "animationDuration" to (props["animationDuration"] as? Double),
             "blocksInteraction" to (props["blocksInteraction"] as? Boolean ?: false)
-        ).filterValues { it != null }
+        ).filterValues { it != null } as Map<String, Any>
     }
 
     private fun storeConfigurations(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -181,7 +233,7 @@ class DCFScreenComponent : DCFComponent() {
                 "enabled" to (props["enabled"] as? Boolean ?: true),
                 "index" to (props["index"] as? Int)
             ).filterValues { it != null }
-        )
+        ) as Map<String, Any>
     }
 
     private fun storePushConfiguration(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -196,7 +248,7 @@ class DCFScreenComponent : DCFComponent() {
                 "prefixActions" to (props["prefixActions"] as? List<Map<String, Any?>>),
                 "suffixActions" to (props["suffixActions"] as? List<Map<String, Any?>>)
             ).filterValues { it != null }
-        )
+        ) as Map<String, Any>
     }
 
     private fun storeModalConfiguration(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -208,7 +260,7 @@ class DCFScreenComponent : DCFComponent() {
                 "cornerRadius" to (props["cornerRadius"] as? Double),
                 "transitionStyle" to (props["transitionStyle"] as? String)
             ).filterValues { it != null }
-        )
+        ) as Map<String, Any>
     }
 
     private fun storePopoverConfiguration(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -221,7 +273,7 @@ class DCFScreenComponent : DCFComponent() {
                 "permittedArrowDirections" to (props["permittedArrowDirections"] as? List<String>),
                 "dismissOnOutsideTap" to (props["dismissOnOutsideTap"] as? Boolean ?: true)
             ).filterValues { it != null }
-        )
+        ) as Map<String, Any>
     }
 
     private fun storeOverlayConfiguration(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -234,7 +286,7 @@ class DCFScreenComponent : DCFComponent() {
                 "animationDuration" to (props["animationDuration"] as? Double),
                 "blocksInteraction" to (props["blocksInteraction"] as? Boolean ?: false)
             ).filterValues { it != null }
-        )
+        ) as Map<String, Any>
     }
 
     private fun storeSheetConfiguration(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -245,7 +297,7 @@ class DCFScreenComponent : DCFComponent() {
                 "showDragIndicator" to (props["showDragIndicator"] as? Boolean ?: true),
                 "cornerRadius" to (props["cornerRadius"] as? Double)
             ).filterValues { it != null }
-        )
+        ) as Map<String, Any>
     }
 
     private fun storeNavigationBarConfiguration(screenContainer: ScreenContainer, props: Map<String, Any?>) {
@@ -258,71 +310,163 @@ class DCFScreenComponent : DCFComponent() {
                 "prefixActions" to (props["prefixActions"] as? List<Map<String, Any?>>),
                 "suffixActions" to (props["suffixActions"] as? List<Map<String, Any?>>)
             ).filterValues { it != null }
-        )
+        ) as Map<String, Any>
     }
 
     private fun handleRouteNavigationCommand(screenContainer: ScreenContainer, props: Map<String, Any?>) {
         val commandData = props["routeNavigationCommand"] as? Map<String, Any?> ?: return
-        
+
         Log.d(TAG, "🚀 DCFScreenComponent: Processing route navigation command for '${screenContainer.route}': $commandData")
 
         // Handle different navigation commands
         when {
             commandData.containsKey("navigateToRoute") -> {
                 val targetRoute = commandData["navigateToRoute"] as? String
-                val animated = commandData["animated"] as? Boolean ?: true
-                val params = commandData["params"] as? Map<String, Any?>
+                val params = commandData["params"] as? Map<String, Any?> ?: emptyMap()
+                val nonNullParams = params.filterValues { it != null } as Map<String, Any>
                 if (targetRoute != null) {
-                    NavigationManager.navigateTo(targetRoute, animated, params)
+                    Log.d(TAG, "🧭 DCFScreenComponent: Navigating to '$targetRoute' from '${screenContainer.route}'")
+                    NavigationManager().navigateTo(targetRoute, nonNullParams, screenContainer.route)
+                    // Hide current screen and show target screen
+                    hideCurrentScreenAndShowTarget(screenContainer.route, targetRoute)
                 }
             }
             commandData.containsKey("popToRoute") -> {
                 val targetRoute = commandData["popToRoute"] as? String
-                val animated = commandData["animated"] as? Boolean ?: true
                 if (targetRoute != null) {
-                    NavigationManager.popToRoute(targetRoute, animated)
+                    NavigationManager().popToRoute(targetRoute, screenContainer.route)
+                    showTargetScreen(targetRoute)
                 }
             }
             commandData.containsKey("pop") -> {
-                val popCommand = commandData["pop"] as? Map<String, Any?>
-                val animated = popCommand?.get("animated") as? Boolean ?: true
-                val result = popCommand?.get("result") as? Map<String, Any?>
-                NavigationManager.pop(animated, result)
+                NavigationManager().pop(screenContainer.route)
+                showPreviousScreen()
             }
             commandData.containsKey("popToRoot") -> {
-                val popToRootCommand = commandData["popToRoot"] as? Map<String, Any?>
-                val animated = popToRootCommand?.get("animated") as? Boolean ?: true
-                NavigationManager.popToRoot(animated)
+                NavigationManager().popToRoot(screenContainer.route)
+                showRootScreen()
             }
             commandData.containsKey("replaceWithRoute") -> {
                 val replaceCommand = commandData["replaceWithRoute"] as? Map<String, Any?>
                 val targetRoute = replaceCommand?.get("route") as? String
-                val animated = replaceCommand?.get("animated") as? Boolean ?: true
-                val params = replaceCommand?.get("params") as? Map<String, Any?>
+                val params = replaceCommand?.get("params") as? Map<String, Any?> ?: emptyMap()
+                val nonNullParams = params.filterValues { it != null } as Map<String, Any>
                 if (targetRoute != null) {
-                    NavigationManager.replace(targetRoute, animated, params)
+                    NavigationManager().replace(targetRoute, nonNullParams, screenContainer.route)
+                    hideCurrentScreenAndShowTarget(screenContainer.route, targetRoute)
                 }
             }
             commandData.containsKey("presentModalRoute") -> {
                 val modalCommand = commandData["presentModalRoute"] as? Map<String, Any?>
                 val targetRoute = modalCommand?.get("route") as? String
-                val animated = modalCommand?.get("animated") as? Boolean ?: true
-                val params = modalCommand?.get("params") as? Map<String, Any?>
-                val presentationStyle = modalCommand?.get("presentationStyle") as? String
+                val params = modalCommand?.get("params") as? Map<String, Any?> ?: emptyMap()
+                val nonNullParams = params.filterValues { it != null } as Map<String, Any>
                 if (targetRoute != null) {
-                    NavigationManager.presentModal(targetRoute, animated, params, presentationStyle)
+                    NavigationManager().presentModal(targetRoute, nonNullParams, screenContainer.route)
+                    showTargetScreen(targetRoute)
                 }
             }
             commandData.containsKey("dismissModal") -> {
-                val dismissModalCommand = commandData["dismissModal"] as? Map<String, Any?>
-                val animated = dismissModalCommand?.get("animated") as? Boolean ?: true
-                val result = dismissModalCommand?.get("result") as? Map<String, Any?>
-                NavigationManager.dismissModal(animated, result)
+                NavigationManager().dismissModal(screenContainer.route)
+                hideCurrentScreenAndShowPrevious()
             }
         }
     }
 
+    private fun hideCurrentScreenAndShowTarget(currentRoute: String, targetRoute: String) {
+        Log.d(TAG, "🔄 DCFScreenComponent: Hiding '$currentRoute' and showing '$targetRoute'")
+        
+        // Get the root view of the current screen and hide it completely
+        val currentContainer = DCFScreenRegistry().getScreenContainer(currentRoute)
+        if (currentContainer != null) {
+            Log.d(TAG, "👁️ DCFScreenComponent: Hiding current screen '$currentRoute'")
+            currentContainer.setVisible(false)
+            // Hide the entire screen root view
+            val rootView = findRootViewForScreen(currentRoute)
+            rootView?.visibility = android.view.View.GONE
+        } else {
+            Log.w(TAG, "⚠️ DCFScreenComponent: Could not find current screen container for '$currentRoute'")
+        }
+        
+        // Show target screen
+        showTargetScreen(targetRoute)
+    }
+
+    private fun showTargetScreen(route: String) {
+        Log.d(TAG, "👁️ DCFScreenComponent: Showing screen '$route'")
+        
+        val targetContainer = DCFScreenRegistry().getScreenContainer(route)
+        if (targetContainer != null) {
+            Log.d(TAG, "✅ DCFScreenComponent: Found target screen container for '$route'")
+            targetContainer.setVisible(true)
+            targetContainer.contentView?.visibility = android.view.View.VISIBLE
+            // Show the entire screen root view
+            val rootView = findRootViewForScreen(route)
+            rootView?.visibility = android.view.View.VISIBLE
+            // Force a layout update
+            rootView?.requestLayout()
+        } else {
+            Log.w(TAG, "⚠️ DCFScreenComponent: Could not find target screen container for '$route'")
+            // List all available screens for debugging
+            val allScreens = DCFScreenRegistry().getAllScreens()
+            Log.d(TAG, "🔍 DCFScreenComponent: Available screens: ${allScreens.keys}")
+        }
+    }
+
+    private fun showPreviousScreen() {
+        val navigationStack = NavigationManager().getNavigationStack()
+        if (navigationStack.isNotEmpty()) {
+            val previousRoute = navigationStack[navigationStack.size - 2]
+            showTargetScreen(previousRoute)
+        }
+    }
+
+    private fun showRootScreen() {
+        val navigationStack = NavigationManager().getNavigationStack()
+        if (navigationStack.isNotEmpty()) {
+            val rootRoute = navigationStack[0]
+            showTargetScreen(rootRoute)
+        }
+    }
+
+    private fun hideCurrentScreenAndShowPrevious() {
+        val navigationStack = NavigationManager().getNavigationStack()
+        if (navigationStack.size > 1) {
+            val currentRoute = navigationStack.last()
+            val previousRoute = navigationStack[navigationStack.size - 2]
+            hideCurrentScreenAndShowTarget(currentRoute, previousRoute)
+        }
+    }
+
+    private fun findRootViewForScreen(route: String): View? {
+        val container = DCFScreenRegistry().getScreenContainer(route)
+        return container?.contentView?.parent as? View
+    }
+
     private fun findScreenContainerForView(view: View): ScreenContainer? {
-        return DCFScreenRegistry.getAllScreens().values.find { it.contentView == view }
+        // Try to find by direct contentView match first
+        val directMatch = DCFScreenRegistry().getAllScreens().values.find { it.contentView == view }
+        if (directMatch != null) return directMatch
+        
+        // If not found, try to find by traversing the view hierarchy
+        var currentView: View? = view
+        while (currentView != null) {
+            val parent = currentView.parent
+            if (parent is View) {
+                val parentMatch = DCFScreenRegistry().getAllScreens().values.find { it.contentView == parent }
+                if (parentMatch != null) return parentMatch
+                currentView = parent
+            } else {
+                break
+            }
+        }
+        
+        // Last resort: find by route from view tag or other identifier
+        val route = view.tag as? String
+        if (route != null) {
+            return DCFScreenRegistry().getScreenContainer(route)
+        }
+        
+        return null
     }
 }

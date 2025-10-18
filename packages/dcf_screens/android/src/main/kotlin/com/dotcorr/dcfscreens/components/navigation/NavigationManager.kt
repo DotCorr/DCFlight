@@ -34,7 +34,8 @@ class NavigationManager {
     fun createScreen(route: String, config: Map<String, Any>) {
         println("🏗️ NavigationManager: Creating screen '$route' with config: $config")
         
-        val container = ScreenContainer(route, config)
+        val presentationStyle = config["presentationStyle"] as? String ?: "push"
+        val container = ScreenContainer(route, presentationStyle)
         screenContainers[route] = container
         screenRegistry.registerScreen(route, container)
         

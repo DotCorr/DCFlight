@@ -1,5 +1,8 @@
 package com.dotcorr.dcfscreens.components.navigation.models
 
+import android.content.Context
+import android.view.View
+import android.widget.FrameLayout
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -10,97 +13,24 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class ScreenContainer(
     val route: String,
-    private var config: Map<String, Any>
+    val presentationStyle: String
 ) {
+    private var config: Map<String, Any> = mapOf()
+    var contentView: View? = null
+    
+    // Configuration properties
+    var tabConfig: Map<String, Any>? = null
+    var pushConfig: Map<String, Any>? = null
+    var modalConfig: Map<String, Any>? = null
+    var popoverConfig: Map<String, Any>? = null
+    var overlayConfig: Map<String, Any>? = null
+    var sheetConfig: Map<String, Any>? = null
+    var navigationBarConfig: Map<String, Any>? = null
+    var tabIndex: Int = 0
+    
     private val params = ConcurrentHashMap<String, Any>()
     private var isActive = false
     private var isVisible = false
-    
-    // Screen configuration
-    val presentationStyle: String
-        get() = config["presentationStyle"] as? String ?: "push"
-    
-    val title: String?
-        get() = config["title"] as? String
-    
-    val hideNavigationBar: Boolean
-        get() = config["hideNavigationBar"] as? Boolean ?: false
-    
-    val hideBackButton: Boolean
-        get() = config["hideBackButton"] as? Boolean ?: false
-    
-    val backButtonTitle: String?
-        get() = config["backButtonTitle"] as? String
-    
-    val largeTitleDisplayMode: Boolean
-        get() = config["largeTitleDisplayMode"] as? Boolean ?: false
-    
-    // Modal configuration
-    val modalConfig: Map<String, Any>?
-        get() = config["modalConfig"] as? Map<String, Any>
-    
-    val allowsBackgroundDismiss: Boolean
-        get() = modalConfig?.get("allowsBackgroundDismiss") as? Boolean ?: true
-    
-    val detents: List<String>?
-        get() = modalConfig?.get("detents") as? List<String>
-    
-    val selectedDetentIndex: Int?
-        get() = modalConfig?.get("selectedDetentIndex") as? Int
-    
-    val showDragIndicator: Boolean
-        get() = modalConfig?.get("showDragIndicator") as? Boolean ?: true
-    
-    // Tab configuration
-    val tabConfig: Map<String, Any>?
-        get() = config["tabConfig"] as? Map<String, Any>
-    
-    val tabTitle: String?
-        get() = tabConfig?.get("title") as? String
-    
-    val tabIcon: Map<String, Any>?
-        get() = tabConfig?.get("icon") as? Map<String, Any>
-    
-    val tabIndex: Int?
-        get() = tabConfig?.get("index") as? Int
-    
-    val tabBadge: String?
-        get() = tabConfig?.get("badge") as? String
-    
-    val tabEnabled: Boolean
-        get() = tabConfig?.get("enabled") as? Boolean ?: true
-    
-    // Header actions
-    val prefixActions: List<Map<String, Any>>?
-        get() = config["prefixActions"] as? List<Map<String, Any>>
-    
-    val suffixActions: List<Map<String, Any>>?
-        get() = config["suffixActions"] as? List<Map<String, Any>>
-    
-    // Navigation bar configuration
-    val navigationBarConfig: Map<String, Any>?
-        get() = config["navigationBarConfig"] as? Map<String, Any>
-    
-    val navigationBarTitle: String?
-        get() = navigationBarConfig?.get("navigationBarTitle") as? String
-    
-    val largeTitleDisplayModeNav: Boolean
-        get() = navigationBarConfig?.get("largeTitleDisplayMode") as? Boolean ?: false
-    
-    val hideNavigationBarNav: Boolean
-        get() = navigationBarConfig?.get("hideNavigationBar") as? Boolean ?: false
-    
-    val hideBackButtonNav: Boolean
-        get() = navigationBarConfig?.get("hideBackButton") as? Boolean ?: false
-    
-    val backButtonTitleNav: String?
-        get() = navigationBarConfig?.get("backButtonTitle") as? String
-    
-    val prefixActionsNav: List<Map<String, Any>>?
-        get() = navigationBarConfig?.get("prefixActions") as? List<Map<String, Any>>
-    
-    val suffixActionsNav: List<Map<String, Any>>?
-        get() = navigationBarConfig?.get("suffixActions") as? List<Map<String, Any>>
     
     // Screen state
     fun isScreenActive(): Boolean = isActive
@@ -155,48 +85,42 @@ class ScreenContainer(
         eventListeners.remove(listener)
     }
     
-    fun notifyEvent(event: String, data: Map<String, Any>) {
-        eventListeners.forEach { listener ->
-            try {
-                listener.onScreenEvent(route, event, data)
-            } catch (e: Exception) {
-                println("❌ ScreenContainer: Error notifying event '$event' for route '$route': ${e.message}")
-            }
-        }
+    fun fireEvent(event: String, data: Map<String, Any>) {
+        eventListeners.forEach { it.onScreenEvent(route, event, data) }
     }
     
-    // Lifecycle events
+    // Lifecycle methods
     fun onAppear() {
-        isVisible = true
-        notifyEvent("onAppear", mapOf("route" to route))
+        setVisible(true)
+        fireEvent("onAppear", emptyMap())
     }
     
     fun onDisappear() {
-        isVisible = false
-        notifyEvent("onDisappear", mapOf("route" to route))
+        setVisible(false)
+        fireEvent("onDisappear", emptyMap())
     }
     
     fun onActivate() {
-        isActive = true
-        notifyEvent("onActivate", mapOf("route" to route))
+        setActive(true)
+        fireEvent("onActivate", emptyMap())
     }
     
     fun onDeactivate() {
-        isActive = false
-        notifyEvent("onDeactivate", mapOf("route" to route))
+        setActive(false)
+        fireEvent("onDeactivate", emptyMap())
     }
     
-    fun onNavigationEvent(event: Map<String, Any>) {
-        notifyEvent("onNavigationEvent", event)
+    fun onNavigationEvent(event: String, data: Map<String, Any>) {
+        fireEvent("onNavigationEvent", mapOf("event" to event, "data" to data))
     }
     
     fun onReceiveParams(params: Map<String, Any>) {
         updateParams(params)
-        notifyEvent("onReceiveParams", params)
+        fireEvent("onReceiveParams", params)
     }
     
-    fun onHeaderActionPress(action: Map<String, Any>) {
-        notifyEvent("onHeaderActionPress", action)
+    fun onHeaderActionPress(action: String) {
+        fireEvent("onHeaderActionPress", mapOf("action" to action))
     }
     
     override fun toString(): String {
