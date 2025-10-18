@@ -159,11 +159,11 @@ class LifecycleEventHelper : LifecycleObserver {
     }
     
     // Navigation events
-    fun onNavigationEvent(route: String, event: Map<String, Any>, container: ScreenContainer) {
+    fun onNavigationEvent(route: String, event: String, data: Map<String, Any>, container: ScreenContainer) {
         println("🧭 LifecycleEventHelper: Navigation event for '$route': $event")
         
-        container.onNavigationEvent(event)
-        notifyScreenLifecycleEvent(route, "onNavigationEvent", container, event)
+        container.onNavigationEvent(event, data)
+        notifyScreenLifecycleEvent(route, "onNavigationEvent", container, data)
     }
     
     fun onReceiveParams(route: String, params: Map<String, Any>, container: ScreenContainer) {
@@ -173,11 +173,11 @@ class LifecycleEventHelper : LifecycleObserver {
         notifyScreenLifecycleEvent(route, "onReceiveParams", container, params)
     }
     
-    fun onHeaderActionPress(route: String, action: Map<String, Any>, container: ScreenContainer) {
+    fun onHeaderActionPress(route: String, action: String, container: ScreenContainer) {
         println("🎯 LifecycleEventHelper: Header action for '$route': $action")
         
         container.onHeaderActionPress(action)
-        notifyScreenLifecycleEvent(route, "onHeaderActionPress", container, action)
+        notifyScreenLifecycleEvent(route, "onHeaderActionPress", container, mapOf("action" to action))
     }
     
     // State queries

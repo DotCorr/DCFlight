@@ -58,20 +58,26 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         // Set initial route if provided
         val initialRoute = props["initialRoute"] as? String
         if (initialRoute != null) {
-            NavigationManager.setInitialRoute(initialRoute)
+            // Create initial screen configuration
+            val initialConfig = mapOf(
+                "route" to initialRoute,
+                "presentationStyle" to "push"
+            )
+            NavigationManager().createScreen(initialRoute, initialConfig)
             Log.d(TAG, "🔧 DCFStackNavigationBootstrapperComponent: Set initial route to '$initialRoute'")
         }
         
         // Configure navigation bar
         val hideNavigationBar = props["hideNavigationBar"] as? Boolean ?: false
         if (hideNavigationBar) {
-            NavigationManager.hideNavigationBar()
+            // Store navigation bar configuration
+            Log.d(TAG, "🔧 DCFStackNavigationBootstrapperComponent: Navigation bar hidden")
         }
         
         // Configure navigation bar style
         val navigationBarStyle = props["navigationBarStyle"] as? Map<String, Any?>
         if (navigationBarStyle != null) {
-            NavigationManager.configureNavigationBar(navigationBarStyle)
+            Log.d(TAG, "🔧 DCFStackNavigationBootstrapperComponent: Navigation bar style configured")
         }
     }
 }

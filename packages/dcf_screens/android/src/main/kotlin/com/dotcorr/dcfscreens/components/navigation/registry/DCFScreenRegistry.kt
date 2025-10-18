@@ -14,6 +14,13 @@ class DCFScreenRegistry {
     private val screenListeners = mutableListOf<ScreenRegistryListener>()
     
     /**
+     * Get a screen container by route
+     */
+    fun getScreenContainer(route: String): ScreenContainer? {
+        return screens[route]
+    }
+    
+    /**
      * Register a screen with the registry
      */
     fun registerScreen(route: String, container: ScreenContainer) {
