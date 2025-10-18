@@ -23,7 +23,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   # FFI generation
   ffigen: ^12.0.0
-  jnigen: ^0.4.0
+  jnigen: ^0.14.2
 
 flutter:
   plugin:
@@ -36,38 +36,22 @@ flutter:
 
 # FFI generation configuration
 ffigen:
-  output: 'lib/ffi/native_apis_ffi.dart'
+  output: 'lib/ffi/yoga_ffi.dart'
   headers:
-    # Yoga C API
-    yoga:
-      headers:
-        - 'yoga.h'
-    # iOS APIs
-    ios:
-      headers:
-        - 'UIKit/UIKit.h'
-        - 'Foundation/Foundation.h'
-        - 'CoreGraphics/CoreGraphics.h'
-        - 'QuartzCore/QuartzCore.h'
-      frameworks:
-        - UIKit
-        - Foundation
-        - CoreGraphics
-        - QuartzCore
-    # Android APIs
-    android:
-      headers:
-        - 'jni.h'
-        - 'android/view/View.h'
-        - 'android/widget/TextView.h'
-        - 'android/widget/Button.h'
-        - 'android/widget/ImageView.h'
-        - 'android/widget/EditText.h'
-        - 'android/widget/Switch.h'
-        - 'android/widget/SeekBar.h'
-        - 'android/widget/Spinner.h'
-        - 'android/app/AlertDialog.h'
-        - 'android/widget/ProgressBar.h'
-        - 'android/webkit/WebView.h'
-      libraries:
-        - yoga
+    entry-points:
+      - 'yoga_headers/YGNode.h'
+      - 'yoga_headers/YGNodeStyle.h'
+      - 'yoga_headers/YGNodeLayout.h'
+    include-directives:
+      - 'yoga_headers/YGNode.h'
+      - 'yoga_headers/YGNodeStyle.h'
+      - 'yoga_headers/YGNodeLayout.h'
+  compiler-opts:
+    - '-Iyoga_headers'
+  functions:
+    include:
+      - 'YGNode.*'
+      - 'YGConfig.*'
+      - 'YGLayout.*'
+      - 'YGStyle.*'
+      - 'YGEnums.*'
