@@ -1,0 +1,27 @@
+# JNI Generation for Android - Simple approach
+# Focus on core Android classes that are definitely available
+
+name: AndroidJNI
+description: JNI bindings for Android core classes
+output:
+  dart:
+    path: 'lib/ffi/'
+  c:
+    path: 'android/src/main/cpp/'
+    name: 'android_jni'
+    library_name: 'android_jni'
+
+# Use a simpler approach - just core classes
+classes:
+  - 'java.lang.Object'
+  - 'java.lang.String'
+  - 'java.lang.Integer'
+  - 'java.lang.Boolean'
+  - 'java.lang.Float'
+  - 'java.lang.Double'
+
+preamble: |
+  /*
+   * Generated Android JNI bindings
+   * Core Java classes for Android
+   */
