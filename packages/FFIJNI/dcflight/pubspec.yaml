@@ -13,6 +13,7 @@ dependencies:
     sdk: flutter
   # FFI dependencies
   ffi: ^2.1.0
+  jni: ^0.5.0
   # Framework dependencies
   equatable: ^2.0.7
   objective_c: ^8.1.0
