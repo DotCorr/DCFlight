@@ -206,7 +206,7 @@ class StoreHook<T> extends Hook {
   /// Create a store hook
   StoreHook(this._store, this._onChange, [this._componentId, this._componentType]) {
     if (_componentId != null && _componentType != null) {
-      _store.trackHookAccess(_componentId, _componentType);
+        _store.trackHookAccess(_componentId!, _componentType!);
     }
     
     _listener = (T _) {
