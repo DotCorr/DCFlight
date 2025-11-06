@@ -24,6 +24,8 @@ import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcf_primitives.R
+import com.dotcorr.dcf_primitives.components.dpToPx
+import com.dotcorr.dcf_primitives.components.parseColor
 import kotlin.math.max
 
 /**
@@ -86,11 +88,11 @@ class DCFTextInputComponent : DCFComponent() {
             editText.hint = placeholder.toString()
         }
 
-        props["placeholderTextColor"]?.let { color ->
+        props["placeholderTextColor"]?.let { color: Any ->
             editText.setHintTextColor(parseColor(color as String))
         }
 
-        props["textColor"]?.let { color ->
+        props["textColor"]?.let { color: Any ->
             editText.setTextColor(parseColor(color as String))
         }
 
