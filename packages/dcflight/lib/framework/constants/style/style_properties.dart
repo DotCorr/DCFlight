@@ -171,16 +171,27 @@ class DCFStyleSheet extends Equatable {
   }
 
   /// CRITICAL FIX: Centralized color conversion to ensure consistency
+  /// Uses "dcf:" prefix to distinguish black from transparent on native platforms
   String _colorToString(Color color) {
     final alpha = (color.a * 255.0).round() & 0xff;
+    
+    // Transparent - explicitly marked
     if (alpha == 0) {
-      return 'transparent';
-    } else if (alpha == 255) {
+      return 'dcf:transparent';
+    }
+    
+    // Black - explicitly marked to distinguish from transparent
+    if (color.value == 0xFF000000) {
+      return 'dcf:black';
+    }
+    
+    // Other colors - use dcf: prefix with hex
+    if (alpha == 255) {
       final hexValue = color.toARGB32() & 0xFFFFFF;
-      return '#${hexValue.toRadixString(16).padLeft(6, '0')}';
+      return 'dcf:#${hexValue.toRadixString(16).padLeft(6, '0')}';
     } else {
       final argbValue = color.toARGB32();
-      return '#${argbValue.toRadixString(16).padLeft(8, '0')}';
+      return 'dcf:#${argbValue.toRadixString(16).padLeft(8, '0')}';
     }
   }
 

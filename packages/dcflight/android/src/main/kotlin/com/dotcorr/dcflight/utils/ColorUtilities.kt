@@ -104,9 +104,32 @@ object ColorUtilities {
     fun color(fromHexString: String?): Int? {
         if (fromHexString == null) return null
 
-        val hexString = fromHexString.trim()
+        var hexString = fromHexString.trim()
+        
+        // Handle DCFColors prefix: "dcf:black", "dcf:transparent", "dcf:#RRGGBB"
+        if (hexString.startsWith("dcf:", ignoreCase = true)) {
+            val dcfColor = hexString.substring(4).trim()
+            
+            // Explicit black - distinguish from transparent
+            if (dcfColor.equals("black", ignoreCase = true)) {
+                return Color.BLACK
+            }
+            
+            // Explicit transparent
+            if (dcfColor.equals("transparent", ignoreCase = true) || dcfColor.equals("clear", ignoreCase = true)) {
+                return Color.TRANSPARENT
+            }
+            
+            // DCF hex colors: "dcf:#RRGGBB" or "dcf:#AARRGGBB"
+            if (dcfColor.startsWith("#")) {
+                hexString = dcfColor // Remove dcf: prefix, keep #
+            } else {
+                // Try as named color
+                return getDCFNamedColor(dcfColor.lowercase())
+            }
+        }
 
-        if (hexString.equals("transparent", ignoreCase = true)) {
+        if (hexString.equals("transparent", ignoreCase = true) || hexString.equals("clear", ignoreCase = true)) {
             return Color.TRANSPARENT
         }
 
@@ -199,6 +222,208 @@ object ColorUtilities {
             "darkgray", "darkgrey" -> Color.DKGRAY
             "brown" -> Color.parseColor("#A52A2A")
             "magenta" -> Color.MAGENTA
+            else -> null
+        }
+    }
+    
+    /**
+     * DCFColors named color handling - comprehensive color palette
+     */
+    private fun getDCFNamedColor(colorName: String): Int? {
+        return when (colorName) {
+            // Base
+            "black" -> Color.BLACK
+            "white" -> Color.WHITE
+            "transparent", "clear" -> Color.TRANSPARENT
+            
+            // Grays
+            "gray50", "grey50" -> Color.parseColor("#FAFAFA")
+            "gray100", "grey100" -> Color.parseColor("#F5F5F5")
+            "gray200", "grey200" -> Color.parseColor("#EEEEEE")
+            "gray300", "grey300" -> Color.parseColor("#E0E0E0")
+            "gray400", "grey400" -> Color.parseColor("#BDBDBD")
+            "gray500", "grey500" -> Color.parseColor("#9E9E9E")
+            "gray600", "grey600" -> Color.parseColor("#757575")
+            "gray700", "grey700" -> Color.parseColor("#616161")
+            "gray800", "grey800" -> Color.parseColor("#424242")
+            "gray900", "grey900" -> Color.parseColor("#212121")
+            "lightgray", "lightgrey" -> Color.parseColor("#D3D3D3")
+            "darkgray", "darkgrey" -> Color.parseColor("#A9A9A9")
+            
+            // Blues
+            "blue" -> Color.parseColor("#007AFF")
+            "blue50" -> Color.parseColor("#E3F2FD")
+            "blue100" -> Color.parseColor("#BBDEFB")
+            "blue200" -> Color.parseColor("#90CAF9")
+            "blue300" -> Color.parseColor("#64B5F6")
+            "blue400" -> Color.parseColor("#42A5F5")
+            "blue500" -> Color.parseColor("#2196F3")
+            "blue600" -> Color.parseColor("#1E88E5")
+            "blue700" -> Color.parseColor("#1976D2")
+            "blue800" -> Color.parseColor("#1565C0")
+            "blue900" -> Color.parseColor("#0D47A1")
+            "lightblue" -> Color.parseColor("#5AC8FA")
+            "darkblue" -> Color.parseColor("#0051D5")
+            "blueaccent" -> Color.parseColor("#448AFF")
+            "indigo" -> Color.parseColor("#3F51B5")
+            "indigoaccent" -> Color.parseColor("#536DFE")
+            
+            // Reds
+            "red" -> Color.parseColor("#FF3B30")
+            "red50" -> Color.parseColor("#EFEBE9")
+            "red100" -> Color.parseColor("#FFCDD2")
+            "red200" -> Color.parseColor("#EF9A9A")
+            "red300" -> Color.parseColor("#E57373")
+            "red400" -> Color.parseColor("#EF5350")
+            "red500" -> Color.parseColor("#F44336")
+            "red600" -> Color.parseColor("#E53935")
+            "red700" -> Color.parseColor("#D32F2F")
+            "red800" -> Color.parseColor("#C62828")
+            "red900" -> Color.parseColor("#B71C1C")
+            "lightred" -> Color.parseColor("#FF6961")
+            "darkred" -> Color.parseColor("#CC0000")
+            "redaccent" -> Color.parseColor("#FF5252")
+            "pink" -> Color.parseColor("#E91E63")
+            "pinkaccent" -> Color.parseColor("#FF4081")
+            
+            // Greens
+            "green" -> Color.parseColor("#34C759")
+            "green50" -> Color.parseColor("#E8F5E9")
+            "green100" -> Color.parseColor("#C8E6C9")
+            "green200" -> Color.parseColor("#A5D6A7")
+            "green300" -> Color.parseColor("#81C784")
+            "green400" -> Color.parseColor("#66BB6A")
+            "green500" -> Color.parseColor("#4CAF50")
+            "green600" -> Color.parseColor("#43A047")
+            "green700" -> Color.parseColor("#388E3C")
+            "green800" -> Color.parseColor("#2E7D32")
+            "green900" -> Color.parseColor("#1B5E20")
+            "lightgreen" -> Color.parseColor("#90EE90")
+            "darkgreen" -> Color.parseColor("#228B22")
+            "greenaccent" -> Color.parseColor("#69F0AE")
+            "teal" -> Color.parseColor("#009688")
+            "tealaccent" -> Color.parseColor("#64FFDA")
+            
+            // Yellows & Oranges
+            "yellow" -> Color.parseColor("#FFCC00")
+            "yellow50" -> Color.parseColor("#FFFDE7")
+            "yellow100" -> Color.parseColor("#FFF9C4")
+            "yellow200" -> Color.parseColor("#FFF59D")
+            "yellow300" -> Color.parseColor("#FFF176")
+            "yellow400" -> Color.parseColor("#FFEE58")
+            "yellow500" -> Color.parseColor("#FFEB3B")
+            "yellow600" -> Color.parseColor("#FDD835")
+            "yellow700" -> Color.parseColor("#FBC02D")
+            "yellow800" -> Color.parseColor("#F9A825")
+            "yellow900" -> Color.parseColor("#F57F17")
+            "lightyellow" -> Color.parseColor("#FFFF00")
+            "darkyellow" -> Color.parseColor("#CC9900")
+            "orange" -> Color.parseColor("#FF9500")
+            "orange50" -> Color.parseColor("#FFF3E0")
+            "orange100" -> Color.parseColor("#FFE0B2")
+            "orange200" -> Color.parseColor("#FFCC80")
+            "orange300" -> Color.parseColor("#FFB74D")
+            "orange400" -> Color.parseColor("#FFA726")
+            "orange500" -> Color.parseColor("#FF9800")
+            "orange600" -> Color.parseColor("#FB8C00")
+            "orange700" -> Color.parseColor("#F57C00")
+            "orange800" -> Color.parseColor("#EF6C00")
+            "orange900" -> Color.parseColor("#E65100")
+            "lightorange" -> Color.parseColor("#FFA500")
+            "darkorange" -> Color.parseColor("#FF8C00")
+            "orangeaccent" -> Color.parseColor("#FFAB40")
+            "deeporange" -> Color.parseColor("#FF5722")
+            "deeporangeaccent" -> Color.parseColor("#FF6E40")
+            "amber" -> Color.parseColor("#FFC107")
+            "amberaccent" -> Color.parseColor("#FFD740")
+            
+            // Purples
+            "purple" -> Color.parseColor("#AF52DE")
+            "purple50" -> Color.parseColor("#F3E5F5")
+            "purple100" -> Color.parseColor("#E1BEE7")
+            "purple200" -> Color.parseColor("#CE93D8")
+            "purple300" -> Color.parseColor("#BA68C8")
+            "purple400" -> Color.parseColor("#AB47BC")
+            "purple500" -> Color.parseColor("#9C27B0")
+            "purple600" -> Color.parseColor("#8E24AA")
+            "purple700" -> Color.parseColor("#7B1FA2")
+            "purple800" -> Color.parseColor("#6A1B9A")
+            "purple900" -> Color.parseColor("#4A148C")
+            "lightpurple" -> Color.parseColor("#DA70D6")
+            "darkpurple" -> Color.parseColor("#8B008B")
+            "purpleaccent" -> Color.parseColor("#E040FB")
+            "deeppurple" -> Color.parseColor("#673AB7")
+            "deeppurpleaccent" -> Color.parseColor("#7C4DFF")
+            "violet" -> Color.parseColor("#9C27B0")
+            
+            // Cyans
+            "cyan" -> Color.parseColor("#00BCD4")
+            "cyan50" -> Color.parseColor("#E0F7FA")
+            "cyan100" -> Color.parseColor("#B2EBF2")
+            "cyan200" -> Color.parseColor("#80DEEA")
+            "cyan300" -> Color.parseColor("#4DD0E1")
+            "cyan400" -> Color.parseColor("#26C6DA")
+            "cyan500" -> Color.parseColor("#00BCD4")
+            "cyan600" -> Color.parseColor("#00ACC1")
+            "cyan700" -> Color.parseColor("#0097A7")
+            "cyan800" -> Color.parseColor("#00838F")
+            "cyan900" -> Color.parseColor("#006064")
+            "cyanaccent" -> Color.parseColor("#18FFFF")
+            "turquoise" -> Color.parseColor("#40E0D0")
+            "aqua" -> Color.parseColor("#00FFFF")
+            
+            // Browns
+            "brown" -> Color.parseColor("#795548")
+            "brown50" -> Color.parseColor("#EFEBE9")
+            "brown100" -> Color.parseColor("#D7CCC8")
+            "brown200" -> Color.parseColor("#BCAAA4")
+            "brown300" -> Color.parseColor("#A1887F")
+            "brown400" -> Color.parseColor("#8D6E63")
+            "brown500" -> Color.parseColor("#795548")
+            "brown600" -> Color.parseColor("#6D4C41")
+            "brown700" -> Color.parseColor("#5D4037")
+            "brown800" -> Color.parseColor("#4E342E")
+            "brown900" -> Color.parseColor("#3E2723")
+            "tan" -> Color.parseColor("#D2B48C")
+            "beige" -> Color.parseColor("#F5F5DC")
+            
+            // System Colors
+            "systemblue" -> Color.parseColor("#007AFF")
+            "systemgreen" -> Color.parseColor("#34C759")
+            "systemindigo" -> Color.parseColor("#5856D6")
+            "systemorange" -> Color.parseColor("#FF9500")
+            "systempink" -> Color.parseColor("#FF2D55")
+            "systempurple" -> Color.parseColor("#AF52DE")
+            "systemred" -> Color.parseColor("#FF3B30")
+            "systemteal" -> Color.parseColor("#5AC8FA")
+            "systemyellow" -> Color.parseColor("#FFCC00")
+            
+            // Material Colors
+            "materialblue" -> Color.parseColor("#2196F3")
+            "materialred" -> Color.parseColor("#F44336")
+            "materialgreen" -> Color.parseColor("#4CAF50")
+            "materialyellow" -> Color.parseColor("#FFEB3B")
+            "materialorange" -> Color.parseColor("#FF9800")
+            "materialpurple" -> Color.parseColor("#9C27B0")
+            "materialpink" -> Color.parseColor("#E91E63")
+            "materialteal" -> Color.parseColor("#009688")
+            "materialindigo" -> Color.parseColor("#3F51B5")
+            
+            // Common UI
+            "success" -> Color.parseColor("#34C759")
+            "error" -> Color.parseColor("#FF3B30")
+            "warning" -> Color.parseColor("#FF9500")
+            "info" -> Color.parseColor("#007AFF")
+            
+            // Social Media
+            "facebook" -> Color.parseColor("#1877F2")
+            "twitter" -> Color.parseColor("#1DA1F2")
+            "instagram" -> Color.parseColor("#E4405F")
+            "linkedin" -> Color.parseColor("#0077B5")
+            "youtube" -> Color.parseColor("#FF0000")
+            "github" -> Color.parseColor("#181717")
+            "google" -> Color.parseColor("#4285F4")
+            
             else -> null
         }
     }

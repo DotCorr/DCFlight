@@ -58,6 +58,7 @@ export 'framework/constants/layout/layout_config.dart';
 export 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 export 'framework/constants/style/style_properties.dart';
 export 'framework/constants/style/color_utils.dart';
+export 'framework/constants/style/dcf_colors.dart';
 
 export 'framework/utilities/screen_utilities.dart';
 export 'framework/utils/dcf_logger.dart';
