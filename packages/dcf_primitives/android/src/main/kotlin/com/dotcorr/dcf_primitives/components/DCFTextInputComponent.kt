@@ -86,10 +86,8 @@ class DCFTextInputComponent : DCFComponent() {
         return editText
     }
 
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        return updateViewInternal(view, nonNullProps)
-    }
+    // Remove override - let base class handle props merging
+    // This ensures props are preserved across updates
 
     override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val editText = view as? AppCompatEditText ?: return false

@@ -48,9 +48,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
         return radioGroup
     }
 
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        return updateViewInternal(view, props.filterValues { it != null }.mapValues { it.value!! })
-    }
+    // Remove override - let base class handle props merging
 
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val radioGroup = view as RadioGroup

@@ -58,10 +58,7 @@ class DCFToggleComponent : DCFComponent() {
         return switchControl
     }
 
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        return updateViewInternal(view, nonNullProps)
-    }
+    // Remove override - let base class handle props merging
 
     override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val switchControl = view as? SwitchCompat ?: return false
