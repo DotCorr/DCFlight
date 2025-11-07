@@ -130,13 +130,16 @@ class DCFTouchableOpacityComponent : DCFComponent() {
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         Log.d(TAG, "Updating TouchableOpacity with props: $props")
 
-        props["activeOpacity"]?.let { opacity ->
-            activeOpacity = when (opacity) {
-                is Number -> opacity.toFloat()
-                is String -> opacity.toFloatOrNull() ?: DEFAULT_ACTIVE_OPACITY
-                else -> DEFAULT_ACTIVE_OPACITY
+        // Framework-level helper: Only update activeOpacity if it actually changed
+        if (hasPropChanged("activeOpacity", existingProps, props)) {
+            props["activeOpacity"]?.let { opacity ->
+                activeOpacity = when (opacity) {
+                    is Number -> opacity.toFloat()
+                    is String -> opacity.toFloatOrNull() ?: DEFAULT_ACTIVE_OPACITY
+                    else -> DEFAULT_ACTIVE_OPACITY
+                }
+                Log.d(TAG, "Set activeOpacity: $activeOpacity")
             }
-            Log.d(TAG, "Set activeOpacity: $activeOpacity")
         }
 
         originalAlpha = view.alpha

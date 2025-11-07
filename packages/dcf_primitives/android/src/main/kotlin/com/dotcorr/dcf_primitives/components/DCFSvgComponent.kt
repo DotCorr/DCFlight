@@ -49,49 +49,61 @@ class DCFSvgComponent : DCFComponent() {
         val imageView = view as ImageView
         var hasUpdates = false
 
-        props["source"]?.let { source ->
-            when (source) {
-                is String -> {
-                    loadSvgFromSource(imageView, source)
-                    hasUpdates = true
-                }
-                is Map<*, *> -> {
-                    (source["uri"] as? String)?.let { uri ->
-                        loadSvgFromSource(imageView, uri)
+        // Framework-level helper: Only update source if it actually changed
+        if (hasPropChanged("source", existingProps, props)) {
+            props["source"]?.let { source ->
+                when (source) {
+                    is String -> {
+                        loadSvgFromSource(imageView, source)
                         hasUpdates = true
+                    }
+                    is Map<*, *> -> {
+                        (source["uri"] as? String)?.let { uri ->
+                            loadSvgFromSource(imageView, uri)
+                            hasUpdates = true
+                        }
                     }
                 }
             }
         }
 
-        props["width"]?.let {
-            val width = when (it) {
-                is Number -> it.toInt()
-                is String -> it.toIntOrNull() ?: 100
-                else -> 100
-            }
-            hasUpdates = true
-        }
-
-        props["height"]?.let {
-            val height = when (it) {
-                is Number -> it.toInt()
-                is String -> it.toIntOrNull() ?: 100
-                else -> 100
-            }
-            hasUpdates = true
-        }
-
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.parseColor(color.toString())
-            if (colorInt != null) {
-                imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
+        // Framework-level helper: Only update width if it actually changed
+        if (hasPropChanged("width", existingProps, props)) {
+            props["width"]?.let {
+                val width = when (it) {
+                    is Number -> it.toInt()
+                    is String -> it.toIntOrNull() ?: 100
+                    else -> 100
+                }
                 hasUpdates = true
             }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
+
+        // Framework-level helper: Only update height if it actually changed
+        if (hasPropChanged("height", existingProps, props)) {
+            props["height"]?.let {
+                val height = when (it) {
+                    is Number -> it.toInt()
+                    is String -> it.toIntOrNull() ?: 100
+                    else -> 100
+                }
+                hasUpdates = true
+            }
+        }
+
+        // Framework-level helper: Only update primaryColor if it actually changed
+        if (hasPropChanged("primaryColor", existingProps, props)) {
+            // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
+            props["primaryColor"]?.let { color ->
+                val colorInt = ColorUtilities.parseColor(color.toString())
+                if (colorInt != null) {
+                    imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
+                    hasUpdates = true
+                }
+                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+            }
+            // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
+        }
 
         view.applyStyles(props)
 

@@ -51,45 +51,53 @@ class DCFSpinnerComponent : DCFComponent() {
         val progressBar = view as? ProgressBar ?: return false
         var hasUpdates = false
 
-        val isAnimating = props["animating"] as? Boolean ?: true
+        // Framework-level helper: Only update animating if it actually changed
+        if (hasPropChanged("animating", existingProps, props) || hasPropChanged("hidesWhenStopped", existingProps, props)) {
+            val isAnimating = props["animating"] as? Boolean ?: true
+            val hidesWhenStopped = props["hidesWhenStopped"] as? Boolean ?: true
 
-        val hidesWhenStopped = props["hidesWhenStopped"] as? Boolean ?: true
-
-        if (hidesWhenStopped) {
-            progressBar.visibility = if (isAnimating) View.VISIBLE else View.GONE
-        } else {
-            progressBar.visibility = View.VISIBLE
-        }
-        hasUpdates = true
-
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: spinner color
-        props["primaryColor"]?.let { color ->
-            try {
-                val colorInt = ColorUtilities.parseColor(color as String)
-                progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
-                hasUpdates = true
-            } catch (e: Exception) {
-            }
-        }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
-
-        props["size"]?.let { size ->
-            when (size) {
-                "small", "medium" -> {
-                    progressBar.scaleX = 0.7f
-                    progressBar.scaleY = 0.7f
-                }
-                "large" -> {
-                    progressBar.scaleX = 1.2f
-                    progressBar.scaleY = 1.2f
-                }
-                else -> {
-                    progressBar.scaleX = 1.0f
-                    progressBar.scaleY = 1.0f
-                }
+            if (hidesWhenStopped) {
+                progressBar.visibility = if (isAnimating) View.VISIBLE else View.GONE
+            } else {
+                progressBar.visibility = View.VISIBLE
             }
             hasUpdates = true
+        }
+
+        // Framework-level helper: Only update primaryColor if it actually changed
+        if (hasPropChanged("primaryColor", existingProps, props)) {
+            // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+            // primaryColor: spinner color
+            props["primaryColor"]?.let { color ->
+                try {
+                    val colorInt = ColorUtilities.parseColor(color as String)
+                    progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
+                    hasUpdates = true
+                } catch (e: Exception) {
+                }
+            }
+            // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
+        }
+
+        // Framework-level helper: Only update size if it actually changed
+        if (hasPropChanged("size", existingProps, props)) {
+            props["size"]?.let { size ->
+                when (size) {
+                    "small", "medium" -> {
+                        progressBar.scaleX = 0.7f
+                        progressBar.scaleY = 0.7f
+                    }
+                    "large" -> {
+                        progressBar.scaleX = 1.2f
+                        progressBar.scaleY = 1.2f
+                    }
+                    else -> {
+                        progressBar.scaleX = 1.0f
+                        progressBar.scaleY = 1.0f
+                    }
+                }
+                hasUpdates = true
+            }
         }
 
         view.applyStyles(props)
