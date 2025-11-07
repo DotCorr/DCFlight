@@ -80,73 +80,80 @@ class DCFSliderComponent : DCFComponent() {
 
     // Remove override - let base class handle props merging
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val seekBar = view as SeekBar
         var hasUpdates = false
 
-        props["value"]?.let {
-            val value = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 0f
-                else -> 0f
-            }
-            val progress = (value * 100).toInt()
-            if (seekBar.progress != progress) {
-                seekBar.progress = progress
-                hasUpdates = true
-            }
-        }
-
-        props["minimumValue"]?.let {
-            val minValue = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 0f
-                else -> 0f
-            }
-            hasUpdates = true
-        }
-
-        props["maximumValue"]?.let {
-            val maxValue = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 100f
-                else -> 100f
-            }
-            val maxProgress = (maxValue * 100).toInt()
-            if (seekBar.max != maxProgress) {
-                seekBar.max = maxProgress
-                hasUpdates = true
-            }
-        }
-
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: minimum track and thumb color
-        // secondaryColor: maximum track color
-        props["primaryColor"]?.let { color ->
-            try {
-                val colorInt = ColorUtilities.parseColor(color as String)
-                seekBar.progressTintList = ColorStateList.valueOf(colorInt)
-                seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
-                hasUpdates = true
-            } catch (e: Exception) {
-                // Silently fail - use DCFTheme fallback
-            }
-        }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
-
-        props["secondaryColor"]?.let { color ->
-            try {
-                val colorInt = ColorUtilities.parseColor(color as String)
-                if (colorInt != null) {
-                    seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
+        // Framework-level helper: Only update value if it actually changed (prevents restart on theme toggle)
+        if (hasPropChanged("value", existingProps, props)) {
+            props["value"]?.let {
+                val value = when (it) {
+                    is Number -> it.toFloat()
+                    is String -> it.toFloatOrNull() ?: 0f
+                    else -> 0f
+                }
+                val progress = (value * 100).toInt()
+                if (seekBar.progress != progress) {
+                    seekBar.progress = progress
                     hasUpdates = true
                 }
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
-            } catch (e: Exception) {
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
             }
         }
-        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
+
+        // Framework-level helper: Only update min/max if they actually changed
+        if (hasPropChanged("minimumValue", existingProps, props)) {
+            props["minimumValue"]?.let {
+                val minValue = when (it) {
+                    is Number -> it.toFloat()
+                    is String -> it.toFloatOrNull() ?: 0f
+                    else -> 0f
+                }
+                hasUpdates = true
+            }
+        }
+
+        if (hasPropChanged("maximumValue", existingProps, props)) {
+            props["maximumValue"]?.let {
+                val maxValue = when (it) {
+                    is Number -> it.toFloat()
+                    is String -> it.toFloatOrNull() ?: 100f
+                    else -> 100f
+                }
+                val maxProgress = (maxValue * 100).toInt()
+                if (seekBar.max != maxProgress) {
+                    seekBar.max = maxProgress
+                    hasUpdates = true
+                }
+            }
+        }
+
+        // Framework-level helper: Only update colors if they actually changed
+        if (hasPropChanged("primaryColor", existingProps, props)) {
+            props["primaryColor"]?.let { color ->
+                try {
+                    val colorInt = ColorUtilities.parseColor(color as String)
+                    seekBar.progressTintList = ColorStateList.valueOf(colorInt)
+                    seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
+                    hasUpdates = true
+                } catch (e: Exception) {
+                    // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+                }
+            }
+        }
+
+        if (hasPropChanged("secondaryColor", existingProps, props)) {
+            props["secondaryColor"]?.let { color ->
+                try {
+                    val colorInt = ColorUtilities.parseColor(color as String)
+                    if (colorInt != null) {
+                        seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
+                        hasUpdates = true
+                    }
+                } catch (e: Exception) {
+                    // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+                }
+            }
+        }
 
         view.applyStyles(props)
 

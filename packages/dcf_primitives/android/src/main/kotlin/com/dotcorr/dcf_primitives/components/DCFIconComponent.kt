@@ -46,17 +46,22 @@ class DCFIconComponent : DCFComponent() {
 
     // Remove override - let base class handle props merging
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val imageView = view as ImageView
         var hasUpdates = false
 
-        props["name"]?.let { name ->
-            val iconName = name.toString()
-            loadIcon(imageView, iconName)
-            hasUpdates = true
+        // Framework-level helper: Only reload icon if name actually changed
+        if (hasPropChanged("name", existingProps, props)) {
+            props["name"]?.let { name ->
+                val iconName = name.toString()
+                loadIcon(imageView, iconName)
+                hasUpdates = true
+            }
         }
 
-        props["size"]?.let {
+        // Framework-level helper: Only update size if it actually changed
+        if (hasPropChanged("size", existingProps, props)) {
+            props["size"]?.let {
             val size = when (it) {
                 is Number -> it.toInt()
                 is String -> it.toIntOrNull() ?: 24
@@ -68,18 +73,18 @@ class DCFIconComponent : DCFComponent() {
             imageView.layoutParams = layoutParams
             hasUpdates = true
         }
+        }
 
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // primaryColor: icon color
-        props["primaryColor"]?.let {
+        // Framework-level helper: Only update color if it actually changed
+        if (hasPropChanged("primaryColor", existingProps, props)) {
+            props["primaryColor"]?.let {
             val colorInt = ColorUtilities.parseColor(it.toString())
             if (colorInt != null) {
                 imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
                 hasUpdates = true
             }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
+        }
 
         view.applyStyles(props)
 

@@ -45,9 +45,10 @@ class DCFImageComponent : DCFComponent() {
         imageView.scaleType = ImageView.ScaleType.CENTER_CROP
         imageView.clipToOutline = true
         
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        updateViewInternal(imageView, nonNullProps)
+        // Use updateView (not updateViewInternal) - framework handles props merging
+        updateView(imageView, props)
         
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         imageView.applyStyles(nonNullProps)
         
         Log.d(TAG, "Created image component")
@@ -58,12 +59,14 @@ class DCFImageComponent : DCFComponent() {
     // Remove override - let base class handle props merging
     // Note: ImageView type check is now in updateViewInternal
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val imageView = view as? ImageView ?: return false
 
         Log.d(TAG, "Updating image view with props: $props")
 
-        props["source"]?.let { sourceAny ->
+        // Framework-level helper: Only reload image if source actually changed (prevents reload on theme toggle)
+        if (hasPropChanged("source", existingProps, props)) {
+            props["source"]?.let { sourceAny ->
             val source: String
             
             source = when (sourceAny) {
@@ -82,8 +85,11 @@ class DCFImageComponent : DCFComponent() {
             
             loadImageFromSource(imageView, source)
         }
+        }
 
-        props["resizeMode"]?.let { mode ->
+        // Framework-level helper: Only update resizeMode if it actually changed
+        if (hasPropChanged("resizeMode", existingProps, props)) {
+            props["resizeMode"]?.let { mode ->
             val scaleType = when (mode.toString()) {
                 "cover" -> ImageView.ScaleType.CENTER_CROP  // scaleAspectFill
                 "contain" -> ImageView.ScaleType.FIT_CENTER // scaleAspectFit
@@ -94,6 +100,7 @@ class DCFImageComponent : DCFComponent() {
             }
             imageView.scaleType = scaleType
             Log.d(TAG, "Set resize mode: $mode")
+        }
         }
 
         imageView.applyStyles(props)

@@ -66,31 +66,37 @@ class DCFCheckboxComponent : DCFComponent() {
 
     // Remove override - let base class handle props merging
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val checkBox = view as CheckBox
         var hasUpdates = false
 
-        props["checked"]?.let {
-            val checked = when (it) {
-                is Boolean -> it
-                is String -> it.toBoolean()
-                else -> false
-            }
-            if (checkBox.isChecked != checked) {
-                checkBox.isChecked = checked
-                hasUpdates = true
+        // Framework-level helper: Only update checked if it actually changed
+        if (hasPropChanged("checked", existingProps, props)) {
+            props["checked"]?.let {
+                val checked = when (it) {
+                    is Boolean -> it
+                    is String -> it.toBoolean()
+                    else -> false
+                }
+                if (checkBox.isChecked != checked) {
+                    checkBox.isChecked = checked
+                    hasUpdates = true
+                }
             }
         }
 
-        props["disabled"]?.let {
-            val disabled = when (it) {
-                is Boolean -> it
-                is String -> it.toBoolean()
-                else -> false
-            }
-            if (checkBox.isEnabled == disabled) {
-                checkBox.isEnabled = !disabled
-                hasUpdates = true
+        // Framework-level helper: Only update disabled if it actually changed
+        if (hasPropChanged("disabled", existingProps, props)) {
+            props["disabled"]?.let {
+                val disabled = when (it) {
+                    is Boolean -> it
+                    is String -> it.toBoolean()
+                    else -> false
+                }
+                if (checkBox.isEnabled == disabled) {
+                    checkBox.isEnabled = !disabled
+                    hasUpdates = true
+                }
             }
         }
 

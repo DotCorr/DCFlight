@@ -68,16 +68,12 @@ class DCFWebViewComponent : DCFComponent() {
 
     // Remove override - let base class handle props merging
 
-    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val webView = view as? WebView ?: return false
 
-        // Only reload if source actually changed (prevents reload on theme toggle)
-        val existingProps = getStoredProps(webView)
-        val existingSource = existingProps["source"]
-        val newSource = props["source"]
-        
-        // Reload only if source changed (not on every update)
-        if (newSource != null && newSource != existingSource) {
+        // Framework-level helper: Only reload if source actually changed (prevents reload on theme toggle)
+        if (hasPropChanged("source", existingProps, props)) {
+            val newSource = props["source"]
             when (newSource) {
                 is String -> {
                     webView.loadUrl(newSource)

@@ -72,14 +72,17 @@ class DCFTextComponent : DCFComponent() {
     
     // updateView is now handled by base class with automatic props merging
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val textView = view as? TextView ?: return false
 
         Log.d(TAG, "Updating text view with props: $props")
 
-        props["content"]?.let { content ->
-            textView.text = content.toString()
-            Log.d(TAG, "Set text content: $content")
+        // Framework-level helper: Only update content if it actually changed
+        if (hasPropChanged("content", existingProps, props)) {
+            props["content"]?.let { content ->
+                textView.text = content.toString()
+                Log.d(TAG, "Set text content: $content")
+            }
         }
 
         val hasAnyFontProp = props.containsKey("fontSize") || props.containsKey("fontWeight") || 

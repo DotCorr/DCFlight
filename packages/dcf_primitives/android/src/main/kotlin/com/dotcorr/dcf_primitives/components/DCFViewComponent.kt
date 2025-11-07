@@ -43,7 +43,7 @@ class DCFViewComponent : DCFComponent() {
 
     // Remove override - let base class handle props merging
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         Log.d(TAG, "Updating view component with props: $props")
 
         view.applyStyles(props)

@@ -50,11 +50,13 @@ class DCFSegmentedControlComponent : DCFComponent() {
 
     // Remove override - let base class handle props merging
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val radioGroup = view as RadioGroup
         var hasUpdates = false
 
-        props["segments"]?.let { segments ->
+        // Framework-level helper: Only update segments if they actually changed
+        if (hasPropChanged("segments", existingProps, props)) {
+            props["segments"]?.let { segments ->
             when (segments) {
                 is List<*> -> {
                     radioGroup.removeAllViews()
@@ -70,8 +72,11 @@ class DCFSegmentedControlComponent : DCFComponent() {
                 }
             }
         }
+        }
 
-        props["selectedIndex"]?.let {
+        // Framework-level helper: Only update selectedIndex if it actually changed
+        if (hasPropChanged("selectedIndex", existingProps, props)) {
+            props["selectedIndex"]?.let {
             val selectedIndex = when (it) {
                 is Number -> it.toInt()
                 is String -> it.toIntOrNull() ?: 0
@@ -84,20 +89,24 @@ class DCFSegmentedControlComponent : DCFComponent() {
                 hasUpdates = true
             }
         }
+        }
 
-        props["enabled"]?.let {
-            val enabled = when (it) {
-                is Boolean -> it
-                is String -> it.toBoolean()
-                else -> true
-            }
-            
-            if (radioGroup.isEnabled != enabled) {
-                radioGroup.isEnabled = enabled
-                for (i in 0 until radioGroup.childCount) {
-                    radioGroup.getChildAt(i).isEnabled = enabled
+        // Framework-level helper: Only update enabled if it actually changed
+        if (hasPropChanged("enabled", existingProps, props)) {
+            props["enabled"]?.let {
+                val enabled = when (it) {
+                    is Boolean -> it
+                    is String -> it.toBoolean()
+                    else -> true
                 }
-                hasUpdates = true
+                
+                if (radioGroup.isEnabled != enabled) {
+                    radioGroup.isEnabled = enabled
+                    for (i in 0 until radioGroup.childCount) {
+                        radioGroup.getChildAt(i).isEnabled = enabled
+                    }
+                    hasUpdates = true
+                }
             }
         }
 
