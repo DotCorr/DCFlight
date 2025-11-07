@@ -79,7 +79,7 @@ class DCFToggle extends DCFStatelessComponent
     // All color props removed - use StyleSheet semantic colors
     this.size = 'medium',
     this.layout = const DCFLayout(),
-    this.styleSheet = const DCFStyleSheet(backgroundColor: Colors.transparent),
+    this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.transparent),
     this.events,
   });
 

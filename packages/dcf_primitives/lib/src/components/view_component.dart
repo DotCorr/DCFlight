@@ -71,7 +71,7 @@ class DCFView extends DCFStatelessComponent
   /// Create a view component
   DCFView({
     this.layout = const DCFLayout(),
-    this.styleSheet = const DCFStyleSheet(backgroundColor: Colors.transparent),
+    this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.transparent),
     this.children = const [],
     this.events,
     this.onLayout,

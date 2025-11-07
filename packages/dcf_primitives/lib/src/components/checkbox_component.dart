@@ -84,7 +84,7 @@ class DCFCheckbox extends DCFStatelessComponent
     this.checkboxStyle = 'default',
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(
-        borderWidth: 2, borderColor: Colors.grey, borderRadius: 8),
+        borderWidth: 2, borderColor: DCFColors.gray300, borderRadius: 8),
     this.events,
   });
 
