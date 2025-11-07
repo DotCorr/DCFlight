@@ -102,7 +102,7 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
         ])
     }
     
-    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         // TouchableOpacity is a container, delegate to child if exists
         if let child = view.subviews.first {
             let size = child.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))

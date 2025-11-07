@@ -32,9 +32,10 @@ class DCFViewComponent : DCFComponent() {
 
         view.setTag(R.id.dcf_component_type, "View")
 
+        // Use updateView (not updateViewInternal) to ensure props are stored for merging
+        updateView(view, props)
+        
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        updateViewInternal(view, nonNullProps)
-
         view.applyStyles(nonNullProps)
 
         return view

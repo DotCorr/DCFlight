@@ -95,14 +95,17 @@ public extension DCFComponent {
     func mergeProps(_ existing: [String: Any?], with updates: [String: Any?]) -> [String: Any?] {
         var merged = existing
         
-        // CRITICAL FIX: Remove semantic color props that are not in new props
-        // This ensures that when a StyleSheet property is removed, it's actually removed from merged props
+        // CRITICAL: StyleSheet ALWAYS provides semantic colors via toMap()
+        // Only remove semantic colors if explicitly set to nil in updates
+        // If not in updates, preserve from existing (StyleSheet should always include them)
         let semanticColorKeys = ["primaryColor", "secondaryColor", "tertiaryColor", "accentColor"]
         for key in semanticColorKeys {
-            // If semantic color is in existing props but not in new props, remove it
-            if merged[key] != nil && updates[key] == nil {
+            // Only remove if explicitly nil/NSNull in updates (explicit removal)
+            if let value = updates[key], value is NSNull {
                 merged.removeValue(forKey: key)
             }
+            // If in updates and not nil, it will be set below
+            // If not in updates at all, preserve from existing (StyleSheet always provides)
         }
         
         for (key, value) in updates {

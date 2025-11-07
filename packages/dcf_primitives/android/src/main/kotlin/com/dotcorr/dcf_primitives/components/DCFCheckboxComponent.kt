@@ -30,19 +30,25 @@ class DCFCheckboxComponent : DCFComponent() {
         val checkBox = CheckBox(context)
         
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // StyleSheet.toMap() always provides these colors, so they should never be null
-        // But we use TRANSPARENT as safe fallback for type safety
-        val activeColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } ?: Color.TRANSPARENT
-        val inactiveColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } ?: Color.TRANSPARENT
-        val checkmarkColor = props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
-            ?: Color.WHITE
+        // StyleSheet.toMap() ALWAYS provides these colors
+        val activeColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        val inactiveColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        val checkmarkColor = props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
         
-        val states = arrayOf(
-            intArrayOf(android.R.attr.state_checked),
-            intArrayOf(-android.R.attr.state_checked)
-        )
-        checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
-        checkBox.setTextColor(checkmarkColor)
+        // Only set colors if StyleSheet provided them (should always be the case)
+        if (activeColor != null && inactiveColor != null) {
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf(-android.R.attr.state_checked)
+            )
+            checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
+        }
+        // NO FALLBACK: If colors missing, don't set ColorStateList (StyleSheet should always provide)
+        
+        if (checkmarkColor != null) {
+            checkBox.setTextColor(checkmarkColor)
+        }
+        // NO FALLBACK: If checkmarkColor missing, don't set color (StyleSheet should always provide)
         
         checkBox.setTag(R.id.dcf_component_type, "Checkbox")
         

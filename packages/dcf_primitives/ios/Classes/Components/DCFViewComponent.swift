@@ -40,7 +40,7 @@ class DCFViewComponent: NSObject, DCFComponent {
         return true
     }
     
-    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         return CGSize.zero
     }
 }
