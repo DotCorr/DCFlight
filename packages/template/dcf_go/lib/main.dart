@@ -2,7 +2,7 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() async {
-  await DCFlight.go(app: MyApp());
+  await DCFlight.go(app: MyApp(),);
 }
 
 class MyApp extends DCFStatefulComponent {
