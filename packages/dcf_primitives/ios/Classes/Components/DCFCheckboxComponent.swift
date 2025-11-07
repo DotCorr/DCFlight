@@ -19,22 +19,22 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let checkbox = DCFCheckboxView()
         
-        // NO FALLBACK: Colors come from StyleSheet only
-        // StyleSheet will always provide these via toMap() fallbacks
-        checkbox.checkmarkColor = UIColor.white
         // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
         // primaryColor: active/checked color and checkmark color
         // secondaryColor: inactive/unchecked color
+        // StyleSheet.toMap() ALWAYS provides these colors
         if let primaryColor = props["primaryColor"] as? String,
            let color = ColorUtilities.color(fromHexString: primaryColor) {
             checkbox.checkedColor = color
             checkbox.checkmarkColor = color
         }
+        // NO FALLBACK: If primaryColor missing, don't set colors (StyleSheet should always provide)
 
         if let secondaryColor = props["secondaryColor"] as? String,
            let color = ColorUtilities.color(fromHexString: secondaryColor) {
             checkbox.uncheckedColor = color
         }
+        // NO FALLBACK: If secondaryColor missing, don't set color (StyleSheet should always provide)
 
         checkbox.addTarget(DCFCheckboxComponent.sharedInstance, action: #selector(checkboxTapped(_:)), for: .touchUpInside)
 
@@ -62,14 +62,23 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
         // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
         // primaryColor: active/checked color and checkmark color
         // secondaryColor: inactive/unchecked color
+        // StyleSheet.toMap() ALWAYS provides these colors
         if let primaryColor = props["primaryColor"] as? String {
-            checkbox.checkedColor = ColorUtilities.color(fromHexString: primaryColor) ?? checkbox.checkedColor
-            checkbox.checkmarkColor = ColorUtilities.color(fromHexString: primaryColor) ?? checkbox.checkmarkColor
+            if let color = ColorUtilities.color(fromHexString: primaryColor) {
+                checkbox.checkedColor = color
+                checkbox.checkmarkColor = color
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If primaryColor missing, don't set colors (StyleSheet should always provide)
         
         if let secondaryColor = props["secondaryColor"] as? String {
-            checkbox.uncheckedColor = ColorUtilities.color(fromHexString: secondaryColor) ?? checkbox.uncheckedColor
+            if let color = ColorUtilities.color(fromHexString: secondaryColor) {
+                checkbox.uncheckedColor = color
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If secondaryColor missing, don't set color (StyleSheet should always provide)
         
         if let size = props["size"] as? CGFloat {
             checkbox.checkboxSize = size
@@ -104,7 +113,7 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
         ])
     }
     
-    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         guard let checkbox = view as? DCFCheckboxView else {
             return CGSize.zero
         }
@@ -123,13 +132,13 @@ class DCFCheckboxView: UIControl {
         }
     }
     
-    var checkedColor: UIColor = UIColor.systemBlue {
+    var checkedColor: UIColor = UIColor.clear {
         didSet {
             setNeedsDisplay()
         }
     }
     
-    var uncheckedColor: UIColor = UIColor.systemGray4 {
+    var uncheckedColor: UIColor = UIColor.clear {
         didSet {
             setNeedsDisplay()
         }
@@ -141,7 +150,7 @@ class DCFCheckboxView: UIControl {
         // StyleSheet will always provide these via toMap() fallbacks
     }
     
-    var checkmarkColor: UIColor = UIColor.white {
+    var checkmarkColor: UIColor = UIColor.clear {
         didSet {
             setNeedsDisplay()
         }

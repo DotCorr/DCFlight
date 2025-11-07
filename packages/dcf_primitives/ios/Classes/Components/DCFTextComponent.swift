@@ -149,7 +149,7 @@ class DCFTextComponent: NSObject, DCFComponent {
         return true
     }
     
-    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         guard let label = view as? UILabel else {
             return CGSize.zero
         }
@@ -169,7 +169,7 @@ class DCFTextComponent: NSObject, DCFComponent {
         return CGSize(width: max(1, size.width), height: max(1, size.height))
     }
     
-    override func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
         // Optional: Add logging if needed
     }
     

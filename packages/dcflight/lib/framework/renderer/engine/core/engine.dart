@@ -893,6 +893,9 @@ class DCFEngine {
     EngineDebugLogger.log('ELEMENT_VIEW_MAPPING', 'Mapped element to view ID',
         extra: {'ViewId': viewId, 'ElementType': element.type});
 
+    // CRITICAL: Android bridge redirects createView → updateView if view exists
+    // This ensures components UPDATE, not RECREATE, preserving internal state
+    // (Slider value, WebView content, etc.)
     EngineDebugLogger.logBridge('CREATE_VIEW', viewId, data: {
       'ElementType': element.type,
       'Props': element.elementProps.keys.toList()

@@ -31,12 +31,14 @@ class DCFButtonComponent: NSObject, DCFComponent {
         // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
         // primaryColor: button text color
         // backgroundColor: handled by applyStyles from StyleSheet
+        // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
         if let primaryColor = props["primaryColor"] as? String {
-            button.setTitleColor(ColorUtilities.color(fromHexString: primaryColor), for: .normal)
-        } else {
-            // Fall back to white text if no semantic color provided
-            button.setTitleColor(UIColor.white, for: .normal)
+            if let color = ColorUtilities.color(fromHexString: primaryColor) {
+                button.setTitleColor(color, for: .normal)
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
         
         // NO FALLBACK: backgroundColor comes from StyleSheet only
         // StyleSheet will always provide this via toMap() fallbacks
@@ -68,12 +70,14 @@ class DCFButtonComponent: NSObject, DCFComponent {
         // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
         // primaryColor: button text color
         // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
+        // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
         if let primaryColor = props["primaryColor"] as? String {
-            button.setTitleColor(ColorUtilities.color(fromHexString: primaryColor), for: .normal)
-        } else {
-            // Default to white text for buttons (typically on colored backgrounds)
-            button.setTitleColor(UIColor.white, for: .normal)
+            if let color = ColorUtilities.color(fromHexString: primaryColor) {
+                button.setTitleColor(color, for: .normal)
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
         return true
     }
     
@@ -97,7 +101,7 @@ class DCFButtonComponent: NSObject, DCFComponent {
         }
     }
     
-    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         guard let button = view as? UIButton else {
             return CGSize.zero
         }

@@ -61,18 +61,18 @@ class DCFButtonComponent : DCFComponent() {
         
         // Set text color after applyStyles to ensure it's not overridden
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
+        // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 button.setTextColor(colorInt)
             }
             // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
-        } ?: run {
-            // Default to white text for buttons (typically on colored backgrounds)
-            button.setTextColor(Color.WHITE)
         }
+        // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
         
-        updateViewInternal(button, nonNullProps)
+        // Use updateView (not updateViewInternal) to ensure props are stored for merging
+        updateView(button, props)
 
         button.setOnTouchListener { view, event ->
             when (event.action) {
@@ -139,16 +139,15 @@ class DCFButtonComponent : DCFComponent() {
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: button text color
         // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
+        // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 button.setTextColor(colorInt)
             }
             // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
-        } ?: run {
-            // Default to white text for buttons (typically on colored backgrounds)
-            button.setTextColor(Color.WHITE)
         }
+        // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
 
         return true
     }

@@ -75,14 +75,17 @@ abstract class DCFComponent {
     protected fun mergeProps(existing: Map<String, Any?>, updates: Map<String, Any?>): MutableMap<String, Any?> {
         val merged = existing.toMutableMap()
         
-        // CRITICAL FIX: Remove semantic color props that are not in new props
-        // This ensures that when a StyleSheet property is removed, it's actually removed from merged props
+        // CRITICAL: StyleSheet ALWAYS provides semantic colors via toMap()
+        // Only remove semantic colors if explicitly set to null in updates
+        // If not in updates, preserve from existing (StyleSheet should always include them)
         val semanticColorKeys = listOf("primaryColor", "secondaryColor", "tertiaryColor", "accentColor")
         for (key in semanticColorKeys) {
-            // If semantic color is in existing props but not in new props, remove it
-            if (merged.containsKey(key) && !updates.containsKey(key)) {
+            // Only remove if explicitly null in updates (explicit removal)
+            if (updates.containsKey(key) && updates[key] == null) {
                 merged.remove(key)
             }
+            // If in updates and not null, it will be set below
+            // If not in updates at all, preserve from existing (StyleSheet always provides)
         }
         
         for ((key, value) in updates) {

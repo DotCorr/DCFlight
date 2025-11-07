@@ -70,7 +70,7 @@ class DCFIconComponent: NSObject, DCFComponent {
         return result
     }
     
-    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         guard let imageView = view as? UIImageView else {
             return CGSize.zero
         }

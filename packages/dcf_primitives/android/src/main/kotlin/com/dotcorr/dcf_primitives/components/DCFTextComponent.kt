@@ -42,18 +42,16 @@ class DCFTextComponent : DCFComponent() {
 
         textView.maxLines = Int.MAX_VALUE // numberOfLines = 0 in iOS means unlimited
         
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        
-        // Store props using framework method (React Native pattern)
-        storeProps(textView, props)
-        
         // Set initial text content if provided
         props["content"]?.let { content ->
             textView.text = content.toString()
             Log.d(TAG, "Set initial text content: $content")
         }
 
-        updateViewInternal(textView, nonNullProps)
+        // Use updateView (not updateViewInternal) to ensure props are stored for merging
+        updateView(textView, props)
+        
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
         textView.applyStyles(nonNullProps)
         

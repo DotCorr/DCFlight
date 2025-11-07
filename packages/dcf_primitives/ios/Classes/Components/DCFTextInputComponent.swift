@@ -127,12 +127,17 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
         // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         // Placeholder color: secondaryColor from StyleSheet
+        // StyleSheet.toMap() ALWAYS provides secondaryColor
         if let secondaryColor = props["secondaryColor"] as? String {
-            textField.attributedPlaceholder = NSAttributedString(
-                string: textField.placeholder ?? "",
-                attributes: [NSAttributedString.Key.foregroundColor: ColorUtilities.color(fromHexString: secondaryColor) ?? UIColor.placeholderText]
-            )
+            if let color = ColorUtilities.color(fromHexString: secondaryColor) {
+                textField.attributedPlaceholder = NSAttributedString(
+                    string: textField.placeholder ?? "",
+                    attributes: [NSAttributedString.Key.foregroundColor: color]
+                )
+            }
+            // NO FALLBACK: If color parsing fails, don't set placeholder color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If secondaryColor missing, don't set placeholder color (StyleSheet should always provide)
         
         if let keyboardType = props["keyboardType"] as? String {
             textField.keyboardType = mapKeyboardType(keyboardType)
@@ -330,7 +335,7 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
         propagateEvent(on: textView, eventName: "onBlur", data: [:])
     }
     
-    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         if let textField = view as? UITextField {
             let size = textField.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
             return CGSize(width: max(1, size.width), height: max(1, size.height))

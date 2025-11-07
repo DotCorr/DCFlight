@@ -291,7 +291,7 @@ class DCFDropdownComponent: NSObject, DCFComponent {
         }
     }
     
-    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         guard let button = view as? UIButton else {
             return CGSize.zero
         }

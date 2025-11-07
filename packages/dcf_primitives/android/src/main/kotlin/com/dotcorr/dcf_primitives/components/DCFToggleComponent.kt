@@ -33,20 +33,30 @@ class DCFToggleComponent : DCFComponent() {
         // primaryColor: active track and thumb color
         // secondaryColor: inactive track color
         // tertiaryColor: inactive thumb color
-        // StyleSheet.toMap() always provides these colors, so they should never be null
-        // But we use TRANSPARENT as safe fallback for type safety
-        val activeColor = props["primaryColor"]?.let { parseColor(it.toString()) } ?: Color.TRANSPARENT
-        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it.toString()) } ?: Color.TRANSPARENT
-        val activeThumbColor = props["primaryColor"]?.let { parseColor(it.toString()) } ?: Color.TRANSPARENT
-        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it.toString()) } 
-            ?: Color.WHITE
+        // StyleSheet.toMap() ALWAYS provides these colors
+        val activeColor = props["primaryColor"]?.let { parseColor(it.toString()) }
+        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it.toString()) }
+        val activeThumbColor = props["primaryColor"]?.let { parseColor(it.toString()) }
+        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it.toString()) }
         
-        val states = arrayOf(
-            intArrayOf(android.R.attr.state_checked),
-            intArrayOf()
-        )
-        switchControl.trackTintList = ColorStateList(states, intArrayOf(activeColor, inactiveTrackColor))
-        switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
+        // Only set colors if StyleSheet provided them (should always be the case)
+        if (activeColor != null && inactiveTrackColor != null) {
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf()
+            )
+            switchControl.trackTintList = ColorStateList(states, intArrayOf(activeColor, inactiveTrackColor))
+        }
+        // NO FALLBACK: If colors missing, don't set ColorStateList (StyleSheet should always provide)
+        
+        if (activeThumbColor != null && inactiveThumbColor != null) {
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf()
+            )
+            switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
+        }
+        // NO FALLBACK: If colors missing, don't set ColorStateList (StyleSheet should always provide)
 
         switchControl.setTag(R.id.dcf_component_type, "Toggle")
 
@@ -92,14 +102,22 @@ class DCFToggleComponent : DCFComponent() {
             )
         
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // StyleSheet.toMap() always provides these colors, so they should never be null
-        val activeTrackColor = props["primaryColor"]?.let { parseColor(it as String) } ?: Color.TRANSPARENT
-        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it as String) } ?: Color.TRANSPARENT
-        val activeThumbColor = props["primaryColor"]?.let { parseColor(it as String) } ?: Color.TRANSPARENT
-        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) } ?: Color.WHITE
+        // StyleSheet.toMap() ALWAYS provides these colors
+        val activeTrackColor = props["primaryColor"]?.let { parseColor(it as String) }
+        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it as String) }
+        val activeThumbColor = props["primaryColor"]?.let { parseColor(it as String) }
+        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) }
         
-        switchControl.trackTintList = ColorStateList(states, intArrayOf(activeTrackColor, inactiveTrackColor))
-        switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
+        // Only set colors if StyleSheet provided them (should always be the case)
+        if (activeTrackColor != null && inactiveTrackColor != null) {
+            switchControl.trackTintList = ColorStateList(states, intArrayOf(activeTrackColor, inactiveTrackColor))
+        }
+        // NO FALLBACK: If colors missing, don't set ColorStateList (StyleSheet should always provide)
+        
+        if (activeThumbColor != null && inactiveThumbColor != null) {
+            switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
+        }
+        // NO FALLBACK: If colors missing, don't set ColorStateList (StyleSheet should always provide)
 
         props["onValueChange"]?.let { 
             switchControl.setOnCheckedChangeListener { _, isChecked ->
