@@ -24,7 +24,7 @@ class MyApp extends DCFStatefulComponent {
       ),
       children: [
         DCFText(
-          content: "Hello, World! ${count.state}",
+          content: "Hello, ! ${count.state}",
           // Using semantic colors from StyleSheet instead of explicit color prop
           styleSheet: DCFStyleSheet(
             primaryColor: DCFTheme.textColor, // Semantic color - maps to text color
