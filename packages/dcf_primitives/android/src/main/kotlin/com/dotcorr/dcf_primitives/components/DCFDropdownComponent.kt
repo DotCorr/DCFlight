@@ -56,11 +56,13 @@ class DCFDropdownComponent : DCFComponent() {
 
     // Remove override - let base class handle props merging
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val spinner = view as Spinner
         var hasUpdates = false
 
-        props["items"]?.let { items ->
+        // Framework-level helper: Only update items if they actually changed
+        if (hasPropChanged("items", existingProps, props)) {
+            props["items"]?.let { items ->
             when (items) {
                 is List<*> -> {
                     val itemStrings = items.map { it?.toString() ?: "" }
@@ -75,8 +77,11 @@ class DCFDropdownComponent : DCFComponent() {
                 }
             }
         }
+        }
 
-        props["selectedIndex"]?.let {
+        // Framework-level helper: Only update selectedIndex if it actually changed
+        if (hasPropChanged("selectedIndex", existingProps, props)) {
+            props["selectedIndex"]?.let {
             val index = when (it) {
                 is Number -> it.toInt()
                 is String -> it.toIntOrNull() ?: 0
@@ -87,16 +92,20 @@ class DCFDropdownComponent : DCFComponent() {
                 hasUpdates = true
             }
         }
+        }
 
-        props["enabled"]?.let {
-            val enabled = when (it) {
-                is Boolean -> it
-                is String -> it.toBoolean()
-                else -> true
-            }
-            if (spinner.isEnabled != enabled) {
-                spinner.isEnabled = enabled
-                hasUpdates = true
+        // Framework-level helper: Only update enabled if it actually changed
+        if (hasPropChanged("enabled", existingProps, props)) {
+            props["enabled"]?.let {
+                val enabled = when (it) {
+                    is Boolean -> it
+                    is String -> it.toBoolean()
+                    else -> true
+                }
+                if (spinner.isEnabled != enabled) {
+                    spinner.isEnabled = enabled
+                    hasUpdates = true
+                }
             }
         }
 

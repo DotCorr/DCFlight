@@ -129,16 +129,66 @@ public extension DCFComponent {
         
         // Filter out null values for processing
         let nonNullProps = mergedProps.compactMapValues { $0 }
+        let nonNullExistingProps = existingProps.compactMapValues { $0 }
         
         // Call component-specific update logic
-        return updateViewInternal(view, withProps: nonNullProps)
+        return updateViewInternal(view, withProps: nonNullProps, existingProps: nonNullExistingProps)
     }
     
     /// Component-specific update logic (override in components)
     /// Props are already merged and null-filtered
-    func updateViewInternal(_ view: UIView, withProps props: [String: Any]) -> Bool {
+    /// 
+    /// - Parameters:
+    ///   - view: The view to update
+    ///   - props: The merged new props (non-null filtered)
+    ///   - existingProps: The previous props (non-null filtered) - use hasPropChanged() to compare
+    func updateViewInternal(_ view: UIView, withProps props: [String: Any], existingProps: [String: Any]) -> Bool {
         // Default implementation - components should override
         return false
+    }
+    
+    /// Framework-level helper: Check if a specific prop changed between existing and new props
+    /// Use this in updateViewInternal to only update/reload if the prop actually changed
+    /// Returns true if:
+    /// - Prop is new (not in existing)
+    /// - Prop value changed
+    /// 
+    /// Example (WebView):
+    /// if hasPropChanged("source", existing: existingProps, new: props) {
+    ///     webView.loadUrl(newSource)
+    /// }
+    func hasPropChanged(_ key: String, existing: [String: Any], new: [String: Any]) -> Bool {
+        let existingValue = existing[key]
+        let newValue = new[key]
+        
+        // If prop is new (not in existing), it changed
+        if existingValue == nil && newValue != nil {
+            return true
+        }
+        
+        // If prop was removed, it changed
+        if existingValue != nil && newValue == nil {
+            return true
+        }
+        
+        // If both exist, compare them
+        if let existing = existingValue, let new = newValue {
+            return !areEqual(existing, new)
+        }
+        
+        // Both nil - no change
+        return false
+    }
+    
+    /// Helper to compare two values for equality
+    private func areEqual(_ a: Any, _ b: Any) -> Bool {
+        if let aDict = a as? [String: Any], let bDict = b as? [String: Any] {
+            return NSDictionary(dictionary: aDict).isEqual(to: bDict)
+        }
+        if let aArray = a as? [Any], let bArray = b as? [Any] {
+            return NSArray(array: aArray).isEqual(to: bArray)
+        }
+        return (a as AnyObject).isEqual(b)
     }
 }
 

@@ -89,41 +89,48 @@ class DCFTextInputComponent : DCFComponent() {
     // Remove override - let base class handle props merging
     // This ensures props are preserved across updates
 
-    override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val editText = view as? AppCompatEditText ?: return false
 
-        props["value"]?.let { value ->
-            val currentText = editText.text?.toString() ?: ""
-            val newText = value.toString()
-            if (currentText != newText) {
-                editText.setText(newText)
-                editText.setSelection(newText.length)
+        // Framework-level helper: Only update value if it actually changed
+        if (hasPropChanged("value", existingProps, props)) {
+            props["value"]?.let { value ->
+                val currentText = editText.text?.toString() ?: ""
+                val newText = value.toString()
+                if (currentText != newText) {
+                    editText.setText(newText)
+                    editText.setSelection(newText.length)
+                }
             }
         }
 
-        props["placeholder"]?.let { placeholder ->
-            editText.hint = placeholder.toString()
-        }
-
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // Text color: primaryColor from StyleSheet
-        props["primaryColor"]?.let { color: Any ->
-            val colorInt = parseColor(color as String)
-            if (colorInt != null) {
-                editText.setTextColor(colorInt)
+        // Framework-level helper: Only update placeholder if it actually changed
+        if (hasPropChanged("placeholder", existingProps, props)) {
+            props["placeholder"]?.let { placeholder ->
+                editText.hint = placeholder.toString()
             }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
-        }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
-
-        // Placeholder color: secondaryColor from StyleSheet
-        props["secondaryColor"]?.let { color: Any ->
-            editText.setHintTextColor(parseColor(color as String))
         }
 
-        // Selection color: accentColor from StyleSheet
-        props["accentColor"]?.let { color: Any ->
-            editText.setHighlightColor(parseColor(color as String))
+        // Framework-level helper: Only update colors if they actually changed
+        if (hasPropChanged("primaryColor", existingProps, props)) {
+            props["primaryColor"]?.let { color: Any ->
+                val colorInt = parseColor(color as String)
+                if (colorInt != null) {
+                    editText.setTextColor(colorInt)
+                }
+            }
+        }
+
+        if (hasPropChanged("secondaryColor", existingProps, props)) {
+            props["secondaryColor"]?.let { color: Any ->
+                editText.setHintTextColor(parseColor(color as String))
+            }
+        }
+
+        if (hasPropChanged("accentColor", existingProps, props)) {
+            props["accentColor"]?.let { color: Any ->
+                editText.setHighlightColor(parseColor(color as String))
+            }
         }
 
         props["fontSize"]?.let { size ->

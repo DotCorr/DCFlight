@@ -45,8 +45,9 @@ abstract class DCFComponent {
         
         // Filter out null values for processing
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+        val nonNullExistingProps = existingProps.filterValues { it != null }.mapValues { it.value!! }
         
-        return updateViewInternal(view, nonNullProps)
+        return updateViewInternal(view, nonNullProps, nonNullExistingProps)
     }
     
     /**
@@ -111,9 +112,28 @@ abstract class DCFComponent {
      * Props are already merged and null-filtered by updateView()
      * 
      * This is called by updateView() after props merging
+     * 
+     * @param view The view to update
+     * @param props The merged new props (non-null filtered)
+     * @param existingProps The previous props (non-null filtered) - use hasPropChanged() to compare
      */
-    protected open fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
+    protected open fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         return false
+    }
+    
+    /**
+     * Framework-level helper: Check if a specific prop changed between existing and new props
+     * Use this in updateViewInternal to only update/reload if the prop actually changed
+     * 
+     * Example (WebView):
+     * if (hasPropChanged("source", existingProps, props)) {
+     *     webView.loadUrl(newSource)
+     * }
+     */
+    protected fun hasPropChanged(key: String, existing: Map<String, Any>, new: Map<String, Any>): Boolean {
+        val existingValue = existing[key]
+        val newValue = new[key]
+        return existingValue != newValue
     }
     
     /**
