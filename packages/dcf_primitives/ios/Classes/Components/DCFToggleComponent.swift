@@ -19,16 +19,10 @@ class DCFToggleComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let switchControl = UISwitch()
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                switchControl.onTintColor = UIColor.systemBlue
-                switchControl.backgroundColor = UIColor.systemGray5
-            } else {
-                switchControl.onTintColor = UIColor.blue
-                switchControl.backgroundColor = UIColor.lightGray
-            }
-        }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet semantic colors will override if provided
+        switchControl.onTintColor = DCFTheme.getAccentColor(traitCollection: switchControl.traitCollection)
+        switchControl.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: switchControl.traitCollection)
         
         switchControl.addTarget(DCFToggleComponent.sharedInstance, action: #selector(switchValueChanged(_:)), for: .valueChanged)
         
@@ -50,19 +44,28 @@ class DCFToggleComponent: NSObject, DCFComponent {
             switchControl.alpha = disabled ? 0.5 : 1.0
         }
         
-        if let activeTrackColor = props["activeTrackColor"] as? String {
-            switchControl.onTintColor = ColorUtilities.color(fromHexString: activeTrackColor)
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: active track and thumb color
+        // secondaryColor: inactive track color
+        // tertiaryColor: inactive thumb color
+        if let primaryColor = props["primaryColor"] as? String {
+            switchControl.onTintColor = ColorUtilities.color(fromHexString: primaryColor)
+            switchControl.thumbTintColor = ColorUtilities.color(fromHexString: primaryColor)
+        } else {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            switchControl.onTintColor = DCFTheme.getAccentColor(traitCollection: switchControl.traitCollection)
+            switchControl.thumbTintColor = DCFTheme.getAccentColor(traitCollection: switchControl.traitCollection)
         }
         
-        if let inactiveTrackColor = props["inactiveTrackColor"] as? String {
-            switchControl.backgroundColor = ColorUtilities.color(fromHexString: inactiveTrackColor)
+        if let secondaryColor = props["secondaryColor"] as? String {
+            switchControl.backgroundColor = ColorUtilities.color(fromHexString: secondaryColor)
+        } else {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            switchControl.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: switchControl.traitCollection)
         }
         
-        if let activeThumbColor = props["activeThumbColor"] as? String {
-            switchControl.thumbTintColor = ColorUtilities.color(fromHexString: activeThumbColor)
-        }
-        
-        if let inactiveThumbColor = props["inactiveThumbColor"] as? String {
+        if let tertiaryColor = props["tertiaryColor"] as? String {
+            // iOS doesn't have separate inactive thumb color, but we can use tertiaryColor if needed
         }
         
         switchControl.applyStyles(props: props)

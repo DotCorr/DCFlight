@@ -30,14 +30,11 @@ class DCFWebViewComponent : DCFComponent() {
         val webView = WebView(context)
 
 
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-            webView.setBackgroundColor(
-                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemBackgroundColor(context)
-            )
-        } else {
-            webView.setBackgroundColor(Color.WHITE)
-        }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet.backgroundColor will override if provided
+        webView.setBackgroundColor(
+            com.dotcorr.dcflight.theme.DCFTheme.getBackgroundColor(context)
+        )
 
         webView.settings.javaScriptEnabled = true
 

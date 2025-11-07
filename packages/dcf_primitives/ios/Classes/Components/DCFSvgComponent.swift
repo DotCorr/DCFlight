@@ -134,13 +134,9 @@ class DCFSvgComponent: NSObject, DCFComponent {
             }
         } else {
             if props["tintColor"] == nil {
-                let isAdaptive = props["adaptive"] as? Bool ?? true
-                if isAdaptive {
-                    if #available(iOS 13.0, *) {
-                        imageView.tintColor = UIColor.label
-                    } else {
-                        imageView.tintColor = UIColor.black
-                    }
+                // Use DCFTheme as default (framework controls colors)
+                // StyleSheet.primaryColor will override if provided
+                imageView.tintColor = DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
                     if let image = imageView.image {
                         imageView.image = image.withRenderingMode(.alwaysTemplate)
                     }

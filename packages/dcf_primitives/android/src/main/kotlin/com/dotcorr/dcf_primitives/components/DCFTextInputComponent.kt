@@ -37,18 +37,14 @@ class DCFTextInputComponent : DCFComponent() {
         val editText = AppCompatEditText(context)
 
 
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-            editText.setTextColor(
-                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
-            )
-            editText.setBackgroundColor(
-                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemBackgroundColor(context)
-            )
-        } else {
-            editText.setTextColor(Color.BLACK)
-            editText.setBackgroundColor(Color.WHITE)
-        }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet semantic colors will override if provided
+        editText.setTextColor(
+            com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context)
+        )
+        editText.setBackgroundColor(
+            com.dotcorr.dcflight.theme.DCFTheme.getBackgroundColor(context)
+        )
 
         editText.setPadding(
             dpToPx(12f, context),
@@ -88,12 +84,26 @@ class DCFTextInputComponent : DCFComponent() {
             editText.hint = placeholder.toString()
         }
 
-        props["placeholderTextColor"]?.let { color: Any ->
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // Text color: primaryColor from StyleSheet
+        props["primaryColor"]?.let { color: Any ->
+            editText.setTextColor(parseColor(color as String))
+        } ?: run {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            // Framework controls colors, not system adaptive
+            editText.setTextColor(
+                com.dotcorr.dcflight.theme.DCFTheme.getTextColor(editText.context)
+            )
+        }
+
+        // Placeholder color: secondaryColor from StyleSheet
+        props["secondaryColor"]?.let { color: Any ->
             editText.setHintTextColor(parseColor(color as String))
         }
 
-        props["textColor"]?.let { color: Any ->
-            editText.setTextColor(parseColor(color as String))
+        // Selection color: accentColor from StyleSheet
+        props["accentColor"]?.let { color: Any ->
+            editText.setHighlightColor(parseColor(color as String))
         }
 
         props["fontSize"]?.let { size ->

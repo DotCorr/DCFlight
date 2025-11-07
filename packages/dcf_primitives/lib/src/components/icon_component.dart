@@ -68,8 +68,7 @@ class DCFIconProps extends Equatable {
 
   /// Size of the icon
 
-  /// Color of the icon
-  final Color? color;
+  /// NOTE: Color removed - use StyleSheet.primaryColor instead
 
   /// Package where the icon is defined
   final String package;
@@ -78,9 +77,10 @@ class DCFIconProps extends Equatable {
   final bool adaptive;
 
   /// Create icon props
+  /// NOTE: Use StyleSheet.primaryColor for icon color instead of color prop
   const DCFIconProps({
     required this.name,
-    this.color,
+    // Color removed - use StyleSheet.primaryColor
     this.package = 'dcf_primitives',
     this.adaptive = true,
   });
@@ -92,15 +92,14 @@ class DCFIconProps extends Equatable {
       'package': package,
       'isRelativePath': false,
       'adaptive': adaptive,
-      if (color != null)
-        'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
+      // Color removed - native components use StyleSheet.primaryColor
     };
   }
 
   @override
   List<Object?> get props => [
         name,
-        color,
+        // Color removed
         package,
         adaptive,
       ];

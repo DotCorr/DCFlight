@@ -55,8 +55,10 @@ class DCFIconComponent: NSObject, DCFComponent {
         } else {
         }
         
-        if let color = props["color"] as? String {
-            svgProps["tintColor"] = color
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: icon color
+        if let primaryColor = props["primaryColor"] as? String {
+            svgProps["tintColor"] = primaryColor
         }
         
         let result = svgComponent.updateView(imageView, withProps: svgProps)

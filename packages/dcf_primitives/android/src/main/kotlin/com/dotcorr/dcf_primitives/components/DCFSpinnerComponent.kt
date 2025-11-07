@@ -60,13 +60,20 @@ class DCFSpinnerComponent : DCFComponent() {
         }
         hasUpdates = true
 
-        props["color"]?.let { color ->
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: spinner color
+        props["primaryColor"]?.let { color ->
             try {
                 val colorInt = ColorUtilities.parseColor(color as String)
                 progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
                 hasUpdates = true
             } catch (e: Exception) {
             }
+        } ?: run {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getTextColor(progressBar.context)
+            progressBar.indeterminateTintList = ColorStateList.valueOf(themeColor)
+            hasUpdates = true
         }
 
         props["size"]?.let { size ->

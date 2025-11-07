@@ -171,7 +171,7 @@ class DCFScrollView extends DCFStatelessComponent
   final Function(DCFScrollViewContentSizeData)? onContentSizeChange;
 
   /// Scroll indicator styling
-  final Color? scrollIndicatorColor;
+  /// NOTE: scrollIndicatorColor removed - use StyleSheet.tertiaryColor instead
   final double? scrollIndicatorSize;
 
   /// Scroll behavior
@@ -202,7 +202,7 @@ class DCFScrollView extends DCFStatelessComponent
     this.onScrollEndDrag,
     this.onScrollEnd,
     this.onContentSizeChange,
-    this.scrollIndicatorColor,
+    // scrollIndicatorColor removed - use StyleSheet.tertiaryColor
     this.scrollIndicatorSize,
     this.scrollEnabled = true,
     this.alwaysBounceVertical = false,
@@ -259,9 +259,7 @@ class DCFScrollView extends DCFStatelessComponent
       'keyboardDismissMode': keyboardDismissMode,
 
       if (contentInset != null) 'contentInset': contentInset!.toMap(),
-      if (scrollIndicatorColor != null)
-        'scrollIndicatorColor':
-            '#${scrollIndicatorColor!.value.toRadixString(16).padLeft(8, '0')}',
+      // scrollIndicatorColor removed - native components use StyleSheet.tertiaryColor
       'scrollIndicatorSize': scrollIndicatorSize,
       'contentContainerStyle': contentContainerStyle.toMap(),
 
@@ -295,7 +293,7 @@ class DCFScrollView extends DCFStatelessComponent
         onScrollEndDrag,
         onScrollEnd,
         onContentSizeChange,
-        scrollIndicatorColor,
+        // scrollIndicatorColor removed
         scrollIndicatorSize,
         scrollEnabled,
         alwaysBounceVertical,

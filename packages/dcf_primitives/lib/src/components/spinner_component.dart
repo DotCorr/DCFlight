@@ -23,8 +23,7 @@ class DCFSpinner extends DCFStatelessComponent
   /// Size style of the spinner
   final String style;
 
-  /// Color of the spinner
-  final Color? color;
+  /// NOTE: Color removed - use StyleSheet.primaryColor instead
 
   /// Whether to hide when stopped
   final bool hidesWhenStopped;
@@ -45,7 +44,7 @@ class DCFSpinner extends DCFStatelessComponent
     super.key,
     this.animating = true,
     this.style = 'medium',
-    this.color,
+    // Color removed - use StyleSheet.primaryColor
     this.hidesWhenStopped = true,
     this.adaptive = true,
     this.layout = const DCFLayout(),
@@ -67,9 +66,7 @@ class DCFSpinner extends DCFStatelessComponent
       ...eventMap,
     };
 
-    if (color != null) {
-      props['color'] = '#${color!.value.toRadixString(16).padLeft(8, '0')}';
-    }
+    // Color removed - native components use StyleSheet.primaryColor
 
     return DCFElement(
       type: 'Spinner',
@@ -82,7 +79,7 @@ class DCFSpinner extends DCFStatelessComponent
   List<Object?> get props => [
         animating,
         style,
-        color,
+        // Color removed
         hidesWhenStopped,
         adaptive,
         layout,

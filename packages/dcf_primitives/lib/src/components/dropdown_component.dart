@@ -21,8 +21,7 @@ class DCFDropdownProps {
   /// Placeholder text
   final String? placeholder;
 
-  /// Color of placeholder text
-  final Color? placeholderTextColor;
+  /// NOTE: placeholderTextColor removed - use StyleSheet.secondaryColor instead
 
   /// Position of the dropdown
   final DCFDropdownPosition dropdownPosition;
@@ -33,11 +32,8 @@ class DCFDropdownProps {
   /// Height of each item
   final double? itemHeight;
 
-  /// Background color of dropdown
-  final Color? backgroundColor;
-
-  /// Border color of dropdown
-  final Color? borderColor;
+  /// NOTE: backgroundColor removed - use StyleSheet.backgroundColor instead
+  /// NOTE: borderColor removed - use StyleSheet.borderColor instead
 
   /// Border width
   final double? borderWidth;
@@ -69,12 +65,11 @@ class DCFDropdownProps {
     this.items = const [],
     this.selectedValue,
     this.placeholder,
-    this.placeholderTextColor,
+    // placeholderTextColor removed - use StyleSheet.secondaryColor
     this.dropdownPosition = DCFDropdownPosition.auto,
     this.maxHeight,
     this.itemHeight,
-    this.backgroundColor,
-    this.borderColor,
+    // backgroundColor and borderColor removed - use StyleSheet
     this.borderWidth,
     this.borderRadius,
     this.searchable = false,
@@ -98,18 +93,11 @@ class DCFDropdownProps {
           .toList(),
       'selectedValue': selectedValue,
       'placeholder': placeholder,
-      if (placeholderTextColor != null)
-        'placeholderTextColor':
-            '#${placeholderTextColor!.value.toRadixString(16).padLeft(8, '0')}',
+      // placeholderTextColor removed - native components use StyleSheet.secondaryColor
       'dropdownPosition': dropdownPosition.name,
       'maxHeight': maxHeight,
       'itemHeight': itemHeight,
-      if (backgroundColor != null)
-        'backgroundColor':
-            '#${backgroundColor!.value.toRadixString(16).padLeft(8, '0')}',
-      if (borderColor != null)
-        'borderColor':
-            '#${borderColor!.value.toRadixString(16).padLeft(8, '0')}',
+      // backgroundColor and borderColor removed - native components use StyleSheet
       'borderWidth': borderWidth,
       'borderRadius': borderRadius,
       'searchable': searchable,

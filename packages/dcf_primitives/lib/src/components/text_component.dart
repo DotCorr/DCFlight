@@ -80,11 +80,11 @@ class DCFTextProps extends Equatable {
   /// Whether the font family refers to an asset path
   final bool isFontAsset;
 
-  /// Text color
-  final Color? color;
-
   /// Text alignment
   final DCFTextAlign? textAlign;
+  
+  /// NOTE: Color is now handled via StyleSheet.primaryColor
+  /// Use DCFStyleSheet(primaryColor: ...) instead of textProps.color
 
   /// Number of lines (0 for unlimited)
   final int? numberOfLines;
@@ -93,12 +93,13 @@ class DCFTextProps extends Equatable {
   final bool adaptive;
 
   /// Create text props
+  /// 
+  /// NOTE: Use StyleSheet.primaryColor for text color instead of color prop
   const DCFTextProps({
     this.fontSize,
     this.fontWeight,
     this.fontFamily,
     this.isFontAsset = false,
-    this.color,
     this.textAlign =  DCFTextAlign.center,
     this.numberOfLines,
     this.adaptive = true,
@@ -111,8 +112,7 @@ class DCFTextProps extends Equatable {
       if (fontWeight != null) 'fontWeight': fontWeight!.value,
       if (fontFamily != null) 'fontFamily': fontFamily,
       if (isFontAsset) 'isFontAsset': isFontAsset,
-      if (color != null)
-        'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
+      // Color removed - use StyleSheet.primaryColor instead
       if (textAlign != null) 'textAlign': textAlign!.value,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
       'adaptive': adaptive,
@@ -125,7 +125,7 @@ class DCFTextProps extends Equatable {
         fontWeight,
         fontFamily,
         isFontAsset,
-        color,
+        // color removed - use StyleSheet.primaryColor instead
         textAlign,
         numberOfLines,
         adaptive,

@@ -189,6 +189,20 @@ extension UIView {
                 self.isUserInteractionEnabled = true
             }
         }
+        
+        // UNIVERSAL THEME HANDLING: Framework-level semantic color for UILabel
+        // Components don't need to implement this - it's handled here automatically
+        // Uses StyleSheet semantic colors, falling back to DCFTheme (not adaptive system colors)
+        if let label = self as? UILabel {
+            // Use primaryColor from StyleSheet for text color
+            if let primaryColorStr = props["primaryColor"] as? String {
+                label.textColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? label.textColor
+            } else {
+                // Fall back to DCFTheme (framework colors) if no semantic color provided
+                // This ensures consistency - framework controls colors, not system adaptive
+                label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
+            }
+        }
     }
 
     /// Apply adaptive background color based on view type and iOS version

@@ -47,21 +47,14 @@ class DCFTextComponent : DCFComponent() {
         // Store props using framework method (React Native pattern)
         storeProps(textView, props)
         
-        // Only set initial adaptive color if no explicit color is provided
-        // This prevents overriding user-specified colors
-        if (!nonNullProps.containsKey("color")) {
-            val isAdaptive = props["adaptive"] as? Boolean ?: true
-            if (isAdaptive) {
-                textView.setTextColor(
-                    com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
-                )
-            } else {
-                textView.setTextColor(Color.BLACK)
-            }
-        }
+        // REMOVED: Component-specific adaptive color logic
+        // Framework now handles this universally via applyStyles
+        // This ensures consistent theme behavior across all components
 
         updateViewInternal(textView, nonNullProps)
 
+        // Framework handles color prop universally via applyStyles
+        // No need for component-specific color logic here
         textView.applyStyles(nonNullProps)
 
         return textView
@@ -122,31 +115,9 @@ class DCFTextComponent : DCFComponent() {
             }
         }
 
-        if (props.containsKey("color")) {
-            props["color"]?.let { color ->
-                val colorInt = ColorUtilities.color(color.toString())
-                if (colorInt != null) {
-                    textView.setTextColor(colorInt)
-                    Log.d(TAG, "Set text color: $color")
-                }
-            }
-        }
-
-        if (props.containsKey("adaptive") && !props.containsKey("color")) {
-            val isAdaptive = props["adaptive"] as? Boolean ?: true
-            if (isAdaptive) {
-                try {
-                    val typedValue = TypedValue()
-                    if (textView.context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
-                        textView.setTextColor(typedValue.data)
-                    } else {
-                        textView.setTextColor(Color.BLACK)
-                    }
-                } catch (e: Exception) {
-                    textView.setTextColor(Color.BLACK)
-                }
-            }
-        }
+        // REMOVED: Component-specific color handling
+        // Framework now handles color prop universally via applyStyles
+        // This ensures consistent behavior across all components
 
         props["textAlign"]?.let { textAlign ->
             when (textAlign.toString()) {

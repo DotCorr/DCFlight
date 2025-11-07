@@ -106,40 +106,39 @@ class DCFSliderComponent : DCFComponent() {
             }
         }
 
-        props["minimumTrackTintColor"]?.let {
-            val colorStr = it as? String
-            colorStr?.let { color ->
-                try {
-                    val colorInt = ColorUtilities.parseColor(color)
-                    seekBar.progressTintList = ColorStateList.valueOf(colorInt)
-                    hasUpdates = true
-                } catch (e: Exception) {
-                }
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: minimum track and thumb color
+        // secondaryColor: maximum track color
+        props["primaryColor"]?.let { color ->
+            try {
+                val colorInt = ColorUtilities.parseColor(color as String)
+                seekBar.progressTintList = ColorStateList.valueOf(colorInt)
+                seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse primaryColor: $color", e)
             }
+        } ?: run {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(seekBar.context)
+            seekBar.progressTintList = ColorStateList.valueOf(themeColor)
+            seekBar.thumbTintList = ColorStateList.valueOf(themeColor)
+            hasUpdates = true
         }
 
-        props["maximumTrackTintColor"]?.let {
-            val colorStr = it as? String
-            colorStr?.let { color ->
-                try {
-                    val colorInt = ColorUtilities.parseColor(color)
-                    seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
-                    hasUpdates = true
-                } catch (e: Exception) {
-                }
+        props["secondaryColor"]?.let { color ->
+            try {
+                val colorInt = ColorUtilities.parseColor(color as String)
+                seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to parse secondaryColor: $color", e)
             }
-        }
-
-        props["thumbTintColor"]?.let {
-            val colorStr = it as? String
-            colorStr?.let { color ->
-                try {
-                    val colorInt = ColorUtilities.parseColor(color)
-                    seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
-                    hasUpdates = true
-                } catch (e: Exception) {
-                }
-            }
+        } ?: run {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(seekBar.context)
+            seekBar.progressBackgroundTintList = ColorStateList.valueOf(themeColor)
+            hasUpdates = true
         }
 
         view.applyStyles(props)

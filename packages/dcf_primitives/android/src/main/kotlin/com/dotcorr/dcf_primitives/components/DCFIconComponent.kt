@@ -63,18 +63,18 @@ class DCFIconComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        props["color"]?.let {
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: icon color
+        props["primaryColor"]?.let {
             val colorInt = ColorUtilities.parseColor(it.toString())
             imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
             hasUpdates = true
-        }
-
-        props["adaptive"]?.let { adaptive ->
-            if (adaptive == true) {
-                val adaptiveColor = AdaptiveColorHelper.getSystemTextColor(imageView.context)
-                imageView.setColorFilter(adaptiveColor, PorterDuff.Mode.SRC_IN)
-                hasUpdates = true
-            }
+        } ?: run {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            // Framework controls colors, not system adaptive
+            val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getTextColor(imageView.context)
+            imageView.setColorFilter(themeColor, PorterDuff.Mode.SRC_IN)
+            hasUpdates = true
         }
 
         view.applyStyles(props)

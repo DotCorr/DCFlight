@@ -71,60 +71,27 @@ class DCFToggleComponent : DCFComponent() {
         }
 
 
-        props["activeTrackColor"]?.let { color ->
-            val colorInt = parseColor(color as String)
-            val states = arrayOf(
-                intArrayOf(android.R.attr.state_checked),
-                intArrayOf()
-            )
-            val colors = intArrayOf(colorInt, Color.GRAY)
-            switchControl.trackTintList = ColorStateList(states, colors)
-        }
-
-        props["inactiveTrackColor"]?.let { color ->
-            val colorInt = parseColor(color as String)
-            val currentTrackTint = switchControl.trackTintList
-            if (currentTrackTint != null) {
-                val states = arrayOf(
-                    intArrayOf(android.R.attr.state_checked),
-                    intArrayOf()
-                )
-                val colors = intArrayOf(
-                    currentTrackTint.getColorForState(intArrayOf(android.R.attr.state_checked), Color.BLUE),
-                    colorInt
-                )
-                switchControl.trackTintList = ColorStateList(states, colors)
-            }
-        }
-
-        props["activeThumbColor"]?.let { color ->
-            val colorInt = parseColor(color as String)
-            val states = arrayOf(
-                intArrayOf(android.R.attr.state_checked),
-                intArrayOf()
-            )
-            val colors = intArrayOf(colorInt, Color.WHITE)
-            switchControl.thumbTintList = ColorStateList(states, colors)
-        }
-
-        props["inactiveThumbColor"]?.let { color ->
-            val colorInt = parseColor(color as String)
-            val currentThumbTint = switchControl.thumbTintList
-            if (currentThumbTint != null) {
-                val states = arrayOf(
-                    intArrayOf(android.R.attr.state_checked),
-                    intArrayOf()
-                )
-                val colors = intArrayOf(
-                    currentThumbTint.getColorForState(
-                        intArrayOf(android.R.attr.state_checked),
-                        Color.WHITE
-                    ),
-                    colorInt
-                )
-                switchControl.thumbTintList = ColorStateList(states, colors)
-            }
-        }
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: active track and thumb color
+        // secondaryColor: inactive track color
+        // tertiaryColor: inactive thumb color
+        val states = arrayOf(
+            intArrayOf(android.R.attr.state_checked),
+            intArrayOf()
+        )
+        
+        // Use DCFTheme as fallback (framework controls colors)
+        val activeTrackColor = props["primaryColor"]?.let { parseColor(it as String) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(switchControl.context)
+        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it as String) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(switchControl.context)
+        val activeThumbColor = props["primaryColor"]?.let { parseColor(it as String) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(switchControl.context)
+        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) } 
+            ?: Color.WHITE
+        
+        switchControl.trackTintList = ColorStateList(states, intArrayOf(activeTrackColor, inactiveTrackColor))
+        switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
 
         props["onValueChange"]?.let { 
             switchControl.setOnCheckedChangeListener { _, isChecked ->

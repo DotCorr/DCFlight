@@ -19,31 +19,23 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let checkbox = DCFCheckboxView()
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                checkbox.checkedColor = UIColor.systemBlue
-                checkbox.uncheckedColor = UIColor.systemGray4
-                checkbox.checkmarkColor = UIColor.white
-            } else {
-                checkbox.checkedColor = UIColor.blue
-                checkbox.uncheckedColor = UIColor.lightGray
-                checkbox.checkmarkColor = UIColor.white
-            }
-        }
-        if let activeColor = props["activeColor"] as? String,
-           let color = ColorUtilities.color(fromHexString: activeColor) {
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet semantic colors will override if provided
+        checkbox.checkedColor = DCFTheme.getAccentColor(traitCollection: checkbox.traitCollection)
+        checkbox.uncheckedColor = DCFTheme.getSurfaceColor(traitCollection: checkbox.traitCollection)
+        checkbox.checkmarkColor = UIColor.white
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: active/checked color and checkmark color
+        // secondaryColor: inactive/unchecked color
+        if let primaryColor = props["primaryColor"] as? String,
+           let color = ColorUtilities.color(fromHexString: primaryColor) {
             checkbox.checkedColor = color
-        }
-
-        if let inactiveColor = props["inactiveColor"] as? String,
-           let color = ColorUtilities.color(fromHexString: inactiveColor) {
-            checkbox.uncheckedColor = color
-        }
-
-        if let checkmarkColor = props["checkmarkColor"] as? String,
-           let color = ColorUtilities.color(fromHexString: checkmarkColor) {
             checkbox.checkmarkColor = color
+        }
+
+        if let secondaryColor = props["secondaryColor"] as? String,
+           let color = ColorUtilities.color(fromHexString: secondaryColor) {
+            checkbox.uncheckedColor = color
         }
 
         checkbox.addTarget(DCFCheckboxComponent.sharedInstance, action: #selector(checkboxTapped(_:)), for: .touchUpInside)
@@ -69,16 +61,16 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.alpha = disabled ? 0.5 : 1.0
         }
         
-        if let checkedColor = props["checkedColor"] as? String {
-            checkbox.checkedColor = ColorUtilities.color(fromHexString: checkedColor) ?? checkbox.checkedColor
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: active/checked color and checkmark color
+        // secondaryColor: inactive/unchecked color
+        if let primaryColor = props["primaryColor"] as? String {
+            checkbox.checkedColor = ColorUtilities.color(fromHexString: primaryColor) ?? checkbox.checkedColor
+            checkbox.checkmarkColor = ColorUtilities.color(fromHexString: primaryColor) ?? checkbox.checkmarkColor
         }
         
-        if let uncheckedColor = props["uncheckedColor"] as? String {
-            checkbox.uncheckedColor = ColorUtilities.color(fromHexString: uncheckedColor) ?? checkbox.uncheckedColor
-        }
-        
-        if let checkmarkColor = props["checkmarkColor"] as? String {
-            checkbox.checkmarkColor = ColorUtilities.color(fromHexString: checkmarkColor) ?? checkbox.checkmarkColor
+        if let secondaryColor = props["secondaryColor"] as? String {
+            checkbox.uncheckedColor = ColorUtilities.color(fromHexString: secondaryColor) ?? checkbox.uncheckedColor
         }
         
         if let size = props["size"] as? CGFloat {
@@ -124,13 +116,15 @@ class DCFCheckboxView: UIControl {
         }
     }
     
-    var checkedColor: UIColor = UIColor.systemBlue {
+    // Use DCFTheme as default - will be set in createView
+    var checkedColor: UIColor = UIColor.systemBlue { // Will be overridden by DCFTheme
         didSet {
             setNeedsDisplay()
         }
     }
     
-    var uncheckedColor: UIColor = UIColor.systemGray4 {
+    // Use DCFTheme as default - will be set in createView
+    var uncheckedColor: UIColor = UIColor.systemGray4 { // Will be overridden by DCFTheme
         didSet {
             setNeedsDisplay()
         }

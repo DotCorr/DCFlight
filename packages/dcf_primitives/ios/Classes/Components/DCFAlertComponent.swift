@@ -701,14 +701,17 @@ extension DCFAlertComponent {
         case "destructive", "danger":
             button.setTitleColor(.systemRed, for: .normal)
         case "cancel":
-            button.setTitleColor(.systemBlue, for: .normal)
+            // Use DCFTheme as default (framework controls colors)
+            button.setTitleColor(DCFTheme.getAccentColor(traitCollection: button.traitCollection), for: .normal)
             button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
         default:
-            button.setTitleColor(.systemBlue, for: .normal)
+            // Use DCFTheme as default (framework controls colors)
+            button.setTitleColor(DCFTheme.getAccentColor(traitCollection: button.traitCollection), for: .normal)
         }
         
         button.layer.cornerRadius = 8
-        button.backgroundColor = UIColor.systemGray6
+        // Use DCFTheme as default (framework controls colors)
+        button.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: button.traitCollection)
         
         if #available(iOS 14.0, *) {
             button.addAction(UIAction { _ in
@@ -731,9 +734,11 @@ extension DCFAlertComponent {
         let button = UIButton(type: .system)
         button.setTitle("OK", for: .normal)
         button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
-        button.setTitleColor(.systemBlue, for: .normal)
+        // Use DCFTheme as default (framework controls colors)
+        button.setTitleColor(DCFTheme.getAccentColor(traitCollection: button.traitCollection), for: .normal)
         button.layer.cornerRadius = 8
-        button.backgroundColor = UIColor.systemGray6
+        // Use DCFTheme as default (framework controls colors)
+        button.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: button.traitCollection)
         
         if #available(iOS 14.0, *) {
             button.addAction(UIAction { _ in

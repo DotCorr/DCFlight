@@ -26,18 +26,10 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textView = UITextView()
             textView.font = UIFont.systemFont(ofSize: 16)
             
-            if isAdaptive {
-                if #available(iOS 13.0, *) {
-                    textView.backgroundColor = UIColor.systemBackground
-                    textView.textColor = UIColor.label
-                } else {
-                    textView.backgroundColor = UIColor.white
-                    textView.textColor = UIColor.black
-                }
-            } else {
-                textView.backgroundColor = UIColor.clear
-                textView.textColor = UIColor.black
-            }
+            // Use DCFTheme as default (framework controls colors)
+            // StyleSheet semantic colors will override if provided
+            textView.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: textView.traitCollection)
+            textView.textColor = DCFTheme.getTextColor(traitCollection: textView.traitCollection)
             
             textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
             textView.delegate = DCFTextInputComponent.sharedInstance
@@ -46,18 +38,10 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textField = UITextField()
             textField.font = UIFont.systemFont(ofSize: 16)
             
-            if isAdaptive {
-                if #available(iOS 13.0, *) {
-                    textField.backgroundColor = UIColor.systemBackground
-                    textField.textColor = UIColor.label
-                } else {
-                    textField.backgroundColor = UIColor.white
-                    textField.textColor = UIColor.black
-                }
-            } else {
-                textField.backgroundColor = UIColor.clear
-                textField.textColor = UIColor.black
-            }
+            // Use DCFTheme as default (framework controls colors)
+            // StyleSheet semantic colors will override if provided
+            textField.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: textField.traitCollection)
+            textField.textColor = DCFTheme.getTextColor(traitCollection: textField.traitCollection)
             
             textField.borderStyle = .none
             textField.delegate = DCFTextInputComponent.sharedInstance
@@ -88,30 +72,22 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textField.placeholder = placeholder
         }
         
-        if let placeholderColor = props["placeholderTextColor"] as? String {
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // Text color: primaryColor from StyleSheet
+        if let primaryColor = props["primaryColor"] as? String {
+            textField.textColor = ColorUtilities.color(fromHexString: primaryColor)
+        } else {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            // Framework controls colors, not system adaptive
+            textField.textColor = DCFTheme.getTextColor(traitCollection: textField.traitCollection)
+        }
+        
+        // Placeholder color: secondaryColor from StyleSheet
+        if let secondaryColor = props["secondaryColor"] as? String {
             textField.attributedPlaceholder = NSAttributedString(
                 string: textField.placeholder ?? "",
-                attributes: [NSAttributedString.Key.foregroundColor: ColorUtilities.color(fromHexString: placeholderColor) ?? UIColor.placeholderText]
+                attributes: [NSAttributedString.Key.foregroundColor: ColorUtilities.color(fromHexString: secondaryColor) ?? UIColor.placeholderText]
             )
-        }
-        
-        if props.keys.contains("textColor") {
-            if let textColor = props["textColor"] as? String {
-                let uiColor = ColorUtilities.color(fromHexString: textColor)
-                textField.textColor = uiColor
-            } else {
-            }
-        }
-        
-        if props.keys.contains("adaptive") && !props.keys.contains("textColor") {
-            let isAdaptive = props["adaptive"] as? Bool ?? true
-            if isAdaptive {
-                if #available(iOS 13.0, *) {
-                    textField.textColor = UIColor.label
-                } else {
-                    textField.textColor = UIColor.black
-                }
-            }
         }
         
         if let keyboardType = props["keyboardType"] as? String {
@@ -138,8 +114,9 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textField.isEnabled = editable
         }
         
-        if let selectionColor = props["selectionColor"] as? String {
-            textField.tintColor = ColorUtilities.color(fromHexString: selectionColor)
+        // Selection color: accentColor from StyleSheet
+        if let accentColor = props["accentColor"] as? String {
+            textField.tintColor = ColorUtilities.color(fromHexString: accentColor)
         }
         
         if let maxLength = props["maxLength"] as? Int {
@@ -177,27 +154,19 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textView.isEditable = editable
         }
         
-        if let selectionColor = props["selectionColor"] as? String {
-            textView.tintColor = ColorUtilities.color(fromHexString: selectionColor)
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // Selection color: accentColor from StyleSheet
+        if let accentColor = props["accentColor"] as? String {
+            textView.tintColor = ColorUtilities.color(fromHexString: accentColor)
         }
         
-        if props.keys.contains("textColor") {
-            if let textColor = props["textColor"] as? String {
-                let uiColor = ColorUtilities.color(fromHexString: textColor)
-                textView.textColor = uiColor
-            } else {
-            }
-        }
-        
-        if props.keys.contains("adaptive") && !props.keys.contains("textColor") {
-            let isAdaptive = props["adaptive"] as? Bool ?? true
-            if isAdaptive {
-                if #available(iOS 13.0, *) {
-                    textView.textColor = UIColor.label
-                } else {
-                    textView.textColor = UIColor.black
-                }
-            }
+        // Text color: primaryColor from StyleSheet
+        if let primaryColor = props["primaryColor"] as? String {
+            textView.textColor = ColorUtilities.color(fromHexString: primaryColor)
+        } else {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            // Framework controls colors, not system adaptive
+            textView.textColor = DCFTheme.getTextColor(traitCollection: textView.traitCollection)
         }
         
         textView.applyStyles(props: props)

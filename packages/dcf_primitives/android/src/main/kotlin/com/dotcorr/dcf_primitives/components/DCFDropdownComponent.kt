@@ -105,7 +105,7 @@ class DCFDropdownComponent : DCFComponent() {
 
         props["adaptive"]?.let { adaptive ->
             if (adaptive == true) {
-                spinner.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(spinner.context))
+                spinner.setBackgroundColor(com.dotcorr.dcflight.theme.DCFTheme.getBackgroundColor(spinner.context))
                 hasUpdates = true
             }
         }

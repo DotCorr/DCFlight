@@ -11,13 +11,14 @@ class MyApp extends DCFStatefulComponent {
     final count = useState<int>(0);
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
     
-    return DCFView(
+     
+       return DCFView(
       layout: DCFLayout(
         flex: 1,
         justifyContent: YogaJustifyContent.center,
         alignItems: YogaAlign.center,
       ),
-      // Using unified theme system instead of hardcoded colors
+      // Using unified theme system with semantic colors
       styleSheet: DCFStyleSheet(
         backgroundColor: isDarkMode.state 
             ? DCFTheme.current.backgroundColor 
@@ -26,9 +27,11 @@ class MyApp extends DCFStatefulComponent {
       children: [
         DCFText(
           content: "Hello, World! ${count.state}",
-          // Using theme text color - adapts to light/dark mode
+          // Using semantic colors from StyleSheet instead of explicit color prop
+          styleSheet: DCFStyleSheet(
+            primaryColor: DCFTheme.textColor, // Semantic color - maps to text color
+          ),
           textProps: DCFTextProps(
-            color: DCFTheme.textColor,
             fontSize: 24,
             fontWeight: DCFFontWeight.bold,
           ),
@@ -41,8 +44,11 @@ class MyApp extends DCFStatefulComponent {
         ),
         DCFText(
           content: "Theme: ${isDarkMode.state ? 'Dark' : 'Light'}",
+          // Using semantic secondaryColor for secondary text
+          styleSheet: DCFStyleSheet(
+            secondaryColor: DCFTheme.current.secondaryTextColor,
+          ),
           textProps: DCFTextProps(
-            color: DCFTheme.current.secondaryTextColor,
             fontSize: 16,
           ),
           layout: DCFLayout(
