@@ -316,7 +316,7 @@ class MultiSelectDropdownViewController: UIViewController {
     }
     
     private func setupView() {
-        view.backgroundColor = UIColor.systemBackground
+        view.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: view.traitCollection)
         
         let navBar = UINavigationBar()
         let navItem = UINavigationItem(title: "Select Items")

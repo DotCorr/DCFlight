@@ -47,22 +47,31 @@ class DCFTextComponent : DCFComponent() {
         // Store props using framework method (React Native pattern)
         storeProps(textView, props)
         
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
-        // primaryColor: text color
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                textView.setTextColor(colorInt)
-            } else {
-                textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
-            }
-        } ?: run {
-            textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+        // Set initial text content if provided
+        props["content"]?.let { content ->
+            textView.text = content.toString()
+            Log.d(TAG, "Set initial text content: $content")
         }
 
         updateViewInternal(textView, nonNullProps)
 
         textView.applyStyles(nonNullProps)
+        
+        // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                textView.setTextColor(colorInt)
+                Log.d(TAG, "Set text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
+            } else {
+                textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+                Log.d(TAG, "Failed to parse primaryColor, using theme color")
+            }
+        } ?: run {
+            textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+            Log.d(TAG, "No primaryColor provided, using theme color")
+        }
 
         return textView
     }
@@ -81,19 +90,6 @@ class DCFTextComponent : DCFComponent() {
 
         val hasAnyFontProp = props.containsKey("fontSize") || props.containsKey("fontWeight") || 
                             props.containsKey("fontFamily") || props.containsKey("isFontAsset")
-
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
-        // primaryColor: text color
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                textView.setTextColor(colorInt)
-            } else {
-                textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(textView.context))
-            }
-        } ?: run {
-            textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(textView.context))
-        }
 
         if (hasAnyFontProp) {
             val currentSize = textView.textSize / textView.context.resources.displayMetrics.scaledDensity
@@ -170,6 +166,22 @@ class DCFTextComponent : DCFComponent() {
         }
 
         textView.applyStyles(props)
+        
+        // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                textView.setTextColor(colorInt)
+                Log.d(TAG, "Updated text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
+            } else {
+                textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(textView.context))
+                Log.d(TAG, "Failed to parse primaryColor in update, using theme color")
+            }
+        } ?: run {
+            textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(textView.context))
+            Log.d(TAG, "No primaryColor in update props, using theme color")
+        }
 
         return true
     }

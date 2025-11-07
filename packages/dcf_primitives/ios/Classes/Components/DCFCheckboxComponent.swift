@@ -19,8 +19,7 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let checkbox = DCFCheckboxView()
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet semantic colors will override if provided
+        // Set initial theme colors
         checkbox.checkedColor = DCFTheme.getAccentColor(traitCollection: checkbox.traitCollection)
         checkbox.uncheckedColor = DCFTheme.getSurfaceColor(traitCollection: checkbox.traitCollection)
         checkbox.checkmarkColor = UIColor.white
@@ -116,18 +115,22 @@ class DCFCheckboxView: UIControl {
         }
     }
     
-    // Use DCFTheme as default - will be set in createView
-    var checkedColor: UIColor = UIColor.systemBlue { // Will be overridden by DCFTheme
+    var checkedColor: UIColor = UIColor.systemBlue {
         didSet {
             setNeedsDisplay()
         }
     }
     
-    // Use DCFTheme as default - will be set in createView
-    var uncheckedColor: UIColor = UIColor.systemGray4 { // Will be overridden by DCFTheme
+    var uncheckedColor: UIColor = UIColor.systemGray4 {
         didSet {
             setNeedsDisplay()
         }
+    }
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        checkedColor = DCFTheme.getAccentColor(traitCollection: traitCollection)
+        uncheckedColor = DCFTheme.getSurfaceColor(traitCollection: traitCollection)
     }
     
     var checkmarkColor: UIColor = UIColor.white {

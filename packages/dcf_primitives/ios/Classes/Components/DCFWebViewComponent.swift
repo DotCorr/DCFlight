@@ -78,31 +78,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
         }
         
-        return webView  // Return webview directly
-    }
-    
-    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let webView = view as? WKWebView else { 
-            return false 
-        }
-        
-        let source = props["source"] as? String ?? ""
-        
-        if DCFWebViewComponent.sharedInstance.currentURL != source {
-            DispatchQueue.main.async {
-                DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
-            }
-        }
-        
-        webView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
-        webView.scrollView.showsHorizontalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
-        webView.scrollView.showsVerticalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
-        webView.scrollView.bounces = props["bounces"] as? Bool ?? true
-        
-        updateView(webView, withProps: props)
-        
-        webView.applyStyles(props: props)
-        
         return webView
     }
     
