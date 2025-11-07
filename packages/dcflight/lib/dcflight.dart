@@ -65,6 +65,7 @@ export 'framework/utils/dcf_logger.dart';
 export 'framework/devtools/hot_restart.dart';
 export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
+export 'framework/theme/dcf_theme.dart';
 import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
 
 import 'framework/renderer/engine/engine_api.dart';

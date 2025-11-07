@@ -14,6 +14,12 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Registry for all DCFlight component types
+ * 
+ * Registration Pattern:
+ * 1. Create component class extending DCFComponent
+ * 2. Register via: DCFComponentRegistry.shared.registerComponent("TypeName", ComponentClass::class.java)
+ * 
+ * This follows React Native's ViewManagerRegistry pattern
  */
 class DCFComponentRegistry private constructor() {
 
@@ -27,9 +33,23 @@ class DCFComponentRegistry private constructor() {
     private val componentTypes = ConcurrentHashMap<String, Class<out DCFComponent>>()
     private val componentInstances = ConcurrentHashMap<String, DCFComponent>()
 
+    /**
+     * Register a component type
+     * 
+     * @param type Component type name (must match iOS exactly for cross-platform)
+     * @param componentClass Component class extending DCFComponent
+     * 
+     * Example:
+     * ```kotlin
+     * DCFComponentRegistry.shared.registerComponent("MyComponent", MyComponent::class.java)
+     * ```
+     */
     fun registerComponent(type: String, componentClass: Class<out DCFComponent>) {
+        if (componentTypes.containsKey(type)) {
+            Log.w(TAG, "⚠️ Component '$type' already registered, overwriting...")
+        }
         componentTypes[type] = componentClass
-        Log.d(TAG, "Registered component type: $type")
+        Log.d(TAG, "✅ Registered component type: $type")
     }
 
     fun getComponentType(type: String): Class<out DCFComponent>? {
@@ -68,51 +88,22 @@ class DCFComponentRegistry private constructor() {
     fun getComponentInstance(id: String): DCFComponent? {
         return componentInstances[id]
     }
-
-    fun updateComponent(id: String, properties: Map<String, Any?>): Boolean {
-        val component = componentInstances[id]
-        if (component == null) {
-            Log.w(TAG, "Component not found with ID: $id")
-            return false
+    
+    /**
+     * Validate that all registered components have proper implementations
+     * Useful for debugging cross-platform consistency
+     */
+    fun validateRegistrations(): Map<String, Boolean> {
+        val results = mutableMapOf<String, Boolean>()
+        for ((type, componentClass) in componentTypes) {
+            try {
+                val instance = componentClass.getDeclaredConstructor().newInstance()
+                results[type] = instance != null
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Validation failed for component: $type", e)
+                results[type] = false
+            }
         }
-
-        try {
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to update component: $id", e)
-            return false
-        }
-    }
-
-    fun removeComponent(id: String): Boolean {
-        val component = componentInstances.remove(id)
-        if (component != null) {
-            Log.d(TAG, "Component removed: $id")
-            return true
-        }
-        return false
-    }
-
-    fun removeAllComponents() {
-        componentInstances.clear()
-        Log.d(TAG, "All component instances removed")
-    }
-
-    fun getAllComponents(): Map<String, DCFComponent> {
-        return componentInstances.toMap()
-    }
-
-    fun getStatistics(): Map<String, Any> {
-        return mapOf(
-            "registeredTypes" to componentTypes.size,
-            "activeInstances" to componentInstances.size,
-            "types" to getRegisteredComponentNames()
-        )
-    }
-
-    fun cleanup() {
-        removeAllComponents()
-        componentTypes.clear()
-        Log.d(TAG, "Component registry cleaned up")
+        return results
     }
 }
