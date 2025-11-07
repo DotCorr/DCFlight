@@ -159,9 +159,9 @@ object ColorUtilities {
                     val green = cleanHexString.substring(2, 4).toInt(16)
                     val blue = cleanHexString.substring(4, 6).toInt(16)
 
-                    if (red == 0 && green == 0 && blue == 0 &&
-                        (hexString.contains("transparent") || hexString.contains("00000"))
-                    ) {
+                    // Only treat as transparent if explicitly marked as "transparent"
+                    // Black (#000000) is a valid color, not transparent
+                    if (hexString.equals("transparent", ignoreCase = true)) {
                         Color.TRANSPARENT
                     } else {
                         Color.rgb(red, green, blue)

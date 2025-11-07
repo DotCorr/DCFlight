@@ -22,17 +22,29 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         label.numberOfLines = 0
         
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
-        // primaryColor: text color
-        if let primaryColorStr = props["primaryColor"] as? String {
-            label.textColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: label.traitCollection)
-        } else {
-            label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
+        // Store props for merging on updates (React Native pattern)
+        storeProps(props.mapValues { $0 as Any? }, in: label)
+        
+        // Set initial text content if provided
+        if let content = props["content"] as? String {
+            label.text = content
         }
         
         updateView(label, withProps: props)
         
         label.applyStyles(props: props)
+        
+        // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        if let primaryColorStr = props["primaryColor"] as? String {
+            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
+                label.textColor = color
+            } else {
+                label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
+            }
+        } else {
+            label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
+        }
         
         return label
     }
@@ -42,27 +54,34 @@ class DCFTextComponent: NSObject, DCFComponent {
             return false 
         }
         
+        // React Native pattern: Merge props to preserve existing values
+        let existingProps = getStoredProps(from: label)
+        let mergedProps = mergeProps(existingProps, with: props.mapValues { $0 as Any? })
+        storeProps(mergedProps, in: label)
         
-        if let content = props["content"] as? String {
+        // Filter out null values for processing
+        let nonNullProps = mergedProps.compactMapValues { $0 }
+        
+        if let content = nonNullProps["content"] as? String {
             label.text = content
         }
         
-        let hasAnyFontProp = props["fontSize"] != nil || props["fontWeight"] != nil || 
-                            props["fontFamily"] != nil || props["isFontAsset"] != nil
+        let hasAnyFontProp = nonNullProps["fontSize"] != nil || nonNullProps["fontWeight"] != nil || 
+                            nonNullProps["fontFamily"] != nil || nonNullProps["isFontAsset"] != nil
         
         if hasAnyFontProp {
             
             let currentFont = label.font ?? UIFont.systemFont(ofSize: UIFont.systemFontSize)
-            let finalFontSize = props["fontSize"] as? CGFloat ?? currentFont.pointSize
+            let finalFontSize = nonNullProps["fontSize"] as? CGFloat ?? currentFont.pointSize
             
             var finalFontWeight = UIFont.Weight.regular
-            if let fontWeightString = props["fontWeight"] as? String {
+            if let fontWeightString = nonNullProps["fontWeight"] as? String {
                 finalFontWeight = fontWeightFromString(fontWeightString)
             }
             
-            let isFontAsset = props["isFontAsset"] as? Bool ?? false
+            let isFontAsset = nonNullProps["isFontAsset"] as? Bool ?? false
             
-            if let fontFamily = props["fontFamily"] as? String {
+            if let fontFamily = nonNullProps["fontFamily"] as? String {
                 if isFontAsset {
                     let key = sharedFlutterViewController?.lookupKey(forAsset: fontFamily)
                     let mainBundle = Bundle.main
@@ -98,7 +117,7 @@ class DCFTextComponent: NSObject, DCFComponent {
         // Framework now handles color prop universally via applyStyles
         // This ensures consistent behavior across all components
         
-        if let textAlign = props["textAlign"] as? String {
+        if let textAlign = nonNullProps["textAlign"] as? String {
             switch textAlign {
             case "center":
                 label.textAlignment = .center
@@ -111,19 +130,24 @@ class DCFTextComponent: NSObject, DCFComponent {
             }
         }
         
-        if let numberOfLines = props["numberOfLines"] as? Int {
+        if let numberOfLines = nonNullProps["numberOfLines"] as? Int {
             label.numberOfLines = numberOfLines
         }
         
+        label.applyStyles(props: nonNullProps)
+        
+        // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
         // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
-        // primaryColor: text color
-        if let primaryColorStr = props["primaryColor"] as? String {
-            label.textColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: label.traitCollection)
+        // Use merged props to preserve primaryColor across updates
+        if let primaryColorStr = nonNullProps["primaryColor"] as? String {
+            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
+                label.textColor = color
+            } else {
+                label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
+            }
         } else {
             label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
         }
-        
-        label.applyStyles(props: props)
         
         return true
     }

@@ -569,7 +569,7 @@ extension DCFAlertComponent {
         customAlertVC.view.addSubview(backgroundView)
         
         let alertContainer = UIView()
-        alertContainer.backgroundColor = UIColor.systemBackground
+        alertContainer.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: view.traitCollection)
         alertContainer.layer.cornerRadius = 12
         alertContainer.layer.shadowColor = UIColor.black.cgColor
         alertContainer.layer.shadowOffset = CGSize(width: 0, height: 2)

@@ -17,7 +17,6 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.R
-import com.dotcorr.dcflight.utils.AdaptiveColorHelper
 
 /**
  * DCFGestureDetectorComponent - 1:1 mapping with iOS DCFGestureDetectorComponent

@@ -20,14 +20,14 @@ class MyApp extends DCFStatefulComponent {
       ),
       // Using unified theme system with semantic colors
       styleSheet: DCFStyleSheet(
-        backgroundColor: Colors.red,
+        backgroundColor: DCFTheme.current.backgroundColor,
       ),
       children: [
         DCFText(
           content: "Hello, World! ${count.state}",
           // Using semantic colors from StyleSheet instead of explicit color prop
           styleSheet: DCFStyleSheet(
-            primaryColor: DCFTheme.textColor, // Semantic color - maps to text color
+            primaryColor: Colors.blue, // Semantic color - maps to text color
           ),
           textProps: DCFTextProps(
             fontSize: 24,
@@ -66,7 +66,12 @@ class MyApp extends DCFStatefulComponent {
           buttonProps: DCFButtonProps(
             title: "Toggle Theme",
           ),
-          onPress: (data) => isDarkMode.setState(!isDarkMode.state),
+          onPress: (data) {
+            final newDarkMode = !isDarkMode.state;
+            isDarkMode.setState(newDarkMode);
+            // Actually update the theme
+            DCFTheme.setTheme(newDarkMode ? DCFThemeData.dark : DCFThemeData.light);
+          },
           layout: DCFLayout(
             marginTop: 10,
           ),
