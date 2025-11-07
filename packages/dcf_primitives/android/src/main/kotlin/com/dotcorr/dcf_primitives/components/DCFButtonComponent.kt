@@ -57,6 +57,10 @@ class DCFButtonComponent : DCFComponent() {
             button.text = titleText
         }
         
+        // CRITICAL: Store props FIRST before calling updateView
+        // This ensures updateViewInternal has access to all props including primaryColor
+        storeProps(button, props)
+        
         button.applyStyles(nonNullProps)
         
         // Set text color after applyStyles to ensure it's not overridden
@@ -66,12 +70,14 @@ class DCFButtonComponent : DCFComponent() {
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 button.setTextColor(colorInt)
+                Log.d(TAG, "Set initial text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
             }
             // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
         // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
         
-        // Use updateView (not updateViewInternal) to ensure props are stored for merging
+        // Use updateView to ensure props are stored and merged correctly
+        // This will call updateViewInternal which will set text color again (but that's fine)
         updateView(button, props)
 
         button.setOnTouchListener { view, event ->
@@ -140,10 +146,14 @@ class DCFButtonComponent : DCFComponent() {
         // primaryColor: button text color
         // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
         // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
+        // Always set text color (even if unchanged) to ensure it's visible on initial render
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 button.setTextColor(colorInt)
+                if (hasPropChanged("primaryColor", existingProps, props)) {
+                    Log.d(TAG, "Updated text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
+                }
             }
             // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
