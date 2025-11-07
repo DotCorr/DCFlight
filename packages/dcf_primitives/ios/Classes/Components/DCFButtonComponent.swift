@@ -82,7 +82,7 @@ class DCFButtonComponent: NSObject, DCFComponent {
         propagateEvent(on: sender, eventName: "onPress", data: [
             "pressed": true,
             "timestamp": Date().timeIntervalSince1970,
-            "buttonTitle": sender.title(for: .normal) ?? ""
+            "title": sender.title(for: .normal) ?? ""
         ])
     }
     
