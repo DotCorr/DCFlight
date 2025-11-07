@@ -110,6 +110,21 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
         }
         return CGSize.zero
     }
+    
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+    }
+
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        objc_setAssociatedObject(view,
+                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
+                               nodeId,
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
+    }
 }
 
 /// Custom view class for touchable opacity
@@ -172,19 +187,5 @@ class TouchableView: UIView {
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesCancelled(touches, with: event)
         component?.handleTouchUp(self, inside: false)
-    }
-    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
-    }
-
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        objc_setAssociatedObject(view,
-                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
-                               nodeId,
-                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-    }
-
-    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
-        return nil
     }
 }

@@ -50,7 +50,7 @@ class DCFTextComponent : DCFComponent() {
 
         // Use updateView (not updateViewInternal) to ensure props are stored for merging
         updateView(textView, props)
-        
+
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
         textView.applyStyles(nonNullProps)
@@ -69,7 +69,7 @@ class DCFTextComponent : DCFComponent() {
 
         return textView
     }
-    
+
     // updateView is now handled by base class with automatic props merging
 
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
@@ -79,9 +79,9 @@ class DCFTextComponent : DCFComponent() {
 
         // Framework-level helper: Only update content if it actually changed
         if (hasPropChanged("content", existingProps, props)) {
-            props["content"]?.let { content ->
-                textView.text = content.toString()
-                Log.d(TAG, "Set text content: $content")
+        props["content"]?.let { content ->
+            textView.text = content.toString()
+            Log.d(TAG, "Set text content: $content")
             }
         }
 

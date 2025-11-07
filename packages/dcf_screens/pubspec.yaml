@@ -35,9 +35,6 @@ flutter:
     platforms:
       ios:
         pluginClass: DCFScreens
-      android:
-        package: com.dotcorr.dcfscreens
-        pluginClass: DcfScreensPlugin
 
 
 

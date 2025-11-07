@@ -284,4 +284,8 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         // ScrollViews don't have intrinsic size - they fill available space
         return CGSize.zero
     }
+    
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
+    }
 }

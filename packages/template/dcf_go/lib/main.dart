@@ -44,14 +44,35 @@ class MyApp extends DCFStatefulComponent {
             alignItems: YogaAlign.center,
           ),
         ),
-        DCFWebView(webViewProps: DCFWebViewProps(source: 'https://dotcorr.com')),
-       
-        DCFSlider(value: count.state.toDouble(),),
+        DCFWebView(
+          webViewProps: DCFWebViewProps(source: 'https://dotcorr.com'),
+        ),
+
+        DCFSlider(value: count.state.toDouble()),
         DCFSpinner(),
-        DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown),),
-        DCFSegmentedControl(segmentedControlProps: DCFSegmentedControlProps(segments: [DCFSegmentItem(title: "Item 1"), DCFSegmentItem(title: "Item 2")]),),
-        DCFAlert(visible: isDarkMode.state,title: "Alert",message: "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}"),
-        DCFDropdown(dropdownProps: DCFDropdownProps(items: [DCFDropdownMenuItem(title: "Item 1", value: "item1"), DCFDropdownMenuItem(title: "Item 2", value: "item2")]),),
+        DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
+        DCFSegmentedControl(
+          segmentedControlProps: DCFSegmentedControlProps(
+            segments: [
+              DCFSegmentItem(title: "Item 1"),
+              DCFSegmentItem(title: "Item 2"),
+            ],
+          ),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.blue),
+        ),
+        DCFAlert(
+          visible: isDarkMode.state,
+          title: "Alert",
+          message: "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
+        ),
+        DCFDropdown(
+          dropdownProps: DCFDropdownProps(
+            items: [
+              DCFDropdownMenuItem(title: "Item 1", value: "item1"),
+              DCFDropdownMenuItem(title: "Item 2", value: "item2"),
+            ],
+          ),
+        ),
         DCFText(
           content: "Theme: ${isDarkMode.state ? 'Dark' : 'Light'}",
           // Using semantic secondaryColor for secondary text

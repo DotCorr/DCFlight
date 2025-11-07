@@ -31,7 +31,6 @@ public protocol DCFComponent {
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)
     /// Handle tunnel method calls from Dart
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any?
-    
 }
 
 /// Layout information from a Yoga node
@@ -119,12 +118,10 @@ public extension DCFComponent {
         let nonNullProps = mergedProps.compactMapValues { $0 }
         
         // Call component-specific update logic
-        return updateViewInternal(view, withProps: nonNullProps)
+        // Note: iOS components can implement updateView directly or use updateViewWithMerging
+        // updateViewInternal is Android-specific and not required for iOS
+        return updateView(view, withProps: nonNullProps)
     }
-    
-    // REMOVED: Default implementation for updateViewInternal
-    // Components MUST implement this if they use updateViewWithMerging
-    // This ensures all components are fully compliant
 }
 
 
