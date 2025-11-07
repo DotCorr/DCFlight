@@ -58,6 +58,20 @@ class DCFButtonComponent : DCFComponent() {
             Log.d(TAG, "Set initial button title: $titleText")
         }
         
+        // CRITICAL: Set text color IMMEDIATELY after setting text to ensure visibility
+        // This must happen BEFORE applyStyles to prevent theme defaults from overriding
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                button.setTextColor(colorInt)
+                Log.d(TAG, "Set initial text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
+            } else {
+                Log.w(TAG, "Failed to parse primaryColor: $color")
+            }
+        } ?: run {
+            Log.w(TAG, "No primaryColor in props - button text may be invisible!")
+        }
+        
         // CRITICAL: Store props FIRST before calling updateView
         // This ensures updateViewInternal has access to all props including primaryColor
         storeProps(button, props)
@@ -65,10 +79,10 @@ class DCFButtonComponent : DCFComponent() {
         button.applyStyles(nonNullProps)
         
         // Use updateView to ensure props are stored and merged correctly
-        // This will call updateViewInternal which will set text color
+        // This will call updateViewInternal which will set text color again (ensuring it's not overridden)
         updateView(button, props)
         
-        // CRITICAL: Set text color AFTER updateView and applyStyles to ensure it's the final operation
+        // CRITICAL: Set text color AGAIN AFTER updateView and applyStyles to ensure it's the final operation
         // This guarantees text is visible on initial render, even when UI is bloated
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
@@ -154,14 +168,15 @@ class DCFButtonComponent : DCFComponent() {
         // CRITICAL: ALWAYS set text color AFTER applyStyles to ensure it's not overridden
         // This ensures text is visible even when UI is bloated or during rapid updates
         // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
+        // IMPORTANT: On initial render (empty existingProps), ALWAYS set color to ensure visibility
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 button.setTextColor(colorInt)
                 // Force invalidate to ensure text is redrawn with correct color
                 button.invalidate()
-                if (hasPropChanged("primaryColor", existingProps, props)) {
-                    Log.d(TAG, "Updated text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
+                if (existingProps.isEmpty() || hasPropChanged("primaryColor", existingProps, props)) {
+                    Log.d(TAG, "Set text color from primaryColor: ${ColorUtilities.hexString(colorInt)} (initial: ${existingProps.isEmpty()})")
                 }
             }
             // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)

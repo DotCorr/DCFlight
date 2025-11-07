@@ -23,7 +23,9 @@ import com.dotcorr.dcf_primitives.R
  */
 class DCFAlertComponent : DCFComponent() {
 
-    private var alertDialog: AlertDialog? = null
+    companion object {
+        private const val TAG_ALERT_DIALOG = "dcf_alert_dialog"
+    }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val frameLayout = FrameLayout(context)
@@ -35,24 +37,39 @@ class DCFAlertComponent : DCFComponent() {
         return frameLayout
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         var hasUpdates = false
 
-        props["visible"]?.let {
-            val visible = when (it) {
-                is Boolean -> it
-                is String -> it.toBoolean()
-                else -> false
-            }
-            
-            if (visible && alertDialog == null) {
-                showAlert(view, props)
-                hasUpdates = true
-            } else if (!visible && alertDialog != null) {
-                hideAlert(view)
-                hasUpdates = true
+        // CRITICAL: Only show/hide alert if visible prop ACTUALLY CHANGED
+        // This prevents alerts from showing on unrelated state updates (like count increment)
+        if (hasPropChanged("visible", existingProps, props)) {
+            props["visible"]?.let {
+                val visible = when (it) {
+                    is Boolean -> it
+                    is String -> it.toBoolean()
+                    else -> false
+                }
+                
+                val existingVisible = existingProps["visible"]?.let { existing ->
+                    when (existing) {
+                        is Boolean -> existing
+                        is String -> existing.toBoolean()
+                        else -> false
+                    }
+                } ?: false
+                
+                val alertDialog = getAlertDialog(view)
+                
+                // Only show if changing from false to true
+                if (visible && !existingVisible && alertDialog == null) {
+                    showAlert(view, props)
+                    hasUpdates = true
+                } 
+                // Only hide if changing from true to false
+                else if (!visible && existingVisible && alertDialog != null) {
+                    hideAlert(view)
+                    hasUpdates = true
+                }
             }
         }
 
@@ -60,27 +77,50 @@ class DCFAlertComponent : DCFComponent() {
 
         return hasUpdates
     }
+    
+    private fun getAlertDialog(view: View): AlertDialog? {
+        return view.getTag(TAG_ALERT_DIALOG.hashCode()) as? AlertDialog
+    }
+    
+    private fun setAlertDialog(view: View, alertDialog: AlertDialog?) {
+        view.setTag(TAG_ALERT_DIALOG.hashCode(), alertDialog)
+    }
 
     private fun showAlert(view: View, props: Map<String, Any>) {
         val context = view.context
         val builder = AlertDialog.Builder(context)
         
-        props["title"]?.let {
-            builder.setTitle(it.toString())
+        // Use alertContent like iOS for consistency
+        val alertContent = props["alertContent"] as? Map<*, *>
+        if (alertContent != null) {
+            alertContent["title"]?.let {
+                builder.setTitle(it.toString())
+            }
+            
+            alertContent["message"]?.let {
+                builder.setMessage(it.toString())
+            }
+        } else {
+            // Fallback to direct props for backward compatibility
+            props["title"]?.let {
+                builder.setTitle(it.toString())
+            }
+            
+            props["message"]?.let {
+                builder.setMessage(it.toString())
+            }
         }
         
-        props["message"]?.let {
-            builder.setMessage(it.toString())
-        }
-        
-        props["buttons"]?.let { buttons ->
-            when (buttons) {
+        // Use actions like iOS for consistency (buttons is legacy)
+        val actions = props["actions"] as? List<*> ?: props["buttons"] as? List<*>
+        actions?.let { actionList ->
+            when (actionList) {
                 is List<*> -> {
-                    buttons.forEachIndexed { index, button ->
-                        when (button) {
+                    actionList.forEachIndexed { index, action ->
+                        when (action) {
                             is Map<*, *> -> {
-                                val text = button["text"]?.toString() ?: "Button"
-                                val style = button["style"]?.toString() ?: "default"
+                                val text = action["title"]?.toString() ?: action["text"]?.toString() ?: "Button"
+                                val style = action["style"]?.toString() ?: "default"
                                 
                                 when (style) {
                                     "cancel" -> {
@@ -121,20 +161,23 @@ class DCFAlertComponent : DCFComponent() {
             }
         }
         
+        val dialog = builder.create()
+        
         builder.setOnDismissListener {
             propagateEvent(view, "onDismiss", mapOf())
-            alertDialog = null
+            setAlertDialog(view, null)
         }
         
-        alertDialog = builder.create()
-        alertDialog?.show()
+        setAlertDialog(view, dialog)
+        dialog.show()
         
         propagateEvent(view, "onShow", mapOf())
     }
 
     private fun hideAlert(view: View) {
+        val alertDialog = getAlertDialog(view)
         alertDialog?.dismiss()
-        alertDialog = null
+        setAlertDialog(view, null)
         
         propagateEvent(view, "onDismiss", mapOf())
     }
