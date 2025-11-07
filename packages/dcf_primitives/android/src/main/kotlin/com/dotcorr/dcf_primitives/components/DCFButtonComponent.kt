@@ -104,10 +104,8 @@ class DCFButtonComponent : DCFComponent() {
         return button
     }
 
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        return updateViewInternal(view, nonNullProps)
-    }
+    // Remove override - let base class handle props merging
+    // This ensures title and other props are preserved across updates
 
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val button = view as? AppCompatButton ?: return false

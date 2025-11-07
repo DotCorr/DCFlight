@@ -55,12 +55,8 @@ class DCFImageComponent : DCFComponent() {
         return imageView
     }
 
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val imageView = view as? ImageView ?: return false
-        
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        return updateViewInternal(imageView, nonNullProps)
-    }
+    // Remove override - let base class handle props merging
+    // Note: ImageView type check is now in updateViewInternal
 
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val imageView = view as? ImageView ?: return false

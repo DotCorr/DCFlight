@@ -124,10 +124,7 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         return frameLayout
     }
 
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        return updateViewInternal(view, nonNullProps)
-    }
+    // Remove override - let base class handle props merging
 
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         Log.d(TAG, "Updating TouchableOpacity with props: $props")

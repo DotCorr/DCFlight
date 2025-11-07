@@ -701,6 +701,7 @@ extension DCFAlertComponent {
         default:
             // NO FALLBACK: Colors come from StyleSheet only
             // StyleSheet will always provide these via toMap() fallbacks
+            break
         }
         
         button.layer.cornerRadius = 8
