@@ -17,6 +17,8 @@ public protocol DCFComponent {
     func createView(props: [String: Any]) -> UIView
     
     /// Update a view with new props
+    /// Note: Components can override updateViewInternal for their logic
+    /// The framework provides updateViewWithMerging for automatic props merging
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool
     
     /// Apply yoga layout to the view
@@ -62,10 +64,66 @@ public extension DCFComponent {
                                nodeId, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
+    
     /// Default implementation for tunnel method
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
         print("⚠️ Component \(String(describing: self)) does not implement tunnel method: \(method)")
         return nil
+    }
+    
+    // MARK: - Props Management (React Native Pattern)
+    
+    /// Store props in view's associated object for merging on updates (React Native pattern)
+    /// This ensures properties are preserved across partial updates
+    func storeProps(_ props: [String: Any?], in view: UIView) {
+        objc_setAssociatedObject(view,
+                                UnsafeRawPointer(bitPattern: "dcf_stored_props".hashValue)!,
+                                props,
+                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    
+    /// Get stored props from view's associated object
+    func getStoredProps(from view: UIView) -> [String: Any?] {
+        return objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "dcf_stored_props".hashValue)!) as? [String: Any?] ?? [:]
+    }
+    
+    /// Merge existing props with updates (React Native pattern)
+    /// - Null values remove props
+    /// - Non-null values update props
+    /// - Missing props are preserved
+    func mergeProps(_ existing: [String: Any?], with updates: [String: Any?]) -> [String: Any?] {
+        var merged = existing
+        for (key, value) in updates {
+            if value == nil {
+                merged.removeValue(forKey: key)
+            } else {
+                merged[key] = value
+            }
+        }
+        return merged
+    }
+    
+    /// Framework-level updateView implementation with automatic props merging
+    /// Components should implement updateViewInternal for their specific logic
+    /// This default implementation handles props merging automatically
+    func updateViewWithMerging(_ view: UIView, withProps props: [String: Any?]) -> Bool {
+        // React Native pattern: Store and merge props for stability
+        let existingProps = getStoredProps(from: view)
+        let mergedProps = mergeProps(existingProps, with: props)
+        storeProps(mergedProps, in: view)
+        
+        // Filter out null values for processing
+        let nonNullProps = mergedProps.compactMapValues { $0 }
+        
+        // Call component-specific update logic
+        return updateViewInternal(view, withProps: nonNullProps)
+    }
+    
+    /// Component-specific update logic (override in components)
+    /// Props are already merged and null-filtered
+    func updateViewInternal(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        // Default implementation - components should override
+        return false
     }
 }
 

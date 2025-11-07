@@ -1,5 +1,4 @@
-import 'package:dcf_go/config/navigation/stack_registry.dart';
-import 'package:dcf_screens/dcf_screens.dart';
+import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() async {
@@ -9,21 +8,34 @@ void main() async {
 class MyApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    return DCFStackNavigationRoot(
-      initialScreen: "home",
-      screenRegistryComponents: StackScreenRegistry(),
-      navigationBarStyle: DCFNavigationBarStyle(translucent: true
+    final count = useState<int>(0);
+    return DCFView(
+      layout: DCFLayout(
+        flex: 1,
+        justifyContent: YogaJustifyContent.center,
+        alignItems: YogaAlign.center,
       ),
-      onNavigationChange: (data) {
-        print("🧭 Navigation changed: $data");
-      },
-      onBackPressed: (data) {
-        print("⬅️ Back button pressed: $data");
-      },
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
+      children: [
+        DCFText(
+          content: "Hello, World! ${count.state}",
+          textProps: DCFTextProps(color: Colors.amber, fontSize: 20),
+          // styleSheet: DCFStyleSheet(backgroundColor: Colors.blue),
+          layout: DCFLayout(
+            height: 100,
+            width: 100,
+            justifyContent: YogaJustifyContent.center,
+            alignItems: YogaAlign.center,
+          ),
+        ),
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Click me"),
+          onPress: (data) => count.setState(count.state + 1),
+        ),
+      ],
     );
   }
 
   @override
   List<Object?> get props => [];
 }
-
