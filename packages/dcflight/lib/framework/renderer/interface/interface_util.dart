@@ -21,8 +21,19 @@ Map<String, dynamic> preprocessProps(Map<String, dynamic> props) {
           processedProps['_eventType_$key'] = key;
         }
       } else if (value is Color) {
-        processedProps[key] =
-            '#${value.value.toRadixString(16).padLeft(8, '0')}';
+        // Use dcf: prefix to distinguish black from transparent
+        final alpha = (value.a * 255.0).round() & 0xff;
+        if (alpha == 0) {
+          processedProps[key] = 'dcf:transparent';
+        } else if (value.value == 0xFF000000) {
+          processedProps[key] = 'dcf:black';
+        } else if (alpha == 255) {
+          final hexValue = value.toARGB32() & 0xFFFFFF;
+          processedProps[key] = 'dcf:#${hexValue.toRadixString(16).padLeft(6, '0')}';
+        } else {
+          final argbValue = value.toARGB32();
+          processedProps[key] = 'dcf:#${argbValue.toRadixString(16).padLeft(8, '0')}';
+        }
       } else if (value == double.infinity) {
         processedProps[key] = '100%';
       } else if (value is String &&
