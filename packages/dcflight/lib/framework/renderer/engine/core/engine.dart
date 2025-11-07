@@ -1664,7 +1664,19 @@ class DCFEngine {
       if (changedProps.isNotEmpty) {
         EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
             data: {'ChangedProps': changedProps.keys.toList()});
-        await _nativeBridge.updateView(oldElement.nativeViewId!, changedProps);
+        final updateSuccess = await _nativeBridge.updateView(oldElement.nativeViewId!, changedProps);
+        if (!updateSuccess) {
+          // If updateView fails, view might not exist in registry - fall back to createView
+          // Android bridge redirects createView → updateView if view exists, preserving state
+          EngineDebugLogger.log('UPDATE_VIEW_FAILED', 'updateView failed, falling back to createView',
+              extra: {'ViewId': oldElement.nativeViewId});
+          final createSuccess = await _nativeBridge.createView(
+              oldElement.nativeViewId!, oldElement.type, oldElement.elementProps);
+          if (!createSuccess) {
+            EngineDebugLogger.log('CREATE_VIEW_FALLBACK_FAILED', 'createView fallback also failed',
+                extra: {'ViewId': oldElement.nativeViewId});
+          }
+        }
       } else {
         EngineDebugLogger.log(
             'RECONCILE_NO_PROP_CHANGES', 'No prop changes detected');

@@ -136,11 +136,14 @@ class PlatformInterfaceImpl implements PlatformInterface {
       });
       print('🔥 FLUTTER_BRIDGE: Method channel result for $viewId: $result');
 
-      if (result != true && kDebugMode) {
-        print('🔥 FLUTTER_BRIDGE: WARNING - updateView returned false for $viewId');
+      if (result != true) {
+        print('🔥 FLUTTER_BRIDGE: WARNING - updateView returned false for $viewId, view may not exist in registry');
+        // If updateView fails, the view might not exist - this is a framework issue
+        // The Android bridge should handle this via createView → updateView redirect
+        return false;
       }
 
-      return result ?? false;
+      return true;
     } catch (e) {
       print('🔥 FLUTTER_BRIDGE: ERROR - updateView failed for $viewId: $e');
       return false;
