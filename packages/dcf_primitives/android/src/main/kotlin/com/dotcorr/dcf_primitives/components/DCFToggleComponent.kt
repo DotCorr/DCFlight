@@ -33,8 +33,11 @@ class DCFToggleComponent : DCFComponent() {
         // primaryColor: active track and thumb color
         // secondaryColor: inactive track color
         // tertiaryColor: inactive thumb color
-        val activeColor = props["primaryColor"]?.let { parseColor(it.toString()) }
-        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it.toString()) }
+        // StyleSheet.toMap() always provides these colors, so they should never be null
+        // But we use TRANSPARENT as safe fallback for type safety
+        val activeColor = props["primaryColor"]?.let { parseColor(it.toString()) } ?: Color.TRANSPARENT
+        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it.toString()) } ?: Color.TRANSPARENT
+        val activeThumbColor = props["primaryColor"]?.let { parseColor(it.toString()) } ?: Color.TRANSPARENT
         val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it.toString()) } 
             ?: Color.WHITE
         
@@ -43,7 +46,7 @@ class DCFToggleComponent : DCFComponent() {
             intArrayOf()
         )
         switchControl.trackTintList = ColorStateList(states, intArrayOf(activeColor, inactiveTrackColor))
-        switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeColor, inactiveThumbColor))
+        switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
 
         switchControl.setTag(R.id.dcf_component_type, "Toggle")
 
@@ -91,13 +94,12 @@ class DCFToggleComponent : DCFComponent() {
             intArrayOf()
         )
         
-        // Use DCFTheme as fallback (framework controls colors)
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        val activeTrackColor = props["primaryColor"]?.let { parseColor(it as String) }
-        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it as String) }
-        val activeThumbColor = props["primaryColor"]?.let { parseColor(it as String) }
-        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) } 
-            ?: Color.WHITE
+        // StyleSheet.toMap() always provides these colors, so they should never be null
+        val activeTrackColor = props["primaryColor"]?.let { parseColor(it as String) } ?: Color.TRANSPARENT
+        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it as String) } ?: Color.TRANSPARENT
+        val activeThumbColor = props["primaryColor"]?.let { parseColor(it as String) } ?: Color.TRANSPARENT
+        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) } ?: Color.WHITE
         
         switchControl.trackTintList = ColorStateList(states, intArrayOf(activeTrackColor, inactiveTrackColor))
         switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))

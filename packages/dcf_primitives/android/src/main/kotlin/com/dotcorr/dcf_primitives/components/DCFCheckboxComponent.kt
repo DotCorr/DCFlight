@@ -30,8 +30,10 @@ class DCFCheckboxComponent : DCFComponent() {
         val checkBox = CheckBox(context)
         
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        val activeColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-        val inactiveColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        // StyleSheet.toMap() always provides these colors, so they should never be null
+        // But we use TRANSPARENT as safe fallback for type safety
+        val activeColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } ?: Color.TRANSPARENT
+        val inactiveColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } ?: Color.TRANSPARENT
         val checkmarkColor = props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
             ?: Color.WHITE
         
