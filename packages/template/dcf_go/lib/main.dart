@@ -9,6 +9,7 @@ class MyApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     final count = useState<int>(0);
+    final name = useState<String>("");
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
 
     return DCFView(
@@ -22,15 +23,9 @@ class MyApp extends DCFStatefulComponent {
         backgroundColor: DCFTheme.current.backgroundColor,
       ),
       children: [
+       
         DCFText(
-          content: "Hello, Test! ${count.state}",
-          styleSheet: DCFStyleSheet(
-            backgroundColor: DCFColors.red,
-            accentColor: DCFColors.blue,
-          ),
-        ),
-        DCFText(
-          content: "Hello, Test! ${count.state}",
+          content: "Hello, Test ${name.state}! ${count.state}",
           // Using semantic colors from StyleSheet instead of explicit color prop
           styleSheet: DCFStyleSheet(
             primaryColor:
@@ -64,6 +59,27 @@ class MyApp extends DCFStatefulComponent {
           visible: isDarkMode.state,
           title: "Alert",
           message: "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
+          textFields: [
+            DCFAlertTextField(placeholder: "Enter your name"),
+          ],
+          actions: [
+          
+            DCFAlertAction(
+              title: "Change Theme",
+              style: DCFAlertActionStyle.destructive,
+              handler: "Change Theme",
+            ),
+          ],
+          onActionPress: (data) {
+            if (data['handler'] == "Change Theme") {
+              final newDarkMode = !isDarkMode.state;
+              isDarkMode.setState(newDarkMode);
+              // Actually update the theme
+              DCFTheme.setTheme(
+                newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
+              );
+            }
+          },
         ),
         DCFDropdown(
           dropdownProps: DCFDropdownProps(
@@ -73,6 +89,8 @@ class MyApp extends DCFStatefulComponent {
             ],
           ),
         ),
+       
+
         DCFText(
           content: "Theme: ${isDarkMode.state ? 'Dark' : 'Light'}",
           // Using semantic secondaryColor for secondary text
@@ -99,6 +117,7 @@ class MyApp extends DCFStatefulComponent {
           },
           layout: DCFLayout(marginTop: 10),
         ),
+        
       ],
     );
   }

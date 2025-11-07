@@ -100,15 +100,18 @@ class DCFGestureDetectorComponent : DCFComponent() {
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         var hasUpdates = false
 
-        props["disabled"]?.let {
-            val disabled = when (it) {
-                is Boolean -> it
-                is String -> it.toBoolean()
-                else -> false
-            }
-            if (view.isEnabled == disabled) {
-                view.isEnabled = !disabled
-                hasUpdates = true
+        // Framework-level helper: Only update disabled if it actually changed
+        if (hasPropChanged("disabled", existingProps, props)) {
+            props["disabled"]?.let {
+                val disabled = when (it) {
+                    is Boolean -> it
+                    is String -> it.toBoolean()
+                    else -> false
+                }
+                if (view.isEnabled == disabled) {
+                    view.isEnabled = !disabled
+                    hasUpdates = true
+                }
             }
         }
 
