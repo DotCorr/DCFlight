@@ -79,7 +79,7 @@ class DCFIconComponent : DCFComponent() {
             // Framework controls colors, not system adaptive
             val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getTextColor(imageView.context)
             imageView.setColorFilter(themeColor, PorterDuff.Mode.SRC_IN)
-            hasUpdates = true
+                hasUpdates = true
         }
 
         view.applyStyles(props)
