@@ -15,6 +15,7 @@ class HotReloadWatcher {
   late StreamSubscription _watcherSubscription;
   final bool verbose;
   final List<String> additionalArgs;
+  bool _isAndroidDevice = false;
 
   // Terminal styling
   static const String _reset = '\x1B[0m';
@@ -303,15 +304,27 @@ class HotReloadWatcher {
     for (final ip in possibleIPs) {
       for (int attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          print('🔥 WATCHER: Trying hot reload at http://$ip:8765/hot-reload (attempt $attempt)');
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          print('🔥 WATCHER: Trying hot reload at http://$ip:8765/hot-reload (attempt $attempt, timestamp: $timestamp)');
           final client = HttpClient();
-          final request = await client.postUrl(Uri.parse('http://$ip:8765/hot-reload'));
+          final request = await client.postUrl(Uri.parse('http://$ip:8765/hot-reload?t=$timestamp'));
           request.headers.set('Content-Type', 'application/json');
+          request.headers.set('X-Timestamp', timestamp.toString());
 
           // Send the request
           final response = await request.close();
 
           if (response.statusCode == 200) {
+            // Read response body to see instance ID
+            final responseBody = await response.transform(utf8.decoder).join();
+            try {
+              final responseData = jsonDecode(responseBody);
+              final instanceId = responseData['instanceId'];
+              final responseTimestamp = responseData['timestamp'];
+              print('✅ WATCHER: Hot reload successful at $ip - Instance: $instanceId, ResponseTime: $responseTimestamp, RequestTime: $timestamp');
+            } catch (e) {
+              print('✅ WATCHER: Hot reload successful at $ip (could not parse response: $e)');
+            }
             _logWatcher('✅', 'DCFlight VDOM hot reload triggered at $ip (attempt $attempt)', _green);
             client.close();
             return;
@@ -407,8 +420,15 @@ class HotReloadWatcher {
     final selectedDevice = devices[selection - 1];
     final deviceId = selectedDevice['id'] as String;
     final deviceName = selectedDevice['name'] as String;
+    final targetPlatform = selectedDevice['targetPlatform'] as String?;
+
+    // Store device info
+    _isAndroidDevice = targetPlatform?.toLowerCase().contains('android') ?? false;
 
     print('✅ Selected: $deviceName');
+    if (verbose && _isAndroidDevice) {
+      print('🤖 Android device detected - will use ADB port forwarding');
+    }
     print('=' * 60 + '\n');
 
     return deviceId;
@@ -475,9 +495,46 @@ class HotReloadWatcher {
     print('$_dim💡 Thanks for using DCFlight Hot Reload System!$_reset\n');
   }
 
+  /// Setup ADB port forwarding for Android devices
+  Future<void> _setupAdbForwarding() async {
+    if (!_isAndroidDevice) return;
+
+    print('🔧 Setting up ADB port forwarding for Android...');
+    
+    try {
+      // Remove any existing forwarding first
+      await Process.run('adb', ['forward', '--remove', 'tcp:8765']);
+      
+      // Wait a moment for the port to be released
+      await Future.delayed(Duration(milliseconds: 100));
+      
+      // Setup new forwarding: host:8765 -> emulator:8765
+      // adb forward maps HOST port to EMULATOR port
+      final result = await Process.run('adb', ['forward', 'tcp:8765', 'tcp:8765']);
+      
+      if (result.exitCode == 0) {
+        print('✅ ADB port forwarding active: host:8765 → emulator:8765');
+        
+        // Verify the forwarding
+        final verifyResult = await Process.run('adb', ['forward', '--list']);
+        if (verifyResult.exitCode == 0) {
+          print('📋 Active port forwards: ${verifyResult.stdout.toString().trim()}');
+        }
+      } else {
+        final error = result.stderr.toString();
+        print('⚠️  ADB port forwarding failed: $error');
+      }
+    } catch (e) {
+      print('⚠️  Could not setup ADB forwarding: $e');
+    }
+  }
+
   /// Check if DCFlight hot reload server is healthy
   Future<bool> _checkServerHealth() async {
-    final possibleIPs = ['localhost', '127.0.0.1', '10.0.2.2'];
+    // Setup ADB forwarding for Android devices
+    await _setupAdbForwarding();
+    
+    final possibleIPs = ['localhost', '127.0.0.1'];
     
     for (final ip in possibleIPs) {
       try {
@@ -494,6 +551,7 @@ class HotReloadWatcher {
         if (response.statusCode == 200) {
           final healthData = jsonDecode(responseBody);
           final instanceId = healthData['instanceId'];
+          print('💚 WATCHER: Server healthy at $ip - Instance: $instanceId');
           _logWatcher('💚', 'DCFlight server healthy at $ip (Instance: $instanceId)', _green);
           return true;
         }

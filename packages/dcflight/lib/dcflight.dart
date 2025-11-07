@@ -8,9 +8,11 @@
 library;
 
 import 'dart:io';
-
+export 'framework/constants/style/dcf_colors.dart';
+export 'framework/theme/dcf_theme.dart';
 export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
     hide
+        Colors,
         PlatformDispatcher,
         Widget,
         View,
@@ -45,6 +47,7 @@ export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
         Element,
         ElementVisitor,
         WidgetInspectorService;
+
 export 'dart:async';
 export 'framework/renderer/engine/index.dart';
 export 'framework/devtools/hot_reload_listener.dart';
@@ -54,11 +57,10 @@ export 'framework/renderer/interface/interface_impl.dart';
 
 export 'framework/constants/layout/yoga_enums.dart';
 export 'framework/constants/layout/layout_properties.dart';
-export 'framework/constants/layout/layout_config.dart'; 
+export 'framework/constants/layout/layout_config.dart';
 export 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 export 'framework/constants/style/style_properties.dart';
 export 'framework/constants/style/color_utils.dart';
-export 'framework/constants/style/dcf_colors.dart';
 
 export 'framework/utilities/screen_utilities.dart';
 export 'framework/utils/dcf_logger.dart';
@@ -66,7 +68,6 @@ export 'framework/utils/dcf_logger.dart';
 export 'framework/devtools/hot_restart.dart';
 export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
-export 'framework/theme/dcf_theme.dart';
 import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
 
 import 'framework/renderer/engine/engine_api.dart';
@@ -86,7 +87,7 @@ class DCFlight {
   static void setLogLevel(DCFLogLevel level) {
     DCFLogger.setLevel(level);
   }
-  
+
   /// Get the current log level
   static DCFLogLevel get logLevel => DCFLogger.currentLevel;
 
@@ -147,8 +148,6 @@ class DCFlight {
 
     if (wasHotRestart) {}
 
-    vdom.isReady.whenComplete(() async {
-    });
+    vdom.isReady.whenComplete(() async {});
   }
 }
-
