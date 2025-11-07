@@ -65,7 +65,17 @@ class DCFDropdownComponent : DCFComponent() {
             props["items"]?.let { items ->
             when (items) {
                 is List<*> -> {
-                    val itemStrings = items.map { it?.toString() ?: "" }
+                    // Extract label/title from each item map (matching iOS behavior)
+                    val itemStrings = items.mapNotNull { item ->
+                        when (item) {
+                            is Map<*, *> -> {
+                                // Try label first (from Dart toMap), then title (fallback)
+                                (item["label"] as? String) ?: (item["title"] as? String) ?: ""
+                            }
+                            is String -> item
+                            else -> item?.toString() ?: ""
+                        }
+                    }
                     val adapter = ArrayAdapter(
                         spinner.context,
                         android.R.layout.simple_spinner_item,
