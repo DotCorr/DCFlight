@@ -38,9 +38,8 @@ class DCFButtonComponent: NSObject, DCFComponent {
             button.setTitleColor(UIColor.white, for: .normal)
         }
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet.backgroundColor will override if provided
-        button.backgroundColor = DCFTheme.getAccentColor(traitCollection: button.traitCollection)
+        // NO FALLBACK: backgroundColor comes from StyleSheet only
+        // StyleSheet will always provide this via toMap() fallbacks
         
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)

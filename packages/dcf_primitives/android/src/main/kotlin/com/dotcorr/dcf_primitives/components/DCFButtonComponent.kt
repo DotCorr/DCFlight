@@ -39,12 +39,8 @@ class DCFButtonComponent : DCFComponent() {
         button.isAllCaps = false
         button.setPadding(16, 8, 16, 8) // Match default button padding
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet.backgroundColor and primaryColor will override if provided
-        button.setBackgroundColor(
-            com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
-        )
-        button.setTextColor(Color.WHITE)
+        // NO FALLBACK: backgroundColor and primaryColor come from StyleSheet only
+        // StyleSheet will always provide these via toMap() fallbacks
         
         button.isClickable = true
         button.isFocusable = true

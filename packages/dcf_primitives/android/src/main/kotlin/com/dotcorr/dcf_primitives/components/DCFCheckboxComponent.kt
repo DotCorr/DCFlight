@@ -29,10 +29,9 @@ class DCFCheckboxComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val checkBox = CheckBox(context)
         
-        val activeColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
-        val inactiveColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(context)
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
+        val activeColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        val inactiveColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
         val checkmarkColor = props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
             ?: Color.WHITE
         

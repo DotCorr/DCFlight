@@ -113,9 +113,8 @@ class DCFImageComponent: NSObject, DCFComponent {
             }
         }
         
-        if !props.keys.contains("backgroundColor") {
-            imageView.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: imageView.traitCollection)
-        }
+        // NO FALLBACK: backgroundColor comes from StyleSheet only
+        // StyleSheet will always provide this via toMap() fallbacks
         
         imageView.applyStyles(props: props)
         

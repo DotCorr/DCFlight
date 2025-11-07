@@ -44,21 +44,24 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
         }
         
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         if let primaryColorStr = props["primaryColor"] as? String {
             if #available(iOS 13.0, *) {
-                segmentedControl.selectedSegmentTintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getAccentColor(traitCollection: segmentedControl.traitCollection)
-            }
-        } else {
-            if #available(iOS 13.0, *) {
-                segmentedControl.selectedSegmentTintColor = DCFTheme.getAccentColor(traitCollection: segmentedControl.traitCollection)
+                if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
+                    segmentedControl.selectedSegmentTintColor = color
+                }
+                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
             }
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         if let secondaryColorStr = props["secondaryColor"] as? String {
-            segmentedControl.tintColor = ColorUtilities.color(fromHexString: secondaryColorStr) ?? DCFTheme.getTextColor(traitCollection: segmentedControl.traitCollection)
-        } else {
-            segmentedControl.tintColor = DCFTheme.getTextColor(traitCollection: segmentedControl.traitCollection)
+            if let color = ColorUtilities.color(fromHexString: secondaryColorStr) {
+                segmentedControl.tintColor = color
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         if let selectedIndex = props["selectedIndex"] as? Int,
            selectedIndex >= 0 && selectedIndex < segmentedControl.numberOfSegments {
@@ -118,20 +121,24 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         // primaryColor: selected segment color
         // secondaryColor: tint/text color
         
-        // Use DCFTheme as fallback (framework colors), not adaptive system colors
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         if #available(iOS 13.0, *) {
             if let primaryColor = props["primaryColor"] as? String {
-                segmentedControl.selectedSegmentTintColor = ColorUtilities.color(fromHexString: primaryColor)
-            } else {
-                segmentedControl.selectedSegmentTintColor = DCFTheme.getAccentColor(traitCollection: segmentedControl.traitCollection)
+                if let color = ColorUtilities.color(fromHexString: primaryColor) {
+                    segmentedControl.selectedSegmentTintColor = color
+                }
+                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
             }
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         if let secondaryColor = props["secondaryColor"] as? String {
-            segmentedControl.tintColor = ColorUtilities.color(fromHexString: secondaryColor)
-        } else {
-            segmentedControl.tintColor = DCFTheme.getTextColor(traitCollection: segmentedControl.traitCollection)
+            if let color = ColorUtilities.color(fromHexString: secondaryColor) {
+                segmentedControl.tintColor = color
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         // backgroundColor is handled by applyStyles from StyleSheet
         

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:equatable/equatable.dart';
 import 'gradient.dart';
 import 'hit_slop.dart';
+import '../../theme/dcf_theme.dart';
 
 /// StyleSheet for visual styling properties
 /// 
@@ -153,19 +154,17 @@ class DCFStyleSheet extends Equatable {
     if (testID != null) map['testID'] = testID;
     if (pointerEvents != null) map['pointerEvents'] = pointerEvents;
 
-    // Semantic colors - components will resolve these to actual colors
-    if (primaryColor != null) {
-      map['primaryColor'] = _colorToString(primaryColor!);
-    }
-    if (secondaryColor != null) {
-      map['secondaryColor'] = _colorToString(secondaryColor!);
-    }
-    if (tertiaryColor != null) {
-      map['tertiaryColor'] = _colorToString(tertiaryColor!);
-    }
-    if (accentColor != null) {
-      map['accentColor'] = _colorToString(accentColor!);
-    }
+    // Semantic colors - ALWAYS provide values (use DCFTheme fallbacks if not specified)
+    // This ensures native components always receive explicit colors - NO native fallbacks needed
+    final finalPrimaryColor = primaryColor ?? DCFTheme.textColor;
+    final finalSecondaryColor = secondaryColor ?? DCFTheme.current.secondaryTextColor;
+    final finalTertiaryColor = tertiaryColor ?? DCFTheme.current.secondaryTextColor;
+    final finalAccentColor = accentColor ?? DCFTheme.accentColor;
+    
+    map['primaryColor'] = _colorToString(finalPrimaryColor);
+    map['secondaryColor'] = _colorToString(finalSecondaryColor);
+    map['tertiaryColor'] = _colorToString(finalTertiaryColor);
+    map['accentColor'] = _colorToString(finalAccentColor);
 
     return map;
   }

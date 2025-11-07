@@ -29,12 +29,15 @@ class DCFSpinnerComponent : DCFComponent() {
 
         progressBar.isIndeterminate = true
 
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.parseColor(color.toString())
-            progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
-        } ?: run {
-            progressBar.indeterminateTintList = ColorStateList.valueOf(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+            if (colorInt != null) {
+                progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         progressBar.setTag(R.id.dcf_component_type, "Spinner")
 
@@ -71,12 +74,8 @@ class DCFSpinnerComponent : DCFComponent() {
                 hasUpdates = true
             } catch (e: Exception) {
             }
-        } ?: run {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getTextColor(progressBar.context)
-            progressBar.indeterminateTintList = ColorStateList.valueOf(themeColor)
-            hasUpdates = true
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         props["size"]?.let { size ->
             when (size) {

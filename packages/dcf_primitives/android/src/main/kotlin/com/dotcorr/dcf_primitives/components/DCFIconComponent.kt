@@ -28,12 +28,15 @@ class DCFIconComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
         
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.parseColor(color.toString())
-            imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
-        } ?: run {
-            imageView.setColorFilter(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context), PorterDuff.Mode.SRC_IN)
+            if (colorInt != null) {
+                imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         imageView.setTag(R.id.dcf_component_type, "Icon")
         
@@ -68,19 +71,17 @@ class DCFIconComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: icon color
         props["primaryColor"]?.let {
             val colorInt = ColorUtilities.parseColor(it.toString())
-            imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
-            hasUpdates = true
-        } ?: run {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            // Framework controls colors, not system adaptive
-            val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getTextColor(imageView.context)
-            imageView.setColorFilter(themeColor, PorterDuff.Mode.SRC_IN)
+            if (colorInt != null) {
+                imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
                 hasUpdates = true
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         view.applyStyles(props)
 

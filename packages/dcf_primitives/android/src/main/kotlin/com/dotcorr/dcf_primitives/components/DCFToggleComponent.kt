@@ -29,14 +29,12 @@ class DCFToggleComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val switchControl = SwitchCompat(context)
 
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: active track and thumb color
         // secondaryColor: inactive track color
         // tertiaryColor: inactive thumb color
-        val activeColor = props["primaryColor"]?.let { parseColor(it.toString()) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
-        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it.toString()) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(context)
+        val activeColor = props["primaryColor"]?.let { parseColor(it.toString()) }
+        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it.toString()) }
         val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it.toString()) } 
             ?: Color.WHITE
         
@@ -94,12 +92,10 @@ class DCFToggleComponent : DCFComponent() {
         )
         
         // Use DCFTheme as fallback (framework controls colors)
-        val activeTrackColor = props["primaryColor"]?.let { parseColor(it as String) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(switchControl.context)
-        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it as String) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(switchControl.context)
-        val activeThumbColor = props["primaryColor"]?.let { parseColor(it as String) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(switchControl.context)
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
+        val activeTrackColor = props["primaryColor"]?.let { parseColor(it as String) }
+        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it as String) }
+        val activeThumbColor = props["primaryColor"]?.let { parseColor(it as String) }
         val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) } 
             ?: Color.WHITE
         

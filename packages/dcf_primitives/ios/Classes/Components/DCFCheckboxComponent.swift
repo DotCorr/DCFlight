@@ -19,9 +19,8 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let checkbox = DCFCheckboxView()
         
-        // Set initial theme colors
-        checkbox.checkedColor = DCFTheme.getAccentColor(traitCollection: checkbox.traitCollection)
-        checkbox.uncheckedColor = DCFTheme.getSurfaceColor(traitCollection: checkbox.traitCollection)
+        // NO FALLBACK: Colors come from StyleSheet only
+        // StyleSheet will always provide these via toMap() fallbacks
         checkbox.checkmarkColor = UIColor.white
         // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
         // primaryColor: active/checked color and checkmark color
@@ -129,8 +128,8 @@ class DCFCheckboxView: UIControl {
     
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        checkedColor = DCFTheme.getAccentColor(traitCollection: traitCollection)
-        uncheckedColor = DCFTheme.getSurfaceColor(traitCollection: traitCollection)
+        // NO FALLBACK: Colors come from StyleSheet only
+        // StyleSheet will always provide these via toMap() fallbacks
     }
     
     var checkmarkColor: UIColor = UIColor.white {

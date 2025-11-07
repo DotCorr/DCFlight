@@ -36,42 +36,36 @@ class DCFTextInputComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val editText = AppCompatEditText(context)
 
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: text color
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 editText.setTextColor(colorInt)
-            } else {
-                editText.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
             }
-        } ?: run {
-            editText.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         // secondaryColor: placeholder color
         props["secondaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 editText.setHintTextColor(colorInt)
-            } else {
-                editText.setHintTextColor(com.dotcorr.dcflight.theme.DCFTheme.getSecondaryTextColor(context))
             }
-        } ?: run {
-            editText.setHintTextColor(com.dotcorr.dcflight.theme.DCFTheme.getSecondaryTextColor(context))
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         // accentColor: selection color
         props["accentColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 editText.setHighlightColor(colorInt)
-            } else {
-                editText.setHighlightColor(com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context))
             }
-        } ?: run {
-            editText.setHighlightColor(com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context))
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no accentColor provided, don't set color (StyleSheet is the only source)
         
         // backgroundColor handled by applyStyles
 
@@ -113,17 +107,16 @@ class DCFTextInputComponent : DCFComponent() {
             editText.hint = placeholder.toString()
         }
 
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // Text color: primaryColor from StyleSheet
         props["primaryColor"]?.let { color: Any ->
-            editText.setTextColor(parseColor(color as String))
-        } ?: run {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            // Framework controls colors, not system adaptive
-            editText.setTextColor(
-                com.dotcorr.dcflight.theme.DCFTheme.getTextColor(editText.context)
-            )
+            val colorInt = parseColor(color as String)
+            if (colorInt != null) {
+                editText.setTextColor(colorInt)
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         // Placeholder color: secondaryColor from StyleSheet
         props["secondaryColor"]?.let { color: Any ->
