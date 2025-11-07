@@ -39,19 +39,12 @@ class DCFButtonComponent : DCFComponent() {
         button.isAllCaps = false
         button.setPadding(16, 8, 16, 8) // Match default button padding
         
-        val isAdaptive = (props.filterValues { it != null }.mapValues { it.value!! })["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-            button.setBackgroundColor(
-                com.dotcorr.dcflight.utils.ColorUtilities.getSystemColor(
-                    context,
-                    com.dotcorr.dcflight.utils.ColorUtilities.SystemColorType.ACCENT
-                )
-            )
-            button.setTextColor(Color.WHITE)
-        } else {
-            button.setBackgroundColor(Color.LTGRAY)
-            button.setTextColor(Color.BLACK)
-        }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet.backgroundColor and primaryColor will override if provided
+        button.setBackgroundColor(
+            com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
+        )
+        button.setTextColor(Color.WHITE)
         
         button.isClickable = true
         button.isFocusable = true
@@ -126,23 +119,24 @@ class DCFButtonComponent : DCFComponent() {
             Log.d(TAG, "Set button adaptive: $adaptive")
         }
 
-        props["color"]?.let { color ->
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: button text color
+        props["primaryColor"]?.let { color ->
             val colorInt = when (color) {
                 is String -> Color.parseColor(color)
                 is Int -> color
-                else -> Color.BLACK
+                else -> Color.WHITE
             }
             button.setTextColor(colorInt)
-        }
-
-        props["backgroundColor"]?.let { backgroundColor ->
-            val colorInt = when (backgroundColor) {
-                is String -> Color.parseColor(backgroundColor)
-                is Int -> backgroundColor
-                else -> Color.LTGRAY
+        } ?: run {
+            // Fall back to white text if no semantic color provided
+            val isAdaptive = props["adaptive"] as? Boolean ?: true
+            if (isAdaptive) {
+                button.setTextColor(Color.WHITE)
             }
-            button.setBackgroundColor(colorInt)
         }
+        
+        // backgroundColor is handled by applyStyles from StyleSheet
 
         button.applyStyles(props)
 

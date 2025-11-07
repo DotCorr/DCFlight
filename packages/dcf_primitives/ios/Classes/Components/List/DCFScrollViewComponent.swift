@@ -51,26 +51,15 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             scrollView.showsHorizontalScrollIndicator = showsScrollIndicator
         }
         
-        if let scrollIndicatorColorValue = props["scrollIndicatorColor"] {
-            var indicatorColor: UIColor?
-            
-            if let colorString = scrollIndicatorColorValue as? String {
-                indicatorColor = ColorUtilities.color(fromHexString: colorString)
-            } else if let colorNumber = scrollIndicatorColorValue as? NSNumber {
-                let colorInt = colorNumber.intValue
-                let red = CGFloat((colorInt >> 16) & 0xFF) / 255.0
-                let green = CGFloat((colorInt >> 8) & 0xFF) / 255.0
-                let blue = CGFloat(colorInt & 0xFF) / 255.0
-                indicatorColor = UIColor(red: red, green: green, blue: blue, alpha: 1.0)
-            }
-            
-            if let color = indicatorColor {
-                if #available(iOS 13.0, *) {
-                    objc_setAssociatedObject(scrollView, 
-                                           UnsafeRawPointer(bitPattern: "scrollIndicatorColor".hashValue)!, 
-                                           color, 
-                                           .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                }
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // tertiaryColor: scroll indicator color
+        if let tertiaryColor = props["tertiaryColor"] as? String,
+           let indicatorColor = ColorUtilities.color(fromHexString: tertiaryColor) {
+            if #available(iOS 13.0, *) {
+                objc_setAssociatedObject(scrollView, 
+                                       UnsafeRawPointer(bitPattern: "scrollIndicatorColor".hashValue)!, 
+                                       indicatorColor, 
+                                       .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             }
         }
         

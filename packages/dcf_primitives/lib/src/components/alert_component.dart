@@ -13,7 +13,7 @@ class DCFAlertTextField {
   final String? placeholder;
   final String? text;
   final String? defaultValue;
-  final Color? placeholderTextColor;
+  /// NOTE: placeholderTextColor removed - use StyleSheet.secondaryColor instead
   
   final bool secureTextEntry;
   
@@ -36,8 +36,8 @@ class DCFAlertTextField {
   final bool multiline;
   
   final String? textAlign;
-  final Color? textColor;
-  final Color? selectionColor;
+  /// NOTE: textColor removed - use StyleSheet.primaryColor instead
+  /// NOTE: selectionColor removed - use StyleSheet.accentColor instead
   final double? fontSize;
   final String? fontWeight;
   final String? fontFamily;
@@ -46,7 +46,7 @@ class DCFAlertTextField {
     this.placeholder,
     this.text,
     this.defaultValue,
-    this.placeholderTextColor,
+    // placeholderTextColor removed - use StyleSheet.secondaryColor
     
     this.secureTextEntry = false,
     
@@ -69,8 +69,7 @@ class DCFAlertTextField {
     this.multiline = false,
     
     this.textAlign,
-    this.textColor,
-    this.selectionColor,
+    // textColor and selectionColor removed - use StyleSheet
     this.fontSize,
     this.fontWeight,
     this.fontFamily,
@@ -80,7 +79,7 @@ class DCFAlertTextField {
     this.placeholder,
     this.text,
     this.defaultValue,
-    this.placeholderTextColor,
+    // placeholderTextColor removed - use StyleSheet.secondaryColor
     this.keyboardType = DCFKeyboardType.defaultType,
     this.autoCapitalization = DCFAutoCapitalizationType.none,
     this.returnKeyType = DCFReturnKeyType.defaultReturn,
@@ -97,8 +96,7 @@ class DCFAlertTextField {
     this.numberOfLines = 1,
     this.multiline = false,
     this.textAlign,
-    this.textColor,
-    this.selectionColor,
+    // textColor and selectionColor removed - use StyleSheet
     this.fontSize,
     this.fontWeight,
     this.fontFamily,
@@ -109,8 +107,7 @@ class DCFAlertTextField {
       'placeholder': placeholder,
       'text': text,
       'defaultValue': defaultValue,
-      if (placeholderTextColor != null) 
-        'placeholderTextColor': '#${placeholderTextColor!.toARGB32().toRadixString(16).padLeft(8, '0')}',
+      // placeholderTextColor removed - native components use StyleSheet.secondaryColor
       
       'secureTextEntry': secureTextEntry,
       
@@ -133,10 +130,7 @@ class DCFAlertTextField {
       'multiline': multiline,
       
       'textAlign': textAlign,
-      if (textColor != null) 
-        'textColor': '#${textColor!.toARGB32().toRadixString(16).padLeft(8, '0')}',
-      if (selectionColor != null) 
-        'selectionColor': '#${selectionColor!.toARGB32().toRadixString(16).padLeft(8, '0')}',
+      // textColor and selectionColor removed - native components use StyleSheet
       'fontSize': fontSize,
       'fontWeight': fontWeight,
       'fontFamily': fontFamily,
@@ -147,7 +141,7 @@ class DCFAlertTextField {
     this.placeholder = 'Email',
     this.text,
     this.defaultValue,
-    this.placeholderTextColor,
+    // placeholderTextColor removed - use StyleSheet.secondaryColor
     this.returnKeyType = DCFReturnKeyType.next,
     this.autoFocus = false,
     this.clearButtonMode = true,
@@ -160,8 +154,7 @@ class DCFAlertTextField {
     this.numberOfLines = 1,
     this.multiline = false,
     this.textAlign,
-    this.textColor,
-    this.selectionColor,
+    // textColor and selectionColor removed - use StyleSheet
     this.fontSize,
     this.fontWeight,
     this.fontFamily,
@@ -175,7 +168,7 @@ class DCFAlertTextField {
     this.placeholder = 'Phone Number',
     this.text,
     this.defaultValue,
-    this.placeholderTextColor,
+    // placeholderTextColor removed - use StyleSheet.secondaryColor
     this.returnKeyType = DCFReturnKeyType.done,
     this.autoFocus = false,
     this.clearButtonMode = true,
@@ -188,8 +181,7 @@ class DCFAlertTextField {
     this.numberOfLines = 1,
     this.multiline = false,
     this.textAlign,
-    this.textColor,
-    this.selectionColor,
+    // textColor and selectionColor removed - use StyleSheet
     this.fontSize,
     this.fontWeight,
     this.fontFamily,

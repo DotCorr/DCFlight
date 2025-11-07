@@ -88,7 +88,7 @@ class DCFComponentRegistry private constructor() {
     fun getComponentInstance(id: String): DCFComponent? {
         return componentInstances[id]
     }
-    
+
     /**
      * Validate that all registered components have proper implementations
      * Useful for debugging cross-platform consistency
@@ -99,7 +99,7 @@ class DCFComponentRegistry private constructor() {
             try {
                 val instance = componentClass.getDeclaredConstructor().newInstance()
                 results[type] = instance != null
-            } catch (e: Exception) {
+        } catch (e: Exception) {
                 Log.e(TAG, "❌ Validation failed for component: $type", e)
                 results[type] = false
             }

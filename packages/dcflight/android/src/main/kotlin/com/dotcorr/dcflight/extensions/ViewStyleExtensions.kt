@@ -167,6 +167,23 @@ fun View.applyStyles(props: Map<String, Any>) {
         }
     }
 
+    // UNIVERSAL THEME HANDLING: Framework-level semantic color for TextViews
+    // Components don't need to implement this - it's handled here automatically
+    // Uses StyleSheet semantic colors, falling back to DCFTheme (not adaptive system colors)
+    if (this is android.widget.TextView) {
+        // Use primaryColor from StyleSheet for text color
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                this.setTextColor(colorInt)
+            }
+        } ?: run {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            // This ensures consistency - framework controls colors, not system adaptive
+            this.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(this.context))
+        }
+    }
+
     props["hitSlop"]?.let { hitSlop ->
         if (hitSlop is Map<*, *>) {
             val top = (hitSlop["top"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0

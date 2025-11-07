@@ -44,17 +44,13 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
         }
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                segmentedControl.backgroundColor = UIColor.systemGray6
-                segmentedControl.selectedSegmentTintColor = UIColor.systemBlue
-                segmentedControl.tintColor = UIColor.label
-            } else {
-                segmentedControl.backgroundColor = UIColor.lightGray
-                segmentedControl.tintColor = UIColor.blue
-            }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet semantic colors will override if provided
+        segmentedControl.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: segmentedControl.traitCollection)
+        if #available(iOS 13.0, *) {
+            segmentedControl.selectedSegmentTintColor = DCFTheme.getAccentColor(traitCollection: segmentedControl.traitCollection)
         }
+        segmentedControl.tintColor = DCFTheme.getTextColor(traitCollection: segmentedControl.traitCollection)
         
         if let selectedIndex = props["selectedIndex"] as? Int,
            selectedIndex >= 0 && selectedIndex < segmentedControl.numberOfSegments {
@@ -111,33 +107,27 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         
         let isAdaptive = props["adaptive"] as? Bool ?? true
         
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // backgroundColor: background color (handled by applyStyles)
+        // primaryColor: selected segment color
+        // secondaryColor: tint/text color
+        
+        // Use DCFTheme as fallback (framework colors), not adaptive system colors
         if #available(iOS 13.0, *) {
-            if let selectedColor = props["selectedTintColor"] as? String {
-                segmentedControl.selectedSegmentTintColor = ColorUtilities.color(fromHexString: selectedColor)
-            } else if isAdaptive {
-                segmentedControl.selectedSegmentTintColor = UIColor.systemBlue
+            if let primaryColor = props["primaryColor"] as? String {
+                segmentedControl.selectedSegmentTintColor = ColorUtilities.color(fromHexString: primaryColor)
+            } else {
+                segmentedControl.selectedSegmentTintColor = DCFTheme.getAccentColor(traitCollection: segmentedControl.traitCollection)
             }
         }
         
-        if let backgroundColor = props["backgroundColor"] as? String {
-            segmentedControl.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
-        } else if isAdaptive {
-            if #available(iOS 13.0, *) {
-                segmentedControl.backgroundColor = UIColor.systemGray6
-            } else {
-                segmentedControl.backgroundColor = UIColor.lightGray
-            }
+        if let secondaryColor = props["secondaryColor"] as? String {
+            segmentedControl.tintColor = ColorUtilities.color(fromHexString: secondaryColor)
+        } else {
+            segmentedControl.tintColor = DCFTheme.getTextColor(traitCollection: segmentedControl.traitCollection)
         }
         
-        if let tintColor = props["tintColor"] as? String {
-            segmentedControl.tintColor = ColorUtilities.color(fromHexString: tintColor)
-        } else if isAdaptive {
-            if #available(iOS 13.0, *) {
-                segmentedControl.tintColor = UIColor.label
-            } else {
-                segmentedControl.tintColor = UIColor.blue
-            }
-        }
+        // backgroundColor is handled by applyStyles from StyleSheet
         
         view.applyStyles(props: props)
         return true

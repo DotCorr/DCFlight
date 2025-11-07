@@ -42,14 +42,9 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
             }
         }
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                spinner.color = UIColor.label
-            } else {
-                spinner.color = UIColor.gray
-            }
-        }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet.primaryColor will override if provided
+        spinner.color = DCFTheme.getTextColor(traitCollection: spinner.traitCollection)
         
         updateView(spinner, withProps: props)
         spinner.applyStyles(props: props)
@@ -70,9 +65,14 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
             spinner.startAnimating()
         }
         
-        if let color = props["color"] as? String,
-           let spinnerColor = ColorUtilities.color(fromHexString: color) {
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: spinner color
+        if let primaryColor = props["primaryColor"] as? String,
+           let spinnerColor = ColorUtilities.color(fromHexString: primaryColor) {
             spinner.color = spinnerColor
+        } else {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            spinner.color = DCFTheme.getTextColor(traitCollection: spinner.traitCollection)
         }
         
         if let hidesWhenStopped = props["hidesWhenStopped"] as? Bool {

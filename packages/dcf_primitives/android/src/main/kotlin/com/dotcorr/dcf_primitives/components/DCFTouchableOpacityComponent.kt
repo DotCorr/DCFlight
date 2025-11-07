@@ -38,14 +38,10 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         val frameLayout = FrameLayout(context)
         
         
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-            frameLayout.setBackgroundColor(
-                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemBackgroundColor(context)
-            )
-        } else {
-            frameLayout.setBackgroundColor(Color.TRANSPARENT)
-        }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet.backgroundColor will override if provided
+        // Note: TouchableOpacity typically should be transparent, but framework controls this
+        frameLayout.setBackgroundColor(Color.TRANSPARENT)
         
         frameLayout.setTag(R.id.dcf_component_type, "TouchableOpacity")
         

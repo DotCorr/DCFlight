@@ -58,14 +58,9 @@ class DCFCheckbox extends DCFStatelessComponent
   /// Whether to use adaptive theming (system colors)
   final bool adaptive;
 
-  /// Color when checkbox is checked
-  final Color? activeColor;
-
-  /// Color when checkbox is unchecked
-  final Color? inactiveColor;
-
-  /// Color of the checkmark
-  final Color? checkmarkColor;
+  /// NOTE: All colors removed - use StyleSheet semantic colors:
+  /// - primaryColor: active/checked color and checkmark color
+  /// - secondaryColor: inactive/unchecked color
 
   /// Size of the checkbox
   final String size;
@@ -88,9 +83,7 @@ class DCFCheckbox extends DCFStatelessComponent
     this.onValueChange,
     this.disabled = false,
     this.adaptive = false,
-    this.activeColor,
-    this.inactiveColor,
-    this.checkmarkColor,
+    // All color props removed - use StyleSheet semantic colors
     this.size = 'medium',
     this.checkboxStyle = 'default',
     this.layout = const DCFLayout(),
@@ -119,20 +112,7 @@ class DCFCheckbox extends DCFStatelessComponent
       ...eventMap,
     };
 
-    if (activeColor != null) {
-      props['activeColor'] =
-          '#${activeColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
-
-    if (inactiveColor != null) {
-      props['inactiveColor'] =
-          '#${inactiveColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
-
-    if (checkmarkColor != null) {
-      props['checkmarkColor'] =
-          '#${checkmarkColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
+    // All color props removed - native components use StyleSheet semantic colors
 
     return DCFElement(
       type: 'Checkbox',
@@ -147,9 +127,7 @@ class DCFCheckbox extends DCFStatelessComponent
         onValueChange,
         disabled,
         adaptive,
-        activeColor,
-        inactiveColor,
-        checkmarkColor,
+        // All color props removed
         size,
         checkboxStyle,
         layout,

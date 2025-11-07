@@ -19,22 +19,11 @@ class DCFDropdownComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let button = UIButton(type: .system)
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                button.backgroundColor = UIColor.systemGray6
-                button.layer.borderColor = UIColor.systemGray4.cgColor
-                button.setTitleColor(UIColor.label, for: .normal)
-            } else {
-                button.backgroundColor = UIColor.lightGray
-                button.layer.borderColor = UIColor.gray.cgColor
-                button.setTitleColor(UIColor.black, for: .normal)
-            }
-        } else {
-            button.backgroundColor = UIColor.white
-            button.layer.borderColor = UIColor.gray.cgColor
-            button.setTitleColor(UIColor.black, for: .normal)
-        }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet semantic colors will override if provided
+        button.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: button.traitCollection)
+        button.layer.borderColor = DCFTheme.getSurfaceColor(traitCollection: button.traitCollection).cgColor
+        button.setTitleColor(DCFTheme.getTextColor(traitCollection: button.traitCollection), for: .normal)
         
         button.layer.cornerRadius = 8
         button.layer.borderWidth = 1
@@ -44,15 +33,8 @@ class DCFDropdownComponent: NSObject, DCFComponent {
         button.applyStyles(props: props)
         
         let arrowImageView = UIImageView(image: UIImage(systemName: "chevron.down"))
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                arrowImageView.tintColor = UIColor.systemGray
-            } else {
-                arrowImageView.tintColor = UIColor.gray
-            }
-        } else {
-            arrowImageView.tintColor = UIColor.gray
-        }
+        // Use DCFTheme as default (framework controls colors)
+        arrowImageView.tintColor = DCFTheme.getSecondaryTextColor(traitCollection: button.traitCollection)
         arrowImageView.contentMode = .scaleAspectFit
         button.addSubview(arrowImageView)
         

@@ -30,14 +30,11 @@ class DCFCheckboxComponent : DCFComponent() {
         val checkBox = CheckBox(context)
         
         
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-            checkBox.setTextColor(
-                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
-            )
-        } else {
-            checkBox.setTextColor(Color.BLACK)
-        }
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet.primaryColor will override if provided
+        checkBox.setTextColor(
+            com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context)
+        )
         
         checkBox.setTag(R.id.dcf_component_type, "Checkbox")
         

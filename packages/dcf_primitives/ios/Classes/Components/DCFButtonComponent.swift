@@ -28,13 +28,19 @@ class DCFButtonComponent: NSObject, DCFComponent {
         button.layer.cornerRadius = 8
         button.clipsToBounds = true
         
-        if #available(iOS 13.0, *) {
-            button.backgroundColor = UIColor.systemBlue
-            button.setTitleColor(UIColor.white, for: .normal)
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: button text color
+        // backgroundColor: handled by applyStyles from StyleSheet
+        if let primaryColor = props["primaryColor"] as? String {
+            button.setTitleColor(ColorUtilities.color(fromHexString: primaryColor), for: .normal)
         } else {
-            button.backgroundColor = UIColor.blue
+            // Fall back to white text if no semantic color provided
             button.setTitleColor(UIColor.white, for: .normal)
         }
+        
+        // Use DCFTheme as default (framework controls colors)
+        // StyleSheet.backgroundColor will override if provided
+        button.backgroundColor = DCFTheme.getAccentColor(traitCollection: button.traitCollection)
         
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
@@ -56,6 +62,12 @@ class DCFButtonComponent: NSObject, DCFComponent {
         if let disabled = props["disabled"] as? Bool {
             button.isEnabled = !disabled
             button.alpha = disabled ? 0.5 : 1.0
+        }
+        
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: button text color
+        if let primaryColor = props["primaryColor"] as? String {
+            button.setTitleColor(ColorUtilities.color(fromHexString: primaryColor), for: .normal)
         }
         
         button.applyStyles(props: props)

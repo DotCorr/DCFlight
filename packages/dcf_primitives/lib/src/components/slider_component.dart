@@ -126,14 +126,9 @@ class DCFSlider extends DCFStatelessComponent
   /// Whether to use adaptive theming (system colors)
   final bool adaptive;
 
-  /// Color of the minimum track (left side)
-  final Color? minimumTrackTintColor;
-
-  /// Color of the maximum track (right side)
-  final Color? maximumTrackTintColor;
-
-  /// Color of the thumb
-  final Color? thumbTintColor;
+  /// NOTE: All colors removed - use StyleSheet semantic colors:
+  /// - primaryColor: minimum track and thumb color
+  /// - secondaryColor: maximum track color
 
   /// The layout properties
   final DCFLayout layout;
@@ -155,9 +150,7 @@ class DCFSlider extends DCFStatelessComponent
     this.onSlidingComplete,
     this.disabled = false,
     this.adaptive = true,
-    this.minimumTrackTintColor,
-    this.maximumTrackTintColor,
-    this.thumbTintColor,
+    // All color props removed - use StyleSheet semantic colors
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
     this.events,
@@ -200,20 +193,7 @@ class DCFSlider extends DCFStatelessComponent
       props['step'] = step;
     }
 
-    if (minimumTrackTintColor != null) {
-      props['minimumTrackTintColor'] =
-          '#${minimumTrackTintColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
-
-    if (maximumTrackTintColor != null) {
-      props['maximumTrackTintColor'] =
-          '#${maximumTrackTintColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
-
-    if (thumbTintColor != null) {
-      props['thumbTintColor'] =
-          '#${thumbTintColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
+    // All color props removed - native components use StyleSheet semantic colors
 
     return DCFElement(
       type: 'Slider',
@@ -233,9 +213,7 @@ class DCFSlider extends DCFStatelessComponent
         onSlidingComplete,
         disabled,
         adaptive,
-        minimumTrackTintColor,
-        maximumTrackTintColor,
-        thumbTintColor,
+        // All color props removed
         layout,
         styleSheet,
         events,

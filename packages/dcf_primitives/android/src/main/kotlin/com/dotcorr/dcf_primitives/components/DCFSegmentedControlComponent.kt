@@ -97,35 +97,34 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
         }
 
-        props["backgroundColor"]?.let {
-            val colorInt = ColorUtilities.parseColor(it.toString())
-            radioGroup.setBackgroundColor(colorInt)
-            hasUpdates = true
-        }
-
-        props["selectedTintColor"]?.let {
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // backgroundColor: background color (handled by applyStyles)
+        // primaryColor: selected segment color
+        // secondaryColor: tint/text color
+        
+        props["primaryColor"]?.let {
             val colorInt = ColorUtilities.parseColor(it.toString())
             applySelectedTintColor(radioGroup, colorInt)
             hasUpdates = true
         }
 
-        props["tintColor"]?.let {
+        props["secondaryColor"]?.let {
             val colorInt = ColorUtilities.parseColor(it.toString())
             applyTintColor(radioGroup, colorInt)
             hasUpdates = true
         }
+        
+        // backgroundColor is handled by applyStyles from StyleSheet
 
-        props["adaptive"]?.let { adaptive ->
-            if (adaptive == true) {
-                val backgroundColor = AdaptiveColorHelper.getSystemBackgroundColor(radioGroup.context)
-                val selectedColor = AdaptiveColorHelper.getSystemAccentColor(radioGroup.context)
-                val textColor = AdaptiveColorHelper.getSystemTextColor(radioGroup.context)
-                
-                radioGroup.setBackgroundColor(backgroundColor)
-                applySelectedTintColor(radioGroup, selectedColor)
-                applyTintColor(radioGroup, textColor)
-                hasUpdates = true
-            }
+        // Use DCFTheme as fallback (framework colors), not adaptive system colors
+        // Framework controls colors - if no semantic colors provided, use DCFTheme defaults
+        if (!props.containsKey("primaryColor") && !props.containsKey("secondaryColor")) {
+            val selectedColor = com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(radioGroup.context)
+            val textColor = com.dotcorr.dcflight.theme.DCFTheme.getTextColor(radioGroup.context)
+            
+            applySelectedTintColor(radioGroup, selectedColor)
+            applyTintColor(radioGroup, textColor)
+            hasUpdates = true
         }
 
         radioGroup.setOnCheckedChangeListener { group, checkedId ->
@@ -193,13 +192,15 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val stateList = StateListDrawable()
         
         val selectedDrawable = GradientDrawable()
-        selectedDrawable.setColor(Color.BLUE) // Default selected color
+        // Use DCFTheme as default (framework controls colors)
+        selectedDrawable.setColor(com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(radioGroup.context))
         selectedDrawable.cornerRadius = 8f
         stateList.addState(intArrayOf(android.R.attr.state_checked), selectedDrawable)
 
         val normalDrawable = GradientDrawable()
         normalDrawable.setColor(Color.TRANSPARENT)
-        normalDrawable.setStroke(2, Color.GRAY)
+        // Use DCFTheme as default (framework controls colors)
+        normalDrawable.setStroke(2, com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(radioGroup.context))
         normalDrawable.cornerRadius = 8f
         stateList.addState(intArrayOf(), normalDrawable)
         

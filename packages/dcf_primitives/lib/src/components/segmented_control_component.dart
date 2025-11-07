@@ -84,14 +84,10 @@ class DCFSegmentedControlProps extends Equatable {
   /// Whether to use adaptive theming (system colors)
   final bool adaptive;
 
-  /// Background color of the segmented control
-  final String? backgroundColor;
-
-  /// Color of the selected segment (iOS 13+)
-  final String? selectedTintColor;
-
-  /// Tint color (affects text color of selected segment)
-  final String? tintColor;
+  /// NOTE: All colors removed - use StyleSheet semantic colors:
+  /// - backgroundColor: background color
+  /// - primaryColor: selected segment color
+  /// - secondaryColor: tint/text color
 
   /// Create segmented control props
   const DCFSegmentedControlProps({
@@ -99,9 +95,7 @@ class DCFSegmentedControlProps extends Equatable {
     this.selectedIndex = 0,
     this.enabled = true,
     this.adaptive = true,
-    this.backgroundColor,
-    this.selectedTintColor,
-    this.tintColor,
+    // All color props removed - use StyleSheet semantic colors
   });
 
   /// Convert to props map
@@ -111,9 +105,7 @@ class DCFSegmentedControlProps extends Equatable {
       'selectedIndex': selectedIndex,
       'enabled': enabled,
       'adaptive': adaptive,
-      if (backgroundColor != null) 'backgroundColor': backgroundColor,
-      if (selectedTintColor != null) 'selectedTintColor': selectedTintColor,
-      if (tintColor != null) 'tintColor': tintColor,
+      // All color props removed - native components use StyleSheet semantic colors
     };
   }
 
@@ -123,9 +115,7 @@ class DCFSegmentedControlProps extends Equatable {
         selectedIndex,
         enabled,
         adaptive,
-        backgroundColor,
-        selectedTintColor,
-        tintColor,
+        // All color props removed
       ];
 }
 

@@ -21,19 +21,14 @@ class DCFTextComponent: NSObject, DCFComponent {
         let label = UILabel()
         
         label.numberOfLines = 0
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                label.textColor = UIColor.label
-            } else {
-                label.textColor = UIColor.black
-            }
-        } else {
-            label.textColor = UIColor.black
-        }
+        
+        // REMOVED: Component-specific adaptive color logic
+        // Framework now handles this universally via applyStyles
+        // This ensures consistent theme behavior across all components
         
         updateView(label, withProps: props)
         
+        // Framework handles color prop universally via applyStyles
         label.applyStyles(props: props)
         
         return label
@@ -96,24 +91,9 @@ class DCFTextComponent: NSObject, DCFComponent {
             }
         }
         
-        if props.keys.contains("color") {
-            if let color = props["color"] as? String {
-                let uiColor = ColorUtilities.color(fromHexString: color)
-                label.textColor = uiColor
-            } else {
-            }
-        }
-        
-        if props.keys.contains("adaptive") && !props.keys.contains("color") {
-            let isAdaptive = props["adaptive"] as? Bool ?? true
-            if isAdaptive {
-                if #available(iOS 13.0, *) {
-                    label.textColor = UIColor.label
-                } else {
-                    label.textColor = UIColor.black
-                }
-            }
-        }
+        // REMOVED: Component-specific color handling
+        // Framework now handles color prop universally via applyStyles
+        // This ensures consistent behavior across all components
         
         if let textAlign = props["textAlign"] as? String {
             switch textAlign {

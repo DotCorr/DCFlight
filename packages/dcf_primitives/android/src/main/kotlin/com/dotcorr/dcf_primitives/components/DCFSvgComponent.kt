@@ -77,7 +77,7 @@ class DCFSvgComponent : DCFComponent() {
 
         props["adaptive"]?.let { adaptive ->
             if (adaptive == true) {
-                imageView.setBackgroundColor(AdaptiveColorHelper.getSystemBackgroundColor(imageView.context))
+                imageView.setBackgroundColor(com.dotcorr.dcflight.theme.DCFTheme.getBackgroundColor(imageView.context))
                 hasUpdates = true
             }
         }

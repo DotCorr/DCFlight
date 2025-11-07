@@ -5,11 +5,25 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/dcflight.dart';
+import 'package:flutter/material.dart';
+import 'package:equatable/equatable.dart';
 import 'gradient.dart';
 import 'hit_slop.dart';
 
 /// StyleSheet for visual styling properties
+/// 
+/// **Semantic Color System:**
+/// Use semantic colors (primaryColor, secondaryColor, etc.) instead of explicit colors
+/// for better cross-platform consistency and theme support.
+/// 
+/// Example:
+/// ```dart
+/// DCFStyleSheet(
+///   primaryColor: DCFTheme.textColor,  // Maps to text color for text components
+///   secondaryColor: DCFTheme.secondaryTextColor,  // Maps to placeholder for inputs
+///   backgroundColor: DCFTheme.surfaceColor,
+/// )
+/// ```
 class DCFStyleSheet extends Equatable {
   final dynamic borderRadius;
   final dynamic borderTopLeftRadius;
@@ -37,6 +51,26 @@ class DCFStyleSheet extends Equatable {
   final String? testID;
   final String? pointerEvents;
 
+  /// **Semantic Colors** - Use these instead of explicit color props in components
+  /// These map to theme colors automatically and ensure cross-platform consistency
+  
+  /// Primary color - typically used for main text, primary actions, etc.
+  /// For Text: main text color
+  /// For Button: text color
+  /// For TextInput: text color
+  final Color? primaryColor;
+  
+  /// Secondary color - typically used for secondary text, placeholders, etc.
+  /// For Text: secondary text color
+  /// For TextInput: placeholder color
+  final Color? secondaryColor;
+  
+  /// Tertiary color - typically used for tertiary text, hints, etc.
+  final Color? tertiaryColor;
+  
+  /// Accent color - typically used for highlights, links, etc.
+  final Color? accentColor;
+
   /// Create a style sheet with visual styling properties
   const DCFStyleSheet({
     this.borderRadius,
@@ -60,10 +94,16 @@ class DCFStyleSheet extends Equatable {
     this.accessibilityLabel,
     this.testID,
     this.pointerEvents,
+    // Semantic colors
+    this.primaryColor,
+    this.secondaryColor,
+    this.tertiaryColor,
+    this.accentColor,
   });
 
   /// Convert style properties to a map for serialization
   /// CRITICAL FIX: Ensure proper precedence order when both backgroundColor and backgroundGradient are present
+  /// Semantic colors are included for component-level resolution
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
 
@@ -113,6 +153,20 @@ class DCFStyleSheet extends Equatable {
     if (testID != null) map['testID'] = testID;
     if (pointerEvents != null) map['pointerEvents'] = pointerEvents;
 
+    // Semantic colors - components will resolve these to actual colors
+    if (primaryColor != null) {
+      map['primaryColor'] = _colorToString(primaryColor!);
+    }
+    if (secondaryColor != null) {
+      map['secondaryColor'] = _colorToString(secondaryColor!);
+    }
+    if (tertiaryColor != null) {
+      map['tertiaryColor'] = _colorToString(tertiaryColor!);
+    }
+    if (accentColor != null) {
+      map['accentColor'] = _colorToString(accentColor!);
+    }
+
     return map;
   }
 
@@ -157,6 +211,11 @@ class DCFStyleSheet extends Equatable {
       accessibilityLabel: other.accessibilityLabel ?? accessibilityLabel,
       testID: other.testID ?? testID,
       pointerEvents: other.pointerEvents ?? pointerEvents,
+      // Semantic colors
+      primaryColor: other.primaryColor ?? primaryColor,
+      secondaryColor: other.secondaryColor ?? secondaryColor,
+      tertiaryColor: other.tertiaryColor ?? tertiaryColor,
+      accentColor: other.accentColor ?? accentColor,
     );
   }
 
@@ -183,6 +242,11 @@ class DCFStyleSheet extends Equatable {
     String? accessibilityLabel,
     String? testID,
     String? pointerEvents,
+    // Semantic colors
+    Color? primaryColor,
+    Color? secondaryColor,
+    Color? tertiaryColor,
+    Color? accentColor,
   }) {
     return DCFStyleSheet(
       borderRadius: borderRadius ?? this.borderRadius,
@@ -208,6 +272,11 @@ class DCFStyleSheet extends Equatable {
       accessibilityLabel: accessibilityLabel ?? this.accessibilityLabel,
       testID: testID ?? this.testID,
       pointerEvents: pointerEvents ?? this.pointerEvents,
+      // Semantic colors
+      primaryColor: primaryColor ?? this.primaryColor,
+      secondaryColor: secondaryColor ?? this.secondaryColor,
+      tertiaryColor: tertiaryColor ?? this.tertiaryColor,
+      accentColor: accentColor ?? this.accentColor,
     );
   }
 
@@ -299,6 +368,11 @@ class DCFStyleSheet extends Equatable {
     'accessibilityLabel',
     'testID',
     'pointerEvents',
+    // Semantic colors
+    'primaryColor',
+    'secondaryColor',
+    'tertiaryColor',
+    'accentColor',
   ];
 
   /// Helper method to check if a property is a style property
@@ -352,5 +426,10 @@ class DCFStyleSheet extends Equatable {
         accessibilityLabel,
         testID,
         pointerEvents,
+        // Semantic colors
+        primaryColor,
+        secondaryColor,
+        tertiaryColor,
+        accentColor,
       ];
 }

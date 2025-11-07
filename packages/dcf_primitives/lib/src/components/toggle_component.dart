@@ -57,17 +57,10 @@ class DCFToggle extends DCFStatelessComponent
   /// Whether to use adaptive theming (system colors)
   final bool adaptive;
 
-  /// Track color when toggle is on
-  final Color? activeTrackColor;
-
-  /// Track color when toggle is off
-  final Color? inactiveTrackColor;
-
-  /// Thumb color when toggle is on
-  final Color? activeThumbColor;
-
-  /// Thumb color when toggle is off
-  final Color? inactiveThumbColor;
+  /// NOTE: All colors removed - use StyleSheet semantic colors:
+  /// - primaryColor: active track/thumb color
+  /// - secondaryColor: inactive track color
+  /// - tertiaryColor: inactive thumb color
 
   /// Size of the toggle
   final String size;
@@ -87,10 +80,7 @@ class DCFToggle extends DCFStatelessComponent
     this.onValueChange,
     this.disabled = false,
     this.adaptive = true,
-    this.activeTrackColor,
-    this.inactiveTrackColor,
-    this.activeThumbColor,
-    this.inactiveThumbColor,
+    // All color props removed - use StyleSheet semantic colors
     this.size = 'medium',
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(backgroundColor: Colors.transparent),
@@ -117,25 +107,7 @@ class DCFToggle extends DCFStatelessComponent
       ...eventMap,
     };
 
-    if (activeTrackColor != null) {
-      props['activeTrackColor'] =
-          '#${activeTrackColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
-
-    if (inactiveTrackColor != null) {
-      props['inactiveTrackColor'] =
-          '#${inactiveTrackColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
-
-    if (activeThumbColor != null) {
-      props['activeThumbColor'] =
-          '#${activeThumbColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
-
-    if (inactiveThumbColor != null) {
-      props['inactiveThumbColor'] =
-          '#${inactiveThumbColor!.value.toRadixString(16).padLeft(8, '0')}';
-    }
+    // All color props removed - native components use StyleSheet semantic colors
 
     return DCFElement(
       type: 'Toggle',
@@ -149,10 +121,7 @@ class DCFToggle extends DCFStatelessComponent
         value,
         disabled,
         adaptive,
-        activeTrackColor,
-        inactiveTrackColor,
-        activeThumbColor,
-        inactiveThumbColor,
+        // All color props removed
         size,
         layout,
         styleSheet,

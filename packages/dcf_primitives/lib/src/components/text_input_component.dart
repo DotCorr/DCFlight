@@ -168,7 +168,7 @@ class DCFTextInput extends DCFStatelessComponent
   final String? value;
   final String? defaultValue;
   final String? placeholder;
-  final Color? placeholderTextColor;
+  /// NOTE: placeholderTextColor removed - use StyleSheet.secondaryColor instead
   final DCFTextInputType inputType;
   final DCFKeyboardType keyboardType;
   final DCFAutoCapitalizationType autoCapitalization;
@@ -188,10 +188,10 @@ class DCFTextInput extends DCFStatelessComponent
   final bool multiline;
   final bool secureTextEntry;
   final bool selectTextOnFocus;
-  final Color? selectionColor;
+  /// NOTE: selectionColor removed - use StyleSheet.accentColor instead
   final bool spellCheck;
   final String? textAlign;
-  final Color? textColor;
+  /// NOTE: textColor removed - use StyleSheet.primaryColor instead
   final double? fontSize;
   final String? fontWeight;
   final String? fontFamily;
@@ -211,7 +211,7 @@ class DCFTextInput extends DCFStatelessComponent
     this.value,
     this.defaultValue,
     this.placeholder,
-    this.placeholderTextColor,
+    // placeholderTextColor removed - use StyleSheet.secondaryColor
     this.inputType = DCFTextInputType.text,
     this.keyboardType = DCFKeyboardType.defaultType,
     this.autoCapitalization = DCFAutoCapitalizationType.sentences,
@@ -231,10 +231,10 @@ class DCFTextInput extends DCFStatelessComponent
     this.multiline = false,
     this.secureTextEntry = false,
     this.selectTextOnFocus = false,
-    this.selectionColor,
+    // selectionColor removed - use StyleSheet.accentColor
     this.spellCheck = true,
     this.textAlign,
-    this.textColor,
+    // textColor removed - use StyleSheet.primaryColor
     this.fontSize,
     this.fontWeight,
     this.fontFamily,
@@ -295,9 +295,7 @@ class DCFTextInput extends DCFStatelessComponent
         'value': value,
         'defaultValue': defaultValue,
         'placeholder': placeholder,
-        if (placeholderTextColor != null)
-          'placeholderTextColor':
-              '#${placeholderTextColor!.value.toRadixString(16).padLeft(8, '0')}',
+        // placeholderTextColor removed - use StyleSheet.secondaryColor
         'inputType': inputType.name,
         'keyboardType': keyboardType.name,
         'autoCapitalization': autoCapitalization.name,
@@ -317,13 +315,10 @@ class DCFTextInput extends DCFStatelessComponent
         'multiline': multiline,
         'secureTextEntry': secureTextEntry,
         'selectTextOnFocus': selectTextOnFocus,
-        if (selectionColor != null)
-          'selectionColor':
-              '#${selectionColor!.value.toRadixString(16).padLeft(8, '0')}',
+        // selectionColor removed - use StyleSheet.accentColor
         'spellCheck': spellCheck,
         'textAlign': textAlign,
-        if (textColor != null)
-          'textColor': '#${textColor!.value.toRadixString(16).padLeft(8, '0')}',
+        // textColor removed - use StyleSheet.primaryColor
         'fontSize': fontSize,
         'fontWeight': fontWeight,
         'fontFamily': fontFamily,
@@ -343,7 +338,7 @@ class DCFTextInput extends DCFStatelessComponent
         value,
         defaultValue,
         placeholder,
-        placeholderTextColor,
+        // placeholderTextColor removed
         inputType,
         keyboardType,
         autoCapitalization,
@@ -363,10 +358,10 @@ class DCFTextInput extends DCFStatelessComponent
         multiline,
         secureTextEntry,
         selectTextOnFocus,
-        selectionColor,
+        // selectionColor removed
         spellCheck,
         textAlign,
-        textColor,
+        // textColor removed
         fontSize,
         fontWeight,
         fontFamily,
