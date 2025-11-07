@@ -16,7 +16,9 @@ class HotReloadWatcher {
   final bool verbose;
   final List<String> additionalArgs;
   bool _isAndroidDevice = false;
+  bool _isIOSPhysicalDevice = false;
   String? _selectedDeviceId;
+  Process? _iproxyProcess;
 
   // Terminal styling
   static const String _reset = '\x1B[0m';
@@ -92,6 +94,7 @@ class HotReloadWatcher {
 
     // Clean shutdown
     await _watcherSubscription.cancel();
+    await _cleanupIproxy();
     await _printShutdownMessage(exitCode);
   }
 
@@ -425,11 +428,16 @@ class HotReloadWatcher {
 
     // Store device info
     _isAndroidDevice = targetPlatform?.toLowerCase().contains('android') ?? false;
-    _selectedDeviceId = deviceId; // Store for ADB port forwarding
+    final isEmulator = selectedDevice['emulator'] == true;
+    _isIOSPhysicalDevice = !_isAndroidDevice && !isEmulator; // iOS physical device
+    _selectedDeviceId = deviceId; // Store for ADB/iproxy port forwarding
 
     print('✅ Selected: $deviceName');
     if (verbose && _isAndroidDevice) {
       print('🤖 Android device detected - will use ADB port forwarding');
+    }
+    if (verbose && _isIOSPhysicalDevice) {
+      print('📱 iOS physical device detected - will use iproxy USB forwarding');
     }
     print('=' * 60 + '\n');
 
@@ -510,8 +518,8 @@ class HotReloadWatcher {
       // Wait a moment for the port to be released
       await Future.delayed(Duration(milliseconds: 100));
       
-      // Setup new forwarding: host:8765 -> emulator:8765
-      // adb forward maps HOST port to EMULATOR port
+      // Setup new forwarding: host:8765 -> device:8765
+      // adb forward maps HOST port to DEVICE port
       // Use -s flag to target specific device when multiple devices are connected
       final result = await Process.run('adb', ['-s', _selectedDeviceId!, 'forward', 'tcp:8765', 'tcp:8765']);
       
@@ -532,10 +540,75 @@ class HotReloadWatcher {
     }
   }
 
+  /// Setup iproxy USB forwarding for iOS physical devices
+  Future<void> _setupIproxyForwarding() async {
+    if (!_isIOSPhysicalDevice || _selectedDeviceId == null) return;
+
+    print('🔧 Setting up iproxy USB forwarding for iOS device: $_selectedDeviceId...');
+    
+    try {
+      // Kill any existing iproxy process on port 8765
+      try {
+        await Process.run('pkill', ['-f', 'iproxy.*8765']);
+        await Future.delayed(Duration(milliseconds: 200));
+      } catch (e) {
+        // pkill might fail if no process exists, that's okay
+      }
+
+      // Start iproxy: maps localhost:8765 to device:8765 via USB
+      // iproxy requires device UDID (which is the device ID for iOS)
+      _iproxyProcess = await Process.start(
+        'iproxy',
+        ['8765', '8765', '-u', _selectedDeviceId!],
+        mode: ProcessStartMode.detached,
+      );
+
+      // Wait a moment for iproxy to establish connection
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Check if process is still running (if it died immediately, it failed)
+      try {
+        final exitCode = await _iproxyProcess!.exitCode.timeout(
+          Duration(milliseconds: 100),
+        );
+        // If we got here without timeout, process died = failure
+        print('⚠️  iproxy failed to start (exit code: $exitCode)');
+        print('💡 Make sure libimobiledevice is installed: brew install libimobiledevice');
+        _iproxyProcess = null;
+      } catch (e) {
+        // Timeout means process is still running = success
+        print('✅ iproxy USB forwarding active: localhost:8765 → device:8765 (UDID: $_selectedDeviceId)');
+      }
+    } catch (e) {
+      print('⚠️  Could not setup iproxy forwarding: $e');
+      print('💡 Make sure libimobiledevice is installed: brew install libimobiledevice');
+      _iproxyProcess = null;
+    }
+  }
+
+  /// Cleanup iproxy process on shutdown
+  Future<void> _cleanupIproxy() async {
+    if (_iproxyProcess != null) {
+      try {
+        _iproxyProcess!.kill();
+        await _iproxyProcess!.exitCode.timeout(Duration(seconds: 1));
+        print('🧹 Cleaned up iproxy process');
+      } catch (e) {
+        // Process might already be dead, that's okay
+      }
+      _iproxyProcess = null;
+    }
+  }
+
   /// Check if DCFlight hot reload server is healthy
   Future<bool> _checkServerHealth() async {
-    // Setup ADB forwarding for Android devices
-    await _setupAdbForwarding();
+    // Setup port forwarding based on device type
+    if (_isAndroidDevice) {
+      await _setupAdbForwarding();
+    } else if (_isIOSPhysicalDevice) {
+      await _setupIproxyForwarding();
+    }
+    // iOS simulators don't need forwarding (use localhost directly)
     
     final possibleIPs = ['localhost', '127.0.0.1'];
     
