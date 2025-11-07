@@ -69,4 +69,14 @@ class DCFIconComponent: NSObject, DCFComponent {
         
         return result
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let imageView = view as? UIImageView else {
+            return CGSize.zero
+        }
+        
+        let size = props["size"] as? CGFloat ?? 24
+        
+        return CGSize(width: size, height: size)
+    }
 }

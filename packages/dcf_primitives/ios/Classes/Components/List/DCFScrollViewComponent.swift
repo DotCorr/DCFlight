@@ -279,4 +279,9 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             ]
         ])
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        // ScrollViews don't have intrinsic size - they fill available space
+        return CGSize.zero
+    }
 }

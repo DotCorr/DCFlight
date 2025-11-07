@@ -149,6 +149,29 @@ class DCFTextComponent: NSObject, DCFComponent {
         return true
     }
     
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let label = view as? UILabel else {
+            return CGSize.zero
+        }
+        
+        let text = label.text ?? ""
+        
+        if text.isEmpty {
+            return CGSize.zero
+        }
+        
+        // Calculate size similar to Android's measure() approach
+        // Use sizeThatFits with maximum constraints to get intrinsic size
+        let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        let size = label.sizeThatFits(maxSize)
+        
+        // Ensure minimum size of 1x1 (matching Android behavior)
+        return CGSize(width: max(1, size.width), height: max(1, size.height))
+    }
+    
+    override func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        // Optional: Add logging if needed
+    }
     
     private func fontWeightFromString(_ weight: String) -> UIFont.Weight {
         switch weight.lowercased() {

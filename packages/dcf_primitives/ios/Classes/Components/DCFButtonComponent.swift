@@ -96,4 +96,20 @@ class DCFButtonComponent: NSObject, DCFComponent {
             sender.alpha = 1.0
         }
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let button = view as? UIButton else {
+            return CGSize.zero
+        }
+        
+        let title = button.title(for: .normal) ?? ""
+        
+        if title.isEmpty {
+            return CGSize(width: 100, height: 50)
+        }
+        
+        let size = button.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        
+        return CGSize(width: max(100, size.width), height: max(50, size.height))
+    }
 }

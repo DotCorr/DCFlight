@@ -329,4 +329,15 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
     func textViewDidEndEditing(_ textView: UITextView) {
         propagateEvent(on: textView, eventName: "onBlur", data: [:])
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        if let textField = view as? UITextField {
+            let size = textField.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+            return CGSize(width: max(1, size.width), height: max(1, size.height))
+        } else if let textView = view as? UITextView {
+            let size = textView.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+            return CGSize(width: max(1, size.width), height: max(1, size.height))
+        }
+        return CGSize.zero
+    }
 }

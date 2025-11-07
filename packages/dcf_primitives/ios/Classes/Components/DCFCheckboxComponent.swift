@@ -103,6 +103,15 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             "value": sender.isChecked
         ])
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let checkbox = view as? DCFCheckboxView else {
+            return CGSize.zero
+        }
+        
+        let size = checkbox.intrinsicContentSize
+        return CGSize(width: max(1, size.width), height: max(1, size.height))
+    }
 }
 
 

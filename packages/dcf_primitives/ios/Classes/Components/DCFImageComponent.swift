@@ -202,4 +202,18 @@ class DCFImageComponent: NSObject, DCFComponent {
         }
     }
     
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let imageView = view as? UIImageView else {
+            return CGSize.zero
+        }
+        
+        if let image = imageView.image {
+            let size = image.size
+            if size.width > 0 && size.height > 0 {
+                return size
+            }
+        }
+        
+        return CGSize.zero
+    }
 }
