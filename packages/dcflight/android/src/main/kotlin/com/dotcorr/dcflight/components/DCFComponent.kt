@@ -24,7 +24,7 @@ abstract class DCFComponent {
         const val TAG_VIEW_ID = "dcf_view_id"
         const val TAG_EVENT_TYPES = "dcf_event_types"  
         const val TAG_EVENT_CALLBACK = "dcf_event_callback"
-        const val TAG_STORED_PROPS = "dcf_stored_props"  // React Native pattern: store props in view
+        const val TAG_STORED_PROPS = "dcf_stored_props"  //  pattern: store props in view
     }
 
     /**
@@ -34,11 +34,11 @@ abstract class DCFComponent {
 
     /**
      * Updates an existing view with new props
-     * Framework-level implementation: Automatically merges props (React Native pattern)
+     * Framework-level implementation: Automatically merges props ( pattern)
      * Components should override updateViewInternal for their specific update logic
      */
     open fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        // React Native pattern: Store and merge props for stability
+        //  pattern: Store and merge props for stability
         val existingProps = getStoredProps(view)
         val mergedProps = mergeProps(existingProps, props)
         storeProps(view, mergedProps)
@@ -50,7 +50,7 @@ abstract class DCFComponent {
     }
     
     /**
-     * Store props in view tag for merging on updates (React Native pattern)
+     * Store props in view tag for merging on updates ( pattern)
      * This ensures properties are preserved across partial updates
      */
     protected fun storeProps(view: View, props: Map<String, Any?>) {
@@ -66,13 +66,25 @@ abstract class DCFComponent {
     }
     
     /**
-     * Merge existing props with updates (React Native pattern)
+     * Merge existing props with updates ( pattern)
      * - Null values remove props
      * - Non-null values update props
      * - Missing props are preserved
+     * - CRITICAL: Semantic color props are removed if not in new props (StyleSheet property removal)
      */
     protected fun mergeProps(existing: Map<String, Any?>, updates: Map<String, Any?>): MutableMap<String, Any?> {
         val merged = existing.toMutableMap()
+        
+        // CRITICAL FIX: Remove semantic color props that are not in new props
+        // This ensures that when a StyleSheet property is removed, it's actually removed from merged props
+        val semanticColorKeys = listOf("primaryColor", "secondaryColor", "tertiaryColor", "accentColor")
+        for (key in semanticColorKeys) {
+            // If semantic color is in existing props but not in new props, remove it
+            if (merged.containsKey(key) && !updates.containsKey(key)) {
+                merged.remove(key)
+            }
+        }
+        
         for ((key, value) in updates) {
             if (value == null) {
                 merged.remove(key)
