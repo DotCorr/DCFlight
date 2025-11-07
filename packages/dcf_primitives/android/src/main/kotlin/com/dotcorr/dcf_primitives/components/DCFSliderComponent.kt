@@ -31,12 +31,21 @@ class DCFSliderComponent : DCFComponent() {
         // primaryColor: minimum track and thumb color
         // secondaryColor: maximum track color
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        val primaryColor = props["primaryColor"]?.let { parseColor(it.toString()) }
-        val secondaryColor = props["secondaryColor"]?.let { parseColor(it.toString()) }
+        // StyleSheet.toMap() always provides these colors, so they should never be null
+        props["primaryColor"]?.let { colorStr ->
+            val colorInt = parseColor(colorStr.toString())
+            if (colorInt != null) {
+                seekBar.progressTintList = ColorStateList.valueOf(colorInt)
+                seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
+            }
+        }
         
-        seekBar.progressTintList = ColorStateList.valueOf(primaryColor)
-        seekBar.thumbTintList = ColorStateList.valueOf(primaryColor)
-        seekBar.progressBackgroundTintList = ColorStateList.valueOf(secondaryColor)
+        props["secondaryColor"]?.let { colorStr ->
+            val colorInt = parseColor(colorStr.toString())
+            if (colorInt != null) {
+                seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
+            }
+        }
         
         seekBar.setTag(R.id.dcf_component_type, "Slider")
         

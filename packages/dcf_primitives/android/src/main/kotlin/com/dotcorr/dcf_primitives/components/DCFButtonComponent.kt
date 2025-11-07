@@ -17,6 +17,7 @@ import androidx.appcompat.widget.AppCompatButton
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
 import kotlin.math.max
 
@@ -59,13 +60,13 @@ class DCFButtonComponent : DCFComponent() {
         button.applyStyles(nonNullProps)
         
         // Set text color after applyStyles to ensure it's not overridden
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         props["primaryColor"]?.let { color ->
-            val colorInt = when (color) {
-                is String -> Color.parseColor(color)
-                is Int -> color
-                else -> Color.WHITE
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                button.setTextColor(colorInt)
             }
-            button.setTextColor(colorInt)
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         } ?: run {
             // Default to white text for buttons (typically on colored backgrounds)
             button.setTextColor(Color.WHITE)
@@ -137,19 +138,17 @@ class DCFButtonComponent : DCFComponent() {
         // backgroundColor is handled by applyStyles from StyleSheet
         button.applyStyles(props)
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: button text color
         // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
         props["primaryColor"]?.let { color ->
-            val colorInt = when (color) {
-                is String -> Color.parseColor(color)
-                is Int -> color
-                else -> Color.WHITE
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                button.setTextColor(colorInt)
             }
-            button.setTextColor(colorInt)
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         } ?: run {
-            // Fall back to white text if no semantic color provided (for buttons with colored backgrounds)
-            // Buttons typically need white text on colored backgrounds
+            // Default to white text for buttons (typically on colored backgrounds)
             button.setTextColor(Color.WHITE)
         }
 
