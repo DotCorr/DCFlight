@@ -540,11 +540,36 @@ class HotReloadWatcher {
     }
   }
 
+  /// Check if iproxy is installed and available
+  Future<bool> _checkIproxyAvailable() async {
+    try {
+      final result = await Process.run('which', ['iproxy']);
+      return result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Setup iproxy USB forwarding for iOS physical devices
   Future<void> _setupIproxyForwarding() async {
     if (!_isIOSPhysicalDevice || _selectedDeviceId == null) return;
 
     print('🔧 Setting up iproxy USB forwarding for iOS device: $_selectedDeviceId...');
+    
+    // Check if iproxy is installed first
+    final iproxyAvailable = await _checkIproxyAvailable();
+    if (!iproxyAvailable) {
+      print('');
+      print('❌ iproxy is not installed!');
+      print('');
+      print('📦 To install iproxy (required for iOS physical device hot reload):');
+      print('   brew install libimobiledevice');
+      print('');
+      print('💡 After installing, restart the hot reload watcher.');
+      print('');
+      _logWatcher('❌', 'iproxy not installed - iOS physical device hot reload unavailable', _red);
+      return;
+    }
     
     try {
       // Kill any existing iproxy process on port 8765
@@ -573,7 +598,7 @@ class HotReloadWatcher {
         );
         // If we got here without timeout, process died = failure
         print('⚠️  iproxy failed to start (exit code: $exitCode)');
-        print('💡 Make sure libimobiledevice is installed: brew install libimobiledevice');
+        print('💡 Make sure your iOS device is connected and trusted');
         _iproxyProcess = null;
       } catch (e) {
         // Timeout means process is still running = success
@@ -581,7 +606,7 @@ class HotReloadWatcher {
       }
     } catch (e) {
       print('⚠️  Could not setup iproxy forwarding: $e');
-      print('💡 Make sure libimobiledevice is installed: brew install libimobiledevice');
+      print('💡 Make sure your iOS device is connected via USB and trusted');
       _iproxyProcess = null;
     }
   }
