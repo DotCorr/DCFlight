@@ -81,6 +81,10 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
     }
+    
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
+    }
 }
 
 // ============================================================================
