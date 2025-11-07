@@ -55,6 +55,7 @@ class DCFButtonComponent : DCFComponent() {
                 else -> title.toString()
             }
             button.text = titleText
+            Log.d(TAG, "Set initial button title: $titleText")
         }
         
         // CRITICAL: Store props FIRST before calling updateView
@@ -63,22 +64,28 @@ class DCFButtonComponent : DCFComponent() {
         
         button.applyStyles(nonNullProps)
         
-        // Set text color after applyStyles to ensure it's not overridden
+        // Use updateView to ensure props are stored and merged correctly
+        // This will call updateViewInternal which will set text color
+        updateView(button, props)
+        
+        // CRITICAL: Set text color AFTER updateView and applyStyles to ensure it's the final operation
+        // This guarantees text is visible on initial render, even when UI is bloated
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 button.setTextColor(colorInt)
-                Log.d(TAG, "Set initial text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
+                // Force invalidate to ensure text is redrawn with correct color
+                button.invalidate()
+                Log.d(TAG, "Set final text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
+            } else {
+                Log.w(TAG, "Failed to parse primaryColor: $color")
             }
             // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        } ?: run {
+            Log.w(TAG, "No primaryColor in props - button text may be invisible!")
         }
-        // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
-        
-        // Use updateView to ensure props are stored and merged correctly
-        // This will call updateViewInternal which will set text color again (but that's fine)
-        updateView(button, props)
 
         button.setOnTouchListener { view, event ->
             when (event.action) {
@@ -144,13 +151,15 @@ class DCFButtonComponent : DCFComponent() {
         
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: button text color
-        // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
+        // CRITICAL: ALWAYS set text color AFTER applyStyles to ensure it's not overridden
+        // This ensures text is visible even when UI is bloated or during rapid updates
         // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
-        // Always set text color (even if unchanged) to ensure it's visible on initial render
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 button.setTextColor(colorInt)
+                // Force invalidate to ensure text is redrawn with correct color
+                button.invalidate()
                 if (hasPropChanged("primaryColor", existingProps, props)) {
                     Log.d(TAG, "Updated text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
                 }
