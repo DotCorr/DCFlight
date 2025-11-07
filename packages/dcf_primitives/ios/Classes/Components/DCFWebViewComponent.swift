@@ -327,4 +327,7 @@ extension DCFWebViewComponent: WKScriptMessageHandler {
             }
         }
     }
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
+    }
 }

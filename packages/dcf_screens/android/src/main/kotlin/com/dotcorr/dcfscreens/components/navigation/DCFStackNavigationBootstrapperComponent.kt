@@ -80,7 +80,10 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
         }
     }
     
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+    // REMOVED: override fun updateView - it's now final in base class
+    // Use updateViewInternal instead
+    
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         // CRITICAL: Force bootstrapper to stay INVISIBLE (prevent Android from making it visible)
         if (view.visibility != View.INVISIBLE) {
             view.visibility = View.INVISIBLE
@@ -90,6 +93,10 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
             Log.d(TAG, "🔒 Forced bootstrapper back to INVISIBLE (was ${view.visibility})")
         }
         return true
+    }
+    
+    override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
+        return null
     }
     
     /**
@@ -140,5 +147,13 @@ class DCFStackNavigationBootstrapperComponent : DCFComponent() {
             Log.e(TAG, "❌ Failed to find initial screen '$initialScreen' after $MAX_RETRIES attempts")
             Log.e(TAG, "Available routes: ${DCFScreenRegistry.getAllRoutes()}")
         }
+    }
+    
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): android.graphics.PointF {
+        return android.graphics.PointF(0f, 0f)
+    }
+    
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        Log.d(TAG, "Stack navigation bootstrapper registered with shadow tree: $nodeId")
     }
 }

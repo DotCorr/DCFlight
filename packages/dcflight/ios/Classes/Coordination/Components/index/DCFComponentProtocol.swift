@@ -49,27 +49,15 @@ public struct YGNodeLayout {
     }
 }
 
+// REMOVED: Default implementations to enforce strict compliance
+// All components MUST explicitly implement:
+// - applyLayout
+// - getIntrinsicSize  
+// - viewRegisteredWithShadowTree
+// - handleTunnelMethod (static)
+//
+// This ensures all registered components are fully compliant
 public extension DCFComponent {
-    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
-    }
-    
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return view.intrinsicContentSize != .zero ? view.intrinsicContentSize : CGSize(width: 0, height: 0)
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        objc_setAssociatedObject(view, 
-                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
-                               nodeId, 
-                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-    }
-    
-    /// Default implementation for tunnel method
-    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
-        print("⚠️ Component \(String(describing: self)) does not implement tunnel method: \(method)")
-        return nil
-    }
     
     // MARK: - Props Management (React Native Pattern)
     
@@ -134,12 +122,9 @@ public extension DCFComponent {
         return updateViewInternal(view, withProps: nonNullProps)
     }
     
-    /// Component-specific update logic (override in components)
-    /// Props are already merged and null-filtered
-    func updateViewInternal(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        // Default implementation - components should override
-        return false
-    }
+    // REMOVED: Default implementation for updateViewInternal
+    // Components MUST implement this if they use updateViewWithMerging
+    // This ensures all components are fully compliant
 }
 
 

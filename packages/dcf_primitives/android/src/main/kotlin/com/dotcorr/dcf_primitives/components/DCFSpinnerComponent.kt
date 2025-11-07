@@ -114,5 +114,9 @@ class DCFSpinnerComponent : DCFComponent() {
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
     }
+
+    override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
+        return null
+    }
 }
 

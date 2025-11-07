@@ -781,4 +781,7 @@ extension DCFAlertComponent {
         for (key, value) in props.sorted(by: { $0.key < $1.key }) {
         }
     }
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
+    }
 }

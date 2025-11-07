@@ -169,8 +169,19 @@ class DCFTextComponent: NSObject, DCFComponent {
         return CGSize(width: max(1, size.width), height: max(1, size.height))
     }
     
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+    }
+    
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Optional: Add logging if needed
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
+                               nodeId, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
     }
     
     private func fontWeightFromString(_ weight: String) -> UIFont.Weight {
