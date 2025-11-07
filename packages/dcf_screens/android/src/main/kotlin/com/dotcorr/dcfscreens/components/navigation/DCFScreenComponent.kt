@@ -98,8 +98,11 @@ class DCFScreenComponent : DCFComponent() {
         return frameLayout
     }
     
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        Log.d(TAG, "🔵 updateView called with props: $props")
+    // REMOVED: override fun updateView - it's now final in base class
+    // Use updateViewInternal instead
+    
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+        Log.d(TAG, "🔵 updateViewInternal called with props: $props")
         
         // Like iOS: Try to find existing screen container from view first
         val screenContainer = findScreenContainerForView(view) 
@@ -240,7 +243,7 @@ class DCFScreenComponent : DCFComponent() {
                 null
             }
             "dismissModal" -> { dismissModal(); null }
-            else -> super.handleTunnelMethod(method, arguments)
+            else -> null
         }
     }
     
@@ -551,6 +554,14 @@ class DCFScreenComponent : DCFComponent() {
         Log.d(TAG, "❌ Dismiss modal")
         // TODO: Implement proper modal dismissal
         popCurrentRoute()
+    }
+    
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): android.graphics.PointF {
+        return android.graphics.PointF(0f, 0f)
+    }
+    
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        Log.d(TAG, "Screen component registered with shadow tree: $nodeId")
     }
 }
 

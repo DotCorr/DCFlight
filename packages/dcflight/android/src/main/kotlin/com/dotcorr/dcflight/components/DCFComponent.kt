@@ -35,9 +35,11 @@ abstract class DCFComponent {
     /**
      * Updates an existing view with new props
      * Framework-level implementation: Automatically merges props ( pattern)
-     * Components should override updateViewInternal for their specific update logic
+     * Components MUST override updateViewInternal for their specific update logic
+     * 
+     * This method is final to ensure all components use the framework's props merging
      */
-    open fun updateView(view: View, props: Map<String, Any?>): Boolean {
+    fun updateView(view: View, props: Map<String, Any?>): Boolean {
         //  pattern: Store and merge props for stability
         val existingProps = getStoredProps(view)
         val mergedProps = mergeProps(existingProps, props)
@@ -100,15 +102,14 @@ abstract class DCFComponent {
     }
     
     /**
-     * Optional: Handle tunnel method calls (framework-specific operations)
+     * Handle tunnel method calls (framework-specific operations)
+     * Components MUST implement this (can return null if not needed)
      */
-    open fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
-        return null
-    }
+    abstract fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any?
     
     /**
      * Protected helper method for components to implement their update logic
-     * Components should override this to handle prop updates
+     * Components MUST override this to handle prop updates
      * Props are already merged and null-filtered by updateView()
      * 
      * This is called by updateView() after props merging
@@ -117,9 +118,7 @@ abstract class DCFComponent {
      * @param props The merged new props (non-null filtered)
      * @param existingProps The previous props (non-null filtered) - use hasPropChanged() to compare
      */
-    protected open fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        return false
-    }
+    protected abstract fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean
     
     /**
      * Framework-level helper: Check if a specific prop changed between existing and new props
@@ -139,17 +138,15 @@ abstract class DCFComponent {
     /**
      * Calculate intrinsic size for the component - MATCH iOS getIntrinsicSize
      * Used by Yoga layout for measuring leaf nodes
+     * Components MUST implement this
      */
-    open fun getIntrinsicSize(view: View, props: Map<String, Any>): android.graphics.PointF {
-        return android.graphics.PointF(0f, 0f)
-    }
+    abstract fun getIntrinsicSize(view: View, props: Map<String, Any>): android.graphics.PointF
     
     /**
      * Called when the view is registered with the shadow tree - MATCH iOS
-     * Components can override this for specialized handling
+     * Components MUST implement this
      */
-    open fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-    }
+    abstract fun viewRegisteredWithShadowTree(view: View, nodeId: String)
 }
 
 /**

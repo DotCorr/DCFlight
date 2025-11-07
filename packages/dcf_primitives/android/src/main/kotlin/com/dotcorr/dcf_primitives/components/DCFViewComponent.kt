@@ -59,5 +59,9 @@ class DCFViewComponent : DCFComponent() {
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         Log.d(TAG, "View component registered with shadow tree: $nodeId")
     }
+    
+    override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
+        return null
+    }
 }
 

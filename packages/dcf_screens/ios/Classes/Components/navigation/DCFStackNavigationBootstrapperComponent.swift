@@ -284,4 +284,22 @@ class DCFStackNavigationBootstrapperComponent: NSObject, DCFComponent {
             }
         }
     }
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+    }
+    
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        return CGSize.zero
+    }
+    
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
+                               nodeId, 
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
+    }
 }

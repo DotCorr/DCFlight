@@ -231,4 +231,7 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
     }
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
+    }
 }
