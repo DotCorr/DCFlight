@@ -23,7 +23,7 @@ class MyApp extends DCFStatefulComponent {
         backgroundColor: DCFTheme.current.backgroundColor,
       ),
       children: [
-        
+        DCFText(content: "Hello, Test! ${count.state}"),
         DCFText(
           content: "Hello, Test! ${count.state}",
           // Using semantic colors from StyleSheet instead of explicit color prop
