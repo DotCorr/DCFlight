@@ -20,22 +20,25 @@ class DCFSliderComponent: NSObject, DCFComponent {
         
         let slider = UISlider()
         
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: minimum track and thumb color
         // secondaryColor: maximum track color
         if let primaryColorStr = props["primaryColor"] as? String {
-            slider.minimumTrackTintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
-            slider.thumbTintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
-        } else {
-            slider.minimumTrackTintColor = DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
-            slider.thumbTintColor = DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
+            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
+                slider.minimumTrackTintColor = color
+                slider.thumbTintColor = color
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         if let secondaryColorStr = props["secondaryColor"] as? String {
-            slider.maximumTrackTintColor = ColorUtilities.color(fromHexString: secondaryColorStr) ?? DCFTheme.getSurfaceColor(traitCollection: slider.traitCollection)
-        } else {
-            slider.maximumTrackTintColor = DCFTheme.getSurfaceColor(traitCollection: slider.traitCollection)
+            if let color = ColorUtilities.color(fromHexString: secondaryColorStr) {
+                slider.maximumTrackTintColor = color
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderValueChanged(_:)), for: .valueChanged)
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderTouchBegan(_:)), for: .touchDown)
@@ -76,26 +79,21 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.alpha = disabled ? 0.5 : 1.0
         }
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: minimum track and thumb color
         // secondaryColor: maximum track color
         if let primaryColor = props["primaryColor"] as? String,
            let color = ColorUtilities.color(fromHexString: primaryColor) {
             slider.minimumTrackTintColor = color
             slider.thumbTintColor = color
-        } else {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            slider.minimumTrackTintColor = DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
-            slider.thumbTintColor = DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         if let secondaryColor = props["secondaryColor"] as? String,
            let color = ColorUtilities.color(fromHexString: secondaryColor) {
             slider.maximumTrackTintColor = color
-        } else {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            slider.maximumTrackTintColor = DCFTheme.getSurfaceColor(traitCollection: slider.traitCollection)
         }
+        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         slider.applyStyles(props: props)
         return true

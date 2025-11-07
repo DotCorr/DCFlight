@@ -40,11 +40,14 @@ class DCFSvgComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         if let primaryColorStr = props["primaryColor"] as? String {
-            imageView.tintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
-        } else {
-            imageView.tintColor = DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
+            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
+                imageView.tintColor = color
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         updateView(imageView, withProps: props)
         
@@ -128,13 +131,8 @@ class DCFSvgComponent: NSObject, DCFComponent {
             if let image = imageView.image {
                 imageView.image = image.withRenderingMode(.alwaysTemplate)
             }
-        } else {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            imageView.tintColor = DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
-            if let image = imageView.image {
-                imageView.image = image.withRenderingMode(.alwaysTemplate)
-            }
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
     }
     
     private func loadSVGFromAssetPath(_ asset: String, isRelativePath: Bool, path: String) -> SVGKImage? {

@@ -27,12 +27,15 @@ class DCFSvgComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
         
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.parseColor(color.toString())
-            imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
-        } ?: run {
-            imageView.setColorFilter(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context), android.graphics.PorterDuff.Mode.SRC_IN)
+            if (colorInt != null) {
+                imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         imageView.setTag(R.id.dcf_component_type, "Svg")
         
@@ -81,14 +84,16 @@ class DCFSvgComponent : DCFComponent() {
             hasUpdates = true
         }
 
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.parseColor(color.toString())
-            imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
-            hasUpdates = true
-        } ?: run {
-            imageView.setColorFilter(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(imageView.context), android.graphics.PorterDuff.Mode.SRC_IN)
-            hasUpdates = true
+            if (colorInt != null) {
+                imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
+                hasUpdates = true
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         view.applyStyles(props)
 

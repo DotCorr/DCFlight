@@ -34,10 +34,13 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val radioGroup = RadioGroup(context)
         radioGroup.orientation = LinearLayout.HORIZONTAL
         
-        val primaryColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
-        val secondaryColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context)
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
+        val primaryColor = props["primaryColor"]?.let { 
+            ColorUtilities.parseColor(it.toString()) 
+        }
+        val secondaryColor = props["secondaryColor"]?.let { 
+            ColorUtilities.parseColor(it.toString()) 
+        }
         
         radioGroup.setTag(R.id.dcf_component_type, "SegmentedControl")
         
@@ -119,16 +122,8 @@ class DCFSegmentedControlComponent : DCFComponent() {
         
         // backgroundColor is handled by applyStyles from StyleSheet
 
-        // Use DCFTheme as fallback (framework colors), not adaptive system colors
-        // Framework controls colors - if no semantic colors provided, use DCFTheme defaults
-        if (!props.containsKey("primaryColor") && !props.containsKey("secondaryColor")) {
-            val selectedColor = com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(radioGroup.context)
-            val textColor = com.dotcorr.dcflight.theme.DCFTheme.getTextColor(radioGroup.context)
-            
-            applySelectedTintColor(radioGroup, selectedColor)
-            applyTintColor(radioGroup, textColor)
-            hasUpdates = true
-        }
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
+        // StyleSheet will always provide primaryColor and secondaryColor via toMap() fallbacks
 
         radioGroup.setOnCheckedChangeListener { group, checkedId ->
             val selectedIndex = (0 until group.childCount).firstOrNull { 
@@ -195,15 +190,15 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val stateList = StateListDrawable()
         
         val selectedDrawable = GradientDrawable()
-        // Use DCFTheme as default (framework controls colors)
-        selectedDrawable.setColor(com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context))
+        // NO FALLBACK: Colors come from StyleSheet only
+        // This will be set via props in updateViewInternal
         selectedDrawable.cornerRadius = 8f
         stateList.addState(intArrayOf(android.R.attr.state_checked), selectedDrawable)
 
         val normalDrawable = GradientDrawable()
         normalDrawable.setColor(Color.TRANSPARENT)
-        // Use DCFTheme as default (framework controls colors)
-        normalDrawable.setStroke(2, com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(context))
+        // NO FALLBACK: Colors come from StyleSheet only
+        // This will be set via props in updateViewInternal
         normalDrawable.cornerRadius = 8f
         stateList.addState(intArrayOf(), normalDrawable)
         

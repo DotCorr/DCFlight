@@ -108,9 +108,8 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             }
         }
         
-        if !props.keys.contains("backgroundColor") {
-            scrollView.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: scrollView.traitCollection)
-        }
+        // NO FALLBACK: backgroundColor comes from StyleSheet only
+        // StyleSheet will always provide this via toMap() fallbacks
         
         if let borderRadius = props["borderRadius"] as? CGFloat {
             scrollView.layer.cornerRadius = borderRadius

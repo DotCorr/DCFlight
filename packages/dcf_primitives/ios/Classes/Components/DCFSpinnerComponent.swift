@@ -42,11 +42,14 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
             }
         }
         
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         if let primaryColorStr = props["primaryColor"] as? String {
-            spinner.color = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: spinner.traitCollection)
-        } else {
-            spinner.color = DCFTheme.getTextColor(traitCollection: spinner.traitCollection)
+            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
+                spinner.color = color
+            }
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         updateView(spinner, withProps: props)
         spinner.applyStyles(props: props)
@@ -67,15 +70,13 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
             spinner.startAnimating()
         }
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // primaryColor: spinner color
         if let primaryColor = props["primaryColor"] as? String,
            let spinnerColor = ColorUtilities.color(fromHexString: primaryColor) {
             spinner.color = spinnerColor
-        } else {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            spinner.color = DCFTheme.getTextColor(traitCollection: spinner.traitCollection)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         if let hidesWhenStopped = props["hidesWhenStopped"] as? Bool {
             spinner.hidesWhenStopped = hidesWhenStopped

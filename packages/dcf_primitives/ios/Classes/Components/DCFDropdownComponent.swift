@@ -19,11 +19,8 @@ class DCFDropdownComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let button = UIButton(type: .system)
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet semantic colors will override if provided
-        button.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: button.traitCollection)
-        button.layer.borderColor = DCFTheme.getSurfaceColor(traitCollection: button.traitCollection).cgColor
-        button.setTitleColor(DCFTheme.getTextColor(traitCollection: button.traitCollection), for: .normal)
+        // NO FALLBACK: Colors come from StyleSheet only
+        // StyleSheet will always provide these via toMap() fallbacks
         
         button.layer.cornerRadius = 8
         button.layer.borderWidth = 1
@@ -33,8 +30,8 @@ class DCFDropdownComponent: NSObject, DCFComponent {
         button.applyStyles(props: props)
         
         let arrowImageView = UIImageView(image: UIImage(systemName: "chevron.down"))
-        // Use DCFTheme as default (framework controls colors)
-        arrowImageView.tintColor = DCFTheme.getSecondaryTextColor(traitCollection: button.traitCollection)
+        // NO FALLBACK: Colors come from StyleSheet only
+        // StyleSheet will always provide these via toMap() fallbacks
         arrowImageView.contentMode = .scaleAspectFit
         button.addSubview(arrowImageView)
         
@@ -93,20 +90,21 @@ class DCFDropdownComponent: NSObject, DCFComponent {
                 // Use secondaryColor from StyleSheet for placeholder text
                 if let secondaryColor = props["secondaryColor"] as? String {
                     button.setTitleColor(ColorUtilities.color(fromHexString: secondaryColor), for: .normal)
-                } else {
-                    button.setTitleColor(DCFTheme.getSecondaryTextColor(traitCollection: button.traitCollection), for: .normal)
                 }
+                // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
             }
         } else {
             let placeholder = props["placeholder"] as? String ?? "Select..."
             button.setTitle(placeholder, for: .normal)
             
-            // Use secondaryColor from StyleSheet for placeholder text
+            // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
             if let secondaryColor = props["secondaryColor"] as? String {
-                button.setTitleColor(ColorUtilities.color(fromHexString: secondaryColor), for: .normal)
-            } else {
-                button.setTitleColor(DCFTheme.getSecondaryTextColor(traitCollection: button.traitCollection), for: .normal)
+                if let color = ColorUtilities.color(fromHexString: secondaryColor) {
+                    button.setTitleColor(color, for: .normal)
+                }
+                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
             }
+            // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         }
         
         if let disabled = props["disabled"] as? Bool {
@@ -316,7 +314,8 @@ class MultiSelectDropdownViewController: UIViewController {
     }
     
     private func setupView() {
-        view.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: view.traitCollection)
+        // NO FALLBACK: backgroundColor comes from StyleSheet only
+        // StyleSheet will always provide this via toMap() fallbacks
         
         let navBar = UINavigationBar()
         let navItem = UINavigationItem(title: "Select Items")

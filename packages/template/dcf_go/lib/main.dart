@@ -26,7 +26,7 @@ class MyApp extends DCFStatefulComponent {
           content: "Hello, Test! ${count.state}",
           styleSheet: DCFStyleSheet(
             backgroundColor: DCFColors.red,
-            // accentColor: DCFColors.blue,
+            accentColor: DCFColors.blue,
           ),
         ),
         DCFText(

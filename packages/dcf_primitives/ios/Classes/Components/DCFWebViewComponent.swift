@@ -55,7 +55,8 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         
         webView.translatesAutoresizingMaskIntoConstraints = false
         webView.isOpaque = true
-        webView.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: webView.traitCollection)
+        // NO FALLBACK: backgroundColor comes from StyleSheet only
+        // StyleSheet will always provide this via toMap() fallbacks
         
         let allowsZoom = props["allowsZoom"] as? Bool ?? true
         webView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true

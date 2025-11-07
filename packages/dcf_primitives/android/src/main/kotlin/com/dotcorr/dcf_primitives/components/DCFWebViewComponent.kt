@@ -30,11 +30,8 @@ class DCFWebViewComponent : DCFComponent() {
         val webView = WebView(context)
 
 
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet.backgroundColor will override if provided
-        webView.setBackgroundColor(
-            com.dotcorr.dcflight.theme.DCFTheme.getBackgroundColor(context)
-        )
+        // NO FALLBACK: backgroundColor comes from StyleSheet only
+        // StyleSheet will always provide this via toMap() fallbacks
 
         webView.settings.javaScriptEnabled = true
 

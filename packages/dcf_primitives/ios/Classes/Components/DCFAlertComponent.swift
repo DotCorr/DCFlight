@@ -569,7 +569,8 @@ extension DCFAlertComponent {
         customAlertVC.view.addSubview(backgroundView)
         
         let alertContainer = UIView()
-        alertContainer.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: view.traitCollection)
+        // NO FALLBACK: backgroundColor comes from StyleSheet only
+        // StyleSheet will always provide this via toMap() fallbacks
         alertContainer.layer.cornerRadius = 12
         alertContainer.layer.shadowColor = UIColor.black.cgColor
         alertContainer.layer.shadowOffset = CGSize(width: 0, height: 2)
@@ -694,17 +695,17 @@ extension DCFAlertComponent {
         case "destructive", "danger":
             button.setTitleColor(.systemRed, for: .normal)
         case "cancel":
-            // Use DCFTheme as default (framework controls colors)
-            button.setTitleColor(DCFTheme.getAccentColor(traitCollection: button.traitCollection), for: .normal)
+            // NO FALLBACK: Colors come from StyleSheet only
+            // StyleSheet will always provide these via toMap() fallbacks
             button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
         default:
-            // Use DCFTheme as default (framework controls colors)
-            button.setTitleColor(DCFTheme.getAccentColor(traitCollection: button.traitCollection), for: .normal)
+            // NO FALLBACK: Colors come from StyleSheet only
+            // StyleSheet will always provide these via toMap() fallbacks
         }
         
         button.layer.cornerRadius = 8
-        // Use DCFTheme as default (framework controls colors)
-        button.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: button.traitCollection)
+        // NO FALLBACK: Colors come from StyleSheet only
+        // StyleSheet will always provide these via toMap() fallbacks
         
         if #available(iOS 14.0, *) {
             button.addAction(UIAction { _ in
@@ -727,11 +728,11 @@ extension DCFAlertComponent {
         let button = UIButton(type: .system)
         button.setTitle("OK", for: .normal)
         button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 16)
-        // Use DCFTheme as default (framework controls colors)
-        button.setTitleColor(DCFTheme.getAccentColor(traitCollection: button.traitCollection), for: .normal)
+        // NO FALLBACK: Colors come from StyleSheet only
+        // StyleSheet will always provide these via toMap() fallbacks
         button.layer.cornerRadius = 8
-        // Use DCFTheme as default (framework controls colors)
-        button.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: button.traitCollection)
+        // NO FALLBACK: Colors come from StyleSheet only
+        // StyleSheet will always provide these via toMap() fallbacks
         
         if #available(iOS 14.0, *) {
             button.addAction(UIAction { _ in

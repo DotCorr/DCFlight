@@ -30,10 +30,9 @@ class DCFSliderComponent : DCFComponent() {
         // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
         // primaryColor: minimum track and thumb color
         // secondaryColor: maximum track color
-        val primaryColor = props["primaryColor"]?.let { parseColor(it.toString()) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
-        val secondaryColor = props["secondaryColor"]?.let { parseColor(it.toString()) } 
-            ?: com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(context)
+        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
+        val primaryColor = props["primaryColor"]?.let { parseColor(it.toString()) }
+        val secondaryColor = props["secondaryColor"]?.let { parseColor(it.toString()) }
         
         seekBar.progressTintList = ColorStateList.valueOf(primaryColor)
         seekBar.thumbTintList = ColorStateList.valueOf(primaryColor)
@@ -125,28 +124,22 @@ class DCFSliderComponent : DCFComponent() {
             } catch (e: Exception) {
                 // Silently fail - use DCFTheme fallback
             }
-        } ?: run {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(seekBar.context)
-            seekBar.progressTintList = ColorStateList.valueOf(themeColor)
-            seekBar.thumbTintList = ColorStateList.valueOf(themeColor)
-            hasUpdates = true
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         props["secondaryColor"]?.let { color ->
             try {
                 val colorInt = ColorUtilities.parseColor(color as String)
-                seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
-                hasUpdates = true
+                if (colorInt != null) {
+                    seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
+                    hasUpdates = true
+                }
+                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
             } catch (e: Exception) {
-                // Silently fail - use DCFTheme fallback
+                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
             }
-        } ?: run {
-            // Fall back to DCFTheme (framework colors) if no semantic color provided
-            val themeColor = com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(seekBar.context)
-            seekBar.progressBackgroundTintList = ColorStateList.valueOf(themeColor)
-            hasUpdates = true
         }
+        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
 
         view.applyStyles(props)
 
