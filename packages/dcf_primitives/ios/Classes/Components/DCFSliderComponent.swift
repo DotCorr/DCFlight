@@ -88,7 +88,7 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.thumbTintColor = color
         }
         // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
-
+        
         if let secondaryColor = props["secondaryColor"] as? String,
            let color = ColorUtilities.color(fromHexString: secondaryColor) {
             slider.maximumTrackTintColor = color
