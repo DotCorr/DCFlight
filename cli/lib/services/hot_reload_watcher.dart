@@ -19,6 +19,7 @@ class HotReloadWatcher {
   bool _isIOSPhysicalDevice = false;
   String? _selectedDeviceId;
   Process? _iproxyProcess;
+  bool _iproxySetup = false; // Track if iproxy has been set up
 
   // Terminal styling
   static const String _reset = '\x1B[0m';
@@ -550,9 +551,27 @@ class HotReloadWatcher {
     }
   }
 
-  /// Setup iproxy USB forwarding for iOS physical devices
+  /// Setup iproxy USB forwarding for iOS physical devices (only once)
   Future<void> _setupIproxyForwarding() async {
     if (!_isIOSPhysicalDevice || _selectedDeviceId == null) return;
+    
+    // Only setup once - don't restart on every health check
+    if (_iproxySetup && _iproxyProcess != null) {
+      // Check if process is still alive
+      try {
+        final exitCode = await _iproxyProcess!.exitCode.timeout(
+          Duration(milliseconds: 50),
+        );
+        // Process died, need to restart
+        _iproxyProcess = null;
+        _iproxySetup = false;
+      } catch (e) {
+        // Process still running, all good
+        return;
+      }
+    }
+    
+    if (_iproxySetup) return; // Already set up and running
 
     print('🔧 Setting up iproxy USB forwarding for iOS device: $_selectedDeviceId...');
     
@@ -600,14 +619,17 @@ class HotReloadWatcher {
         print('⚠️  iproxy failed to start (exit code: $exitCode)');
         print('💡 Make sure your iOS device is connected and trusted');
         _iproxyProcess = null;
+        _iproxySetup = false;
       } catch (e) {
         // Timeout means process is still running = success
         print('✅ iproxy USB forwarding active: localhost:8765 → device:8765 (UDID: $_selectedDeviceId)');
+        _iproxySetup = true;
       }
     } catch (e) {
       print('⚠️  Could not setup iproxy forwarding: $e');
       print('💡 Make sure your iOS device is connected via USB and trusted');
       _iproxyProcess = null;
+      _iproxySetup = false;
     }
   }
 
@@ -622,6 +644,7 @@ class HotReloadWatcher {
         // Process might already be dead, that's okay
       }
       _iproxyProcess = null;
+      _iproxySetup = false;
     }
   }
 

@@ -55,6 +55,7 @@ class DCFTextComponent: NSObject, DCFComponent {
         }
         
         // React Native pattern: Merge props to preserve existing values
+        // Framework-level mergeProps now handles semantic color removal automatically
         let existingProps = getStoredProps(from: label)
         let mergedProps = mergeProps(existingProps, with: props.mapValues { $0 as Any? })
         storeProps(mergedProps, in: label)
