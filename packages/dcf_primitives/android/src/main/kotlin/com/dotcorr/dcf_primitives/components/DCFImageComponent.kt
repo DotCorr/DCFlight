@@ -42,15 +42,8 @@ class DCFImageComponent : DCFComponent() {
         val imageView = ImageView(context)
         
         
-        imageView.scaleType = ImageView.ScaleType.CENTER_CROP // scaleAspectFill equivalent
-        imageView.clipToOutline = true // clipsToBounds equivalent
-        
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-            imageView.setBackgroundColor(Color.WHITE) // TODO: Use theme-aware color
-        } else {
-            imageView.setBackgroundColor(Color.TRANSPARENT)
-        }
+        imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+        imageView.clipToOutline = true
         
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         updateViewInternal(imageView, nonNullProps)

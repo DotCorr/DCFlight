@@ -27,10 +27,17 @@ class DCFSliderComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val seekBar = SeekBar(context)
         
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: minimum track and thumb color
+        // secondaryColor: maximum track color
+        val primaryColor = props["primaryColor"]?.let { parseColor(it.toString()) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
+        val secondaryColor = props["secondaryColor"]?.let { parseColor(it.toString()) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(context)
         
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-        }
+        seekBar.progressTintList = ColorStateList.valueOf(primaryColor)
+        seekBar.thumbTintList = ColorStateList.valueOf(primaryColor)
+        seekBar.progressBackgroundTintList = ColorStateList.valueOf(secondaryColor)
         
         seekBar.setTag(R.id.dcf_component_type, "Slider")
         
@@ -116,7 +123,7 @@ class DCFSliderComponent : DCFComponent() {
                 seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
                 hasUpdates = true
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to parse primaryColor: $color", e)
+                // Silently fail - use DCFTheme fallback
             }
         } ?: run {
             // Fall back to DCFTheme (framework colors) if no semantic color provided
@@ -132,7 +139,7 @@ class DCFSliderComponent : DCFComponent() {
                 seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
                 hasUpdates = true
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to parse secondaryColor: $color", e)
+                // Silently fail - use DCFTheme fallback
             }
         } ?: run {
             // Fall back to DCFTheme (framework colors) if no semantic color provided

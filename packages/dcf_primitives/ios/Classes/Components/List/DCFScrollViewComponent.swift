@@ -25,15 +25,15 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         scrollView.showsHorizontalScrollIndicator = true
         scrollView.bounces = true
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                scrollView.backgroundColor = UIColor.systemBackground
+        if let tertiaryColorStr = props["tertiaryColor"] as? String {
+            if let indicatorColor = ColorUtilities.color(fromHexString: tertiaryColorStr) {
+                let brightness = indicatorColor.cgColor.components?.reduce(0, +) ?? 0.5
+                scrollView.indicatorStyle = brightness > 0.5 ? .black : .white
             } else {
-                scrollView.backgroundColor = UIColor.white
+                scrollView.indicatorStyle = .default
             }
         } else {
-            scrollView.backgroundColor = UIColor.clear
+            scrollView.indicatorStyle = .default
         }
         
         updateView(scrollView, withProps: props)
@@ -108,15 +108,8 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             }
         }
         
-        if props.keys.contains("adaptive") && !props.keys.contains("backgroundColor") {
-            let isAdaptive = props["adaptive"] as? Bool ?? true
-            if isAdaptive {
-                if #available(iOS 13.0, *) {
-                    scrollView.backgroundColor = UIColor.systemBackground
-                } else {
-                    scrollView.backgroundColor = UIColor.white
-                }
-            }
+        if !props.keys.contains("backgroundColor") {
+            scrollView.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: scrollView.traitCollection)
         }
         
         if let borderRadius = props["borderRadius"] as? CGFloat {

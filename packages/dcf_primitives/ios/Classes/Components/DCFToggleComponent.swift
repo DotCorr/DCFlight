@@ -19,10 +19,22 @@ class DCFToggleComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let switchControl = UISwitch()
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet semantic colors will override if provided
-        switchControl.onTintColor = DCFTheme.getAccentColor(traitCollection: switchControl.traitCollection)
-        switchControl.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: switchControl.traitCollection)
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: active track and thumb color
+        // secondaryColor: inactive track color
+        if let primaryColorStr = props["primaryColor"] as? String {
+            switchControl.onTintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getAccentColor(traitCollection: switchControl.traitCollection)
+            switchControl.thumbTintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getAccentColor(traitCollection: switchControl.traitCollection)
+        } else {
+            switchControl.onTintColor = DCFTheme.getAccentColor(traitCollection: switchControl.traitCollection)
+            switchControl.thumbTintColor = DCFTheme.getAccentColor(traitCollection: switchControl.traitCollection)
+        }
+        
+        if let secondaryColorStr = props["secondaryColor"] as? String {
+            switchControl.backgroundColor = ColorUtilities.color(fromHexString: secondaryColorStr) ?? DCFTheme.getSurfaceColor(traitCollection: switchControl.traitCollection)
+        } else {
+            switchControl.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: switchControl.traitCollection)
+        }
         
         switchControl.addTarget(DCFToggleComponent.sharedInstance, action: #selector(switchValueChanged(_:)), for: .valueChanged)
         

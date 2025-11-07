@@ -29,6 +29,12 @@ class DCFIconComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
         
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.parseColor(color.toString())
+            imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
+        } ?: run {
+            imageView.setColorFilter(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context), PorterDuff.Mode.SRC_IN)
+        }
         
         imageView.setTag(R.id.dcf_component_type, "Icon")
         

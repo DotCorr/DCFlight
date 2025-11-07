@@ -48,17 +48,6 @@ class DCFImageComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                imageView.backgroundColor = UIColor.systemBackground
-            } else {
-                imageView.backgroundColor = UIColor.white
-            }
-        } else {
-            imageView.backgroundColor = UIColor.clear
-        }
-        
         updateView(imageView, withProps: props)
         
         imageView.applyStyles(props: props)
@@ -124,15 +113,8 @@ class DCFImageComponent: NSObject, DCFComponent {
             }
         }
         
-        if props.keys.contains("adaptive") && !props.keys.contains("backgroundColor") {
-            let isAdaptive = props["adaptive"] as? Bool ?? true
-            if isAdaptive {
-                if #available(iOS 13.0, *) {
-                    imageView.backgroundColor = UIColor.systemBackground
-                } else {
-                    imageView.backgroundColor = UIColor.white
-                }
-            }
+        if !props.keys.contains("backgroundColor") {
+            imageView.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: imageView.traitCollection)
         }
         
         imageView.applyStyles(props: props)

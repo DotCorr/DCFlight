@@ -126,7 +126,18 @@ class YogaShadowTree {
                     return YGSize(width: Float(constraintSize.width), height: Float(constraintSize.height))
                 }
                 
-                let intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: [:])
+                // CRITICAL: UI operations must be on main thread
+                // Yoga's measure function may be called on background thread, but intrinsicContentSize requires main thread
+                var intrinsicSize = CGSize.zero
+                if Thread.isMainThread {
+                    intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: [:])
+                } else {
+                    // Dispatch to main thread synchronously for measure function
+                    // This is safe because Yoga's measure function expects synchronous return
+                    DispatchQueue.main.sync {
+                        intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: [:])
+                    }
+                }
                 
                 let finalWidth = widthMode == YGMeasureMode.undefined ? intrinsicSize.width : min(intrinsicSize.width, constraintSize.width)
                 let finalHeight = heightMode == YGMeasureMode.undefined ? intrinsicSize.height : min(intrinsicSize.height, constraintSize.height)

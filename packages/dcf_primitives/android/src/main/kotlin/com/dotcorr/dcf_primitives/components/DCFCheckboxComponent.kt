@@ -29,12 +29,19 @@ class DCFCheckboxComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val checkBox = CheckBox(context)
         
+        val activeColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
+        val inactiveColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(context)
+        val checkmarkColor = props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
+            ?: Color.WHITE
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet.primaryColor will override if provided
-        checkBox.setTextColor(
-            com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context)
+        val states = arrayOf(
+            intArrayOf(android.R.attr.state_checked),
+            intArrayOf(-android.R.attr.state_checked)
         )
+        checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
+        checkBox.setTextColor(checkmarkColor)
         
         checkBox.setTag(R.id.dcf_component_type, "Checkbox")
         

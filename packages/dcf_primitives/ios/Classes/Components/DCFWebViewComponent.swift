@@ -54,8 +54,8 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         userContentController.add(DCFWebViewComponent.sharedInstance, name: "dcfMessage")
         
         webView.translatesAutoresizingMaskIntoConstraints = false
-        webView.isOpaque = true  // Make opaque to ensure content visibility
-        webView.backgroundColor = UIColor.white  // Always white background
+        webView.isOpaque = true
+        webView.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: webView.traitCollection)
         
         let allowsZoom = props["allowsZoom"] as? Bool ?? true
         webView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
@@ -72,8 +72,6 @@ class DCFWebViewComponent: NSObject, DCFComponent {
             webView.customUserAgent = userAgent
         }
         
-        webView.backgroundColor = UIColor.white
-        webView.scrollView.backgroundColor = UIColor.white
         
         
         DispatchQueue.main.async {
@@ -101,21 +99,34 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         webView.scrollView.showsVerticalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
         webView.scrollView.bounces = props["bounces"] as? Bool ?? true
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                webView.backgroundColor = UIColor.systemBackground
-                webView.scrollView.backgroundColor = UIColor.systemBackground
-            } else {
-                webView.backgroundColor = UIColor.white
-                webView.scrollView.backgroundColor = UIColor.white
+        updateView(webView, withProps: props)
+        
+        webView.applyStyles(props: props)
+        
+        return webView
+    }
+    
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        guard let webView = view as? WKWebView else { 
+            return false 
+        }
+        
+        let source = props["source"] as? String ?? ""
+        
+        if DCFWebViewComponent.sharedInstance.currentURL != source {
+            DispatchQueue.main.async {
+                DCFWebViewComponent.sharedInstance.loadContent(webView: webView, props: props)
             }
         }
         
-        view.applyStyles(props: props)
+        webView.scrollView.isScrollEnabled = props["scrollEnabled"] as? Bool ?? true
+        webView.scrollView.showsHorizontalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
+        webView.scrollView.showsVerticalScrollIndicator = props["showsScrollIndicators"] as? Bool ?? true
+        webView.scrollView.bounces = props["bounces"] as? Bool ?? true
+        
+        webView.applyStyles(props: props)
         return true
     }
-    
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(

@@ -65,12 +65,21 @@ class DCMauiEventMethodHandler: NSObject {
         if let callback = self.eventCallback {
             callback(viewId, normalizedEventName, eventData)
         } else if let channel = methodChannel {
-            DispatchQueue.main.async {
+            // IMMEDIATE dispatch - no delay, events should be instant
+            if Thread.isMainThread {
                 self.methodChannel?.invokeMethod("onEvent", arguments: [
                     "viewId": viewId,
                     "eventType": normalizedEventName,
                     "eventData": eventData
                 ])
+            } else {
+                DispatchQueue.main.async {
+                    self.methodChannel?.invokeMethod("onEvent", arguments: [
+                        "viewId": viewId,
+                        "eventType": normalizedEventName,
+                        "eventData": eventData
+                    ])
+                }
             }
         } else {
         }

@@ -81,8 +81,6 @@ class DCFSegmentedControlProps extends Equatable {
   /// Whether the segmented control is enabled
   final bool enabled;
 
-  /// Whether to use adaptive theming (system colors)
-  final bool adaptive;
 
   /// NOTE: All colors removed - use StyleSheet semantic colors:
   /// - backgroundColor: background color
@@ -94,7 +92,6 @@ class DCFSegmentedControlProps extends Equatable {
     this.segments = const [DCFSegmentItem(title: 'Segment 1')],
     this.selectedIndex = 0,
     this.enabled = true,
-    this.adaptive = true,
     // All color props removed - use StyleSheet semantic colors
   });
 
@@ -104,7 +101,6 @@ class DCFSegmentedControlProps extends Equatable {
       'segments': segments.map((item) => item.toMap()).toList(),
       'selectedIndex': selectedIndex,
       'enabled': enabled,
-      'adaptive': adaptive,
       // All color props removed - native components use StyleSheet semantic colors
     };
   }
@@ -114,7 +110,6 @@ class DCFSegmentedControlProps extends Equatable {
         segments,
         selectedIndex,
         enabled,
-        adaptive,
         // All color props removed
       ];
 }

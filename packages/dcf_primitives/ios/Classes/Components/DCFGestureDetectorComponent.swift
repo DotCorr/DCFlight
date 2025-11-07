@@ -24,13 +24,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
         
         gestureView.isUserInteractionEnabled = true
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            gestureView.backgroundColor = UIColor.clear
-        } else {
-            gestureView.backgroundColor = UIColor.clear
-        }
-        
         updateView(gestureView, withProps: props)
         
         gestureView.applyStyles(props: props)

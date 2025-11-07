@@ -202,7 +202,6 @@ class DCFTextInput extends DCFStatelessComponent
   final Function(DCFTextInputKeyPressData)? onKeyPress;
   final Function(DCFTextInputSelectionData)? onSelectionChange;
   final Function(DCFTextInputEndEditingData)? onEndEditing;
-  final bool adaptive;
 
   DCFTextInput({
     super.key,
@@ -245,7 +244,6 @@ class DCFTextInput extends DCFStatelessComponent
     this.onKeyPress,
     this.onSelectionChange,
     this.onEndEditing,
-    this.adaptive = true,
   });
 
   @override
@@ -322,7 +320,6 @@ class DCFTextInput extends DCFStatelessComponent
         'fontSize': fontSize,
         'fontWeight': fontWeight,
         'fontFamily': fontFamily,
-        'adaptive': adaptive,
         ...layout?.toMap() ?? {},
         ...styleSheet?.toMap() ?? {},
         ...events,
@@ -372,7 +369,6 @@ class DCFTextInput extends DCFStatelessComponent
         onKeyPress,
         onSelectionChange,
         onEndEditing,
-        adaptive,
         key,
       ];
 }

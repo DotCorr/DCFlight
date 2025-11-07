@@ -59,13 +59,6 @@ class DCFAlertComponent : DCFComponent() {
             }
         }
 
-        props["adaptive"]?.let { adaptive ->
-            if (adaptive == true) {
-                view.setBackgroundColor(com.dotcorr.dcflight.theme.DCFTheme.getBackgroundColor(view.context))
-                hasUpdates = true
-            }
-        }
-
         view.applyStyles(props)
 
         return hasUpdates

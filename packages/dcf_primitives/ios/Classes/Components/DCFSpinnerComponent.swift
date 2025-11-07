@@ -42,9 +42,11 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
             }
         }
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet.primaryColor will override if provided
-        spinner.color = DCFTheme.getTextColor(traitCollection: spinner.traitCollection)
+        if let primaryColorStr = props["primaryColor"] as? String {
+            spinner.color = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: spinner.traitCollection)
+        } else {
+            spinner.color = DCFTheme.getTextColor(traitCollection: spinner.traitCollection)
+        }
         
         updateView(spinner, withProps: props)
         spinner.applyStyles(props: props)

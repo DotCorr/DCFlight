@@ -90,20 +90,22 @@ class DCFDropdownComponent: NSObject, DCFComponent {
                 let placeholder = props["placeholder"] as? String ?? "Select..."
                 button.setTitle(placeholder, for: .normal)
                 
-                if let placeholderColor = props["placeholderTextColor"] as? String {
-                    button.setTitleColor(ColorUtilities.color(fromHexString: placeholderColor), for: .normal)
+                // Use secondaryColor from StyleSheet for placeholder text
+                if let secondaryColor = props["secondaryColor"] as? String {
+                    button.setTitleColor(ColorUtilities.color(fromHexString: secondaryColor), for: .normal)
                 } else {
-                    button.setTitleColor(UIColor.placeholderText, for: .normal)
+                    button.setTitleColor(DCFTheme.getSecondaryTextColor(traitCollection: button.traitCollection), for: .normal)
                 }
             }
         } else {
             let placeholder = props["placeholder"] as? String ?? "Select..."
             button.setTitle(placeholder, for: .normal)
             
-            if let placeholderColor = props["placeholderTextColor"] as? String {
-                button.setTitleColor(ColorUtilities.color(fromHexString: placeholderColor), for: .normal)
+            // Use secondaryColor from StyleSheet for placeholder text
+            if let secondaryColor = props["secondaryColor"] as? String {
+                button.setTitleColor(ColorUtilities.color(fromHexString: secondaryColor), for: .normal)
             } else {
-                button.setTitleColor(UIColor.placeholderText, for: .normal)
+                button.setTitleColor(DCFTheme.getSecondaryTextColor(traitCollection: button.traitCollection), for: .normal)
             }
         }
         
