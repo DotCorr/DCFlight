@@ -16,6 +16,7 @@ class HotReloadWatcher {
   final bool verbose;
   final List<String> additionalArgs;
   bool _isAndroidDevice = false;
+  String? _selectedDeviceId;
 
   // Terminal styling
   static const String _reset = '\x1B[0m';
@@ -424,6 +425,7 @@ class HotReloadWatcher {
 
     // Store device info
     _isAndroidDevice = targetPlatform?.toLowerCase().contains('android') ?? false;
+    _selectedDeviceId = deviceId; // Store for ADB port forwarding
 
     print('✅ Selected: $deviceName');
     if (verbose && _isAndroidDevice) {
@@ -497,26 +499,27 @@ class HotReloadWatcher {
 
   /// Setup ADB port forwarding for Android devices
   Future<void> _setupAdbForwarding() async {
-    if (!_isAndroidDevice) return;
+    if (!_isAndroidDevice || _selectedDeviceId == null) return;
 
-    print('🔧 Setting up ADB port forwarding for Android...');
+    print('🔧 Setting up ADB port forwarding for Android device: $_selectedDeviceId...');
     
     try {
-      // Remove any existing forwarding first
-      await Process.run('adb', ['forward', '--remove', 'tcp:8765']);
+      // Remove any existing forwarding first (for this specific device)
+      await Process.run('adb', ['-s', _selectedDeviceId!, 'forward', '--remove', 'tcp:8765']);
       
       // Wait a moment for the port to be released
       await Future.delayed(Duration(milliseconds: 100));
       
       // Setup new forwarding: host:8765 -> emulator:8765
       // adb forward maps HOST port to EMULATOR port
-      final result = await Process.run('adb', ['forward', 'tcp:8765', 'tcp:8765']);
+      // Use -s flag to target specific device when multiple devices are connected
+      final result = await Process.run('adb', ['-s', _selectedDeviceId!, 'forward', 'tcp:8765', 'tcp:8765']);
       
       if (result.exitCode == 0) {
-        print('✅ ADB port forwarding active: host:8765 → emulator:8765');
+        print('✅ ADB port forwarding active: host:8765 → device:8765 (device: $_selectedDeviceId)');
         
         // Verify the forwarding
-        final verifyResult = await Process.run('adb', ['forward', '--list']);
+        final verifyResult = await Process.run('adb', ['-s', _selectedDeviceId!, 'forward', '--list']);
         if (verifyResult.exitCode == 0) {
           print('📋 Active port forwards: ${verifyResult.stdout.toString().trim()}');
         }
