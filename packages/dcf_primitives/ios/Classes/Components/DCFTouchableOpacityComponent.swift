@@ -101,6 +101,15 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
             "timestamp": Date().timeIntervalSince1970
         ])
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        // TouchableOpacity is a container, delegate to child if exists
+        if let child = view.subviews.first {
+            let size = child.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+            return CGSize(width: max(1, size.width), height: max(1, size.height))
+        }
+        return CGSize.zero
+    }
 }
 
 /// Custom view class for touchable opacity

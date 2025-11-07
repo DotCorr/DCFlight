@@ -116,4 +116,13 @@ class DCFSliderComponent: NSObject, DCFComponent {
             "value": sender.value
         ])
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let slider = view as? UISlider else {
+            return CGSize.zero
+        }
+        
+        let size = slider.intrinsicContentSize
+        return CGSize(width: max(1, size.width), height: max(1, size.height))
+    }
 }

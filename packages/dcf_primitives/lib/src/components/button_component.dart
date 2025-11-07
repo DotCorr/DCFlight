@@ -107,7 +107,7 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
   /// Create a button component
   DCFButton({
      this.buttonProps = const DCFButtonProps(title: "Button"),
-    this.layout = const DCFLayout(width: 100, alignItems: YogaAlign.center, justifyContent: YogaJustifyContent.center),
+    this.layout = const DCFLayout(width: 100, alignItems: YogaAlign.center, justifyContent: YogaJustifyContent.center,height: 100),
     this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.blueAccent, borderRadius: 10),
     this.onPress,
     this.onLongPress,

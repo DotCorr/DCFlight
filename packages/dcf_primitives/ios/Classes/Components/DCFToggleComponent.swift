@@ -95,4 +95,13 @@ class DCFToggleComponent: NSObject, DCFComponent {
             "value": sender.isOn
         ])
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let switchControl = view as? UISwitch else {
+            return CGSize.zero
+        }
+        
+        let size = switchControl.intrinsicContentSize
+        return CGSize(width: max(1, size.width), height: max(1, size.height))
+    }
 }

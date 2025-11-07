@@ -87,4 +87,13 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
         spinner.applyStyles(props: props)
         return true
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let spinner = view as? UIActivityIndicatorView else {
+            return CGSize.zero
+        }
+        
+        let size = spinner.intrinsicContentSize
+        return CGSize(width: max(1, size.width), height: max(1, size.height))
+    }
 }

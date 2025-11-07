@@ -89,10 +89,10 @@ class DCFToggleComponent : DCFComponent() {
         // primaryColor: active track and thumb color
         // secondaryColor: inactive track color
         // tertiaryColor: inactive thumb color
-        val states = arrayOf(
-            intArrayOf(android.R.attr.state_checked),
-            intArrayOf()
-        )
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf()
+            )
         
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // StyleSheet.toMap() always provides these colors, so they should never be null

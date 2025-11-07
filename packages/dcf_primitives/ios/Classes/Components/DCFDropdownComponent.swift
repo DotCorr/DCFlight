@@ -290,6 +290,15 @@ class DCFDropdownComponent: NSObject, DCFComponent {
             presentingController.present(alertController, animated: true)
         }
     }
+    
+    override func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let button = view as? UIButton else {
+            return CGSize.zero
+        }
+        
+        let size = button.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        return CGSize(width: max(1, size.width), height: max(1, size.height))
+    }
 }
 
 
