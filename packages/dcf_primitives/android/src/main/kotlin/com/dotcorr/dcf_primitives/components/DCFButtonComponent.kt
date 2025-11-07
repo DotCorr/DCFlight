@@ -58,47 +58,39 @@ class DCFButtonComponent : DCFComponent() {
             Log.d(TAG, "Set initial button title: $titleText")
         }
         
-        // CRITICAL: Set text color IMMEDIATELY after setting text to ensure visibility
-        // This must happen BEFORE applyStyles to prevent theme defaults from overriding
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                button.setTextColor(colorInt)
-                Log.d(TAG, "Set initial text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
-            } else {
-                Log.w(TAG, "Failed to parse primaryColor: $color")
-            }
-        } ?: run {
-            Log.w(TAG, "No primaryColor in props - button text may be invisible!")
-        }
-        
         // CRITICAL: Store props FIRST before calling updateView
         // This ensures updateViewInternal has access to all props including primaryColor
         storeProps(button, props)
         
-        button.applyStyles(nonNullProps)
-        
         // Use updateView to ensure props are stored and merged correctly
-        // This will call updateViewInternal which will set text color again (ensuring it's not overridden)
+        // This will call updateViewInternal which will set text color (ensuring it's not overridden)
+        // CRITICAL: updateView merges props and ensures primaryColor from StyleSheet.toMap() is available
         updateView(button, props)
         
-        // CRITICAL: Set text color AGAIN AFTER updateView and applyStyles to ensure it's the final operation
-        // This guarantees text is visible on initial render, even when UI is bloated
+        // After updateView, get the merged props (which should include primaryColor from StyleSheet.toMap())
+        val mergedProps = getStoredProps(button)
+        val nonNullMergedProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+        
+        button.applyStyles(nonNullMergedProps)
+        
+        // CRITICAL: Set text color AFTER updateView and applyStyles to ensure it's the final operation
+        // Use merged props which should include primaryColor from StyleSheet.toMap() fallback
         // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
-        props["primaryColor"]?.let { color ->
+        // StyleSheet.toMap() ALWAYS provides primaryColor via DCFTheme.textColor fallback
+        mergedProps["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 button.setTextColor(colorInt)
-                // Force invalidate to ensure text is redrawn with correct color
+                // Force invalidate and request layout to ensure text is redrawn with correct color
                 button.invalidate()
-                Log.d(TAG, "Set final text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
+                button.requestLayout()
+                Log.d(TAG, "Set text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
             } else {
                 Log.w(TAG, "Failed to parse primaryColor: $color")
             }
             // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         } ?: run {
-            Log.w(TAG, "No primaryColor in props - button text may be invisible!")
+            Log.e(TAG, "ERROR: No primaryColor in merged props! StyleSheet.toMap() should always provide it!")
         }
 
         button.setOnTouchListener { view, event ->
