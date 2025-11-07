@@ -58,20 +58,16 @@ class DCFTextComponent : DCFComponent() {
         textView.applyStyles(nonNullProps)
         
         // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 textView.setTextColor(colorInt)
                 Log.d(TAG, "Set text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
-            } else {
-                textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
-                Log.d(TAG, "Failed to parse primaryColor, using theme color")
             }
-        } ?: run {
-            textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
-            Log.d(TAG, "No primaryColor provided, using theme color")
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         return textView
     }
@@ -168,20 +164,16 @@ class DCFTextComponent : DCFComponent() {
         textView.applyStyles(props)
         
         // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         props["primaryColor"]?.let { color ->
             val colorInt = ColorUtilities.color(color.toString())
             if (colorInt != null) {
                 textView.setTextColor(colorInt)
                 Log.d(TAG, "Updated text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
-            } else {
-                textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(textView.context))
-                Log.d(TAG, "Failed to parse primaryColor in update, using theme color")
             }
-        } ?: run {
-            textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(textView.context))
-            Log.d(TAG, "No primaryColor in update props, using theme color")
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         return true
     }

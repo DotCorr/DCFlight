@@ -35,16 +35,14 @@ class DCFTextComponent: NSObject, DCFComponent {
         label.applyStyles(props: props)
         
         // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         if let primaryColorStr = props["primaryColor"] as? String {
             if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
                 label.textColor = color
-            } else {
-                label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
             }
-        } else {
-            label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         return label
     }
@@ -138,17 +136,15 @@ class DCFTextComponent: NSObject, DCFComponent {
         label.applyStyles(props: nonNullProps)
         
         // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         // Use merged props to preserve primaryColor across updates
         if let primaryColorStr = nonNullProps["primaryColor"] as? String {
             if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
                 label.textColor = color
-            } else {
-                label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
             }
-        } else {
-            label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
+            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
         }
+        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         return true
     }
