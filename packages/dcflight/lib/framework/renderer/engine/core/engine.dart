@@ -1661,6 +1661,15 @@ class DCFEngine {
       final changedProps = _diffProps(
           oldElement.type, oldElement.elementProps, newElement.elementProps);
 
+      // DEBUG: Log prop comparison for button components
+      if (oldElement.type == 'Button') {
+        print('🔥 RECONCILE: Button props comparison:');
+        print('  Old title: ${oldElement.elementProps["title"]}');
+        print('  New title: ${newElement.elementProps["title"]}');
+        print('  Changed props: ${changedProps.keys.toList()}');
+        print('  Changed props count: ${changedProps.length}');
+      }
+
       if (changedProps.isNotEmpty) {
         EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
             data: {'ChangedProps': changedProps.keys.toList()});
@@ -1712,9 +1721,23 @@ class DCFEngine {
       if (!oldProps.containsKey(key)) {
         changedProps[key] = value;
         addedCount++;
-      } else if (oldProps[key] != value) {
-        changedProps[key] = value;
-        changedCount++;
+      } else {
+        final oldValue = oldProps[key];
+        // Use deep equality check for complex objects (maps, lists)
+        if (oldValue is Map && value is Map) {
+          if (!_mapsEqual(oldValue, value)) {
+            changedProps[key] = value;
+            changedCount++;
+          }
+        } else if (oldValue is List && value is List) {
+          if (!_listsEqual(oldValue, value)) {
+            changedProps[key] = value;
+            changedCount++;
+          }
+        } else if (oldValue != value) {
+          changedProps[key] = value;
+          changedCount++;
+        }
       }
     }
 
@@ -1751,6 +1774,41 @@ class DCFEngine {
     }
 
     return changedProps;
+  }
+
+  /// Deep equality check for maps
+  bool _mapsEqual(Map<dynamic, dynamic> map1, Map<dynamic, dynamic> map2) {
+    if (map1.length != map2.length) return false;
+    for (final key in map1.keys) {
+      if (!map2.containsKey(key)) return false;
+      final val1 = map1[key];
+      final val2 = map2[key];
+      if (val1 is Map && val2 is Map) {
+        if (!_mapsEqual(val1, val2)) return false;
+      } else if (val1 is List && val2 is List) {
+        if (!_listsEqual(val1, val2)) return false;
+      } else if (val1 != val2) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Deep equality check for lists
+  bool _listsEqual(List<dynamic> list1, List<dynamic> list2) {
+    if (list1.length != list2.length) return false;
+    for (int i = 0; i < list1.length; i++) {
+      final val1 = list1[i];
+      final val2 = list2[i];
+      if (val1 is Map && val2 is Map) {
+        if (!_mapsEqual(val1, val2)) return false;
+      } else if (val1 is List && val2 is List) {
+        if (!_listsEqual(val1, val2)) return false;
+      } else if (val1 != val2) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// O(children reconciliation complexity) - Reconcile children with keyed optimization

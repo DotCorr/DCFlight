@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -9,6 +11,9 @@ class MyApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     final count = useState<int>(0);
+    final sliderVal = useState<double>(0.0);
+    
+
     final name = useState<String>("");
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
 
@@ -48,12 +53,14 @@ class MyApp extends DCFStatefulComponent {
         DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
         DCFSegmentedControl(
           segmentedControlProps: DCFSegmentedControlProps(
+            selectedIndex: sliderVal.state.toInt(),
             segments: [
               DCFSegmentItem(title: "Item 1"),
               DCFSegmentItem(title: "Item 2"),
             ],
           ),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.blue),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.blue,accentColor: DCFColors.amber,tertiaryColor: DCFColors.green,backgroundColor: Platform.isAndroid ? DCFColors.red : DCFColors.transparent),
+          layout: DCFLayout(height: 30,width: 200,alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center),
         ),
         DCFAlert(
           visible: isDarkMode.state,
