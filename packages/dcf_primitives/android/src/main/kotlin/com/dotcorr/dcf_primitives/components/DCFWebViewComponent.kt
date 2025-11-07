@@ -29,14 +29,35 @@ class DCFWebViewComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val webView = WebView(context)
 
-
-        // NO FALLBACK: backgroundColor comes from StyleSheet only
-        // StyleSheet will always provide this via toMap() fallbacks
-
         webView.settings.javaScriptEnabled = true
 
         webView.setTag(R.id.dcf_component_type, "WebView")
 
+        // Load source immediately if provided (initial load)
+        props["source"]?.let { source ->
+            when (source) {
+                is String -> {
+                    webView.loadUrl(source)
+                }
+                is Map<*, *> -> {
+                    val uri = source["uri"] as? String
+                    val html = source["html"] as? String
+                    val baseUrl = source["baseUrl"] as? String
+                    when {
+                        uri != null -> webView.loadUrl(uri)
+                        html != null -> webView.loadDataWithBaseURL(
+                            baseUrl,
+                            html,
+                            "text/html",
+                            "UTF-8",
+                            null
+                        )
+                    }
+                }
+            }
+        }
+
+        // Store props and apply styles
         updateView(webView, props)
 
         val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
@@ -50,16 +71,22 @@ class DCFWebViewComponent : DCFComponent() {
     override protected fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val webView = view as? WebView ?: return false
 
-        props["source"]?.let { source ->
-            when (source) {
+        // Only reload if source actually changed (prevents reload on theme toggle)
+        val existingProps = getStoredProps(webView)
+        val existingSource = existingProps["source"]
+        val newSource = props["source"]
+        
+        // Reload only if source changed (not on every update)
+        if (newSource != null && newSource != existingSource) {
+            when (newSource) {
                 is String -> {
-                    webView.loadUrl(source)
+                    webView.loadUrl(newSource)
                 }
 
                 is Map<*, *> -> {
-                    val uri = source["uri"] as? String
-                    val html = source["html"] as? String
-                    val baseUrl = source["baseUrl"] as? String
+                    val uri = newSource["uri"] as? String
+                    val html = newSource["html"] as? String
+                    val baseUrl = newSource["baseUrl"] as? String
 
                     when {
                         uri != null -> webView.loadUrl(uri)
