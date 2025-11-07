@@ -21,8 +21,6 @@ class DCFSVGProps extends Equatable {
   /// The height of the SVG
   final double? height;
 
-  /// Whether to use adaptive theming
-  final bool adaptive;
 
   /// Create SVG props
   const DCFSVGProps({
@@ -30,7 +28,6 @@ class DCFSVGProps extends Equatable {
     this.isAsset = false,
     this.width,
     this.height,
-    this.adaptive = true,
   });
 
   /// Convert to props map
@@ -40,7 +37,6 @@ class DCFSVGProps extends Equatable {
       'isAsset': isAsset,
       if (width != null) 'width': width,
       if (height != null) 'height': height,
-      'adaptive': adaptive,
     };
   }
 
@@ -50,7 +46,6 @@ class DCFSVGProps extends Equatable {
         isAsset,
         width,
         height,
-        adaptive,
       ];
 }
 

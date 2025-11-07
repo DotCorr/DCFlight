@@ -27,12 +27,14 @@ class DCFSpinnerComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val progressBar = ProgressBar(context)
 
-
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-        }
-
         progressBar.isIndeterminate = true
+
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.parseColor(color.toString())
+            progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
+        } ?: run {
+            progressBar.indeterminateTintList = ColorStateList.valueOf(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+        }
 
         progressBar.setTag(R.id.dcf_component_type, "Spinner")
 

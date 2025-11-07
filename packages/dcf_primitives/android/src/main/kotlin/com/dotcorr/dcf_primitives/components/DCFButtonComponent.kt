@@ -50,9 +50,32 @@ class DCFButtonComponent : DCFComponent() {
         button.isFocusable = true
         
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        updateViewInternal(button, nonNullProps)
-
+        
+        // Set initial title if provided
+        props["title"]?.let { title ->
+            val titleText = when (title) {
+                is String -> title
+                else -> title.toString()
+            }
+            button.text = titleText
+        }
+        
         button.applyStyles(nonNullProps)
+        
+        // Set text color after applyStyles to ensure it's not overridden
+        props["primaryColor"]?.let { color ->
+            val colorInt = when (color) {
+                is String -> Color.parseColor(color)
+                is Int -> color
+                else -> Color.WHITE
+            }
+            button.setTextColor(colorInt)
+        } ?: run {
+            // Default to white text for buttons (typically on colored backgrounds)
+            button.setTextColor(Color.WHITE)
+        }
+        
+        updateViewInternal(button, nonNullProps)
 
         button.setOnTouchListener { view, event ->
             when (event.action) {
@@ -114,13 +137,13 @@ class DCFButtonComponent : DCFComponent() {
             }
         }
 
-        props["adaptive"]?.let { adaptive ->
-            button.setTag("dcf_adaptive".hashCode(), adaptive)
-            Log.d(TAG, "Set button adaptive: $adaptive")
-        }
 
+        // backgroundColor is handled by applyStyles from StyleSheet
+        button.applyStyles(props)
+        
         // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
         // primaryColor: button text color
+        // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
         props["primaryColor"]?.let { color ->
             val colorInt = when (color) {
                 is String -> Color.parseColor(color)
@@ -129,16 +152,10 @@ class DCFButtonComponent : DCFComponent() {
             }
             button.setTextColor(colorInt)
         } ?: run {
-            // Fall back to white text if no semantic color provided
-            val isAdaptive = props["adaptive"] as? Boolean ?: true
-            if (isAdaptive) {
-                button.setTextColor(Color.WHITE)
-            }
+            // Fall back to white text if no semantic color provided (for buttons with colored backgrounds)
+            // Buttons typically need white text on colored backgrounds
+            button.setTextColor(Color.WHITE)
         }
-        
-        // backgroundColor is handled by applyStyles from StyleSheet
-
-        button.applyStyles(props)
 
         return true
     }

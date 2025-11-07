@@ -23,13 +23,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let containerView = UIView()
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            containerView.backgroundColor = UIColor.clear
-        } else {
-            containerView.backgroundColor = UIColor.clear
-        }
-        
         updateView(containerView, withProps: props)
         containerView.applyStyles(props: props)
         

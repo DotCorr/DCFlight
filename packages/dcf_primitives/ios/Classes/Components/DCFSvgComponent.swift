@@ -40,11 +40,10 @@ class DCFSvgComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            imageView.backgroundColor = UIColor.clear
+        if let primaryColorStr = props["primaryColor"] as? String {
+            imageView.tintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
         } else {
-            imageView.backgroundColor = UIColor.clear
+            imageView.tintColor = DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
         }
         
         updateView(imageView, withProps: props)
@@ -62,11 +61,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
         do {
             if let backgroundColor = props["backgroundColor"] as? String {
                 imageView.backgroundColor = ColorUtilities.color(fromHexString: backgroundColor)
-            } else {
-                let isAdaptive = props["adaptive"] as? Bool ?? true
-                if isAdaptive {
-                    imageView.backgroundColor = UIColor.clear
-                }
             }
             
             if let asset = props["asset"] as? String {
@@ -112,10 +106,10 @@ class DCFSvgComponent: NSObject, DCFComponent {
     }
     
     private func applyCachedImageToView(_ svgImage: SVGKImage, imageView: UIImageView, props: [String: Any]) {
-        let hasTintColor = props["tintColor"] as? String != nil
-        let isAdaptive = props["adaptive"] as? Bool ?? true
+        // Use primaryColor from StyleSheet for SVG tinting (replaces legacy tintColor prop)
+        let hasPrimaryColor = props["primaryColor"] as? String != nil
         
-        if hasTintColor || isAdaptive {
+        if hasPrimaryColor {
             imageView.image = svgImage.uiImage?.withRenderingMode(.alwaysTemplate)
         } else {
             imageView.image = svgImage.uiImage?.withRenderingMode(.alwaysOriginal)
@@ -126,27 +120,19 @@ class DCFSvgComponent: NSObject, DCFComponent {
     
     
     private func applyTintColor(to imageView: UIImageView, props: [String: Any]) {
-        if let tintColorString = props["tintColor"] as? String,
-           let tintColor = ColorUtilities.color(fromHexString: tintColorString) {
+        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // primaryColor: SVG tint color (replaces legacy tintColor prop)
+        if let primaryColor = props["primaryColor"] as? String,
+           let tintColor = ColorUtilities.color(fromHexString: primaryColor) {
             imageView.tintColor = tintColor
             if let image = imageView.image {
                 imageView.image = image.withRenderingMode(.alwaysTemplate)
             }
         } else {
-            if props["tintColor"] == nil {
-                // Use DCFTheme as default (framework controls colors)
-                // StyleSheet.primaryColor will override if provided
-                imageView.tintColor = DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
-                    if let image = imageView.image {
-                        imageView.image = image.withRenderingMode(.alwaysTemplate)
-                    }
-                } else {
-                    if let image = imageView.image {
-                        imageView.image = image.withRenderingMode(.alwaysOriginal)
-                    }
-                    imageView.tintColor = nil
-                }
-            } else {
+            // Fall back to DCFTheme (framework colors) if no semantic color provided
+            imageView.tintColor = DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
+            if let image = imageView.image {
+                imageView.image = image.withRenderingMode(.alwaysTemplate)
             }
         }
     }

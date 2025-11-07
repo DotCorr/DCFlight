@@ -92,7 +92,6 @@ class DCFSliderCompleteData {
 /// 🚀 DCF Slider Component
 ///
 /// A slider component that provides native platform behavior.
-/// Supports custom styling, range, and step values with adaptive theming.
 class DCFSlider extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
@@ -123,8 +122,6 @@ class DCFSlider extends DCFStatelessComponent
   /// Whether the slider is disabled
   final bool disabled;
 
-  /// Whether to use adaptive theming (system colors)
-  final bool adaptive;
 
   /// NOTE: All colors removed - use StyleSheet semantic colors:
   /// - primaryColor: minimum track and thumb color
@@ -149,7 +146,6 @@ class DCFSlider extends DCFStatelessComponent
     this.onSlidingStart,
     this.onSlidingComplete,
     this.disabled = false,
-    this.adaptive = true,
     // All color props removed - use StyleSheet semantic colors
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
@@ -183,7 +179,6 @@ class DCFSlider extends DCFStatelessComponent
       'minimumValue': minimumValue,
       'maximumValue': maximumValue,
       'disabled': disabled,
-      'adaptive': adaptive,
       ...layout.toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
@@ -212,7 +207,6 @@ class DCFSlider extends DCFStatelessComponent
         onSlidingStart,
         onSlidingComplete,
         disabled,
-        adaptive,
         // All color props removed
         layout,
         styleSheet,

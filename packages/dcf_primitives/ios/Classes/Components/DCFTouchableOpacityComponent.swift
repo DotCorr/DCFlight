@@ -27,13 +27,6 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
         
         touchableView.isUserInteractionEnabled = true
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            touchableView.backgroundColor = UIColor.clear
-        } else {
-            touchableView.backgroundColor = UIColor.clear
-        }
-        
         updateView(touchableView, withProps: props)
         
         touchableView.applyStyles(props: props)

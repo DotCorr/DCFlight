@@ -189,8 +189,6 @@ class DCFGestureDetector extends DCFStatelessComponent
   /// Pan end event handler - receives type-safe gesture data
   final Function(DCFGesturePanData)? onPanEnd;
 
-  /// Whether to use adaptive theming
-  final bool adaptive;
 
   /// Create a gesture detector component
   DCFGestureDetector({
@@ -207,7 +205,6 @@ class DCFGestureDetector extends DCFStatelessComponent
     this.onPanUpdate,
     this.onPanEnd,
     this.events,
-    this.adaptive = true,
     super.key,
   });
 
@@ -270,7 +267,6 @@ class DCFGestureDetector extends DCFStatelessComponent
     }
 
     Map<String, dynamic> props = {
-      'adaptive': adaptive,
       ...layout.toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
@@ -298,7 +294,6 @@ class DCFGestureDetector extends DCFStatelessComponent
         onPanStart,
         onPanUpdate,
         onPanEnd,
-        adaptive,
         key,
       ];
 }

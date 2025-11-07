@@ -47,14 +47,21 @@ class DCFTextComponent : DCFComponent() {
         // Store props using framework method (React Native pattern)
         storeProps(textView, props)
         
-        // REMOVED: Component-specific adaptive color logic
-        // Framework now handles this universally via applyStyles
-        // This ensures consistent theme behavior across all components
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: text color
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                textView.setTextColor(colorInt)
+            } else {
+                textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+            }
+        } ?: run {
+            textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+        }
 
         updateViewInternal(textView, nonNullProps)
 
-        // Framework handles color prop universally via applyStyles
-        // No need for component-specific color logic here
         textView.applyStyles(nonNullProps)
 
         return textView
@@ -74,6 +81,19 @@ class DCFTextComponent : DCFComponent() {
 
         val hasAnyFontProp = props.containsKey("fontSize") || props.containsKey("fontWeight") || 
                             props.containsKey("fontFamily") || props.containsKey("isFontAsset")
+
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: text color
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                textView.setTextColor(colorInt)
+            } else {
+                textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(textView.context))
+            }
+        } ?: run {
+            textView.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(textView.context))
+        }
 
         if (hasAnyFontProp) {
             val currentSize = textView.textSize / textView.context.resources.displayMetrics.scaledDensity

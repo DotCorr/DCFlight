@@ -21,17 +21,6 @@ class DCFViewComponent: NSObject, DCFComponent {
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
         }
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            if #available(iOS 13.0, *) {
-                view.backgroundColor = UIColor.systemBackground
-            } else {
-                view.backgroundColor = UIColor.white
-            }
-        } else {
-            view.backgroundColor = UIColor.clear
-        }
-        
         view.applyStyles(props: props)
         
         updateView(view, withProps: props)

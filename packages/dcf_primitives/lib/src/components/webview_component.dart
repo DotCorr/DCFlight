@@ -67,8 +67,6 @@ class DCFWebViewProps extends Equatable {
   /// User agent string
   final String? userAgent;
 
-  /// Whether to use adaptive theming
-  final bool adaptive;
 
   /// Create webview props
   const DCFWebViewProps({
@@ -84,7 +82,6 @@ class DCFWebViewProps extends Equatable {
     this.scrollEnabled = true,
     this.automaticallyAdjustContentInsets = true,
     this.userAgent,
-    this.adaptive = true,
   });
 
   /// Convert to props map
@@ -102,7 +99,6 @@ class DCFWebViewProps extends Equatable {
       'scrollEnabled': scrollEnabled,
       'automaticallyAdjustContentInsets': automaticallyAdjustContentInsets,
       if (userAgent != null) 'userAgent': userAgent,
-      'adaptive': adaptive,
     };
   }
 
@@ -120,7 +116,6 @@ class DCFWebViewProps extends Equatable {
         scrollEnabled,
         automaticallyAdjustContentInsets,
         userAgent,
-        adaptive,
       ];
 }
 

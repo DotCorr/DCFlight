@@ -39,7 +39,6 @@ class DCFToggleValueData {
 /// 🚀 DCF Toggle Component (Switch)
 ///
 /// A toggle/switch component that provides native platform behavior.
-/// Supports custom styling, sizes, and colors with adaptive theming.
 class DCFToggle extends DCFStatelessComponent
     implements ComponentPriorityInterface {
   @override
@@ -54,8 +53,6 @@ class DCFToggle extends DCFStatelessComponent
   /// Whether the toggle is disabled
   final bool disabled;
 
-  /// Whether to use adaptive theming (system colors)
-  final bool adaptive;
 
   /// NOTE: All colors removed - use StyleSheet semantic colors:
   /// - primaryColor: active track/thumb color
@@ -79,7 +76,6 @@ class DCFToggle extends DCFStatelessComponent
     required this.value,
     this.onValueChange,
     this.disabled = false,
-    this.adaptive = true,
     // All color props removed - use StyleSheet semantic colors
     this.size = 'medium',
     this.layout = const DCFLayout(),
@@ -100,7 +96,6 @@ class DCFToggle extends DCFStatelessComponent
     Map<String, dynamic> props = {
       'value': value,
       'disabled': disabled,
-      'adaptive': adaptive,
       'size': size,
       ...layout.toMap(),
       ...styleSheet.toMap(),
@@ -120,7 +115,6 @@ class DCFToggle extends DCFStatelessComponent
   List<Object?> get props => [
         value,
         disabled,
-        adaptive,
         // All color props removed
         size,
         layout,

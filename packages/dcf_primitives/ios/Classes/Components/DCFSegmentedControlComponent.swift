@@ -44,13 +44,21 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
         }
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet semantic colors will override if provided
-        segmentedControl.backgroundColor = DCFTheme.getSurfaceColor(traitCollection: segmentedControl.traitCollection)
-        if #available(iOS 13.0, *) {
-            segmentedControl.selectedSegmentTintColor = DCFTheme.getAccentColor(traitCollection: segmentedControl.traitCollection)
+        if let primaryColorStr = props["primaryColor"] as? String {
+            if #available(iOS 13.0, *) {
+                segmentedControl.selectedSegmentTintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getAccentColor(traitCollection: segmentedControl.traitCollection)
+            }
+        } else {
+            if #available(iOS 13.0, *) {
+                segmentedControl.selectedSegmentTintColor = DCFTheme.getAccentColor(traitCollection: segmentedControl.traitCollection)
+            }
         }
-        segmentedControl.tintColor = DCFTheme.getTextColor(traitCollection: segmentedControl.traitCollection)
+        
+        if let secondaryColorStr = props["secondaryColor"] as? String {
+            segmentedControl.tintColor = ColorUtilities.color(fromHexString: secondaryColorStr) ?? DCFTheme.getTextColor(traitCollection: segmentedControl.traitCollection)
+        } else {
+            segmentedControl.tintColor = DCFTheme.getTextColor(traitCollection: segmentedControl.traitCollection)
+        }
         
         if let selectedIndex = props["selectedIndex"] as? Int,
            selectedIndex >= 0 && selectedIndex < segmentedControl.numberOfSegments {
@@ -104,8 +112,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         if let enabled = props["enabled"] as? Bool {
             segmentedControl.isEnabled = enabled
         }
-        
-        let isAdaptive = props["adaptive"] as? Bool ?? true
         
         // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
         // backgroundColor: background color (handled by applyStyles)

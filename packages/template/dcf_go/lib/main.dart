@@ -20,9 +20,7 @@ class MyApp extends DCFStatefulComponent {
       ),
       // Using unified theme system with semantic colors
       styleSheet: DCFStyleSheet(
-        backgroundColor: isDarkMode.state 
-            ? DCFTheme.current.backgroundColor 
-            : DCFTheme.current.surfaceColor,
+        backgroundColor: Colors.red,
       ),
       children: [
         DCFText(

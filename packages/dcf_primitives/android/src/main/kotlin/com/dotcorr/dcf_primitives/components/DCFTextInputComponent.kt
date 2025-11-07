@@ -36,15 +36,44 @@ class DCFTextInputComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val editText = AppCompatEditText(context)
 
-
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet semantic colors will override if provided
-        editText.setTextColor(
-            com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context)
-        )
-        editText.setBackgroundColor(
-            com.dotcorr.dcflight.theme.DCFTheme.getBackgroundColor(context)
-        )
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: text color
+        props["primaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                editText.setTextColor(colorInt)
+            } else {
+                editText.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+            }
+        } ?: run {
+            editText.setTextColor(com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context))
+        }
+        
+        // secondaryColor: placeholder color
+        props["secondaryColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                editText.setHintTextColor(colorInt)
+            } else {
+                editText.setHintTextColor(com.dotcorr.dcflight.theme.DCFTheme.getSecondaryTextColor(context))
+            }
+        } ?: run {
+            editText.setHintTextColor(com.dotcorr.dcflight.theme.DCFTheme.getSecondaryTextColor(context))
+        }
+        
+        // accentColor: selection color
+        props["accentColor"]?.let { color ->
+            val colorInt = ColorUtilities.color(color.toString())
+            if (colorInt != null) {
+                editText.setHighlightColor(colorInt)
+            } else {
+                editText.setHighlightColor(com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context))
+            }
+        } ?: run {
+            editText.setHighlightColor(com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context))
+        }
+        
+        // backgroundColor handled by applyStyles
 
         editText.setPadding(
             dpToPx(12f, context),

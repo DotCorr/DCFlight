@@ -89,9 +89,6 @@ class DCFTextProps extends Equatable {
   /// Number of lines (0 for unlimited)
   final int? numberOfLines;
 
-  /// Whether to use adaptive theming
-  final bool adaptive;
-
   /// Create text props
   /// 
   /// NOTE: Use StyleSheet.primaryColor for text color instead of color prop
@@ -102,7 +99,6 @@ class DCFTextProps extends Equatable {
     this.isFontAsset = false,
     this.textAlign =  DCFTextAlign.center,
     this.numberOfLines,
-    this.adaptive = true,
   });
 
   /// Convert to props map
@@ -115,7 +111,6 @@ class DCFTextProps extends Equatable {
       // Color removed - use StyleSheet.primaryColor instead
       if (textAlign != null) 'textAlign': textAlign!.value,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
-      'adaptive': adaptive,
     };
   }
 
@@ -128,7 +123,6 @@ class DCFTextProps extends Equatable {
         // color removed - use StyleSheet.primaryColor instead
         textAlign,
         numberOfLines,
-        adaptive,
       ];
 }
 

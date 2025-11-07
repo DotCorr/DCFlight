@@ -39,7 +39,6 @@ class DCFCheckboxValueData {
 /// 🚀 DCF Checkbox Component
 ///
 /// A checkbox component that provides native platform behavior.
-/// Supports custom styling, sizes, and colors with adaptive theming.
 class DCFCheckbox extends DCFStatelessComponent
     with EquatableMixin
     implements ComponentPriorityInterface {
@@ -55,8 +54,6 @@ class DCFCheckbox extends DCFStatelessComponent
   /// Whether the checkbox is disabled
   final bool disabled;
 
-  /// Whether to use adaptive theming (system colors)
-  final bool adaptive;
 
   /// NOTE: All colors removed - use StyleSheet semantic colors:
   /// - primaryColor: active/checked color and checkmark color
@@ -82,7 +79,6 @@ class DCFCheckbox extends DCFStatelessComponent
     required this.checked,
     this.onValueChange,
     this.disabled = false,
-    this.adaptive = false,
     // All color props removed - use StyleSheet semantic colors
     this.size = 'medium',
     this.checkboxStyle = 'default',
@@ -126,7 +122,6 @@ class DCFCheckbox extends DCFStatelessComponent
         checked,
         onValueChange,
         disabled,
-        adaptive,
         // All color props removed
         size,
         checkboxStyle,

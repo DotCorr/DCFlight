@@ -64,13 +64,17 @@ class DCFButtonComponent: NSObject, DCFComponent {
             button.alpha = disabled ? 0.5 : 1.0
         }
         
+        button.applyStyles(props: props)
+        
         // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
         // primaryColor: button text color
+        // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
         if let primaryColor = props["primaryColor"] as? String {
             button.setTitleColor(ColorUtilities.color(fromHexString: primaryColor), for: .normal)
+        } else {
+            // Default to white text for buttons (typically on colored backgrounds)
+            button.setTitleColor(UIColor.white, for: .normal)
         }
-        
-        button.applyStyles(props: props)
         return true
     }
     

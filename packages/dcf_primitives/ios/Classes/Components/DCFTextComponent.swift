@@ -22,13 +22,16 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         label.numberOfLines = 0
         
-        // REMOVED: Component-specific adaptive color logic
-        // Framework now handles this universally via applyStyles
-        // This ensures consistent theme behavior across all components
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: text color
+        if let primaryColorStr = props["primaryColor"] as? String {
+            label.textColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: label.traitCollection)
+        } else {
+            label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
+        }
         
         updateView(label, withProps: props)
         
-        // Framework handles color prop universally via applyStyles
         label.applyStyles(props: props)
         
         return label
@@ -110,6 +113,14 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         if let numberOfLines = props["numberOfLines"] as? Int {
             label.numberOfLines = numberOfLines
+        }
+        
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: text color
+        if let primaryColorStr = props["primaryColor"] as? String {
+            label.textColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: label.traitCollection)
+        } else {
+            label.textColor = DCFTheme.getTextColor(traitCollection: label.traitCollection)
         }
         
         label.applyStyles(props: props)

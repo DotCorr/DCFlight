@@ -32,30 +32,10 @@ class DCFViewComponent : DCFComponent() {
 
         view.setTag(R.id.dcf_component_type, "View")
 
-
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-            try {
-                val typedValue = android.util.TypedValue()
-                if (context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)) {
-                    view.setBackgroundColor(typedValue.data)
-                } else {
-                    val isDarkTheme = (context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-                    view.setBackgroundColor(if (isDarkTheme) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-                }
-            } catch (e: Exception) {
-                view.setBackgroundColor(android.graphics.Color.WHITE)
-            }
-        } else {
-            view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        }
-
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         updateViewInternal(view, nonNullProps)
 
         view.applyStyles(nonNullProps)
-
-        Log.d(TAG, "Created view component with adaptive: $isAdaptive")
 
         return view
     }

@@ -29,10 +29,23 @@ class DCFToggleComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val switchControl = SwitchCompat(context)
 
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: active track and thumb color
+        // secondaryColor: inactive track color
+        // tertiaryColor: inactive thumb color
+        val activeColor = props["primaryColor"]?.let { parseColor(it.toString()) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
+        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it.toString()) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(context)
+        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it.toString()) } 
+            ?: Color.WHITE
         
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-        }
+        val states = arrayOf(
+            intArrayOf(android.R.attr.state_checked),
+            intArrayOf()
+        )
+        switchControl.trackTintList = ColorStateList(states, intArrayOf(activeColor, inactiveTrackColor))
+        switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeColor, inactiveThumbColor))
 
         switchControl.setTag(R.id.dcf_component_type, "Toggle")
 

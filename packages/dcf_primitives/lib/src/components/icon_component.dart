@@ -73,8 +73,6 @@ class DCFIconProps extends Equatable {
   /// Package where the icon is defined
   final String package;
 
-  /// Whether to use adaptive theming
-  final bool adaptive;
 
   /// Create icon props
   /// NOTE: Use StyleSheet.primaryColor for icon color instead of color prop
@@ -82,7 +80,6 @@ class DCFIconProps extends Equatable {
     required this.name,
     // Color removed - use StyleSheet.primaryColor
     this.package = 'dcf_primitives',
-    this.adaptive = true,
   });
 
   /// Convert to props map
@@ -91,7 +88,6 @@ class DCFIconProps extends Equatable {
       'name': name,
       'package': package,
       'isRelativePath': false,
-      'adaptive': adaptive,
       // Color removed - native components use StyleSheet.primaryColor
     };
   }
@@ -101,7 +97,6 @@ class DCFIconProps extends Equatable {
         name,
         // Color removed
         package,
-        adaptive,
       ];
 }
 

@@ -21,11 +21,10 @@ class DCFIconComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            imageView.backgroundColor = UIColor.clear
+        if let primaryColorStr = props["primaryColor"] as? String {
+            imageView.tintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
         } else {
-            imageView.backgroundColor = UIColor.clear
+            imageView.tintColor = DCFTheme.getTextColor(traitCollection: imageView.traitCollection)
         }
         
         updateView(imageView, withProps: props)

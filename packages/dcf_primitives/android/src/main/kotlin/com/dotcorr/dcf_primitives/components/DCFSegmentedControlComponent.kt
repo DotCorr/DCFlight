@@ -35,6 +35,10 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val radioGroup = RadioGroup(context)
         radioGroup.orientation = LinearLayout.HORIZONTAL
         
+        val primaryColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context)
+        val secondaryColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) } 
+            ?: com.dotcorr.dcflight.theme.DCFTheme.getTextColor(context)
         
         radioGroup.setTag(R.id.dcf_component_type, "SegmentedControl")
         
@@ -181,26 +185,26 @@ class DCFSegmentedControlComponent : DCFComponent() {
         
         radioButton.gravity = android.view.Gravity.CENTER
         
-        val backgroundDrawable = createSegmentBackground()
+        val backgroundDrawable = createSegmentBackground(radioButton.context)
         radioButton.background = backgroundDrawable
         
         radioButton.setTextColor(ContextCompat.getColorStateList(radioButton.context, android.R.color.primary_text_light))
         radioButton.typeface = Typeface.DEFAULT
     }
 
-    private fun createSegmentBackground(): StateListDrawable {
+    private fun createSegmentBackground(context: Context): StateListDrawable {
         val stateList = StateListDrawable()
         
         val selectedDrawable = GradientDrawable()
         // Use DCFTheme as default (framework controls colors)
-        selectedDrawable.setColor(com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(radioGroup.context))
+        selectedDrawable.setColor(com.dotcorr.dcflight.theme.DCFTheme.getAccentColor(context))
         selectedDrawable.cornerRadius = 8f
         stateList.addState(intArrayOf(android.R.attr.state_checked), selectedDrawable)
 
         val normalDrawable = GradientDrawable()
         normalDrawable.setColor(Color.TRANSPARENT)
         // Use DCFTheme as default (framework controls colors)
-        normalDrawable.setStroke(2, com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(radioGroup.context))
+        normalDrawable.setStroke(2, com.dotcorr.dcflight.theme.DCFTheme.getSurfaceColor(context))
         normalDrawable.cornerRadius = 8f
         stateList.addState(intArrayOf(), normalDrawable)
         

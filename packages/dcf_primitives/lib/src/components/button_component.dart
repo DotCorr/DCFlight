@@ -66,14 +66,10 @@ class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
   /// Disabled state
   final bool disabled;
 
-  /// Whether to use adaptive theming
-  final bool adaptive;
-
   /// Create button props
   const DCFButtonProps({
     required this.title,
     this.disabled = false,
-    this.adaptive = true,
   });
 
   /// Convert to props map
@@ -81,12 +77,11 @@ class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
     return {
       'title': title,
       'disabled': disabled,
-      'adaptive': adaptive,
     };
   }
 
   @override
-  List<Object?> get props => [title, disabled, adaptive];
+  List<Object?> get props => [title, disabled];
 }
 
 /// A button component implementation using StatelessComponent

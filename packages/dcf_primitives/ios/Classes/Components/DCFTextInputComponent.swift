@@ -19,18 +19,28 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
     
     func createView(props: [String: Any]) -> UIView {
         let isMultiline = props["multiline"] as? Bool ?? false
-        let isAdaptive = props["adaptive"] as? Bool ?? true
         
         let inputView: UIView
         if isMultiline {
             let textView = UITextView()
             textView.font = UIFont.systemFont(ofSize: 16)
             
-            // Use DCFTheme as default (framework controls colors)
-            // StyleSheet semantic colors will override if provided
-            textView.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: textView.traitCollection)
-            textView.textColor = DCFTheme.getTextColor(traitCollection: textView.traitCollection)
+            // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+            // primaryColor: text color
+            if let primaryColorStr = props["primaryColor"] as? String {
+                textView.textColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: textView.traitCollection)
+            } else {
+                textView.textColor = DCFTheme.getTextColor(traitCollection: textView.traitCollection)
+            }
             
+            // accentColor: selection color
+            if let accentColorStr = props["accentColor"] as? String {
+                textView.tintColor = ColorUtilities.color(fromHexString: accentColorStr) ?? DCFTheme.getAccentColor(traitCollection: textView.traitCollection)
+            } else {
+                textView.tintColor = DCFTheme.getAccentColor(traitCollection: textView.traitCollection)
+            }
+            
+            // backgroundColor handled by applyStyles
             textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
             textView.delegate = DCFTextInputComponent.sharedInstance
             inputView = textView
@@ -38,11 +48,32 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textField = UITextField()
             textField.font = UIFont.systemFont(ofSize: 16)
             
-            // Use DCFTheme as default (framework controls colors)
-            // StyleSheet semantic colors will override if provided
-            textField.backgroundColor = DCFTheme.getBackgroundColor(traitCollection: textField.traitCollection)
-            textField.textColor = DCFTheme.getTextColor(traitCollection: textField.traitCollection)
+            // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+            // primaryColor: text color
+            if let primaryColorStr = props["primaryColor"] as? String {
+                textField.textColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getTextColor(traitCollection: textField.traitCollection)
+            } else {
+                textField.textColor = DCFTheme.getTextColor(traitCollection: textField.traitCollection)
+            }
             
+            // secondaryColor: placeholder color
+            if let secondaryColorStr = props["secondaryColor"] as? String {
+                if let placeholder = props["placeholder"] as? String {
+                    textField.attributedPlaceholder = NSAttributedString(
+                        string: placeholder,
+                        attributes: [NSAttributedString.Key.foregroundColor: ColorUtilities.color(fromHexString: secondaryColorStr) ?? DCFTheme.getSecondaryTextColor(traitCollection: textField.traitCollection)]
+                    )
+                }
+            }
+            
+            // accentColor: selection color
+            if let accentColorStr = props["accentColor"] as? String {
+                textField.tintColor = ColorUtilities.color(fromHexString: accentColorStr) ?? DCFTheme.getAccentColor(traitCollection: textField.traitCollection)
+            } else {
+                textField.tintColor = DCFTheme.getAccentColor(traitCollection: textField.traitCollection)
+            }
+            
+            // backgroundColor handled by applyStyles
             textField.borderStyle = .none
             textField.delegate = DCFTextInputComponent.sharedInstance
             inputView = textField

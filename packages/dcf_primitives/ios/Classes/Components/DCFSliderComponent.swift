@@ -20,11 +20,22 @@ class DCFSliderComponent: NSObject, DCFComponent {
         
         let slider = UISlider()
         
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet semantic colors will override if provided
-        slider.minimumTrackTintColor = DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
-        slider.maximumTrackTintColor = DCFTheme.getSurfaceColor(traitCollection: slider.traitCollection)
-        slider.thumbTintColor = DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
+        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
+        // primaryColor: minimum track and thumb color
+        // secondaryColor: maximum track color
+        if let primaryColorStr = props["primaryColor"] as? String {
+            slider.minimumTrackTintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
+            slider.thumbTintColor = ColorUtilities.color(fromHexString: primaryColorStr) ?? DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
+        } else {
+            slider.minimumTrackTintColor = DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
+            slider.thumbTintColor = DCFTheme.getAccentColor(traitCollection: slider.traitCollection)
+        }
+        
+        if let secondaryColorStr = props["secondaryColor"] as? String {
+            slider.maximumTrackTintColor = ColorUtilities.color(fromHexString: secondaryColorStr) ?? DCFTheme.getSurfaceColor(traitCollection: slider.traitCollection)
+        } else {
+            slider.maximumTrackTintColor = DCFTheme.getSurfaceColor(traitCollection: slider.traitCollection)
+        }
         
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderValueChanged(_:)), for: .valueChanged)
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderTouchBegan(_:)), for: .touchDown)

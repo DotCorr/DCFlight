@@ -273,8 +273,6 @@ class DCFAlert extends DCFStatelessComponent {
   /// Called when text field content changes
   final Function(Map<dynamic, dynamic>)? onTextFieldChange;
   
-  /// Whether to use adaptive theming
-  final bool adaptive;
   
    DCFAlert({
     super.key,
@@ -289,7 +287,6 @@ class DCFAlert extends DCFStatelessComponent {
     this.onDismiss,
     this.onActionPress,
     this.onTextFieldChange,
-    this.adaptive = true,
   });
 
   @override
@@ -316,7 +313,6 @@ class DCFAlert extends DCFStatelessComponent {
       'visible': visible,
       'style': style.value,
       'dismissible': dismissible,
-      'adaptive': adaptive,
     };
     
     props.addAll(eventMap);
@@ -347,13 +343,11 @@ class DCFAlert extends DCFStatelessComponent {
     required String title,
     required String message,
     Function(Map<dynamic, dynamic>)? onDismiss,
-    bool adaptive = true,
   }) {
     return DCFAlert(
       visible: true,
       title: title,
       message: message,
-      adaptive: adaptive,
       actions: [
         DCFAlertAction(
           title: 'OK',
@@ -378,13 +372,11 @@ class DCFAlert extends DCFStatelessComponent {
     Function(String text)? onConfirm,
     Function()? onCancel,
     Function(String text)? onTextChange,
-    bool adaptive = true,
   }) {
     return DCFAlert(
       visible: true,
       title: title,
       message: message,
-      adaptive: adaptive,
       textFields: [
         DCFAlertTextField(
           placeholder: placeholder,
@@ -436,13 +428,11 @@ class DCFAlert extends DCFStatelessComponent {
     Function(String username, String password)? onLogin,
     Function()? onCancel,
     Function(String username, String password)? onTextChange,
-    bool adaptive = true,
   }) {
     return DCFAlert(
       visible: true,
       title: title,
       message: message,
-      adaptive: adaptive,
       textFields: [
         DCFAlertTextField(
           placeholder: usernamePlaceholder,
@@ -496,13 +486,11 @@ class DCFAlert extends DCFStatelessComponent {
     String cancelText = 'No',
     Function(Map<dynamic, dynamic>)? onConfirm,
     Function(Map<dynamic, dynamic>)? onCancel,
-    bool adaptive = true,
   }) {
     return DCFAlert(
       visible: true,
       title: title,
       message: message,
-      adaptive: adaptive,
       actions: [
         DCFAlertAction(
           title: cancelText,
@@ -533,13 +521,11 @@ class DCFAlert extends DCFStatelessComponent {
     String cancelText = 'Cancel',
     Function(Map<dynamic, dynamic>)? onDestructive,
     Function(Map<dynamic, dynamic>)? onCancel,
-    bool adaptive = true,
   }) {
     return DCFAlert(
       visible: true,
       title: title,
       message: message,
-      adaptive: adaptive,
       actions: [
         DCFAlertAction(
           title: cancelText,

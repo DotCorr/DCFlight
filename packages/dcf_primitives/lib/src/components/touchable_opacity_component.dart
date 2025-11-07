@@ -143,8 +143,6 @@ class DCFTouchableOpacity extends DCFStatelessComponent
   /// Event handlers
   final Map<String, dynamic>? events;
 
-  /// Whether to use adaptive theming
-  final bool adaptive;
 
   /// Create a touchable opacity component
   DCFTouchableOpacity({
@@ -159,7 +157,6 @@ class DCFTouchableOpacity extends DCFStatelessComponent
     this.longPressDelay = 500,
     this.disabled = false,
     this.events,
-    this.adaptive = true,
     super.key,
   });
 
@@ -195,7 +192,6 @@ class DCFTouchableOpacity extends DCFStatelessComponent
       'activeOpacity': activeOpacity,
       'disabled': disabled,
       'longPressDelay': longPressDelay,
-      'adaptive': adaptive,
       ...layout.toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
@@ -221,7 +217,6 @@ class DCFTouchableOpacity extends DCFStatelessComponent
         longPressDelay,
         disabled,
         events,
-        adaptive,
         key,
       ];
 }

@@ -65,9 +65,6 @@ class DCFView extends DCFStatelessComponent
   /// Event handlers
   final Map<String, dynamic>? events;
 
-  /// Whether to use adaptive theming
-  final bool adaptive;
-
   /// Layout event handler
   final Function(DCFViewLayoutData)? onLayout;
 
@@ -77,7 +74,6 @@ class DCFView extends DCFStatelessComponent
     this.styleSheet = const DCFStyleSheet(backgroundColor: Colors.transparent),
     this.children = const [],
     this.events,
-    this.adaptive = true,
     this.onLayout,
     super.key,
   });
@@ -96,7 +92,6 @@ class DCFView extends DCFStatelessComponent
       elementProps: {
         ...layout.toMap(),
         ...styleSheet.toMap(),
-        'adaptive': adaptive,
         ...eventMap,
       },
       children: children,
@@ -109,7 +104,6 @@ class DCFView extends DCFStatelessComponent
         styleSheet,
         children,
         events,
-        adaptive,
         onLayout,
         key,
       ];
