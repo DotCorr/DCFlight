@@ -24,6 +24,7 @@ abstract class DCFComponent {
         const val TAG_VIEW_ID = "dcf_view_id"
         const val TAG_EVENT_TYPES = "dcf_event_types"  
         const val TAG_EVENT_CALLBACK = "dcf_event_callback"
+        const val TAG_STORED_PROPS = "dcf_stored_props"  // React Native pattern: store props in view
     }
 
     /**
@@ -33,8 +34,54 @@ abstract class DCFComponent {
 
     /**
      * Updates an existing view with new props
+     * Framework-level implementation: Automatically merges props (React Native pattern)
+     * Components should override updateViewInternal for their specific update logic
      */
-    abstract fun updateView(view: View, props: Map<String, Any?>): Boolean
+    open fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // React Native pattern: Store and merge props for stability
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        // Filter out null values for processing
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+        
+        return updateViewInternal(view, nonNullProps)
+    }
+    
+    /**
+     * Store props in view tag for merging on updates (React Native pattern)
+     * This ensures properties are preserved across partial updates
+     */
+    protected fun storeProps(view: View, props: Map<String, Any?>) {
+        view.setTag(TAG_STORED_PROPS.hashCode(), props.toMutableMap())
+    }
+    
+    /**
+     * Get stored props from view tag
+     */
+    protected fun getStoredProps(view: View): MutableMap<String, Any?> {
+        @Suppress("UNCHECKED_CAST")
+        return (view.getTag(TAG_STORED_PROPS.hashCode()) as? MutableMap<String, Any?>) ?: mutableMapOf()
+    }
+    
+    /**
+     * Merge existing props with updates (React Native pattern)
+     * - Null values remove props
+     * - Non-null values update props
+     * - Missing props are preserved
+     */
+    protected fun mergeProps(existing: Map<String, Any?>, updates: Map<String, Any?>): MutableMap<String, Any?> {
+        val merged = existing.toMutableMap()
+        for ((key, value) in updates) {
+            if (value == null) {
+                merged.remove(key)
+            } else {
+                merged[key] = value
+            }
+        }
+        return merged
+    }
     
     /**
      * Optional: Handle tunnel method calls (framework-specific operations)
@@ -45,7 +92,10 @@ abstract class DCFComponent {
     
     /**
      * Protected helper method for components to implement their update logic
-     * Components can override this to handle prop updates with non-null values
+     * Components should override this to handle prop updates
+     * Props are already merged and null-filtered by updateView()
+     * 
+     * This is called by updateView() after props merging
      */
     protected open fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         return false

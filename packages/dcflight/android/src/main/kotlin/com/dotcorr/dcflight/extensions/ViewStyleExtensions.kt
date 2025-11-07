@@ -41,7 +41,14 @@ private fun applyStyleDensityScaling(value: Float): Float {
 fun View.applyStyles(props: Map<String, Any>) {
     val isAdaptive = props["adaptive"] as? Boolean ?: true
     
-    if (isAdaptive && !props.containsKey("backgroundColor")) {
+    // Only apply adaptive defaults if:
+    // 1. Adaptive is enabled
+    // 2. No explicit backgroundColor is provided
+    // 3. For TextView: no explicit color prop is provided (to avoid overriding user-set text color)
+    val shouldApplyAdaptive = isAdaptive && !props.containsKey("backgroundColor") && 
+                               !(this is android.widget.TextView && props.containsKey("color"))
+    
+    if (shouldApplyAdaptive) {
         applyAdaptiveDefaults()
     }
 

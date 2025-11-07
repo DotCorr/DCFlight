@@ -40,32 +40,34 @@ class DCFTextComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val textView = TextView(context)
 
-
         textView.maxLines = Int.MAX_VALUE // numberOfLines = 0 in iOS means unlimited
         
-        val isAdaptive = props["adaptive"] as? Boolean ?: true
-        if (isAdaptive) {
-            textView.setTextColor(
-                com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
-            )
-        } else {
-            textView.setTextColor(Color.BLACK)
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // Store props using framework method (React Native pattern)
+        storeProps(textView, props)
+        
+        // Only set initial adaptive color if no explicit color is provided
+        // This prevents overriding user-specified colors
+        if (!nonNullProps.containsKey("color")) {
+            val isAdaptive = props["adaptive"] as? Boolean ?: true
+            if (isAdaptive) {
+                textView.setTextColor(
+                    com.dotcorr.dcflight.utils.AdaptiveColorHelper.getSystemTextColor(context)
+                )
+            } else {
+                textView.setTextColor(Color.BLACK)
+            }
         }
 
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         updateViewInternal(textView, nonNullProps)
 
         textView.applyStyles(nonNullProps)
 
         return textView
     }
-
-    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val textView = view as? TextView ?: return false
-        
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        return updateViewInternal(textView, nonNullProps)
-    }
+    
+    // updateView is now handled by base class with automatic props merging
 
     override fun updateViewInternal(view: View, props: Map<String, Any>): Boolean {
         val textView = view as? TextView ?: return false
