@@ -112,12 +112,13 @@ class DCFSegmentedControlComponent : DCFComponent() {
             hasUpdates = true
         }
         
-        // Update colors if changed
+        // Update colors if changed - use existingProps to preserve selectedIndex state
         if (hasPropChanged("primaryColor", existingProps, props) ||
             hasPropChanged("secondaryColor", existingProps, props) ||
             hasPropChanged("tertiaryColor", existingProps, props) ||
             hasPropChanged("accentColor", existingProps, props)) {
-            val selectedIndex = getSelectedIndex(props, container.childCount)
+            // Framework-level: Use existingProps to preserve selectedIndex when only colors change
+            val selectedIndex = getSelectedIndex(existingProps, container.childCount)
             updateButtonColors(container, selectedIndex, props)
             hasUpdates = true
         }
