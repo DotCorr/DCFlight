@@ -240,8 +240,13 @@ fun View.applyStyles(props: Map<String, Any>) {
                         }
                     }
                     state["expanded"]?.let {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                            info.isExpanded = it as? Boolean == true
+                        val expanded = it as? Boolean == true
+                        val expandedText = if (expanded) "expanded" else "collapsed"
+                        val currentDesc = info.contentDescription?.toString() ?: ""
+                        if (currentDesc.isEmpty()) {
+                            info.contentDescription = expandedText
+                        } else if (!currentDesc.contains(expandedText)) {
+                            info.contentDescription = "$currentDesc, $expandedText"
                         }
                     }
                 }
