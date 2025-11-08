@@ -29,10 +29,6 @@ class DCFDropdownComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val spinner = Spinner(context)
         
-        ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
-            spinner.setTag("dcf_dropdown_placeholder_color", colorInt)
-        }
-        
         spinner.setTag(R.id.dcf_component_type, "Dropdown")
         
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -93,11 +89,8 @@ class DCFDropdownComponent : DCFComponent() {
         }
         
         if (hasPropChanged("placeholderColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
-            ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
-                spinner.setTag("dcf_dropdown_placeholder_color", colorInt)
-                applyPlaceholderColor(spinner, props)
-                hasUpdates = true
-            }
+            applyPlaceholderColor(spinner, props)
+            hasUpdates = true
         }
 
         if (hasPropChanged("selectedIndex", existingProps, props)) {
@@ -134,10 +127,7 @@ class DCFDropdownComponent : DCFComponent() {
     }
     
     private fun applyPlaceholderColor(spinner: Spinner, props: Map<String, Any>) {
-        val placeholderColor = ColorUtilities.getColor("placeholderColor", "secondaryColor", props)
-            ?: (spinner.getTag("dcf_dropdown_placeholder_color") as? Int)
-        
-        placeholderColor?.let { colorInt ->
+        ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
             spinner.post {
                 val selectedView = spinner.selectedView as? TextView
                 selectedView?.setTextColor(colorInt)

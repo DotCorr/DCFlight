@@ -1235,7 +1235,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
         }
 
         let cacheKey = path + "_header_action"
-        if let cachedImage = DCFSvgComponent.getCachedImage(for: cacheKey) {
+        if let cachedImage = DCFScreenComponent.getCachedImage(for: cacheKey) {
             return processHeaderActionSVG(cachedImage, iconConfig: iconConfig)
         }
 
@@ -1249,7 +1249,7 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
         svgImage.size = targetSize
 
-        DCFSvgComponent.setCachedImage(svgImage, for: cacheKey)
+        DCFScreenComponent.setCachedImage(svgImage, for: cacheKey)
 
         return processHeaderActionSVG(svgImage, iconConfig: iconConfig)
     }
@@ -1701,6 +1701,22 @@ class DCFScreenComponent: NSObject, DCFComponent {
         routeRegistry.removeAll()
         currentRouteStack.removeAll()
         print("🧹 DCFScreenComponent: Cleaned up all routes and navigation state")
+    }
+}
+
+extension DCFScreenComponent {
+    private static var headerActionIconCache = [String: SVGKImage]()
+    
+    static func getCachedImage(for key: String) -> SVGKImage? {
+        return headerActionIconCache[key]
+    }
+    
+    static func setCachedImage(_ image: SVGKImage, for key: String) {
+        headerActionIconCache[key] = image
+    }
+    
+    static func clearHeaderActionIconCache() {
+        headerActionIconCache.removeAll()
     }
 }
 

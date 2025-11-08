@@ -575,7 +575,7 @@ object ColorUtilities {
     fun getColor(
         explicitColor: String?,
         semanticColor: String?,
-        props: Map<String, Any>
+        props: Map<String, Any?>
     ): Int? {
         if (explicitColor != null) {
             props[explicitColor]?.let { explicitColorStr ->

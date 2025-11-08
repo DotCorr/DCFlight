@@ -17,7 +17,7 @@ class IDEService {
   static const String _ideDirName = '.dcf-ide';
   static const String _codeServerDirName = 'code-server';
   static const String _dcfVscodeDirName = 'dcf-vscode';
-  static const String _dcfCodeServerReleasesUrl = 'https://api.github.com/repos/DotCorr/dcf-code-server/releases/latest';
+  static const String _dcfCodeServerReleasesUrl = 'https://api.github.com/repos/DotCorr/dcf-code-server/releases/tags/1';
   static const String _dcfVscodeReleasesUrl = 'https://api.github.com/repos/DotCorr/dcf-vscode/releases/latest';
   static const String _codeServerReleasesUrl = 'https://api.github.com/repos/coder/code-server/releases/latest';
   
@@ -86,13 +86,14 @@ class IDEService {
   /// Tries dcf-code-server first, falls back to standard code-server
   static Future<void> _installCodeServer({void Function(String)? onProgress, bool forceUpdate = false}) async {
     final codeServerDir = Directory(_codeServerPath);
-    final binaryName = Platform.isWindows ? 'code-server.exe' : 'code-server';
-    final binaryPath = path.join(_codeServerPath, binaryName);
     
     // Check if already installed
-    if (await codeServerDir.exists() && await File(binaryPath).exists() && !forceUpdate) {
-      onProgress?.call('✅ code-server already installed');
-      return;
+    if (await codeServerDir.exists() && !forceUpdate) {
+      final binary = await _findCodeServerBinary();
+      if (binary != null && await File(binary).exists()) {
+        onProgress?.call('✅ code-server already installed');
+        return;
+      }
     }
     
     // Try dcf-code-server first (your custom build)
@@ -147,8 +148,6 @@ class IDEService {
     bool isCustom = false,
   }) async {
     final codeServerDir = Directory(_codeServerPath);
-    final binaryName = Platform.isWindows ? 'code-server.exe' : 'code-server';
-    final binaryPath = path.join(_codeServerPath, binaryName);
     
     try {
       // Get latest release info
@@ -253,8 +252,31 @@ class IDEService {
       if (extension == '.zip') {
         // Extract ZIP
         final archive = ZipDecoder().decodeBytes(downloadResponse.bodyBytes);
+        
+        // Check if all files share a common root directory
+        String? commonRoot;
+        final fileNames = archive.map((f) => f.name).toList();
+        if (fileNames.isNotEmpty) {
+          final firstPath = fileNames.first.split('/').where((p) => p.isNotEmpty).toList();
+          if (firstPath.isNotEmpty) {
+            final potentialRoot = firstPath.first;
+            // Check if all files start with this root
+            if (fileNames.every((name) => name.startsWith('$potentialRoot/') || name == potentialRoot)) {
+              commonRoot = potentialRoot;
+            }
+          }
+        }
+        
+        // Extract files, stripping the common root directory if present
         for (final file in archive) {
-          final filePath = path.join(_codeServerPath, file.name);
+          String relativePath = file.name;
+          if (commonRoot != null && relativePath.startsWith('$commonRoot/')) {
+            relativePath = relativePath.substring(commonRoot.length + 1);
+          }
+          
+          if (relativePath.isEmpty) continue; // Skip root directory entry
+          
+          final filePath = path.join(_codeServerPath, relativePath);
           if (file.isFile) {
             final outFile = File(filePath);
             await outFile.create(recursive: true);
@@ -266,8 +288,31 @@ class IDEService {
       } else {
         // Extract TAR.GZ
         final archive = TarDecoder().decodeBytes(GZipDecoder().decodeBytes(downloadResponse.bodyBytes));
+        
+        // Check if all files share a common root directory
+        String? commonRoot;
+        final fileNames = archive.map((f) => f.name).toList();
+        if (fileNames.isNotEmpty) {
+          final firstPath = fileNames.first.split('/').where((p) => p.isNotEmpty).toList();
+          if (firstPath.isNotEmpty) {
+            final potentialRoot = firstPath.first;
+            // Check if all files start with this root
+            if (fileNames.every((name) => name.startsWith('$potentialRoot/') || name == potentialRoot)) {
+              commonRoot = potentialRoot;
+            }
+          }
+        }
+        
+        // Extract files, stripping the common root directory if present
         for (final file in archive) {
-          final filePath = path.join(_codeServerPath, file.name);
+          String relativePath = file.name;
+          if (commonRoot != null && relativePath.startsWith('$commonRoot/')) {
+            relativePath = relativePath.substring(commonRoot.length + 1);
+          }
+          
+          if (relativePath.isEmpty) continue; // Skip root directory entry
+          
+          final filePath = path.join(_codeServerPath, relativePath);
           if (file.isFile) {
             final outFile = File(filePath);
             await outFile.create(recursive: true);
@@ -281,9 +326,12 @@ class IDEService {
       // Clean up archive file
       await File(archivePath).delete();
       
-      // Make binary executable on Unix
+      // Make binary executable on Unix (find it first in case it's in a subdirectory)
       if (!Platform.isWindows) {
-        await Process.run('chmod', ['+x', binaryPath]);
+        final foundBinary = await _findCodeServerBinary();
+        if (foundBinary != null) {
+          await Process.run('chmod', ['+x', foundBinary]);
+        }
       }
       
       onProgress?.call('✅ code-server installed successfully');
@@ -472,8 +520,28 @@ class IDEService {
     
     if (extension == '.zip') {
       final archive = ZipDecoder().decodeBytes(downloadResponse.bodyBytes);
+      
+      // Check if all files share a common root directory
+      String? commonRoot;
+      final fileNames = archive.map((f) => f.name).toList();
+      if (fileNames.isNotEmpty) {
+        final firstPath = fileNames.first.split('/').where((p) => p.isNotEmpty).toList();
+        if (firstPath.isNotEmpty) {
+          final potentialRoot = firstPath.first;
+          if (fileNames.every((name) => name.startsWith('$potentialRoot/') || name == potentialRoot)) {
+            commonRoot = potentialRoot;
+          }
+        }
+      }
+      
       for (final file in archive) {
-        final filePath = path.join(_codeServerPath, file.name);
+        String relativePath = file.name;
+        if (commonRoot != null && relativePath.startsWith('$commonRoot/')) {
+          relativePath = relativePath.substring(commonRoot.length + 1);
+        }
+        if (relativePath.isEmpty) continue;
+        
+        final filePath = path.join(_codeServerPath, relativePath);
         if (file.isFile) {
           final outFile = File(filePath);
           await outFile.create(recursive: true);
@@ -484,8 +552,28 @@ class IDEService {
       }
     } else {
       final archive = TarDecoder().decodeBytes(GZipDecoder().decodeBytes(downloadResponse.bodyBytes));
+      
+      // Check if all files share a common root directory
+      String? commonRoot;
+      final fileNames = archive.map((f) => f.name).toList();
+      if (fileNames.isNotEmpty) {
+        final firstPath = fileNames.first.split('/').where((p) => p.isNotEmpty).toList();
+        if (firstPath.isNotEmpty) {
+          final potentialRoot = firstPath.first;
+          if (fileNames.every((name) => name.startsWith('$potentialRoot/') || name == potentialRoot)) {
+            commonRoot = potentialRoot;
+          }
+        }
+      }
+      
       for (final file in archive) {
-        final filePath = path.join(_codeServerPath, file.name);
+        String relativePath = file.name;
+        if (commonRoot != null && relativePath.startsWith('$commonRoot/')) {
+          relativePath = relativePath.substring(commonRoot.length + 1);
+        }
+        if (relativePath.isEmpty) continue;
+        
+        final filePath = path.join(_codeServerPath, relativePath);
         if (file.isFile) {
           final outFile = File(filePath);
           await outFile.create(recursive: true);
@@ -774,7 +862,9 @@ class IDEService {
         final exitCode = await process.exitCode.timeout(Duration(milliseconds: 100));
         // If we got here, process died = error
         final stderr = await process.stderr.transform(utf8.decoder).join();
-        throw Exception('code-server failed to start (exit code: $exitCode). Error: ${stderr.isEmpty ? "Unknown error" : stderr}');
+        final stdout = await process.stdout.transform(utf8.decoder).join();
+        final errorMsg = stderr.isNotEmpty ? stderr : (stdout.isNotEmpty ? stdout : 'Unknown error');
+        throw Exception('code-server failed to start (exit code: $exitCode). Error: $errorMsg');
       } catch (e) {
         if (e is TimeoutException) {
           // Timeout means process is still running = success
