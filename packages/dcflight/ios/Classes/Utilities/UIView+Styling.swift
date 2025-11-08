@@ -220,11 +220,25 @@ extension UIView {
             if let busy = state["busy"] as? Bool, busy {
                 traits.insert(.updatesFrequently)
             }
-            if let expanded = state["expanded"] as? Bool {
-                traits.insert(expanded ? .none : .collapsed)
-            }
             if !traits.isEmpty {
                 self.accessibilityTraits.insert(traits)
+            }
+            
+            if let expanded = state["expanded"] as? Bool {
+                let currentValue = self.accessibilityValue ?? ""
+                if expanded {
+                    if currentValue.isEmpty {
+                        self.accessibilityValue = "expanded"
+                    } else if !currentValue.contains("expanded") {
+                        self.accessibilityValue = "\(currentValue), expanded"
+                    }
+                } else {
+                    if currentValue.isEmpty {
+                        self.accessibilityValue = "collapsed"
+                    } else if !currentValue.contains("collapsed") {
+                        self.accessibilityValue = "\(currentValue), collapsed"
+                    }
+                }
             }
         }
 
