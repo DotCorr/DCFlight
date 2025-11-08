@@ -168,6 +168,8 @@ fun View.applyStyles(props: Map<String, Any>) {
         }
     }
 
+    var accessibilityDelegate: View.AccessibilityDelegate? = null
+
     props["accessible"]?.let { accessible ->
         this.importantForAccessibility = if (accessible as? Boolean == true) {
             View.IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -176,45 +178,114 @@ fun View.applyStyles(props: Map<String, Any>) {
         }
     }
 
+    props["importantForAccessibility"]?.let { important ->
+        val importantStr = important.toString().lowercase()
+        this.importantForAccessibility = when (importantStr) {
+            "yes" -> View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            "no" -> View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            "no-hide-descendants" -> View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+            else -> View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
+        }
+    }
+
     props["accessibilityLabel"]?.let { label ->
+        this.contentDescription = label.toString()
+    } ?: props["ariaLabel"]?.let { label ->
         this.contentDescription = label.toString()
     }
 
     props["accessibilityHint"]?.let { hint ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            this.setAccessibilityDelegate(object : View.AccessibilityDelegate() {
+            val hintText = hint.toString()
+            accessibilityDelegate = object : View.AccessibilityDelegate() {
                 override fun onInitializeAccessibilityNodeInfo(host: View, info: android.view.accessibility.AccessibilityNodeInfo) {
                     super.onInitializeAccessibilityNodeInfo(host, info)
-                    info.hintText = hint.toString()
+                    info.hintText = hintText
                 }
-            })
+            }
         }
     }
 
     props["accessibilityValue"]?.let { value ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            this.setAccessibilityDelegate(object : View.AccessibilityDelegate() {
+            val valueText = when (value) {
+                is String -> value
+                is Map<*, *> -> (value["text"] as? String) ?: value.toString()
+                else -> value.toString()
+            }
+            val existingDelegate = accessibilityDelegate
+            accessibilityDelegate = object : View.AccessibilityDelegate() {
                 override fun onInitializeAccessibilityNodeInfo(host: View, info: android.view.accessibility.AccessibilityNodeInfo) {
-                    super.onInitializeAccessibilityNodeInfo(host, info)
-                    info.text = value.toString()
+                    existingDelegate?.onInitializeAccessibilityNodeInfo(host, info)
+                        ?: super.onInitializeAccessibilityNodeInfo(host, info)
+                    info.text = valueText
                 }
-            })
+            }
         }
     }
 
-    props["accessibilityRole"]?.let { role ->
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val roleString = role.toString().lowercase()
-            when (roleString) {
-                "button" -> this.isClickable = true
-                "link" -> this.isClickable = true
-                "header" -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        this.accessibilityHeading = true
+    props["accessibilityState"]?.let { state ->
+        if (state is Map<*, *> && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val existingDelegate = accessibilityDelegate
+            accessibilityDelegate = object : View.AccessibilityDelegate() {
+                override fun onInitializeAccessibilityNodeInfo(host: View, info: android.view.accessibility.AccessibilityNodeInfo) {
+                    existingDelegate?.onInitializeAccessibilityNodeInfo(host, info)
+                        ?: super.onInitializeAccessibilityNodeInfo(host, info)
+                    state["disabled"]?.let { if (it as? Boolean == true) info.isEnabled = false }
+                    state["selected"]?.let { if (it as? Boolean == true) info.isSelected = true }
+                    state["checked"]?.let {
+                        when (it) {
+                            is Boolean -> info.isChecked = it
+                            is String -> if (it == "mixed") info.isCheckable = true
+                        }
                     }
                 }
             }
         }
+    }
+
+    props["accessibilityLiveRegion"]?.let { liveRegion ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            val region = when (liveRegion.toString().lowercase()) {
+                "polite" -> View.ACCESSIBILITY_LIVE_REGION_POLITE
+                "assertive" -> View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
+                else -> View.ACCESSIBILITY_LIVE_REGION_NONE
+            }
+            this.accessibilityLiveRegion = region
+        }
+    } ?: props["ariaLive"]?.let { ariaLive ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            val region = when (ariaLive.toString().lowercase()) {
+                "polite" -> View.ACCESSIBILITY_LIVE_REGION_POLITE
+                "assertive" -> View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
+                else -> View.ACCESSIBILITY_LIVE_REGION_NONE
+            }
+            this.accessibilityLiveRegion = region
+        }
+    }
+
+    props["accessibilityRole"]?.let { role ->
+        val roleString = role.toString().lowercase()
+        when (roleString) {
+            "button", "imagebutton" -> this.isClickable = true
+            "link" -> this.isClickable = true
+            "header" -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val existingDelegate = accessibilityDelegate
+                    accessibilityDelegate = object : View.AccessibilityDelegate() {
+                        override fun onInitializeAccessibilityNodeInfo(host: View, info: android.view.accessibility.AccessibilityNodeInfo) {
+                            existingDelegate?.onInitializeAccessibilityNodeInfo(host, info)
+                                ?: super.onInitializeAccessibilityNodeInfo(host, info)
+                            info.isHeading = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (accessibilityDelegate != null) {
+        this.accessibilityDelegate = accessibilityDelegate
     }
 
     props["testID"]?.let { testID ->
