@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
-import 'package:dcflight/framework/renderer/engine/component/component.dart';
-import 'package:dcflight/framework/renderer/engine/component/hooks/state_hook.dart';
+import 'package:dcflight/framework/components/component_node.dart';
+import 'package:dcflight/framework/components/component.dart';
+import 'package:dcflight/framework/components/hooks/state_hook.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/prop_diff_interceptor.dart';
 
 /// VDOM Extension Registry - allows module devs to hook into VDOM internals

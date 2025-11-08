@@ -15,11 +15,11 @@ import 'package:dcflight/framework/renderer/engine/debug/engine_logger.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
 import 'package:dcflight/framework/renderer/interface/interface.dart'
     show PlatformInterface;
-import 'package:dcflight/framework/renderer/engine/component/component.dart';
-import 'package:dcflight/framework/renderer/engine/component/error_boundary.dart';
-import 'package:dcflight/framework/renderer/engine/component/dcf_element.dart';
-import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
-import 'package:dcflight/framework/renderer/engine/component/fragment.dart';
+import 'package:dcflight/framework/components/component.dart';
+import 'package:dcflight/framework/components/error_boundary.dart';
+import 'package:dcflight/framework/components/dcf_element.dart';
+import 'package:dcflight/framework/components/component_node.dart';
+import 'package:dcflight/framework/components/fragment.dart';
 
 /// Enhanced Virtual DOM with priority-based update scheduling
 class DCFEngine {

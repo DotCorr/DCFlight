@@ -8,7 +8,7 @@
 import 'dart:async';
 
 import 'package:dcflight/framework/renderer/interface/interface.dart' show PlatformInterface;
-import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'package:dcflight/framework/components/component_node.dart';
 import 'core/engine.dart';
 
 /// Main API for VDOM operations

@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/renderer/engine/component/hooks/memo_hook.dart';
-import 'package:dcflight/framework/renderer/engine/component/hooks/store.dart';
+import 'package:dcflight/framework/components/hooks/memo_hook.dart';
+import 'package:dcflight/framework/components/hooks/store.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
 import 'package:flutter/foundation.dart';
-import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'package:dcflight/framework/components/component_node.dart';
 import 'package:equatable/equatable.dart';
 import 'hooks/state_hook.dart';
 
