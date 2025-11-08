@@ -119,7 +119,9 @@ class DCFSegmentedControlComponent : DCFComponent() {
             val selectedIndex = getCurrentSelectedIndex(container)
             updateButtonColors(container, selectedIndex, props)
             hasUpdates = true
-        } else if (hasPropChanged("primaryColor", existingProps, props) ||
+        } else if (hasPropChanged("selectedBackgroundColor", existingProps, props) ||
+            hasPropChanged("tintColor", existingProps, props) ||
+            hasPropChanged("primaryColor", existingProps, props) ||
             hasPropChanged("secondaryColor", existingProps, props) ||
             hasPropChanged("tertiaryColor", existingProps, props) ||
             hasPropChanged("accentColor", existingProps, props)) {
@@ -271,17 +273,16 @@ class DCFSegmentedControlComponent : DCFComponent() {
     }
     
     private fun updateButtonColors(container: LinearLayout, selectedIndex: Int, props: Map<String, Any>) {
-        val primaryColor = props["primaryColor"]?.let {
-            ColorUtilities.parseColor(it.toString())
-        } ?: props["tertiaryColor"]?.let {
-            ColorUtilities.parseColor(it.toString())
-        } ?: Color.parseColor("#2196F3")
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // selectedBackgroundColor (explicit) > primaryColor (semantic)
+        val primaryColor = ColorUtilities.getColor("selectedBackgroundColor", "primaryColor", props)
+            ?: props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+            ?: Color.parseColor("#2196F3")
         
-        val secondaryColor = props["secondaryColor"]?.let {
-            ColorUtilities.parseColor(it.toString())
-        } ?: props["accentColor"]?.let {
-            ColorUtilities.parseColor(it.toString())
-        } ?: Color.parseColor("#757575")
+        // tintColor (explicit) > secondaryColor (semantic)
+        val secondaryColor = ColorUtilities.getColor("tintColor", "secondaryColor", props)
+            ?: props["accentColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+            ?: Color.parseColor("#757575")
         
         for (i in 0 until container.childCount) {
             val button = container.getChildAt(i) as? Button ?: continue

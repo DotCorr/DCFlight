@@ -56,16 +56,12 @@ class DCFTextComponent : DCFComponent() {
         textView.applyStyles(nonNullProps)
         
         // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                textView.setTextColor(colorInt)
-                Log.d(TAG, "Set text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // textColor (explicit) > primaryColor (semantic)
+        ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
+            textView.setTextColor(colorInt)
+            Log.d(TAG, "Set text color: ${ColorUtilities.hexString(colorInt)}")
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         return textView
     }
@@ -165,16 +161,12 @@ class DCFTextComponent : DCFComponent() {
         textView.applyStyles(props)
         
         // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                textView.setTextColor(colorInt)
-                Log.d(TAG, "Updated text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // textColor (explicit) > primaryColor (semantic)
+        ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
+            textView.setTextColor(colorInt)
+            Log.d(TAG, "Updated text color: ${ColorUtilities.hexString(colorInt)}")
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         return true
     }

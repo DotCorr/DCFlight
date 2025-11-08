@@ -42,7 +42,7 @@ object PrimitivesComponentsReg {
         registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
         
         registry.registerComponent("Svg", DCFSvgComponent::class.java)
-        registry.registerComponent("Icon", DCFIconComponent::class.java)
+        registry.registerComponent("DCFIcon", DCFIconComponent::class.java)
     }
 
 }

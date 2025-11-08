@@ -28,15 +28,11 @@ class DCFIconComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
         
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.parseColor(color.toString())
-            if (colorInt != null) {
-                imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // iconColor (explicit) > primaryColor (semantic)
+        ColorUtilities.getColor("iconColor", "primaryColor", props)?.let { colorInt ->
+            imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         imageView.setTag(R.id.dcf_component_type, "Icon")
         
@@ -76,14 +72,13 @@ class DCFIconComponent : DCFComponent() {
         }
 
         // Framework-level helper: Only update color if it actually changed
-        if (hasPropChanged("primaryColor", existingProps, props)) {
-            props["primaryColor"]?.let {
-            val colorInt = ColorUtilities.parseColor(it.toString())
-            if (colorInt != null) {
+        if (hasPropChanged("iconColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
+            // COLOR SYSTEM: Explicit color override > Semantic color
+            // iconColor (explicit) > primaryColor (semantic)
+            ColorUtilities.getColor("iconColor", "primaryColor", props)?.let { colorInt ->
                 imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
                 hasUpdates = true
             }
-        }
         }
 
         view.applyStyles(props)
