@@ -82,5 +82,3 @@ dcf create --help       # Show create command options
 
 ## 🔗 Related
 - [Full CLI Guide](./CLI_GUIDE.md) - Complete documentation
-- [Getting Started](./GETTING_STARTED.md) - Setup tutorial
-- [Troubleshooting](./TROUBLESHOOTING.md) - Common issues
