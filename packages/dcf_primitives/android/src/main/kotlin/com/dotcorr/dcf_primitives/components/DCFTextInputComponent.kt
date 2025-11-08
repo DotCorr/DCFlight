@@ -5,356 +5,357 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package com.dotcorr.dcf_primitives.components
+ package com.dotcorr.dcf_primitives.components
 
-import android.content.Context
-import android.graphics.Color
-import android.graphics.PointF
-import android.text.Editable
-import android.text.InputType
-import android.text.TextWatcher
-import android.util.Log
-import android.util.TypedValue
-import android.view.View
-import android.view.inputmethod.EditorInfo
-import android.widget.EditText
-import androidx.appcompat.widget.AppCompatEditText
-import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcflight.utils.ColorUtilities
-import com.dotcorr.dcflight.components.propagateEvent
-import com.dotcorr.dcf_primitives.R
-import com.dotcorr.dcf_primitives.components.dpToPx
-import com.dotcorr.dcf_primitives.components.parseColor
-import kotlin.math.max
-
-/**
- * DCFTextInputComponent - Text input component matching iOS DCFTextInputComponent
- */
-class DCFTextInputComponent : DCFComponent() {
-
-    override fun createView(context: Context, props: Map<String, Any?>): View {
-        val editText = AppCompatEditText(context)
-
-        ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
-            editText.setTextColor(colorInt)
-        }
-        
-        ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
-            editText.setHintTextColor(colorInt)
-        }
-        
-        ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
-            editText.setHighlightColor(colorInt)
-        }
-
-        editText.setPadding(
-            dpToPx(12f, context),
-            dpToPx(8f, context),
-            dpToPx(12f, context),
-            dpToPx(8f, context)
-        )
-
-        updateView(editText, props)
-
-        val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
-        editText.applyStyles(nonNullStyleProps)
-
-        editText.setTag(R.id.dcf_component_type, "TextInput")
-
-        return editText
-    }
-
-    override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        val editText = view as? AppCompatEditText ?: return false
-
-        if (hasPropChanged("value", existingProps, props)) {
-            props["value"]?.let { value ->
-                val currentText = editText.text?.toString() ?: ""
-                val newText = value.toString()
-                if (currentText != newText) {
-                    editText.setText(newText)
-                    editText.setSelection(newText.length)
-                }
-            }
-        }
-
-        if (hasPropChanged("placeholder", existingProps, props)) {
-            props["placeholder"]?.let { placeholder ->
-                editText.hint = placeholder.toString()
-            }
-        }
-
-        if (hasPropChanged("textColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
-                editText.setTextColor(colorInt)
-            }
-        }
-
-        if (hasPropChanged("placeholderColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
-            ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
-                editText.setHintTextColor(colorInt)
-            }
-        }
-
-        if (hasPropChanged("selectionColor", existingProps, props) || hasPropChanged("accentColor", existingProps, props)) {
-            ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
-                editText.setHighlightColor(colorInt)
-            }
-        }
-
-        props["fontSize"]?.let { size ->
-            when (size) {
-                is Number -> editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, size.toFloat())
-                is String -> {
-                    size.removeSuffix("sp").toFloatOrNull()?.let { fontSize ->
-                        editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
-                    }
-                }
-            }
-        }
-
-        props["keyboardType"]?.let { type ->
-            editText.inputType = when (type) {
-                "default" -> InputType.TYPE_CLASS_TEXT
-                "number-pad", "numeric" -> InputType.TYPE_CLASS_NUMBER
-                "decimal-pad" -> InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-                "phone-pad" -> InputType.TYPE_CLASS_PHONE
-                "email-address" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-                "url" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-                "visible-password" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
-                else -> InputType.TYPE_CLASS_TEXT
-            }
-        }
-
-        props["secureTextEntry"]?.let { secure ->
-            when (secure) {
-                is Boolean -> {
-                    if (secure) {
-                        editText.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
-                    }
-                }
-            }
-        }
-
-        props["autoCapitalization"]?.let { capitalize ->
-            val currentInputType = editText.inputType
-            editText.inputType = when (capitalize) {
-                "none" -> currentInputType and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES.inv() and
-                        InputType.TYPE_TEXT_FLAG_CAP_WORDS.inv() and
-                        InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS.inv()
-
-                "sentences" -> currentInputType or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-                "words" -> currentInputType or InputType.TYPE_TEXT_FLAG_CAP_WORDS
-                "characters" -> currentInputType or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
-                else -> currentInputType
-            }
-        }
-
-        props["autoCorrect"]?.let { autoCorrect ->
-            when (autoCorrect) {
-                is Boolean -> {
-                    val currentInputType = editText.inputType
-                    editText.inputType = if (autoCorrect) {
-                        currentInputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS.inv()
-                    } else {
-                        currentInputType or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-                    }
-                }
-            }
-        }
-
-        props["maxLength"]?.let { maxLength ->
-            when (maxLength) {
-                is Number -> {
-                    val filters = editText.filters?.toMutableList() ?: mutableListOf()
-                    filters.removeAll { it is android.text.InputFilter.LengthFilter }
-                    filters.add(android.text.InputFilter.LengthFilter(maxLength.toInt()))
-                    editText.filters = filters.toTypedArray()
-                }
-            }
-        }
-
-        props["multiline"]?.let { multiline ->
-            when (multiline) {
-                is Boolean -> {
-                    if (multiline) {
-                        editText.inputType = editText.inputType or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                        editText.setSingleLine(false)
-                        editText.minLines = 2
-                    } else {
-                        editText.inputType = editText.inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE.inv()
-                        editText.setSingleLine(true)
-                    }
-                }
-            }
-        }
-
-        props["numberOfLines"]?.let { lines ->
-            when (lines) {
-                is Number -> {
-                    val numLines = lines.toInt()
-                    if (numLines > 1) {
-                        editText.minLines = numLines
-                        editText.maxLines = numLines
-                    }
-                }
-            }
-        }
-
-        props["editable"]?.let { editable ->
-            when (editable) {
-                is Boolean -> {
-                    editText.isFocusable = editable
-                    editText.isFocusableInTouchMode = editable
-                    editText.isClickable = editable
-                    editText.isCursorVisible = editable
-                }
-            }
-        }
-
-        props["selection"]?.let { selection ->
-            when (selection) {
-                is Map<*, *> -> {
-                    val start = (selection["start"] as? Number)?.toInt() ?: 0
-                    val end = (selection["end"] as? Number)?.toInt() ?: start
-                    try {
-                        editText.setSelection(start, end)
-                    } catch (e: IndexOutOfBoundsException) {
-                    }
-                }
-            }
-        }
-
-        props["returnKeyType"]?.let { returnKey ->
-            editText.imeOptions = when (returnKey) {
-                "done" -> EditorInfo.IME_ACTION_DONE
-                "go" -> EditorInfo.IME_ACTION_GO
-                "next" -> EditorInfo.IME_ACTION_NEXT
-                "search" -> EditorInfo.IME_ACTION_SEARCH
-                "send" -> EditorInfo.IME_ACTION_SEND
-                "previous" -> EditorInfo.IME_ACTION_PREVIOUS
-                else -> EditorInfo.IME_ACTION_UNSPECIFIED
-            }
-        }
-
-        props["textAlign"]?.let { align ->
-            editText.textAlignment = when (align) {
-                "center" -> View.TEXT_ALIGNMENT_CENTER
-                "right", "end" -> View.TEXT_ALIGNMENT_TEXT_END
-                "left", "start" -> View.TEXT_ALIGNMENT_TEXT_START
-                else -> View.TEXT_ALIGNMENT_TEXT_START
-            }
-        }
-
-        props["blurOnSubmit"]?.let { blurOnSubmit ->
-            when (blurOnSubmit) {
-                is Boolean -> {
-                    editText.setTag(R.id.dcf_text_input_blur_on_submit, blurOnSubmit)
-                }
-            }
-        }
-
-        props["onChangeText"]?.let { onChange ->
-            removeTextWatcher(editText)
-
-            val textWatcher = object : TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-
-                override fun afterTextChanged(s: Editable?) {
-                    propagateEvent(editText, "onChangeText", mapOf(
-                        "text" to (s?.toString() ?: ""),
-                        "length" to (s?.length ?: 0)
-                    ))
-                }
-            }
-
-            editText.addTextChangedListener(textWatcher)
-            editText.setTag(R.id.dcf_text_input_watcher, textWatcher)
-        }
-
-        props["onFocus"]?.let { onFocus ->
-            editText.setOnFocusChangeListener { _, hasFocus ->
-                if (hasFocus) {
-                    editText.setTag(R.id.dcf_text_input_focus_listener, onFocus)
-                }
-            }
-        }
-
-        props["onBlur"]?.let { onBlur ->
-            editText.setOnFocusChangeListener { _, hasFocus ->
-                if (!hasFocus) {
-                    editText.setTag(R.id.dcf_text_input_focus_listener, onBlur)
-                }
-            }
-        }
-
-        props["onSubmitEditing"]?.let { onSubmit ->
-            editText.setOnEditorActionListener { _, actionId, _ ->
-                if (actionId == EditorInfo.IME_ACTION_DONE ||
-                    actionId == EditorInfo.IME_ACTION_GO ||
-                    actionId == EditorInfo.IME_ACTION_SEARCH ||
-                    actionId == EditorInfo.IME_ACTION_SEND
-                ) {
-
-                    editText.setTag(R.id.dcf_event_callback, onSubmit)
-
-                    val shouldBlur = editText.getTag(R.id.dcf_text_input_blur_on_submit) as? Boolean ?: true
-                    if (shouldBlur) {
-                        editText.clearFocus()
-                    }
-
-                    true
-                } else {
-                    false
-                }
-            }
-        }
-
-        props["accessibilityLabel"]?.let { label ->
-            editText.contentDescription = label.toString()
-        }
-
-        props["testID"]?.let { testId ->
-            editText.setTag(R.id.dcf_test_id, testId)
-        }
-
-        editText.setTag(R.id.dcf_text_input_placeholder, props["placeholder"])
-
-        return true
-    }
-
-    private fun removeTextWatcher(editText: EditText) {
-        val existingWatcher = editText.getTag(R.id.dcf_text_input_watcher) as? TextWatcher
-        existingWatcher?.let {
-            editText.removeTextChangedListener(it)
-            editText.setTag(R.id.dcf_text_input_watcher, null)
-        }
-    }
-
-
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val editText = view as? EditText ?: return PointF(0f, 0f)
-
-        editText.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-
-        val measuredWidth = editText.measuredWidth.toFloat()
-        val measuredHeight = editText.measuredHeight.toFloat()
-
-        return PointF(max(1f, measuredWidth), max(1f, measuredHeight))
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        Log.d("DCFTextInputComponent", "TextInput component registered with shadow tree: $nodeId")
-    }
-
-    override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
-        return null
-    }
-}
-
+ import android.content.Context
+ import android.graphics.Color
+ import android.graphics.PointF
+ import android.text.Editable
+ import android.text.InputType
+ import android.text.TextWatcher
+ import android.util.Log
+ import android.util.TypedValue
+ import android.view.View
+ import android.view.inputmethod.EditorInfo
+ import android.widget.EditText
+ import androidx.appcompat.widget.AppCompatEditText
+ import com.dotcorr.dcflight.components.DCFComponent
+ import com.dotcorr.dcflight.extensions.applyStyles
+ import com.dotcorr.dcflight.utils.ColorUtilities
+ import com.dotcorr.dcflight.components.propagateEvent
+ import com.dotcorr.dcf_primitives.R
+ import com.dotcorr.dcf_primitives.components.dpToPx
+ import com.dotcorr.dcf_primitives.components.parseColor
+ import kotlin.math.max
+ 
+ /**
+  * DCFTextInputComponent - Text input component matching iOS DCFTextInputComponent
+  */
+ class DCFTextInputComponent : DCFComponent() {
+ 
+     override fun createView(context: Context, props: Map<String, Any?>): View {
+         val editText = AppCompatEditText(context)
+ 
+         ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
+             editText.setTextColor(colorInt)
+         }
+         
+         ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
+             editText.setHintTextColor(colorInt)
+         }
+         
+         ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
+             editText.setHighlightColor(colorInt)
+         }
+ 
+         editText.setPadding(
+             dpToPx(12f, context),
+             dpToPx(8f, context),
+             dpToPx(12f, context),
+             dpToPx(8f, context)
+         )
+ 
+         updateView(editText, props)
+ 
+         val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
+         editText.applyStyles(nonNullStyleProps)
+ 
+         editText.setTag(R.id.dcf_component_type, "TextInput")
+ 
+         return editText
+     }
+ 
+     override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+         val editText = view as? AppCompatEditText ?: return false
+ 
+         if (hasPropChanged("value", existingProps, props)) {
+             props["value"]?.let { value ->
+                 val currentText = editText.text?.toString() ?: ""
+                 val newText = value.toString()
+                 if (currentText != newText) {
+                     editText.setText(newText)
+                     editText.setSelection(newText.length)
+                 }
+             }
+         }
+ 
+         if (hasPropChanged("placeholder", existingProps, props)) {
+             props["placeholder"]?.let { placeholder ->
+                 editText.hint = placeholder.toString()
+             }
+         }
+ 
+         if (hasPropChanged("textColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
+             ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
+                 editText.setTextColor(colorInt)
+             }
+         }
+ 
+         if (hasPropChanged("placeholderColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
+             ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
+                 editText.setHintTextColor(colorInt)
+             }
+         }
+ 
+         if (hasPropChanged("selectionColor", existingProps, props) || hasPropChanged("accentColor", existingProps, props)) {
+             ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
+                 editText.setHighlightColor(colorInt)
+             }
+         }
+ 
+         props["fontSize"]?.let { size ->
+             when (size) {
+                 is Number -> editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, size.toFloat())
+                 is String -> {
+                     size.removeSuffix("sp").toFloatOrNull()?.let { fontSize ->
+                         editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
+                     }
+                 }
+             }
+         }
+ 
+         props["keyboardType"]?.let { type ->
+             editText.inputType = when (type) {
+                 "default" -> InputType.TYPE_CLASS_TEXT
+                 "number-pad", "numeric" -> InputType.TYPE_CLASS_NUMBER
+                 "decimal-pad" -> InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+                 "phone-pad" -> InputType.TYPE_CLASS_PHONE
+                 "email-address" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                 "url" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+                 "visible-password" -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                 else -> InputType.TYPE_CLASS_TEXT
+             }
+         }
+ 
+         props["secureTextEntry"]?.let { secure ->
+             when (secure) {
+                 is Boolean -> {
+                     if (secure) {
+                         editText.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+                     }
+                 }
+             }
+         }
+ 
+         props["autoCapitalization"]?.let { capitalize ->
+             val currentInputType = editText.inputType
+             editText.inputType = when (capitalize) {
+                 "none" -> currentInputType and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES.inv() and
+                         InputType.TYPE_TEXT_FLAG_CAP_WORDS.inv() and
+                         InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS.inv()
+ 
+                 "sentences" -> currentInputType or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                 "words" -> currentInputType or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+                 "characters" -> currentInputType or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+                 else -> currentInputType
+             }
+         }
+ 
+         props["autoCorrect"]?.let { autoCorrect ->
+             when (autoCorrect) {
+                 is Boolean -> {
+                     val currentInputType = editText.inputType
+                     editText.inputType = if (autoCorrect) {
+                         currentInputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS.inv()
+                     } else {
+                         currentInputType or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                     }
+                 }
+             }
+         }
+ 
+         props["maxLength"]?.let { maxLength ->
+             when (maxLength) {
+                 is Number -> {
+                     val filters = editText.filters?.toMutableList() ?: mutableListOf()
+                     filters.removeAll { it is android.text.InputFilter.LengthFilter }
+                     filters.add(android.text.InputFilter.LengthFilter(maxLength.toInt()))
+                     editText.filters = filters.toTypedArray()
+                 }
+             }
+         }
+ 
+         props["multiline"]?.let { multiline ->
+             when (multiline) {
+                 is Boolean -> {
+                     if (multiline) {
+                         editText.inputType = editText.inputType or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                         editText.setSingleLine(false)
+                         editText.minLines = 2
+                     } else {
+                         editText.inputType = editText.inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE.inv()
+                         editText.setSingleLine(true)
+                     }
+                 }
+             }
+         }
+ 
+         props["numberOfLines"]?.let { lines ->
+             when (lines) {
+                 is Number -> {
+                     val numLines = lines.toInt()
+                     if (numLines > 1) {
+                         editText.minLines = numLines
+                         editText.maxLines = numLines
+                     }
+                 }
+             }
+         }
+ 
+         props["editable"]?.let { editable ->
+             when (editable) {
+                 is Boolean -> {
+                     editText.isFocusable = editable
+                     editText.isFocusableInTouchMode = editable
+                     editText.isClickable = editable
+                     editText.isCursorVisible = editable
+                 }
+             }
+         }
+ 
+         props["selection"]?.let { selection ->
+             when (selection) {
+                 is Map<*, *> -> {
+                     val start = (selection["start"] as? Number)?.toInt() ?: 0
+                     val end = (selection["end"] as? Number)?.toInt() ?: start
+                     try {
+                         editText.setSelection(start, end)
+                     } catch (e: IndexOutOfBoundsException) {
+                     }
+                 }
+             }
+         }
+ 
+         props["returnKeyType"]?.let { returnKey ->
+             editText.imeOptions = when (returnKey) {
+                 "done" -> EditorInfo.IME_ACTION_DONE
+                 "go" -> EditorInfo.IME_ACTION_GO
+                 "next" -> EditorInfo.IME_ACTION_NEXT
+                 "search" -> EditorInfo.IME_ACTION_SEARCH
+                 "send" -> EditorInfo.IME_ACTION_SEND
+                 "previous" -> EditorInfo.IME_ACTION_PREVIOUS
+                 else -> EditorInfo.IME_ACTION_UNSPECIFIED
+             }
+         }
+ 
+         props["textAlign"]?.let { align ->
+             editText.textAlignment = when (align) {
+                 "center" -> View.TEXT_ALIGNMENT_CENTER
+                 "right", "end" -> View.TEXT_ALIGNMENT_TEXT_END
+                 "left", "start" -> View.TEXT_ALIGNMENT_TEXT_START
+                 else -> View.TEXT_ALIGNMENT_TEXT_START
+             }
+         }
+ 
+         props["blurOnSubmit"]?.let { blurOnSubmit ->
+             when (blurOnSubmit) {
+                 is Boolean -> {
+                     editText.setTag(R.id.dcf_text_input_blur_on_submit, blurOnSubmit)
+                 }
+             }
+         }
+ 
+         props["onChangeText"]?.let { onChange ->
+             removeTextWatcher(editText)
+ 
+             val textWatcher = object : TextWatcher {
+                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+ 
+                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+ 
+                 override fun afterTextChanged(s: Editable?) {
+                     propagateEvent(editText, "onChangeText", mapOf(
+                         "text" to (s?.toString() ?: ""),
+                         "length" to (s?.length ?: 0)
+                     ))
+                 }
+             }
+ 
+             editText.addTextChangedListener(textWatcher)
+             editText.setTag(R.id.dcf_text_input_watcher, textWatcher)
+         }
+ 
+         props["onFocus"]?.let { onFocus ->
+             editText.setOnFocusChangeListener { _, hasFocus ->
+                 if (hasFocus) {
+                     editText.setTag(R.id.dcf_text_input_focus_listener, onFocus)
+                 }
+             }
+         }
+ 
+         props["onBlur"]?.let { onBlur ->
+             editText.setOnFocusChangeListener { _, hasFocus ->
+                 if (!hasFocus) {
+                     editText.setTag(R.id.dcf_text_input_focus_listener, onBlur)
+                 }
+             }
+         }
+ 
+         props["onSubmitEditing"]?.let { onSubmit ->
+             editText.setOnEditorActionListener { _, actionId, _ ->
+                 if (actionId == EditorInfo.IME_ACTION_DONE ||
+                     actionId == EditorInfo.IME_ACTION_GO ||
+                     actionId == EditorInfo.IME_ACTION_SEARCH ||
+                     actionId == EditorInfo.IME_ACTION_SEND
+                 ) {
+ 
+                     editText.setTag(R.id.dcf_event_callback, onSubmit)
+ 
+                     val shouldBlur = editText.getTag(R.id.dcf_text_input_blur_on_submit) as? Boolean ?: true
+                     if (shouldBlur) {
+                         editText.clearFocus()
+                     }
+ 
+                     true
+                 } else {
+                     false
+                 }
+             }
+         }
+ 
+         props["accessibilityLabel"]?.let { label ->
+             editText.contentDescription = label.toString()
+         }
+ 
+         props["testID"]?.let { testId ->
+             editText.setTag(R.id.dcf_test_id, testId)
+         }
+ 
+         editText.setTag(R.id.dcf_text_input_placeholder, props["placeholder"])
+ 
+         return true
+     }
+ 
+     private fun removeTextWatcher(editText: EditText) {
+         val existingWatcher = editText.getTag(R.id.dcf_text_input_watcher) as? TextWatcher
+         existingWatcher?.let {
+             editText.removeTextChangedListener(it)
+             editText.setTag(R.id.dcf_text_input_watcher, null)
+         }
+     }
+ 
+ 
+     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+         val editText = view as? EditText ?: return PointF(0f, 0f)
+ 
+         editText.measure(
+             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+         )
+ 
+         val measuredWidth = editText.measuredWidth.toFloat()
+         val measuredHeight = editText.measuredHeight.toFloat()
+ 
+         return PointF(max(1f, measuredWidth), max(1f, measuredHeight))
+     }
+ 
+     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+         Log.d("DCFTextInputComponent", "TextInput component registered with shadow tree: $nodeId")
+     }
+ 
+     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
+         return null
+     }
+ }
+ 
+ 
