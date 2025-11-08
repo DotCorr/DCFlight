@@ -61,7 +61,7 @@ class MyApp extends DCFStatefulComponent {
             ],
           ),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.blue),
-          // layout: DCFLayout(alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center),
+          layout: DCFLayout(width: 200,height: 40,alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center),
         ),
         DCFAlert(
           visible: isDarkMode.state,
