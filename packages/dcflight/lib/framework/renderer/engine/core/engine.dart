@@ -2095,50 +2095,7 @@ class DCFEngine {
     return null;
   }
 
-  /// O(1) - Create a portal container with optimized properties for portaling
-  Future<String> createPortal(String portalId,
-      {required String parentViewId,
-      Map<String, dynamic>? props,
-      int? index}) async {
-    await isReady;
-
-    EngineDebugLogger.log('CREATE_PORTAL_START', 'Creating portal container',
-        extra: {
-          'PortalId': portalId,
-          'ParentViewId': parentViewId,
-          'Index': index
-        });
-
-    final portalProps = {
-      'portalId': portalId,
-      'isPortalContainer': true,
-      'backgroundColor': 'transparent',
-      'clipsToBounds': false,
-      'userInteractionEnabled': true,
-      ...(props ?? {}),
-    };
-
-    try {
-      EngineDebugLogger.logBridge('CREATE_PORTAL', portalId,
-          data: {'Type': 'View', 'Props': portalProps.keys.toList()});
-      await _nativeBridge.createView(portalId, 'View', portalProps);
-
-      EngineDebugLogger.logBridge('ATTACH_PORTAL', portalId,
-          data: {'ParentViewId': parentViewId, 'Index': index ?? 0});
-      await _nativeBridge.attachView(portalId, parentViewId, index ?? 0);
-
-      EngineDebugLogger.log(
-          'CREATE_PORTAL_SUCCESS', 'Portal container created successfully',
-          extra: {'PortalId': portalId});
-      return portalId;
-    } catch (e) {
-      EngineDebugLogger.log(
-          'CREATE_PORTAL_ERROR', 'Failed to create portal container',
-          extra: {'PortalId': portalId, 'Error': e.toString()});
-      rethrow;
-    }
-  }
-
+ 
   /// O(children count) - Get the current child view IDs of a view (for portal management)
   List<String> getCurrentChildren(String viewId) {
     EngineDebugLogger.log(
