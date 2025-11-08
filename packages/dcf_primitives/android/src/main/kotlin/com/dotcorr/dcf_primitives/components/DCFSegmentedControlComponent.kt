@@ -112,13 +112,19 @@ class DCFSegmentedControlComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        // Update colors if changed - read current state from view (like slider)
-        if (hasPropChanged("primaryColor", existingProps, props) ||
+        // Update colors if changed - use framework helper to preserve state
+        if (onlySemanticColorsChanged(existingProps, props, listOf("selectedIndex"))) {
+            // Framework-level: Read current selectedIndex from view state (like slider reads seekBar.progress)
+            // This preserves user's selection when theme toggles
+            val selectedIndex = getCurrentSelectedIndex(container)
+            updateButtonColors(container, selectedIndex, props)
+            hasUpdates = true
+        } else if (hasPropChanged("primaryColor", existingProps, props) ||
             hasPropChanged("secondaryColor", existingProps, props) ||
             hasPropChanged("tertiaryColor", existingProps, props) ||
             hasPropChanged("accentColor", existingProps, props)) {
-            // Framework-level: Read current selectedIndex from view state (like slider reads seekBar.progress)
-            val selectedIndex = getCurrentSelectedIndex(container)
+            // Colors changed but state also changed - use props
+            val selectedIndex = getSelectedIndex(props, container.childCount)
             updateButtonColors(container, selectedIndex, props)
             hasUpdates = true
         }

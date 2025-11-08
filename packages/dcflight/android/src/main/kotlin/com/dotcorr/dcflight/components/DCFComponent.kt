@@ -114,6 +114,11 @@ abstract class DCFComponent {
      * 
      * This is called by updateView() after props merging
      * 
+     * CRITICAL PATTERN FOR STATE PRESERVATION:
+     * When only semantic colors change (theme toggle), read current state from view, not props.
+     * Example: Slider reads from seekBar.progress, SegmentedControl reads from button text color.
+     * Use onlySemanticColorsChanged() helper to detect this case.
+     * 
      * @param view The view to update
      * @param props The merged new props (non-null filtered)
      * @param existingProps The previous props (non-null filtered) - use hasPropChanged() to compare
@@ -133,6 +138,49 @@ abstract class DCFComponent {
         val existingValue = existing[key]
         val newValue = new[key]
         return existingValue != newValue
+    }
+    
+    /**
+     * Framework-level helper: Check if only semantic colors changed (no state props changed)
+     * Use this to preserve component state when only theme/colors change
+     * 
+     * CRITICAL PATTERN: When only colors change, read current state from view (not props)
+     * This prevents components from resetting when theme toggles
+     * 
+     * Example (SegmentedControl):
+     * if (onlySemanticColorsChanged(existingProps, props)) {
+     *     // Read current selectedIndex from view state (like slider reads seekBar.progress)
+     *     val selectedIndex = getCurrentSelectedIndexFromView(view)
+     *     updateButtonColors(container, selectedIndex, props)
+     * }
+     * 
+     * Example (Slider):
+     * if (onlySemanticColorsChanged(existingProps, props)) {
+     *     // Slider already reads value from seekBar.progress, so it's safe
+     *     updateColors(seekBar, props)
+     * }
+     * 
+     * @param existingProps Previous props (from getStoredProps)
+     * @param props New props (merged)
+     * @param stateProps List of prop keys that represent component state (e.g., ["selectedIndex", "value", "checked"])
+     * @return true if only semantic colors changed, false if state props also changed
+     */
+    protected fun onlySemanticColorsChanged(
+        existingProps: Map<String, Any>,
+        props: Map<String, Any>,
+        stateProps: List<String> = emptyList()
+    ): Boolean {
+        val semanticColorKeys = listOf("primaryColor", "secondaryColor", "tertiaryColor", "accentColor")
+        val allStateProps = stateProps + listOf("segments", "enabled", "disabled") // Common state props
+        
+        // Check if any state prop changed
+        val stateChanged = allStateProps.any { hasPropChanged(it, existingProps, props) }
+        if (stateChanged) return false
+        
+        // Check if any semantic color changed
+        val colorChanged = semanticColorKeys.any { hasPropChanged(it, existingProps, props) }
+        
+        return colorChanged
     }
     
     /**
