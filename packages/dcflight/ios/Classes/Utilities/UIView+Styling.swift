@@ -115,6 +115,21 @@ extension UIView {
             needsMasksToBoundsFalse = true
         }
 
+        if let elevation = props["elevation"] as? CGFloat {
+            let shadowOpacity: Float = elevation > 0 ? 0.25 : 0
+            let shadowRadius: CGFloat = elevation * 0.5
+            let shadowOffset = CGSize(width: 0, height: elevation * 0.5)
+
+            layer.shadowOpacity = shadowOpacity
+            layer.shadowRadius = shadowRadius
+            layer.shadowOffset = shadowOffset
+            layer.shadowColor = UIColor.black.cgColor
+
+            if elevation > 0 {
+                needsMasksToBoundsFalse = true
+            }
+        }
+
         if needsMasksToBoundsFalse && hasCornerRadius {
             layer.masksToBounds = false
             self.clipsToBounds = true
@@ -124,12 +139,11 @@ extension UIView {
             self.clipsToBounds = true
         }
 
-
         if let hitSlopMap = props["hitSlop"] as? [String: Any] {
             var hitSlopInsets = UIEdgeInsets.zero
 
             if let top = hitSlopMap["top"] as? CGFloat {
-                hitSlopInsets.top = -top  // Negative to expand touch area
+                hitSlopInsets.top = -top
             }
             if let bottom = hitSlopMap["bottom"] as? CGFloat {
                 hitSlopInsets.bottom = -bottom
@@ -146,21 +160,6 @@ extension UIView {
                 NSValue(uiEdgeInsets: hitSlopInsets), .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
 
-        if let elevation = props["elevation"] as? CGFloat {
-            let shadowOpacity: Float = elevation > 0 ? 0.25 : 0
-            let shadowRadius: CGFloat = elevation * 0.5
-            let shadowOffset = CGSize(width: 0, height: elevation * 0.5)
-
-            layer.shadowOpacity = shadowOpacity
-            layer.shadowRadius = shadowRadius
-            layer.shadowOffset = shadowOffset
-            layer.shadowColor = UIColor.black.cgColor
-
-            if elevation > 0 {
-                needsMasksToBoundsFalse = true
-            }
-        }
-
         if let accessible = props["accessible"] as? Bool {
             self.isAccessibilityElement = accessible
         }
@@ -169,8 +168,30 @@ extension UIView {
             self.accessibilityLabel = label
         }
 
+        if let hint = props["accessibilityHint"] as? String {
+            self.accessibilityHint = hint
+        }
+
+        if let value = props["accessibilityValue"] as? String {
+            self.accessibilityValue = value
+        }
+
+        if let role = props["accessibilityRole"] as? String {
+            if #available(iOS 10.0, *) {
+                switch role.lowercased() {
+                case "button": self.accessibilityTraits = .button
+                case "link": self.accessibilityTraits = .link
+                case "header": self.accessibilityTraits = .header
+                case "image": self.accessibilityTraits = .image
+                case "text": self.accessibilityTraits = .staticText
+                case "none": self.accessibilityTraits = .none
+                default: break
+                }
+            }
+        }
+
         if let testID = props["testID"] as? String {
-            self.accessibilityIdentifier = testID  // Used for view lookup and testing
+            self.accessibilityIdentifier = testID
         }
 
         if let pointerEvents = props["pointerEvents"] as? String {
