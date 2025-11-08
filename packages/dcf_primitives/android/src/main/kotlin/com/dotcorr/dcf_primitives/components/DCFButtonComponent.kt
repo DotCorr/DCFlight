@@ -8,23 +8,32 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PointF
 import android.util.Log
-import android.view.Gravity
 import android.view.View
-import androidx.appcompat.widget.AppCompatButton
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.layout.ViewRegistry
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
-import kotlin.math.max
 
 /**
- * DCFButtonComponent - Button component for Android
- * Uses native AppCompatButton for proper configuration change handling
- * ALL styling handled by StyleSheet via .applyStyles() like iOS
+ * DCFButtonComponent - Material Design 3 Button using Jetpack Compose
+ * Provides native Material Design 3 button with proper theming and animations
  */
 class DCFButtonComponent : DCFComponent() {
 
@@ -33,176 +42,105 @@ class DCFButtonComponent : DCFComponent() {
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val button = AppCompatButton(context)
+        val composeView = ComposeView(context)
+        composeView.setTag(R.id.dcf_component_type, "Button")
         
-        button.gravity = Gravity.CENTER
-        button.textSize = 16f
-        button.isAllCaps = false
-        button.setPadding(16, 8, 16, 8) // Match default button padding
+        // Store props for Compose to access
+        storeProps(composeView, props)
         
-        // NO FALLBACK: backgroundColor and primaryColor come from StyleSheet only
-        // StyleSheet will always provide these via toMap() fallbacks
+        // Set initial content
+        updateComposeContent(composeView, props)
         
-        button.isClickable = true
-        button.isFocusable = true
-        
+        // Apply framework-level styles (border, shadow, etc.)
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        composeView.applyStyles(nonNullProps)
         
-        // Set initial title if provided
-        props["title"]?.let { title ->
-            val titleText = when (title) {
-                is String -> title
-                else -> title.toString()
-            }
-            button.text = titleText
-            Log.d(TAG, "Set initial button title: $titleText")
-        }
+        Log.d(TAG, "Created Compose-based Material3 Button component")
         
-        // CRITICAL: Store props FIRST before calling updateView
-        // This ensures updateViewInternal has access to all props including primaryColor
-        storeProps(button, props)
-        
-        // Use updateView to ensure props are stored and merged correctly
-        // This will call updateViewInternal which will set text color (ensuring it's not overridden)
-        // CRITICAL: updateView merges props and ensures primaryColor from StyleSheet.toMap() is available
-        updateView(button, props)
-        
-        // After updateView, get the merged props (which should include primaryColor from StyleSheet.toMap())
-        val mergedProps = getStoredProps(button)
-        val nonNullMergedProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
-        
-        button.applyStyles(nonNullMergedProps)
-        
-        // CRITICAL: Set text color AFTER updateView and applyStyles to ensure it's the final operation
-        // Use merged props which should include primaryColor from StyleSheet.toMap() fallback
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // StyleSheet.toMap() ALWAYS provides primaryColor via DCFTheme.textColor fallback
-        mergedProps["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                button.setTextColor(colorInt)
-                // Force invalidate and request layout to ensure text is redrawn with correct color
-                button.invalidate()
-                button.requestLayout()
-                Log.d(TAG, "Set text color from primaryColor: ${ColorUtilities.hexString(colorInt)}")
-            } else {
-                Log.w(TAG, "Failed to parse primaryColor: $color")
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
-        } ?: run {
-            Log.e(TAG, "ERROR: No primaryColor in merged props! StyleSheet.toMap() should always provide it!")
-        }
-
-        button.setOnTouchListener { view, event ->
-            when (event.action) {
-                android.view.MotionEvent.ACTION_DOWN -> {
-                    view.alpha = 0.6f // TouchableOpacity effect
-                }
-                android.view.MotionEvent.ACTION_UP,
-                android.view.MotionEvent.ACTION_CANCEL -> {
-                    view.alpha = if (view.isEnabled) 1.0f else 0.5f
-                }
-            }
-            false // Allow click to continue
-        }
-
-        button.setOnClickListener {
-            Log.d(TAG, "Button clicked: ${button.text}")
-            
-            propagateEvent(button, "onPress", mapOf(
-                "pressed" to true,
-                "timestamp" to System.currentTimeMillis() / 1000.0,
-                "title" to button.text.toString()
-            ))
-        }
-
-        button.setTag(R.id.dcf_component_type, "Button")
-
-        Log.d(TAG, "Created native AppCompatButton component")
-
-        return button
+        return composeView
     }
-
-    // Remove override - let base class handle props merging
-    // This ensures title and other props are preserved across updates
 
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        val button = view as? AppCompatButton ?: return false
-
+        val composeView = view as? ComposeView ?: return false
+        
         Log.d(TAG, "Updating button with props: $props")
-
         
-        props["title"]?.let { title ->
-            val titleText = when (title) {
-                is String -> title
-                else -> title.toString()
-            }
-            button.text = titleText
-            Log.d(TAG, "Set button title: $titleText")
+        // Update Compose content if props changed
+        if (hasPropChanged("title", existingProps, props) ||
+            hasPropChanged("disabled", existingProps, props) ||
+            hasPropChanged("primaryColor", existingProps, props) ||
+            hasPropChanged("backgroundColor", existingProps, props)) {
+            updateComposeContent(composeView, props)
         }
-
-        props["disabled"]?.let { disabled ->
-            when (disabled) {
-                is Boolean -> {
-                    button.isEnabled = !disabled
-                    button.alpha = if (disabled) 0.5f else 1.0f
-                    Log.d(TAG, "Set button disabled: $disabled")
-                }
-            }
-        }
-
-
-        // backgroundColor is handled by applyStyles from StyleSheet
-        button.applyStyles(props)
         
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // primaryColor: button text color
-        // CRITICAL: ALWAYS set text color AFTER applyStyles to ensure it's not overridden
-        // This ensures text is visible even when UI is bloated or during rapid updates
-        // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
-        // IMPORTANT: On initial render (empty existingProps), ALWAYS set color to ensure visibility
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                button.setTextColor(colorInt)
-                // Force invalidate to ensure text is redrawn with correct color
-                button.invalidate()
-                if (existingProps.isEmpty() || hasPropChanged("primaryColor", existingProps, props)) {
-                    Log.d(TAG, "Set text color from primaryColor: ${ColorUtilities.hexString(colorInt)} (initial: ${existingProps.isEmpty()})")
-                }
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
-        }
-        // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
-
+        // Apply framework-level styles
+        composeView.applyStyles(props)
+        
         return true
     }
-
+    
+    private fun updateComposeContent(composeView: ComposeView, props: Map<String, Any?>) {
+        val title = props["title"]?.toString() ?: ""
+        val disabled = when (val d = props["disabled"]) {
+            is Boolean -> d
+            is String -> d.toBoolean()
+            else -> false
+        }
+        val primaryColor = props["primaryColor"]?.let { 
+            ColorUtilities.parseColor(it.toString()) 
+        }
+        val backgroundColor = props["backgroundColor"]?.let { 
+            ColorUtilities.parseColor(it.toString()) 
+        }
+        
+        composeView.setContent {
+            Material3Button(
+                title = title,
+                disabled = disabled,
+                primaryColor = primaryColor,
+                backgroundColor = backgroundColor,
+                onPress = {
+                    // Find viewId from ViewRegistry if not in tag
+                    val viewId = composeView.getTag(com.dotcorr.dcflight.R.id.dcf_view_id) as? String
+                        ?: ViewRegistry.shared.allViewIds.firstOrNull { id ->
+                            ViewRegistry.shared.getView(id) == composeView
+                        }
+                    
+                    if (viewId != null) {
+                        propagateEvent(composeView, "onPress", mapOf(
+                            "pressed" to true,
+                            "timestamp" to System.currentTimeMillis() / 1000.0,
+                            "title" to title
+                        ))
+                    } else {
+                        Log.w(TAG, "Cannot propagate event - viewId not found for ComposeView")
+                    }
+                }
+            )
+        }
+    }
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val button = view as? AppCompatButton ?: return PointF(0f, 0f)
-
-        val text = button.text?.toString() ?: ""
+        val composeView = view as? ComposeView ?: return PointF(0f, 0f)
         
-        if (text.isEmpty()) {
-            return PointF(100f, 50f) // Default button size
+        val title = props["title"]?.toString() ?: ""
+        
+        // Material3 Button default sizing
+        val minWidth = 100f
+        val minHeight = 40f
+        
+        // Estimate width based on text (rough approximation)
+        val estimatedWidth = if (title.isNotEmpty()) {
+            (title.length * 10f).coerceAtLeast(minWidth)
+        } else {
+            minWidth
         }
-
-        button.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-
-        val measuredWidth = button.measuredWidth.toFloat()
-        val measuredHeight = button.measuredHeight.toFloat()
-
-        Log.d(TAG, "Button intrinsic size: ${measuredWidth}x${measuredHeight} for title: \"$text\"")
-
-        return PointF(max(100f, measuredWidth), max(50f, measuredHeight))
+        
+        return PointF(estimatedWidth, minHeight)
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        Log.d(TAG, "Native button component registered with shadow tree: $nodeId")
+        Log.d(TAG, "Compose Button component registered with shadow tree: $nodeId")
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
@@ -210,3 +148,45 @@ class DCFButtonComponent : DCFComponent() {
     }
 }
 
+@Composable
+private fun Material3Button(
+    title: String,
+    disabled: Boolean,
+    primaryColor: Int?,
+    backgroundColor: Int?,
+    onPress: () -> Unit
+) {
+    val buttonColors = if (primaryColor != null || backgroundColor != null) {
+        ButtonDefaults.buttonColors(
+            containerColor = backgroundColor?.let { Color(it) } ?: Color.Unspecified,
+            contentColor = primaryColor?.let { Color(it) } ?: Color.Unspecified,
+            disabledContainerColor = backgroundColor?.let { Color(it).copy(alpha = 0.38f) } ?: Color.Unspecified,
+            disabledContentColor = primaryColor?.let { Color(it).copy(alpha = 0.38f) } ?: Color.Unspecified
+        )
+    } else {
+        ButtonDefaults.buttonColors()
+    }
+    
+    Button(
+        onClick = onPress,
+        enabled = !disabled,
+        modifier = Modifier.fillMaxWidth(),
+        colors = buttonColors,
+        shape = RoundedCornerShape(8.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp,
+            disabledElevation = 0.dp
+        ),
+        contentPadding = PaddingValues(
+            horizontal = 16.dp,
+            vertical = 12.dp
+        )
+    ) {
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
