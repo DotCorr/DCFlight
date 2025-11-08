@@ -27,8 +27,6 @@ class DCFSvgComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // tintColor (explicit) > primaryColor (semantic)
         ColorUtilities.getColor("tintColor", "primaryColor", props)?.let { colorInt ->
             imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
         }
@@ -39,13 +37,10 @@ class DCFSvgComponent : DCFComponent() {
         return imageView
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val imageView = view as ImageView
         var hasUpdates = false
 
-        // Framework-level helper: Only update source if it actually changed
         if (hasPropChanged("source", existingProps, props)) {
             props["source"]?.let { source ->
                 when (source) {
@@ -63,7 +58,6 @@ class DCFSvgComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update width if it actually changed
         if (hasPropChanged("width", existingProps, props)) {
             props["width"]?.let {
                 val width = when (it) {
@@ -75,7 +69,6 @@ class DCFSvgComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update height if it actually changed
         if (hasPropChanged("height", existingProps, props)) {
             props["height"]?.let {
                 val height = when (it) {
@@ -87,10 +80,7 @@ class DCFSvgComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update color if it actually changed
         if (hasPropChanged("tintColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // tintColor (explicit) > primaryColor (semantic)
             ColorUtilities.getColor("tintColor", "primaryColor", props)?.let { colorInt ->
                 imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
                 hasUpdates = true

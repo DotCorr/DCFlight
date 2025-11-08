@@ -95,12 +95,9 @@ class DCFGestureDetectorComponent : DCFComponent() {
         return frameLayout
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         var hasUpdates = false
 
-        // Framework-level helper: Only update disabled if it actually changed
         if (hasPropChanged("disabled", existingProps, props)) {
             props["disabled"]?.let {
                 val disabled = when (it) {

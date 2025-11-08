@@ -28,8 +28,6 @@ class DCFIconComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val imageView = ImageView(context)
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // iconColor (explicit) > primaryColor (semantic)
         ColorUtilities.getColor("iconColor", "primaryColor", props)?.let { colorInt ->
             imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
         }
@@ -40,13 +38,10 @@ class DCFIconComponent : DCFComponent() {
         return imageView
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val imageView = view as ImageView
         var hasUpdates = false
 
-        // Framework-level helper: Only reload icon if name actually changed
         if (hasPropChanged("name", existingProps, props)) {
             props["name"]?.let { name ->
                 val iconName = name.toString()
@@ -55,7 +50,6 @@ class DCFIconComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update size if it actually changed
         if (hasPropChanged("size", existingProps, props)) {
             props["size"]?.let {
             val size = when (it) {
@@ -71,10 +65,7 @@ class DCFIconComponent : DCFComponent() {
         }
         }
 
-        // Framework-level helper: Only update color if it actually changed
         if (hasPropChanged("iconColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // iconColor (explicit) > primaryColor (semantic)
             ColorUtilities.getColor("iconColor", "primaryColor", props)?.let { colorInt ->
                 imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
                 hasUpdates = true

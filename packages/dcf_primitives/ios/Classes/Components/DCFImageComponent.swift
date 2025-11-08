@@ -113,9 +113,6 @@ class DCFImageComponent: NSObject, DCFComponent {
             }
         }
         
-        // NO FALLBACK: backgroundColor comes from StyleSheet only
-        // StyleSheet will always provide this via toMap() fallbacks
-        
         imageView.applyStyles(props: props)
         
         return true

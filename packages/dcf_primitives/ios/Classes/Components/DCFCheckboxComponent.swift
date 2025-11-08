@@ -19,8 +19,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let checkbox = DCFCheckboxView()
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // checkedColor (explicit) > primaryColor (semantic)
         if let checkedColor = ColorUtilities.getColor(
             explicitColor: "checkedColor",
             semanticColor: "primaryColor",
@@ -29,7 +27,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.checkedColor = checkedColor
         }
         
-        // checkmarkColor (explicit) > primaryColor (semantic)
         if let checkmarkColor = ColorUtilities.getColor(
             explicitColor: "checkmarkColor",
             semanticColor: "primaryColor",
@@ -38,7 +35,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.checkmarkColor = checkmarkColor
         }
         
-        // uncheckedColor (explicit) > secondaryColor (semantic)
         if let uncheckedColor = ColorUtilities.getColor(
             explicitColor: "uncheckedColor",
             semanticColor: "secondaryColor",
@@ -70,8 +66,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.alpha = disabled ? 0.5 : 1.0
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // checkedColor (explicit) > primaryColor (semantic)
         if let checkedColor = ColorUtilities.getColor(
             explicitColor: "checkedColor",
             semanticColor: "primaryColor",
@@ -80,7 +74,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.checkedColor = checkedColor
         }
         
-        // checkmarkColor (explicit) > primaryColor (semantic)
         if let checkmarkColor = ColorUtilities.getColor(
             explicitColor: "checkmarkColor",
             semanticColor: "primaryColor",
@@ -89,7 +82,6 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.checkmarkColor = checkmarkColor
         }
         
-        // uncheckedColor (explicit) > secondaryColor (semantic)
         if let uncheckedColor = ColorUtilities.getColor(
             explicitColor: "uncheckedColor",
             semanticColor: "secondaryColor",
@@ -179,8 +171,6 @@ class DCFCheckboxView: UIControl {
     
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        // NO FALLBACK: Colors come from StyleSheet only
-        // StyleSheet will always provide these via toMap() fallbacks
     }
     
     var checkmarkColor: UIColor = UIColor.clear {

@@ -45,7 +45,6 @@ class DCFImageComponent : DCFComponent() {
         imageView.scaleType = ImageView.ScaleType.CENTER_CROP
         imageView.clipToOutline = true
         
-        // Use updateView (not updateViewInternal) - framework handles props merging
         updateView(imageView, props)
         
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
@@ -56,15 +55,11 @@ class DCFImageComponent : DCFComponent() {
         return imageView
     }
 
-    // Remove override - let base class handle props merging
-    // Note: ImageView type check is now in updateViewInternal
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val imageView = view as? ImageView ?: return false
 
         Log.d(TAG, "Updating image view with props: $props")
 
-        // Framework-level helper: Only reload image if source actually changed (prevents reload on theme toggle)
         if (hasPropChanged("source", existingProps, props)) {
             props["source"]?.let { sourceAny ->
             val source: String
@@ -87,7 +82,6 @@ class DCFImageComponent : DCFComponent() {
         }
         }
 
-        // Framework-level helper: Only update resizeMode if it actually changed
         if (hasPropChanged("resizeMode", existingProps, props)) {
             props["resizeMode"]?.let { mode ->
             val scaleType = when (mode.toString()) {

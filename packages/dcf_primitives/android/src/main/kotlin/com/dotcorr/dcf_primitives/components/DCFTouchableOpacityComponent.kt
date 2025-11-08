@@ -37,10 +37,6 @@ class DCFTouchableOpacityComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val frameLayout = FrameLayout(context)
         
-        
-        // Use DCFTheme as default (framework controls colors)
-        // StyleSheet.backgroundColor will override if provided
-        // Note: TouchableOpacity typically should be transparent, but framework controls this
         frameLayout.setBackgroundColor(Color.TRANSPARENT)
         
         frameLayout.setTag(R.id.dcf_component_type, "TouchableOpacity")
@@ -114,7 +110,6 @@ class DCFTouchableOpacityComponent : DCFComponent() {
             true
         }
         
-        // Use updateView (not updateViewInternal) - framework handles props merging
         updateView(frameLayout, props)
         
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
@@ -125,12 +120,9 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         return frameLayout
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         Log.d(TAG, "Updating TouchableOpacity with props: $props")
 
-        // Framework-level helper: Only update activeOpacity if it actually changed
         if (hasPropChanged("activeOpacity", existingProps, props)) {
             props["activeOpacity"]?.let { opacity ->
                 activeOpacity = when (opacity) {

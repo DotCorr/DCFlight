@@ -19,8 +19,6 @@ class DCFToggleComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let switchControl = UISwitch()
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // activeColor (explicit) > primaryColor (semantic)
         if let activeColor = ColorUtilities.getColor(
             explicitColor: "activeColor",
             semanticColor: "primaryColor",
@@ -30,7 +28,6 @@ class DCFToggleComponent: NSObject, DCFComponent {
             switchControl.thumbTintColor = activeColor
         }
         
-        // inactiveColor (explicit) > secondaryColor (semantic)
         if let inactiveColor = ColorUtilities.getColor(
             explicitColor: "inactiveColor",
             semanticColor: "secondaryColor",
@@ -59,8 +56,6 @@ class DCFToggleComponent: NSObject, DCFComponent {
             switchControl.alpha = disabled ? 0.5 : 1.0
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // activeColor (explicit) > primaryColor (semantic)
         if let activeColor = ColorUtilities.getColor(
             explicitColor: "activeColor",
             semanticColor: "primaryColor",
@@ -70,17 +65,12 @@ class DCFToggleComponent: NSObject, DCFComponent {
             switchControl.thumbTintColor = activeColor
         }
         
-        // inactiveColor (explicit) > secondaryColor (semantic)
         if let inactiveColor = ColorUtilities.getColor(
             explicitColor: "inactiveColor",
             semanticColor: "secondaryColor",
             from: props
         ) {
             switchControl.backgroundColor = inactiveColor
-        }
-        
-        if let tertiaryColor = props["tertiaryColor"] as? String {
-            // iOS doesn't have separate inactive thumb color, but we can use tertiaryColor if needed
         }
         
         switchControl.applyStyles(props: props)

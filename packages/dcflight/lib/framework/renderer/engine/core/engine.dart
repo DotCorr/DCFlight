@@ -893,9 +893,6 @@ class DCFEngine {
     EngineDebugLogger.log('ELEMENT_VIEW_MAPPING', 'Mapped element to view ID',
         extra: {'ViewId': viewId, 'ElementType': element.type});
 
-    // CRITICAL: Android bridge redirects createView → updateView if view exists
-    // This ensures components UPDATE, not RECREATE, preserving internal state
-    // (Slider value, WebView content, etc.)
     EngineDebugLogger.logBridge('CREATE_VIEW', viewId, data: {
       'ElementType': element.type,
       'Props': element.elementProps.keys.toList()
@@ -1065,9 +1062,6 @@ class DCFEngine {
           print('🔍 RECONCILE: Element types: ${oldRenderedNode.type} → ${newRenderedNode.type}');
         }
         
-        // CRITICAL FIX: Update the component tree structure BEFORE reconciliation
-        // This ensures that _findParentViewId (called during _replaceNode) sees the correct tree
-        
         // Step 1: Update this component's renderedNode to point to the new element
         print('🔄 PRE-RECONCILE: Updating ${newNode.runtimeType} renderedNode to new element');
         newNode.renderedNode = newRenderedNode;
@@ -1085,8 +1079,6 @@ class DCFEngine {
         
         await _reconcile(oldRenderedNode, newRenderedNode);
         
-        // CRITICAL: Update the component's contentViewId to match the new element's actual ID
-        // This is necessary because element type changes generate new view IDs
         if (newRenderedNode is DCFElement && newRenderedNode.nativeViewId != null) {
           final newElementViewId = newRenderedNode.nativeViewId!;
           if (newElementViewId != newNode.contentViewId) {
@@ -1094,8 +1086,6 @@ class DCFEngine {
             newNode.contentViewId = newElementViewId;
           }
           
-          // ALSO CRITICAL: Update ALL ancestor components' nativeViewId to point to the new root
-          // Walk up the tree and update the DIRECT parent, then any other ancestors with matching IDs
           final oldElementViewId = oldRenderedNode is DCFElement ? oldRenderedNode.nativeViewId : null;
           print('🔄 RECONCILE: Walking up tree to update ancestors (oldId: $oldElementViewId, newId: $newElementViewId)');
           
@@ -1544,7 +1534,6 @@ class DCFEngine {
           if (deepRendered is DCFElement) {
             print('🔍 PARENT_SEARCH: deepRendered element type: ${deepRendered.type}, nativeViewId: ${deepRendered.nativeViewId}');
             
-            // CRITICAL: Only use this if it has an ACTUAL nativeViewId, not a fallback contentViewId
             if (deepRendered.nativeViewId != null) {
               final deepViewId = deepRendered.nativeViewId!;
               
@@ -1675,8 +1664,6 @@ class DCFEngine {
             data: {'ChangedProps': changedProps.keys.toList()});
         final updateSuccess = await _nativeBridge.updateView(oldElement.nativeViewId!, changedProps);
         if (!updateSuccess) {
-          // If updateView fails, view might not exist in registry - fall back to createView
-          // Android bridge redirects createView → updateView if view exists, preserving state
           EngineDebugLogger.log('UPDATE_VIEW_FAILED', 'updateView failed, falling back to createView',
               extra: {'ViewId': oldElement.nativeViewId});
           final createSuccess = await _nativeBridge.createView(

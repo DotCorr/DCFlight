@@ -48,14 +48,6 @@ public struct YGNodeLayout {
     }
 }
 
-// REMOVED: Default implementations to enforce strict compliance
-// All components MUST explicitly implement:
-// - applyLayout
-// - getIntrinsicSize  
-// - viewRegisteredWithShadowTree
-// - handleTunnelMethod (static)
-//
-// This ensures all registered components are fully compliant
 public extension DCFComponent {
     
     // MARK: - Props Management (React Native Pattern)
@@ -78,21 +70,15 @@ public extension DCFComponent {
     /// - Null values remove props
     /// - Non-null values update props
     /// - Missing props are preserved
-    /// - CRITICAL: Semantic color props are removed if not in new props (StyleSheet property removal)
+    /// - Semantic color props are removed if not in new props (StyleSheet property removal)
     func mergeProps(_ existing: [String: Any?], with updates: [String: Any?]) -> [String: Any?] {
         var merged = existing
         
-        // CRITICAL: StyleSheet ALWAYS provides semantic colors via toMap()
-        // Only remove semantic colors if explicitly set to nil in updates
-        // If not in updates, preserve from existing (StyleSheet should always include them)
         let semanticColorKeys = ["primaryColor", "secondaryColor", "tertiaryColor", "accentColor"]
         for key in semanticColorKeys {
-            // Only remove if explicitly nil/NSNull in updates (explicit removal)
             if let value = updates[key], value is NSNull {
                 merged.removeValue(forKey: key)
             }
-            // If in updates and not nil, it will be set below
-            // If not in updates at all, preserve from existing (StyleSheet always provides)
         }
         
         for (key, value) in updates {
@@ -109,17 +95,12 @@ public extension DCFComponent {
     /// Components should implement updateViewInternal for their specific logic
     /// This default implementation handles props merging automatically
     func updateViewWithMerging(_ view: UIView, withProps props: [String: Any?]) -> Bool {
-        // React Native pattern: Store and merge props for stability
         let existingProps = getStoredProps(from: view)
         let mergedProps = mergeProps(existingProps, with: props)
         storeProps(mergedProps, in: view)
         
-        // Filter out null values for processing
         let nonNullProps = mergedProps.compactMapValues { $0 }
         
-        // Call component-specific update logic
-        // Note: iOS components can implement updateView directly or use updateViewWithMerging
-        // updateViewInternal is Android-specific and not required for iOS
         return updateView(view, withProps: nonNullProps)
     }
 }

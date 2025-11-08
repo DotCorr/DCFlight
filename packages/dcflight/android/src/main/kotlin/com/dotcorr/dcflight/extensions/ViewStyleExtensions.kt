@@ -39,9 +39,6 @@ private fun applyStyleDensityScaling(value: Float): Float {
  */
 
 fun View.applyStyles(props: Map<String, Any>) {
-    // Framework-level style application only
-    // Components handle their own colors via semantic color system
-
     var hasCornerRadius = false
     var finalCornerRadius = 0f
 

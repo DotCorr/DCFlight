@@ -42,8 +42,6 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
             }
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // spinnerColor (explicit) > primaryColor (semantic)
         if let spinnerColor = ColorUtilities.getColor(
             explicitColor: "spinnerColor",
             semanticColor: "primaryColor",
@@ -71,8 +69,6 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
             spinner.startAnimating()
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // spinnerColor (explicit) > primaryColor (semantic)
         if let spinnerColor = ColorUtilities.getColor(
             explicitColor: "spinnerColor",
             semanticColor: "primaryColor",
@@ -84,7 +80,7 @@ class DCFSpinnerComponent: NSObject, DCFComponent {
         if let hidesWhenStopped = props["hidesWhenStopped"] as? Bool {
             spinner.hidesWhenStopped = hidesWhenStopped
         } else {
-            spinner.hidesWhenStopped = true // Default behavior
+            spinner.hidesWhenStopped = true
         }
         
         spinner.applyStyles(props: props)

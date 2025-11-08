@@ -68,7 +68,6 @@ public class ColorUtilities {
         semanticColor: String?,
         from props: [String: Any]
     ) -> UIColor? {
-        // Priority 1: Check explicit color prop
         if let explicitColorKey = explicitColor,
            let explicitColorStr = props[explicitColorKey] as? String {
             if let color = color(fromHexString: explicitColorStr) {
@@ -76,7 +75,6 @@ public class ColorUtilities {
             }
         }
         
-        // Priority 2: Fall back to semantic color
         if let semanticColorKey = semanticColor,
            let semanticColorStr = props[semanticColorKey] as? String {
             if let color = color(fromHexString: semanticColorStr) {
@@ -84,7 +82,6 @@ public class ColorUtilities {
             }
         }
         
-        // No color found
         return nil
     }
 }

@@ -40,8 +40,6 @@ class DCFAlertComponent : DCFComponent() {
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         var hasUpdates = false
 
-        // CRITICAL: Only show/hide alert if visible prop ACTUALLY CHANGED
-        // This prevents alerts from showing on unrelated state updates (like count increment)
         if (hasPropChanged("visible", existingProps, props)) {
             props["visible"]?.let {
                 val visible = when (it) {
@@ -60,12 +58,10 @@ class DCFAlertComponent : DCFComponent() {
                 
                 val alertDialog = getAlertDialog(view)
                 
-                // Only show if changing from false to true
                 if (visible && !existingVisible && alertDialog == null) {
                     showAlert(view, props)
                     hasUpdates = true
                 } 
-                // Only hide if changing from true to false
                 else if (!visible && existingVisible && alertDialog != null) {
                     hideAlert(view)
                     hasUpdates = true
@@ -90,7 +86,6 @@ class DCFAlertComponent : DCFComponent() {
         val context = view.context
         val builder = AlertDialog.Builder(context)
         
-        // Use alertContent like iOS for consistency
         val alertContent = props["alertContent"] as? Map<*, *>
         if (alertContent != null) {
             alertContent["title"]?.let {
@@ -101,7 +96,6 @@ class DCFAlertComponent : DCFComponent() {
                 builder.setMessage(it.toString())
             }
         } else {
-            // Fallback to direct props for backward compatibility
             props["title"]?.let {
                 builder.setTitle(it.toString())
             }
@@ -111,7 +105,6 @@ class DCFAlertComponent : DCFComponent() {
             }
         }
         
-        // Use actions like iOS for consistency (buttons is legacy)
         val actions = props["actions"] as? List<*> ?: props["buttons"] as? List<*>
         actions?.let { actionList ->
             when (actionList) {

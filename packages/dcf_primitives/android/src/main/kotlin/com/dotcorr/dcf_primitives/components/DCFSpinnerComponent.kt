@@ -29,8 +29,6 @@ class DCFSpinnerComponent : DCFComponent() {
 
         progressBar.isIndeterminate = true
 
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // spinnerColor (explicit) > primaryColor (semantic)
         ColorUtilities.getColor("spinnerColor", "primaryColor", props)?.let { colorInt ->
             progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
         }
@@ -41,13 +39,10 @@ class DCFSpinnerComponent : DCFComponent() {
         return progressBar
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val progressBar = view as? ProgressBar ?: return false
         var hasUpdates = false
 
-        // Framework-level helper: Only update animating if it actually changed
         if (hasPropChanged("animating", existingProps, props) || hasPropChanged("hidesWhenStopped", existingProps, props)) {
             val isAnimating = props["animating"] as? Boolean ?: true
             val hidesWhenStopped = props["hidesWhenStopped"] as? Boolean ?: true
@@ -60,17 +55,13 @@ class DCFSpinnerComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        // Framework-level helper: Only update color if it actually changed
         if (hasPropChanged("spinnerColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // spinnerColor (explicit) > primaryColor (semantic)
             ColorUtilities.getColor("spinnerColor", "primaryColor", props)?.let { colorInt ->
                 progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
                 hasUpdates = true
             }
         }
 
-        // Framework-level helper: Only update size if it actually changed
         if (hasPropChanged("size", existingProps, props)) {
             props["size"]?.let { size ->
                 when (size) {

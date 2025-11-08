@@ -293,21 +293,17 @@ class DCFLayoutManager private constructor() {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             try {
                 if (view.parent != null || view.rootView != null) {
-                    // CRITICAL: Mark this view as manually positioned in its parent DCFFrameLayout
                     val parent = view.parent
                     if (parent is DCFFrameLayout) {
                         parent.setChildManuallyPositioned(view, true)
                     }
 
-                    // CRITICAL: DON'T force visibility for Screen components (managed by navigation)
-                    // Only force visibility for regular views (buttons, text, etc.)
                     val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
                     if (!isScreen) {
                         view.visibility = View.VISIBLE
                         view.alpha = 1.0f
                     }
 
-                    // CRITICAL: Measure view with exact dimensions (required for proper rendering)
                     val width = safeFrame.width()
                     val height = safeFrame.height()
                     view.measure(
@@ -333,8 +329,6 @@ class DCFLayoutManager private constructor() {
                             parent.setChildManuallyPositioned(view, true)
                         }
                         
-                        // CRITICAL: DON'T force visibility for Screen components (managed by navigation)
-                        // Only force visibility for regular views (buttons, text, etc.)
                         val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true
                         if (!isScreen) {
                             view.visibility = View.VISIBLE
@@ -388,7 +382,6 @@ class DCFLayoutManager private constructor() {
         mainHandler.post {
             try {
                 if (view.parent != null || view.rootView != null) {
-                    // CRITICAL: Mark this view as manually positioned in its parent DCFFrameLayout
                     val parent = view.parent
                     if (parent is DCFFrameLayout) {
                         parent.setChildManuallyPositioned(view, true)

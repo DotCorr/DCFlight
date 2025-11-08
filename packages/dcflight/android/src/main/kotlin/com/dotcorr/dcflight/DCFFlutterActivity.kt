@@ -176,7 +176,6 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
                 Log.d(TAG, "🔄 Forced intrinsic size recalculation after rotation")
             }
             
-            // CRITICAL: Force recursive invalidation after rotation to redraw all views
             if (rootView != null) {
                 fun invalidateAll(v: View) {
                     v.invalidate()

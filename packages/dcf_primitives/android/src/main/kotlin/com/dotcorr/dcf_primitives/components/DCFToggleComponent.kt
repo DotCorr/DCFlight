@@ -29,8 +29,6 @@ class DCFToggleComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val switchControl = SwitchCompat(context)
 
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // activeColor (explicit) > primaryColor (semantic)
         val activeColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
             ?: props["primaryColor"]?.let { parseColor(it.toString()) }
         val inactiveTrackColor = ColorUtilities.getColor("inactiveColor", "secondaryColor", props)
@@ -39,7 +37,6 @@ class DCFToggleComponent : DCFComponent() {
             ?: props["primaryColor"]?.let { parseColor(it.toString()) }
         val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it.toString()) }
         
-        // Only set colors if StyleSheet provided them (should always be the case)
         if (activeColor != null && inactiveTrackColor != null) {
             val states = arrayOf(
                 intArrayOf(android.R.attr.state_checked),
@@ -47,7 +44,6 @@ class DCFToggleComponent : DCFComponent() {
             )
             switchControl.trackTintList = ColorStateList(states, intArrayOf(activeColor, inactiveTrackColor))
         }
-        // NO FALLBACK: If colors missing, don't set ColorStateList (StyleSheet should always provide)
         
         if (activeThumbColor != null && inactiveThumbColor != null) {
             val states = arrayOf(
@@ -56,7 +52,6 @@ class DCFToggleComponent : DCFComponent() {
             )
             switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
         }
-        // NO FALLBACK: If colors missing, don't set ColorStateList (StyleSheet should always provide)
 
         switchControl.setTag(R.id.dcf_component_type, "Toggle")
 
@@ -68,12 +63,9 @@ class DCFToggleComponent : DCFComponent() {
         return switchControl
     }
 
-    // Remove override - let base class handle props merging
-
     override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val switchControl = view as? SwitchCompat ?: return false
 
-        // Framework-level helper: Only update value if it actually changed
         if (hasPropChanged("value", existingProps, props)) {
             props["value"]?.let { value ->
                 val isOn = value as? Boolean ?: false
@@ -88,7 +80,6 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update disabled if it actually changed
         if (hasPropChanged("disabled", existingProps, props)) {
             props["disabled"]?.let { disabled ->
                 val isDisabled = disabled as? Boolean ?: false
@@ -97,8 +88,6 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-
-        // Framework-level helper: Only update colors if they actually changed
         if (hasPropChanged("activeColor", existingProps, props) ||
             hasPropChanged("inactiveColor", existingProps, props) ||
             hasPropChanged("primaryColor", existingProps, props) || 
@@ -109,11 +98,8 @@ class DCFToggleComponent : DCFComponent() {
                 intArrayOf()
             )
             
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // activeColor (explicit) > primaryColor (semantic)
             val activeTrackColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
                 ?: props["primaryColor"]?.let { parseColor(it as String) }
-            // inactiveColor (explicit) > secondaryColor (semantic)
             val inactiveTrackColor = ColorUtilities.getColor("inactiveColor", "secondaryColor", props)
                 ?: props["secondaryColor"]?.let { parseColor(it as String) }
             val activeThumbColor = ColorUtilities.getColor("activeColor", "primaryColor", props)

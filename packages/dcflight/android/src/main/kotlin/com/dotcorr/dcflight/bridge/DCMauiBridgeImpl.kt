@@ -77,7 +77,6 @@ class DCMauiBridgeImpl private constructor() {
 
     fun createView(viewId: String, viewType: String, propsJson: String): Boolean {
         return try {
-            // CRITICAL: If view exists, update it instead of creating
             if (ViewRegistry.shared.getView(viewId) != null) {
                 Log.d(TAG, "🔥 REDIRECT: View $viewId exists, calling updateView")
                 return updateView(viewId, propsJson)

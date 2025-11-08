@@ -42,22 +42,17 @@ class DCFTextComponent : DCFComponent() {
 
         textView.maxLines = Int.MAX_VALUE // numberOfLines = 0 in iOS means unlimited
         
-        // Set initial text content if provided
         props["content"]?.let { content ->
             textView.text = content.toString()
             Log.d(TAG, "Set initial text content: $content")
         }
 
-        // Use updateView (not updateViewInternal) to ensure props are stored for merging
         updateView(textView, props)
 
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
         textView.applyStyles(nonNullProps)
         
-        // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
         ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
             textView.setTextColor(colorInt)
             Log.d(TAG, "Set text color: ${ColorUtilities.hexString(colorInt)}")
@@ -66,14 +61,11 @@ class DCFTextComponent : DCFComponent() {
         return textView
     }
 
-    // updateView is now handled by base class with automatic props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val textView = view as? TextView ?: return false
 
         Log.d(TAG, "Updating text view with props: $props")
 
-        // Framework-level helper: Only update content if it actually changed
         if (hasPropChanged("content", existingProps, props)) {
         props["content"]?.let { content ->
             textView.text = content.toString()
@@ -124,10 +116,6 @@ class DCFTextComponent : DCFComponent() {
             }
         }
 
-        // REMOVED: Component-specific color handling
-        // Framework now handles color prop universally via applyStyles
-        // This ensures consistent behavior across all components
-
         props["textAlign"]?.let { textAlign ->
             when (textAlign.toString()) {
                 "center" -> {
@@ -160,9 +148,6 @@ class DCFTextComponent : DCFComponent() {
 
         textView.applyStyles(props)
         
-        // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
         ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
             textView.setTextColor(colorInt)
             Log.d(TAG, "Updated text color: ${ColorUtilities.hexString(colorInt)}")

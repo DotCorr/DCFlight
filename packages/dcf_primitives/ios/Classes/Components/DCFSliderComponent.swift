@@ -20,8 +20,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
         
         let slider = UISlider()
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // minimumTrackColor (explicit) > primaryColor (semantic)
         if let minTrackColor = ColorUtilities.getColor(
             explicitColor: "minimumTrackColor",
             semanticColor: "primaryColor",
@@ -30,7 +28,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.minimumTrackTintColor = minTrackColor
         }
         
-        // thumbColor (explicit) > primaryColor (semantic)
         if let thumbColor = ColorUtilities.getColor(
             explicitColor: "thumbColor",
             semanticColor: "primaryColor",
@@ -39,7 +36,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.thumbTintColor = thumbColor
         }
         
-        // maximumTrackColor (explicit) > secondaryColor (semantic)
         if let maxTrackColor = ColorUtilities.getColor(
             explicitColor: "maximumTrackColor",
             semanticColor: "secondaryColor",
@@ -87,8 +83,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.alpha = disabled ? 0.5 : 1.0
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // minimumTrackColor (explicit) > primaryColor (semantic)
         if let minTrackColor = ColorUtilities.getColor(
             explicitColor: "minimumTrackColor",
             semanticColor: "primaryColor",
@@ -97,7 +91,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.minimumTrackTintColor = minTrackColor
         }
         
-        // thumbColor (explicit) > primaryColor (semantic)
         if let thumbColor = ColorUtilities.getColor(
             explicitColor: "thumbColor",
             semanticColor: "primaryColor",
@@ -106,7 +99,6 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.thumbTintColor = thumbColor
         }
         
-        // maximumTrackColor (explicit) > secondaryColor (semantic)
         if let maxTrackColor = ColorUtilities.getColor(
             explicitColor: "maximumTrackColor",
             semanticColor: "secondaryColor",

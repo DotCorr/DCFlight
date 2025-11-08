@@ -33,7 +33,6 @@ class DCFWebViewComponent : DCFComponent() {
 
         webView.setTag(R.id.dcf_component_type, "WebView")
 
-        // Load source immediately if provided (initial load)
         props["source"]?.let { source ->
             when (source) {
                 is String -> {
@@ -57,7 +56,6 @@ class DCFWebViewComponent : DCFComponent() {
             }
         }
 
-        // Store props and apply styles
         updateView(webView, props)
 
         val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
@@ -66,12 +64,9 @@ class DCFWebViewComponent : DCFComponent() {
         return webView
     }
 
-    // Remove override - let base class handle props merging
-
     override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val webView = view as? WebView ?: return false
 
-        // Framework-level helper: Only reload if source actually changed (prevents reload on theme toggle)
         if (hasPropChanged("source", existingProps, props)) {
             val newSource = props["source"]
             when (newSource) {
