@@ -77,7 +77,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val container = view as? LinearLayout ?: return false
         var hasUpdates = false
-        
+
         // Update if segments changed
         if (hasPropChanged("segments", existingProps, props)) {
             val segments = parseSegments(props)
@@ -104,25 +104,25 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
             hasUpdates = true
         }
-        
+
         // Update selected index
         if (hasPropChanged("selectedIndex", existingProps, props)) {
             val selectedIndex = getSelectedIndex(props, container.childCount)
             updateSelectedButton(container, selectedIndex)
             hasUpdates = true
         }
-        
-        // Update colors if changed - use existingProps to preserve selectedIndex state
+
+        // Update colors if changed - read current state from view (like slider)
         if (hasPropChanged("primaryColor", existingProps, props) ||
             hasPropChanged("secondaryColor", existingProps, props) ||
             hasPropChanged("tertiaryColor", existingProps, props) ||
             hasPropChanged("accentColor", existingProps, props)) {
-            // Framework-level: Use existingProps to preserve selectedIndex when only colors change
-            val selectedIndex = getSelectedIndex(existingProps, container.childCount)
+            // Framework-level: Read current selectedIndex from view state (like slider reads seekBar.progress)
+            val selectedIndex = getCurrentSelectedIndex(container)
             updateButtonColors(container, selectedIndex, props)
             hasUpdates = true
         }
-        
+
         // Update enabled state
         if (hasPropChanged("enabled", existingProps, props)) {
             val enabled = when (val en = props["enabled"]) {
@@ -138,10 +138,10 @@ class DCFSegmentedControlComponent : DCFComponent() {
         
         // Apply framework-level styles
         container.applyStyles(props)
-        
+
         return hasUpdates
     }
-    
+
     private fun parseSegments(props: Map<String, Any?>): List<String> {
         return when (val segmentsProp = props["segments"]) {
             is List<*> -> segmentsProp.mapNotNull { segment ->
@@ -243,6 +243,19 @@ class DCFSegmentedControlComponent : DCFComponent() {
         button.background = drawable
     }
     
+    private fun getCurrentSelectedIndex(container: LinearLayout): Int {
+        // Framework-level: Read current state from view (like slider reads seekBar.progress)
+        for (i in 0 until container.childCount) {
+            val button = container.getChildAt(i) as? Button ?: continue
+            // Selected button has white text color, unselected has colored text
+            val textColor = button.currentTextColor
+            if (textColor == Color.WHITE) {
+                return i
+            }
+        }
+        return 0 // Default to first if none found
+    }
+    
     private fun updateSelectedButton(container: LinearLayout, selectedIndex: Int) {
         for (i in 0 until container.childCount) {
             val button = container.getChildAt(i) as? Button ?: continue
@@ -278,7 +291,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
         }
     }
-
+    
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         val segments = parseSegments(props)
         val segmentCount = segments.size
@@ -290,7 +303,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
         
         return PointF(totalWidth, segmentHeight)
     }
-
+    
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         val container = view as? LinearLayout ?: return
         
