@@ -73,11 +73,9 @@ class MyApp extends DCFStatefulComponent {
           visible: isDarkMode.state,
           title: "Alert",
           message: "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
-          textFields: [
-            DCFAlertTextField(placeholder: "Enter your name"),
-          ],
+      
           actions: [
-          
+          DCFAlertAction(title: "Cancel", style: DCFAlertActionStyle.cancel, handler: "Cancel"),
             DCFAlertAction(
               title: "Change Theme",
               style: DCFAlertActionStyle.destructive,
