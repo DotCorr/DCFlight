@@ -7,8 +7,8 @@
 
 
 import 'package:dcflight/framework/protocol/component_protocol.dart';
-import 'package:dcflight/framework/renderer/engine/component/dcf_element.dart';
-import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'package:dcflight/framework/components/dcf_element.dart';
+import 'package:dcflight/framework/components/component_node.dart';
 
 /// Registry for component factories
 /// This allows components to be registered with the framework

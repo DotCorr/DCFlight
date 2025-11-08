@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/renderer/engine/component/component_node.dart';
+import 'package:dcflight/framework/components/component_node.dart';
 
 /// Component priority levels for update scheduling
 enum ComponentPriority {
