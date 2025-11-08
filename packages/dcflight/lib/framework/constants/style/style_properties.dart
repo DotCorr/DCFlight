@@ -49,6 +49,31 @@ class DCFStyleSheet extends Equatable {
 
   final bool? accessible;
   final String? accessibilityLabel;
+  final String? accessibilityHint;
+  final dynamic accessibilityValue;
+  final String? accessibilityRole;
+  final Map<String, dynamic>? accessibilityState;
+  final List<Map<String, String>>? accessibilityActions;
+  final bool? accessibilityElementsHidden;
+  final String? accessibilityLanguage;
+  final bool? accessibilityIgnoresInvertColors;
+  final String? accessibilityLiveRegion;
+  final bool? accessibilityViewIsModal;
+  final String? ariaLabel;
+  final String? ariaLabelledby;
+  final String? ariaLive;
+  final bool? ariaModal;
+  final bool? ariaHidden;
+  final dynamic ariaBusy;
+  final dynamic ariaChecked;
+  final bool? ariaDisabled;
+  final bool? ariaExpanded;
+  final bool? ariaSelected;
+  final num? ariaValuemin;
+  final num? ariaValuemax;
+  final num? ariaValuenow;
+  final String? ariaValuetext;
+  final String? importantForAccessibility;
   final String? testID;
   final String? pointerEvents;
 
@@ -93,6 +118,31 @@ class DCFStyleSheet extends Equatable {
     this.hitSlop,
     this.accessible,
     this.accessibilityLabel,
+    this.accessibilityHint,
+    this.accessibilityValue,
+    this.accessibilityRole,
+    this.accessibilityState,
+    this.accessibilityActions,
+    this.accessibilityElementsHidden,
+    this.accessibilityLanguage,
+    this.accessibilityIgnoresInvertColors,
+    this.accessibilityLiveRegion,
+    this.accessibilityViewIsModal,
+    this.ariaLabel,
+    this.ariaLabelledby,
+    this.ariaLive,
+    this.ariaModal,
+    this.ariaHidden,
+    this.ariaBusy,
+    this.ariaChecked,
+    this.ariaDisabled,
+    this.ariaExpanded,
+    this.ariaSelected,
+    this.ariaValuemin,
+    this.ariaValuemax,
+    this.ariaValuenow,
+    this.ariaValuetext,
+    this.importantForAccessibility,
     this.testID,
     this.pointerEvents,
     // Semantic colors
@@ -150,6 +200,53 @@ class DCFStyleSheet extends Equatable {
     if (accessible != null) map['accessible'] = accessible;
     if (accessibilityLabel != null) {
       map['accessibilityLabel'] = accessibilityLabel;
+    }
+    if (accessibilityHint != null) {
+      map['accessibilityHint'] = accessibilityHint;
+    }
+    if (accessibilityValue != null) {
+      map['accessibilityValue'] = accessibilityValue;
+    }
+    if (accessibilityRole != null) {
+      map['accessibilityRole'] = accessibilityRole;
+    }
+    if (accessibilityState != null) {
+      map['accessibilityState'] = accessibilityState;
+    }
+    if (accessibilityActions != null) {
+      map['accessibilityActions'] = accessibilityActions;
+    }
+    if (accessibilityElementsHidden != null) {
+      map['accessibilityElementsHidden'] = accessibilityElementsHidden;
+    }
+    if (accessibilityLanguage != null) {
+      map['accessibilityLanguage'] = accessibilityLanguage;
+    }
+    if (accessibilityIgnoresInvertColors != null) {
+      map['accessibilityIgnoresInvertColors'] = accessibilityIgnoresInvertColors;
+    }
+    if (accessibilityLiveRegion != null) {
+      map['accessibilityLiveRegion'] = accessibilityLiveRegion;
+    }
+    if (accessibilityViewIsModal != null) {
+      map['accessibilityViewIsModal'] = accessibilityViewIsModal;
+    }
+    if (ariaLabel != null) map['ariaLabel'] = ariaLabel;
+    if (ariaLabelledby != null) map['ariaLabelledby'] = ariaLabelledby;
+    if (ariaLive != null) map['ariaLive'] = ariaLive;
+    if (ariaModal != null) map['ariaModal'] = ariaModal;
+    if (ariaHidden != null) map['ariaHidden'] = ariaHidden;
+    if (ariaBusy != null) map['ariaBusy'] = ariaBusy;
+    if (ariaChecked != null) map['ariaChecked'] = ariaChecked;
+    if (ariaDisabled != null) map['ariaDisabled'] = ariaDisabled;
+    if (ariaExpanded != null) map['ariaExpanded'] = ariaExpanded;
+    if (ariaSelected != null) map['ariaSelected'] = ariaSelected;
+    if (ariaValuemin != null) map['ariaValuemin'] = ariaValuemin;
+    if (ariaValuemax != null) map['ariaValuemax'] = ariaValuemax;
+    if (ariaValuenow != null) map['ariaValuenow'] = ariaValuenow;
+    if (ariaValuetext != null) map['ariaValuetext'] = ariaValuetext;
+    if (importantForAccessibility != null) {
+      map['importantForAccessibility'] = importantForAccessibility;
     }
     if (testID != null) map['testID'] = testID;
     if (pointerEvents != null) map['pointerEvents'] = pointerEvents;
@@ -219,6 +316,31 @@ class DCFStyleSheet extends Equatable {
       hitSlop: other.hitSlop ?? hitSlop,
       accessible: other.accessible ?? accessible,
       accessibilityLabel: other.accessibilityLabel ?? accessibilityLabel,
+      accessibilityHint: other.accessibilityHint ?? accessibilityHint,
+      accessibilityValue: other.accessibilityValue ?? accessibilityValue,
+      accessibilityRole: other.accessibilityRole ?? accessibilityRole,
+      accessibilityState: other.accessibilityState ?? accessibilityState,
+      accessibilityActions: other.accessibilityActions ?? accessibilityActions,
+      accessibilityElementsHidden: other.accessibilityElementsHidden ?? accessibilityElementsHidden,
+      accessibilityLanguage: other.accessibilityLanguage ?? accessibilityLanguage,
+      accessibilityIgnoresInvertColors: other.accessibilityIgnoresInvertColors ?? accessibilityIgnoresInvertColors,
+      accessibilityLiveRegion: other.accessibilityLiveRegion ?? accessibilityLiveRegion,
+      accessibilityViewIsModal: other.accessibilityViewIsModal ?? accessibilityViewIsModal,
+      ariaLabel: other.ariaLabel ?? ariaLabel,
+      ariaLabelledby: other.ariaLabelledby ?? ariaLabelledby,
+      ariaLive: other.ariaLive ?? ariaLive,
+      ariaModal: other.ariaModal ?? ariaModal,
+      ariaHidden: other.ariaHidden ?? ariaHidden,
+      ariaBusy: other.ariaBusy ?? ariaBusy,
+      ariaChecked: other.ariaChecked ?? ariaChecked,
+      ariaDisabled: other.ariaDisabled ?? ariaDisabled,
+      ariaExpanded: other.ariaExpanded ?? ariaExpanded,
+      ariaSelected: other.ariaSelected ?? ariaSelected,
+      ariaValuemin: other.ariaValuemin ?? ariaValuemin,
+      ariaValuemax: other.ariaValuemax ?? ariaValuemax,
+      ariaValuenow: other.ariaValuenow ?? ariaValuenow,
+      ariaValuetext: other.ariaValuetext ?? ariaValuetext,
+      importantForAccessibility: other.importantForAccessibility ?? importantForAccessibility,
       testID: other.testID ?? testID,
       pointerEvents: other.pointerEvents ?? pointerEvents,
       // Semantic colors
@@ -250,6 +372,31 @@ class DCFStyleSheet extends Equatable {
     DCFHitSlop? hitSlop,
     bool? accessible,
     String? accessibilityLabel,
+    String? accessibilityHint,
+    dynamic accessibilityValue,
+    String? accessibilityRole,
+    Map<String, dynamic>? accessibilityState,
+    List<Map<String, String>>? accessibilityActions,
+    bool? accessibilityElementsHidden,
+    String? accessibilityLanguage,
+    bool? accessibilityIgnoresInvertColors,
+    String? accessibilityLiveRegion,
+    bool? accessibilityViewIsModal,
+    String? ariaLabel,
+    String? ariaLabelledby,
+    String? ariaLive,
+    bool? ariaModal,
+    bool? ariaHidden,
+    dynamic ariaBusy,
+    dynamic ariaChecked,
+    bool? ariaDisabled,
+    bool? ariaExpanded,
+    bool? ariaSelected,
+    num? ariaValuemin,
+    num? ariaValuemax,
+    num? ariaValuenow,
+    String? ariaValuetext,
+    String? importantForAccessibility,
     String? testID,
     String? pointerEvents,
     // Semantic colors
@@ -280,6 +427,31 @@ class DCFStyleSheet extends Equatable {
       hitSlop: hitSlop ?? this.hitSlop,
       accessible: accessible ?? this.accessible,
       accessibilityLabel: accessibilityLabel ?? this.accessibilityLabel,
+      accessibilityHint: accessibilityHint ?? this.accessibilityHint,
+      accessibilityValue: accessibilityValue ?? this.accessibilityValue,
+      accessibilityRole: accessibilityRole ?? this.accessibilityRole,
+      accessibilityState: accessibilityState ?? this.accessibilityState,
+      accessibilityActions: accessibilityActions ?? this.accessibilityActions,
+      accessibilityElementsHidden: accessibilityElementsHidden ?? this.accessibilityElementsHidden,
+      accessibilityLanguage: accessibilityLanguage ?? this.accessibilityLanguage,
+      accessibilityIgnoresInvertColors: accessibilityIgnoresInvertColors ?? this.accessibilityIgnoresInvertColors,
+      accessibilityLiveRegion: accessibilityLiveRegion ?? this.accessibilityLiveRegion,
+      accessibilityViewIsModal: accessibilityViewIsModal ?? this.accessibilityViewIsModal,
+      ariaLabel: ariaLabel ?? this.ariaLabel,
+      ariaLabelledby: ariaLabelledby ?? this.ariaLabelledby,
+      ariaLive: ariaLive ?? this.ariaLive,
+      ariaModal: ariaModal ?? this.ariaModal,
+      ariaHidden: ariaHidden ?? this.ariaHidden,
+      ariaBusy: ariaBusy ?? this.ariaBusy,
+      ariaChecked: ariaChecked ?? this.ariaChecked,
+      ariaDisabled: ariaDisabled ?? this.ariaDisabled,
+      ariaExpanded: ariaExpanded ?? this.ariaExpanded,
+      ariaSelected: ariaSelected ?? this.ariaSelected,
+      ariaValuemin: ariaValuemin ?? this.ariaValuemin,
+      ariaValuemax: ariaValuemax ?? this.ariaValuemax,
+      ariaValuenow: ariaValuenow ?? this.ariaValuenow,
+      ariaValuetext: ariaValuetext ?? this.ariaValuetext,
+      importantForAccessibility: importantForAccessibility ?? this.importantForAccessibility,
       testID: testID ?? this.testID,
       pointerEvents: pointerEvents ?? this.pointerEvents,
       // Semantic colors
@@ -376,6 +548,31 @@ class DCFStyleSheet extends Equatable {
     'hitSlop',
     'accessible',
     'accessibilityLabel',
+    'accessibilityHint',
+    'accessibilityValue',
+    'accessibilityRole',
+    'accessibilityState',
+    'accessibilityActions',
+    'accessibilityElementsHidden',
+    'accessibilityLanguage',
+    'accessibilityIgnoresInvertColors',
+    'accessibilityLiveRegion',
+    'accessibilityViewIsModal',
+    'ariaLabel',
+    'ariaLabelledby',
+    'ariaLive',
+    'ariaModal',
+    'ariaHidden',
+    'ariaBusy',
+    'ariaChecked',
+    'ariaDisabled',
+    'ariaExpanded',
+    'ariaSelected',
+    'ariaValuemin',
+    'ariaValuemax',
+    'ariaValuenow',
+    'ariaValuetext',
+    'importantForAccessibility',
     'testID',
     'pointerEvents',
     // Semantic colors
@@ -434,6 +631,31 @@ class DCFStyleSheet extends Equatable {
         hitSlop,
         accessible,
         accessibilityLabel,
+        accessibilityHint,
+        accessibilityValue,
+        accessibilityRole,
+        accessibilityState,
+        accessibilityActions,
+        accessibilityElementsHidden,
+        accessibilityLanguage,
+        accessibilityIgnoresInvertColors,
+        accessibilityLiveRegion,
+        accessibilityViewIsModal,
+        ariaLabel,
+        ariaLabelledby,
+        ariaLive,
+        ariaModal,
+        ariaHidden,
+        ariaBusy,
+        ariaChecked,
+        ariaDisabled,
+        ariaExpanded,
+        ariaSelected,
+        ariaValuemin,
+        ariaValuemax,
+        ariaValuenow,
+        ariaValuetext,
+        importantForAccessibility,
         testID,
         pointerEvents,
         // Semantic colors

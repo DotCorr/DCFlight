@@ -166,6 +166,8 @@ extension UIView {
 
         if let label = props["accessibilityLabel"] as? String {
             self.accessibilityLabel = label
+        } else if let ariaLabel = props["ariaLabel"] as? String {
+            self.accessibilityLabel = ariaLabel
         }
 
         if let hint = props["accessibilityHint"] as? String {
@@ -174,6 +176,10 @@ extension UIView {
 
         if let value = props["accessibilityValue"] as? String {
             self.accessibilityValue = value
+        } else if let valueDict = props["accessibilityValue"] as? [String: Any] {
+            if let text = valueDict["text"] as? String {
+                self.accessibilityValue = text
+            }
         }
 
         if let role = props["accessibilityRole"] as? String {
@@ -185,9 +191,65 @@ extension UIView {
                 case "image": self.accessibilityTraits = .image
                 case "text": self.accessibilityTraits = .staticText
                 case "none": self.accessibilityTraits = .none
+                case "search": self.accessibilityTraits = .searchField
+                case "adjustable": self.accessibilityTraits = .adjustable
+                case "imagebutton": self.accessibilityTraits = [.button, .image]
+                case "keyboardkey": self.accessibilityTraits = .keyboardKey
+                case "summary": self.accessibilityTraits = .summaryElement
+                case "alert": self.accessibilityTraits = .staticText
                 default: break
                 }
             }
+        }
+
+        if let state = props["accessibilityState"] as? [String: Any] {
+            var traits: UIAccessibilityTraits = []
+            if let disabled = state["disabled"] as? Bool, disabled {
+                traits.insert(.notEnabled)
+            }
+            if let selected = state["selected"] as? Bool, selected {
+                traits.insert(.selected)
+            }
+            if let checked = state["checked"] as? Bool {
+                if checked {
+                    traits.insert(.selected)
+                }
+            } else if let checked = state["checked"] as? String, checked == "mixed" {
+                traits.insert(.none)
+            }
+            if let busy = state["busy"] as? Bool, busy {
+                traits.insert(.updatesFrequently)
+            }
+            if let expanded = state["expanded"] as? Bool {
+                traits.insert(expanded ? .none : .collapsed)
+            }
+            if !traits.isEmpty {
+                self.accessibilityTraits.insert(traits)
+            }
+        }
+
+        if let elementsHidden = props["accessibilityElementsHidden"] as? Bool {
+            self.accessibilityElementsHidden = elementsHidden
+        } else if let ariaHidden = props["ariaHidden"] as? Bool {
+            self.accessibilityElementsHidden = ariaHidden
+        }
+
+        if let language = props["accessibilityLanguage"] as? String {
+            if #available(iOS 13.0, *) {
+                self.accessibilityLanguage = language
+            }
+        }
+
+        if let ignoresInvert = props["accessibilityIgnoresInvertColors"] as? Bool {
+            if #available(iOS 11.0, *) {
+                self.accessibilityIgnoresInvertColors = ignoresInvert
+            }
+        }
+
+        if let isModal = props["accessibilityViewIsModal"] as? Bool {
+            self.accessibilityViewIsModal = isModal
+        } else if let ariaModal = props["ariaModal"] as? Bool {
+            self.accessibilityViewIsModal = ariaModal
         }
 
         if let testID = props["testID"] as? String {
