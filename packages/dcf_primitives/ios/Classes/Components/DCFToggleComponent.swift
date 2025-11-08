@@ -19,26 +19,25 @@ class DCFToggleComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let switchControl = UISwitch()
         
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
-        // primaryColor: active track and thumb color
-        // secondaryColor: inactive track color
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        if let primaryColorStr = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
-                switchControl.onTintColor = color
-                switchControl.thumbTintColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // activeColor (explicit) > primaryColor (semantic)
+        if let activeColor = ColorUtilities.getColor(
+            explicitColor: "activeColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            switchControl.onTintColor = activeColor
+            switchControl.thumbTintColor = activeColor
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
-        if let secondaryColorStr = props["secondaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: secondaryColorStr) {
-                switchControl.backgroundColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // inactiveColor (explicit) > secondaryColor (semantic)
+        if let inactiveColor = ColorUtilities.getColor(
+            explicitColor: "inactiveColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            switchControl.backgroundColor = inactiveColor
         }
-        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         switchControl.addTarget(DCFToggleComponent.sharedInstance, action: #selector(switchValueChanged(_:)), for: .valueChanged)
         
@@ -60,27 +59,25 @@ class DCFToggleComponent: NSObject, DCFComponent {
             switchControl.alpha = disabled ? 0.5 : 1.0
         }
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: active track and thumb color
-        // secondaryColor: inactive track color
-        // tertiaryColor: inactive thumb color
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        if let primaryColor = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColor) {
-                switchControl.onTintColor = color
-                switchControl.thumbTintColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // activeColor (explicit) > primaryColor (semantic)
+        if let activeColor = ColorUtilities.getColor(
+            explicitColor: "activeColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            switchControl.onTintColor = activeColor
+            switchControl.thumbTintColor = activeColor
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
-        if let secondaryColor = props["secondaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: secondaryColor) {
-                switchControl.backgroundColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // inactiveColor (explicit) > secondaryColor (semantic)
+        if let inactiveColor = ColorUtilities.getColor(
+            explicitColor: "inactiveColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            switchControl.backgroundColor = inactiveColor
         }
-        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         if let tertiaryColor = props["tertiaryColor"] as? String {
             // iOS doesn't have separate inactive thumb color, but we can use tertiaryColor if needed

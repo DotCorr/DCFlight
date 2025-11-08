@@ -87,24 +87,29 @@ class DCFDropdownComponent: NSObject, DCFComponent {
                 let placeholder = props["placeholder"] as? String ?? "Select..."
                 button.setTitle(placeholder, for: .normal)
                 
-                // Use secondaryColor from StyleSheet for placeholder text
-                if let secondaryColor = props["secondaryColor"] as? String {
-                    button.setTitleColor(ColorUtilities.color(fromHexString: secondaryColor), for: .normal)
+                // COLOR SYSTEM: Explicit color override > Semantic color
+                // placeholderColor (explicit) > secondaryColor (semantic)
+                if let placeholderColor = ColorUtilities.getColor(
+                    explicitColor: "placeholderColor",
+                    semanticColor: "secondaryColor",
+                    from: props
+                ) {
+                    button.setTitleColor(placeholderColor, for: .normal)
                 }
-                // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
             }
         } else {
             let placeholder = props["placeholder"] as? String ?? "Select..."
             button.setTitle(placeholder, for: .normal)
             
-            // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-            if let secondaryColor = props["secondaryColor"] as? String {
-                if let color = ColorUtilities.color(fromHexString: secondaryColor) {
-                    button.setTitleColor(color, for: .normal)
-                }
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+            // COLOR SYSTEM: Explicit color override > Semantic color
+            // placeholderColor (explicit) > secondaryColor (semantic)
+            if let placeholderColor = ColorUtilities.getColor(
+                explicitColor: "placeholderColor",
+                semanticColor: "secondaryColor",
+                from: props
+            ) {
+                button.setTitleColor(placeholderColor, for: .normal)
             }
-            // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         }
         
         if let disabled = props["disabled"] as? Bool {

@@ -145,6 +145,10 @@ class DCFText extends DCFStatelessComponent
   /// The style properties
   final DCFStyleSheet styleSheet;
 
+  /// Explicit color override: textColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for text
+  final Color? textColor;
+
   /// Event handlers
   final Map<String, dynamic>? events;
 
@@ -154,6 +158,7 @@ class DCFText extends DCFStatelessComponent
     this.textProps = const DCFTextProps(),
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
+    this.textColor,
     this.events,
     super.key,
   });
@@ -165,6 +170,7 @@ class DCFText extends DCFStatelessComponent
       ...textProps.toMap(),
       ...layout.toMap(),
       ...styleSheet.toMap(),
+      if (textColor != null) 'textColor': DCFColors.toNativeString(textColor!),
       ...(events ?? {}),
     };
 
@@ -181,6 +187,7 @@ class DCFText extends DCFStatelessComponent
         textProps,
         layout,
         styleSheet,
+        textColor,
         events,
         key,
       ];

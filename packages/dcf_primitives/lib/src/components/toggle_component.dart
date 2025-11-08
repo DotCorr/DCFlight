@@ -53,11 +53,13 @@ class DCFToggle extends DCFStatelessComponent
   /// Whether the toggle is disabled
   final bool disabled;
 
+  /// Explicit color override: activeColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for active track/thumb
+  final Color? activeColor;
 
-  /// NOTE: All colors removed - use StyleSheet semantic colors:
-  /// - primaryColor: active track/thumb color
-  /// - secondaryColor: inactive track color
-  /// - tertiaryColor: inactive thumb color
+  /// Explicit color override: inactiveColor (overrides StyleSheet.secondaryColor)
+  /// If provided, this will override the semantic secondaryColor for inactive track
+  final Color? inactiveColor;
 
   /// Size of the toggle
   final String size;
@@ -76,7 +78,8 @@ class DCFToggle extends DCFStatelessComponent
     required this.value,
     this.onValueChange,
     this.disabled = false,
-    // All color props removed - use StyleSheet semantic colors
+    this.activeColor,
+    this.inactiveColor,
     this.size = 'medium',
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.transparent),
@@ -99,10 +102,10 @@ class DCFToggle extends DCFStatelessComponent
       'size': size,
       ...layout.toMap(),
       ...styleSheet.toMap(),
+      if (activeColor != null) 'activeColor': DCFColors.toNativeString(activeColor!),
+      if (inactiveColor != null) 'inactiveColor': DCFColors.toNativeString(inactiveColor!),
       ...eventMap,
     };
-
-    // All color props removed - native components use StyleSheet semantic colors
 
     return DCFElement(
       type: 'Toggle',
@@ -115,7 +118,8 @@ class DCFToggle extends DCFStatelessComponent
   List<Object?> get props => [
         value,
         disabled,
-        // All color props removed
+        activeColor,
+        inactiveColor,
         size,
         layout,
         styleSheet,

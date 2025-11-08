@@ -19,22 +19,33 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let checkbox = DCFCheckboxView()
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: active/checked color and checkmark color
-        // secondaryColor: inactive/unchecked color
-        // StyleSheet.toMap() ALWAYS provides these colors
-        if let primaryColor = props["primaryColor"] as? String,
-           let color = ColorUtilities.color(fromHexString: primaryColor) {
-            checkbox.checkedColor = color
-            checkbox.checkmarkColor = color
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // checkedColor (explicit) > primaryColor (semantic)
+        if let checkedColor = ColorUtilities.getColor(
+            explicitColor: "checkedColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            checkbox.checkedColor = checkedColor
         }
-        // NO FALLBACK: If primaryColor missing, don't set colors (StyleSheet should always provide)
-
-        if let secondaryColor = props["secondaryColor"] as? String,
-           let color = ColorUtilities.color(fromHexString: secondaryColor) {
-            checkbox.uncheckedColor = color
+        
+        // checkmarkColor (explicit) > primaryColor (semantic)
+        if let checkmarkColor = ColorUtilities.getColor(
+            explicitColor: "checkmarkColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            checkbox.checkmarkColor = checkmarkColor
         }
-        // NO FALLBACK: If secondaryColor missing, don't set color (StyleSheet should always provide)
+        
+        // uncheckedColor (explicit) > secondaryColor (semantic)
+        if let uncheckedColor = ColorUtilities.getColor(
+            explicitColor: "uncheckedColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            checkbox.uncheckedColor = uncheckedColor
+        }
 
         checkbox.addTarget(DCFCheckboxComponent.sharedInstance, action: #selector(checkboxTapped(_:)), for: .touchUpInside)
 
@@ -59,26 +70,33 @@ class DCFCheckboxComponent: NSObject, DCFComponent {
             checkbox.alpha = disabled ? 0.5 : 1.0
         }
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: active/checked color and checkmark color
-        // secondaryColor: inactive/unchecked color
-        // StyleSheet.toMap() ALWAYS provides these colors
-        if let primaryColor = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColor) {
-                checkbox.checkedColor = color
-                checkbox.checkmarkColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // checkedColor (explicit) > primaryColor (semantic)
+        if let checkedColor = ColorUtilities.getColor(
+            explicitColor: "checkedColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            checkbox.checkedColor = checkedColor
         }
-        // NO FALLBACK: If primaryColor missing, don't set colors (StyleSheet should always provide)
         
-        if let secondaryColor = props["secondaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: secondaryColor) {
-                checkbox.uncheckedColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // checkmarkColor (explicit) > primaryColor (semantic)
+        if let checkmarkColor = ColorUtilities.getColor(
+            explicitColor: "checkmarkColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            checkbox.checkmarkColor = checkmarkColor
         }
-        // NO FALLBACK: If secondaryColor missing, don't set color (StyleSheet should always provide)
+        
+        // uncheckedColor (explicit) > secondaryColor (semantic)
+        if let uncheckedColor = ColorUtilities.getColor(
+            explicitColor: "uncheckedColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            checkbox.uncheckedColor = uncheckedColor
+        }
         
         if let size = props["size"] as? CGFloat {
             checkbox.checkboxSize = size

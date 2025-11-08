@@ -22,7 +22,9 @@ class DCFSpinner extends DCFStatelessComponent
   /// Size style of the spinner
   final String style;
 
-  /// NOTE: Color removed - use StyleSheet.primaryColor instead
+  /// Explicit color override: spinnerColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for spinner
+  final Color? spinnerColor;
 
   /// Whether to hide when stopped
   final bool hidesWhenStopped;
@@ -41,7 +43,7 @@ class DCFSpinner extends DCFStatelessComponent
     super.key,
     this.animating = true,
     this.style = 'medium',
-    // Color removed - use StyleSheet.primaryColor
+    this.spinnerColor,
     this.hidesWhenStopped = true,
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
@@ -58,10 +60,9 @@ class DCFSpinner extends DCFStatelessComponent
       'hidesWhenStopped': hidesWhenStopped,
       ...layout.toMap(),
       ...styleSheet.toMap(),
+      if (spinnerColor != null) 'spinnerColor': DCFColors.toNativeString(spinnerColor!),
       ...eventMap,
     };
-
-    // Color removed - native components use StyleSheet.primaryColor
 
     return DCFElement(
       type: 'Spinner',
@@ -74,7 +75,7 @@ class DCFSpinner extends DCFStatelessComponent
   List<Object?> get props => [
         animating,
         style,
-        // Color removed
+        spinnerColor,
         hidesWhenStopped,
         layout,
         styleSheet,
