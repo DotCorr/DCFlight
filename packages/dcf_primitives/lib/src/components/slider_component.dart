@@ -122,10 +122,17 @@ class DCFSlider extends DCFStatelessComponent
   /// Whether the slider is disabled
   final bool disabled;
 
+  /// Explicit color override: minimumTrackColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for minimum track
+  final Color? minimumTrackColor;
 
-  /// NOTE: All colors removed - use StyleSheet semantic colors:
-  /// - primaryColor: minimum track and thumb color
-  /// - secondaryColor: maximum track color
+  /// Explicit color override: maximumTrackColor (overrides StyleSheet.secondaryColor)
+  /// If provided, this will override the semantic secondaryColor for maximum track
+  final Color? maximumTrackColor;
+
+  /// Explicit color override: thumbColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for thumb
+  final Color? thumbColor;
 
   /// The layout properties
   final DCFLayout layout;
@@ -146,7 +153,9 @@ class DCFSlider extends DCFStatelessComponent
     this.onSlidingStart,
     this.onSlidingComplete,
     this.disabled = false,
-    // All color props removed - use StyleSheet semantic colors
+    this.minimumTrackColor,
+    this.maximumTrackColor,
+    this.thumbColor,
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(),
     this.events,
@@ -181,14 +190,15 @@ class DCFSlider extends DCFStatelessComponent
       'disabled': disabled,
       ...layout.toMap(),
       ...styleSheet.toMap(),
+      if (minimumTrackColor != null) 'minimumTrackColor': DCFColors.toNativeString(minimumTrackColor!),
+      if (maximumTrackColor != null) 'maximumTrackColor': DCFColors.toNativeString(maximumTrackColor!),
+      if (thumbColor != null) 'thumbColor': DCFColors.toNativeString(thumbColor!),
       ...eventMap,
     };
 
     if (step != null) {
       props['step'] = step;
     }
-
-    // All color props removed - native components use StyleSheet semantic colors
 
     return DCFElement(
       type: 'Slider',
@@ -207,7 +217,9 @@ class DCFSlider extends DCFStatelessComponent
         onSlidingStart,
         onSlidingComplete,
         disabled,
-        // All color props removed
+        minimumTrackColor,
+        maximumTrackColor,
+        thumbColor,
         layout,
         styleSheet,
         events,

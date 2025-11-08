@@ -44,24 +44,26 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
         }
         
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        if let primaryColorStr = props["primaryColor"] as? String {
-            if #available(iOS 13.0, *) {
-                if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
-                    segmentedControl.selectedSegmentTintColor = color
-                }
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // selectedBackgroundColor (explicit) > primaryColor (semantic)
+        if #available(iOS 13.0, *) {
+            if let selectedBgColor = ColorUtilities.getColor(
+                explicitColor: "selectedBackgroundColor",
+                semanticColor: "primaryColor",
+                from: props
+            ) {
+                segmentedControl.selectedSegmentTintColor = selectedBgColor
             }
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
-        if let secondaryColorStr = props["secondaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: secondaryColorStr) {
-                segmentedControl.tintColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // tintColor (explicit) > secondaryColor (semantic)
+        if let tintColor = ColorUtilities.getColor(
+            explicitColor: "tintColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            segmentedControl.tintColor = tintColor
         }
-        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         if let selectedIndex = props["selectedIndex"] as? Int,
            selectedIndex >= 0 && selectedIndex < segmentedControl.numberOfSegments {
@@ -116,29 +118,28 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             segmentedControl.isEnabled = enabled
         }
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
+        // COLOR SYSTEM: Explicit color override > Semantic color
         // backgroundColor: background color (handled by applyStyles)
-        // primaryColor: selected segment color
-        // secondaryColor: tint/text color
+        // selectedBackgroundColor (explicit) > primaryColor (semantic)
+        // tintColor (explicit) > secondaryColor (semantic)
         
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
         if #available(iOS 13.0, *) {
-            if let primaryColor = props["primaryColor"] as? String {
-                if let color = ColorUtilities.color(fromHexString: primaryColor) {
-                    segmentedControl.selectedSegmentTintColor = color
-                }
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+            if let selectedBgColor = ColorUtilities.getColor(
+                explicitColor: "selectedBackgroundColor",
+                semanticColor: "primaryColor",
+                from: props
+            ) {
+                segmentedControl.selectedSegmentTintColor = selectedBgColor
             }
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
-        if let secondaryColor = props["secondaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: secondaryColor) {
-                segmentedControl.tintColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        if let tintColor = ColorUtilities.getColor(
+            explicitColor: "tintColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            segmentedControl.tintColor = tintColor
         }
-        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
         // backgroundColor is handled by applyStyles from StyleSheet
         

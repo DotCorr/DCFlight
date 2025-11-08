@@ -95,6 +95,10 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
   /// The style properties
   final DCFStyleSheet styleSheet;
 
+  /// Explicit color override: textColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for button text
+  final Color? textColor;
+
   /// Event handlers
   final Map<String, dynamic>? events;
 
@@ -109,6 +113,7 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
      this.buttonProps = const DCFButtonProps(title: "Button"),
     this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.blueAccent, borderRadius: 10),
+    this.textColor,
     this.onPress,
     this.onLongPress,
     this.events,
@@ -143,6 +148,7 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
         height: 45,
       ).toMap(),
       ...styleSheet.toMap(),
+      if (textColor != null) 'textColor': DCFColors.toNativeString(textColor!),
       ...eventMap,
     };
     return DCFElement(
@@ -157,6 +163,7 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
         buttonProps,
         layout,
         styleSheet,
+        textColor,
         onPress,
         onLongPress,
         events,

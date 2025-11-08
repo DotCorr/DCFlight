@@ -21,7 +21,9 @@ class DCFDropdownProps {
   /// Placeholder text
   final String? placeholder;
 
-  /// NOTE: placeholderTextColor removed - use StyleSheet.secondaryColor instead
+  /// Explicit color override: placeholderColor (overrides StyleSheet.secondaryColor)
+  /// If provided, this will override the semantic secondaryColor for placeholder text
+  final Color? placeholderColor;
 
   /// Position of the dropdown
   final DCFDropdownPosition dropdownPosition;
@@ -63,7 +65,7 @@ class DCFDropdownProps {
     this.items = const [],
     this.selectedValue,
     this.placeholder,
-    // placeholderTextColor removed - use StyleSheet.secondaryColor
+    this.placeholderColor,
     this.dropdownPosition = DCFDropdownPosition.auto,
     this.maxHeight,
     this.itemHeight,
@@ -90,7 +92,7 @@ class DCFDropdownProps {
           .toList(),
       'selectedValue': selectedValue,
       'placeholder': placeholder,
-      // placeholderTextColor removed - native components use StyleSheet.secondaryColor
+      if (placeholderColor != null) 'placeholderColor': DCFColors.toNativeString(placeholderColor!),
       'dropdownPosition': dropdownPosition.name,
       'maxHeight': maxHeight,
       'itemHeight': itemHeight,

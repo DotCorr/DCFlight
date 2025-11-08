@@ -130,6 +130,14 @@ class DCFSegmentedControl extends DCFStatelessComponent
   /// The style properties
   final DCFStyleSheet styleSheet;
 
+  /// Explicit color override: selectedBackgroundColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for selected segment background
+  final Color? selectedBackgroundColor;
+
+  /// Explicit color override: tintColor (overrides StyleSheet.secondaryColor)
+  /// If provided, this will override the semantic secondaryColor for tint/text
+  final Color? tintColor;
+
   /// Event handlers
   final Map<String, dynamic>? events;
 
@@ -144,6 +152,8 @@ class DCFSegmentedControl extends DCFStatelessComponent
       width: 200,
     ),
     this.styleSheet = const DCFStyleSheet(),
+    this.selectedBackgroundColor,
+    this.tintColor,
     this.onSelectionChange,
     this.events,
     super.key,
@@ -165,6 +175,8 @@ class DCFSegmentedControl extends DCFStatelessComponent
         ...segmentedControlProps.toMap(),
         ...layout.toMap(),
         ...styleSheet.toMap(),
+        if (selectedBackgroundColor != null) 'selectedBackgroundColor': DCFColors.toNativeString(selectedBackgroundColor!),
+        if (tintColor != null) 'tintColor': DCFColors.toNativeString(tintColor!),
         ...eventMap,
       },
       children: [],
@@ -176,6 +188,8 @@ class DCFSegmentedControl extends DCFStatelessComponent
         segmentedControlProps,
         layout,
         styleSheet,
+        selectedBackgroundColor,
+        tintColor,
         events,
         onSelectionChange,
         key,

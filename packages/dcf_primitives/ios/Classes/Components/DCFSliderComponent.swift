@@ -20,25 +20,33 @@ class DCFSliderComponent: NSObject, DCFComponent {
         
         let slider = UISlider()
         
-        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // primaryColor: minimum track and thumb color
-        // secondaryColor: maximum track color
-        if let primaryColorStr = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
-                slider.minimumTrackTintColor = color
-                slider.thumbTintColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // minimumTrackColor (explicit) > primaryColor (semantic)
+        if let minTrackColor = ColorUtilities.getColor(
+            explicitColor: "minimumTrackColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            slider.minimumTrackTintColor = minTrackColor
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
-        if let secondaryColorStr = props["secondaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: secondaryColorStr) {
-                slider.maximumTrackTintColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // thumbColor (explicit) > primaryColor (semantic)
+        if let thumbColor = ColorUtilities.getColor(
+            explicitColor: "thumbColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            slider.thumbTintColor = thumbColor
         }
-        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
+        
+        // maximumTrackColor (explicit) > secondaryColor (semantic)
+        if let maxTrackColor = ColorUtilities.getColor(
+            explicitColor: "maximumTrackColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            slider.maximumTrackTintColor = maxTrackColor
+        }
         
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderValueChanged(_:)), for: .valueChanged)
         slider.addTarget(DCFSliderComponent.sharedInstance, action: #selector(sliderTouchBegan(_:)), for: .touchDown)
@@ -79,21 +87,33 @@ class DCFSliderComponent: NSObject, DCFComponent {
             slider.alpha = disabled ? 0.5 : 1.0
         }
         
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // primaryColor: minimum track and thumb color
-        // secondaryColor: maximum track color
-        if let primaryColor = props["primaryColor"] as? String,
-           let color = ColorUtilities.color(fromHexString: primaryColor) {
-            slider.minimumTrackTintColor = color
-            slider.thumbTintColor = color
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // minimumTrackColor (explicit) > primaryColor (semantic)
+        if let minTrackColor = ColorUtilities.getColor(
+            explicitColor: "minimumTrackColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            slider.minimumTrackTintColor = minTrackColor
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
-        if let secondaryColor = props["secondaryColor"] as? String,
-           let color = ColorUtilities.color(fromHexString: secondaryColor) {
-            slider.maximumTrackTintColor = color
+        // thumbColor (explicit) > primaryColor (semantic)
+        if let thumbColor = ColorUtilities.getColor(
+            explicitColor: "thumbColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            slider.thumbTintColor = thumbColor
         }
-        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
+        
+        // maximumTrackColor (explicit) > secondaryColor (semantic)
+        if let maxTrackColor = ColorUtilities.getColor(
+            explicitColor: "maximumTrackColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            slider.maximumTrackTintColor = maxTrackColor
+        }
         
         slider.applyStyles(props: props)
         return true

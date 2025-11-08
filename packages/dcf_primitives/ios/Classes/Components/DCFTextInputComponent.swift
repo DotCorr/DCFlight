@@ -25,25 +25,24 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textView = UITextView()
             textView.font = UIFont.systemFont(ofSize: 16)
             
-            // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
-            // primaryColor: text color
-            // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-            if let primaryColorStr = props["primaryColor"] as? String {
-                if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
-                    textView.textColor = color
-                }
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+            // COLOR SYSTEM: Explicit color override > Semantic color
+            // textColor (explicit) > primaryColor (semantic)
+            if let textColor = ColorUtilities.getColor(
+                explicitColor: "textColor",
+                semanticColor: "primaryColor",
+                from: props
+            ) {
+                textView.textColor = textColor
             }
-            // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
             
-            // accentColor: selection color
-            if let accentColorStr = props["accentColor"] as? String {
-                if let color = ColorUtilities.color(fromHexString: accentColorStr) {
-                    textView.tintColor = color
-                }
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+            // selectionColor (explicit) > accentColor (semantic)
+            if let selectionColor = ColorUtilities.getColor(
+                explicitColor: "selectionColor",
+                semanticColor: "accentColor",
+                from: props
+            ) {
+                textView.tintColor = selectionColor
             }
-            // NO FALLBACK: If no accentColor provided, don't set color (StyleSheet is the only source)
             
             // backgroundColor handled by applyStyles
             textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
@@ -53,38 +52,38 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textField = UITextField()
             textField.font = UIFont.systemFont(ofSize: 16)
             
-            // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-            // primaryColor: text color
-            if let primaryColorStr = props["primaryColor"] as? String {
-                if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
-                    textField.textColor = color
-                }
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+            // COLOR SYSTEM: Explicit color override > Semantic color
+            // textColor (explicit) > primaryColor (semantic)
+            if let textColor = ColorUtilities.getColor(
+                explicitColor: "textColor",
+                semanticColor: "primaryColor",
+                from: props
+            ) {
+                textField.textColor = textColor
             }
-            // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
             
-            // secondaryColor: placeholder color
-            if let secondaryColorStr = props["secondaryColor"] as? String {
-                if let placeholder = props["placeholder"] as? String {
-                    if let color = ColorUtilities.color(fromHexString: secondaryColorStr) {
-                        textField.attributedPlaceholder = NSAttributedString(
-                            string: placeholder,
-                            attributes: [NSAttributedString.Key.foregroundColor: color]
-                        )
-                    }
-                    // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+            // placeholderColor (explicit) > secondaryColor (semantic)
+            if let placeholder = props["placeholder"] as? String {
+                if let placeholderColor = ColorUtilities.getColor(
+                    explicitColor: "placeholderColor",
+                    semanticColor: "secondaryColor",
+                    from: props
+                ) {
+                    textField.attributedPlaceholder = NSAttributedString(
+                        string: placeholder,
+                        attributes: [NSAttributedString.Key.foregroundColor: placeholderColor]
+                    )
                 }
             }
-            // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
             
-            // accentColor: selection color
-            if let accentColorStr = props["accentColor"] as? String {
-                if let color = ColorUtilities.color(fromHexString: accentColorStr) {
-                    textField.tintColor = color
-                }
-                // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+            // selectionColor (explicit) > accentColor (semantic)
+            if let selectionColor = ColorUtilities.getColor(
+                explicitColor: "selectionColor",
+                semanticColor: "accentColor",
+                from: props
+            ) {
+                textField.tintColor = selectionColor
             }
-            // NO FALLBACK: If no accentColor provided, don't set color (StyleSheet is the only source)
             
             // backgroundColor handled by applyStyles
             textField.borderStyle = .none
@@ -116,28 +115,27 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textField.placeholder = placeholder
         }
         
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // Text color: primaryColor from StyleSheet
-        if let primaryColor = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColor) {
-                textField.textColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // textColor (explicit) > primaryColor (semantic)
+        if let textColor = ColorUtilities.getColor(
+            explicitColor: "textColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            textField.textColor = textColor
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
-        // Placeholder color: secondaryColor from StyleSheet
-        // StyleSheet.toMap() ALWAYS provides secondaryColor
-        if let secondaryColor = props["secondaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: secondaryColor) {
-                textField.attributedPlaceholder = NSAttributedString(
-                    string: textField.placeholder ?? "",
-                    attributes: [NSAttributedString.Key.foregroundColor: color]
-                )
-            }
-            // NO FALLBACK: If color parsing fails, don't set placeholder color (StyleSheet is the only source)
+        // placeholderColor (explicit) > secondaryColor (semantic)
+        if let placeholderColor = ColorUtilities.getColor(
+            explicitColor: "placeholderColor",
+            semanticColor: "secondaryColor",
+            from: props
+        ) {
+            textField.attributedPlaceholder = NSAttributedString(
+                string: textField.placeholder ?? "",
+                attributes: [NSAttributedString.Key.foregroundColor: placeholderColor]
+            )
         }
-        // NO FALLBACK: If secondaryColor missing, don't set placeholder color (StyleSheet should always provide)
         
         if let keyboardType = props["keyboardType"] as? String {
             textField.keyboardType = mapKeyboardType(keyboardType)
@@ -163,9 +161,13 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textField.isEnabled = editable
         }
         
-        // Selection color: accentColor from StyleSheet
-        if let accentColor = props["accentColor"] as? String {
-            textField.tintColor = ColorUtilities.color(fromHexString: accentColor)
+        // selectionColor (explicit) > accentColor (semantic)
+        if let selectionColor = ColorUtilities.getColor(
+            explicitColor: "selectionColor",
+            semanticColor: "accentColor",
+            from: props
+        ) {
+            textField.tintColor = selectionColor
         }
         
         if let maxLength = props["maxLength"] as? Int {
@@ -203,17 +205,24 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textView.isEditable = editable
         }
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // Selection color: accentColor from StyleSheet
-        if let accentColor = props["accentColor"] as? String {
-            textView.tintColor = ColorUtilities.color(fromHexString: accentColor)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // selectionColor (explicit) > accentColor (semantic)
+        if let selectionColor = ColorUtilities.getColor(
+            explicitColor: "selectionColor",
+            semanticColor: "accentColor",
+            from: props
+        ) {
+            textView.tintColor = selectionColor
         }
         
-        // Text color: primaryColor from StyleSheet
-        if let primaryColor = props["primaryColor"] as? String {
-            textView.textColor = ColorUtilities.color(fromHexString: primaryColor)
+        // textColor (explicit) > primaryColor (semantic)
+        if let textColor = ColorUtilities.getColor(
+            explicitColor: "textColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            textView.textColor = textColor
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         textView.applyStyles(props: props)
 

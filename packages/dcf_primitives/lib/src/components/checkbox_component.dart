@@ -54,10 +54,17 @@ class DCFCheckbox extends DCFStatelessComponent
   /// Whether the checkbox is disabled
   final bool disabled;
 
+  /// Explicit color override: checkedColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for checked state
+  final Color? checkedColor;
 
-  /// NOTE: All colors removed - use StyleSheet semantic colors:
-  /// - primaryColor: active/checked color and checkmark color
-  /// - secondaryColor: inactive/unchecked color
+  /// Explicit color override: uncheckedColor (overrides StyleSheet.secondaryColor)
+  /// If provided, this will override the semantic secondaryColor for unchecked state
+  final Color? uncheckedColor;
+
+  /// Explicit color override: checkmarkColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for checkmark
+  final Color? checkmarkColor;
 
   /// Size of the checkbox
   final String size;
@@ -79,7 +86,9 @@ class DCFCheckbox extends DCFStatelessComponent
     required this.checked,
     this.onValueChange,
     this.disabled = false,
-    // All color props removed - use StyleSheet semantic colors
+    this.checkedColor,
+    this.uncheckedColor,
+    this.checkmarkColor,
     this.size = 'medium',
     this.checkboxStyle = 'default',
     this.layout = const DCFLayout(),
@@ -105,10 +114,11 @@ class DCFCheckbox extends DCFStatelessComponent
       'checkboxStyle': checkboxStyle,
       ...layout.toMap(),
       ...styleSheet.toMap(),
+      if (checkedColor != null) 'checkedColor': DCFColors.toNativeString(checkedColor!),
+      if (uncheckedColor != null) 'uncheckedColor': DCFColors.toNativeString(uncheckedColor!),
+      if (checkmarkColor != null) 'checkmarkColor': DCFColors.toNativeString(checkmarkColor!),
       ...eventMap,
     };
-
-    // All color props removed - native components use StyleSheet semantic colors
 
     return DCFElement(
       type: 'Checkbox',
@@ -122,7 +132,9 @@ class DCFCheckbox extends DCFStatelessComponent
         checked,
         onValueChange,
         disabled,
-        // All color props removed
+        checkedColor,
+        uncheckedColor,
+        checkmarkColor,
         size,
         checkboxStyle,
         layout,

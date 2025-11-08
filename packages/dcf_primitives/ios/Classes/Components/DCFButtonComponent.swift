@@ -28,17 +28,16 @@ class DCFButtonComponent: NSObject, DCFComponent {
         button.layer.cornerRadius = 8
         button.clipsToBounds = true
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: button text color
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // textColor (explicit) > primaryColor (semantic)
         // backgroundColor: handled by applyStyles from StyleSheet
-        // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
-        if let primaryColor = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColor) {
-                button.setTitleColor(color, for: .normal)
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        if let textColor = ColorUtilities.getColor(
+            explicitColor: "textColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            button.setTitleColor(textColor, for: .normal)
         }
-        // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
         
         // NO FALLBACK: backgroundColor comes from StyleSheet only
         // StyleSheet will always provide this via toMap() fallbacks
@@ -67,17 +66,16 @@ class DCFButtonComponent: NSObject, DCFComponent {
         
         button.applyStyles(props: props)
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: button text color
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // textColor (explicit) > primaryColor (semantic)
         // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
-        // StyleSheet.toMap() ALWAYS provides primaryColor, so this should never be null
-        if let primaryColor = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColor) {
-                button.setTitleColor(color, for: .normal)
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        if let textColor = ColorUtilities.getColor(
+            explicitColor: "textColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            button.setTitleColor(textColor, for: .normal)
         }
-        // NO FALLBACK: If no primaryColor, don't set color (StyleSheet should always provide it)
         return true
     }
     
