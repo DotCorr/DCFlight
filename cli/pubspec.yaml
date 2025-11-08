@@ -12,6 +12,8 @@ executables:
 dependencies:
   args: ^2.6.0              # Command line argument parsing
   path: ^1.9.1              # File path manipulation
+  http: ^1.2.0               # HTTP client for downloading
+  archive: ^3.4.0            # Archive extraction (tar, zip)
 
   dcflight:
     path: ../packages/dcflight
