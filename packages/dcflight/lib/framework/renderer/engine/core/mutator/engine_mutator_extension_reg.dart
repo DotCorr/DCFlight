@@ -197,13 +197,13 @@ class VDomStateChangeContext {
 }
 
 
-/// Example: Portal reconciliation handler
+/// Example: Custom reconciliation handler
 /// 
 /// ```dart
-/// class PortalReconciliationHandler extends VDomReconciliationHandler {
+/// class CustomReconciliationHandler extends VDomReconciliationHandler {
 ///   @override
 ///   bool shouldHandle(DCFComponentNode oldNode, DCFComponentNode newNode) {
-///     return newNode is DCFPortal;
+///     return newNode.runtimeType == MyCustomComponent;
 ///   }
 /// 
 ///   @override
@@ -212,25 +212,14 @@ class VDomStateChangeContext {
 ///     DCFComponentNode newNode,
 ///     VDomReconciliationContext context,
 ///   ) async {
-///     final portal = newNode as DCFPortal;
-///     
-///     // Custom portal reconciliation logic
-///     // - Don't use normal reconciliation
-///     // - Handle portal target separately
-///     // - Manage portal content independently
-///     
-///     if (portal.targetChanged) {
-///       context.replaceNode(oldNode, newNode);
-///     } else {
-///       // Only reconcile portal content, not the portal itself
-///       context.defaultReconcile(oldNode.children[0], newNode.children[0]);
-///     }
+///     // Custom reconciliation logic
+///     await context.defaultReconcile(oldNode.renderedNode, newNode.renderedNode);
 ///   }
 /// }
 /// 
 /// // Register it
-/// VDomExtensionRegistry.instance.registerReconciliationHandler<DCFPortal>(
-///   PortalReconciliationHandler()
+/// VDomExtensionRegistry.instance.registerReconciliationHandler<MyCustomComponent>(
+///   CustomReconciliationHandler()
 /// );
 /// ```
 

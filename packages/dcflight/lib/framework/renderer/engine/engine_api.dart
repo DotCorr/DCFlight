@@ -88,33 +88,6 @@ class DCFEngineAPI {
     return _vdom!.renderToNative(node, parentViewId: parentViewId, index: index);
   }
   
-  /// Create a portal with a target view ID
-  Future<String> createPortal(String portalId,
-      {required String parentViewId,
-      Map<String, dynamic>? props,
-      int? index}) async {
-    await isReady;
-    return _vdom!.createPortal(portalId,
-        parentViewId: parentViewId, props: props, index: index);
-  }
-  
-  /// Get current children of a view
-  Future<List<String>> getCurrentChildren(String targetViewId) async {
-    await isReady;
-    return _vdom!.getCurrentChildren(targetViewId);
-  }
-  
-  /// Update view children array directly
-  Future<void> updateViewChildren(String targetViewId, List<String> childViewIds) async {
-    await isReady;
-    await _vdom!.updateViewChildren(targetViewId, childViewIds);
-  }
-  
-  /// Delete orphaned views (for portal cleanup)
-  Future<void> deleteViews(List<String> viewIds) async {
-    await isReady;
-    await _vdom!.deleteViews(viewIds);
-  }
   
   /// Force a full tree re-render for debugging purposes
   Future<void> forceFullTreeReRender() async {

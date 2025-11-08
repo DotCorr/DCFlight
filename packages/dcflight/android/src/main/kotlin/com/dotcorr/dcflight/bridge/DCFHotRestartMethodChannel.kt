@@ -91,6 +91,10 @@ class DCFHotRestartMethodChannel : MethodChannel.MethodCallHandler {
                 com.dotcorr.dcflight.layout.ViewRegistry.shared.clearAllExceptRoot()
                 Log.d(TAG, "🔥 DCF_ENGINE: ViewRegistry cleared (except root)")
                 
+                // ♻️ Clear view pools on hot restart
+                com.dotcorr.dcflight.pool.ViewPoolManager.shared.clearAll()
+                Log.d(TAG, "🔥 DCF_ENGINE: ViewPoolManager cleared")
+                
                 Log.d(TAG, "🔥 DCF_ENGINE: ✅ Android hot restart cleanup completed successfully")
                 result.success(true)
             } catch (e: Exception) {

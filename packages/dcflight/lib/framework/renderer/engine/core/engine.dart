@@ -665,27 +665,6 @@ class DCFEngine {
           EngineDebugLogger.logMount(node, context: 'Fragment mounting');
           node.mount(node.parent);
         }
-        if (node.metadata != null &&
-            node.metadata!['isPortalPlaceholder'] == true) {
-          EngineDebugLogger.log(
-              'PORTAL_PLACEHOLDER', 'Rendering portal placeholder fragment');
-          final targetId = node.metadata!['targetId'] as String?;
-          final portalId = node.metadata!['portalId'] as String?;
-
-          if (targetId != null && portalId != null) {
-            EngineDebugLogger.log(
-                'PORTAL_PLACEHOLDER_DETAILS', 'Portal placeholder details',
-                extra: {'TargetId': targetId, 'PortalId': portalId});
-            return null; // Portal placeholders have no native view
-          }
-        }
-
-        if (node.metadata != null && node.metadata!['isPortalTarget'] == true) {
-          final targetId = node.metadata!['targetId'] as String?;
-          EngineDebugLogger.log(
-              'PORTAL_TARGET', 'Rendering portal target fragment',
-              extra: {'TargetId': targetId});
-        }
 
         int childIndex = index ?? 0;
         final childIds = <String>[];
@@ -2096,56 +2075,6 @@ class DCFEngine {
   }
 
  
-  /// O(children count) - Get the current child view IDs of a view (for portal management)
-  List<String> getCurrentChildren(String viewId) {
-    EngineDebugLogger.log(
-        'GET_CURRENT_CHILDREN', 'Getting current children for view',
-        extra: {'ViewId': viewId});
-
-    final node = _nodesByViewId[viewId]; // O(1) lookup
-    if (node is DCFElement) {
-      final childViewIds = <String>[];
-      for (final child in node.children) {
-        final childViewId = child.effectiveNativeViewId;
-        if (childViewId != null) {
-          childViewIds.add(childViewId);
-        }
-      }
-      EngineDebugLogger.log(
-          'GET_CURRENT_CHILDREN_SUCCESS', 'Retrieved child view IDs',
-          extra: {'ViewId': viewId, 'ChildCount': childViewIds.length});
-      return childViewIds;
-    }
-
-    EngineDebugLogger.log(
-        'GET_CURRENT_CHILDREN_EMPTY', 'No children found for view',
-        extra: {'ViewId': viewId});
-    return [];
-  }
-
-  /// O(1) - Update children of a view (for portal management)
-  Future<void> updateViewChildren(String viewId, List<String> childIds) async {
-    await isReady;
-    EngineDebugLogger.logBridge('UPDATE_VIEW_CHILDREN', viewId,
-        data: {'ChildIds': childIds, 'ChildCount': childIds.length});
-    await _nativeBridge.setChildren(viewId, childIds);
-  }
-
-  /// O(view count) - Delete views (for portal cleanup)
-  Future<void> deleteViews(List<String> viewIds) async {
-    await isReady;
-    EngineDebugLogger.log('DELETE_VIEWS_START', 'Deleting multiple views',
-        extra: {'ViewIds': viewIds, 'Count': viewIds.length});
-
-    for (final viewId in viewIds) {
-      EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
-      await _nativeBridge.deleteView(viewId);
-      _nodesByViewId.remove(viewId); // O(1)
-    }
-
-    EngineDebugLogger.log('DELETE_VIEWS_COMPLETE', 'Successfully deleted views',
-        extra: {'Count': viewIds.length});
-  }
 
   /// O(1) - Print comprehensive VDOM statistics (for debugging)
   void printDebugStats() {
