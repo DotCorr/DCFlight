@@ -52,6 +52,7 @@ class MyApp extends DCFStatefulComponent {
         DCFSpinner(),
         DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
         DCFSegmentedControl(
+
           segmentedControlProps: DCFSegmentedControlProps(
             selectedIndex: sliderVal.state.toInt(),
             segments: [
@@ -59,8 +60,8 @@ class MyApp extends DCFStatefulComponent {
               DCFSegmentItem(title: "Item 2"),
             ],
           ),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.blue,accentColor: DCFColors.amber,tertiaryColor: DCFColors.green,backgroundColor: Platform.isAndroid ? DCFColors.red : DCFColors.transparent),
-          layout: DCFLayout(height: 30,width: 200,alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.blue),
+          // layout: DCFLayout(alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center),
         ),
         DCFAlert(
           visible: isDarkMode.state,
@@ -113,6 +114,7 @@ class MyApp extends DCFStatefulComponent {
           layout: DCFLayout(marginTop: 20),
         ),
         DCFButton(
+
           buttonProps: DCFButtonProps(title: "Toggle Theme"),
           onPress: (data) {
             final newDarkMode = !isDarkMode.state;
@@ -122,7 +124,8 @@ class MyApp extends DCFStatefulComponent {
               newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
             );
           },
-          layout: DCFLayout(marginTop: 10),
+          layout: DCFLayout(marginTop: 10,height: 
+          50),
         ),
         
       ],

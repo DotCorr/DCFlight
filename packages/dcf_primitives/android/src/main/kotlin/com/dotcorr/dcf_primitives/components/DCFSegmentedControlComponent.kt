@@ -8,350 +8,322 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.PointF
+import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
+import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.TextView
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.RippleDrawable
-import android.view.Gravity
-import android.animation.ValueAnimator
-import android.animation.ArgbEvaluator
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_primitives.R
 import com.dotcorr.dcflight.utils.ColorUtilities
+import com.dotcorr.dcf_primitives.R
 
 /**
- * DCFSegmentedControlComponent - Material Design segmented control for Android
- * Uses proper Material Design segmented button style (not RadioGroup)
+ * DCFSegmentedControlComponent - View-based segmented control using LinearLayout and Buttons
+ * Provides native Android segmented control similar to iOS UISegmentedControl
  */
 class DCFSegmentedControlComponent : DCFComponent() {
+
+    companion object {
+        private const val TAG = "DCFSegmentedControlComponent"
+    }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val container = LinearLayout(context)
         container.orientation = LinearLayout.HORIZONTAL
         container.setTag(R.id.dcf_component_type, "SegmentedControl")
         
-        updateView(container, props)
+        // Store props
+        storeProps(container, props)
+        
+        // Parse segments
+        val segments = parseSegments(props)
+        val selectedIndex = getSelectedIndex(props, segments.size)
+        
+        // Create buttons for each segment
+        segments.forEachIndexed { index, segmentTitle ->
+            val button = createSegmentButton(context, segmentTitle, index == selectedIndex, index, segments.size)
+            // Set up click listener immediately
+            button.setOnClickListener {
+                val currentSegments = parseSegments(getStoredProps(container))
+                val title = currentSegments.getOrNull(index) ?: ""
+                
+                // Immediately update visual state for better UX
+                updateSelectedButton(container, index)
+                
+                // Propagate event to Dart side
+                propagateEvent(container, "onSelectionChange", mapOf(
+                    "selectedIndex" to index,
+                    "selectedTitle" to title
+                ))
+            }
+            container.addView(button)
+        }
+        
+        // Apply framework-level styles
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        container.applyStyles(nonNullProps)
+        
+        Log.d(TAG, "Created View-based SegmentedControl with ${segments.size} segments")
+        
         return container
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        val container = view as LinearLayout
+        val container = view as? LinearLayout ?: return false
         var hasUpdates = false
-
-        // Get colors from StyleSheet
-        val primaryColor = props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-        val secondaryColor = props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-        val selectedIndex = when (val idx = props["selectedIndex"]) {
-            is Number -> idx.toInt()
-            is String -> idx.toIntOrNull() ?: 0
-            else -> 0
-        }
-        val enabled = when (val en = props["enabled"]) {
-            is Boolean -> en
-            is String -> en.toBoolean()
-            else -> true
-        }
-
-        // Framework-level helper: Only update segments if they actually changed
+        
+        // Update if segments changed
         if (hasPropChanged("segments", existingProps, props)) {
-            props["segments"]?.let { segments ->
-                when (segments) {
-                    is List<*> -> {
-                        container.removeAllViews()
-                        
-                        segments.forEachIndexed { index, segment ->
-                            if (segment is Map<*, *>) {
-                                val segmentMap = segment as Map<String, Any?>
-                                val segmentButton = createSegmentButton(
-                                    container.context, 
-                                    segmentMap, 
-                                    index,
-                                    index == selectedIndex,
-                                    primaryColor,
-                                    secondaryColor,
-                                    enabled
-                                )
-                                container.addView(segmentButton)
-                            }
-                        }
-                        hasUpdates = true
-                    }
-                }
-            }
-        } else {
-            // Update existing segments if selectedIndex or colors changed
-            if (hasPropChanged("selectedIndex", existingProps, props) || 
-                hasPropChanged("primaryColor", existingProps, props) ||
-                hasPropChanged("secondaryColor", existingProps, props) ||
-                hasPropChanged("enabled", existingProps, props)) {
-                for (i in 0 until container.childCount) {
-                    val segmentButton = container.getChildAt(i) as? TextView
-                    segmentButton?.let {
-                        updateSegmentButton(it, i == selectedIndex, primaryColor, secondaryColor, enabled)
-                    }
-                }
-                hasUpdates = true
-            }
-        }
-
-        view.applyStyles(props)
-
-        return hasUpdates
-    }
-
-    private fun createSegmentButton(
-        context: Context, 
-        segmentData: Map<String, Any?>, 
-        index: Int,
-        isSelected: Boolean,
-        primaryColor: Int?,
-        secondaryColor: Int?,
-        enabled: Boolean
-    ): TextView {
-        val button = TextView(context)
-        button.id = View.generateViewId()
-        
-        segmentData["title"]?.let {
-            button.text = it.toString()
-        }
-        
-        segmentData["iconAsset"]?.let {
-            val iconName = it.toString()
-            button.text = "${button.text} ⚡" // Placeholder for icon
-        }
-
-        val segmentEnabled = when (val en = segmentData["enabled"]) {
-            is Boolean -> en && enabled
-            is String -> en.toBoolean() && enabled
-            else -> enabled
-        }
-        button.isEnabled = segmentEnabled
-        button.alpha = if (segmentEnabled) 1.0f else 0.38f // Material Design disabled opacity
-        
-        // Material Design 3 segmented button styling
-        val density = context.resources.displayMetrics.density
-        val horizontalPadding = (16 * density).toInt()
-        val verticalPadding = (12 * density).toInt()
-        button.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-        button.gravity = Gravity.CENTER
-        button.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL) // Material Design medium weight
-        button.textSize = 14f // Material Design body2 text size
-        
-        // Set click listener with ripple effect
-        button.setOnClickListener {
-            if (!segmentEnabled) return@setOnClickListener
+            val segments = parseSegments(props)
+            val selectedIndex = getSelectedIndex(props, segments.size)
             
-            val container = button.parent as? ViewGroup
-            container?.let { parent ->
-                // Get current props from stored props (via base class) with fallback to closure-scoped values
-                val storedProps = getStoredProps(parent)
-                val currentPrimaryColor = storedProps["primaryColor"]?.let { 
-                    ColorUtilities.parseColor(it.toString()) 
-                } ?: primaryColor
-                val currentSecondaryColor = storedProps["secondaryColor"]?.let { 
-                    ColorUtilities.parseColor(it.toString()) 
-                } ?: secondaryColor
-                val currentEnabled = when (val en = storedProps["enabled"]) {
-                    is Boolean -> en
-                    is String -> en.toBoolean()
-                    else -> enabled
-                }
-                
-                // Animate selection change
-                animateSegmentSelection(parent, button, currentPrimaryColor, currentSecondaryColor, currentEnabled)
-                
-                // Fire event
-                val selectedIndex = (0 until parent.childCount).indexOfFirst { 
-                    parent.getChildAt(it).id == button.id 
-                }
-                if (selectedIndex >= 0) {
-                    propagateEvent(parent, "onSelectionChange", mapOf(
-                        "selectedIndex" to selectedIndex,
-                        "selectedTitle" to button.text.toString()
+            container.removeAllViews()
+            segments.forEachIndexed { index, segmentTitle ->
+                val button = createSegmentButton(container.context, segmentTitle, index == selectedIndex, index, segments.size)
+                // Set up click listener
+                button.setOnClickListener {
+                    val currentSegments = parseSegments(getStoredProps(container))
+                    val title = currentSegments.getOrNull(index) ?: ""
+                    
+                    // Immediately update visual state
+                    updateSelectedButton(container, index)
+                    
+                    // Propagate event to Dart side
+                    propagateEvent(container, "onSelectionChange", mapOf(
+                        "selectedIndex" to index,
+                        "selectedTitle" to title
                     ))
                 }
+                container.addView(button)
             }
+            hasUpdates = true
         }
         
-        updateSegmentButton(button, isSelected, primaryColor, secondaryColor, enabled, true)
+        // Update selected index
+        if (hasPropChanged("selectedIndex", existingProps, props)) {
+            val selectedIndex = getSelectedIndex(props, container.childCount)
+            updateSelectedButton(container, selectedIndex)
+            hasUpdates = true
+        }
+        
+        // Update colors if changed
+        if (hasPropChanged("primaryColor", existingProps, props) ||
+            hasPropChanged("secondaryColor", existingProps, props) ||
+            hasPropChanged("tertiaryColor", existingProps, props) ||
+            hasPropChanged("accentColor", existingProps, props)) {
+            val selectedIndex = getSelectedIndex(props, container.childCount)
+            updateButtonColors(container, selectedIndex, props)
+            hasUpdates = true
+        }
+        
+        // Update enabled state
+        if (hasPropChanged("enabled", existingProps, props)) {
+            val enabled = when (val en = props["enabled"]) {
+                is Boolean -> en
+                is String -> en.toBoolean()
+                else -> true
+            }
+            for (i in 0 until container.childCount) {
+                container.getChildAt(i).isEnabled = enabled
+            }
+            hasUpdates = true
+        }
+        
+        // Apply framework-level styles
+        container.applyStyles(props)
+        
+        return hasUpdates
+    }
+    
+    private fun parseSegments(props: Map<String, Any?>): List<String> {
+        return when (val segmentsProp = props["segments"]) {
+            is List<*> -> segmentsProp.mapNotNull { segment ->
+                when (segment) {
+                    is Map<*, *> -> {
+                        val segmentMap = segment as Map<String, Any?>
+                        segmentMap["title"]?.toString() ?: ""
+                    }
+                    is String -> segment
+                    else -> null
+                }
+            }.filter { it.isNotEmpty() }
+            else -> listOf("Segment 1")
+        }
+    }
+    
+    private fun getSelectedIndex(props: Map<String, Any?>, maxIndex: Int): Int {
+        return when (val idx = props["selectedIndex"]) {
+            is Number -> idx.toInt().coerceIn(0, maxIndex - 1)
+            is String -> idx.toIntOrNull()?.coerceIn(0, maxIndex - 1) ?: 0
+            else -> 0
+        }
+    }
+    
+    private fun createSegmentButton(
+        context: Context,
+        title: String,
+        isSelected: Boolean,
+        index: Int,
+        totalCount: Int
+    ): Button {
+        val button = Button(context)
+        button.text = title
+        button.gravity = Gravity.CENTER
+        button.textSize = 14f
+        
+        // Disable all caps to prevent text clipping
+        button.setAllCaps(false)
+        
+        // Set padding to prevent text clipping - more horizontal padding for text
+        val horizontalPadding = (20 * context.resources.displayMetrics.density).toInt()
+        val verticalPadding = (14 * context.resources.displayMetrics.density).toInt()
+        button.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+        
+        // Set minimum height - taller to prevent clipping
+        val minHeight = (56 * context.resources.displayMetrics.density).toInt()
+        button.minHeight = minHeight
+        
+        // Remove default button insets that cause clipping
+        button.setIncludeFontPadding(false)
+        
+        // Ensure text is single line and ellipsize if needed
+        button.maxLines = 1
+        button.ellipsize = TextUtils.TruncateAt.END
+        
+        val layoutParams = LinearLayout.LayoutParams(
+            0,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            1.0f
+        )
+        
+        // Add negative margins to connect buttons
+        if (index > 0) {
+            layoutParams.marginStart = (-1 * context.resources.displayMetrics.density).toInt()
+        }
+        
+        button.layoutParams = layoutParams
+        
+        // Set initial background
+        updateButtonBackground(button, isSelected, index, totalCount)
         
         return button
     }
     
-    private fun animateSegmentSelection(
-        container: ViewGroup,
-        selectedButton: TextView,
-        primaryColor: Int?,
-        secondaryColor: Int?,
-        enabled: Boolean
-    ) {
-        for (i in 0 until container.childCount) {
-            val child = container.getChildAt(i) as? TextView
-            if (child != null) {
-                val isChildSelected = (child.id == selectedButton.id)
-                val wasSelected = child.tag as? Boolean ?: false
-                
-                // Animate color transition if state changed
-                if (wasSelected != isChildSelected) {
-                    animateButtonState(child, wasSelected, isChildSelected, primaryColor, secondaryColor, enabled)
-                } else {
-                    updateSegmentButton(child, isChildSelected, primaryColor, secondaryColor, enabled, false)
-                }
-                
-                child.tag = isChildSelected
+    private fun updateButtonBackground(button: Button, isSelected: Boolean, index: Int, totalCount: Int) {
+        val drawable = GradientDrawable()
+        
+        // Set corner radius based on position
+        val cornerRadius = 8f * button.context.resources.displayMetrics.density
+        when {
+            index == 0 && totalCount == 1 -> {
+                drawable.cornerRadii = floatArrayOf(cornerRadius, cornerRadius, cornerRadius, cornerRadius, cornerRadius, cornerRadius, cornerRadius, cornerRadius)
+            }
+            index == 0 -> {
+                drawable.cornerRadii = floatArrayOf(cornerRadius, cornerRadius, 0f, 0f, 0f, 0f, cornerRadius, cornerRadius)
+            }
+            index == totalCount - 1 -> {
+                drawable.cornerRadii = floatArrayOf(0f, 0f, cornerRadius, cornerRadius, cornerRadius, cornerRadius, 0f, 0f)
+            }
+            else -> {
+                drawable.cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)
             }
         }
-    }
-    
-    private fun animateButtonState(
-        button: TextView,
-        wasSelected: Boolean,
-        isSelected: Boolean,
-        primaryColor: Int?,
-        secondaryColor: Int?,
-        enabled: Boolean
-    ) {
-        val targetBgColor = if (isSelected) {
-            primaryColor ?: Color.parseColor("#2196F3")
-        } else {
-            Color.TRANSPARENT
-        }
-        val targetTextColor = if (isSelected) {
-            Color.WHITE
-        } else {
-            secondaryColor ?: Color.parseColor("#000000")
-        }
         
-        // Get current colors
-        val currentBgColor = if (wasSelected) {
-            primaryColor ?: Color.parseColor("#2196F3")
-        } else {
-            Color.TRANSPARENT
-        }
-        val currentTextColor = button.currentTextColor
+        // Set stroke
+        drawable.setStroke(2, Color.parseColor("#E0E0E0"))
         
-        // Animate background color
-        val bgAnimator = ValueAnimator.ofObject(ArgbEvaluator(), currentBgColor, targetBgColor)
-        bgAnimator.duration = 200 // Material Design animation duration
-        bgAnimator.addUpdateListener { animator ->
-            val animatedColor = animator.animatedValue as Int
-            val drawable = GradientDrawable()
-            drawable.setColor(animatedColor)
-            val cornerRadius = 8f * button.context.resources.displayMetrics.density
-            drawable.cornerRadius = cornerRadius
-            
-            // Add ripple effect
-            val rippleColor = if (isSelected) {
-                Color.argb(30, 255, 255, 255) // White ripple on selected
-            } else {
-                Color.argb(30, 0, 0, 0) // Black ripple on unselected
-            }
-            val ripple = RippleDrawable(
-                android.content.res.ColorStateList.valueOf(rippleColor),
-                drawable,
-                null
-            )
-            button.background = ripple
-        }
-        bgAnimator.start()
-        
-        // Animate text color
-        val textAnimator = ValueAnimator.ofObject(ArgbEvaluator(), currentTextColor, targetTextColor)
-        textAnimator.duration = 200
-        textAnimator.addUpdateListener { animator ->
-            button.setTextColor(animator.animatedValue as Int)
-        }
-        textAnimator.start()
-    }
-
-    private fun updateSegmentButton(
-        button: TextView,
-        isSelected: Boolean,
-        primaryColor: Int?,
-        secondaryColor: Int?,
-        enabled: Boolean,
-        animate: Boolean = false
-    ) {
-        val density = button.context.resources.displayMetrics.density
-        val cornerRadius = 8f * density
-        
-        val backgroundDrawable = GradientDrawable()
-        
+        // Set background color based on selection
         if (isSelected) {
-            // Selected state: Material Design primary color background
-            val bgColor = primaryColor ?: Color.parseColor("#2196F3")
-            backgroundDrawable.setColor(bgColor)
+            drawable.setColor(Color.parseColor("#2196F3")) // Material Blue
             button.setTextColor(Color.WHITE)
-            
-            // Add ripple effect for selected state (white ripple)
-            val rippleColor = Color.argb(30, 255, 255, 255)
-            val ripple = RippleDrawable(
-                android.content.res.ColorStateList.valueOf(rippleColor),
-                backgroundDrawable,
-                null
-            )
-            ripple.setCornerRadius(cornerRadius)
-            button.background = ripple
         } else {
-            // Unselected state: Transparent background with border
-            backgroundDrawable.setColor(Color.TRANSPARENT)
-            val textColor = secondaryColor ?: Color.parseColor("#000000")
-            button.setTextColor(textColor)
-            
-            // Add subtle border for unselected state (Material Design 3 style)
-            val borderColor = Color.argb(30, Color.red(textColor), Color.green(textColor), Color.blue(textColor))
-            backgroundDrawable.setStroke((1 * density).toInt(), borderColor)
-            
-            // Add ripple effect for unselected state (black ripple)
-            val rippleColor = Color.argb(20, 0, 0, 0)
-            val ripple = RippleDrawable(
-                android.content.res.ColorStateList.valueOf(rippleColor),
-                backgroundDrawable,
-                null
-            )
-            ripple.setCornerRadius(cornerRadius)
-            button.background = ripple
+            drawable.setColor(Color.TRANSPARENT)
+            button.setTextColor(Color.parseColor("#757575")) // Material Grey
         }
         
-        backgroundDrawable.cornerRadius = cornerRadius
-        button.isEnabled = enabled
-        button.alpha = if (enabled) 1.0f else 0.38f // Material Design disabled opacity
-        button.tag = isSelected // Store selection state for animation
+        button.background = drawable
+    }
+    
+    private fun updateSelectedButton(container: LinearLayout, selectedIndex: Int) {
+        for (i in 0 until container.childCount) {
+            val button = container.getChildAt(i) as? Button ?: continue
+            val isSelected = i == selectedIndex
+            updateButtonBackground(button, isSelected, i, container.childCount)
+        }
+    }
+    
+    private fun updateButtonColors(container: LinearLayout, selectedIndex: Int, props: Map<String, Any>) {
+        val primaryColor = props["primaryColor"]?.let {
+            ColorUtilities.parseColor(it.toString())
+        } ?: props["tertiaryColor"]?.let {
+            ColorUtilities.parseColor(it.toString())
+        } ?: Color.parseColor("#2196F3")
+        
+        val secondaryColor = props["secondaryColor"]?.let {
+            ColorUtilities.parseColor(it.toString())
+        } ?: props["accentColor"]?.let {
+            ColorUtilities.parseColor(it.toString())
+        } ?: Color.parseColor("#757575")
+        
+        for (i in 0 until container.childCount) {
+            val button = container.getChildAt(i) as? Button ?: continue
+            val isSelected = i == selectedIndex
+            
+            val drawable = button.background as? GradientDrawable ?: continue
+            if (isSelected) {
+                drawable.setColor(primaryColor)
+                button.setTextColor(Color.WHITE)
+            } else {
+                drawable.setColor(Color.TRANSPARENT)
+                button.setTextColor(secondaryColor)
+            }
+        }
     }
 
-    
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val container = view as? LinearLayout ?: return PointF(0f, 0f)
-        
-        val segments = props["segments"] as? List<*> ?: emptyList<Any>()
+        val segments = parseSegments(props)
         val segmentCount = segments.size
         
-        // Material Design 3 segmented button sizing
-        val density = container.context.resources.displayMetrics.density
-        val minSegmentWidth = 80f * density
-        val segmentHeight = 40f * density // Material Design 3 segmented button height
+        val minSegmentWidth = 80f
+        val segmentHeight = 40f
         
-        // Calculate total width based on segment count
         val totalWidth = minSegmentWidth * segmentCount
         
         return PointF(totalWidth, segmentHeight)
     }
 
-    
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        val container = view as? LinearLayout ?: return
+        
+        // Set up click listeners for buttons
+        for (i in 0 until container.childCount) {
+            val button = container.getChildAt(i) as? Button ?: continue
+            button.setOnClickListener {
+                val segments = parseSegments(getStoredProps(container))
+                val title = segments.getOrNull(i) ?: ""
+                
+                // Immediately update visual state for better UX
+                updateSelectedButton(container, i)
+                
+                // Propagate event to Dart side
+                propagateEvent(container, "onSelectionChange", mapOf(
+                    "selectedIndex" to i,
+                    "selectedTitle" to title
+                ))
+            }
+        }
+        
+        Log.d(TAG, "View-based SegmentedControl registered with shadow tree: $nodeId")
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
         return null
     }
 }
-

@@ -1,8 +1,5 @@
-group 'com.dotcorr.dcf_primitives'
-version '1.0'
-
 buildscript {
-    ext.kotlin_version = '1.9.0'
+    ext.kotlin_version = '2.1.0'
     repositories {
         google()
         mavenCentral()
@@ -14,15 +11,21 @@ buildscript {
     }
 }
 
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android' version '2.1.0'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.1.0'
+}
+
+group 'com.dotcorr.dcf_primitives'
+version '1.0'
+
 rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
     }
 }
-
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
 
 android {
     namespace 'com.dotcorr.dcf_primitives'
@@ -47,11 +50,27 @@ android {
         minSdkVersion 21
     }
 
+    buildFeatures {
+        compose true
+    }
+
     dependencies {
         implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
         implementation 'androidx.core:core-ktx:1.12.0'
         implementation 'androidx.appcompat:appcompat:1.6.1'
         implementation 'com.google.android.material:material:1.11.0'
+
+        // Jetpack Compose
+        def composeBom = platform('androidx.compose:compose-bom:2024.02.00')
+        implementation composeBom
+        implementation 'androidx.compose.ui:ui'
+        implementation 'androidx.compose.ui:ui-viewbinding'
+        implementation 'androidx.compose.material3:material3'
+        implementation 'androidx.compose.runtime:runtime'
+        implementation 'androidx.compose.runtime:runtime-livedata'
+        implementation 'androidx.activity:activity-compose:1.8.2'
+        implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
+        implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.7.0'
 
         // DCFlight framework dependency
         implementation project(':dcflight')
@@ -67,4 +86,9 @@ android {
         implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
         implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
     }
+}
+
+// Compose Compiler configuration (top level, required for Kotlin 2.0+)
+composeCompiler {
+    enableStrongSkippingMode = true
 }

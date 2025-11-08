@@ -107,7 +107,7 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
   /// Create a button component
   DCFButton({
      this.buttonProps = const DCFButtonProps(title: "Button"),
-    this.layout = const DCFLayout(width: 100, alignItems: YogaAlign.center, justifyContent: YogaJustifyContent.center,height: 100),
+    this.layout = const DCFLayout(),
     this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.blueAccent, borderRadius: 10),
     this.onPress,
     this.onLongPress,
@@ -132,12 +132,19 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
     }
 
     Map<String, dynamic> props = {
-      ...buttonProps?.toMap()??{},
+      ...?buttonProps?.toMap(),
       ...layout.toMap(),
+      ...const DCFLayout(
+        width: "100%", 
+        padding: 0,
+        margin: 0,
+        alignItems: YogaAlign.center, 
+        justifyContent: YogaJustifyContent.center, 
+        height: 45,
+      ).toMap(),
       ...styleSheet.toMap(),
       ...eventMap,
     };
-
     return DCFElement(
       type: 'Button',
       elementProps: props,
