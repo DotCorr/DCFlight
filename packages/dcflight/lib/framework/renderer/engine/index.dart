@@ -23,6 +23,4 @@ export 'component/error_boundary.dart';
 export 'component/hooks/store.dart';
 export 'component/hooks/memo_hook.dart';
 export 'component/hooks/state_hook.dart';
-export 'portal/enhanced_portal_manager.dart';
-export 'portal/dcf_portal.dart';
 export 'core/mutator/prop_diff_interceptor.dart';
