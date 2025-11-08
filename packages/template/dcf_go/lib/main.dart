@@ -17,7 +17,7 @@ class MyApp extends DCFStatefulComponent {
     final name = useState<String>("");
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
 
-    return DCFView(
+    return DCFTheme.current.isDark ? DCFView(
       layout: DCFLayout(
         padding:20,
         flex: 1,
@@ -135,6 +135,34 @@ class MyApp extends DCFStatefulComponent {
         ),
         
       ],
+    ):DCFView(
+      layout: DCFLayout(
+        flex: 1,
+        justifyContent: YogaJustifyContent.center,
+        alignItems: YogaAlign.center,
+      ),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: DCFTheme.current.backgroundColor,
+      
+      ),
+      children: [
+        DCFToggle(value: DCFTheme.isDarkMode, onValueChange: (data) {
+             final newDarkMode = !isDarkMode.state;
+            isDarkMode.setState(newDarkMode);
+            // Actually update the theme
+            DCFTheme.setTheme(
+              newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
+            );
+        }),
+         DCFButton(buttonProps: DCFButtonProps(title:isDarkMode.state.toString()), onPress: (data) {
+            final newDarkMode = !isDarkMode.state;
+            isDarkMode.setState(newDarkMode);
+            // Actually update the theme
+            DCFTheme.setTheme(
+              newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
+            );
+        }),
+      ]
     );
   }
 
