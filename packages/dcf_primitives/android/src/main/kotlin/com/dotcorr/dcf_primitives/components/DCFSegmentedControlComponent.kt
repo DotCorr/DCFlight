@@ -11,7 +11,6 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.drawable.GradientDrawable
-import android.text.TextUtils
 import android.util.Log
 import android.view.Gravity
 import android.view.View
@@ -181,26 +180,18 @@ class DCFSegmentedControlComponent : DCFComponent() {
         // Disable all caps to prevent text clipping
         button.setAllCaps(false)
         
-        // Set padding to prevent text clipping - more horizontal padding for text
-        val horizontalPadding = (20 * context.resources.displayMetrics.density).toInt()
-        val verticalPadding = (14 * context.resources.displayMetrics.density).toInt()
+        // Minimal padding - let layout props control sizing
+        val horizontalPadding = (8 * context.resources.displayMetrics.density).toInt()
+        val verticalPadding = (4 * context.resources.displayMetrics.density).toInt()
         button.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-        
-        // Set minimum height - taller to prevent clipping
-        val minHeight = (56 * context.resources.displayMetrics.density).toInt()
-        button.minHeight = minHeight
         
         // Remove default button insets that cause clipping
         button.setIncludeFontPadding(false)
         
-        // Ensure text is single line and ellipsize if needed
-        button.maxLines = 1
-        button.ellipsize = TextUtils.TruncateAt.END
-        
+        // Let button wrap content - width based on text, height based on content
         val layoutParams = LinearLayout.LayoutParams(
-            0,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            1.0f
+            ViewGroup.LayoutParams.WRAP_CONTENT
         )
         
         // Add negative margins to connect buttons
