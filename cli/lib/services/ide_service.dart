@@ -17,6 +17,7 @@ class IDEService {
   static const String _ideDirName = '.dcf-ide';
   static const String _codeServerDirName = 'code-server';
   static const String _dcfVscodeDirName = 'dcf-vscode';
+  static const String _dcfCodeServerReleasesUrl = 'https://api.github.com/repos/DotCorr/dcf-code-server/releases/latest';
   static const String _dcfVscodeReleasesUrl = 'https://api.github.com/repos/DotCorr/dcf-vscode/releases/latest';
   static const String _codeServerReleasesUrl = 'https://api.github.com/repos/coder/code-server/releases/latest';
   
@@ -82,6 +83,7 @@ class IDEService {
   }
   
   /// Install code-server from GitHub releases
+  /// Tries dcf-code-server first, falls back to standard code-server
   static Future<void> _installCodeServer({void Function(String)? onProgress, bool forceUpdate = false}) async {
     final codeServerDir = Directory(_codeServerPath);
     final binaryName = Platform.isWindows ? 'code-server.exe' : 'code-server';
@@ -93,11 +95,64 @@ class IDEService {
       return;
     }
     
-    onProgress?.call('📥 Fetching latest code-server release...');
+    // Try dcf-code-server first (your custom build)
+    onProgress?.call('📥 Checking for dcf-code-server release...');
+    
+    try {
+      final dcfCodeServerResponse = await http.get(Uri.parse(_dcfCodeServerReleasesUrl));
+      
+      if (dcfCodeServerResponse.statusCode == 200) {
+        // Use dcf-code-server (your custom build)
+        onProgress?.call('🔧 Found dcf-code-server release - using custom build');
+        await _installCodeServerFromRelease(
+          _dcfCodeServerReleasesUrl,
+          onProgress: onProgress,
+          forceUpdate: forceUpdate,
+          isCustom: true,
+        );
+        return;
+      } else if (dcfCodeServerResponse.statusCode == 404) {
+        // Fall back to standard code-server
+        onProgress?.call('📥 No dcf-code-server release found, using standard code-server');
+      } else {
+        onProgress?.call('⚠️  Could not check dcf-code-server releases, trying standard code-server');
+      }
+    } catch (e) {
+      onProgress?.call('⚠️  Error checking dcf-code-server: $e, trying standard code-server');
+    }
+    
+    // Fall back to standard code-server
+    onProgress?.call('📥 Fetching latest standard code-server release...');
+    
+    try {
+      // Get latest release info from standard code-server
+      await _installCodeServerFromRelease(
+        _codeServerReleasesUrl,
+        onProgress: onProgress,
+        forceUpdate: forceUpdate,
+        isCustom: false,
+      );
+    } catch (e) {
+      onProgress?.call('❌ Failed to install code-server: $e');
+      onProgress?.call('💡 You can install manually: curl -fsSL https://code-server.dev/install.sh | sh');
+      rethrow;
+    }
+  }
+  
+  /// Install code-server from a specific release URL
+  static Future<void> _installCodeServerFromRelease(
+    String releasesUrl, {
+    void Function(String)? onProgress,
+    bool forceUpdate = false,
+    bool isCustom = false,
+  }) async {
+    final codeServerDir = Directory(_codeServerPath);
+    final binaryName = Platform.isWindows ? 'code-server.exe' : 'code-server';
+    final binaryPath = path.join(_codeServerPath, binaryName);
     
     try {
       // Get latest release info
-      final response = await http.get(Uri.parse(_codeServerReleasesUrl));
+      final response = await http.get(Uri.parse(releasesUrl));
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch code-server releases: ${response.statusCode}');
       }
@@ -106,7 +161,11 @@ class IDEService {
       final version = releaseData['tag_name'] as String;
       final assets = releaseData['assets'] as List;
       
-      onProgress?.call('📦 Found code-server version: $version');
+      if (isCustom) {
+        onProgress?.call('🔧 Found dcf-code-server version: $version (custom build)');
+      } else {
+        onProgress?.call('📦 Found code-server version: $version');
+      }
       
       // Determine platform and architecture
       String platform;
@@ -132,20 +191,43 @@ class IDEService {
       }
       
       // Find matching asset
+      // code-server releases use format: code-server-VERSION-OS-ARCH.tar.gz
+      // e.g., code-server-4.104.1-darwin-x64.tar.gz
       String? downloadUrl;
       String? assetName;
       
+      // Normalize platform name for matching (code-server uses 'darwin' not 'macos')
+      final normalizedPlatform = platform == 'macos' ? 'darwin' : platform;
+      
       for (final asset in assets) {
         final name = asset['name'] as String;
-        if (name.contains(platform) && name.contains(arch) && name.endsWith(extension)) {
+        // Match: code-server-*-OS-ARCH.tar.gz or code-server-*-OS-ARCH.zip
+        if (name.startsWith('code-server-') && 
+            (name.contains(normalizedPlatform) || (normalizedPlatform == 'darwin' && name.contains('macos'))) &&
+            name.contains(arch) && 
+            name.endsWith(extension)) {
           downloadUrl = asset['browser_download_url'] as String;
           assetName = name;
           break;
         }
       }
       
+      // Also try without platform name (just arch)
+      if (downloadUrl == null) {
+        for (final asset in assets) {
+          final name = asset['name'] as String;
+          if (name.startsWith('code-server-') && 
+              name.contains(arch) && 
+              name.endsWith(extension)) {
+            downloadUrl = asset['browser_download_url'] as String;
+            assetName = name;
+            break;
+          }
+        }
+      }
+      
       if (downloadUrl == null || assetName == null) {
-        throw Exception('No matching code-server release found for $platform/$arch');
+        throw Exception('No matching code-server release found for $platform/$arch. Available assets: ${assets.map((a) => a['name']).join(', ')}');
       }
       
       onProgress?.call('📥 Downloading code-server ($assetName)...');
