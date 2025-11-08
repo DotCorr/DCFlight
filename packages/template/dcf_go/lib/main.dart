@@ -34,6 +34,9 @@ class MyApp extends DCFStatefulComponent {
           content: "Hello, Test ${name.state}! ${count.state}",
           // Using semantic colors from StyleSheet instead of explicit color prop
           styleSheet: DCFStyleSheet(
+            backgroundColor: DCFColors.amberAccent,
+            borderRadius: 20,
+            elevation: 10,
             primaryColor:
                 DCFTheme.textColor, // Semantic color - maps to text color
           ),
