@@ -180,6 +180,43 @@ fun View.applyStyles(props: Map<String, Any>) {
         this.contentDescription = label.toString()
     }
 
+    props["accessibilityHint"]?.let { hint ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            this.setAccessibilityDelegate(object : View.AccessibilityDelegate() {
+                override fun onInitializeAccessibilityNodeInfo(host: View, info: android.view.accessibility.AccessibilityNodeInfo) {
+                    super.onInitializeAccessibilityNodeInfo(host, info)
+                    info.hintText = hint.toString()
+                }
+            })
+        }
+    }
+
+    props["accessibilityValue"]?.let { value ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            this.setAccessibilityDelegate(object : View.AccessibilityDelegate() {
+                override fun onInitializeAccessibilityNodeInfo(host: View, info: android.view.accessibility.AccessibilityNodeInfo) {
+                    super.onInitializeAccessibilityNodeInfo(host, info)
+                    info.text = value.toString()
+                }
+            })
+        }
+    }
+
+    props["accessibilityRole"]?.let { role ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val roleString = role.toString().lowercase()
+            when (roleString) {
+                "button" -> this.isClickable = true
+                "link" -> this.isClickable = true
+                "header" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        this.accessibilityHeading = true
+                    }
+                }
+            }
+        }
+    }
+
     props["testID"]?.let { testID ->
         this.setTag(R.id.dcf_test_id, testID)
     }
