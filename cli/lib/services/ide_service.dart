@@ -326,11 +326,33 @@ class IDEService {
       // Clean up archive file
       await File(archivePath).delete();
       
-      // Make binary executable on Unix (find it first in case it's in a subdirectory)
+      // Make all binaries executable on Unix (code-server needs node binary to be executable too)
       if (!Platform.isWindows) {
         final foundBinary = await _findCodeServerBinary();
         if (foundBinary != null) {
           await Process.run('chmod', ['+x', foundBinary]);
+        }
+        
+        // Also make node binary executable if it exists
+        final nodeBinary = path.join(codeServerDir.path, 'lib', 'node');
+        if (await File(nodeBinary).exists()) {
+          await Process.run('chmod', ['+x', nodeBinary]);
+        }
+        
+        // Make all files in bin and lib directories executable recursively
+        try {
+          await Process.run('find', [codeServerDir.path, '-type', 'f', '-name', 'node', '-o', '-name', 'code-server'], runInShell: false);
+          await Process.run('chmod', ['-R', '+x', codeServerDir.path]);
+        } catch (e) {
+          // If find/chmod fails, try individual paths
+          final binDir = Directory(path.join(codeServerDir.path, 'bin'));
+          if (await binDir.exists()) {
+            await Process.run('chmod', ['-R', '+x', binDir.path]);
+          }
+          final libDir = Directory(path.join(codeServerDir.path, 'lib'));
+          if (await libDir.exists()) {
+            await Process.run('chmod', ['-R', '+x', libDir.path]);
+          }
         }
       }
       
@@ -587,10 +609,27 @@ class IDEService {
     // Clean up archive
     await File(archivePath).delete();
     
-    // Make binary executable
-    final binaryPath = await _findCodeServerBinary();
-    if (binaryPath != null && !Platform.isWindows) {
-      await Process.run('chmod', ['+x', binaryPath]);
+    // Make all binaries executable on Unix
+    if (!Platform.isWindows) {
+      final binaryPath = await _findCodeServerBinary();
+      if (binaryPath != null) {
+        await Process.run('chmod', ['+x', binaryPath]);
+      }
+      
+      // Make all files in code-server directory executable recursively
+      try {
+        await Process.run('chmod', ['-R', '+x', codeServerDir.path]);
+      } catch (e) {
+        // If chmod fails, try individual paths
+        final binDir = Directory(path.join(codeServerDir.path, 'bin'));
+        if (await binDir.exists()) {
+          await Process.run('chmod', ['-R', '+x', binDir.path]);
+        }
+        final libDir = Directory(path.join(codeServerDir.path, 'lib'));
+        if (await libDir.exists()) {
+          await Process.run('chmod', ['-R', '+x', libDir.path]);
+        }
+      }
     }
     
     onProgress?.call('✅ Custom code-server installed successfully');
@@ -889,7 +928,20 @@ class IDEService {
       
       print('✅ IDE launched at: $url');
     } catch (e) {
-      throw Exception('Failed to launch IDE: $e');
+      // Provide more detailed error information
+      String errorDetails = e.toString();
+      
+      // Check if it's a port binding error
+      if (errorDetails.contains('bind') || errorDetails.contains('port') || errorDetails.contains('address already in use')) {
+        errorDetails = 'Port $port is already in use. Try a different port or stop the existing code-server process.';
+      }
+      
+      // Check if it's a binary not found error
+      if (errorDetails.contains('not found') || errorDetails.contains('No such file')) {
+        errorDetails = 'code-server binary not found. Try running: dcf ide --install';
+      }
+      
+      throw Exception('Failed to launch IDE: $errorDetails');
     }
   }
   
