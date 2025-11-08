@@ -174,11 +174,14 @@ extension UIView {
             self.accessibilityHint = hint
         }
 
+        var hasExplicitAccessibilityValue = false
         if let value = props["accessibilityValue"] as? String {
             self.accessibilityValue = value
+            hasExplicitAccessibilityValue = true
         } else if let valueDict = props["accessibilityValue"] as? [String: Any] {
             if let text = valueDict["text"] as? String {
                 self.accessibilityValue = text
+                hasExplicitAccessibilityValue = true
             }
         }
 
@@ -224,20 +227,11 @@ extension UIView {
                 self.accessibilityTraits.insert(traits)
             }
             
-            if let expanded = state["expanded"] as? Bool {
-                let currentValue = self.accessibilityValue ?? ""
+            if let expanded = state["expanded"] as? Bool, !hasExplicitAccessibilityValue {
                 if expanded {
-                    if currentValue.isEmpty {
-                        self.accessibilityValue = "expanded"
-                    } else if !currentValue.contains("expanded") {
-                        self.accessibilityValue = "\(currentValue), expanded"
-                    }
+                    self.accessibilityValue = "expanded"
                 } else {
-                    if currentValue.isEmpty {
-                        self.accessibilityValue = "collapsed"
-                    } else if !currentValue.contains("collapsed") {
-                        self.accessibilityValue = "\(currentValue), collapsed"
-                    }
+                    self.accessibilityValue = "collapsed"
                 }
             }
         }
