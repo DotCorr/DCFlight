@@ -41,6 +41,7 @@ class DCFTextComponent : DCFComponent() {
         val textView = TextView(context)
 
         textView.maxLines = Int.MAX_VALUE // numberOfLines = 0 in iOS means unlimited
+        textView.gravity = Gravity.START
         
         props["content"]?.let { content ->
             textView.text = content.toString()
@@ -116,28 +117,32 @@ class DCFTextComponent : DCFComponent() {
             }
         }
 
-        props["textAlign"]?.let { textAlign ->
-            when (textAlign.toString()) {
-                "center" -> {
-                    textView.gravity = Gravity.CENTER_HORIZONTAL
-                }
-                "right", "end" -> {
-                    textView.gravity = Gravity.END
-                }
-                "left", "start" -> {
-                    textView.gravity = Gravity.START
-                }
-                "justify" -> {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        textView.justificationMode = android.text.Layout.JUSTIFICATION_MODE_INTER_WORD
+        if (props.containsKey("textAlign")) {
+            props["textAlign"]?.let { textAlign ->
+                when (textAlign.toString()) {
+                    "center" -> {
+                        textView.gravity = Gravity.CENTER
                     }
-                    textView.gravity = Gravity.START
+                    "right", "end" -> {
+                        textView.gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                    }
+                    "left", "start" -> {
+                        textView.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                    }
+                    "justify" -> {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            textView.justificationMode = android.text.Layout.JUSTIFICATION_MODE_INTER_WORD
+                        }
+                        textView.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                    }
+                    else -> {
+                        textView.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                    }
                 }
-                else -> {
-                    textView.gravity = Gravity.START
-                }
+                Log.d(TAG, "Set text alignment: $textAlign")
             }
-            Log.d(TAG, "Set text alignment: $textAlign")
+        } else {
+            textView.gravity = Gravity.START or Gravity.CENTER_VERTICAL
         }
 
         props["numberOfLines"]?.let { numberOfLines ->
