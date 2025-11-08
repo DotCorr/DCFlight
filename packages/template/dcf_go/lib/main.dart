@@ -19,6 +19,7 @@ class MyApp extends DCFStatefulComponent {
 
     return DCFView(
       layout: DCFLayout(
+        padding:20,
         flex: 1,
         justifyContent: YogaJustifyContent.center,
         alignItems: YogaAlign.center,
@@ -48,7 +49,9 @@ class MyApp extends DCFStatefulComponent {
           webViewProps: DCFWebViewProps(source: 'https://dotcorr.com'),
         ),
 
-        DCFSlider(value: count.state.toDouble()),
+        DCFSlider(value: sliderVal.state.toDouble(),
+        onValueChange: (data) => sliderVal.setState(data.value),
+        ),
         DCFSpinner(),
         DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
         DCFSegmentedControl(
