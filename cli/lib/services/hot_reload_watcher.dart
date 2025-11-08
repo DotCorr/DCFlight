@@ -8,6 +8,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'package:dcflight_cli/services/ide_service.dart';
 
 /// Stylish hot reload watcher with split terminal interface
 class HotReloadWatcher {
@@ -99,20 +100,47 @@ class HotReloadWatcher {
     await _printShutdownMessage(exitCode);
   }
 
+  /// Print commands menu
+  void _printCommandsMenu() {
+    final width = _getTerminalWidth();
+    final commands = [
+      'r - Hot reload',
+      'R - Hot restart',
+      'c - Open IDE',
+      'h - Help',
+      'q - Quit',
+    ];
+    
+    final menuWidth = commands.map((c) => c.length).reduce((a, b) => a > b ? a : b) + 4;
+    final padding = ' ' * ((width - menuWidth) ~/ 2);
+    
+    print('\n$_brightCyan$_bold$padding╭${'─' * (menuWidth - 2)}╮$_reset');
+    print('$_brightCyan$_bold$padding│${' ' * (menuWidth - 2)}│$_reset');
+    print('$_brightCyan$_bold$padding│${' ' * ((menuWidth - 'Available Commands'.length) ~/ 2 - 1)}Available Commands${' ' * ((menuWidth - 'Available Commands'.length) ~/ 2 - 1)}│$_reset');
+    print('$_brightCyan$_bold$padding│${' ' * (menuWidth - 2)}│$_reset');
+    
+    for (final cmd in commands) {
+      final cmdPadding = ' ' * ((menuWidth - cmd.length) ~/ 2 - 1);
+      print('$_brightCyan$_bold$padding│$cmdPadding$_white$cmd$_reset${' ' * (menuWidth - cmd.length - cmdPadding.length - 1)}$_brightCyan$_bold│$_reset');
+    }
+    
+    print('$_brightCyan$_bold$padding│${' ' * (menuWidth - 2)}│$_reset');
+    print('$_brightCyan$_bold$padding╰${'─' * (menuWidth - 2)}╯$_reset\n');
+  }
+  
   /// Print stylish welcome header
   Future<void> _printWelcomeHeader() async {
-    final width = 80;
-    final title = '� DCFlight Hot Reload System';
+    final width = _getTerminalWidth();
+    final title = '🚀 DCFlight Development Server';
     final subtitle = 'Powered by DCFlight Framework with Flutter Tooling';
+    final version = 'v0.0.2';
 
-    print(
-        '\n$_brightCyan$_bold$_boxTopLeft${_boxHeavyHorizontal * (width - 2)}$_boxTopRight$_reset');
-    print(
-        '$_brightCyan$_bold$_boxVertical${' ' * ((width - title.length) ~/ 2 - 1)}$_white$title$_reset${' ' * ((width - title.length) ~/ 2 - 1)}$_brightCyan$_bold$_boxVertical$_reset');
-    print(
-        '$_brightCyan$_bold$_boxVertical${' ' * ((width - subtitle.length) ~/ 2 - 1)}$_dim$subtitle$_reset${' ' * ((width - subtitle.length) ~/ 2 - 1)}$_brightCyan$_bold$_boxVertical$_reset');
-    print(
-        '$_brightCyan$_bold$_boxBottomLeft${_boxHeavyHorizontal * (width - 2)}$_boxBottomRight$_reset');
+    print('\n');
+    print('$_brightCyan$_bold$_boxTopLeft${_boxHeavyHorizontal * (width - 2)}$_boxTopRight$_reset');
+    print('$_brightCyan$_bold$_boxVertical${' ' * ((width - title.length) ~/ 2 - 1)}$_white$title$_reset${' ' * ((width - title.length) ~/ 2 - 1)}$_brightCyan$_bold$_boxVertical$_reset');
+    print('$_brightCyan$_bold$_boxVertical${' ' * ((width - subtitle.length) ~/ 2 - 1)}$_dim$subtitle$_reset${' ' * ((width - subtitle.length) ~/ 2 - 1)}$_brightCyan$_bold$_boxVertical$_reset');
+    print('$_brightCyan$_bold$_boxVertical${' ' * ((width - version.length) ~/ 2 - 1)}$_dim$version$_reset${' ' * ((width - version.length) ~/ 2 - 1)}$_brightCyan$_bold$_boxVertical$_reset');
+    print('$_brightCyan$_bold$_boxBottomLeft${_boxHeavyHorizontal * (width - 2)}$_boxBottomRight$_reset');
     print('');
   }
 
@@ -145,6 +173,12 @@ class HotReloadWatcher {
         ...additionalArgs,
       ];
 
+      _logWatcher('📦', 'Bundling application...', _brightCyan);
+      await Future.delayed(Duration(milliseconds: 500)); // Show bundling state
+      
+      _logWatcher('🔨', 'Building native components...', _brightCyan);
+      await Future.delayed(Duration(milliseconds: 500)); // Show building state
+      
       _logWatcher('🚀', 'Starting DCFlight process...', _brightGreen);
 
       _flutterProcess = await Process.start(
@@ -170,6 +204,7 @@ class HotReloadWatcher {
       });
 
       _logWatcher('✅', 'DCFlight process started successfully', _brightGreen);
+      _logWatcher('💡', 'App is running! Press keys for commands (see menu above)', _dim);
     } catch (e) {
       _logWatcher('❌', 'Failed to start DCFlight: $e', _red);
       rethrow;
@@ -218,9 +253,11 @@ class HotReloadWatcher {
 
   /// Start user input handler for Flutter commands
   void _startUserInputHandler() {
+    _printCommandsMenu();
+    
     _logWatcher(
         '⌨️ ',
-        'User input handler active - press keys for Flutter commands',
+        'User input handler active - press keys for commands',
         _brightCyan);
 
     // Listen to stdin in raw mode for immediate key detection
@@ -259,9 +296,7 @@ class HotReloadWatcher {
             _flutterProcess.stdin.flush();
             break;
           case 'c':
-            _logWatcher('🧹', 'Clear screen command sent by user', _cyan);
-            _flutterProcess.stdin.writeln('c');
-            _flutterProcess.stdin.flush();
+            _handleOpenIDE();
             break;
           default:
             // Pass through any other input
@@ -559,7 +594,7 @@ class HotReloadWatcher {
     if (_iproxySetup && _iproxyProcess != null) {
       // Check if process is still alive
       try {
-        final exitCode = await _iproxyProcess!.exitCode.timeout(
+        await _iproxyProcess!.exitCode.timeout(
           Duration(milliseconds: 50),
         );
         // Process died, need to restart
@@ -612,11 +647,11 @@ class HotReloadWatcher {
 
       // Check if process is still running (if it died immediately, it failed)
       try {
-        final exitCode = await _iproxyProcess!.exitCode.timeout(
+        await _iproxyProcess!.exitCode.timeout(
           Duration(milliseconds: 100),
         );
         // If we got here without timeout, process died = failure
-        print('⚠️  iproxy failed to start (exit code: $exitCode)');
+        print('⚠️  iproxy failed to start');
         print('💡 Make sure your iOS device is connected and trusted');
         _iproxyProcess = null;
         _iproxySetup = false;
@@ -648,6 +683,44 @@ class HotReloadWatcher {
     }
   }
 
+  /// Handle opening IDE (when user presses 'c')
+  /// Automatically installs IDE if not already installed
+  Future<void> _handleOpenIDE() async {
+    _logWatcher('🚀', 'Opening IDE...', _brightCyan);
+    
+    try {
+      // Check if IDE is installed
+      final isInstalled = await IDEService.isIDEInstalled();
+      
+      if (!isInstalled) {
+        _logWatcher('📦', 'IDE not detected. Auto-installing...', _yellow);
+        _logWatcher('💡', 'This will download dcf-vscode and code-server', _dim);
+        _logWatcher('⏳', 'Please wait, this may take a few minutes...', _dim);
+        
+        // Automatically install IDE with progress updates
+        await IDEService.installIDE(onProgress: (message) {
+          _logWatcher('📦', message, _cyan);
+        });
+        
+        _logWatcher('✅', 'IDE installation complete!', _green);
+      }
+      
+      // Get current project path
+      final projectPath = Directory.current.path;
+      
+      // Launch IDE
+      _logWatcher('🌐', 'Launching IDE in browser...', _brightGreen);
+      await IDEService.launchIDE(projectPath);
+      
+      _logWatcher('✅', 'IDE opened successfully!', _green);
+      _logWatcher('💡', 'Your IDE is ready. Happy coding!', _dim);
+    } catch (e) {
+      _logWatcher('❌', 'Failed to open IDE', _red);
+      _logWatcher('🔍', 'Error details: $e', _yellow);
+      _logWatcher('💡', 'Try pressing \'c\' again, or run: dcf ide --install', _dim);
+    }
+  }
+  
   /// Check if DCFlight hot reload server is healthy
   Future<bool> _checkServerHealth() async {
     // Setup port forwarding based on device type
@@ -680,7 +753,7 @@ class HotReloadWatcher {
           return true;
         }
       } catch (e) {
-        print('� WATCHER: Failed to connect to $ip: $e');
+        print('⚠️ WATCHER: Failed to connect to $ip: $e');
         continue;
       }
     }
@@ -689,4 +762,3 @@ class HotReloadWatcher {
     return false;
   }
 }
-
