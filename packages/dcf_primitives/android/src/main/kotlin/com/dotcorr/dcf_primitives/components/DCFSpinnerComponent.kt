@@ -29,15 +29,11 @@ class DCFSpinnerComponent : DCFComponent() {
 
         progressBar.isIndeterminate = true
 
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.parseColor(color.toString())
-            if (colorInt != null) {
-                progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // spinnerColor (explicit) > primaryColor (semantic)
+        ColorUtilities.getColor("spinnerColor", "primaryColor", props)?.let { colorInt ->
+            progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
 
         progressBar.setTag(R.id.dcf_component_type, "Spinner")
 
@@ -64,19 +60,14 @@ class DCFSpinnerComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        // Framework-level helper: Only update primaryColor if it actually changed
-        if (hasPropChanged("primaryColor", existingProps, props)) {
-            // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-            // primaryColor: spinner color
-            props["primaryColor"]?.let { color ->
-                try {
-                    val colorInt = ColorUtilities.parseColor(color as String)
-                    progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
-                    hasUpdates = true
-                } catch (e: Exception) {
-                }
+        // Framework-level helper: Only update color if it actually changed
+        if (hasPropChanged("spinnerColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
+            // COLOR SYSTEM: Explicit color override > Semantic color
+            // spinnerColor (explicit) > primaryColor (semantic)
+            ColorUtilities.getColor("spinnerColor", "primaryColor", props)?.let { colorInt ->
+                progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
             }
-            // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         }
 
         // Framework-level helper: Only update size if it actually changed

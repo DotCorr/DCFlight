@@ -29,14 +29,14 @@ class DCFToggleComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val switchControl = SwitchCompat(context)
 
-        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // primaryColor: active track and thumb color
-        // secondaryColor: inactive track color
-        // tertiaryColor: inactive thumb color
-        // StyleSheet.toMap() ALWAYS provides these colors
-        val activeColor = props["primaryColor"]?.let { parseColor(it.toString()) }
-        val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it.toString()) }
-        val activeThumbColor = props["primaryColor"]?.let { parseColor(it.toString()) }
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // activeColor (explicit) > primaryColor (semantic)
+        val activeColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
+            ?: props["primaryColor"]?.let { parseColor(it.toString()) }
+        val inactiveTrackColor = ColorUtilities.getColor("inactiveColor", "secondaryColor", props)
+            ?: props["secondaryColor"]?.let { parseColor(it.toString()) }
+        val activeThumbColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
+            ?: props["primaryColor"]?.let { parseColor(it.toString()) }
         val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it.toString()) }
         
         // Only set colors if StyleSheet provided them (should always be the case)
@@ -99,7 +99,9 @@ class DCFToggleComponent : DCFComponent() {
 
 
         // Framework-level helper: Only update colors if they actually changed
-        if (hasPropChanged("primaryColor", existingProps, props) || 
+        if (hasPropChanged("activeColor", existingProps, props) ||
+            hasPropChanged("inactiveColor", existingProps, props) ||
+            hasPropChanged("primaryColor", existingProps, props) || 
             hasPropChanged("secondaryColor", existingProps, props) ||
             hasPropChanged("tertiaryColor", existingProps, props)) {
             val states = arrayOf(
@@ -107,9 +109,15 @@ class DCFToggleComponent : DCFComponent() {
                 intArrayOf()
             )
             
-            val activeTrackColor = props["primaryColor"]?.let { parseColor(it as String) }
-            val inactiveTrackColor = props["secondaryColor"]?.let { parseColor(it as String) }
-            val activeThumbColor = props["primaryColor"]?.let { parseColor(it as String) }
+            // COLOR SYSTEM: Explicit color override > Semantic color
+            // activeColor (explicit) > primaryColor (semantic)
+            val activeTrackColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
+                ?: props["primaryColor"]?.let { parseColor(it as String) }
+            // inactiveColor (explicit) > secondaryColor (semantic)
+            val inactiveTrackColor = ColorUtilities.getColor("inactiveColor", "secondaryColor", props)
+                ?: props["secondaryColor"]?.let { parseColor(it as String) }
+            val activeThumbColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
+                ?: props["primaryColor"]?.let { parseColor(it as String) }
             val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) }
             
             if (activeTrackColor != null && inactiveTrackColor != null) {

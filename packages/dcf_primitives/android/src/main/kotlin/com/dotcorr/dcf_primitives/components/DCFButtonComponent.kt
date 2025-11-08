@@ -68,6 +68,7 @@ class DCFButtonComponent : DCFComponent() {
         // Update Compose content if props changed
         if (hasPropChanged("title", existingProps, props) ||
             hasPropChanged("disabled", existingProps, props) ||
+            hasPropChanged("textColor", existingProps, props) ||
             hasPropChanged("primaryColor", existingProps, props) ||
             hasPropChanged("backgroundColor", existingProps, props)) {
             updateComposeContent(composeView, props)
@@ -86,9 +87,9 @@ class DCFButtonComponent : DCFComponent() {
             is String -> d.toBoolean()
             else -> false
         }
-        val primaryColor = props["primaryColor"]?.let { 
-            ColorUtilities.parseColor(it.toString()) 
-        }
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // textColor (explicit) > primaryColor (semantic)
+        val primaryColor = ColorUtilities.getColor("textColor", "primaryColor", props)
         val backgroundColor = props["backgroundColor"]?.let { 
             ColorUtilities.parseColor(it.toString()) 
         }

@@ -36,36 +36,21 @@ class DCFTextInputComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val editText = AppCompatEditText(context)
 
-        // UNIFIED SEMANTIC COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // primaryColor: text color
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                editText.setTextColor(colorInt)
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // textColor (explicit) > primaryColor (semantic)
+        ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
+            editText.setTextColor(colorInt)
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
-        // secondaryColor: placeholder color
-        props["secondaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                editText.setHintTextColor(colorInt)
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // placeholderColor (explicit) > secondaryColor (semantic)
+        ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
+            editText.setHintTextColor(colorInt)
         }
-        // NO FALLBACK: If no secondaryColor provided, don't set color (StyleSheet is the only source)
         
-        // accentColor: selection color
-        props["accentColor"]?.let { color ->
-            val colorInt = ColorUtilities.color(color.toString())
-            if (colorInt != null) {
-                editText.setHighlightColor(colorInt)
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // selectionColor (explicit) > accentColor (semantic)
+        ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
+            editText.setHighlightColor(colorInt)
         }
-        // NO FALLBACK: If no accentColor provided, don't set color (StyleSheet is the only source)
         
         // backgroundColor handled by applyStyles
 
@@ -112,24 +97,25 @@ class DCFTextInputComponent : DCFComponent() {
         }
 
         // Framework-level helper: Only update colors if they actually changed
-        if (hasPropChanged("primaryColor", existingProps, props)) {
-            props["primaryColor"]?.let { color: Any ->
-                val colorInt = parseColor(color as String)
-                if (colorInt != null) {
-                    editText.setTextColor(colorInt)
-                }
+        if (hasPropChanged("textColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
+            // COLOR SYSTEM: Explicit color override > Semantic color
+            // textColor (explicit) > primaryColor (semantic)
+            ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
+                editText.setTextColor(colorInt)
             }
         }
 
-        if (hasPropChanged("secondaryColor", existingProps, props)) {
-            props["secondaryColor"]?.let { color: Any ->
-                editText.setHintTextColor(parseColor(color as String))
+        if (hasPropChanged("placeholderColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
+            // placeholderColor (explicit) > secondaryColor (semantic)
+            ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
+                editText.setHintTextColor(colorInt)
             }
         }
 
-        if (hasPropChanged("accentColor", existingProps, props)) {
-            props["accentColor"]?.let { color: Any ->
-                editText.setHighlightColor(parseColor(color as String))
+        if (hasPropChanged("selectionColor", existingProps, props) || hasPropChanged("accentColor", existingProps, props)) {
+            // selectionColor (explicit) > accentColor (semantic)
+            ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
+                editText.setHighlightColor(colorInt)
             }
         }
 

@@ -27,24 +27,20 @@ class DCFSliderComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val seekBar = SeekBar(context)
         
-        // UNIFIED SEMANTIC COLOR SYSTEM: Component handles semantic colors
-        // primaryColor: minimum track and thumb color
-        // secondaryColor: maximum track color
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        // StyleSheet.toMap() always provides these colors, so they should never be null
-        props["primaryColor"]?.let { colorStr ->
-            val colorInt = parseColor(colorStr.toString())
-            if (colorInt != null) {
-                seekBar.progressTintList = ColorStateList.valueOf(colorInt)
-                seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
-            }
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // minimumTrackColor (explicit) > primaryColor (semantic)
+        ColorUtilities.getColor("minimumTrackColor", "primaryColor", props)?.let { colorInt ->
+            seekBar.progressTintList = ColorStateList.valueOf(colorInt)
         }
         
-        props["secondaryColor"]?.let { colorStr ->
-            val colorInt = parseColor(colorStr.toString())
-            if (colorInt != null) {
-                seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
-            }
+        // thumbColor (explicit) > primaryColor (semantic)
+        ColorUtilities.getColor("thumbColor", "primaryColor", props)?.let { colorInt ->
+            seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
+        }
+        
+        // maximumTrackColor (explicit) > secondaryColor (semantic)
+        ColorUtilities.getColor("maximumTrackColor", "secondaryColor", props)?.let { colorInt ->
+            seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
         }
         
         seekBar.setTag(R.id.dcf_component_type, "Slider")
@@ -128,30 +124,28 @@ class DCFSliderComponent : DCFComponent() {
         }
 
         // Framework-level helper: Only update colors if they actually changed
-        if (hasPropChanged("primaryColor", existingProps, props)) {
-            props["primaryColor"]?.let { color ->
-                try {
-                    val colorInt = ColorUtilities.parseColor(color as String)
-                    seekBar.progressTintList = ColorStateList.valueOf(colorInt)
-                    seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
-                    hasUpdates = true
-                } catch (e: Exception) {
-                    // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
-                }
+        if (hasPropChanged("minimumTrackColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
+            // COLOR SYSTEM: Explicit color override > Semantic color
+            // minimumTrackColor (explicit) > primaryColor (semantic)
+            ColorUtilities.getColor("minimumTrackColor", "primaryColor", props)?.let { colorInt ->
+                seekBar.progressTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
             }
         }
 
-        if (hasPropChanged("secondaryColor", existingProps, props)) {
-            props["secondaryColor"]?.let { color ->
-                try {
-                    val colorInt = ColorUtilities.parseColor(color as String)
-                    if (colorInt != null) {
-                        seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
-                        hasUpdates = true
-                    }
-                } catch (e: Exception) {
-                    // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
-                }
+        if (hasPropChanged("thumbColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
+            // thumbColor (explicit) > primaryColor (semantic)
+            ColorUtilities.getColor("thumbColor", "primaryColor", props)?.let { colorInt ->
+                seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
+            }
+        }
+
+        if (hasPropChanged("maximumTrackColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
+            // maximumTrackColor (explicit) > secondaryColor (semantic)
+            ColorUtilities.getColor("maximumTrackColor", "secondaryColor", props)?.let { colorInt ->
+                seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
             }
         }
 

@@ -561,5 +561,44 @@ object ColorUtilities {
     fun parseColor(colorString: String, fallback: Int = Color.TRANSPARENT): Int {
         return color(colorString) ?: fallback
     }
+
+    /**
+     * Get color with explicit override fallback to semantic color
+     * Priority: explicitColor > semanticColor
+     *
+     * @param explicitColor Explicit color prop key (e.g., "textColor", "placeholderColor")
+     * @param semanticColor Semantic color prop key (e.g., "primaryColor", "secondaryColor")
+     * @param props Component props dictionary
+     * @return Color Int if found, null otherwise
+     */
+    @JvmStatic
+    fun getColor(
+        explicitColor: String?,
+        semanticColor: String?,
+        props: Map<String, Any>
+    ): Int? {
+        // Priority 1: Check explicit color prop
+        if (explicitColor != null) {
+            props[explicitColor]?.let { explicitColorStr ->
+                val colorInt = color(explicitColorStr.toString())
+                if (colorInt != null) {
+                    return colorInt
+                }
+            }
+        }
+
+        // Priority 2: Fall back to semantic color
+        if (semanticColor != null) {
+            props[semanticColor]?.let { semanticColorStr ->
+                val colorInt = color(semanticColorStr.toString())
+                if (colorInt != null) {
+                    return colorInt
+                }
+            }
+        }
+
+        // No color found
+        return null
+    }
 }
 
