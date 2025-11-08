@@ -116,9 +116,12 @@ extension UIView {
         }
 
         if needsMasksToBoundsFalse && hasCornerRadius {
-            layer.masksToBounds = false  // Allow shadows
+            layer.masksToBounds = false
+            self.clipsToBounds = true
         } else if needsMasksToBoundsFalse {
             layer.masksToBounds = false
+        } else if hasCornerRadius {
+            self.clipsToBounds = true
         }
 
 
@@ -155,11 +158,6 @@ extension UIView {
 
             if elevation > 0 {
                 needsMasksToBoundsFalse = true
-                if hasCornerRadius {
-                    layer.masksToBounds = false
-                } else {
-                    layer.masksToBounds = false
-                }
             }
         }
 
