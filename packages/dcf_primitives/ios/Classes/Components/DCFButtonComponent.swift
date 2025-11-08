@@ -28,9 +28,6 @@ class DCFButtonComponent: NSObject, DCFComponent {
         button.layer.cornerRadius = 8
         button.clipsToBounds = true
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
-        // backgroundColor: handled by applyStyles from StyleSheet
         if let textColor = ColorUtilities.getColor(
             explicitColor: "textColor",
             semanticColor: "primaryColor",
@@ -38,9 +35,6 @@ class DCFButtonComponent: NSObject, DCFComponent {
         ) {
             button.setTitleColor(textColor, for: .normal)
         }
-        
-        // NO FALLBACK: backgroundColor comes from StyleSheet only
-        // StyleSheet will always provide this via toMap() fallbacks
         
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonPress(_:)), for: .touchUpInside)
         button.addTarget(DCFButtonComponent.sharedInstance, action: #selector(handleButtonTouchDown(_:)), for: .touchDown)
@@ -66,9 +60,6 @@ class DCFButtonComponent: NSObject, DCFComponent {
         
         button.applyStyles(props: props)
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
-        // IMPORTANT: Set text color AFTER applyStyles to ensure it's not overridden
         if let textColor = ColorUtilities.getColor(
             explicitColor: "textColor",
             semanticColor: "primaryColor",

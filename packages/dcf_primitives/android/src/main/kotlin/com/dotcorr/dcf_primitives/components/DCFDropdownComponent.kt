@@ -29,11 +29,7 @@ class DCFDropdownComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val spinner = Spinner(context)
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // placeholderColor (explicit) > secondaryColor (semantic)
-        // Note: Android Spinner doesn't have direct placeholder, but we can set it on the selected view
         ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
-            // Store color for later use when adapter is set
             spinner.setTag("dcf_dropdown_placeholder_color", colorInt)
         }
         
@@ -63,22 +59,17 @@ class DCFDropdownComponent : DCFComponent() {
         return spinner
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val spinner = view as Spinner
         var hasUpdates = false
 
-        // Framework-level helper: Only update items if they actually changed
         if (hasPropChanged("items", existingProps, props)) {
             props["items"]?.let { items ->
             when (items) {
                 is List<*> -> {
-                    // Extract label/title from each item map (matching iOS behavior)
                     val itemStrings = items.mapNotNull { item ->
                         when (item) {
                             is Map<*, *> -> {
-                                // Try label first (from Dart toMap), then title (fallback)
                                 (item["label"] as? String) ?: (item["title"] as? String) ?: ""
                             }
                             is String -> item
@@ -93,7 +84,6 @@ class DCFDropdownComponent : DCFComponent() {
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                     spinner.adapter = adapter
                     
-                    // Apply placeholder color to selected view if no item is selected
                     applyPlaceholderColor(spinner, props)
                     
                     hasUpdates = true
@@ -102,10 +92,7 @@ class DCFDropdownComponent : DCFComponent() {
         }
         }
         
-        // Framework-level helper: Only update placeholder color if it changed
         if (hasPropChanged("placeholderColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // placeholderColor (explicit) > secondaryColor (semantic)
             ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
                 spinner.setTag("dcf_dropdown_placeholder_color", colorInt)
                 applyPlaceholderColor(spinner, props)
@@ -113,7 +100,6 @@ class DCFDropdownComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update selectedIndex if it actually changed
         if (hasPropChanged("selectedIndex", existingProps, props)) {
             props["selectedIndex"]?.let {
             val index = when (it) {
@@ -128,7 +114,6 @@ class DCFDropdownComponent : DCFComponent() {
         }
         }
 
-        // Framework-level helper: Only update enabled if it actually changed
         if (hasPropChanged("enabled", existingProps, props)) {
             props["enabled"]?.let {
                 val enabled = when (it) {
@@ -149,14 +134,10 @@ class DCFDropdownComponent : DCFComponent() {
     }
     
     private fun applyPlaceholderColor(spinner: Spinner, props: Map<String, Any>) {
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // placeholderColor (explicit) > secondaryColor (semantic)
         val placeholderColor = ColorUtilities.getColor("placeholderColor", "secondaryColor", props)
             ?: (spinner.getTag("dcf_dropdown_placeholder_color") as? Int)
         
         placeholderColor?.let { colorInt ->
-            // Apply color to the selected view (the visible text)
-            // This works when no item is selected or when showing placeholder
             spinner.post {
                 val selectedView = spinner.selectedView as? TextView
                 selectedView?.setTextColor(colorInt)

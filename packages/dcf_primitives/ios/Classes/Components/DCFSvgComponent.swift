@@ -40,8 +40,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // tintColor (explicit) > primaryColor (semantic)
         if let tintColor = ColorUtilities.getColor(
             explicitColor: "tintColor",
             semanticColor: "primaryColor",
@@ -110,7 +108,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
     }
     
     private func applyCachedImageToView(_ svgImage: SVGKImage, imageView: UIImageView, props: [String: Any]) {
-        // Use primaryColor from StyleSheet for SVG tinting (replaces legacy tintColor prop)
         let hasPrimaryColor = props["primaryColor"] as? String != nil
         
         if hasPrimaryColor {
@@ -124,8 +121,6 @@ class DCFSvgComponent: NSObject, DCFComponent {
     
     
     private func applyTintColor(to imageView: UIImageView, props: [String: Any]) {
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // tintColor (explicit) > primaryColor (semantic)
         if let tintColor = ColorUtilities.getColor(
             explicitColor: "tintColor",
             semanticColor: "primaryColor",

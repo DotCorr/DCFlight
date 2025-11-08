@@ -237,7 +237,6 @@ class YogaShadowTree private constructor() {
             parentNode.addChildAt(childNode, safeIndex)
             nodeParents[childId] = parentId
             
-            // CRITICAL: Apply parent layout inheritance to child for cross-platform consistency
             applyParentLayoutInheritance(childNode, parentNode, childId)
             
             setupMeasureFunction(childId, childNode)
@@ -805,7 +804,6 @@ class YogaShadowTree private constructor() {
         screenRoots.clear()
         screenRootIds.clear()
         
-        // CRITICAL: Recreate the root node after clearing
         rootNode = YogaNodeFactory.create()
         rootNode?.let { root ->
             root.setDirection(YogaDirection.LTR)

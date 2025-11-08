@@ -126,8 +126,6 @@ class YogaShadowTree {
                     return YGSize(width: Float(constraintSize.width), height: Float(constraintSize.height))
                 }
                 
-                // CRITICAL: UI operations must be on main thread
-                // Yoga's measure function may be called on background thread, but intrinsicContentSize requires main thread
                 var intrinsicSize = CGSize.zero
                 if Thread.isMainThread {
                     intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: [:])
@@ -177,7 +175,6 @@ class YogaShadowTree {
             
             nodeParents[childId] = parentId
             
-            // CRITICAL: Apply parent layout inheritance to child for cross-platform consistency
             applyParentLayoutInheritance(childNode: childNode, parentNode: parentNode, childId: childId)
             
             setupMeasureFunction(nodeId: childId, node: childNode)

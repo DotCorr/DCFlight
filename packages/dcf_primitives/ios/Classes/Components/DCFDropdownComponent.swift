@@ -19,9 +19,6 @@ class DCFDropdownComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let button = UIButton(type: .system)
         
-        // NO FALLBACK: Colors come from StyleSheet only
-        // StyleSheet will always provide these via toMap() fallbacks
-        
         button.layer.cornerRadius = 8
         button.layer.borderWidth = 1
         button.contentHorizontalAlignment = .left
@@ -30,8 +27,6 @@ class DCFDropdownComponent: NSObject, DCFComponent {
         button.applyStyles(props: props)
         
         let arrowImageView = UIImageView(image: UIImage(systemName: "chevron.down"))
-        // NO FALLBACK: Colors come from StyleSheet only
-        // StyleSheet will always provide these via toMap() fallbacks
         arrowImageView.contentMode = .scaleAspectFit
         button.addSubview(arrowImageView)
         
@@ -87,8 +82,6 @@ class DCFDropdownComponent: NSObject, DCFComponent {
                 let placeholder = props["placeholder"] as? String ?? "Select..."
                 button.setTitle(placeholder, for: .normal)
                 
-                // COLOR SYSTEM: Explicit color override > Semantic color
-                // placeholderColor (explicit) > secondaryColor (semantic)
                 if let placeholderColor = ColorUtilities.getColor(
                     explicitColor: "placeholderColor",
                     semanticColor: "secondaryColor",
@@ -101,8 +94,6 @@ class DCFDropdownComponent: NSObject, DCFComponent {
             let placeholder = props["placeholder"] as? String ?? "Select..."
             button.setTitle(placeholder, for: .normal)
             
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // placeholderColor (explicit) > secondaryColor (semantic)
             if let placeholderColor = ColorUtilities.getColor(
                 explicitColor: "placeholderColor",
                 semanticColor: "secondaryColor",
@@ -343,9 +334,6 @@ class MultiSelectDropdownViewController: UIViewController {
     }
     
     private func setupView() {
-        // NO FALLBACK: backgroundColor comes from StyleSheet only
-        // StyleSheet will always provide this via toMap() fallbacks
-        
         let navBar = UINavigationBar()
         let navItem = UINavigationItem(title: "Select Items")
         let doneButton = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(donePressed))

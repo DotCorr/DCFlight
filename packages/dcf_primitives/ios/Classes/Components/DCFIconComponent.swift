@@ -21,8 +21,6 @@ class DCFIconComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // iconColor (explicit) > primaryColor (semantic)
         if let iconColor = ColorUtilities.getColor(
             explicitColor: "iconColor",
             semanticColor: "primaryColor",
@@ -58,14 +56,11 @@ class DCFIconComponent: NSObject, DCFComponent {
         } else {
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // iconColor (explicit) > primaryColor (semantic)
         if let iconColor = ColorUtilities.getColor(
             explicitColor: "iconColor",
             semanticColor: "primaryColor",
             from: props
         ) {
-            // Convert UIColor to hex string for SVG component
             var red: CGFloat = 0
             var green: CGFloat = 0
             var blue: CGFloat = 0

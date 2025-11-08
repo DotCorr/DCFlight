@@ -24,7 +24,7 @@ abstract class DCFComponent {
         const val TAG_VIEW_ID = "dcf_view_id"
         const val TAG_EVENT_TYPES = "dcf_event_types"  
         const val TAG_EVENT_CALLBACK = "dcf_event_callback"
-        const val TAG_STORED_PROPS = "dcf_stored_props"  //  pattern: store props in view
+        const val TAG_STORED_PROPS = "dcf_stored_props"
     }
 
     /**
@@ -34,18 +34,16 @@ abstract class DCFComponent {
 
     /**
      * Updates an existing view with new props
-     * Framework-level implementation: Automatically merges props ( pattern)
+     * Framework-level implementation: Automatically merges props (React Native pattern)
      * Components MUST override updateViewInternal for their specific update logic
      * 
      * This method is final to ensure all components use the framework's props merging
      */
     fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        //  pattern: Store and merge props for stability
         val existingProps = getStoredProps(view)
         val mergedProps = mergeProps(existingProps, props)
         storeProps(view, mergedProps)
         
-        // Filter out null values for processing
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
         val nonNullExistingProps = existingProps.filterValues { it != null }.mapValues { it.value!! }
         
@@ -53,7 +51,7 @@ abstract class DCFComponent {
     }
     
     /**
-     * Store props in view tag for merging on updates ( pattern)
+     * Store props in view tag for merging on updates (React Native pattern)
      * This ensures properties are preserved across partial updates
      */
     protected fun storeProps(view: View, props: Map<String, Any?>) {
@@ -69,26 +67,20 @@ abstract class DCFComponent {
     }
     
     /**
-     * Merge existing props with updates ( pattern)
+     * Merge existing props with updates (React Native pattern)
      * - Null values remove props
      * - Non-null values update props
      * - Missing props are preserved
-     * - CRITICAL: Semantic color props are removed if not in new props (StyleSheet property removal)
+     * - Semantic color props are removed if not in new props (StyleSheet property removal)
      */
     protected fun mergeProps(existing: Map<String, Any?>, updates: Map<String, Any?>): MutableMap<String, Any?> {
         val merged = existing.toMutableMap()
         
-        // CRITICAL: StyleSheet ALWAYS provides semantic colors via toMap()
-        // Only remove semantic colors if explicitly set to null in updates
-        // If not in updates, preserve from existing (StyleSheet should always include them)
         val semanticColorKeys = listOf("primaryColor", "secondaryColor", "tertiaryColor", "accentColor")
         for (key in semanticColorKeys) {
-            // Only remove if explicitly null in updates (explicit removal)
             if (updates.containsKey(key) && updates[key] == null) {
                 merged.remove(key)
             }
-            // If in updates and not null, it will be set below
-            // If not in updates at all, preserve from existing (StyleSheet always provides)
         }
         
         for ((key, value) in updates) {
@@ -126,13 +118,8 @@ abstract class DCFComponent {
     protected abstract fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean
     
     /**
-     * Framework-level helper: Check if a specific prop changed between existing and new props
+     * Check if a specific prop changed between existing and new props
      * Use this in updateViewInternal to only update/reload if the prop actually changed
-     * 
-     * Example (WebView):
-     * if (hasPropChanged("source", existingProps, props)) {
-     *     webView.loadUrl(newSource)
-     * }
      */
     protected fun hasPropChanged(key: String, existing: Map<String, Any>, new: Map<String, Any>): Boolean {
         val existingValue = existing[key]
@@ -141,24 +128,11 @@ abstract class DCFComponent {
     }
     
     /**
-     * Framework-level helper: Check if only semantic colors changed (no state props changed)
+     * Check if only semantic colors changed (no state props changed)
      * Use this to preserve component state when only theme/colors change
      * 
-     * CRITICAL PATTERN: When only colors change, read current state from view (not props)
+     * When only colors change, read current state from view (not props)
      * This prevents components from resetting when theme toggles
-     * 
-     * Example (SegmentedControl):
-     * if (onlySemanticColorsChanged(existingProps, props)) {
-     *     // Read current selectedIndex from view state (like slider reads seekBar.progress)
-     *     val selectedIndex = getCurrentSelectedIndexFromView(view)
-     *     updateButtonColors(container, selectedIndex, props)
-     * }
-     * 
-     * Example (Slider):
-     * if (onlySemanticColorsChanged(existingProps, props)) {
-     *     // Slider already reads value from seekBar.progress, so it's safe
-     *     updateColors(seekBar, props)
-     * }
      * 
      * @param existingProps Previous props (from getStoredProps)
      * @param props New props (merged)
@@ -171,13 +145,11 @@ abstract class DCFComponent {
         stateProps: List<String> = emptyList()
     ): Boolean {
         val semanticColorKeys = listOf("primaryColor", "secondaryColor", "tertiaryColor", "accentColor")
-        val allStateProps = stateProps + listOf("segments", "enabled", "disabled") // Common state props
+        val allStateProps = stateProps + listOf("segments", "enabled", "disabled")
         
-        // Check if any state prop changed
         val stateChanged = allStateProps.any { hasPropChanged(it, existingProps, props) }
         if (stateChanged) return false
         
-        // Check if any semantic color changed
         val colorChanged = semanticColorKeys.any { hasPropChanged(it, existingProps, props) }
         
         return colorChanged

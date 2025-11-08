@@ -51,8 +51,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             scrollView.showsHorizontalScrollIndicator = showsScrollIndicator
         }
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // tertiaryColor: scroll indicator color
         if let tertiaryColor = props["tertiaryColor"] as? String,
            let indicatorColor = ColorUtilities.color(fromHexString: tertiaryColor) {
             if #available(iOS 13.0, *) {
@@ -107,9 +105,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
                 scrollView.backgroundColor = uiColor
             }
         }
-        
-        // NO FALLBACK: backgroundColor comes from StyleSheet only
-        // StyleSheet will always provide this via toMap() fallbacks
         
         if let borderRadius = props["borderRadius"] as? CGFloat {
             scrollView.layer.cornerRadius = borderRadius
@@ -281,7 +276,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // ScrollViews don't have intrinsic size - they fill available space
         return CGSize.zero
     }
     

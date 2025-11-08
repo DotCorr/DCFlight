@@ -27,18 +27,14 @@ class DCFSliderComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val seekBar = SeekBar(context)
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // minimumTrackColor (explicit) > primaryColor (semantic)
         ColorUtilities.getColor("minimumTrackColor", "primaryColor", props)?.let { colorInt ->
             seekBar.progressTintList = ColorStateList.valueOf(colorInt)
         }
         
-        // thumbColor (explicit) > primaryColor (semantic)
         ColorUtilities.getColor("thumbColor", "primaryColor", props)?.let { colorInt ->
             seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
         }
         
-        // maximumTrackColor (explicit) > secondaryColor (semantic)
         ColorUtilities.getColor("maximumTrackColor", "secondaryColor", props)?.let { colorInt ->
             seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
         }
@@ -74,13 +70,10 @@ class DCFSliderComponent : DCFComponent() {
         return seekBar
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val seekBar = view as SeekBar
         var hasUpdates = false
 
-        // Framework-level helper: Only update value if it actually changed (prevents restart on theme toggle)
         if (hasPropChanged("value", existingProps, props)) {
             props["value"]?.let {
                 val value = when (it) {
@@ -96,7 +89,6 @@ class DCFSliderComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update min/max if they actually changed
         if (hasPropChanged("minimumValue", existingProps, props)) {
             props["minimumValue"]?.let {
                 val minValue = when (it) {
@@ -123,10 +115,7 @@ class DCFSliderComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update colors if they actually changed
         if (hasPropChanged("minimumTrackColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // minimumTrackColor (explicit) > primaryColor (semantic)
             ColorUtilities.getColor("minimumTrackColor", "primaryColor", props)?.let { colorInt ->
                 seekBar.progressTintList = ColorStateList.valueOf(colorInt)
                 hasUpdates = true
@@ -134,7 +123,6 @@ class DCFSliderComponent : DCFComponent() {
         }
 
         if (hasPropChanged("thumbColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            // thumbColor (explicit) > primaryColor (semantic)
             ColorUtilities.getColor("thumbColor", "primaryColor", props)?.let { colorInt ->
                 seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
                 hasUpdates = true
@@ -142,7 +130,6 @@ class DCFSliderComponent : DCFComponent() {
         }
 
         if (hasPropChanged("maximumTrackColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
-            // maximumTrackColor (explicit) > secondaryColor (semantic)
             ColorUtilities.getColor("maximumTrackColor", "secondaryColor", props)?.let { colorInt ->
                 seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
                 hasUpdates = true

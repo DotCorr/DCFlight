@@ -22,10 +22,8 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         label.numberOfLines = 0
         
-        // Store props for merging on updates (React Native pattern)
         storeProps(props.mapValues { $0 as Any? }, in: label)
         
-        // Set initial text content if provided
         if let content = props["content"] as? String {
             label.text = content
         }
@@ -34,9 +32,6 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         label.applyStyles(props: props)
         
-        // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
         if let textColor = ColorUtilities.getColor(
             explicitColor: "textColor",
             semanticColor: "primaryColor",
@@ -53,13 +48,10 @@ class DCFTextComponent: NSObject, DCFComponent {
             return false 
         }
         
-        // React Native pattern: Merge props to preserve existing values
-        // Framework-level mergeProps now handles semantic color removal automatically
         let existingProps = getStoredProps(from: label)
         let mergedProps = mergeProps(existingProps, with: props.mapValues { $0 as Any? })
         storeProps(mergedProps, in: label)
         
-        // Filter out null values for processing
         let nonNullProps = mergedProps.compactMapValues { $0 }
         
         if let content = nonNullProps["content"] as? String {
@@ -112,11 +104,7 @@ class DCFTextComponent: NSObject, DCFComponent {
                 label.font = UIFont.systemFont(ofSize: finalFontSize, weight: finalFontWeight)
             }
         }
-        
-        // REMOVED: Component-specific color handling
-        // Framework now handles color prop universally via applyStyles
-        // This ensures consistent behavior across all components
-        
+
         if let textAlign = nonNullProps["textAlign"] as? String {
             switch textAlign {
             case "center":
@@ -136,10 +124,6 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         label.applyStyles(props: nonNullProps)
         
-        // CRITICAL: Set text color AFTER applyStyles to ensure it's not overridden
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
-        // Use merged props to preserve colors across updates
         if let textColor = ColorUtilities.getColor(
             explicitColor: "textColor",
             semanticColor: "primaryColor",
@@ -162,12 +146,9 @@ class DCFTextComponent: NSObject, DCFComponent {
             return CGSize.zero
         }
         
-        // Calculate size similar to Android's measure() approach
-        // Use sizeThatFits with maximum constraints to get intrinsic size
         let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         let size = label.sizeThatFits(maxSize)
         
-        // Ensure minimum size of 1x1 (matching Android behavior)
         return CGSize(width: max(1, size.width), height: max(1, size.height))
     }
     

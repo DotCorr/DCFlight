@@ -141,8 +141,6 @@ object DCDivergerUtil {
 
     private fun initializeDCFlightSystems(activity: Activity, binaryMessenger: BinaryMessenger) {
         try {
-            // CRITICAL: Pass the Activity itself, not applicationContext
-            // The bootstrapper needs Activity.setContentView() to replace root
             DCMauiBridgeImpl.shared.setContext(activity)
 
             Log.d(TAG, "Ensuring DCFlight systems are initialized")

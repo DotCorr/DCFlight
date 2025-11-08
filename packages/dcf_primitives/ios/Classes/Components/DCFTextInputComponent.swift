@@ -25,8 +25,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textView = UITextView()
             textView.font = UIFont.systemFont(ofSize: 16)
             
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // textColor (explicit) > primaryColor (semantic)
             if let textColor = ColorUtilities.getColor(
                 explicitColor: "textColor",
                 semanticColor: "primaryColor",
@@ -35,7 +33,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 textView.textColor = textColor
             }
             
-            // selectionColor (explicit) > accentColor (semantic)
             if let selectionColor = ColorUtilities.getColor(
                 explicitColor: "selectionColor",
                 semanticColor: "accentColor",
@@ -44,7 +41,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 textView.tintColor = selectionColor
             }
             
-            // backgroundColor handled by applyStyles
             textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
             textView.delegate = DCFTextInputComponent.sharedInstance
             inputView = textView
@@ -52,8 +48,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             let textField = UITextField()
             textField.font = UIFont.systemFont(ofSize: 16)
             
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // textColor (explicit) > primaryColor (semantic)
             if let textColor = ColorUtilities.getColor(
                 explicitColor: "textColor",
                 semanticColor: "primaryColor",
@@ -62,7 +56,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 textField.textColor = textColor
             }
             
-            // placeholderColor (explicit) > secondaryColor (semantic)
             if let placeholder = props["placeholder"] as? String {
                 if let placeholderColor = ColorUtilities.getColor(
                     explicitColor: "placeholderColor",
@@ -76,7 +69,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 }
             }
             
-            // selectionColor (explicit) > accentColor (semantic)
             if let selectionColor = ColorUtilities.getColor(
                 explicitColor: "selectionColor",
                 semanticColor: "accentColor",
@@ -85,7 +77,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
                 textField.tintColor = selectionColor
             }
             
-            // backgroundColor handled by applyStyles
             textField.borderStyle = .none
             textField.delegate = DCFTextInputComponent.sharedInstance
             inputView = textField
@@ -115,8 +106,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textField.placeholder = placeholder
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
         if let textColor = ColorUtilities.getColor(
             explicitColor: "textColor",
             semanticColor: "primaryColor",
@@ -125,7 +114,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textField.textColor = textColor
         }
         
-        // placeholderColor (explicit) > secondaryColor (semantic)
         if let placeholderColor = ColorUtilities.getColor(
             explicitColor: "placeholderColor",
             semanticColor: "secondaryColor",
@@ -161,7 +149,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textField.isEnabled = editable
         }
         
-        // selectionColor (explicit) > accentColor (semantic)
         if let selectionColor = ColorUtilities.getColor(
             explicitColor: "selectionColor",
             semanticColor: "accentColor",
@@ -205,8 +192,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textView.isEditable = editable
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // selectionColor (explicit) > accentColor (semantic)
         if let selectionColor = ColorUtilities.getColor(
             explicitColor: "selectionColor",
             semanticColor: "accentColor",
@@ -215,7 +200,6 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
             textView.tintColor = selectionColor
         }
         
-        // textColor (explicit) > primaryColor (semantic)
         if let textColor = ColorUtilities.getColor(
             explicitColor: "textColor",
             semanticColor: "primaryColor",

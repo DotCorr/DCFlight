@@ -38,25 +38,19 @@ class DCFSegmentedControlComponent : DCFComponent() {
         container.orientation = LinearLayout.HORIZONTAL
         container.setTag(R.id.dcf_component_type, "SegmentedControl")
         
-        // Store props
         storeProps(container, props)
         
-        // Parse segments
         val segments = parseSegments(props)
         val selectedIndex = getSelectedIndex(props, segments.size)
         
-        // Create buttons for each segment
         segments.forEachIndexed { index, segmentTitle ->
             val button = createSegmentButton(context, segmentTitle, index == selectedIndex, index, segments.size)
-            // Set up click listener immediately
             button.setOnClickListener {
                 val currentSegments = parseSegments(getStoredProps(container))
                 val title = currentSegments.getOrNull(index) ?: ""
                 
-                // Immediately update visual state for better UX
                 updateSelectedButton(container, index)
                 
-                // Propagate event to Dart side
                 propagateEvent(container, "onSelectionChange", mapOf(
                     "selectedIndex" to index,
                     "selectedTitle" to title
@@ -65,7 +59,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
             container.addView(button)
         }
         
-        // Apply framework-level styles
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         container.applyStyles(nonNullProps)
         
@@ -78,7 +71,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val container = view as? LinearLayout ?: return false
         var hasUpdates = false
 
-        // Update if segments changed
         if (hasPropChanged("segments", existingProps, props)) {
             val segments = parseSegments(props)
             val selectedIndex = getSelectedIndex(props, segments.size)
@@ -86,15 +78,12 @@ class DCFSegmentedControlComponent : DCFComponent() {
             container.removeAllViews()
             segments.forEachIndexed { index, segmentTitle ->
                 val button = createSegmentButton(container.context, segmentTitle, index == selectedIndex, index, segments.size)
-                // Set up click listener
                 button.setOnClickListener {
                     val currentSegments = parseSegments(getStoredProps(container))
                     val title = currentSegments.getOrNull(index) ?: ""
                     
-                    // Immediately update visual state
                     updateSelectedButton(container, index)
                     
-                    // Propagate event to Dart side
                     propagateEvent(container, "onSelectionChange", mapOf(
                         "selectedIndex" to index,
                         "selectedTitle" to title
@@ -105,17 +94,13 @@ class DCFSegmentedControlComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        // Update selected index
         if (hasPropChanged("selectedIndex", existingProps, props)) {
             val selectedIndex = getSelectedIndex(props, container.childCount)
             updateSelectedButton(container, selectedIndex)
             hasUpdates = true
         }
 
-        // Update colors if changed - use framework helper to preserve state
         if (onlySemanticColorsChanged(existingProps, props, listOf("selectedIndex"))) {
-            // Framework-level: Read current selectedIndex from view state (like slider reads seekBar.progress)
-            // This preserves user's selection when theme toggles
             val selectedIndex = getCurrentSelectedIndex(container)
             updateButtonColors(container, selectedIndex, props)
             hasUpdates = true
@@ -125,13 +110,11 @@ class DCFSegmentedControlComponent : DCFComponent() {
             hasPropChanged("secondaryColor", existingProps, props) ||
             hasPropChanged("tertiaryColor", existingProps, props) ||
             hasPropChanged("accentColor", existingProps, props)) {
-            // Colors changed but state also changed - use props
             val selectedIndex = getSelectedIndex(props, container.childCount)
             updateButtonColors(container, selectedIndex, props)
             hasUpdates = true
         }
 
-        // Update enabled state
         if (hasPropChanged("enabled", existingProps, props)) {
             val enabled = when (val en = props["enabled"]) {
                 is Boolean -> en
@@ -144,7 +127,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
             hasUpdates = true
         }
         
-        // Apply framework-level styles
         container.applyStyles(props)
 
         return hasUpdates
@@ -186,31 +168,25 @@ class DCFSegmentedControlComponent : DCFComponent() {
         button.gravity = Gravity.CENTER
         button.textSize = 14f
         
-        // Disable all caps to prevent text clipping
         button.setAllCaps(false)
         
-        // Minimal padding - let layout props control sizing
         val horizontalPadding = (8 * context.resources.displayMetrics.density).toInt()
         val verticalPadding = (4 * context.resources.displayMetrics.density).toInt()
         button.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
         
-        // Remove default button insets that cause clipping
         button.setIncludeFontPadding(false)
         
-        // Let button wrap content - width based on text, height based on content
         val layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
         
-        // Add negative margins to connect buttons
         if (index > 0) {
             layoutParams.marginStart = (-1 * context.resources.displayMetrics.density).toInt()
         }
         
         button.layoutParams = layoutParams
         
-        // Set initial background
         updateButtonBackground(button, isSelected, index, totalCount)
         
         return button
@@ -219,7 +195,6 @@ class DCFSegmentedControlComponent : DCFComponent() {
     private fun updateButtonBackground(button: Button, isSelected: Boolean, index: Int, totalCount: Int) {
         val drawable = GradientDrawable()
         
-        // Set corner radius based on position
         val cornerRadius = 8f * button.context.resources.displayMetrics.density
         when {
             index == 0 && totalCount == 1 -> {
@@ -236,10 +211,8 @@ class DCFSegmentedControlComponent : DCFComponent() {
             }
         }
         
-        // Set stroke
         drawable.setStroke(2, Color.parseColor("#E0E0E0"))
         
-        // Set background color based on selection
         if (isSelected) {
             drawable.setColor(Color.parseColor("#2196F3")) // Material Blue
             button.setTextColor(Color.WHITE)
@@ -252,16 +225,14 @@ class DCFSegmentedControlComponent : DCFComponent() {
     }
     
     private fun getCurrentSelectedIndex(container: LinearLayout): Int {
-        // Framework-level: Read current state from view (like slider reads seekBar.progress)
         for (i in 0 until container.childCount) {
             val button = container.getChildAt(i) as? Button ?: continue
-            // Selected button has white text color, unselected has colored text
             val textColor = button.currentTextColor
             if (textColor == Color.WHITE) {
                 return i
             }
         }
-        return 0 // Default to first if none found
+        return 0
     }
     
     private fun updateSelectedButton(container: LinearLayout, selectedIndex: Int) {
@@ -273,13 +244,10 @@ class DCFSegmentedControlComponent : DCFComponent() {
     }
     
     private fun updateButtonColors(container: LinearLayout, selectedIndex: Int, props: Map<String, Any>) {
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // selectedBackgroundColor (explicit) > primaryColor (semantic)
         val primaryColor = ColorUtilities.getColor("selectedBackgroundColor", "primaryColor", props)
             ?: props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
             ?: Color.parseColor("#2196F3")
         
-        // tintColor (explicit) > secondaryColor (semantic)
         val secondaryColor = ColorUtilities.getColor("tintColor", "secondaryColor", props)
             ?: props["accentColor"]?.let { ColorUtilities.parseColor(it.toString()) }
             ?: Color.parseColor("#757575")
@@ -314,17 +282,14 @@ class DCFSegmentedControlComponent : DCFComponent() {
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         val container = view as? LinearLayout ?: return
         
-        // Set up click listeners for buttons
         for (i in 0 until container.childCount) {
             val button = container.getChildAt(i) as? Button ?: continue
             button.setOnClickListener {
                 val segments = parseSegments(getStoredProps(container))
                 val title = segments.getOrNull(i) ?: ""
                 
-                // Immediately update visual state for better UX
                 updateSelectedButton(container, i)
                 
-                // Propagate event to Dart side
                 propagateEvent(container, "onSelectionChange", mapOf(
                     "selectedIndex" to i,
                     "selectedTitle" to title

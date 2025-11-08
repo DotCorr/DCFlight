@@ -36,23 +36,17 @@ class DCFTextInputComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val editText = AppCompatEditText(context)
 
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
         ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
             editText.setTextColor(colorInt)
         }
         
-        // placeholderColor (explicit) > secondaryColor (semantic)
         ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
             editText.setHintTextColor(colorInt)
         }
         
-        // selectionColor (explicit) > accentColor (semantic)
         ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
             editText.setHighlightColor(colorInt)
         }
-        
-        // backgroundColor handled by applyStyles
 
         editText.setPadding(
             dpToPx(12f, context),
@@ -71,13 +65,9 @@ class DCFTextInputComponent : DCFComponent() {
         return editText
     }
 
-    // Remove override - let base class handle props merging
-    // This ensures props are preserved across updates
-
     override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val editText = view as? AppCompatEditText ?: return false
 
-        // Framework-level helper: Only update value if it actually changed
         if (hasPropChanged("value", existingProps, props)) {
             props["value"]?.let { value ->
                 val currentText = editText.text?.toString() ?: ""
@@ -89,31 +79,25 @@ class DCFTextInputComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update placeholder if it actually changed
         if (hasPropChanged("placeholder", existingProps, props)) {
             props["placeholder"]?.let { placeholder ->
                 editText.hint = placeholder.toString()
             }
         }
 
-        // Framework-level helper: Only update colors if they actually changed
         if (hasPropChanged("textColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            // COLOR SYSTEM: Explicit color override > Semantic color
-            // textColor (explicit) > primaryColor (semantic)
             ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
                 editText.setTextColor(colorInt)
             }
         }
 
         if (hasPropChanged("placeholderColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
-            // placeholderColor (explicit) > secondaryColor (semantic)
             ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
                 editText.setHintTextColor(colorInt)
             }
         }
 
         if (hasPropChanged("selectionColor", existingProps, props) || hasPropChanged("accentColor", existingProps, props)) {
-            // selectionColor (explicit) > accentColor (semantic)
             ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
                 editText.setHighlightColor(colorInt)
             }

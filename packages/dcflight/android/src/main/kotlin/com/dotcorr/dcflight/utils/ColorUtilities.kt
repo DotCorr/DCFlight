@@ -577,7 +577,6 @@ object ColorUtilities {
         semanticColor: String?,
         props: Map<String, Any>
     ): Int? {
-        // Priority 1: Check explicit color prop
         if (explicitColor != null) {
             props[explicitColor]?.let { explicitColorStr ->
                 val colorInt = color(explicitColorStr.toString())
@@ -587,7 +586,6 @@ object ColorUtilities {
             }
         }
 
-        // Priority 2: Fall back to semantic color
         if (semanticColor != null) {
             props[semanticColor]?.let { semanticColorStr ->
                 val colorInt = color(semanticColorStr.toString())
@@ -597,7 +595,6 @@ object ColorUtilities {
             }
         }
 
-        // No color found
         return null
     }
 }

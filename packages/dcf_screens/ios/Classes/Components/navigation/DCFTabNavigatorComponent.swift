@@ -298,7 +298,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         }
         
         let cacheKey = path + "_tab_icon"
-        if let cachedImage = DCFSvgComponent.getCachedImage(for: cacheKey) {
+        if let cachedImage = DCFTabNavigatorComponent.getCachedImage(for: cacheKey) {
             applyCachedImageToTab(cachedImage, for: viewController, iconConfig: iconConfig)
             return true
         }
@@ -313,7 +313,7 @@ class DCFTabNavigatorComponent: NSObject, DCFComponent {
         
         svgImage.size = targetSize
         
-        DCFSvgComponent.setCachedImage(svgImage, for: cacheKey)
+        DCFTabNavigatorComponent.setCachedImage(svgImage, for: cacheKey)
         
         applyCachedImageToTab(svgImage, for: viewController, iconConfig: iconConfig)
         

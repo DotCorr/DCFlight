@@ -44,8 +44,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             updateSegments(segmentedControl, segments: segments, iconAssets: iconAssets)
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // selectedBackgroundColor (explicit) > primaryColor (semantic)
         if #available(iOS 13.0, *) {
             if let selectedBgColor = ColorUtilities.getColor(
                 explicitColor: "selectedBackgroundColor",
@@ -56,7 +54,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             }
         }
         
-        // tintColor (explicit) > secondaryColor (semantic)
         if let tintColor = ColorUtilities.getColor(
             explicitColor: "tintColor",
             semanticColor: "secondaryColor",
@@ -118,11 +115,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
             segmentedControl.isEnabled = enabled
         }
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // backgroundColor: background color (handled by applyStyles)
-        // selectedBackgroundColor (explicit) > primaryColor (semantic)
-        // tintColor (explicit) > secondaryColor (semantic)
-        
         if #available(iOS 13.0, *) {
             if let selectedBgColor = ColorUtilities.getColor(
                 explicitColor: "selectedBackgroundColor",
@@ -140,8 +132,6 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         ) {
             segmentedControl.tintColor = tintColor
         }
-        
-        // backgroundColor is handled by applyStyles from StyleSheet
         
         view.applyStyles(props: props)
         return true

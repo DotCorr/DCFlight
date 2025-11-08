@@ -45,13 +45,10 @@ class DCFButtonComponent : DCFComponent() {
         val composeView = ComposeView(context)
         composeView.setTag(R.id.dcf_component_type, "Button")
         
-        // Store props for Compose to access
         storeProps(composeView, props)
         
-        // Set initial content
         updateComposeContent(composeView, props)
         
-        // Apply framework-level styles (border, shadow, etc.)
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         composeView.applyStyles(nonNullProps)
         
@@ -65,7 +62,6 @@ class DCFButtonComponent : DCFComponent() {
         
         Log.d(TAG, "Updating button with props: $props")
         
-        // Update Compose content if props changed
         if (hasPropChanged("title", existingProps, props) ||
             hasPropChanged("disabled", existingProps, props) ||
             hasPropChanged("textColor", existingProps, props) ||
@@ -74,7 +70,6 @@ class DCFButtonComponent : DCFComponent() {
             updateComposeContent(composeView, props)
         }
         
-        // Apply framework-level styles
         composeView.applyStyles(props)
         
         return true
@@ -87,8 +82,6 @@ class DCFButtonComponent : DCFComponent() {
             is String -> d.toBoolean()
             else -> false
         }
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // textColor (explicit) > primaryColor (semantic)
         val primaryColor = ColorUtilities.getColor("textColor", "primaryColor", props)
         val backgroundColor = props["backgroundColor"]?.let { 
             ColorUtilities.parseColor(it.toString()) 
@@ -101,7 +94,6 @@ class DCFButtonComponent : DCFComponent() {
                 primaryColor = primaryColor,
                 backgroundColor = backgroundColor,
                 onPress = {
-                    // Find viewId from ViewRegistry if not in tag
                     val viewId = composeView.getTag(com.dotcorr.dcflight.R.id.dcf_view_id) as? String
                         ?: ViewRegistry.shared.allViewIds.firstOrNull { id ->
                             ViewRegistry.shared.getView(id) == composeView
@@ -126,11 +118,9 @@ class DCFButtonComponent : DCFComponent() {
         
         val title = props["title"]?.toString() ?: ""
         
-        // Material3 Button default sizing
         val minWidth = 100f
         val minHeight = 40f
         
-        // Estimate width based on text (rough approximation)
         val estimatedWidth = if (title.isNotEmpty()) {
             (title.length * 10f).coerceAtLeast(minWidth)
         } else {

@@ -29,18 +29,13 @@ class DCFCheckboxComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val checkBox = CheckBox(context)
         
-        // COLOR SYSTEM: Explicit color override > Semantic color
-        // checkedColor (explicit) > primaryColor (semantic)
         val activeColor = ColorUtilities.getColor("checkedColor", "primaryColor", props)
             ?: props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-        // uncheckedColor (explicit) > secondaryColor (semantic)
         val inactiveColor = ColorUtilities.getColor("uncheckedColor", "secondaryColor", props)
             ?: props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-        // checkmarkColor (explicit) > primaryColor (semantic)
         val checkmarkColor = ColorUtilities.getColor("checkmarkColor", "primaryColor", props)
             ?: props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
         
-        // Only set colors if StyleSheet provided them (should always be the case)
         if (activeColor != null && inactiveColor != null) {
             val states = arrayOf(
                 intArrayOf(android.R.attr.state_checked),
@@ -48,12 +43,10 @@ class DCFCheckboxComponent : DCFComponent() {
             )
             checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
         }
-        // NO FALLBACK: If colors missing, don't set ColorStateList (StyleSheet should always provide)
         
         if (checkmarkColor != null) {
             checkBox.setTextColor(checkmarkColor)
         }
-        // NO FALLBACK: If checkmarkColor missing, don't set color (StyleSheet should always provide)
         
         checkBox.setTag(R.id.dcf_component_type, "Checkbox")
         
@@ -69,13 +62,10 @@ class DCFCheckboxComponent : DCFComponent() {
         return checkBox
     }
 
-    // Remove override - let base class handle props merging
-
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val checkBox = view as CheckBox
         var hasUpdates = false
 
-        // Framework-level helper: Only update checked if it actually changed
         if (hasPropChanged("checked", existingProps, props)) {
             props["checked"]?.let {
                 val checked = when (it) {
@@ -90,7 +80,6 @@ class DCFCheckboxComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update disabled if it actually changed
         if (hasPropChanged("disabled", existingProps, props)) {
             props["disabled"]?.let {
                 val disabled = when (it) {
@@ -105,14 +94,12 @@ class DCFCheckboxComponent : DCFComponent() {
             }
         }
 
-        // Framework-level helper: Only update colors if they actually changed
         if (hasPropChanged("checkedColor", existingProps, props) ||
             hasPropChanged("uncheckedColor", existingProps, props) ||
             hasPropChanged("checkmarkColor", existingProps, props) ||
             hasPropChanged("primaryColor", existingProps, props) ||
             hasPropChanged("secondaryColor", existingProps, props) ||
             hasPropChanged("tertiaryColor", existingProps, props)) {
-            // COLOR SYSTEM: Explicit color override > Semantic color
             val activeColor = ColorUtilities.getColor("checkedColor", "primaryColor", props)
                 ?: props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
             val inactiveColor = ColorUtilities.getColor("uncheckedColor", "secondaryColor", props)
