@@ -239,6 +239,11 @@ fun View.applyStyles(props: Map<String, Any>) {
                             is String -> if (it == "mixed") info.isCheckable = true
                         }
                     }
+                    state["expanded"]?.let {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                            info.isExpanded = it as? Boolean == true
+                        }
+                    }
                 }
             }
         }

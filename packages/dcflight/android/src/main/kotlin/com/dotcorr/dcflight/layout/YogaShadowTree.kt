@@ -570,6 +570,9 @@ class YogaShadowTree private constructor() {
             node.setAlignContent(YogaAlign.FLEX_START)
             node.setFlexShrink(0.0f)
         }
+        
+        node.setJustifyContent(YogaJustify.CENTER)
+        node.setAlignItems(YogaAlign.CENTER)
     }
 
 

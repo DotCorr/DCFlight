@@ -921,6 +921,9 @@ class YogaShadowTree {
                     YGNodeStyleSetAlignContent(node, YGAlign.flexStart)
                     YGNodeStyleSetFlexShrink(node, 0.0)
                 }
+                
+                YGNodeStyleSetJustifyContent(node, YGJustify.center)
+                YGNodeStyleSetAlignItems(node, YGAlign.center)
             }
             
             /// Check if a node is positioned as static
