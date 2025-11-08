@@ -116,6 +116,10 @@ class DCFIcon extends DCFStatelessComponent
   /// The styleSheet properties
   final DCFStyleSheet styleSheet;
 
+  /// Explicit color override: iconColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for icon
+  final Color? iconColor;
+
   /// Event handlers
   final Map<String, dynamic>? events;
 
@@ -130,6 +134,7 @@ class DCFIcon extends DCFStatelessComponent
     required this.iconProps,
     this.layout = const DCFLayout(height: 20, width: 20),
     this.styleSheet = const DCFStyleSheet(),
+    this.iconColor,
     this.onLoad,
     this.onError,
     this.events,
@@ -158,6 +163,7 @@ class DCFIcon extends DCFStatelessComponent
         ...iconProps.toMap(),
         ...layout.toMap(),
         ...styleSheet.toMap(),
+        if (iconColor != null) 'iconColor': DCFColors.toNativeString(iconColor!),
         ...eventMap,
       },
       children: [],
@@ -169,6 +175,7 @@ class DCFIcon extends DCFStatelessComponent
         iconProps,
         layout,
         styleSheet,
+        iconColor,
         events,
         onLoad,
         onError,

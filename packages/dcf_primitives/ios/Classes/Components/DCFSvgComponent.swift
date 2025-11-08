@@ -40,14 +40,15 @@ class DCFSvgComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        if let primaryColorStr = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
-                imageView.tintColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // tintColor (explicit) > primaryColor (semantic)
+        if let tintColor = ColorUtilities.getColor(
+            explicitColor: "tintColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            imageView.tintColor = tintColor
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         updateView(imageView, withProps: props)
         
@@ -123,16 +124,18 @@ class DCFSvgComponent: NSObject, DCFComponent {
     
     
     private func applyTintColor(to imageView: UIImageView, props: [String: Any]) {
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: SVG tint color (replaces legacy tintColor prop)
-        if let primaryColor = props["primaryColor"] as? String,
-           let tintColor = ColorUtilities.color(fromHexString: primaryColor) {
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // tintColor (explicit) > primaryColor (semantic)
+        if let tintColor = ColorUtilities.getColor(
+            explicitColor: "tintColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
             imageView.tintColor = tintColor
             if let image = imageView.image {
                 imageView.image = image.withRenderingMode(.alwaysTemplate)
             }
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
     }
     
     private func loadSVGFromAssetPath(_ asset: String, isRelativePath: Bool, path: String) -> SVGKImage? {

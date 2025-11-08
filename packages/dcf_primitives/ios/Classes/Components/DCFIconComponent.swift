@@ -21,14 +21,15 @@ class DCFIconComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
-        // UNIFIED COLOR SYSTEM: ONLY StyleSheet provides colors - NO fallbacks
-        if let primaryColorStr = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColorStr) {
-                imageView.tintColor = color
-            }
-            // NO FALLBACK: If color parsing fails, don't set color (StyleSheet is the only source)
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // iconColor (explicit) > primaryColor (semantic)
+        if let iconColor = ColorUtilities.getColor(
+            explicitColor: "iconColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            imageView.tintColor = iconColor
         }
-        // NO FALLBACK: If no primaryColor provided, don't set color (StyleSheet is the only source)
         
         updateView(imageView, withProps: props)
         
@@ -57,9 +58,25 @@ class DCFIconComponent: NSObject, DCFComponent {
         } else {
         }
         
-        // UNIFIED COLOR SYSTEM: Use semantic colors from StyleSheet only
-        // primaryColor: icon color
-        if let primaryColor = props["primaryColor"] as? String {
+        // COLOR SYSTEM: Explicit color override > Semantic color
+        // iconColor (explicit) > primaryColor (semantic)
+        if let iconColor = ColorUtilities.getColor(
+            explicitColor: "iconColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            // Convert UIColor to hex string for SVG component
+            var red: CGFloat = 0
+            var green: CGFloat = 0
+            var blue: CGFloat = 0
+            var alpha: CGFloat = 0
+            iconColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            let hexString = String(format: "#%02X%02X%02X", 
+                                   Int(red * 255), 
+                                   Int(green * 255), 
+                                   Int(blue * 255))
+            svgProps["tintColor"] = hexString
+        } else if let primaryColor = props["primaryColor"] as? String {
             svgProps["tintColor"] = primaryColor
         }
         

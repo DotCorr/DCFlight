@@ -65,6 +65,10 @@ class DCFSVG extends DCFStatelessComponent
   /// The style properties
   final DCFStyleSheet styleSheet;
 
+  /// Explicit color override: tintColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for SVG tint
+  final Color? tintColor;
+
   /// Event handlers
   final Map<String, dynamic>? events;
 
@@ -73,6 +77,7 @@ class DCFSVG extends DCFStatelessComponent
     required this.svgProps,
     this.layout = const DCFLayout(height: 20, width: 20),
     this.styleSheet = const DCFStyleSheet(),
+    this.tintColor,
     this.events,
     super.key,
   });
@@ -85,6 +90,7 @@ class DCFSVG extends DCFStatelessComponent
         ...svgProps.toMap(),
         ...layout.toMap(),
         ...styleSheet.toMap(),
+        if (tintColor != null) 'tintColor': DCFColors.toNativeString(tintColor!),
         ...(events ?? {}),
       },
       children: [],
@@ -96,6 +102,7 @@ class DCFSVG extends DCFStatelessComponent
         svgProps,
         layout,
         styleSheet,
+        tintColor,
         events,
         key,
       ];
