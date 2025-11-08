@@ -100,8 +100,20 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
-            val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-            val view = componentInstance.createView(context, props)
+            // ♻️ Try to acquire a recycled view from the pool first
+            var view = com.dotcorr.dcflight.pool.ViewPoolManager.shared.acquireView(viewType)
+            
+            if (view == null) {
+                // No recycled view available, create a new one
+                val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                view = componentInstance.createView(context, props)
+                Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
+            } else {
+                // Reusing recycled view - update it with new props
+                val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                componentInstance.updateView(view, props)
+                Log.d(TAG, "♻️ Reused recycled view for type '$viewType' (viewId: $viewId)")
+            }
 
             ViewRegistry.shared.registerView(view, viewId, viewType)
             views[viewId] = view
@@ -188,9 +200,17 @@ class DCMauiBridgeImpl private constructor() {
             deleteChildrenRecursively(viewId)
             
             val view = ViewRegistry.shared.getView(viewId)
+            val viewType = ViewRegistry.shared.getViewType(viewId)
+            
             if (view != null) {
                 val parentView = view.parent as? ViewGroup
                 parentView?.removeView(view)
+                
+                // ♻️ Return view to pool for recycling instead of destroying it
+                if (viewType != null) {
+                    com.dotcorr.dcflight.pool.ViewPoolManager.shared.releaseView(view, viewType)
+                    Log.d(TAG, "♻️ Returned view '$viewId' to pool for type '$viewType'")
+                }
             }
             
             cleanupHierarchyReferences(viewId)

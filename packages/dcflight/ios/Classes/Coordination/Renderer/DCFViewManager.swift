@@ -80,17 +80,38 @@ class DCFViewManager {
             return false
         }
         
+        // ♻️ Try to acquire a recycled view from the pool first
+        var view = ViewPoolManager.shared.acquireView(viewType: viewType)
         let componentInstance = componentType.init()
-        let view = componentInstance.createView(props: props)
+        
+        if view == nil {
+            // No recycled view available, create a new one
+            view = componentInstance.createView(props: props)
+            print("✨ DCFViewManager: Created new view for type '\(viewType)' (viewId: \(viewId))")
+        } else {
+            // Reusing recycled view - update it with new props
+            let success = componentInstance.updateView(view!, withProps: props)
+            if !success {
+                print("⚠️ DCFViewManager: Failed to update recycled view, creating new one")
+                view = componentInstance.createView(props: props)
+            } else {
+                print("♻️ DCFViewManager: Reused recycled view for type '\(viewType)' (viewId: \(viewId))")
+            }
+        }
+        
+        guard let finalView = view else {
+            print("❌ DCFViewManager: Failed to create or acquire view")
+            return false
+        }
         
         objc_setAssociatedObject(
-            view,
+            finalView,
             UnsafeRawPointer(bitPattern: "componentType".hashValue)!,
             viewType,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
-        ViewRegistry.shared.registerView(view, id: viewId, type: viewType)
+        ViewRegistry.shared.registerView(finalView, id: viewId, type: viewType)
         
         let isScreen = (viewType == "Screen" || props["presentationStyle"] != nil)
         
@@ -121,7 +142,7 @@ class DCFViewManager {
             }
         }
         
-        DCFLayoutManager.shared.registerView(view, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
+        DCFLayoutManager.shared.registerView(finalView, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
         
         print("✅ DCFViewManager: Successfully created \(isScreen ? "screen" : "component") '\(viewId)'")
         return true
@@ -181,8 +202,17 @@ class DCFViewManager {
     func deleteView(viewId: String) -> Bool {
         print("🗑️ DCFViewManager: Deleting view '\(viewId)'")
         
+        // Get view info before removing from registry
+        let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId)
+        
         ViewRegistry.shared.removeView(id: viewId)
         DCFLayoutManager.shared.removeNode(nodeId: viewId)
+        
+        // ♻️ Return view to pool for recycling instead of destroying it
+        if let view = viewInfo?.view, let viewType = viewInfo?.type {
+            ViewPoolManager.shared.releaseView(view, viewType: viewType)
+            print("♻️ DCFViewManager: Returned view '\(viewId)' to pool for type '\(viewType)'")
+        }
         
         print("✅ DCFViewManager: Successfully deleted view '\(viewId)'")
         return true

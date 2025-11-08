@@ -14,7 +14,7 @@ class DCFFragment extends DCFComponentNode with EquatableMixin {
   /// Children to be rendered directly to the parent
   final List<DCFComponentNode> children;
   
-  /// Optional metadata for framework-level processing (e.g., portal information)
+  /// Optional metadata for framework-level processing
   final Map<String, dynamic>? metadata;
 
   /// Whether this fragment has been mounted
