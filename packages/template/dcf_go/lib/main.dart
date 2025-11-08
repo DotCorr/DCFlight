@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -17,6 +15,9 @@ class MyApp extends DCFStatefulComponent {
     final name = useState<String>("");
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
 
+    // Portal example - renders content into the root view
+    final showPortal = useState<bool>(false);
+    
     return DCFTheme.current.isDark ? DCFView(
       layout: DCFLayout(
         padding:20,
@@ -29,7 +30,53 @@ class MyApp extends DCFStatefulComponent {
         backgroundColor: DCFTheme.current.backgroundColor,
       ),
       children: [
-       
+        // Portal example - renders content into the root view
+        // This demonstrates how Portal can render children outside the normal parent hierarchy
+        DCFPortal(
+          target: 'root', // Render to root view
+          children: showPortal.state ? [
+            DCFView(
+              layout: DCFLayout(
+                position: YogaPositionType.absolute,
+                absoluteLayout: AbsoluteLayout(
+                  top: 50,
+                  left: 20,
+                  right: 20,
+                ),
+                padding: 15,
+              ),
+              styleSheet: DCFStyleSheet(
+                backgroundColor: DCFColors.green.withOpacity(0.9),
+                borderRadius: 12,
+                elevation: 8,
+              ),
+              children: [
+                DCFText(
+                  content: "✨ Portal Content",
+                  styleSheet: DCFStyleSheet(
+                    primaryColor: DCFColors.white,
+                  ),
+                  textProps: DCFTextProps(fontSize: 18, fontWeight: DCFFontWeight.bold),
+                ),
+                DCFText(
+                  content: "This content is rendered via DCFPortal into the root view!",
+                  styleSheet: DCFStyleSheet(
+                    primaryColor: DCFColors.white,
+                  ),
+                  textProps: DCFTextProps(fontSize: 14),
+                ),
+                DCFText(
+                  content: "Even though the Portal component is nested here, the content appears at the root level.",
+                  styleSheet: DCFStyleSheet(
+                    primaryColor: DCFColors.white,
+                  ),
+                  textProps: DCFTextProps(fontSize: 12),
+                ),
+              ],
+            ),
+          ] : [],
+        ),
+        
         DCFText(
           content: "Hello, Test ${name.state}! ${count.state}",
           // Using semantic colors from StyleSheet instead of explicit color prop
@@ -116,6 +163,11 @@ class MyApp extends DCFStatefulComponent {
           buttonProps: DCFButtonProps(title: "Count: ${count.state}"),
           onPress: (data) => count.setState(count.state + 1),
           layout: DCFLayout(marginTop: 20),
+        ),
+        DCFButton(
+          buttonProps: DCFButtonProps(title: showPortal.state ? "Hide Portal" : "Show Portal"),
+          onPress: (data) => showPortal.setState(!showPortal.state),
+          layout: DCFLayout(marginTop: 10),
         ),
         DCFButton(
 
