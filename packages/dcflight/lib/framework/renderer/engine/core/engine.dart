@@ -143,18 +143,49 @@ class DCFEngine {
   /// O(1) - Handle a native event by finding the appropriate component
   void _handleNativeEvent(
       String viewId, String eventType, Map<dynamic, dynamic> eventData) {
+    print('🔥🔥🔥 EVENT RECEIVED: viewId=$viewId, eventType=$eventType');
+    print('🔥🔥🔥 _nodesByViewId size: ${_nodesByViewId.length}');
+    print('🔥🔥🔥 Looking for viewId: $viewId');
+    print('🔥🔥🔥 Available viewIds (first 20): ${_nodesByViewId.keys.take(20).toList()}');
+    
     EngineDebugLogger.log(
         'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
-        extra: {'EventData': eventData.toString()});
+        extra: {
+          'EventData': eventData.toString(),
+          'TotalMappings': _nodesByViewId.length,
+          'AvailableViewIds': _nodesByViewId.keys.take(20).toList()
+        });
 
     final node = _nodesByViewId[viewId]; // O(1) lookup
     if (node == null) {
+      print('❌❌❌ EVENT FAILED: No node found for viewId: $viewId');
+      print('❌❌❌ All viewIds in map: ${_nodesByViewId.keys.toList()}');
       EngineDebugLogger.log(
-          'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId');
+          'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId',
+          extra: {
+            'AvailableViewIds': _nodesByViewId.keys.take(20).toList(),
+            'TotalMappings': _nodesByViewId.length
+          });
       return;
     }
+    
+    print('✅✅✅ EVENT: Found node for viewId: $viewId, type: ${node.runtimeType}');
+    print('✅✅✅ EVENT: IsElement=${node is DCFElement}, IsComponent=${node is DCFStatefulComponent || node is DCFStatelessComponent}');
+
+    // CRITICAL DEBUG: Log what we found
+    EngineDebugLogger.log('NATIVE_EVENT_NODE_FOUND',
+        'Found node for view ID',
+        extra: {
+          'ViewId': viewId,
+          'NodeType': node.runtimeType.toString(),
+          'IsElement': node is DCFElement,
+          'IsComponent': node is DCFStatefulComponent || node is DCFStatelessComponent
+        });
 
     if (node is DCFElement) {
+      print('✅✅✅ EVENT: Node IS DCFElement, type=${node.type}');
+      print('✅✅✅ EVENT: elementProps keys: ${node.elementProps.keys.toList()}');
+      print('✅✅✅ EVENT: Looking for eventType=$eventType');
       final eventHandlerKeys = [
         eventType,
         'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
@@ -162,20 +193,94 @@ class DCFEngine {
         'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
       ];
 
+      // DEBUG: Log all props for debugging
+      EngineDebugLogger.log('NATIVE_EVENT_ELEMENT_PROPS',
+          'Element props for event lookup',
+          extra: {
+            'ElementType': node.type,
+            'AllProps': node.elementProps.keys.toList(),
+            'EventType': eventType,
+            'HandlerKeys': eventHandlerKeys
+          });
+
       for (final key in eventHandlerKeys) {
+        print('🔍 EVENT: Trying key=$key, hasKey=${node.elementProps.containsKey(key)}');
+        if (node.elementProps.containsKey(key)) {
+          final value = node.elementProps[key];
+          print('🔍 EVENT: Key $key value type=${value.runtimeType}, isFunction=${value is Function}');
+        }
+        
         if (node.elementProps.containsKey(key) &&
             node.elementProps[key] is Function) {
+          print('✅✅✅ EVENT HANDLER FOUND: key=$key');
           EngineDebugLogger.log('EVENT_HANDLER_FOUND',
               'Found handler for $eventType using key: $key');
           _executeEventHandler(node.elementProps[key], eventData);
           return;
+        } else if (node.elementProps.containsKey(key)) {
+          print('⚠️ EVENT: Handler exists but wrong type: key=$key, type=${node.elementProps[key].runtimeType}');
+          EngineDebugLogger.log('EVENT_HANDLER_WRONG_TYPE',
+              'Handler exists but is not a Function',
+              extra: {
+                'Key': key,
+                'ValueType': node.elementProps[key].runtimeType.toString()
+              });
         }
       }
 
+      print('❌❌❌ EVENT HANDLER NOT FOUND: eventType=$eventType, triedKeys=$eventHandlerKeys');
+      print('❌❌❌ EVENT: Available props: ${node.elementProps.keys.toList()}');
       EngineDebugLogger.log(
           'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
-          extra: {'AvailableProps': node.elementProps.keys.toList()});
-    } else {}
+          extra: {
+            'AvailableProps': node.elementProps.keys.toList(),
+            'TriedKeys': eventHandlerKeys,
+            'ElementType': node.type
+          });
+    } else {
+      print('❌❌❌ EVENT: Node is NOT DCFElement! NodeType=${node.runtimeType}');
+      if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+        print('❌❌❌ EVENT: Node is a component, renderedNode=${node.renderedNode?.runtimeType}');
+        if (node.renderedNode is DCFElement) {
+          final renderedElement = node.renderedNode as DCFElement;
+          print('❌❌❌ EVENT: Rendered element viewId=${renderedElement.nativeViewId}, component contentViewId=${node.contentViewId}');
+          print('❌❌❌ EVENT: MAPPING ERROR: viewId=$viewId maps to component, but should map to rendered element!');
+          
+          // CRITICAL FIX: Always fix the mapping if we find a component instead of element
+          // This is the root cause: when SafeArea re-renders, Button components might
+          // get mapped instead of their rendered elements
+          final elementViewId = renderedElement.nativeViewId ?? node.contentViewId;
+          if (elementViewId == viewId || node.contentViewId == viewId) {
+            print('⚠️ EVENT: Fixing mapping - updating to point to rendered element');
+            _nodesByViewId[viewId] = renderedElement;
+            // Also ensure the rendered element has the viewId set
+            if (renderedElement.nativeViewId != viewId) {
+              renderedElement.nativeViewId = viewId;
+            }
+            // Retry handler lookup
+            final handlerKeys = [
+              eventType,
+              'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
+              eventType.toLowerCase(),
+              'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
+            ];
+            for (final key in handlerKeys) {
+              if (renderedElement.elementProps.containsKey(key) && renderedElement.elementProps[key] is Function) {
+                print('✅ EVENT: Found handler in rendered element, executing');
+                _executeEventHandler(renderedElement.elementProps[key]!, eventData);
+                return;
+              }
+            }
+          }
+        }
+      }
+      EngineDebugLogger.log('NATIVE_EVENT_WRONG_NODE_TYPE',
+          'Node is not a DCFElement, cannot handle events',
+          extra: {
+            'NodeType': node.runtimeType.toString(),
+            'ViewId': viewId
+          });
+    }
   }
 
   /// O(1) - Execute an event handler with flexible signatures
@@ -558,24 +663,48 @@ class DCFEngine {
       final previousRenderedNode = _previousRenderedNodes[componentId];
       if (previousRenderedNode != null) {
         print('🔍 UPDATE_COMPONENT: Starting reconciliation');
+        print('🔍 UPDATE_COMPONENT: Component type: ${component.runtimeType}');
         print('🔍 UPDATE_COMPONENT: Previous node type: ${previousRenderedNode.runtimeType}');
         print('🔍 UPDATE_COMPONENT: New node type: ${newRenderedNode.runtimeType}');
+        
+        // Comprehensive type checking - handle all valid reconciliation cases
+        bool canReconcile = false;
         if (previousRenderedNode is DCFElement && newRenderedNode is DCFElement) {
           print('🔍 UPDATE_COMPONENT: Both are DCFElement!');
           print('🔍 UPDATE_COMPONENT: Previous element type: ${previousRenderedNode.type}');
           print('🔍 UPDATE_COMPONENT: New element type: ${newRenderedNode.type}');
+          canReconcile = true;
         } else if (previousRenderedNode is DCFStatelessComponent && newRenderedNode is DCFStatelessComponent) {
           print('🔍 UPDATE_COMPONENT: Both are DCFStatelessComponent!');
           print('🔍 UPDATE_COMPONENT: Previous: ${previousRenderedNode.runtimeType}');
           print('🔍 UPDATE_COMPONENT: New: ${newRenderedNode.runtimeType}');
           print('🔍 UPDATE_COMPONENT: Previous renderedNode: ${previousRenderedNode.renderedNode?.runtimeType}');
           print('🔍 UPDATE_COMPONENT: New renderedNode: ${newRenderedNode.renderedNode?.runtimeType}');
+          canReconcile = true;
+        } else if (previousRenderedNode is DCFStatefulComponent && newRenderedNode is DCFStatefulComponent) {
+          print('🔍 UPDATE_COMPONENT: Both are DCFStatefulComponent!');
+          print('🔍 UPDATE_COMPONENT: Previous: ${previousRenderedNode.runtimeType}');
+          print('🔍 UPDATE_COMPONENT: New: ${newRenderedNode.runtimeType}');
+          canReconcile = true;
         } else {
-          print('❌ UPDATE_COMPONENT: Type mismatch or unexpected types!');
+          // Mixed types - this can happen when a component's render() returns different types
+          // We can still reconcile if they're both DCFComponentNode
+          if (previousRenderedNode is DCFComponentNode && newRenderedNode is DCFComponentNode) {
+            canReconcile = true;
+          } else {
+            // Still attempt reconciliation - _reconcile will handle it
+            canReconcile = true; // Allow reconciliation to proceed
+          }
         }
         
         EngineDebugLogger.log(
-            'RECONCILE_START', 'Starting reconciliation with previous node');
+            'RECONCILE_START', 'Starting reconciliation with previous node',
+            extra: {
+              'ComponentType': component.runtimeType.toString(),
+              'PreviousType': previousRenderedNode.runtimeType.toString(),
+              'NewType': newRenderedNode.runtimeType.toString(),
+              'CanReconcile': canReconcile
+            });
 
         final parentViewId = _findParentViewId(component); // O(depth)
 
@@ -601,6 +730,29 @@ class DCFEngine {
         _previousRenderedNodes.remove(componentId); // O(1)
         EngineDebugLogger.log(
             'RECONCILE_CLEANUP', 'Cleaned up previous rendered node reference');
+        
+        // FINAL SAFEGUARD: After reconciliation, ensure the component's rendered element mapping is correct
+        // This is critical for SafeArea re-renders that create new Button instances
+        if (newRenderedNode is DCFElement) {
+          final viewId = newRenderedNode.nativeViewId;
+          if (viewId != null && viewId.isNotEmpty) {
+            final mappedNode = _nodesByViewId[viewId];
+            if (mappedNode != newRenderedNode) {
+              _nodesByViewId[viewId] = newRenderedNode;
+            }
+          }
+        } else if (newRenderedNode is DCFStatefulComponent || newRenderedNode is DCFStatelessComponent) {
+          final renderedElement = newRenderedNode.renderedNode;
+          if (renderedElement is DCFElement) {
+            final viewId = renderedElement.nativeViewId;
+            if (viewId != null && viewId.isNotEmpty) {
+              final mappedNode = _nodesByViewId[viewId];
+              if (mappedNode != renderedElement) {
+                _nodesByViewId[viewId] = renderedElement;
+              }
+            }
+          }
+        }
       } else {
         EngineDebugLogger.log('RENDER_FROM_SCRATCH',
             'No previous rendering, creating from scratch');
@@ -743,6 +895,11 @@ class DCFEngine {
             throw Exception('Component rendered null');
           }
 
+          print('🟡 COMPONENT RENDER: ${node.runtimeType} → ${renderedNode.runtimeType}');
+          if (renderedNode is DCFElement) {
+            print('🟡 COMPONENT RENDER: elementType=${renderedNode.type}, hasOnPress=${renderedNode.elementProps.containsKey('onPress')}');
+          }
+
           EngineDebugLogger.log(
               'COMPONENT_RENDERED_NODE', 'Component rendered content',
               extra: {'RenderedType': renderedNode.runtimeType.toString()});
@@ -753,6 +910,20 @@ class DCFEngine {
               parentViewId: parentViewId, index: index);
 
           node.contentViewId = viewId;
+          
+          // CRITICAL: After rendering a component's rendered element, ensure the mapping is correct
+          // This is essential for Button components inside SafeArea
+          if (renderedNode is DCFElement && viewId != null && viewId.isNotEmpty) {
+            final mappedNode = _nodesByViewId[viewId];
+            if (mappedNode != renderedNode) {
+              print('⚠️ COMPONENT RENDER FIX: viewId=$viewId, component=${node.runtimeType}, elementType=${renderedNode.type}');
+              print('⚠️ COMPONENT RENDER FIX: mappedNode=${mappedNode?.runtimeType}, expected=${renderedNode.runtimeType}');
+              _nodesByViewId[viewId] = renderedNode;
+              print('✅ COMPONENT RENDER FIX: Fixed mapping for component\'s rendered element');
+            } else {
+              print('✅ COMPONENT RENDER: Mapping correct for viewId=$viewId');
+            }
+          }
           EngineDebugLogger.log(
               'COMPONENT_VIEW_ID', 'Component view ID assigned',
               extra: {'ViewId': viewId});
@@ -887,8 +1058,23 @@ class DCFEngine {
 
     final viewId = element.nativeViewId ?? _generateViewId();
 
+    print('🟣 ELEMENT RENDER: type=${element.type}, viewId=$viewId, hasOnPress=${element.elementProps.containsKey('onPress')}');
+    if (element.type == 'Button') {
+      print('🟣 BUTTON RENDER: viewId=$viewId, allProps=${element.elementProps.keys.toList()}');
+      print('🟣 BUTTON RENDER: onPress exists=${element.elementProps.containsKey('onPress')}, isFunction=${element.elementProps['onPress'] is Function}');
+    }
     _nodesByViewId[viewId] = element;
     element.nativeViewId = viewId;
+    print('🟣 ELEMENT RENDER: Mapped element to viewId=$viewId');
+    
+    // Verify mapping immediately after setting
+    final verifyMapped = _nodesByViewId[viewId];
+    if (verifyMapped != element) {
+      print('❌❌❌ ELEMENT RENDER MAPPING ERROR: viewId=$viewId was immediately overwritten!');
+      print('❌❌❌ Expected: ${element.runtimeType}, Got: ${verifyMapped?.runtimeType}');
+      _nodesByViewId[viewId] = element; // Fix it
+      print('✅✅✅ ELEMENT RENDER: Fixed mapping');
+    }
     EngineDebugLogger.log('ELEMENT_VIEW_MAPPING', 'Mapped element to view ID',
         extra: {'ViewId': viewId, 'ElementType': element.type});
 
@@ -913,9 +1099,16 @@ class DCFEngine {
 
     final eventTypes = element.eventTypes;
     if (eventTypes.isNotEmpty) {
+      print('🟣 ELEMENT RENDER: Adding event listeners for viewId=$viewId, eventTypes=$eventTypes');
       EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', viewId,
           data: {'EventTypes': eventTypes});
       await _nativeBridge.addEventListeners(viewId, eventTypes);
+      print('✅ ELEMENT RENDER: Event listeners added for viewId=$viewId');
+    } else {
+      if (element.type == 'Button') {
+        print('⚠️⚠️⚠️ BUTTON RENDER: No event types found for Button! viewId=$viewId');
+        print('⚠️⚠️⚠️ BUTTON RENDER: elementProps=${element.elementProps.keys.toList()}');
+      }
     }
 
     final childIds = <String>[];
@@ -1065,6 +1258,58 @@ class DCFEngine {
       }
 
       await _reconcile(oldRenderedNode, newRenderedNode);
+      
+      // CRITICAL: After reconciling rendered nodes, ensure the mapping points to the NEW rendered element
+      // This is essential for components like DCFButton that render DCFElement instances
+      // When SafeArea re-renders, it creates new Button instances, and we must ensure
+      // the mapping points to the new Button's rendered element (not the old one)
+      if (newRenderedNode is DCFElement) {
+        final renderedViewId = newRenderedNode.nativeViewId;
+        if (renderedViewId != null && renderedViewId.isNotEmpty) {
+          final mappedNode = _nodesByViewId[renderedViewId];
+          if (mappedNode != newRenderedNode) {
+            EngineDebugLogger.log('RECONCILE_STATEFUL_RENDERED_FIX',
+                '⚠️ Fixed mapping for stateful component\'s rendered element',
+                extra: {
+                  'ViewId': renderedViewId,
+                  'ElementType': newRenderedNode.type,
+                  'HasOnPress': newRenderedNode.elementProps.containsKey('onPress'),
+                  'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
+                });
+            _nodesByViewId[renderedViewId] = newRenderedNode;
+          }
+        }
+      } else if (newRenderedNode is DCFStatefulComponent || newRenderedNode is DCFStatelessComponent) {
+        // For nested components, traverse to find the actual element
+        DCFComponentNode? current = newRenderedNode;
+        DCFElement? actualElement;
+        while (current != null) {
+          if (current is DCFElement) {
+            actualElement = current;
+            break;
+          } else if (current is DCFStatefulComponent || current is DCFStatelessComponent) {
+            current = current.renderedNode;
+          } else {
+            break;
+          }
+        }
+        if (actualElement != null) {
+          final elementViewId = actualElement.nativeViewId;
+          if (elementViewId != null && elementViewId.isNotEmpty) {
+            final mappedNode = _nodesByViewId[elementViewId];
+            if (mappedNode != actualElement) {
+              EngineDebugLogger.log('RECONCILE_STATEFUL_NESTED_ELEMENT_FIX',
+                  '⚠️ Fixed mapping for nested component\'s rendered element',
+                  extra: {
+                    'ViewId': elementViewId,
+                    'ElementType': actualElement.type,
+                    'HasOnPress': actualElement.elementProps.containsKey('onPress')
+                  });
+              _nodesByViewId[elementViewId] = actualElement;
+            }
+          }
+        }
+      }
     }
     else if (oldNode is DCFStatelessComponent && newNode is DCFStatelessComponent) {
       // Different component classes (e.g., DCFView vs DCFScrollView) mean different components
@@ -1146,7 +1391,118 @@ class DCFEngine {
       final oldRenderedNode = oldNode.renderedNode;
       final newRenderedNode = newNode.renderedNode;
 
+      print('🟢 STATELESS RECONCILE: ${oldNode.runtimeType} → ${newNode.runtimeType}');
+      print('🟢 STATELESS RECONCILE: oldRendered=${oldRenderedNode.runtimeType}, newRendered=${newRenderedNode.runtimeType}');
+      if (oldRenderedNode is DCFElement && newRenderedNode is DCFElement) {
+        print('🟢 STATELESS RECONCILE: oldElement viewId=${oldRenderedNode.nativeViewId}, type=${oldRenderedNode.type}');
+        print('🟢 STATELESS RECONCILE: newElement viewId=${newRenderedNode.nativeViewId}, type=${newRenderedNode.type}');
+        print('🟢 STATELESS RECONCILE: oldElement hasOnPress=${oldRenderedNode.elementProps.containsKey('onPress')}');
+        print('🟢 STATELESS RECONCILE: newElement hasOnPress=${newRenderedNode.elementProps.containsKey('onPress')}');
+      }
+      
       await _reconcile(oldRenderedNode, newRenderedNode);
+      
+      // CRITICAL: After reconciling rendered nodes, ensure the mapping points to the NEW rendered element
+      // This is essential for components like DCFButton that render DCFElement instances
+      // When SafeArea re-renders, it creates new Button instances, and we must ensure
+      // the mapping points to the new Button's rendered element (not the old one)
+      if (newRenderedNode is DCFElement) {
+        final renderedViewId = newRenderedNode.nativeViewId;
+        print('🟢 STATELESS POST-RECONCILE: renderedViewId=$renderedViewId, elementType=${newRenderedNode.type}');
+        if (renderedViewId != null && renderedViewId.isNotEmpty) {
+          final mappedNode = _nodesByViewId[renderedViewId];
+          print('🟢 STATELESS POST-RECONCILE: mappedNode=${mappedNode?.runtimeType}, newRenderedNode=${newRenderedNode.runtimeType}');
+          print('🟢 STATELESS POST-RECONCILE: mapping matches=${mappedNode == newRenderedNode}');
+          if (mappedNode != newRenderedNode) {
+            print('⚠️ STATELESS FIXING MAPPING: viewId=$renderedViewId');
+            EngineDebugLogger.log('RECONCILE_STATELESS_RENDERED_FIX',
+                '⚠️ Fixed mapping for stateless component\'s rendered element',
+                extra: {
+                  'ViewId': renderedViewId,
+                  'ElementType': newRenderedNode.type,
+                  'HasOnPress': newRenderedNode.elementProps.containsKey('onPress'),
+                  'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
+                });
+            _nodesByViewId[renderedViewId] = newRenderedNode;
+            print('✅ STATELESS MAPPING FIXED: viewId=$renderedViewId now maps to ${newRenderedNode.runtimeType}');
+          } else {
+            print('✅ STATELESS MAPPING OK: viewId=$renderedViewId correctly mapped');
+          }
+        } else {
+          print('❌ STATELESS NO VIEWID: renderedViewId is null or empty!');
+        }
+      } else if (newRenderedNode is DCFStatefulComponent || newRenderedNode is DCFStatelessComponent) {
+        // For nested components, traverse to find the actual element
+        DCFComponentNode? current = newRenderedNode;
+        DCFElement? actualElement;
+        while (current != null) {
+          if (current is DCFElement) {
+            actualElement = current;
+            break;
+          } else if (current is DCFStatefulComponent || current is DCFStatelessComponent) {
+            current = current.renderedNode;
+          } else {
+            break;
+          }
+        }
+        if (actualElement != null) {
+          final elementViewId = actualElement.nativeViewId;
+          if (elementViewId != null && elementViewId.isNotEmpty) {
+            final mappedNode = _nodesByViewId[elementViewId];
+            if (mappedNode != actualElement) {
+              EngineDebugLogger.log('RECONCILE_STATELESS_NESTED_ELEMENT_FIX',
+                  '⚠️ Fixed mapping for nested stateless component\'s rendered element',
+                  extra: {
+                    'ViewId': elementViewId,
+                    'ElementType': actualElement.type,
+                    'HasOnPress': actualElement.elementProps.containsKey('onPress')
+                  });
+              _nodesByViewId[elementViewId] = actualElement;
+            }
+            
+            // CRITICAL: After fixing the View element mapping, ensure ALL Button children mappings are correct
+            // This is the root cause: when SafeArea's DCFView reconciles, Button children might lose their mappings
+            if (actualElement.type == 'View' && actualElement.children.isNotEmpty) {
+              for (final child in actualElement.children) {
+                if (child is DCFStatefulComponent || child is DCFStatelessComponent) {
+                  final renderedElement = child.renderedNode;
+                  if (renderedElement is DCFElement) {
+                    final childViewId = renderedElement.nativeViewId;
+                    if (childViewId != null && childViewId.isNotEmpty) {
+                      final childMappedNode = _nodesByViewId[childViewId];
+                      if (childMappedNode != renderedElement) {
+                        _nodesByViewId[childViewId] = renderedElement;
+                        EngineDebugLogger.log('RECONCILE_STATELESS_CHILD_BUTTON_FIX',
+                            '⚠️ Fixed Button child mapping after DCFView reconciliation',
+                            extra: {
+                              'ViewId': childViewId,
+                              'ElementType': renderedElement.type,
+                              'HasOnPress': renderedElement.elementProps.containsKey('onPress')
+                            });
+                      }
+                    }
+                  }
+                } else if (child is DCFElement) {
+                  final childViewId = child.nativeViewId;
+                  if (childViewId != null && childViewId.isNotEmpty) {
+                    final childMappedNode = _nodesByViewId[childViewId];
+                    if (childMappedNode != child) {
+                      _nodesByViewId[childViewId] = child;
+                      EngineDebugLogger.log('RECONCILE_STATELESS_CHILD_ELEMENT_FIX',
+                          '⚠️ Fixed child element mapping after DCFView reconciliation',
+                          extra: {
+                            'ViewId': childViewId,
+                            'ElementType': child.type,
+                            'HasOnPress': child.elementProps.containsKey('onPress')
+                          });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     else if (oldNode is DCFFragment && newNode is DCFFragment) {
@@ -1283,11 +1639,21 @@ class DCFEngine {
         _nodesByViewId.remove(oldViewId);
       } else {
         // For other replacements, reuse the view ID
-        newNode.nativeViewId = oldViewId;
+        // CRITICAL: Only map ELEMENTS to _nodesByViewId, not components!
+        // Events look up nodes by view ID and only work with DCFElement
+        if (newNode is DCFElement) {
+          newNode.nativeViewId = oldViewId;
+          _nodesByViewId[oldViewId] = newNode;
+        } else if (newNode is DCFStatefulComponent || newNode is DCFStatelessComponent) {
+          // For components, set contentViewId but DON'T map the component itself
+          // We'll map the rendered element after renderToNative creates it
+          // Remove old mapping first to avoid stale references
+          _nodesByViewId.remove(oldViewId);
+          newNode.contentViewId = oldViewId;
+        }
         EngineDebugLogger.log(
             'REPLACE_REUSE_VIEW_ID', 'Reusing view ID for in-place replacement',
-            extra: {'ViewId': oldViewId});
-        _nodesByViewId[oldViewId] = newNode;
+            extra: {'ViewId': oldViewId, 'NodeType': newNode.runtimeType.toString()});
       }
 
       // Only update event listeners if we're reusing the view ID
@@ -1347,6 +1713,7 @@ class DCFEngine {
           newNode.contentViewId = newViewId;
           
           // Also ensure the rendered node has the view ID if it's an element
+          // CRITICAL: We MUST map an element to _nodesByViewId for events to work
           final renderedNode = newNode.renderedNode;
           if (renderedNode != null) {
             if (renderedNode is DCFElement) {
@@ -1354,11 +1721,35 @@ class DCFEngine {
               renderedNode.nativeViewId = newViewId;
               _nodesByViewId[newViewId] = renderedNode;
             } else if (renderedNode is DCFStatefulComponent || renderedNode is DCFStatelessComponent) {
-              // For nested components, ensure their contentViewId is also set
-              if (renderedNode.contentViewId != newViewId) {
-                renderedNode.contentViewId = newViewId;
+              // For nested components, traverse down to find the actual element
+              // This ensures events can find the element even with nested components
+              DCFComponentNode? current = renderedNode;
+              DCFElement? actualElement;
+              while (current != null) {
+                if (current is DCFElement) {
+                  actualElement = current;
+                  break;
+                } else if (current is DCFStatefulComponent || current is DCFStatelessComponent) {
+                  current = current.renderedNode;
+                } else {
+                  break;
+                }
+              }
+              if (actualElement != null) {
+                actualElement.nativeViewId = newViewId;
+                _nodesByViewId[newViewId] = actualElement;
+              } else {
+                // Fallback: ensure nested component's contentViewId is set
+                if (renderedNode.contentViewId != newViewId) {
+                  renderedNode.contentViewId = newViewId;
+                }
               }
             }
+          } else {
+            // If renderedNode is null, log a warning but don't crash
+            EngineDebugLogger.log('REPLACE_NODE_NO_RENDERED_NODE',
+                '⚠️ Component has no renderedNode after renderToNative',
+                extra: {'ComponentType': newNode.runtimeType.toString(), 'ViewId': newViewId});
           }
           
           // Double-check: Verify effectiveNativeViewId is now correct
@@ -1723,38 +2114,86 @@ class DCFEngine {
     if (oldElement.nativeViewId != null) {
       newElement.nativeViewId = oldElement.nativeViewId;
 
-      _nodesByViewId[oldElement.nativeViewId!] = newElement;
+      // CRITICAL: Map the new element IMMEDIATELY before any other operations
+      // This ensures events can always find the correct element with the latest handlers
+      final viewId = oldElement.nativeViewId!;
+      final oldMappedNode = _nodesByViewId[viewId];
+      _nodesByViewId[viewId] = newElement;
+      
+      print('🔵 MAPPING UPDATE: viewId=$viewId, elementType=${newElement.type}');
+      print('🔵 MAPPING UPDATE: oldMapped=${oldMappedNode?.runtimeType}, newMapped=${newElement.runtimeType}');
+      print('🔵 MAPPING UPDATE: hasOnPress=${newElement.elementProps.containsKey('onPress')}');
+      if (oldMappedNode != newElement) {
+        print('⚠️ MAPPING CHANGED: viewId=$viewId changed from ${oldMappedNode?.runtimeType} to ${newElement.runtimeType}');
+      }
+      
       EngineDebugLogger.log(
-          'RECONCILE_UPDATE_TRACKING', 'Updated node tracking map');
+          'RECONCILE_UPDATE_TRACKING', 'Updated node tracking map',
+          extra: {
+            'ViewId': viewId,
+            'ElementType': newElement.type,
+            'HasOnPress': newElement.elementProps.containsKey('onPress'),
+            'OnPressIsFunction': newElement.elementProps['onPress'] is Function,
+            'OldMappedType': oldMappedNode?.runtimeType.toString() ?? 'null',
+            'NewMappedType': newElement.runtimeType.toString()
+          });
 
+      // CRITICAL: Check if event handlers changed (not just event types)
+      // Event handlers are functions, so we need to compare the actual handlers
       final oldEventTypes = oldElement.eventTypes;
       final newEventTypes = newElement.eventTypes;
+      
+      // Check if any event handlers changed by comparing the actual function references
+      bool eventHandlersChanged = false;
+      for (final eventType in newEventTypes) {
+        final oldHandler = oldElement.elementProps[eventType] ?? oldElement.elementProps['on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}'];
+        final newHandler = newElement.elementProps[eventType] ?? newElement.elementProps['on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}'];
+        if (oldHandler != newHandler) {
+          eventHandlersChanged = true;
+          break;
+        }
+      }
 
       final oldEventSet = Set<String>.from(oldEventTypes);
       final newEventSet = Set<String>.from(newEventTypes);
 
-      if (oldEventSet.length != newEventSet.length ||
+      // Update listeners if event types changed OR event handlers changed
+      if (eventHandlersChanged || 
+          oldEventSet.length != newEventSet.length ||
           !oldEventSet.containsAll(newEventSet)) {
         EngineDebugLogger.log('RECONCILE_UPDATE_EVENTS',
-            'Event types changed, updating listeners',
-            extra: {'OldEvents': oldEventTypes, 'NewEvents': newEventTypes});
+            'Event types or handlers changed, updating listeners',
+            extra: {
+              'OldEvents': oldEventTypes, 
+              'NewEvents': newEventTypes,
+              'HandlersChanged': eventHandlersChanged
+            });
 
-        final eventsToRemove = oldEventSet.difference(newEventSet);
-        if (eventsToRemove.isNotEmpty) {
+        // If handlers changed, remove all and re-add to ensure clean state
+        if (eventHandlersChanged && oldEventSet.isNotEmpty) {
           EngineDebugLogger.logBridge(
               'REMOVE_EVENT_LISTENERS', oldElement.nativeViewId!,
-              data: {'EventTypes': eventsToRemove.toList()});
+              data: {'EventTypes': oldEventTypes});
           await _nativeBridge.removeEventListeners(
-              oldElement.nativeViewId!, eventsToRemove.toList());
+              oldElement.nativeViewId!, oldEventTypes);
+        } else {
+          final eventsToRemove = oldEventSet.difference(newEventSet);
+          if (eventsToRemove.isNotEmpty) {
+            EngineDebugLogger.logBridge(
+                'REMOVE_EVENT_LISTENERS', oldElement.nativeViewId!,
+                data: {'EventTypes': eventsToRemove.toList()});
+            await _nativeBridge.removeEventListeners(
+                oldElement.nativeViewId!, eventsToRemove.toList());
+          }
         }
 
-        final eventsToAdd = newEventSet.difference(oldEventSet);
-        if (eventsToAdd.isNotEmpty) {
+        // Re-add all new event listeners
+        if (newEventSet.isNotEmpty) {
           EngineDebugLogger.logBridge(
               'ADD_EVENT_LISTENERS', oldElement.nativeViewId!,
-              data: {'EventTypes': eventsToAdd.toList()});
+              data: {'EventTypes': newEventTypes});
           await _nativeBridge.addEventListeners(
-              oldElement.nativeViewId!, eventsToAdd.toList());
+              oldElement.nativeViewId!, newEventTypes);
         }
       }
 
@@ -1768,6 +2207,10 @@ class DCFEngine {
         print('  New title: ${newElement.elementProps["title"]}');
         print('  Changed props: ${changedProps.keys.toList()}');
         print('  Changed props count: ${changedProps.length}');
+        print('  Old onPress: ${oldElement.elementProps.containsKey("onPress")} (${oldElement.elementProps["onPress"] is Function})');
+        print('  New onPress: ${newElement.elementProps.containsKey("onPress")} (${newElement.elementProps["onPress"] is Function})');
+        print('  Mapped node type: ${_nodesByViewId[oldElement.nativeViewId!]?.runtimeType}');
+        print('  Mapped node == newElement: ${_nodesByViewId[oldElement.nativeViewId!] == newElement}');
       }
 
       if (changedProps.isNotEmpty) {
@@ -1778,11 +2221,21 @@ class DCFEngine {
           EngineDebugLogger.log('UPDATE_VIEW_FAILED', 'updateView failed, falling back to createView',
               extra: {'ViewId': oldElement.nativeViewId});
           final createSuccess = await _nativeBridge.createView(
-              oldElement.nativeViewId!, oldElement.type, oldElement.elementProps);
+              oldElement.nativeViewId!, oldElement.type, newElement.elementProps);
           if (!createSuccess) {
             EngineDebugLogger.log('CREATE_VIEW_FALLBACK_FAILED', 'createView fallback also failed',
                 extra: {'ViewId': oldElement.nativeViewId});
           }
+        }
+        
+        // CRITICAL: Re-verify mapping after update to ensure it's still correct
+        // This prevents race conditions where the mapping might get overwritten
+        final currentMappedNode = _nodesByViewId[oldElement.nativeViewId!];
+        if (currentMappedNode != newElement) {
+          EngineDebugLogger.log('RECONCILE_REMAP_ELEMENT',
+              '⚠️ Mapping was overwritten, restoring correct element',
+              extra: {'ViewId': oldElement.nativeViewId, 'ExpectedType': newElement.runtimeType.toString()});
+          _nodesByViewId[oldElement.nativeViewId!] = newElement;
         }
       } else {
         EngineDebugLogger.log(
@@ -1795,7 +2248,191 @@ class DCFEngine {
             'OldChildCount': oldElement.children.length,
             'NewChildCount': newElement.children.length
           });
+      
+      // CRITICAL: Store a snapshot of child view IDs before reconciliation
+      // This allows us to verify and fix mappings after children reconciliation
+      final childViewIdsBeforeReconcile = <String, DCFElement>{};
+      for (final child in oldElement.children) {
+        final viewId = child.effectiveNativeViewId;
+        if (viewId != null && viewId.isNotEmpty) {
+          final mappedNode = _nodesByViewId[viewId];
+          if (mappedNode is DCFElement) {
+            childViewIdsBeforeReconcile[viewId] = mappedNode;
+          }
+        }
+      }
+      
       await _reconcileChildren(oldElement, newElement);
+      
+      // CRITICAL: After children reconciliation, verify ALL child mappings are correct
+      // This fixes the root cause: when SafeArea re-renders, child reconciliation
+      // can corrupt the _nodesByViewId mapping for child elements
+      for (final child in newElement.children) {
+        final viewId = child.effectiveNativeViewId;
+        if (viewId != null && viewId.isNotEmpty) {
+          final mappedNode = _nodesByViewId[viewId];
+          
+          if (child is DCFElement) {
+            // For direct elements, ensure mapping points to the new child instance
+            if (mappedNode != child) {
+              EngineDebugLogger.log('RECONCILE_CHILD_MAPPING_FIX',
+                  '⚠️ Child mapping corrupted during reconciliation, fixing',
+                  extra: {
+                    'ViewId': viewId,
+                    'ChildType': child.type,
+                    'HasOnPress': child.elementProps.containsKey('onPress'),
+                    'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null',
+                    'OldMappedHasOnPress': (mappedNode is DCFElement) ? mappedNode.elementProps.containsKey('onPress') : false
+                  });
+              _nodesByViewId[viewId] = child;
+            } else {
+              // Verify the mapped element has handlers
+              if (child.type == 'Button' && !child.elementProps.containsKey('onPress')) {
+                EngineDebugLogger.log('RECONCILE_CHILD_NO_HANDLERS',
+                    '⚠️ Button child has no onPress handler after reconciliation!',
+                    extra: {
+                      'ViewId': viewId,
+                      'ElementProps': child.elementProps.keys.toList()
+                    });
+              }
+            }
+          } else if (child is DCFStatefulComponent || child is DCFStatelessComponent) {
+            // For components, ensure mapping points to rendered element
+            final renderedElement = child.renderedNode;
+            if (renderedElement is DCFElement) {
+              final renderedViewId = renderedElement.nativeViewId;
+              // Use effectiveNativeViewId to handle nested components
+              final effectiveViewId = child.effectiveNativeViewId ?? renderedViewId;
+              if (effectiveViewId == viewId) {
+                if (mappedNode != renderedElement) {
+                  EngineDebugLogger.log('RECONCILE_CHILD_COMPONENT_MAPPING_FIX',
+                      '⚠️ Component child mapping corrupted, fixing to point to rendered element',
+                      extra: {
+                        'ViewId': viewId,
+                        'RenderedViewId': renderedViewId,
+                        'HasOnPress': renderedElement.elementProps.containsKey('onPress'),
+                        'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
+                      });
+                  _nodesByViewId[viewId] = renderedElement;
+                }
+              } else if (renderedViewId != null && renderedViewId.isNotEmpty && mappedNode != renderedElement) {
+                // Also check if the rendered element's view ID is mapped correctly
+                final renderedMappedNode = _nodesByViewId[renderedViewId];
+                if (renderedMappedNode != renderedElement) {
+                  EngineDebugLogger.log('RECONCILE_CHILD_RENDERED_ELEMENT_MAPPING_FIX',
+                      '⚠️ Rendered element mapping corrupted, fixing',
+                      extra: {
+                        'RenderedViewId': renderedViewId,
+                        'HasOnPress': renderedElement.elementProps.containsKey('onPress')
+                      });
+                  _nodesByViewId[renderedViewId] = renderedElement;
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // FINAL SAFEGUARD: Ensure parent mapping is correct after all reconciliation
+      // This catches any cases where the mapping might have been corrupted
+      if (newElement.nativeViewId != null) {
+        final finalMappedNode = _nodesByViewId[newElement.nativeViewId!];
+        if (finalMappedNode != newElement) {
+          EngineDebugLogger.log('RECONCILE_FINAL_REMAP',
+              '⚠️ Final mapping check failed, restoring correct element',
+              extra: {
+                'ViewId': newElement.nativeViewId, 
+                'MappedType': finalMappedNode?.runtimeType.toString() ?? 'null',
+                'ExpectedType': newElement.runtimeType.toString(),
+                'NewElementHasOnPress': newElement.elementProps.containsKey('onPress'),
+                'MappedNodeHasOnPress': (finalMappedNode is DCFElement) ? finalMappedNode.elementProps.containsKey('onPress') : false
+              });
+          _nodesByViewId[newElement.nativeViewId!] = newElement;
+        } else {
+          // Verify the mapped element actually has the handlers
+          if (finalMappedNode is DCFElement) {
+            final hasHandlers = newElement.eventTypes.isNotEmpty;
+            if (!hasHandlers && newElement.type == 'Button') {
+              EngineDebugLogger.log('RECONCILE_NO_HANDLERS',
+                  '⚠️ Button element has no event handlers after reconciliation!',
+                  extra: {
+                    'ViewId': newElement.nativeViewId,
+                    'ElementProps': newElement.elementProps.keys.toList()
+                  });
+            }
+          }
+        }
+      }
+      
+      // ULTIMATE SAFEGUARD: Re-verify ALL child mappings one more time after everything
+      // This is the final check to ensure no child mappings were corrupted during reconciliation
+      // CRITICAL: This is especially important for SafeArea's View children (Button components)
+      for (final child in newElement.children) {
+        final viewId = child.effectiveNativeViewId;
+        if (viewId != null && viewId.isNotEmpty) {
+          final mappedNode = _nodesByViewId[viewId];
+          
+          if (child is DCFElement) {
+            if (mappedNode != child) {
+              EngineDebugLogger.log('RECONCILE_ULTIMATE_CHILD_FIX',
+                  '⚠️ ULTIMATE FIX: Child mapping still corrupted after all reconciliation, fixing now',
+                  extra: {
+                    'ViewId': viewId,
+                    'ChildType': child.type,
+                    'HasOnPress': child.elementProps.containsKey('onPress'),
+                    'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
+                  });
+              _nodesByViewId[viewId] = child;
+            }
+            // CRITICAL: Also verify event listeners are attached for Button elements
+            if (child.type == 'Button' && child.eventTypes.isNotEmpty) {
+              final hasListeners = child.elementProps.containsKey('onPress') || 
+                                  child.elementProps.containsKey('onClick');
+              if (!hasListeners) {
+                EngineDebugLogger.log('RECONCILE_ULTIMATE_BUTTON_NO_HANDLERS',
+                    '⚠️ ULTIMATE CHECK: Button has eventTypes but no handlers in props!',
+                    extra: {
+                      'ViewId': viewId,
+                      'EventTypes': child.eventTypes,
+                      'ElementProps': child.elementProps.keys.toList()
+                    });
+              }
+            }
+          } else if (child is DCFStatefulComponent || child is DCFStatelessComponent) {
+            final renderedElement = child.renderedNode;
+            if (renderedElement is DCFElement) {
+              final renderedViewId = renderedElement.nativeViewId;
+              if (renderedViewId != null && renderedViewId.isNotEmpty) {
+                final renderedMappedNode = _nodesByViewId[renderedViewId];
+                if (renderedMappedNode != renderedElement) {
+                  EngineDebugLogger.log('RECONCILE_ULTIMATE_RENDERED_FIX',
+                      '⚠️ ULTIMATE FIX: Rendered element mapping still corrupted, fixing now',
+                      extra: {
+                        'RenderedViewId': renderedViewId,
+                        'ElementType': renderedElement.type,
+                        'HasOnPress': renderedElement.elementProps.containsKey('onPress')
+                      });
+                  _nodesByViewId[renderedViewId] = renderedElement;
+                }
+                // CRITICAL: Also verify event listeners for Button rendered elements
+                if (renderedElement.type == 'Button' && renderedElement.eventTypes.isNotEmpty) {
+                  final hasListeners = renderedElement.elementProps.containsKey('onPress') || 
+                                      renderedElement.elementProps.containsKey('onClick');
+                  if (!hasListeners) {
+                    EngineDebugLogger.log('RECONCILE_ULTIMATE_BUTTON_RENDERED_NO_HANDLERS',
+                        '⚠️ ULTIMATE CHECK: Button rendered element has eventTypes but no handlers!',
+                        extra: {
+                          'ViewId': renderedViewId,
+                          'EventTypes': renderedElement.eventTypes,
+                          'ElementProps': renderedElement.elementProps.keys.toList()
+                        });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     EngineDebugLogger.log(
@@ -2211,6 +2848,81 @@ class DCFEngine {
         await _reconcile(oldChild, newChild);
         // After reconcile, prefer new node's view ID, fallback to old
         childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
+        
+        // CRITICAL: After reconciling each child, IMMEDIATELY ensure the mapping points to newChild
+        // This is especially important when parent components (like SafeArea) re-render
+        // and create new child instances. The _reconcile call should have already
+        // updated the mapping via _reconcileElement, but we verify and fix it here as a safeguard
+        if (childViewId != null && childViewId.isNotEmpty) {
+          final mappedNode = _nodesByViewId[childViewId];
+          
+          // If the mapping doesn't point to newChild (or its rendered element), fix it IMMEDIATELY
+          if (newChild is DCFElement) {
+            if (mappedNode != newChild) {
+              // Update mapping to point to newChild which has the latest handlers
+              _nodesByViewId[childViewId] = newChild;
+              EngineDebugLogger.log('RECONCILE_CHILD_FIX_MAPPING',
+                  '⚠️ Fixed mapping to point to new child element (immediate fix)',
+                  extra: {
+                    'ViewId': childViewId,
+                    'ChildType': newChild.type,
+                    'HasOnPress': newChild.elementProps.containsKey('onPress'),
+                    'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null',
+                    'OldMappedHasOnPress': (mappedNode is DCFElement) ? mappedNode.elementProps.containsKey('onPress') : false
+                  });
+            } else {
+              // Verify the mapped element actually has the handlers
+              if (newChild.type == 'Button' && !newChild.elementProps.containsKey('onPress')) {
+                EngineDebugLogger.log('RECONCILE_CHILD_NO_HANDLERS_IMMEDIATE',
+                    '⚠️ Button child has no onPress handler after reconciliation!',
+                    extra: {
+                      'ViewId': childViewId,
+                      'ElementProps': newChild.elementProps.keys.toList()
+                    });
+              }
+            }
+          } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+            // For components, ensure the mapping points to the rendered element
+            final renderedElement = newChild.renderedNode;
+            if (renderedElement is DCFElement) {
+              final renderedViewId = renderedElement.nativeViewId;
+              // Use effectiveNativeViewId to handle nested components
+              final effectiveViewId = newChild.effectiveNativeViewId ?? renderedViewId;
+              
+              // CRITICAL: Always ensure the rendered element's view ID is mapped correctly
+              // This is the root cause: when SafeArea creates new Button instances, they
+              // might reuse view IDs, but the mapping must point to the NEW rendered element
+              if (renderedViewId != null && renderedViewId.isNotEmpty) {
+                final renderedMappedNode = _nodesByViewId[renderedViewId];
+                if (renderedMappedNode != renderedElement) {
+                  _nodesByViewId[renderedViewId] = renderedElement;
+                  EngineDebugLogger.log('RECONCILE_CHILD_RENDERED_ELEMENT_MAPPING_FIX',
+                      '⚠️ Fixed rendered element mapping (immediate fix)',
+                      extra: {
+                        'ViewId': childViewId,
+                        'RenderedViewId': renderedViewId,
+                        'ElementType': renderedElement.type,
+                        'HasOnPress': renderedElement.elementProps.containsKey('onPress'),
+                        'OldMappedType': renderedMappedNode?.runtimeType.toString() ?? 'null'
+                      });
+                }
+              }
+              
+              // Also check if effectiveViewId matches childViewId and fix if needed
+              if (effectiveViewId == childViewId && mappedNode != renderedElement) {
+                _nodesByViewId[childViewId] = renderedElement;
+                EngineDebugLogger.log('RECONCILE_CHILD_FIX_MAPPING_COMPONENT',
+                    '⚠️ Fixed mapping to point to component\'s rendered element (immediate fix)',
+                    extra: {
+                      'ViewId': childViewId,
+                      'RenderedViewId': renderedViewId,
+                      'HasOnPress': renderedElement.elementProps.containsKey('onPress'),
+                      'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
+                    });
+              }
+            }
+          }
+        }
       }
 
       if (childViewId != null && childViewId.isNotEmpty) {

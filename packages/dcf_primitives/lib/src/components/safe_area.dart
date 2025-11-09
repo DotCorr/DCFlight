@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
 /// Improved SafeAreaView component that properly handles orientation changes
@@ -48,14 +49,36 @@ class DCFSafeArea extends DCFStatefulComponent {
   DCFComponentNode render() {
     final screenUtils = ScreenUtilities.instance;
     final orientationFlag = useState<int>(0);
+    final lastPaddingState = useState<Map<String, double>>({});
 
     useEffect(() {
       void onDimensionChange() {
-        orientationFlag.setState(orientationFlag.state + 1);
-
-        Future.delayed(Duration(milliseconds: 100), () {
-          scheduleUpdate();
-        });
+        final newTopPadding = top ? screenUtils.safeAreaTop : 0.0;
+        final newBottomPadding = bottom ? screenUtils.safeAreaBottom : 0.0;
+        final newLeftPadding = left ? screenUtils.safeAreaLeft : 0.0;
+        final newRightPadding = right ? screenUtils.safeAreaRight : 0.0;
+        
+        final newPaddingState = {
+          'top': newTopPadding,
+          'bottom': newBottomPadding,
+          'left': newLeftPadding,
+          'right': newRightPadding,
+        };
+        
+        // Only trigger re-render if padding actually changed (with tolerance for floating point)
+        // This prevents unnecessary re-renders that can corrupt event handlers
+        final lastState = lastPaddingState.state;
+        const tolerance = 0.01; // 0.01 pixel tolerance for floating point comparison
+        final hasChanged = lastState.isEmpty || 
+            ((lastState['top'] as double? ?? 0.0) - newTopPadding).abs() > tolerance ||
+            ((lastState['bottom'] as double? ?? 0.0) - newBottomPadding).abs() > tolerance ||
+            ((lastState['left'] as double? ?? 0.0) - newLeftPadding).abs() > tolerance ||
+            ((lastState['right'] as double? ?? 0.0) - newRightPadding).abs() > tolerance;
+        
+        if (hasChanged) {
+          lastPaddingState.setState(newPaddingState);
+          orientationFlag.setState(orientationFlag.state + 1);
+        }
       }
 
       screenUtils.addDimensionChangeListener(onDimensionChange);
@@ -105,14 +128,12 @@ class DCFSafeArea extends DCFStatefulComponent {
           right: layout.absoluteLayout?.right,
         ));
 
-    return DCFElement(
-      type: 'View',
-      elementProps: {
-        ...enhancedLayout.toMap(),
-        ...styleSheet.toMap(),
-        ...(events ?? {}),
-      },
+    return DCFView(
+      key: 'safe_area_view', // CRITICAL: Stable key prevents view replacement on re-render
+      layout: enhancedLayout,
+      styleSheet: styleSheet,
       children: children,
+      events: events,
     );
   }
 }

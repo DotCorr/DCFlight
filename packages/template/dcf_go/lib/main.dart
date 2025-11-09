@@ -18,7 +18,8 @@ class MyApp extends DCFStatefulComponent {
     final showPortal = useState<bool>(false);
 
     return DCFTheme.current.isDark
-        ? DCFView(
+        ? DCFSafeArea(
+          key: 'main_safe_area', // CRITICAL: Stable key prevents component replacement
           layout: DCFLayout(
             padding: 20,
             flex: 1,
@@ -30,6 +31,7 @@ class MyApp extends DCFStatefulComponent {
             backgroundColor: DCFTheme.current.backgroundColor,
           ),
           children: [
+            
             // Portal example - renders content into the root view
             // This demonstrates how Portal can render children outside the normal parent hierarchy
             DCFPortal(
