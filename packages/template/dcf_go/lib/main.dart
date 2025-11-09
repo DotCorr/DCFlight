@@ -209,6 +209,7 @@ class MyApp extends DCFStatefulComponent {
         )
             : count.state > 5 && count.state % 2 == 0
                 ? DCFView(
+                    key: 'aqua_screen_even', // Stable key for conditional branch
                     layout: DCFLayout(
                       flex: 1,
                       justifyContent: YogaJustifyContent.center,
@@ -243,6 +244,7 @@ class MyApp extends DCFStatefulComponent {
           ],
         )
         : DCFView(
+          key: 'aqua_screen_odd', // Stable key for conditional branch
           layout: DCFLayout(
             flex: 1,
             justifyContent: YogaJustifyContent.center,

@@ -1278,6 +1278,48 @@ class DCFEngine {
                 });
             _nodesByViewId[renderedViewId] = newRenderedNode;
           }
+          
+          // CRITICAL: If this is a View element (like SafeArea's DCFView), ensure ALL child Button mappings are preserved
+          // This is the root cause: when SafeArea re-renders, its DCFView reconciles, and Button children
+          // might lose their mappings during child reconciliation
+          if (newRenderedNode.type == 'View' && newRenderedNode.children.isNotEmpty) {
+            for (final child in newRenderedNode.children) {
+              final childViewId = child.effectiveNativeViewId;
+              if (childViewId != null && childViewId.isNotEmpty) {
+                if (child is DCFElement) {
+                  final childMapped = _nodesByViewId[childViewId];
+                  if (childMapped != child) {
+                    EngineDebugLogger.log('RECONCILE_STATEFUL_VIEW_CHILD_FIX',
+                        '⚠️ Fixed Button child mapping in SafeArea View',
+                        extra: {
+                          'ViewId': childViewId,
+                          'ChildType': child.type,
+                          'HasOnPress': child.elementProps.containsKey('onPress')
+                        });
+                    _nodesByViewId[childViewId] = child;
+                  }
+                } else if (child is DCFStatelessComponent || child is DCFStatefulComponent) {
+                  final renderedElement = child.renderedNode;
+                  if (renderedElement is DCFElement) {
+                    final renderedViewId = renderedElement.nativeViewId;
+                    if (renderedViewId != null && renderedViewId.isNotEmpty) {
+                      final renderedMapped = _nodesByViewId[renderedViewId];
+                      if (renderedMapped != renderedElement) {
+                        EngineDebugLogger.log('RECONCILE_STATEFUL_VIEW_CHILD_COMPONENT_FIX',
+                            '⚠️ Fixed Button component child mapping in SafeArea View',
+                            extra: {
+                              'RenderedViewId': renderedViewId,
+                              'ElementType': renderedElement.type,
+                              'HasOnPress': renderedElement.elementProps.containsKey('onPress')
+                            });
+                        _nodesByViewId[renderedViewId] = renderedElement;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       } else if (newRenderedNode is DCFStatefulComponent || newRenderedNode is DCFStatelessComponent) {
         // For nested components, traverse to find the actual element
@@ -1689,11 +1731,14 @@ class DCFEngine {
         await _nativeBridge.startBatchUpdate();
       }
       
-      EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
-      await _nativeBridge.deleteView(oldViewId);
-
+      // CRITICAL: Create the new view BEFORE deleting the old one to prevent white screen
+      // This ensures there's always a view visible during the transition
       final newViewId = await renderToNative(newNode,
           parentViewId: parentViewId, index: index);
+      
+      // Only delete the old view after the new one is created and attached
+      EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
+      await _nativeBridge.deleteView(oldViewId);
 
       // Commit the atomic delete+create if we started the batch
       if (!wasBatchMode) {

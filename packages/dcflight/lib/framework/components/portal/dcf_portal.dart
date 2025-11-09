@@ -63,7 +63,7 @@ class DCFPortal extends DCFStatefulComponent {
     super.componentDidMount();
     _prevTarget = target;
     _prevChildren = List.from(children);
-    // Render immediately - don't defer with microtask
+    // Render immediately - no cleanup needed on mount
     _renderChildrenToTarget();
   }
   
@@ -71,29 +71,45 @@ class DCFPortal extends DCFStatefulComponent {
   void componentDidUpdate(Map<String, dynamic> prevProps) {
     super.componentDidUpdate(prevProps);
     
-    // Check if children actually changed
+    // Check if children actually changed by comparing content, not just reference
+    // Portal's children list is often recreated on each render, so we need deeper comparison
     final childrenChanged = _prevChildren == null || 
         _prevChildren!.length != children.length ||
         !_childrenEqual(_prevChildren!, children);
     
-    // If target changed OR children changed, re-render
-    if (_prevTarget != target || childrenChanged) {
+    // Also check if target changed
+    final targetChanged = _prevTarget != target;
+    
+    // Only update if something actually changed
+    if (targetChanged || childrenChanged) {
       if (kDebugMode) {
-        print('🔄 DCFPortal: Updating - target changed: ${_prevTarget != target}, children changed: $childrenChanged');
+        print('🔄 DCFPortal: Updating - target changed: $targetChanged, children changed: $childrenChanged');
         print('🔄 DCFPortal: Old children count: ${_prevChildren?.length ?? 0}, New: ${children.length}');
       }
       
-      _cleanupChildren();
+      // Update tracking BEFORE cleanup to avoid issues
       _prevTarget = target;
       _prevChildren = List.from(children);
-      // Render immediately - don't defer
-      _renderChildrenToTarget();
+      
+      // Defer cleanup and render to avoid interfering with reconciliation
+      // Portal renders outside the normal tree, so we can safely defer
+      Future.microtask(() {
+        if (isMounted) {
+          _cleanupAndRender();
+        }
+      });
     } else {
       // Nothing changed, skip update
       if (kDebugMode) {
         print('⏭️ DCFPortal: Skipping update - no changes detected');
       }
     }
+  }
+  
+  /// Cleanup and render in one atomic operation
+  Future<void> _cleanupAndRender() async {
+    await _cleanupChildren();
+    await _renderChildrenToTarget();
   }
   
   /// Check if two children lists are equal (by reference, not deep equality)
@@ -123,15 +139,16 @@ class DCFPortal extends DCFStatefulComponent {
         print('🎯 DCFPortal: Rendering ${children.length} children to target "$target"');
       }
       
-      // Clean up old children first
-      await _cleanupChildren();
+      // Note: When called from _cleanupAndRender(), cleanup is already done
+      // When called from componentDidMount(), no cleanup is needed
       
+      // Clear rendered child IDs before rendering new ones
       _renderedChildViewIds.clear();
       
-      // If no children, we're done (already cleaned up)
+      // If no children, we're done
       if (children.isEmpty) {
         if (kDebugMode) {
-          print('✅ DCFPortal: No children to render, cleanup complete');
+          print('✅ DCFPortal: No children to render');
         }
         return;
       }
