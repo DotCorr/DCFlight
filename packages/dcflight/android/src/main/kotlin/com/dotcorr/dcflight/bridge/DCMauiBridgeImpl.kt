@@ -77,9 +77,16 @@ class DCMauiBridgeImpl private constructor() {
 
     fun createView(viewId: String, viewType: String, propsJson: String): Boolean {
         return try {
-            if (ViewRegistry.shared.getView(viewId) != null) {
-                Log.d(TAG, "🔥 REDIRECT: View $viewId exists, calling updateView")
-                return updateView(viewId, propsJson)
+            val existingView = ViewRegistry.shared.getView(viewId)
+            if (existingView != null) {
+                // Check if view is actually in the hierarchy - if not, delete and recreate
+                if (existingView.parent == null) {
+                    Log.d(TAG, "🔥 REDIRECT: View $viewId exists but not in hierarchy, deleting and recreating")
+                    deleteView(viewId)
+                } else {
+                    Log.d(TAG, "🔥 REDIRECT: View $viewId exists, calling updateView")
+                    return updateView(viewId, propsJson)
+                }
             }
             
             val props = if (propsJson.isNotEmpty()) {
@@ -100,20 +107,14 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
-            // ♻️ Try to acquire a recycled view from the pool first
-            var view = com.dotcorr.dcflight.pool.ViewPoolManager.shared.acquireView(viewType)
-            
-            if (view == null) {
-                // No recycled view available, create a new one
-                val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-                view = componentInstance.createView(context, props)
-                Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
-            } else {
-                // Reusing recycled view - update it with new props
+            // Create a new view
             val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-                componentInstance.updateView(view, props)
-                Log.d(TAG, "♻️ Reused recycled view for type '$viewType' (viewId: $viewId)")
-            }
+            val view = componentInstance.createView(context, props)
+            Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
+
+            // Ensure view is visible
+            view.visibility = View.VISIBLE
+            view.alpha = 1.0f
 
             ViewRegistry.shared.registerView(view, viewId, viewType)
             views[viewId] = view
@@ -188,6 +189,11 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
 
+            // Ensure view is visible and invalidated after update
+            view.visibility = View.VISIBLE
+            view.invalidate()
+            view.requestLayout()
+
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update view: $viewId", e)
@@ -205,12 +211,6 @@ class DCMauiBridgeImpl private constructor() {
             if (view != null) {
                 val parentView = view.parent as? ViewGroup
                 parentView?.removeView(view)
-                
-                // ♻️ Return view to pool for recycling instead of destroying it
-                if (viewType != null) {
-                    com.dotcorr.dcflight.pool.ViewPoolManager.shared.releaseView(view, viewType)
-                    Log.d(TAG, "♻️ Returned view '$viewId' to pool for type '$viewType'")
-                }
             }
             
             cleanupHierarchyReferences(viewId)
