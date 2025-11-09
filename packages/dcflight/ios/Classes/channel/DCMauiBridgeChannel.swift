@@ -309,6 +309,22 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         DCFLayoutManager.shared.clearAll()
         
+        // CRITICAL: After hot restart cleanup, ensure root view frame is set and layout is recalculated
+        // This prevents white screen on iOS during hot restart
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first,
+           let rootView = DCMauiBridgeImpl.shared.views["root"] {
+            // Set root view frame to window bounds
+            rootView.frame = window.bounds
+            rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            
+            // Recalculate layout synchronously to prevent white screen
+            let windowBounds = window.bounds
+            print("🎯 DCFlight: Hot restart - Setting root view frame and recalculating layout: \(windowBounds.width)x\(windowBounds.height)")
+            DCFScreenUtilities.shared.updateScreenDimensions(width: windowBounds.width, height: windowBounds.height)
+            YogaShadowTree.shared.calculateAndApplyLayout(width: windowBounds.width, height: windowBounds.height)
+        }
+        
     }
     
     /// Helper to get a view by ID

@@ -13,7 +13,6 @@ class LifecycleTestApp extends DCFStatefulComponent {
     final showChild = useState<bool>(true);
     
     return DCFSafeArea(
-      key: 'main_safe_area',
       layout: DCFLayout(
         padding: 20,
         flex: 1,
@@ -27,7 +26,6 @@ class LifecycleTestApp extends DCFStatefulComponent {
         // Test component that uses all lifecycle methods and hooks
         showChild.state
             ? LifecycleTestComponent(
-                key: 'lifecycle_test',
                 count: count.state,
               )
             : DCFText(
