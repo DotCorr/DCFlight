@@ -155,7 +155,7 @@ public class ColorUtilities {
                 return color
             }
         }
-        
+    
         // Priority 2: Check semantic color prop
         if let semanticColorKey = semanticColor,
            let semanticColorStr = props[semanticColorKey] as? String {
