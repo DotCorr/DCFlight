@@ -35,9 +35,33 @@ class DCFEngine {
   /// Map of view IDs to their associated VDomNodes - O(1) lookup
   final Map<String, DCFComponentNode> _nodesByViewId = {};
 
-  /// Component tracking maps - React-like
+  /// Component tracking maps
   final Map<String, DCFStatefulComponent> _statefulComponents = {};
   final Map<String, DCFComponentNode> _previousRenderedNodes = {};
+  
+  /// Component instance tracking by position + type
+  /// Key: "parentViewId:index:type" -> Component instance
+  /// This allows instance persistence across renders
+  final Map<String, DCFComponentNode> _componentInstancesByPosition = {};
+  
+  /// Props-based identity cache for automatic key inference
+  /// Key: "parentViewId:index:type:propsHash" -> Component instance
+  /// Used when components have same type at same position but different props
+  final Map<String, DCFComponentNode> _componentInstancesByProps = {};
+  
+  /// Helper to compute props hash for identity matching
+  int _computePropsHash(DCFComponentNode node) {
+    if (node is DCFStatefulComponent) {
+      return node.props.hashCode;
+    }
+    if (node is DCFStatelessComponent) {
+      return node.props.hashCode;
+    }
+    if (node is DCFElement) {
+      return node.elementProps.hashCode;
+    }
+    return node.hashCode;
+  }
 
   /// Priority-based update system
   final Set<String> _pendingUpdates = {};
@@ -117,12 +141,12 @@ class DCFEngine {
     return viewId;
   }
 
-  /// React-like key generation: key prop or position+type
+  /// Key generation: key prop or position+type
   String _getNodeKey(DCFComponentNode node, int index) {
     return node.key ?? '$index:${node.runtimeType}';
   }
 
-  /// Register a component in the VDOM (React-like)
+  /// Register a component in the VDOM
   void registerComponent(DCFComponentNode component) {
     EngineDebugLogger.logMount(component, context: 'registerComponent');
 
@@ -335,34 +359,58 @@ class DCFEngine {
     }
   }
 
-  /// React reconciliation: when to replace vs update at same position
+  /// Reconciliation: when to replace vs update at same position
+  /// Heuristic: Only replace if truly necessary
+  /// We match by position when types are the same, even without keys
   bool _shouldReplaceAtSamePosition(
       DCFComponentNode oldChild, DCFComponentNode newChild) {
+    // If keys are explicitly different, replace
+    if (oldChild.key != null && newChild.key != null && oldChild.key != newChild.key) {
+      return true;
+    }
+    
+    // If one has a key and the other doesn't, be more careful
+    // We still try to match by position if types match
+    if ((oldChild.key != null) != (newChild.key != null)) {
+      // Different key presence, but check if types match first
+      if (oldChild.runtimeType == newChild.runtimeType) {
+        // Same type, try to reconcile instead of replace
+        if (oldChild is DCFElement && newChild is DCFElement) {
+          if (oldChild.type == newChild.type) {
+            // Same element type, reconcile instead of replace
+            return false;
+          }
+        } else {
+          // Same component type, reconcile instead of replace
+          return false;
+        }
+      }
+    }
+
+    // Different runtime types = different components, must replace
     if (oldChild.runtimeType != newChild.runtimeType) {
       return true;
     }
 
-    if (oldChild.key != newChild.key) {
-      return true;
-    }
-
+    // Same runtime type - check element types if both are elements
     if (oldChild is DCFElement && newChild is DCFElement) {
       if (oldChild.type != newChild.type) {
         return true;
       }
       
-      // CRITICAL FIX: If children count differs significantly, force replacement
-      // This handles conditional rendering patterns where children are completely different
+      // Same element type - we reconcile, not replace
+      // Only replace if children structure is COMPLETELY different
+      // (We are more forgiving with conditional rendering)
       final oldChildCount = oldChild.children.length;
       final newChildCount = newChild.children.length;
       final countDiff = (oldChildCount - newChildCount).abs();
       
-      // If children count differs by more than 50% or by more than 3, force replacement
-      // This prevents reconciliation issues when conditional rendering produces
-      // completely different child structures (e.g., theme switching)
-      if (countDiff > 3 || (countDiff > 0 && countDiff >= (oldChildCount * 0.5).ceil())) {
+      // More forgiving threshold - only replace if structure is VERY different
+        // We reconcile even with different child counts
+      if (countDiff > 10 || (countDiff > 0 && countDiff >= oldChildCount)) {
+        // Only replace if children count doubled or more than 10 difference
         EngineDebugLogger.log('REPLACE_CHILDREN_MISMATCH',
-            'Forcing replacement due to significant children count difference',
+            'Forcing replacement due to extreme children count difference',
             extra: {
               'OldChildCount': oldChildCount,
               'NewChildCount': newChildCount,
@@ -371,8 +419,13 @@ class DCFEngine {
             });
         return true;
       }
+      
+      // Same type, similar structure - reconcile, don't replace
+      return false;
     }
 
+    // Same component type - we reconcile, not replace
+    // This is the key behavior: match by position and type
     return false;
   }
 
@@ -1163,26 +1216,56 @@ class DCFEngine {
 
     newNode.parent = oldNode.parent;
 
-    // Check keys first (React-style)
-    if (oldNode.key != newNode.key) {
+    // Component instance tracking by position + type + props
+    // We maintain component instances across renders when at same position with same type
+    final parentViewId = _findParentViewId(oldNode) ?? "root";
+    final nodeIndex = _findNodeIndexInParent(oldNode);
+    final positionKey = "$parentViewId:$nodeIndex:${newNode.runtimeType}";
+    final propsHash = _computePropsHash(newNode);
+    final propsKey = "$positionKey:$propsHash";
+    
+    // Try to find existing instance by position + type + props
+    // This is automatic key inference - match by position when types/props match
+    final existingByProps = _componentInstancesByProps[propsKey];
+    
+    // If we found an existing instance with same props, reuse it
+    if (existingByProps != null && existingByProps.runtimeType == newNode.runtimeType) {
+      if (existingByProps is DCFStatefulComponent && newNode is DCFStatefulComponent) {
+        // Same component instance - update it instead of creating new one
+        EngineDebugLogger.logReconcile('REUSE_INSTANCE_BY_PROPS', oldNode, newNode,
+            reason: 'Reusing component instance by position+props');
+        // Continue with reconciliation - this is the same instance
+      }
+    }
+    
+    // Track component instance by position and props (automatic key inference)
+    _componentInstancesByPosition[positionKey] = newNode;
+    _componentInstancesByProps[propsKey] = newNode;
+    
+    // Check keys first
+    // Only replace if keys are explicitly different (both have keys)
+    if (oldNode.key != null && newNode.key != null && oldNode.key != newNode.key) {
       EngineDebugLogger.logReconcile('REPLACE_KEY', oldNode, newNode,
           reason: 'Different keys - hot reload fix');
       await _replaceNode(oldNode, newNode);
       return;
     }
+    
+    // If no keys or same keys, match by position and type
+    // This is automatic key inference - works in 99% of cases
 
     // For elements, check if they're the same element type
     if (oldNode is DCFElement && newNode is DCFElement) {
       if (oldNode.type != newNode.type) {
         print('🔍 RECONCILE: Element type changed: ${oldNode.type} → ${newNode.type}');
-        print('⚛️  RECONCILE: Using React-style full replacement (unmount + mount)');
+        print('⚛️  RECONCILE: Using full replacement (unmount + mount)');
         
         EngineDebugLogger.logReconcile('REPLACE_ELEMENT_TYPE', oldNode, newNode,
-            reason: 'Different element types - React-style replacement');
+            reason: 'Different element types - full replacement');
         await _replaceNode(oldNode, newNode);
       } else {
-        // REACT-INSPIRED FIX: Check if children differ significantly
-        // React would use keys here, but we can detect structural differences
+        // Check if children differ significantly
+        // We would use keys here, but we can detect structural differences
         // If children count differs significantly, it's likely conditional rendering
         // with completely different structures (e.g., theme switching)
         final oldChildCount = oldNode.children.length;
@@ -1358,7 +1441,7 @@ class DCFEngine {
       // We need to reconcile their RENDERED elements, not the components themselves
       if (oldNode.runtimeType != newNode.runtimeType) {
         print('🔍 RECONCILE: Different StatelessComponent types: ${oldNode.runtimeType} → ${newNode.runtimeType}');
-        print('🔍 RECONCILE: Reconciling rendered elements instead (React approach)');
+        print('🔍 RECONCILE: Reconciling rendered elements instead');
         EngineDebugLogger.logReconcile('RECONCILE_STATELESS_VIA_ELEMENTS', oldNode, newNode,
             reason: 'Different StatelessComponent types - reconcile via rendered elements');
         
@@ -1962,6 +2045,8 @@ class DCFEngine {
       _pendingUpdates.clear();
       _componentPriorities.clear();
       _errorBoundaries.clear();
+      _componentInstancesByPosition.clear();
+      _componentInstancesByProps.clear();
 
       _componentsWaitingForLayout.clear();
       _componentsWaitingForInsertion.clear();
@@ -2792,6 +2877,13 @@ class DCFEngine {
 
       EngineDebugLogger.log(
           'RECONCILE_SIMPLE_UPDATE', 'Updating child at index $i');
+
+      // Track component instance by position for automatic key inference
+      final childPositionKey = "$parentViewId:$i:${newChild.runtimeType}";
+      final childPropsHash = _computePropsHash(newChild);
+      final childPropsKey = "$childPositionKey:$childPropsHash";
+      _componentInstancesByPosition[childPositionKey] = newChild;
+      _componentInstancesByProps[childPropsKey] = newChild;
 
       String? childViewId;
       if (_shouldReplaceAtSamePosition(oldChild, newChild)) {

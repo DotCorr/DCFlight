@@ -14,28 +14,35 @@ class MyApp extends DCFStatefulComponent {
     final name = useState<String>("");
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
 
-    // Portal example - renders content into the root view
+    // Portal example - renders content into the PortalTarget
     final showPortal = useState<bool>(false);
 
-    return DCFTheme.current.isDark
-        ? DCFSafeArea(
-          key: 'main_safe_area', // CRITICAL: Stable key prevents component replacement
-          layout: DCFLayout(
-            padding: 20,
-            flex: 1,
-            justifyContent: YogaJustifyContent.center,
-            alignItems: YogaAlign.center,
-          ),
-          // Using unified theme system with semantic colors
-          styleSheet: DCFStyleSheet(
-            backgroundColor: DCFTheme.current.backgroundColor,
-          ),
-          children: [
-            
-            // Portal example - renders content into the root view
-            // This demonstrates how Portal can render children outside the normal parent hierarchy
-            DCFPortal(
-              target: 'root', // Render to root view
+    // PortalTarget at root level - always available for Portal to target
+    return DCFView(
+      layout: DCFLayout(flex: 1),
+      children: [
+        DCFPortalTarget(
+          id: 'root-portal',
+        ),
+        DCFTheme.current.isDark
+            ? DCFSafeArea(
+              key: 'main_safe_area', // CRITICAL: Stable key prevents component replacement
+              layout: DCFLayout(
+                padding: 20,
+                flex: 1,
+                justifyContent: YogaJustifyContent.center,
+                alignItems: YogaAlign.center,
+              ),
+              // Using unified theme system with semantic colors
+              styleSheet: DCFStyleSheet(
+                backgroundColor: DCFTheme.current.backgroundColor,
+              ),
+              children: [
+                
+                // Portal example - renders content into the PortalTarget
+                // This demonstrates how Portal can render children outside the normal parent hierarchy
+                DCFPortal(
+                  target: 'root-portal', // Target the PortalTarget component
               children:
                   showPortal.state
                       ? [
@@ -67,7 +74,7 @@ class MyApp extends DCFStatefulComponent {
                             ),
                             DCFText(
                               content:
-                                  "This content is rendered via DCFPortal into the root view!",
+                                  "This content is rendered via DCFPortal into the PortalTarget!",
                               styleSheet: DCFStyleSheet(
                                 primaryColor: DCFColors.white,
                               ),
@@ -205,8 +212,8 @@ class MyApp extends DCFStatefulComponent {
               },
               layout: DCFLayout(marginTop: 10, height: 50),
             ),
-          ],
-        )
+              ],
+            )
             : count.state > 5 && count.state % 2 == 0
                 ? DCFView(
                     key: 'aqua_screen_even', // Stable key for conditional branch
@@ -277,7 +284,9 @@ class MyApp extends DCFStatefulComponent {
               },
             ),
           ],
-        );
+        ),
+      ],
+    );
   }
 
   @override
