@@ -205,6 +205,41 @@ class MyApp extends DCFStatefulComponent {
             ),
           ],
         )
+            : count.state > 5 && count.state % 2 == 0
+                ? DCFView(
+                    layout: DCFLayout(
+                      flex: 1,
+                      justifyContent: YogaJustifyContent.center,
+                      alignItems: YogaAlign.center,
+          ),
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFColors.aqua,
+          ),
+          children: [
+            DCFToggle(
+              value: DCFTheme.isDarkMode,
+              onValueChange: (data) {
+                final newDarkMode = !isDarkMode.state;
+                isDarkMode.setState(newDarkMode);
+                // Actually update the theme
+                DCFTheme.setTheme(
+                  newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
+                );
+              },
+            ),
+            DCFButton(
+              buttonProps: DCFButtonProps(title: isDarkMode.state.toString()),
+              onPress: (data) {
+                final newDarkMode = !isDarkMode.state;
+                isDarkMode.setState(newDarkMode);
+                // Actually update the theme
+                DCFTheme.setTheme(
+                  newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
+                );
+              },
+            ),
+          ],
+        )
         : DCFView(
           layout: DCFLayout(
             flex: 1,

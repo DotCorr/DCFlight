@@ -241,9 +241,29 @@ class DCFEngine {
       return true;
     }
 
-
     if (oldChild is DCFElement && newChild is DCFElement) {
       if (oldChild.type != newChild.type) {
+        return true;
+      }
+      
+      // CRITICAL FIX: If children count differs significantly, force replacement
+      // This handles conditional rendering patterns where children are completely different
+      final oldChildCount = oldChild.children.length;
+      final newChildCount = newChild.children.length;
+      final countDiff = (oldChildCount - newChildCount).abs();
+      
+      // If children count differs by more than 50% or by more than 3, force replacement
+      // This prevents reconciliation issues when conditional rendering produces
+      // completely different child structures (e.g., theme switching)
+      if (countDiff > 3 || (countDiff > 0 && countDiff >= (oldChildCount * 0.5).ceil())) {
+        EngineDebugLogger.log('REPLACE_CHILDREN_MISMATCH',
+            'Forcing replacement due to significant children count difference',
+            extra: {
+              'OldChildCount': oldChildCount,
+              'NewChildCount': newChildCount,
+              'CountDiff': countDiff,
+              'ElementType': oldChild.type
+            });
         return true;
       }
     }
@@ -968,9 +988,37 @@ class DCFEngine {
             reason: 'Different element types - React-style replacement');
         await _replaceNode(oldNode, newNode);
       } else {
-        EngineDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
-            reason: 'Same element type - updating props and children');
-        await _reconcileElement(oldNode, newNode);
+        // REACT-INSPIRED FIX: Check if children differ significantly
+        // React would use keys here, but we can detect structural differences
+        // If children count differs significantly, it's likely conditional rendering
+        // with completely different structures (e.g., theme switching)
+        final oldChildCount = oldNode.children.length;
+        final newChildCount = newNode.children.length;
+        final countDiff = (oldChildCount - newChildCount).abs();
+        
+        // If children count differs by more than 3 or by 50%+, force replacement
+        // This handles conditional rendering patterns where the same element type
+        // returns completely different child structures
+        final shouldForceReplace = countDiff > 3 || 
+            (countDiff > 0 && countDiff >= (oldChildCount * 0.5).ceil());
+        
+        if (shouldForceReplace) {
+          EngineDebugLogger.log('REPLACE_ELEMENT_CHILDREN_MISMATCH',
+              'Significant children count difference - forcing replacement',
+              extra: {
+                'OldChildCount': oldChildCount,
+                'NewChildCount': newChildCount,
+                'CountDiff': countDiff,
+                'ElementType': oldNode.type
+              });
+          EngineDebugLogger.logReconcile('REPLACE_ELEMENT_CHILDREN_MISMATCH', oldNode, newNode,
+              reason: 'Significant children count difference - forcing replacement');
+          await _replaceNode(oldNode, newNode);
+        } else {
+          EngineDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
+              reason: 'Same element type - updating props and children');
+          await _reconcileElement(oldNode, newNode);
+        }
       }
     }
     else if (oldNode is DCFStatefulComponent && newNode is DCFStatefulComponent) {
@@ -1286,20 +1334,46 @@ class DCFEngine {
         await _nativeBridge.commitBatchUpdate();
       }
 
+      // CRITICAL: Ensure view ID is set IMMEDIATELY after renderToNative returns
+      // This must happen before any other code tries to read effectiveNativeViewId
       if (newViewId != null && newViewId.isNotEmpty) {
         // Ensure the newNode has the view ID set correctly
         if (newNode is DCFElement) {
           newNode.nativeViewId = newViewId;
           _nodesByViewId[newViewId] = newNode;
         } else if (newNode is DCFStatefulComponent || newNode is DCFStatelessComponent) {
-          // For components, set contentViewId (renderToNative should have already done this, but ensure it)
+          // For components, set contentViewId IMMEDIATELY
+          // renderToNative should have already done this, but we MUST ensure it's set
           newNode.contentViewId = newViewId;
+          
           // Also ensure the rendered node has the view ID if it's an element
           final renderedNode = newNode.renderedNode;
-          if (renderedNode is DCFElement) {
-            // Always update the rendered element's view ID to match
-            renderedNode.nativeViewId = newViewId;
-            _nodesByViewId[newViewId] = renderedNode;
+          if (renderedNode != null) {
+            if (renderedNode is DCFElement) {
+              // Always update the rendered element's view ID to match
+              renderedNode.nativeViewId = newViewId;
+              _nodesByViewId[newViewId] = renderedNode;
+            } else if (renderedNode is DCFStatefulComponent || renderedNode is DCFStatelessComponent) {
+              // For nested components, ensure their contentViewId is also set
+              if (renderedNode.contentViewId != newViewId) {
+                renderedNode.contentViewId = newViewId;
+              }
+            }
+          }
+          
+          // Double-check: Verify effectiveNativeViewId is now correct
+          final effectiveId = newNode.effectiveNativeViewId;
+          if (effectiveId != newViewId) {
+            EngineDebugLogger.log('REPLACE_NODE_VIEW_ID_MISMATCH',
+                '⚠️ View ID mismatch after setting - forcing correction',
+                extra: {
+                  'ExpectedViewId': newViewId,
+                  'EffectiveViewId': effectiveId,
+                  'ContentViewId': newNode.contentViewId,
+                  'NativeViewId': newNode.nativeViewId
+                });
+            // Force set it again
+            newNode.contentViewId = newViewId;
           }
         }
         
@@ -1309,11 +1383,22 @@ class DCFEngine {
               'NewViewId': newViewId, 
               'AtomicBatch': !wasBatchMode,
               'EffectiveViewId': newNode.effectiveNativeViewId,
+              'ContentViewId': (newNode is DCFStatefulComponent || newNode is DCFStatelessComponent) 
+                  ? newNode.contentViewId 
+                  : null,
+              'NativeViewId': (newNode is DCFElement) 
+                  ? newNode.nativeViewId 
+                  : null,
               'NodeType': newNode.runtimeType.toString()
             });
       } else {
         EngineDebugLogger.log('REPLACE_NODE_FAILED',
-            'Node replacement failed - no view ID returned');
+            'Node replacement failed - no view ID returned',
+            extra: {
+              'NodeType': newNode.runtimeType.toString(),
+              'ParentViewId': parentViewId,
+              'Index': index
+            });
       }
     } finally {
       // DON'T restart batch - it's already running or wasn't needed
@@ -2011,20 +2096,72 @@ class DCFEngine {
               'NewType': newChild.runtimeType.toString(),
               'OldViewId': oldChild.effectiveNativeViewId
             });
+        
+        // Store the old view ID as fallback
+        final oldViewId = oldChild.effectiveNativeViewId;
+        
         await _replaceNode(oldChild, newChild);
+        
         // After replace, get the view ID from the new node
         childViewId = newChild.effectiveNativeViewId;
         
-        // Double-check: if still null, try to get it from the rendered node
+        // Triple-check: try multiple fallback strategies to get the view ID
         if (childViewId == null || childViewId.isEmpty) {
+          // Strategy 1: Check rendered node for components
           if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
             final renderedNode = newChild.renderedNode;
             if (renderedNode is DCFElement) {
               childViewId = renderedNode.nativeViewId;
-              if (childViewId != null) {
+              if (childViewId != null && childViewId.isNotEmpty) {
                 newChild.contentViewId = childViewId;
-                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID',
+                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID_RENDERED',
                     'Fixed missing view ID from rendered node',
+                    extra: {'ViewId': childViewId, 'Index': i});
+              }
+            } else if (renderedNode != null && (renderedNode is DCFStatefulComponent || renderedNode is DCFStatelessComponent)) {
+              // For nested components, check their contentViewId
+              childViewId = renderedNode.contentViewId;
+              if (childViewId != null && childViewId.isNotEmpty) {
+                newChild.contentViewId = childViewId;
+                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID_NESTED',
+                    'Fixed missing view ID from nested component',
+                    extra: {'ViewId': childViewId, 'Index': i});
+              }
+            }
+          }
+          
+          // Strategy 2: Check _nodesByViewId for the new node (in case it was registered)
+          if ((childViewId == null || childViewId.isEmpty) && newChild is DCFElement) {
+            // Try to find the view ID by looking up the node in the registry
+            for (final entry in _nodesByViewId.entries) {
+              if (entry.value == newChild) {
+                childViewId = entry.key;
+                newChild.nativeViewId = childViewId;
+                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID_REGISTRY',
+                    'Fixed missing view ID from registry lookup',
+                    extra: {'ViewId': childViewId, 'Index': i});
+                break;
+              }
+            }
+          }
+          
+          // Strategy 3: If still null and we have an old view ID, use it as last resort
+          // This should only happen if the view was reused (not replaced)
+          if ((childViewId == null || childViewId.isEmpty) && oldViewId != null && oldViewId.isNotEmpty) {
+            // Check if the old view ID still exists in the registry
+            if (_nodesByViewId.containsKey(oldViewId)) {
+              final registeredNode = _nodesByViewId[oldViewId];
+              if (registeredNode == newChild || 
+                  (newChild is DCFStatefulComponent && registeredNode == newChild.renderedNode) ||
+                  (newChild is DCFStatelessComponent && registeredNode == newChild.renderedNode)) {
+                childViewId = oldViewId;
+                if (newChild is DCFElement) {
+                  newChild.nativeViewId = childViewId;
+                } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+                  newChild.contentViewId = childViewId;
+                }
+                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID_REUSED',
+                    'Using old view ID as fallback (view was reused)',
                     extra: {'ViewId': childViewId, 'Index': i});
               }
             }
@@ -2041,7 +2178,8 @@ class DCFEngine {
                   : null,
               'NativeViewId': (newChild is DCFElement) 
                   ? newChild.nativeViewId 
-                  : null
+                  : null,
+              'OldViewId': oldViewId
             });
       } else {
         await _reconcile(oldChild, newChild);
@@ -2055,8 +2193,10 @@ class DCFEngine {
             'Added view ID to updatedChildIds',
             extra: {'ViewId': childViewId, 'Index': i, 'TotalCount': updatedChildIds.length});
       } else {
+        // CRITICAL: If we still don't have a view ID, we MUST NOT call setChildren
+        // because it will remove all views and this one will be lost
         EngineDebugLogger.log('RECONCILE_SIMPLE_MISSING_VIEW_ID',
-            '⚠️ CRITICAL: Child at index $i has no view ID after reconciliation',
+            '⚠️ CRITICAL: Child at index $i has no view ID after reconciliation - will skip setChildren',
             extra: {
               'OldType': oldChild.runtimeType.toString(),
               'NewType': newChild.runtimeType.toString(),
@@ -2067,7 +2207,9 @@ class DCFEngine {
                   : null,
               'NewNativeViewId': (newChild is DCFElement) 
                   ? newChild.nativeViewId 
-                  : null
+                  : null,
+              'Index': i,
+              'Warning': 'setChildren will be skipped to prevent view loss'
             });
       }
     } // O((new - common) * render complexity) - Handle length differences
@@ -2116,46 +2258,48 @@ class DCFEngine {
     final actualCount = updatedChildIds.length;
     final hasAdditionsOrRemovals = newChildren.length != oldChildren.length;
     
-    // Only call setChildren if:
-    // 1. There are structural changes (additions/removals), OR
-    // 2. There are replacements AND we have all view IDs (to ensure correct order)
-    // But skip if we're missing view IDs to prevent losing views
-    if (hasStructuralChanges) {
-      if (actualCount == expectedCount && updatedChildIds.isNotEmpty) {
-        // If we only have replacements (no additions/removals), setChildren is still needed
-        // to ensure the order is correct after replacements
+    // CRITICAL: Never call setChildren if we're missing view IDs
+    // setChildren does removeAllViews() which will remove views that aren't in the list
+    // This would cause views to disappear permanently
+    final hasAllViewIds = actualCount == expectedCount && updatedChildIds.isNotEmpty;
+    
+    if (!hasAllViewIds) {
+      EngineDebugLogger.log('RECONCILE_SIMPLE_SET_CHILDREN_SKIPPED',
+          '⚠️ CRITICAL: Skipping setChildren - missing view IDs (would cause view loss)',
+          extra: {
+            'ExpectedCount': expectedCount,
+            'ActualCount': actualCount,
+            'MissingCount': expectedCount - actualCount,
+            'UpdatedChildIds': updatedChildIds,
+            'HasStructuralChanges': hasStructuralChanges,
+            'HasReplacements': hasReplacements,
+            'ReplacementCount': replacementCount,
+            'ParentViewId': parentViewId,
+            'Warning': 'setChildren would call removeAllViews() and lose views without IDs'
+          });
+    } else {
+      // Only call setChildren if:
+      // 1. There are structural changes (additions/removals), OR
+      // 2. There are replacements (to ensure correct order after replacement)
+      if (hasStructuralChanges || hasReplacements) {
         EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
           'ChildIds': updatedChildIds,
           'ChildCount': updatedChildIds.length,
           'ExpectedCount': expectedCount,
           'HasReplacements': hasReplacements,
           'ReplacementCount': replacementCount,
-          'HasAdditionsOrRemovals': hasAdditionsOrRemovals
+          'HasAdditionsOrRemovals': hasAdditionsOrRemovals,
+          'Reason': hasStructuralChanges ? 'Structural changes' : 'Replacements only - ensuring correct order'
         });
         await _nativeBridge.setChildren(parentViewId, updatedChildIds);
       } else {
         EngineDebugLogger.log('RECONCILE_SIMPLE_SET_CHILDREN_SKIPPED',
-            '⚠️ CRITICAL: Skipping setChildren - missing view IDs',
+            'Skipping setChildren - no structural changes or replacements',
             extra: {
-              'ExpectedCount': expectedCount,
-              'ActualCount': actualCount,
-              'UpdatedChildIds': updatedChildIds,
-              'HasStructuralChanges': hasStructuralChanges,
-              'HasReplacements': hasReplacements,
-              'ReplacementCount': replacementCount,
-              'ParentViewId': parentViewId
+              'ParentViewId': parentViewId,
+              'ChildCount': updatedChildIds.length
             });
       }
-    } else if (hasReplacements && actualCount == expectedCount && updatedChildIds.isNotEmpty) {
-      // Even without structural changes, if we replaced nodes, we need setChildren
-      // to ensure the order is correct (though views are already attached)
-      EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
-        'ChildIds': updatedChildIds,
-        'ChildCount': updatedChildIds.length,
-        'ExpectedCount': expectedCount,
-        'Reason': 'Replacements only - ensuring correct order'
-      });
-      await _nativeBridge.setChildren(parentViewId, updatedChildIds);
     }
 
     EngineDebugLogger.log(
