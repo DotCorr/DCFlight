@@ -81,7 +81,7 @@ class DCFViewManager {
         }
         
         // Create component instance (needed for both pooled and new views)
-        let componentInstance = componentType.init()
+        let componentInstance: DCFComponent = componentType.init()
         
         // Try to acquire a view from the pool first
         var finalView: UIView
