@@ -1733,7 +1733,10 @@ class DCFEngine {
       lifecycleInterceptor.beforeUnmount(oldNode, context);
     }
 
-    await _disposeOldComponent(oldNode);
+    // 🔧 FIX: Skip recursive disposal of children during replacement
+    // Android's deleteView will handle recursive deletion when the parent is deleted.
+    // This prevents text components from being removed prematurely, causing flashing/disappearing.
+    await _disposeOldComponent(oldNode, skipChildrenDisposal: true);
 
     if (oldNode.effectiveNativeViewId == null) {
       EngineDebugLogger.log(
@@ -1869,9 +1872,44 @@ class DCFEngine {
       final newViewId = await renderToNative(newNode,
           parentViewId: parentViewId, index: index);
       
+      // 🔧 FIX: Collect all child view IDs before deleting parent
+      // This ensures we can clean up _nodesByViewId after Android deletes the views
+      final childViewIds = <String>[];
+      void collectChildViewIds(DCFComponentNode node) {
+        if (node is DCFElement) {
+          for (final child in node.children) {
+            final childViewId = child.effectiveNativeViewId;
+            if (childViewId != null && childViewId.isNotEmpty) {
+              childViewIds.add(childViewId);
+            }
+            collectChildViewIds(child);
+          }
+        } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+          final renderedNode = node.renderedNode;
+          if (renderedNode != null) {
+            collectChildViewIds(renderedNode);
+          }
+        }
+      }
+      collectChildViewIds(oldNode);
+      
+      EngineDebugLogger.log('REPLACE_COLLECTED_CHILDREN',
+          'Collected ${childViewIds.length} child view IDs for cleanup',
+          extra: {'ChildViewIds': childViewIds});
+
       // Only delete the old view after the new one is created and attached
       EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
       await _nativeBridge.deleteView(oldViewId);
+      
+      // 🔧 FIX: Clean up child view IDs from _nodesByViewId after parent is deleted
+      // Android's deleteView will handle recursive deletion of native views,
+      // but we need to clean up our tracking map
+      for (final childViewId in childViewIds) {
+        _nodesByViewId.remove(childViewId);
+        EngineDebugLogger.log('REPLACE_CLEANUP_CHILD',
+            'Removed child view ID from tracking',
+            extra: {'ChildViewId': childViewId});
+      }
 
       // Commit the atomic delete+create if we started the batch
       if (!wasBatchMode) {
@@ -1985,7 +2023,10 @@ class DCFEngine {
   }
 
   /// O(tree size) - Dispose of old component instance and clean up its state
-  Future<void> _disposeOldComponent(DCFComponentNode oldNode) async {
+  /// [skipChildrenDisposal] - If true, skip recursive disposal of children.
+  /// This is used during node replacement to let Android's deleteView handle
+  /// recursive deletion, preventing premature removal of text components.
+  Future<void> _disposeOldComponent(DCFComponentNode oldNode, {bool skipChildrenDisposal = false}) async {
     EngineDebugLogger.logUnmount(oldNode, context: 'Disposing old component');
 
     try {
@@ -2022,7 +2063,7 @@ class DCFEngine {
               extra: {'Error': e.toString()});
         }
 
-        await _disposeOldComponent(oldNode.renderedNode);
+        await _disposeOldComponent(oldNode.renderedNode, skipChildrenDisposal: skipChildrenDisposal);
       }
       else if (oldNode is DCFStatelessComponent) {
         EngineDebugLogger.log(
@@ -2040,17 +2081,26 @@ class DCFEngine {
               extra: {'Error': e.toString()});
         }
 
-        await _disposeOldComponent(oldNode.renderedNode);
+        await _disposeOldComponent(oldNode.renderedNode, skipChildrenDisposal: skipChildrenDisposal);
       }
       else if (oldNode is DCFElement) {
         EngineDebugLogger.log('DISPOSE_ELEMENT', 'Disposing DCFElement',
             extra: {
               'ElementType': oldNode.type,
-              'ChildCount': oldNode.children.length
+              'ChildCount': oldNode.children.length,
+              'SkipChildrenDisposal': skipChildrenDisposal
             });
 
-        for (final child in oldNode.children) {
-          await _disposeOldComponent(child);
+        // 🔧 FIX: Skip recursive disposal of children during replacement
+        // Android's deleteView will handle recursive deletion when the parent is deleted.
+        // This prevents text components from being removed prematurely, causing flashing/disappearing.
+        if (!skipChildrenDisposal) {
+          for (final child in oldNode.children) {
+            await _disposeOldComponent(child);
+          }
+        } else {
+          EngineDebugLogger.log('DISPOSE_SKIP_CHILDREN',
+              'Skipping recursive disposal of children - Android will handle deletion');
         }
       }
 
