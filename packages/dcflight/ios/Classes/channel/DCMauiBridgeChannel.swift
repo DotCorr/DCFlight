@@ -309,9 +309,6 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         DCFLayoutManager.shared.clearAll()
         
-        // ♻️ Clear view pools on hot restart
-        ViewPoolManager.shared.clearAll()
-        
     }
     
     /// Helper to get a view by ID
