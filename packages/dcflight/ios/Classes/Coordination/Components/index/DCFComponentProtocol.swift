@@ -29,6 +29,12 @@ public protocol DCFComponent {
     
     /// Called when a view is registered with the shadow tree
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)
+    
+    /// Prepare a view for recycling (view pooling)
+    /// Called before a view is returned to the pool for reuse
+    /// Components should reset view state to defaults here
+    func prepareForRecycle(_ view: UIView)
+    
     /// Handle tunnel method calls from Dart
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any?
 }
@@ -49,6 +55,49 @@ public struct YGNodeLayout {
 }
 
 public extension DCFComponent {
+    
+    // MARK: - View Recycling (Default Implementation)
+    
+    /// Default implementation: Remove from superview and reset basic properties
+    /// Components can override this for custom cleanup
+    func prepareForRecycle(_ view: UIView) {
+        // Remove from parent
+        view.removeFromSuperview()
+        
+        // Reset visibility
+        view.isHidden = false
+        view.alpha = 1.0
+        
+        // Clear any stored props
+        objc_setAssociatedObject(view,
+                                UnsafeRawPointer(bitPattern: "dcf_stored_props".hashValue)!,
+                                nil,
+                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Clear event callbacks
+        objc_setAssociatedObject(view,
+                                UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!,
+                                nil,
+                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Clear view ID
+        objc_setAssociatedObject(view,
+                                UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+                                nil,
+                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Clear event types
+        objc_setAssociatedObject(view,
+                                UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!,
+                                nil,
+                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Reset frame to zero (will be set by layout)
+        view.frame = .zero
+        
+        // Clear subviews (components should handle this if needed)
+        view.subviews.forEach { $0.removeFromSuperview() }
+    }
     
     // MARK: - Props Management (React Native Pattern)
     
