@@ -110,7 +110,7 @@ class DCMauiBridgeImpl private constructor() {
                 Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
             } else {
                 // Reusing recycled view - update it with new props
-                val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+            val componentInstance = componentClass.getDeclaredConstructor().newInstance()
                 componentInstance.updateView(view, props)
                 Log.d(TAG, "♻️ Reused recycled view for type '$viewType' (viewId: $viewId)")
             }

@@ -18,7 +18,7 @@ class MyApp extends DCFStatefulComponent {
     // Portal example - renders content into the root view
     final showPortal = useState<bool>(false);
     
-    return DCFTheme.current.isDark ? DCFScrollView(
+    return DCFTheme.current.isDark ? DCFView(
       layout: DCFLayout(
         padding:20,
         flex: 1,
