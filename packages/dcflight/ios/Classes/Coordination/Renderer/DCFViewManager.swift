@@ -80,15 +80,31 @@ class DCFViewManager {
             return false
         }
         
-        // Create a new view
+        // Create component instance (needed for both pooled and new views)
         let componentInstance = componentType.init()
-        let finalView = componentInstance.createView(props: props)
+        
+        // Try to acquire a view from the pool first
+        var finalView: UIView
+        if let pooledView = ViewPoolManager.shared.acquireView(
+            viewType: viewType,
+            componentType: componentType,
+            props: props
+        ) {
+            // Reuse pooled view
+            finalView = pooledView
+            print("♻️ DCFViewManager: Reused pooled view for type '\(viewType)' (viewId: \(viewId))")
+            
+            // Update the view with new props
+            _ = componentInstance.updateView(finalView, withProps: props)
+        } else {
+            // Create a new view
+            finalView = componentInstance.createView(props: props)
+            print("✨ DCFViewManager: Created new view for type '\(viewType)' (viewId: \(viewId))")
+        }
         
         // Ensure view is visible
         finalView.isHidden = false
         finalView.alpha = 1.0
-        
-        print("✨ DCFViewManager: Created new view for type '\(viewType)' (viewId: \(viewId))")
         
         objc_setAssociatedObject(
             finalView,
@@ -194,10 +210,28 @@ class DCFViewManager {
     func deleteView(viewId: String) -> Bool {
         print("🗑️ DCFViewManager: Deleting view '\(viewId)'")
         
+        guard let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
+            print("⚠️ DCFViewManager: View '\(viewId)' not found for deletion")
+            return false
+        }
+        
+        let view = viewInfo.view
+        let viewType = viewInfo.type
+        
+        // Remove from registry and layout manager
         ViewRegistry.shared.removeView(id: viewId)
         DCFLayoutManager.shared.removeNode(nodeId: viewId)
         
-        print("✅ DCFViewManager: Successfully deleted view '\(viewId)'")
+        // Release to pool instead of destroying
+        if let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) {
+            ViewPoolManager.shared.releaseView(
+                view: view,
+                viewType: viewType,
+                componentType: componentType
+            )
+        }
+        
+        print("✅ DCFViewManager: Successfully deleted view '\(viewId)' (released to pool)")
         return true
     }
     

@@ -296,6 +296,9 @@ import Foundation
         
         viewHierarchy["root"] = []
         
+        // Clear view pools on hot restart
+        ViewPoolManager.shared.clearAllPools()
+        
     }
     
     
