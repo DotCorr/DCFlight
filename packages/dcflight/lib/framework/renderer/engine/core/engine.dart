@@ -1562,6 +1562,32 @@ class DCFEngine {
     }
   }
 
+  /// Delete a view from the native side
+  Future<void> deleteView(String viewId) async {
+    await isReady;
+    EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
+    await _nativeBridge.deleteView(viewId);
+    _nodesByViewId.remove(viewId);
+  }
+  
+  /// Start a batch update (for atomic operations)
+  Future<void> startBatchUpdate() async {
+    await isReady;
+    if (!_batchUpdateInProgress) {
+      _batchUpdateInProgress = true;
+      await _nativeBridge.startBatchUpdate();
+    }
+  }
+  
+  /// Commit a batch update
+  Future<void> commitBatchUpdate() async {
+    await isReady;
+    if (_batchUpdateInProgress) {
+      _batchUpdateInProgress = false;
+      await _nativeBridge.commitBatchUpdate();
+    }
+  }
+  
   /// Force a complete re-render of the entire component tree for hot reload support
   /// This re-executes all render() methods while preserving navigation state
   Future<void> forceFullTreeReRender() async {

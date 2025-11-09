@@ -88,6 +88,23 @@ class DCFEngineAPI {
     return _vdom!.renderToNative(node, parentViewId: parentViewId, index: index);
   }
   
+  /// Delete a view from the native side
+  Future<void> deleteView(String viewId) async {
+    await isReady;
+    return _vdom!.deleteView(viewId);
+  }
+  
+  /// Start a batch update (for atomic operations)
+  Future<void> startBatchUpdate() async {
+    await isReady;
+    return _vdom!.startBatchUpdate();
+  }
+  
+  /// Commit a batch update
+  Future<void> commitBatchUpdate() async {
+    await isReady;
+    return _vdom!.commitBatchUpdate();
+  }
   
   /// Force a full tree re-render for debugging purposes
   Future<void> forceFullTreeReRender() async {
