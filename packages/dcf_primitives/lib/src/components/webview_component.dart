@@ -30,7 +30,7 @@ enum DCFWebViewNavigationPolicy {
 }
 
 /// WebView properties
-class DCFWebViewProps extends Equatable {
+class DCFWebViewProps {
   /// The URL to load or HTML string content
   final String source;
 
@@ -101,27 +101,10 @@ class DCFWebViewProps extends Equatable {
       if (userAgent != null) 'userAgent': userAgent,
     };
   }
-
-  @override
-  List<Object?> get props => [
-        source,
-        loadMode,
-        contentType,
-        javaScriptEnabled,
-        allowsInlineMediaPlayback,
-        mediaPlaybackRequiresUserAction,
-        allowsZoom,
-        showsScrollIndicators,
-        bounces,
-        scrollEnabled,
-        automaticallyAdjustContentInsets,
-        userAgent,
-      ];
 }
 
 /// WebView component for loading dynamic content
 class DCFWebView extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.low;
@@ -213,19 +196,4 @@ class DCFWebView extends DCFStatelessComponent
       children: [], // WebView is a leaf node - no children allowed just incase you are wondering
     );
   }
-
-  @override
-  List<Object?> get props => [
-        webViewProps,
-        layout,
-        styleSheet,
-        events,
-        onLoadStart,
-        onLoadEnd,
-        onLoadError,
-        onNavigationStateChange,
-        onMessage,
-        onLoadProgress,
-        key,
-      ];
 }

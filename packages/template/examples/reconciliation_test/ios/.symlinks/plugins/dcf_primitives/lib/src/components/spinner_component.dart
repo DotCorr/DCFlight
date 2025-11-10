@@ -11,7 +11,6 @@ import 'package:dcflight/dcflight.dart';
 ///
 /// A spinner component that provides native platform activity indicator behavior.
 class DCFSpinner extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.normal;
@@ -70,18 +69,6 @@ class DCFSpinner extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        animating,
-        style,
-        spinnerColor,
-        hidesWhenStopped,
-        layout,
-        styleSheet,
-        events,
-        key,
-      ];
 }
 
 /// Spinner style constants

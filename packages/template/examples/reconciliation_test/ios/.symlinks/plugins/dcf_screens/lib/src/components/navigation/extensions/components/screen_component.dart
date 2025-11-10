@@ -34,7 +34,6 @@ enum DCFPresentationStyle {
 }
 
 class DCFScreen extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
@@ -142,36 +141,10 @@ class DCFScreen extends DCFStatelessComponent
       children: actualChildren,
     );
   }
-
-  @override
-  List<Object?> get props => [
-        key,
-        route,
-        presentationStyle,
-        tabConfig,
-        modalConfig,
-        pushConfig,
-        popoverConfig,
-        overlayConfig,
-        builder,
-        renderChildren,
-        children,
-        styleSheet,
-        routeNavigationCommand,
-        events,
-        onAppear,
-        onDisappear,
-        onActivate,
-        onDeactivate,
-        onNavigationEvent,
-        onReceiveParams,
-        onHeaderActionPress,
-        navigationBarConfig,
-      ];
 }
 
 /// Configuration for navigation bar appearance and behavior (for tab screens)
-class DCFNavigationBarConfig extends Equatable {
+class DCFNavigationBarConfig {
   /// Navigation bar title (overrides tab title for navigation bar)
   final String? title;
 
@@ -218,15 +191,4 @@ class DCFNavigationBarConfig extends Equatable {
             suffixActions!.map((action) => action.toMap()).toList(),
     };
   }
-
-  @override
-  List<Object?> get props => [
-        title,
-        largeTitleDisplayMode,
-        hideNavigationBar,
-        hideBackButton,
-        backButtonTitle,
-        prefixActions,
-        suffixActions,
-      ];
 }

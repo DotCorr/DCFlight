@@ -159,7 +159,6 @@ class DCFTextInputEndEditingData {
 /// DCFTextInput - Cross-platform text input component
 /// Provides native text input functionality with comprehensive type safety
 class DCFTextInput extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.immediate;
@@ -333,50 +332,6 @@ class DCFTextInput extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        layout,
-        styleSheet,
-        value,
-        defaultValue,
-        placeholder,
-        placeholderColor,
-        inputType,
-        keyboardType,
-        autoCapitalization,
-        returnKeyType,
-        textContentType,
-        autoCorrect,
-        autoFocus,
-        blurOnSubmit,
-        caretHidden,
-        clearButtonMode,
-        clearTextOnFocus,
-        contextMenuHidden,
-        editable,
-        enablesReturnKeyAutomatically,
-        maxLength,
-        numberOfLines,
-        multiline,
-        secureTextEntry,
-        selectTextOnFocus,
-        selectionColor,
-        spellCheck,
-        textAlign,
-        textColor,
-        fontSize,
-        fontWeight,
-        fontFamily,
-        onChangeText,
-        onFocus,
-        onBlur,
-        onSubmitEditing,
-        onKeyPress,
-        onSelectionChange,
-        onEndEditing,
-        key,
-      ];
 }
 
 /// Text input types

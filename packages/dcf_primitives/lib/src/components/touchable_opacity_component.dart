@@ -105,7 +105,6 @@ class DCFTouchableOpacityLongPressData {
 
 /// A touchable opacity component implementation using StatelessComponent
 class DCFTouchableOpacity extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.immediate;
@@ -203,20 +202,4 @@ class DCFTouchableOpacity extends DCFStatelessComponent
       children: children,
     );
   }
-
-  @override
-  List<Object?> get props => [
-        children,
-        activeOpacity,
-        layout,
-        styleSheet,
-        onPress,
-        onPressIn,
-        onPressOut,
-        onLongPress,
-        longPressDelay,
-        disabled,
-        events,
-        key,
-      ];
 }

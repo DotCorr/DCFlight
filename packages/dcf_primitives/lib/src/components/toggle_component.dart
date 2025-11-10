@@ -113,18 +113,6 @@ class DCFToggle extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        value,
-        disabled,
-        activeColor,
-        inactiveColor,
-        size,
-        layout,
-        styleSheet,
-        events,
-      ];
 }
 
 /// Toggle size constants

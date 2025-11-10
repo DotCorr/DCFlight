@@ -11,7 +11,7 @@ import "package:dcf_primitives/dcf_primitives.dart";
 
 /// 🎯 DCFEasyScreen - Simple wrapper that reduces boilerplate
 /// while keeping your existing working pattern
-class DCFScreenView extends DCFStatefulComponent with EquatableMixin {
+class DCFScreenView extends DCFStatefulComponent {
   final String route;
   final DCFPresentationStyle? presentationStyle;
   final DCFComponentNode Function() builder;
@@ -266,29 +266,4 @@ class DCFScreenView extends DCFStatefulComponent with EquatableMixin {
       ],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        key,
-        route,
-        presentationStyle,
-        builder,
-        pushConfig,
-        tabConfig,
-        modalConfig,
-        popoverConfig,
-        overlayConfig,
-        navigationBarConfig,
-        styleSheet,
-        alwaysRender,
-        placeholder,
-        onAppear,
-        onDisappear,
-        onActivate,
-        onDeactivate,
-        onNavigationEvent,
-        onReceiveParams,
-        onHeaderActionPress,
-        customEvents,
-      ];
 }

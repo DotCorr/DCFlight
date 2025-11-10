@@ -56,7 +56,7 @@ class DCFButtonLongPressData {
 }
 
 /// Button properties
-class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
+class DCFButtonProps implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
 
@@ -79,13 +79,10 @@ class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
       'disabled': disabled,
     };
   }
-
-  @override
-  List<Object?> get props => [title, disabled];
 }
 
 /// A button component implementation using StatelessComponent
-class DCFButton extends DCFStatelessComponent with EquatableMixin {
+class DCFButton extends DCFStatelessComponent {
   /// The button properties
   final DCFButtonProps? buttonProps;
 
@@ -157,16 +154,4 @@ class DCFButton extends DCFStatelessComponent with EquatableMixin {
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        buttonProps,
-        layout,
-        styleSheet,
-        textColor,
-        onPress,
-        onLongPress,
-        events,
-        key,
-      ];
 }

@@ -98,9 +98,6 @@ class DCFPortalTarget extends DCFStatelessComponent {
   }
   
   @override
-  List<Object?> get props => [id, child, key];
-  
-  @override
   DCFComponentNode render() {
     // PortalTarget renders as a View element
     // The view ID will be used by Portal components to target this location

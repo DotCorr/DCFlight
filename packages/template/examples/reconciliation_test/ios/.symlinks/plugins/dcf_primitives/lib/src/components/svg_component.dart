@@ -8,7 +8,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// SVG properties
-class DCFSVGProps extends Equatable {
+class DCFSVGProps {
   /// The SVG source (asset or URL)
   final String source;
 
@@ -39,19 +39,10 @@ class DCFSVGProps extends Equatable {
       if (height != null) 'height': height,
     };
   }
-
-  @override
-  List<Object?> get props => [
-        source,
-        isAsset,
-        width,
-        height,
-      ];
 }
 
 /// An SVG component implementation using StatelessComponent
 class DCFSVG extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.normal;
@@ -96,14 +87,4 @@ class DCFSVG extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        svgProps,
-        layout,
-        styleSheet,
-        tintColor,
-        events,
-        key,
-      ];
 }
