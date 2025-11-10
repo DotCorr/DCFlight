@@ -19,18 +19,6 @@ class DCFSafeArea extends DCFStatefulComponent {
   final List<DCFComponentNode> children;
   final Map<String, dynamic>? events;
 
-  @override
-  List<Object?> get props => [
-        top,
-        bottom,
-        left,
-        right,
-        styleSheet,
-        layout,
-        children,
-        events,
-      ];
-
   @Deprecated(
       "This View would be removed in the major release. A native primitve would be made as a replacement.")
   DCFSafeArea({

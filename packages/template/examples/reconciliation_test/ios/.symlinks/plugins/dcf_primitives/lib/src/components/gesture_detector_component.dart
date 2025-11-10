@@ -145,7 +145,6 @@ class DCFGesturePanData {
 
 /// A gesture detector component implementation using StatelessComponent
 class DCFGestureDetector extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.immediate;
@@ -278,22 +277,4 @@ class DCFGestureDetector extends DCFStatelessComponent
       children: children,
     );
   }
-
-  @override
-  List<Object?> get props => [
-        children,
-        layout,
-        styleSheet,
-        events,
-        onTap,
-        onLongPress,
-        onSwipeLeft,
-        onSwipeRight,
-        onSwipeUp,
-        onSwipeDown,
-        onPanStart,
-        onPanUpdate,
-        onPanEnd,
-        key,
-      ];
 }

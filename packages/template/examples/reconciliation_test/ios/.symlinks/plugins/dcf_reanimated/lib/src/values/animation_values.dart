@@ -8,7 +8,6 @@
 library;
 
 import 'dart:math' as math;
-import 'package:equatable/equatable.dart';
 import '../enums/animation_enums.dart';
 
 /// Core animation values for DCF Reanimated
@@ -27,7 +26,7 @@ import '../enums/animation_enums.dart';
 ///   curve: 'easeInOut',
 /// )
 /// ```
-class ReanimatedValue with EquatableMixin {
+class ReanimatedValue {
   /// Starting value for the animation
   final double from;
   
@@ -79,9 +78,6 @@ class ReanimatedValue with EquatableMixin {
         'repeat': repeat,
         if (repeatCount != null) 'repeatCount': repeatCount,
       };
-
-  @override
-  List<Object?> get props => [from, to, duration, curve, delay, repeat, repeatCount];
 }
 
 /// A reactive animation value that can be animated on the pure UI thread.

@@ -62,7 +62,7 @@ class DCFIconErrorData {
 }
 
 /// Icon properties
-class DCFIconProps extends Equatable {
+class DCFIconProps {
   /// The name of the icon
   final String name;
 
@@ -91,18 +91,10 @@ class DCFIconProps extends Equatable {
       // Color removed - native components use StyleSheet.primaryColor
     };
   }
-
-  @override
-  List<Object?> get props => [
-        name,
-        // Color removed
-        package,
-      ];
 }
 
 /// An icon component implementation using StatelessComponent
 class DCFIcon extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.normal;
@@ -169,16 +161,4 @@ class DCFIcon extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        iconProps,
-        layout,
-        styleSheet,
-        iconColor,
-        events,
-        onLoad,
-        onError,
-        key,
-      ];
 }

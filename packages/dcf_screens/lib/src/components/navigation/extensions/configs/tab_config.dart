@@ -1,7 +1,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// Configuration for tab presentation
-class DCFTabConfig extends Equatable {
+class DCFTabConfig {
   final String title;
   final dynamic icon;
   final int index;
@@ -25,9 +25,6 @@ class DCFTabConfig extends Equatable {
       'enabled': enabled,
     };
   }
-
-  @override
-  List<Object?> get props => [title, icon, index, badge, enabled];
 }
 
 extension DCFTabConfigSVG on DCFTabConfig {

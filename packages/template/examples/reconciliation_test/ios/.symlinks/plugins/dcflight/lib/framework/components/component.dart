@@ -13,7 +13,7 @@ import 'package:dcflight/framework/components/component_node.dart';
 import 'package:equatable/equatable.dart';
 import 'hooks/state_hook.dart';
 
-abstract class DCFStatefulComponent extends DCFComponentNode with EquatableMixin {
+abstract class DCFStatefulComponent extends DCFComponentNode {
   final String instanceId;
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
@@ -291,7 +291,7 @@ abstract class DCFStatefulComponent extends DCFComponentNode with EquatableMixin
   }
 }
 
-abstract class DCFStatelessComponent extends DCFComponentNode with EquatableMixin {
+abstract class DCFStatelessComponent extends DCFComponentNode {
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
 

@@ -69,7 +69,7 @@ class DCFImageErrorData {
 }
 
 /// Image properties
-class DCFImageProps extends Equatable {
+class DCFImageProps {
   /// The image source URI (can be a network URL or local resource)
   final String source;
 
@@ -101,19 +101,10 @@ class DCFImageProps extends Equatable {
       if (placeholder != null) 'placeholder': placeholder,
     };
   }
-
-  @override
-  List<Object?> get props => [
-        source,
-        resizeMode,
-        fadeDuration,
-        placeholder,
-      ];
 }
 
 /// An image component implementation using StatelessComponent
 class DCFImage extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.normal;
@@ -176,17 +167,6 @@ class DCFImage extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        imageProps,
-        layout,
-        styleSheet,
-        events,
-        onLoad,
-        onError,
-        key,
-      ];
 }
 
 /// Image resize modes - type-safe options for image resizing

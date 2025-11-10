@@ -42,7 +42,7 @@ class DCFSegmentedControlSelectionData {
 }
 
 /// Segmented control item configuration
-class DCFSegmentItem extends Equatable {
+class DCFSegmentItem {
   /// The title text for the segment
   final String title;
 
@@ -65,13 +65,10 @@ class DCFSegmentItem extends Equatable {
       'enabled': enabled,
     };
   }
-
-  @override
-  List<Object?> get props => [title, iconAsset, enabled];
 }
 
 /// Segmented control properties
-class DCFSegmentedControlProps extends Equatable {
+class DCFSegmentedControlProps {
   /// The list of segment items (type-safe)
   final List<DCFSegmentItem> segments;
 
@@ -104,19 +101,10 @@ class DCFSegmentedControlProps extends Equatable {
       // All color props removed - native components use StyleSheet semantic colors
     };
   }
-
-  @override
-  List<Object?> get props => [
-        segments,
-        selectedIndex,
-        enabled,
-        // All color props removed
-      ];
 }
 
 /// A segmented control component implementation using StatelessComponent
 class DCFSegmentedControl extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
@@ -182,16 +170,4 @@ class DCFSegmentedControl extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        segmentedControlProps,
-        layout,
-        styleSheet,
-        selectedBackgroundColor,
-        tintColor,
-        events,
-        onSelectionChange,
-        key,
-      ];
 }

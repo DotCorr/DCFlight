@@ -50,17 +50,14 @@ class DCFEngine {
   final Map<String, DCFComponentNode> _componentInstancesByProps = {};
   
   /// Helper to compute props hash for identity matching
+  /// Uses component identity (hashCode) since Equatable props were removed
   int _computePropsHash(DCFComponentNode node) {
-    if (node is DCFStatefulComponent) {
-      return node.props.hashCode;
-    }
-    if (node is DCFStatelessComponent) {
-      return node.props.hashCode;
-    }
     if (node is DCFElement) {
       return node.elementProps.hashCode;
     }
-    return node.hashCode;
+    // For components, use hashCode (object identity) combined with key if present
+    // This is sufficient for automatic key inference since position + type is primary
+    return node.key?.hashCode ?? node.hashCode;
   }
 
   /// Priority-based update system
@@ -1307,7 +1304,7 @@ class DCFEngine {
         return;
       }
       
-      if (oldNode == newNode) {
+      if (identical(oldNode, newNode)) {
         print('🔍 RECONCILE: Same StatefulComponent instance - skipping');
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;

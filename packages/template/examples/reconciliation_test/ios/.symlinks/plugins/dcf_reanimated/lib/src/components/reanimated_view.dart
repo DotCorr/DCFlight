@@ -34,7 +34,7 @@ import '../helper/init.dart';
 ///   ],
 /// )
 /// ```
-class ReanimatedView extends DCFStatelessComponent with EquatableMixin {
+class ReanimatedView extends DCFStatelessComponent {
   /// Child components to render inside the animated view
   final List<DCFComponentNode> children;
 
@@ -131,18 +131,4 @@ class ReanimatedView extends DCFStatelessComponent with EquatableMixin {
   }
 
   /// Properties for equality comparison (used by EquatableMixin)
-  @override
-  List<Object?> get props => [
-        children,
-        animatedStyle,
-        layout,
-        styleSheet,
-        autoStart,
-        startDelay,
-        onAnimationStart,
-        onAnimationComplete,
-        onAnimationRepeat,
-        events,
-        key,
-      ];
 }

@@ -59,23 +59,11 @@ class DCFStackNavigationRoot extends DCFStatelessComponent {
       ],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        initialScreen,
-        screenRegistryComponents,
-        navigationBarStyle,
-        hideNavigationBar,
-        animationDuration,
-        onNavigationChange,
-        onBackPressed,
-      ];
 }
 
 /// Internal component that sets up the initial navigation controller
 /// This just creates the UINavigationController and sets the initial screen
 class DCFStackNavigationBootstrapper extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
@@ -130,21 +118,10 @@ class DCFStackNavigationBootstrapper extends DCFStatelessComponent
       children: [], // No children - just sets up navigation
     );
   }
-
-  @override
-  List<Object?> get props => [
-        key,
-        initialScreen,
-        navigationBarStyle,
-        hideNavigationBar,
-        animationDuration,
-        onNavigationChange,
-        onBackPressed,
-      ];
 }
 
 /// Navigation bar style configuration
-class DCFNavigationBarStyle extends Equatable {
+class DCFNavigationBarStyle {
   final Color? backgroundColor;
   final Color? titleColor;
   final Color? backButtonColor;
@@ -185,17 +162,4 @@ class DCFNavigationBarStyle extends Equatable {
       'hideBorder': hideBorder,
     };
   }
-
-  @override
-  List<Object?> get props => [
-        backgroundColor,
-        titleColor,
-        backButtonColor,
-        translucent,
-        titleDisplayMode,
-        showBackButton,
-        backButtonTitle,
-        height,
-        hideBorder,
-      ];
 }
