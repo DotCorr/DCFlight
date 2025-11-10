@@ -187,7 +187,7 @@ class DCFEngine {
           });
       return;
     }
-
+    
     EngineDebugLogger.log('NATIVE_EVENT_NODE_FOUND',
         'Found node for view ID',
         extra: {

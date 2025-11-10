@@ -17,15 +17,10 @@ import dcflight
     }
     
     @objc public static func registerComponents() {
-        // Initialize method swizzling for gradient support
-        UIView.performSwizzling()
-        
-        // Register all primitive components with the DCFlight component registry
+        // Register all module components with the DCFlight component registry
         DCFComponentRegistry.shared.registerComponent("View", componentClass: DCFViewComponent.self)
         DCFComponentRegistry.shared.registerComponent("Text", componentClass: DCFTextComponent.self)
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
         DCFComponentRegistry.shared.registerComponent("DCFIcon", componentClass: DCFIconComponent.self)
-        
-
     }
 }

@@ -287,7 +287,7 @@ class DCMauiBridgeImpl private constructor() {
                 Log.e(TAG, "Available views: ${ViewRegistry.shared.allViewIds}")
                 return false
             }
-
+            
             val parentViewGroup = parentView as? ViewGroup
             if (parentViewGroup == null) {
                 Log.e(TAG, "Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")

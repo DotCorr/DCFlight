@@ -235,15 +235,53 @@ class ModuleCreator {
   /// - [modulePath]: Path to the module directory
   static Future<void> _replaceModulePlaceholders(String moduleName, String description, String modulePath) async {
     final className = _toPascalCase(moduleName);
+    
+    // Refactor Android package structure
+    await _refactorAndroidPackageStructure(modulePath, moduleName);
+    
+    // Replace all text placeholders
     final replacements = {
       'dcf_module': moduleName,
       'DcfModule': className,
       'Example Module': description,
       'dcf_module_plugin': '${moduleName}_plugin',
       'DcfModulePlugin': '${className}Plugin',
+      'com.dotcorr.dcf_module': 'com.dotcorr.$moduleName',
+      'com/dotcorr/dcf_module': 'com/dotcorr/$moduleName',
+      'package com.dotcorr.dcf_module': 'package com.dotcorr.$moduleName',
+      'import com.dotcorr.dcf_module': 'import com.dotcorr.$moduleName',
+      'com.dotcorr.dcf_module.R': 'com.dotcorr.$moduleName.R',
+      'com.dotcorr.dcf_module.components': 'com.dotcorr.$moduleName.components',
+      'package com.dotcorr.dcf_module.components': 'package com.dotcorr.$moduleName.components',
+      "group 'com.dotcorr.dcf_module'": "group 'com.dotcorr.$moduleName'",
+      "namespace 'com.dotcorr.dcf_module'": "namespace 'com.dotcorr.$moduleName'",
+      'name: dcf_module': 'name: $moduleName',
     };
 
     await _processDirectory(Directory(modulePath), replacements);
+  }
+
+  /// Refactors Android package structure by renaming directories.
+  /// 
+  /// Moves files from com/dotcorr/dcf_module to com/dotcorr/{moduleName}
+  /// 
+  /// - [modulePath]: Path to the module directory
+  /// - [moduleName]: Name of the module
+  static Future<void> _refactorAndroidPackageStructure(String modulePath, String moduleName) async {
+    final androidKotlinPath = path.join(modulePath, 'android', 'src', 'main', 'kotlin', 'com', 'dotcorr');
+    final oldPackageDir = Directory(path.join(androidKotlinPath, 'dcf_module'));
+    final newPackageDir = Directory(path.join(androidKotlinPath, moduleName));
+    
+    if (await oldPackageDir.exists()) {
+      // Move the entire directory
+      await oldPackageDir.rename(newPackageDir.path);
+    }
+    
+    // Also handle the components subdirectory if it exists
+    final oldComponentsDir = Directory(path.join(newPackageDir.path, 'components'));
+    if (await oldComponentsDir.exists()) {
+      // Components directory is already moved with the parent, no action needed
+    }
   }
 
   /// Processes directory recursively to replace placeholders.
@@ -270,7 +308,7 @@ class ModuleCreator {
     final fileName = path.basename(file.path);
     final extension = path.extension(fileName);
     
-    final textExtensions = {'.dart', '.yaml', '.yml', '.md', '.txt', '.json', '.podspec', '.swift'};
+    final textExtensions = {'.dart', '.yaml', '.yml', '.md', '.txt', '.json', '.podspec', '.swift', '.kt', '.gradle', '.xml'};
     if (!textExtensions.contains(extension)) {
       return;
     }
