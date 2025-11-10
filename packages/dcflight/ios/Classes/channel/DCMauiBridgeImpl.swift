@@ -434,7 +434,6 @@ import Foundation
             
             let layoutStartTime = CFAbsoluteTimeGetCurrent()
             
-            // ⭐ OPTIMIZATION: Single layout calculation after all view operations
             print("🔥 iOS_BATCH_COMMIT: Triggering layout calculation")
             DCFLayoutManager.shared.calculateLayoutNow()
             

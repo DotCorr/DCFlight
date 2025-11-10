@@ -339,20 +339,26 @@ extension DCFLayoutManager {
         scheduleLayoutCalculation()
     }
     
-    /// CRASH FIX: Force immediate layout calculation (synchronous) with reconciliation awareness
     func calculateLayoutNow() {
-        layoutQueue.async {
-            let screenBounds = UIScreen.main.bounds
-            
-            let success = YogaShadowTree.shared.calculateAndApplyLayout(
-                width: screenBounds.width,
-                height: screenBounds.height
-            )
-            
-            DispatchQueue.main.async {
-                if success {
-                } else {
-                }
+        assert(Thread.isMainThread, "calculateLayoutNow must be called on the main thread")
+        
+        let windowBounds: CGRect
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            windowBounds = window.bounds
+        } else {
+            windowBounds = UIScreen.main.bounds
+        }
+        
+        let success = YogaShadowTree.shared.calculateAndApplyLayout(
+            width: windowBounds.width,
+            height: windowBounds.height
+        )
+        
+        if success {
+            for (_, view) in viewRegistry {
+                view.isHidden = false
+                view.alpha = 1.0
             }
         }
     }
