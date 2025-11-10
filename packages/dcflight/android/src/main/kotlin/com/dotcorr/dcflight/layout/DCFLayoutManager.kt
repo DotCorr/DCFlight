@@ -637,13 +637,5 @@ class DCFLayoutManager private constructor() {
         Log.d(TAG, "✅ DCFLayoutManager: All pending layout work cancelled")
     }
     
-    /**
-     * Prepare for hot restart - cancels all pending work
-     * Called before cleanup to prevent stale operations
-     */
-    fun prepareForHotRestart() {
-        cancelAllPendingLayoutWork()
-    }
-    
 }
 

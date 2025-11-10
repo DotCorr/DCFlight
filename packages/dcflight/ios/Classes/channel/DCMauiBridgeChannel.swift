@@ -302,8 +302,20 @@ class DCMauiBridgeMethodChannel: NSObject {
     private func cleanupNativeViews() {
         print("🧹 iOS: Hot restart cleanup called from Dart")
         
-        // cleanupForHotRestart already calls cancelAllPendingLayoutWork()
+        // 🔥 CRITICAL: Cancel layout timers FIRST
+        DCFLayoutManager.shared.cancelAllPendingLayoutWork()
+        
+        // 🔥 CRITICAL: Clear YogaShadowTree root children to prevent stacking
+        YogaShadowTree.shared.clearAll()
+        
+        // cleanupForHotRestart handles view cleanup
         DCMauiBridgeImpl.shared.cleanupForHotRestart()
+        
+        // Clear ViewRegistry
+        ViewRegistry.shared.clearAll()
+        
+        // Clear DCFLayoutManager
+        DCFLayoutManager.shared.clearAll()
         
         // Clear the method channel's local views dictionary
         views.removeAll()
@@ -347,12 +359,35 @@ extension ViewRegistry {
 
 extension YogaShadowTree {
     func clearAll() {
+        print("🧹 YogaShadowTree: Clearing all nodes (except root)")
+        
+        // First, remove all non-root nodes
         let nodeIds = Array(nodes.keys)
         for nodeId in nodeIds {
             if nodeId != "root" { // Don't remove root node
                 removeNode(nodeId: nodeId)
             }
         }
+        
+        // 🔥 CRITICAL: Clear root node's children to prevent stacking after hot restart
+        // The root node might still have old children attached, causing layout stacking
+        // Call the internal method to clear root children
+        clearRootNodeChildren()
+        
+        // Reset root node dimensions to current window bounds
+        let windowBounds: CGRect
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            windowBounds = window.bounds
+        } else {
+            windowBounds = UIScreen.main.bounds
+        }
+        resetRootNodeDimensions(width: Float(windowBounds.width), height: Float(windowBounds.height))
+        
+        // Clear all parent mappings
+        nodeParents.removeAll()
+        
+        print("✅ YogaShadowTree: All nodes cleared (root preserved but children removed)")
     }
 }
 

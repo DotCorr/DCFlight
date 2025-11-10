@@ -318,6 +318,28 @@ class YogaShadowTree {
         }
     }
     
+    /// Clear all children from root node (for hot restart)
+    /// This prevents layout stacking after hot restart
+    func clearRootNodeChildren() {
+        syncQueue.sync {
+            if let root = nodes["root"] {
+                safeRemoveAllChildren(from: root, nodeId: "root")
+                print("✅ YogaShadowTree: Root node children cleared")
+            }
+        }
+    }
+    
+    /// Reset root node dimensions (for hot restart)
+    func resetRootNodeDimensions(width: Float, height: Float) {
+        syncQueue.sync {
+            if let root = nodes["root"] {
+                YGNodeStyleSetWidth(root, width)
+                YGNodeStyleSetHeight(root, height)
+                print("✅ YogaShadowTree: Root node dimensions reset to \(width)x\(height)")
+            }
+        }
+    }
+    
     func updateScreenRootDimensions(width: CGFloat, height: CGFloat) {
         syncQueue.sync {
             for (screenId, screenRoot) in screenRoots {
