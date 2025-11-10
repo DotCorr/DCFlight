@@ -518,26 +518,36 @@ class HotReloadWatcher {
   /// 
   /// Only shows DCFLogger formatted logs unless verbose mode is enabled.
   /// DCFLogger format: [$timestamp]$idString $levelIcon $levelName $tag: $message
+  /// Supports:
+  /// - Default tag: "DCFlight: message"
+  /// - Custom tags: "DCF:TagName message"
   bool _shouldShowLog(String line) {
     // If verbose mode, show all logs
     if (verbose) {
       return true;
     }
     
-    // Check if line matches DCFLogger format
-    // Pattern: [timestamp][optional identifiers] icon LEVEL tag: message
-    // Example: [2025-01-16T10:30:45.123][P:project|I:instance] ✅ INFO    Tag: message
-    // The level name is padded to 7 characters, so we match any 7+ character word
-    final dcfLoggerPattern = RegExp(
-      r'^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?\](\[.*?\])?\s*[❌⚠️✅🐛🔍]\s+(ERROR|WARNING|INFO|DEBUG|VERBOSE)\s+\w+:\s+.*'
-    );
+    final trimmedLine = line.trim();
     
-    if (dcfLoggerPattern.hasMatch(line.trim())) {
+    // Must start with timestamp pattern [YYYY-MM-DDTHH:MM:SS
+    if (!trimmedLine.startsWith('[') || !trimmedLine.contains('T')) {
+      return false;
+    }
+    
+    // Check if it contains level names (ERROR, WARNING, INFO, DEBUG, VERBOSE)
+    final hasLevel = RegExp(r'\b(ERROR|WARNING|INFO|DEBUG|VERBOSE)\s+').hasMatch(trimmedLine);
+    if (!hasLevel) {
+      return false;
+    }
+    
+    // Check for DCFLogger tag patterns:
+    // 1. Default tag: "DCFlight: message"
+    // 2. Custom tags: "DCF:TagName message" (DCF: followed by tag name, then space, then message)
+    if (trimmedLine.contains('DCFlight: ') || RegExp(r'DCF:\w+\s+').hasMatch(trimmedLine)) {
       return true;
     }
     
     // Block all other Flutter/Dart framework logs
-    // Allow only DCFLogger formatted logs
     return false;
   }
 

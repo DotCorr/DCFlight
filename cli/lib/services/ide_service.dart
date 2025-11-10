@@ -73,11 +73,17 @@ class IDEService {
       await userSettingsDir.create(recursive: true);
     }
     
+    // Create default user settings
+    await _createDefaultUserSettings(onProgress: onProgress);
+    
     // Install code-server
     await _installCodeServer(onProgress: onProgress, forceUpdate: forceUpdate);
     
     // Install dcf-vscode
     await _installDcfVscode(onProgress: onProgress, forceUpdate: forceUpdate);
+    
+    // Install Flutter and Dart extensions by default
+    await _installDefaultExtensions(onProgress: onProgress);
     
     onProgress?.call('✅ IDE installation complete!');
   }
@@ -848,6 +854,76 @@ class IDEService {
     return null;
   }
   
+  /// Create default user settings
+  static Future<void> _createDefaultUserSettings({void Function(String)? onProgress}) async {
+    final settingsFile = File(path.join(_userSettingsPath, 'User', 'settings.json'));
+    
+    // Check if settings already exist
+    if (await settingsFile.exists()) {
+      onProgress?.call('✅ User settings already exist');
+      return;
+    }
+    
+    // Create User directory
+    await settingsFile.parent.create(recursive: true);
+    
+    // Default settings
+    final defaultSettings = {
+      'workbench.colorTheme': 'chalice-color-theme-light',
+      'catppuccin-noctis-icons.hidesExplorerArrows': false,
+      'workbench.iconTheme': 'catppuccin noctis icons',
+      'workbench.activityBar.location': 'top',
+    };
+    
+    // Write settings file
+    await settingsFile.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(defaultSettings),
+    );
+    
+    onProgress?.call('✅ Created default user settings');
+  }
+  
+  /// Install Flutter and Dart extensions by default
+  static Future<void> _installDefaultExtensions({void Function(String)? onProgress}) async {
+    final codeServerBinary = await _findCodeServerBinary();
+    if (codeServerBinary == null) {
+      onProgress?.call('⚠️  code-server not found, skipping extension installation');
+      return;
+    }
+    
+    // Flutter extension ID: Dart-Code.flutter
+    // Dart extension ID: Dart-Code.dart-code
+    final extensions = [
+      'Dart-Code.dart-code',  // Dart extension (includes Flutter support)
+      'Dart-Code.flutter',    // Flutter extension
+    ];
+    
+    for (final extensionId in extensions) {
+      try {
+        onProgress?.call('📦 Installing extension: $extensionId...');
+        
+        // Use code-server CLI to install extension
+        final result = await Process.run(
+          codeServerBinary,
+          [
+            '--install-extension',
+            extensionId,
+            '--user-data-dir',
+            _userSettingsPath,
+          ],
+        );
+        
+        if (result.exitCode == 0) {
+          onProgress?.call('✅ Installed extension: $extensionId');
+        } else {
+          onProgress?.call('⚠️  Failed to install extension: $extensionId');
+        }
+      } catch (e) {
+        onProgress?.call('⚠️  Error installing extension $extensionId: $e');
+      }
+    }
+  }
+  
   /// Launch IDE in browser
   static Future<void> launchIDE(String projectPath, {int port = 8080}) async {
     if (!await isIDEInstalled()) {
@@ -874,6 +950,7 @@ class IDEService {
     final args = [
       '--bind-addr', '0.0.0.0:$port',
       '--auth', 'none', // For development, in production use proper auth
+      '--user-data-dir', _userSettingsPath, // Use custom user data directory for settings
       '--open', // Open browser automatically
       projectPath,
     ];
@@ -881,8 +958,8 @@ class IDEService {
     // Optionally add extensions directory if dcf-vscode is installed
     final dcfVscodeExtensions = path.join(_dcfVscodePath, 'extensions');
     if (await Directory(dcfVscodeExtensions).exists()) {
-      args.insert(args.length - 1, '--extensions-dir');
-      args.insert(args.length - 1, dcfVscodeExtensions);
+      args.insert(args.length - 2, '--extensions-dir');
+      args.insert(args.length - 2, dcfVscodeExtensions);
     }
     
     try {
