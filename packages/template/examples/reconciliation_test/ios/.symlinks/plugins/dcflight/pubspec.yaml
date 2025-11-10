@@ -1,0 +1,32 @@
+name: dcflight
+description: "Build Native App UIs with Dart"
+version: 0.0.2
+homepage: https://github.com/Dotcorr/dcflight
+repository: https://github.com/Dotcorr/dcflight
+
+environment:
+  sdk: ^3.6.1
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # framework dependencies (prod)
+  equatable: ^2.0.7
+
+  # Note: dcflight does NOT depend on dcf_primitives
+  # The primitives are a separate plugin that depends on dcflight
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  plugin:
+    platforms:
+      ios:
+        pluginClass: DCFAppDelegate
+      android:
+        package: com.dotcorr.dcflight
+        pluginClass: DcflightPlugin

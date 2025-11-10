@@ -1,0 +1,33 @@
+{
+  "name": "dcf_reanimated",
+  "version": "0.0.1",
+  "summary": "A module for animating components directly on the UI thread for dcflight",
+  "description": "A crossplatform framework.",
+  "homepage": "https://github.com/squirelboy360/dcflight",
+  "license": {
+    "file": "../LICENSE"
+  },
+  "authors": {
+    "Tahiru": "test@test.com"
+  },
+  "source": {
+    "path": "."
+  },
+  "source_files": "Classes/**/*",
+  "platforms": {
+    "ios": "13.5"
+  },
+  "dependencies": {
+    "dcflight": [],
+    "SVGKit": [
+      "~> 3.0.0"
+    ]
+  },
+  "swift_versions": "5.0",
+  "static_framework": false,
+  "pod_target_xcconfig": {
+    "DEFINES_MODULE": "YES",
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": "i386"
+  },
+  "swift_version": "5.0"
+}

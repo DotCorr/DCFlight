@@ -1,0 +1,6 @@
+framework module dcf_primitives {
+  umbrella header "dcf_primitives-umbrella.h"
+
+  export *
+  module * { export * }
+}

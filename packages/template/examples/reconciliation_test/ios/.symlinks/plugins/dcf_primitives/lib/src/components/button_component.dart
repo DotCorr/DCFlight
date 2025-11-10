@@ -1,0 +1,172 @@
+/*
+ * Copyright (c) Dotcorr Studio. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import 'package:dcflight/dcflight.dart';
+
+/// Button press callback data
+class DCFButtonPressData {
+  /// Whether the press was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the press
+  final DateTime timestamp;
+
+  DCFButtonPressData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFButtonPressData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFButtonPressData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch((data['timestamp'] as num).toInt())
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Button long press callback data
+class DCFButtonLongPressData {
+  /// Whether the long press was from user interaction
+  final bool fromUser;
+  
+  /// Timestamp of the long press
+  final DateTime timestamp;
+
+  DCFButtonLongPressData({
+    this.fromUser = true,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFButtonLongPressData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFButtonLongPressData(
+      fromUser: data['fromUser'] as bool? ?? true,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch((data['timestamp'] as num).toInt())
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Button properties
+class DCFButtonProps extends Equatable implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
+  /// The title text of the button
+  final String title;
+
+  /// Disabled state
+  final bool disabled;
+
+  /// Create button props
+  const DCFButtonProps({
+    required this.title,
+    this.disabled = false,
+  });
+
+  /// Convert to props map
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'disabled': disabled,
+    };
+  }
+
+  @override
+  List<Object?> get props => [title, disabled];
+}
+
+/// A button component implementation using StatelessComponent
+class DCFButton extends DCFStatelessComponent with EquatableMixin {
+  /// The button properties
+  final DCFButtonProps? buttonProps;
+
+  /// The layout properties
+  final DCFLayout layout;
+
+  /// The style properties
+  final DCFStyleSheet styleSheet;
+
+  /// Explicit color override: textColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for button text
+  final Color? textColor;
+
+  /// Event handlers
+  final Map<String, dynamic>? events;
+
+  /// Press event handler - receives type-safe press data
+  final Function(DCFButtonPressData)? onPress;
+
+  /// Long press event handler - receives type-safe long press data
+  final Function(DCFButtonLongPressData)? onLongPress;
+
+  /// Create a button component
+  DCFButton({
+     this.buttonProps = const DCFButtonProps(title: "Button"),
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.blueAccent, borderRadius: 10),
+    this.textColor,
+    this.onPress,
+    this.onLongPress,
+    this.events,
+    super.key,
+  });
+
+  @override
+  DCFComponentNode render() {
+    Map<String, dynamic> eventMap = events ?? {};
+
+    if (onPress != null) {
+      eventMap['onPress'] = (Map<dynamic, dynamic> data) {
+        onPress!(DCFButtonPressData.fromMap(data));
+      };
+    }
+
+    if (onLongPress != null) {
+      eventMap['onLongPress'] = (Map<dynamic, dynamic> data) {
+        onLongPress!(DCFButtonLongPressData.fromMap(data));
+      };
+    }
+
+    Map<String, dynamic> props = {
+      ...?buttonProps?.toMap(),
+      ...layout.toMap(),
+      ...const DCFLayout(
+        width: "100%", 
+        padding: 0,
+        margin: 0,
+        alignItems: YogaAlign.center, 
+        justifyContent: YogaJustifyContent.center, 
+        height: 45,
+      ).toMap(),
+      ...styleSheet.toMap(),
+      if (textColor != null) 'textColor': DCFColors.toNativeString(textColor!),
+      ...eventMap,
+    };
+    return DCFElement(
+      type: 'Button',
+      elementProps: props,
+      children: [],
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        buttonProps,
+        layout,
+        styleSheet,
+        textColor,
+        onPress,
+        onLongPress,
+        events,
+        key,
+      ];
+}

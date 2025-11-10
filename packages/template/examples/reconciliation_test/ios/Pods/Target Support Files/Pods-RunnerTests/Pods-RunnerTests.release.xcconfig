@@ -1,0 +1,11 @@
+CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO
+FRAMEWORK_SEARCH_PATHS = $(inherited) "${PODS_CONFIGURATION_BUILD_DIR}/CocoaLumberjack" "${PODS_CONFIGURATION_BUILD_DIR}/SVGKit" "${PODS_CONFIGURATION_BUILD_DIR}/Yoga" "${PODS_CONFIGURATION_BUILD_DIR}/dcf_primitives" "${PODS_CONFIGURATION_BUILD_DIR}/dcf_reanimated" "${PODS_CONFIGURATION_BUILD_DIR}/dcf_screens" "${PODS_CONFIGURATION_BUILD_DIR}/dcflight"
+GCC_PREPROCESSOR_DEFINITIONS = $(inherited) COCOAPODS=1
+HEADER_SEARCH_PATHS = $(inherited) "${PODS_CONFIGURATION_BUILD_DIR}/CocoaLumberjack/CocoaLumberjack.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/SVGKit/SVGKit.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/Yoga/yoga.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/dcf_primitives/dcf_primitives.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/dcf_reanimated/dcf_reanimated.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/dcf_screens/dcf_screens.framework/Headers" "${PODS_CONFIGURATION_BUILD_DIR}/dcflight/dcflight.framework/Headers"
+OTHER_LDFLAGS = $(inherited) -l"xml2" -framework "CocoaLumberjack" -framework "CoreText" -framework "QuartzCore" -framework "SVGKit" -framework "dcf_primitives" -framework "dcf_reanimated" -framework "dcf_screens" -framework "dcflight" -framework "yoga"
+PODS_BUILD_DIR = ${BUILD_DIR}
+PODS_CONFIGURATION_BUILD_DIR = ${PODS_BUILD_DIR}/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)
+PODS_PODFILE_DIR_PATH = ${SRCROOT}/.
+PODS_ROOT = ${SRCROOT}/Pods
+PODS_XCFRAMEWORKS_BUILD_DIR = $(PODS_CONFIGURATION_BUILD_DIR)/XCFrameworkIntermediates
+USE_RECURSIVE_SCRIPT_INPUTS_IN_SCRIPT_PHASES = YES

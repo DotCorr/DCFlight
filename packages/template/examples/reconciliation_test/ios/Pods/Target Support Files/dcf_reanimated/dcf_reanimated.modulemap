@@ -1,0 +1,6 @@
+framework module dcf_reanimated {
+  umbrella header "dcf_reanimated-umbrella.h"
+
+  export *
+  module * { export * }
+}

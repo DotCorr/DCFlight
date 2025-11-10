@@ -1,0 +1,34 @@
+{
+  "name": "dcflight",
+  "version": "0.0.1",
+  "summary": "Build native apps in dart",
+  "description": "A crossplatform framework.",
+  "homepage": "https://github.com/squirelboy360/dcflight",
+  "license": {
+    "file": "../LICENSE"
+  },
+  "authors": {
+    "Tahiru": "squirelwares@gmail.com"
+  },
+  "source": {
+    "path": "."
+  },
+  "source_files": "Classes/**/*",
+  "platforms": {
+    "ios": "13.5"
+  },
+  "dependencies": {
+    "Flutter": [],
+    "Yoga": [
+      "~> 3.0.0"
+    ]
+  },
+  "public_header_files": "Classes/**/*.h",
+  "static_framework": false,
+  "swift_versions": "5.0",
+  "pod_target_xcconfig": {
+    "DEFINES_MODULE": "YES",
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": "i386"
+  },
+  "swift_version": "5.0"
+}
