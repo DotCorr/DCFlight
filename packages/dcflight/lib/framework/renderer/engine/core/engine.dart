@@ -1709,10 +1709,29 @@ class DCFEngine {
 
     try {
       final oldViewId = oldNode.effectiveNativeViewId!;
-      final oldEventTypes =
-          (oldNode is DCFElement) ? oldNode.eventTypes : <String>[];
-      final newEventTypes =
-          (newNode is DCFElement) ? newNode.eventTypes : <String>[];
+      
+      // Get event types from rendered elements, not components
+      final oldEventTypes = <String>[];
+      if (oldNode is DCFElement) {
+        oldEventTypes.addAll(oldNode.eventTypes);
+      } else if (oldNode is DCFStatefulComponent || oldNode is DCFStatelessComponent) {
+        final oldRendered = oldNode.renderedNode;
+        if (oldRendered is DCFElement) {
+          oldEventTypes.addAll(oldRendered.eventTypes);
+        }
+      }
+      
+      final newEventTypes = <String>[];
+      if (newNode is DCFElement) {
+        newEventTypes.addAll(newNode.eventTypes);
+      } else if (newNode is DCFStatefulComponent || newNode is DCFStatelessComponent) {
+        // For components, we need to render first to get the rendered element
+        // But we can check if it's already rendered
+        final newRendered = newNode.renderedNode;
+        if (newRendered is DCFElement) {
+          newEventTypes.addAll(newRendered.eventTypes);
+        }
+      }
 
       EngineDebugLogger.log('REPLACE_EVENT_TYPES', 'Comparing event types',
           extra: {'OldEvents': oldEventTypes, 'NewEvents': newEventTypes});
@@ -1891,6 +1910,17 @@ class DCFEngine {
             // Force set it again
             newNode.contentViewId = newViewId;
           }
+          
+          // 🔥 CRITICAL: Register event listeners for the rendered element
+          // This ensures events work after component replacement on iOS
+          final renderedElement = newNode.renderedNode;
+          if (renderedElement is DCFElement && renderedElement.eventTypes.isNotEmpty) {
+            final actualEventTypes = renderedElement.eventTypes;
+            EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', newViewId,
+                data: {'EventTypes': actualEventTypes});
+            await _nativeBridge.addEventListeners(newViewId, actualEventTypes);
+            print('✅ REPLACE: Event listeners registered for viewId=$newViewId, eventTypes=$actualEventTypes');
+          }
         }
         
         EngineDebugLogger.log(
@@ -2033,6 +2063,13 @@ class DCFEngine {
     if (rootComponent != null && rootComponent != component) {
       EngineDebugLogger.log('CREATE_ROOT_HOT_RESTART',
           'Hot restart detected. Tearing down old VDOM state.');
+
+      // 🔥 CRITICAL: Cancel ALL pending async work FIRST
+      // This prevents timers and microtasks from firing after cleanup
+      cancelAllPendingWork();
+      
+      // Small delay to let any in-flight timers/microtasks drain
+      await Future.delayed(Duration(milliseconds: 50));
 
       await _disposeOldComponent(rootComponent!);
 
@@ -3305,6 +3342,40 @@ class DCFEngine {
       EngineDebugLogger.log('FLUSH_HIGH_PRIORITY_SCHEDULED',
           'Scheduled immediate high priority batch');
     }
+  }
+
+  /// Cancel all pending async work (for hot restart)
+  /// This prevents stale timers and microtasks from firing after cleanup
+  void cancelAllPendingWork() {
+    EngineDebugLogger.log('CANCEL_ALL_WORK', 'Cancelling all pending async work');
+    
+    // Cancel Dart timers
+    _updateTimer?.cancel();
+    _updateTimer = null;
+    _isUpdateScheduled = false;
+    
+    // Reset batch state
+    _batchUpdateInProgress = false;
+    
+    // Clear all pending updates
+    final pendingCount = _pendingUpdates.length;
+    _pendingUpdates.clear();
+    _componentPriorities.clear();
+    
+    // Clear effect queues (these use Future.microtask which can't be cancelled,
+    // but clearing the sets prevents them from executing)
+    final layoutCount = _componentsWaitingForLayout.length;
+    final insertionCount = _componentsWaitingForInsertion.length;
+    _componentsWaitingForLayout.clear();
+    _componentsWaitingForInsertion.clear();
+    
+    EngineDebugLogger.log('CANCEL_ALL_WORK_COMPLETE',
+        'Cancelled all pending async work',
+        extra: {
+          'PendingUpdates': pendingCount,
+          'LayoutEffects': layoutCount,
+          'InsertionEffects': insertionCount,
+        });
   }
 
   /// O(n) - Clear all pending updates (for emergency cleanup)
