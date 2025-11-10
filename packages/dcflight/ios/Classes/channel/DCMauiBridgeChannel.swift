@@ -298,29 +298,27 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
     }
     
-    /// Cleanup all DCFlight native views and resources
+    /// Cleanup all DCFlight native views and resources for hot restart.
+    /// 
+    /// This method performs cleanup in a specific order to prevent layout stacking:
+    /// 1. Cancels all pending layout work to prevent stale calculations
+    /// 2. Clears YogaShadowTree root children to prevent layout stacking
+    /// 3. Cleans up all views through DCMauiBridgeImpl
+    /// 4. Clears ViewRegistry, DCFLayoutManager, and local views dictionary
     private func cleanupNativeViews() {
-        print("🧹 iOS: Hot restart cleanup called from Dart")
-        
-        // 🔥 CRITICAL: Cancel layout timers FIRST
+        // Cancel layout timers first to prevent stale layout calculations
         DCFLayoutManager.shared.cancelAllPendingLayoutWork()
         
-        // 🔥 CRITICAL: Clear YogaShadowTree root children to prevent stacking
+        // Clear YogaShadowTree root children to prevent stacking after hot restart
         YogaShadowTree.shared.clearAll()
         
-        // cleanupForHotRestart handles view cleanup
+        // Cleanup views through bridge implementation
         DCMauiBridgeImpl.shared.cleanupForHotRestart()
         
-        // Clear ViewRegistry
+        // Clear all registries and dictionaries
         ViewRegistry.shared.clearAll()
-        
-        // Clear DCFLayoutManager
         DCFLayoutManager.shared.clearAll()
-        
-        // Clear the method channel's local views dictionary
         views.removeAll()
-        
-        print("✅ iOS: Hot restart cleanup complete")
     }
     
     /// Helper to get a view by ID
@@ -358,20 +356,22 @@ extension ViewRegistry {
 }
 
 extension YogaShadowTree {
+    /// Clears all nodes from the shadow tree except the root node.
+    /// 
+    /// This method is used during hot restart cleanup to prevent layout stacking.
+    /// It removes all non-root nodes, clears root node children, resets root dimensions
+    /// to current window bounds, and clears all parent mappings.
     func clearAll() {
-        print("🧹 YogaShadowTree: Clearing all nodes (except root)")
-        
-        // First, remove all non-root nodes
+        // Remove all non-root nodes
         let nodeIds = Array(nodes.keys)
         for nodeId in nodeIds {
-            if nodeId != "root" { // Don't remove root node
+            if nodeId != "root" {
                 removeNode(nodeId: nodeId)
             }
         }
         
-        // 🔥 CRITICAL: Clear root node's children to prevent stacking after hot restart
-        // The root node might still have old children attached, causing layout stacking
-        // Call the internal method to clear root children
+        // Clear root node's children to prevent stacking after hot restart
+        // The root node might still have old children attached, causing layout issues
         clearRootNodeChildren()
         
         // Reset root node dimensions to current window bounds
@@ -386,8 +386,6 @@ extension YogaShadowTree {
         
         // Clear all parent mappings
         nodeParents.removeAll()
-        
-        print("✅ YogaShadowTree: All nodes cleared (root preserved but children removed)")
     }
 }
 
