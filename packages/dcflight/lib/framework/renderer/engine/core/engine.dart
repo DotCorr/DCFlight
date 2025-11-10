@@ -1911,15 +1911,24 @@ class DCFEngine {
             newNode.contentViewId = newViewId;
           }
           
-          // 🔥 CRITICAL: Register event listeners for the rendered element
-          // This ensures events work after component replacement on iOS
+          // 🔥 CRITICAL: Always register event listeners after renderToNative for components
+          // This ensures events work after component-to-component replacement
+          // renderToNative should have registered them, but we ensure it here as a safety net
           final renderedElement = newNode.renderedNode;
           if (renderedElement is DCFElement && renderedElement.eventTypes.isNotEmpty) {
             final actualEventTypes = renderedElement.eventTypes;
+            // Always register - renderToNative might have done it, but double-registration is safe
+            // and ensures events work even if renderToNative's registration failed
             EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', newViewId,
                 data: {'EventTypes': actualEventTypes});
             await _nativeBridge.addEventListeners(newViewId, actualEventTypes);
-            print('✅ REPLACE: Event listeners registered for viewId=$newViewId, eventTypes=$actualEventTypes');
+            print('✅ REPLACE: Event listeners registered for component viewId=$newViewId, eventTypes=$actualEventTypes');
+          } else if (newNode is DCFElement && newNode.eventTypes.isNotEmpty) {
+            // For direct element replacement, ensure events are registered
+            EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', newViewId,
+                data: {'EventTypes': newNode.eventTypes});
+            await _nativeBridge.addEventListeners(newViewId, newNode.eventTypes);
+            print('✅ REPLACE: Event listeners registered for element viewId=$newViewId, eventTypes=${newNode.eventTypes}');
           }
         }
         

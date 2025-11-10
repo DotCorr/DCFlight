@@ -541,6 +541,10 @@ class DCFLayoutManager private constructor() {
      * This prevents flash during hot restart by making all views invisible initially
      */
     fun prepareForHotRestart() {
+        // 🔥 CRITICAL: Cancel all pending layout calculations FIRST
+        // This prevents stale layout calculations from firing after cleanup
+        cancelAllPendingLayoutWork()
+        
         for ((_, view) in viewRegistry) {
             view.visibility = View.INVISIBLE
             view.alpha = 0f
@@ -607,6 +611,38 @@ class DCFLayoutManager private constructor() {
         triggerLayoutCalculation()
         
         Log.d(TAG, "🔄 Device rotation handling completed for ${viewRegistry.size} views")
+    }
+    
+    /**
+     * Cancel all pending layout calculations (for hot restart)
+     * This prevents stale layout calculations from firing after cleanup
+     */
+    fun cancelAllPendingLayoutWork() {
+        Log.d(TAG, "🧹 DCFLayoutManager: Cancelling all pending layout work")
+        
+        // Cancel Handler callbacks
+        mainHandler.removeCallbacks(layoutCalculationRunnable)
+        
+        // Cancel ScheduledExecutorService tasks
+        layoutCalculationTimer?.shutdownNow()
+        layoutCalculationTimer = null
+        
+        // Reset flags
+        needsLayoutCalculation.set(false)
+        isLayoutUpdateScheduled.set(false)
+        
+        // Clear pending layouts
+        pendingLayouts.clear()
+        
+        Log.d(TAG, "✅ DCFLayoutManager: All pending layout work cancelled")
+    }
+    
+    /**
+     * Prepare for hot restart - cancels all pending work
+     * Called before cleanup to prevent stale operations
+     */
+    fun prepareForHotRestart() {
+        cancelAllPendingLayoutWork()
     }
     
 }

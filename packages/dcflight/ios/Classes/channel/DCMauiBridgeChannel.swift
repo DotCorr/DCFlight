@@ -300,15 +300,15 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     /// Cleanup all DCFlight native views and resources
     private func cleanupNativeViews() {
+        print("🧹 iOS: Hot restart cleanup called from Dart")
         
+        // cleanupForHotRestart already calls cancelAllPendingLayoutWork()
         DCMauiBridgeImpl.shared.cleanupForHotRestart()
         
-        ViewRegistry.shared.clearAll()
+        // Clear the method channel's local views dictionary
+        views.removeAll()
         
-        YogaShadowTree.shared.clearAll()
-        
-        DCFLayoutManager.shared.clearAll()
-        
+        print("✅ iOS: Hot restart cleanup complete")
     }
     
     /// Helper to get a view by ID
