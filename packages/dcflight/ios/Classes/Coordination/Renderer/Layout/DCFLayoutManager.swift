@@ -362,4 +362,16 @@ extension DCFLayoutManager {
             }
         }
     }
+    
+    /// Cancel all pending layout calculations (for hot restart)
+    /// This prevents stale layout calculations from firing after cleanup
+    func cancelAllPendingLayoutWork() {
+        print("🧹 DCFLayoutManager: Cancelling all pending layout work")
+        layoutCalculationTimer?.invalidate()
+        layoutCalculationTimer = nil
+        needsLayoutCalculation = false
+        isLayoutUpdateScheduled = false
+        pendingLayouts.removeAll()
+        print("✅ DCFLayoutManager: All pending layout work cancelled")
+    }
 }

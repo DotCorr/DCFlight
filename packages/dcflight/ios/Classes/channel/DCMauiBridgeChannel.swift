@@ -298,17 +298,27 @@ class DCMauiBridgeMethodChannel: NSObject {
         }
     }
     
-    /// Cleanup all DCFlight native views and resources
+    /// Cleanup all DCFlight native views and resources for hot restart.
+    /// 
+    /// This method performs cleanup in a specific order to prevent layout stacking:
+    /// 1. Cancels all pending layout work to prevent stale calculations
+    /// 2. Clears YogaShadowTree root children to prevent layout stacking
+    /// 3. Cleans up all views through DCMauiBridgeImpl
+    /// 4. Clears ViewRegistry, DCFLayoutManager, and local views dictionary
     private func cleanupNativeViews() {
+        // Cancel layout timers first to prevent stale layout calculations
+        DCFLayoutManager.shared.cancelAllPendingLayoutWork()
         
-        DCMauiBridgeImpl.shared.cleanupForHotRestart()
-        
-        ViewRegistry.shared.clearAll()
-        
+        // Clear YogaShadowTree root children to prevent stacking after hot restart
         YogaShadowTree.shared.clearAll()
         
-        DCFLayoutManager.shared.clearAll()
+        // Cleanup views through bridge implementation
+        DCMauiBridgeImpl.shared.cleanupForHotRestart()
         
+        // Clear all registries and dictionaries
+        ViewRegistry.shared.clearAll()
+        DCFLayoutManager.shared.clearAll()
+        views.removeAll()
     }
     
     /// Helper to get a view by ID
@@ -346,13 +356,36 @@ extension ViewRegistry {
 }
 
 extension YogaShadowTree {
+    /// Clears all nodes from the shadow tree except the root node.
+    /// 
+    /// This method is used during hot restart cleanup to prevent layout stacking.
+    /// It removes all non-root nodes, clears root node children, resets root dimensions
+    /// to current window bounds, and clears all parent mappings.
     func clearAll() {
+        // Remove all non-root nodes
         let nodeIds = Array(nodes.keys)
         for nodeId in nodeIds {
-            if nodeId != "root" { // Don't remove root node
+            if nodeId != "root" {
                 removeNode(nodeId: nodeId)
             }
         }
+        
+        // Clear root node's children to prevent stacking after hot restart
+        // The root node might still have old children attached, causing layout issues
+        clearRootNodeChildren()
+        
+        // Reset root node dimensions to current window bounds
+        let windowBounds: CGRect
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            windowBounds = window.bounds
+        } else {
+            windowBounds = UIScreen.main.bounds
+        }
+        resetRootNodeDimensions(width: Float(windowBounds.width), height: Float(windowBounds.height))
+        
+        // Clear all parent mappings
+        nodeParents.removeAll()
     }
 }
 

@@ -800,13 +800,23 @@ class YogaShadowTree private constructor() {
     }
 
 
+    /**
+     * Clears all nodes from the shadow tree and recreates the root node.
+     * 
+     * This method is used during hot restart cleanup to prevent layout stacking.
+     * It clears all nodes, mappings, and screen roots, then recreates a fresh root node
+     * with default dimensions matching the current display metrics.
+     */
     fun clearAll() {
+        // Clear all nodes and mappings
         nodes.clear()
         nodeParents.clear()
         nodeTypes.clear()
         screenRoots.clear()
         screenRootIds.clear()
         
+        // Recreate root node completely to ensure clean state
+        // This prevents layout stacking after hot restart
         rootNode = YogaNodeFactory.create()
         rootNode?.let { root ->
             root.setDirection(YogaDirection.LTR)
@@ -819,8 +829,6 @@ class YogaShadowTree private constructor() {
             nodes["root"] = root
             nodeTypes["root"] = "View"
         }
-        
-        Log.d(TAG, "YogaShadowTree cleared and root node recreated")
     }
 
     fun viewRegisteredWithShadowTree(viewId: String): Boolean {
