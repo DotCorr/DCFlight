@@ -162,13 +162,13 @@ class DCFEngine {
   }
 
   /// O(1) - Handle a native event by finding the appropriate component
+  /// Handles native events received from the platform bridge.
+  /// 
+  /// Looks up the node associated with the viewId and executes the appropriate
+  /// event handler. If the node is a component instead of an element, it fixes
+  /// the mapping to point to the rendered element.
   void _handleNativeEvent(
       String viewId, String eventType, Map<dynamic, dynamic> eventData) {
-    print('🔥🔥🔥 EVENT RECEIVED: viewId=$viewId, eventType=$eventType');
-    print('🔥🔥🔥 _nodesByViewId size: ${_nodesByViewId.length}');
-    print('🔥🔥🔥 Looking for viewId: $viewId');
-    print('🔥🔥🔥 Available viewIds (first 20): ${_nodesByViewId.keys.take(20).toList()}');
-    
     EngineDebugLogger.log(
         'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
         extra: {
@@ -179,8 +179,6 @@ class DCFEngine {
 
     final node = _nodesByViewId[viewId]; // O(1) lookup
     if (node == null) {
-      print('❌❌❌ EVENT FAILED: No node found for viewId: $viewId');
-      print('❌❌❌ All viewIds in map: ${_nodesByViewId.keys.toList()}');
       EngineDebugLogger.log(
           'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId',
           extra: {
@@ -189,11 +187,7 @@ class DCFEngine {
           });
       return;
     }
-    
-    print('✅✅✅ EVENT: Found node for viewId: $viewId, type: ${node.runtimeType}');
-    print('✅✅✅ EVENT: IsElement=${node is DCFElement}, IsComponent=${node is DCFStatefulComponent || node is DCFStatelessComponent}');
 
-    // CRITICAL DEBUG: Log what we found
     EngineDebugLogger.log('NATIVE_EVENT_NODE_FOUND',
         'Found node for view ID',
         extra: {
@@ -204,9 +198,6 @@ class DCFEngine {
         });
 
     if (node is DCFElement) {
-      print('✅✅✅ EVENT: Node IS DCFElement, type=${node.type}');
-      print('✅✅✅ EVENT: elementProps keys: ${node.elementProps.keys.toList()}');
-      print('✅✅✅ EVENT: Looking for eventType=$eventType');
       final eventHandlerKeys = [
         eventType,
         'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
@@ -214,7 +205,6 @@ class DCFEngine {
         'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
       ];
 
-      // DEBUG: Log all props for debugging
       EngineDebugLogger.log('NATIVE_EVENT_ELEMENT_PROPS',
           'Element props for event lookup',
           extra: {
@@ -225,21 +215,13 @@ class DCFEngine {
           });
 
       for (final key in eventHandlerKeys) {
-        print('🔍 EVENT: Trying key=$key, hasKey=${node.elementProps.containsKey(key)}');
-        if (node.elementProps.containsKey(key)) {
-          final value = node.elementProps[key];
-          print('🔍 EVENT: Key $key value type=${value.runtimeType}, isFunction=${value is Function}');
-        }
-        
         if (node.elementProps.containsKey(key) &&
             node.elementProps[key] is Function) {
-          print('✅✅✅ EVENT HANDLER FOUND: key=$key');
           EngineDebugLogger.log('EVENT_HANDLER_FOUND',
               'Found handler for $eventType using key: $key');
           _executeEventHandler(node.elementProps[key], eventData);
           return;
         } else if (node.elementProps.containsKey(key)) {
-          print('⚠️ EVENT: Handler exists but wrong type: key=$key, type=${node.elementProps[key].runtimeType}');
           EngineDebugLogger.log('EVENT_HANDLER_WRONG_TYPE',
               'Handler exists but is not a Function',
               extra: {
@@ -249,8 +231,6 @@ class DCFEngine {
         }
       }
 
-      print('❌❌❌ EVENT HANDLER NOT FOUND: eventType=$eventType, triedKeys=$eventHandlerKeys');
-      print('❌❌❌ EVENT: Available props: ${node.elementProps.keys.toList()}');
       EngineDebugLogger.log(
           'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
           extra: {
@@ -259,20 +239,15 @@ class DCFEngine {
             'ElementType': node.type
           });
     } else {
-      print('❌❌❌ EVENT: Node is NOT DCFElement! NodeType=${node.runtimeType}');
       if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
-        print('❌❌❌ EVENT: Node is a component, renderedNode=${node.renderedNode?.runtimeType}');
         if (node.renderedNode is DCFElement) {
           final renderedElement = node.renderedNode as DCFElement;
-          print('❌❌❌ EVENT: Rendered element viewId=${renderedElement.nativeViewId}, component contentViewId=${node.contentViewId}');
-          print('❌❌❌ EVENT: MAPPING ERROR: viewId=$viewId maps to component, but should map to rendered element!');
           
-          // CRITICAL FIX: Always fix the mapping if we find a component instead of element
-          // This is the root cause: when SafeArea re-renders, Button components might
-          // get mapped instead of their rendered elements
+          // Fix the mapping if we find a component instead of element.
+          // This can happen when SafeArea re-renders and Button components
+          // get mapped instead of their rendered elements.
           final elementViewId = renderedElement.nativeViewId ?? node.contentViewId;
           if (elementViewId == viewId || node.contentViewId == viewId) {
-            print('⚠️ EVENT: Fixing mapping - updating to point to rendered element');
             _nodesByViewId[viewId] = renderedElement;
             // Also ensure the rendered element has the viewId set
             if (renderedElement.nativeViewId != viewId) {
@@ -1149,11 +1124,9 @@ class DCFEngine {
 
     final eventTypes = element.eventTypes;
     if (eventTypes.isNotEmpty) {
-      print('🟣 ELEMENT RENDER: Adding event listeners for viewId=$viewId, eventTypes=$eventTypes');
       EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', viewId,
           data: {'EventTypes': eventTypes});
       await _nativeBridge.addEventListeners(viewId, eventTypes);
-      print('✅ ELEMENT RENDER: Event listeners added for viewId=$viewId');
     } else {
       if (element.type == 'Button') {
         print('⚠️⚠️⚠️ BUTTON RENDER: No event types found for Button! viewId=$viewId');

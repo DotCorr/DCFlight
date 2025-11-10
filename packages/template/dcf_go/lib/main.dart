@@ -138,6 +138,4 @@ class MyApp extends DCFStatefulComponent {
     );
   }
 
-  @override
-  List<Object?> get props => [];
 }

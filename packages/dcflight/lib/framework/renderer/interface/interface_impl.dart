@@ -32,36 +32,28 @@ class PlatformInterfaceImpl implements PlatformInterface {
     _setupMethodChannelEventHandling();
   }
 
+  /// Sets up method channel event handling for native-to-Dart communication.
   void _setupMethodChannelEventHandling() {
-    print('🔥 DCF_ENGINE: Setting up method channel event handling');
-    print('🔥 DCF_ENGINE: Event channel name: ${eventChannel.name}');
-    
     eventChannel.setMethodCallHandler((call) async {
-      print('🔥 DCF_ENGINE: ✅ METHOD CHANNEL HANDLER CALLED!');
-      print('🔥 DCF_ENGINE: Method channel received call: ${call.method}');
-      print('🔥 DCF_ENGINE: Method channel args: ${call.arguments}');
       if (call.method == 'onEvent') {
         final Map<dynamic, dynamic> args = call.arguments;
-        print('🔥 DCF_ENGINE: onEvent args: $args');
         final String viewId = args['viewId'];
         final String eventType = args['eventType'];
         final Map<dynamic, dynamic> eventData = args['eventData'] ?? {};
-
-        print('🔥 DCF_ENGINE: Processing event - viewId: $viewId, eventType: $eventType, eventData: $eventData');
 
         final typedEventData = eventData.map<String, dynamic>(
           (key, value) => MapEntry(key.toString(), value),
         );
 
-        print('🔥 DCF_ENGINE: Forwarding to handleNativeEvent');
         handleNativeEvent(viewId, eventType, typedEventData);
       }
       return null;
     });
-    
-    print('🔥 DCF_ENGINE: ✅ Method channel handler SET SUCCESSFULLY!');
   }
 
+  /// Initializes the native bridge.
+  /// 
+  /// Returns `true` if initialization succeeded, `false` otherwise.
   @override
   Future<bool> initialize() async {
     try {
@@ -72,12 +64,21 @@ class PlatformInterfaceImpl implements PlatformInterface {
     }
   }
 
+  /// Creates a new native view with the specified type and properties.
+  /// 
+  /// If batch updates are in progress, the operation is queued for later execution.
+  /// Otherwise, it's executed immediately via the method channel.
+  /// 
+  /// - [viewId]: Unique identifier for the view
+  /// - [type]: Component type (e.g., "View", "Text", "Button")
+  /// - [props]: Properties to apply to the view
+  /// - Returns: `true` if the view was created successfully, `false` otherwise
   @override
   Future<bool> createView(
       String viewId, String type, Map<String, dynamic> props) async {
     if (_batchUpdateInProgress) {
       final processedProps = preprocessProps(props);
-      // ⭐ OPTIMIZATION: Pre-serialize to JSON on Dart side to avoid native JSON parsing
+      // Pre-serialize to JSON on Dart side to avoid native JSON parsing overhead
       final propsJson = jsonEncode(processedProps);
       _pendingBatchUpdates.add({
         'operation': 'createView',
@@ -103,41 +104,37 @@ class PlatformInterfaceImpl implements PlatformInterface {
     }
   }
 
+  /// Updates properties of an existing native view.
+  /// 
+  /// If batch updates are in progress, the operation is queued for later execution.
+  /// Otherwise, it's executed immediately via the method channel.
+  /// 
+  /// - [viewId]: Unique identifier for the view to update
+  /// - [propPatches]: Map of property changes to apply
+  /// - Returns: `true` if the view was updated successfully, `false` otherwise
   @override
   Future<bool> updateView(
       String viewId, Map<String, dynamic> propPatches) async {
-    print('🔥 FLUTTER_BRIDGE: updateView called - viewId: $viewId, props: $propPatches');
-    
     if (_batchUpdateInProgress) {
-      print('🔥 FLUTTER_BRIDGE: Adding updateView to batch - viewId: $viewId');
       final processedProps = preprocessProps(propPatches);
-      // ⭐ OPTIMIZATION: Pre-serialize to JSON on Dart side to avoid native JSON parsing
+      // Pre-serialize to JSON on Dart side to avoid native JSON parsing overhead
       final propsJson = jsonEncode(processedProps);
       _pendingBatchUpdates.add({
         'operation': 'updateView',
         'viewId': viewId,
-        'propsJson': propsJson,  // Pre-serialized JSON string
+        'propsJson': propsJson,
       });
       return true;
     }
 
     try {
       final processedProps = preprocessProps(propPatches);
-      print('🔥 FLUTTER_BRIDGE: Processed props for $viewId: $processedProps');
-
-      if (propPatches.containsKey('content')) {
-        print('🔥 FLUTTER_BRIDGE: Content update detected for $viewId: ${propPatches['content']}');
-      }
-      
-      print('🔥 FLUTTER_BRIDGE: Calling method channel updateView for $viewId');
       final result = await bridgeChannel.invokeMethod<bool>('updateView', {
         'viewId': viewId,
         'props': processedProps,
       });
-      print('🔥 FLUTTER_BRIDGE: Method channel result for $viewId: $result');
 
       if (result != true) {
-        print('🔥 FLUTTER_BRIDGE: WARNING - updateView returned false for $viewId, view may not exist in registry');
         // If updateView fails, the view might not exist - this is a framework issue
         // The Android bridge should handle this via createView → updateView redirect
         return false;
@@ -145,11 +142,14 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
       return true;
     } catch (e) {
-      print('🔥 FLUTTER_BRIDGE: ERROR - updateView failed for $viewId: $e');
       return false;
     }
   }
 
+  /// Deletes a native view from the view hierarchy.
+  /// 
+  /// - [viewId]: Unique identifier for the view to delete
+  /// - Returns: `true` if the view was deleted successfully, `false` otherwise
   @override
   Future<bool> deleteView(String viewId) async {
     try {
@@ -162,6 +162,10 @@ class PlatformInterfaceImpl implements PlatformInterface {
     }
   }
 
+  /// Detaches a view from its parent without deleting it.
+  /// 
+  /// - [viewId]: Unique identifier for the view to detach
+  /// - Returns: `true` if the view was detached successfully, `false` otherwise
   @override
   Future<bool> detachView(String viewId) async {
     try {
@@ -174,10 +178,17 @@ class PlatformInterfaceImpl implements PlatformInterface {
     }
   }
 
+  /// Attaches a child view to a parent view at the specified index.
+  /// 
+  /// If batch updates are in progress, the operation is queued for later execution.
+  /// 
+  /// - [childId]: Unique identifier for the child view
+  /// - [parentId]: Unique identifier for the parent view
+  /// - [index]: Position in the parent's child list
+  /// - Returns: `true` if the view was attached successfully, `false` otherwise
   @override
   Future<bool> attachView(String childId, String parentId, int index) async {
     if (_batchUpdateInProgress) {
-      print('🔥 FLUTTER_BRIDGE: Adding attachView to batch - child: $childId, parent: $parentId, index: $index');
       // No props serialization needed for attachView - just metadata
       _pendingBatchUpdates.add({
         'operation': 'attachView',
@@ -200,6 +211,11 @@ class PlatformInterfaceImpl implements PlatformInterface {
     }
   }
 
+  /// Sets the children of a view, replacing any existing children.
+  /// 
+  /// - [viewId]: Unique identifier for the parent view
+  /// - [childrenIds]: List of child view identifiers in order
+  /// - Returns: `true` if children were set successfully, `false` otherwise
   @override
   Future<bool> setChildren(String viewId, List<String> childrenIds) async {
     try {
@@ -215,10 +231,16 @@ class PlatformInterfaceImpl implements PlatformInterface {
     }
   }
 
+  /// Registers event listeners for a view.
+  /// 
+  /// If batch updates are in progress, the operation is queued for later execution.
+  /// 
+  /// - [viewId]: Unique identifier for the view
+  /// - [eventTypes]: List of event types to listen for (e.g., ["onPress", "onChange"])
+  /// - Returns: `true` if listeners were added successfully, `false` otherwise
   @override
   Future<bool> addEventListeners(String viewId, List<String> eventTypes) async {
     if (_batchUpdateInProgress) {
-      print('🔥 FLUTTER_BRIDGE: Adding addEventListeners to batch - viewId: $viewId, eventTypes: $eventTypes');
       _pendingBatchUpdates.add({
         'operation': 'addEventListeners',
         'viewId': viewId,
@@ -238,6 +260,11 @@ class PlatformInterfaceImpl implements PlatformInterface {
     }
   }
 
+  /// Removes event listeners from a view.
+  /// 
+  /// - [viewId]: Unique identifier for the view
+  /// - [eventTypes]: List of event types to remove
+  /// - Returns: `true` if listeners were removed successfully, `false` otherwise
   @override
   Future<bool> removeEventListeners(
       String viewId, List<String> eventTypes) async {
@@ -254,6 +281,9 @@ class PlatformInterfaceImpl implements PlatformInterface {
     }
   }
 
+  /// Sets the global event handler for native events.
+  /// 
+  /// - [handler]: Function to call when native events are received
   @override
   void setEventHandler(
       Function(String viewId, String eventType, Map<String, dynamic> eventData)
@@ -261,28 +291,34 @@ class PlatformInterfaceImpl implements PlatformInterface {
     _eventHandler = handler;
   }
 
-
-
+  /// Starts a batch update operation.
+  /// 
+  /// When batch updates are active, all view operations are queued and executed
+  /// atomically when [commitBatchUpdate] is called.
+  /// 
+  /// - Returns: `true` if batch update started successfully, `false` if one is already in progress
   @override
   Future<bool> startBatchUpdate() async {
     if (_batchUpdateInProgress) {
-      print('🔥 FLUTTER_BRIDGE: startBatchUpdate called but batch already in progress');
       return false;
     }
 
-    print('🔥 FLUTTER_BRIDGE: startBatchUpdate called - starting new batch');
     _batchUpdateInProgress = true;
     _pendingBatchUpdates.clear();
     return true;
   }
 
+  /// Commits all queued batch update operations atomically.
+  /// 
+  /// All operations queued since [startBatchUpdate] was called are sent to the
+  /// native bridge in a single call for optimal performance.
+  /// 
+  /// - Returns: `true` if the batch was committed successfully, `false` otherwise
   @override
   Future<bool> commitBatchUpdate() async {
     if (!_batchUpdateInProgress) {
       return false;
     }
-
-    print('🔥 FLUTTER_BRIDGE: commitBatchUpdate called with ${_pendingBatchUpdates.length} updates');
     
     try {
       final paramKey = Platform.isIOS ? 'updates' : 'operations';
@@ -290,20 +326,20 @@ class PlatformInterfaceImpl implements PlatformInterface {
           await bridgeChannel.invokeMethod<bool>('commitBatchUpdate', {
         paramKey: _pendingBatchUpdates,
       });
-
-      print('🔥 FLUTTER_BRIDGE: commitBatchUpdate native call result: $success');
       
       _batchUpdateInProgress = false;
       _pendingBatchUpdates.clear();
       return success ?? false;
     } catch (e) {
-      print('🔥 FLUTTER_BRIDGE: commitBatchUpdate error: $e');
       _batchUpdateInProgress = false;
       _pendingBatchUpdates.clear();
       return false;
     }
   }
 
+  /// Cancels the current batch update operation, discarding all queued operations.
+  /// 
+  /// - Returns: `true` if a batch was cancelled, `false` if no batch was in progress
   @override
   Future<bool> cancelBatchUpdate() async {
     if (!_batchUpdateInProgress) {
@@ -322,14 +358,18 @@ class PlatformInterfaceImpl implements PlatformInterface {
     _eventCallbacks[viewId]![eventType] = callback;
   }
 
+  /// Handles native events received from the platform bridge.
+  /// 
+  /// First checks for view-specific callbacks, then falls back to the global event handler.
+  /// 
+  /// - [viewId]: Unique identifier for the view that triggered the event
+  /// - [eventType]: Type of event (e.g., "onPress", "onChange")
+  /// - [eventData]: Event data dictionary
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
-    print('🔥 DCF_ENGINE: handleNativeEvent received - viewId: $viewId, eventType: $eventType, data: $eventData');
-    
     final callback = _eventCallbacks[viewId]?[eventType];
     if (callback != null) {
-      print('🔥 DCF_ENGINE: Found specific callback for $viewId.$eventType');
       try {
         final Function func = callback;
         if (func is Function()) {
@@ -341,22 +381,26 @@ class PlatformInterfaceImpl implements PlatformInterface {
         }
         return;
       } catch (e) {
-        print('🔥 DCF_ENGINE: Error in specific callback: $e');
+        // Error in callback - fall through to global handler
       }
     }
     
     if (_eventHandler != null) {
-      print('🔥 DCF_ENGINE: Forwarding to global event handler');
       try {
         _eventHandler!(viewId, eventType, eventData);
       } catch (e) {
-        print('🔥 DCF_ENGINE: Error in global event handler: $e');
+        // Error in global handler - silently fail
       }
-    } else {
-      print('🔥 DCF_ENGINE: No global event handler set!');
     }
   }
-   @override
+  
+  /// Calls a method on a native component via the tunnel mechanism.
+  /// 
+  /// - [componentType]: Type of component to call the method on
+  /// - [method]: Method name to call
+  /// - [params]: Parameters for the method call
+  /// - Returns: Result from the native method, or `null` if it failed
+  @override
   Future<dynamic> tunnel(String componentType, String method, Map<String, dynamic> params) async {
     try {
       final result = await bridgeChannel.invokeMethod('tunnel', {
@@ -364,10 +408,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
         'method': method,
         'params': params,
       });
-      print("🚇 Tunnel: Called $method on $componentType - Success");
       return result;
     } catch (e) {
-      print("❌ Tunnel: Failed to call $method on $componentType - Error: $e");
       return null;
     }
   }
