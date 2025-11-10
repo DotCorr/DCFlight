@@ -318,6 +318,33 @@ class YogaShadowTree {
         }
     }
     
+    /// Clears all children from the root node.
+    /// 
+    /// Used during hot restart cleanup to prevent layout stacking.
+    /// The root node might still have old children attached from previous sessions.
+    func clearRootNodeChildren() {
+        syncQueue.sync {
+            if let root = nodes["root"] {
+                safeRemoveAllChildren(from: root, nodeId: "root")
+            }
+        }
+    }
+    
+    /// Resets the root node dimensions to the specified width and height.
+    /// 
+    /// Used during hot restart to ensure the root node matches current window bounds.
+    /// - Parameters:
+    ///   - width: The new width for the root node
+    ///   - height: The new height for the root node
+    func resetRootNodeDimensions(width: Float, height: Float) {
+        syncQueue.sync {
+            if let root = nodes["root"] {
+                YGNodeStyleSetWidth(root, width)
+                YGNodeStyleSetHeight(root, height)
+            }
+        }
+    }
+    
     func updateScreenRootDimensions(width: CGFloat, height: CGFloat) {
         syncQueue.sync {
             for (screenId, screenRoot) in screenRoots {
