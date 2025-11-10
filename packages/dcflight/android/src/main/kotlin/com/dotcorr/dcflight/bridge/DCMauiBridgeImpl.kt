@@ -41,10 +41,20 @@ class DCMauiBridgeImpl private constructor() {
     private var appContext: Context? = null
     private var isInitialized = false
 
+    /**
+     * Sets the application context for view creation.
+     * 
+     * @param context The Android application context
+     */
     fun setContext(context: Context) {
         appContext = context
     }
 
+    /**
+     * Initializes the bridge implementation.
+     * 
+     * @return `true` if initialization succeeded, `false` otherwise
+     */
     fun initialize(): Boolean {
         if (isInitialized) return true
         Log.d(TAG, "Initializing DCMauiBridgeImpl")
@@ -52,6 +62,14 @@ class DCMauiBridgeImpl private constructor() {
         return true
     }
 
+    /**
+     * Handles tunnel method calls from Dart to native components.
+     * 
+     * @param componentType The type of component to call the method on
+     * @param method The method name to call
+     * @param params Parameters for the method call
+     * @return The result of the method call, or `null` if it failed
+     */
     fun handleTunnelMethod(componentType: String, method: String, params: Map<String, Any>): Any? {
         Log.d(TAG, "Tunneling $method to $componentType")
         
@@ -75,16 +93,26 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Creates a new native view with the specified type and properties.
+     * 
+     * If a view with the same ID already exists and is in the hierarchy,
+     * it will be updated instead. If it exists but is not in the hierarchy,
+     * it will be deleted and recreated.
+     * 
+     * @param viewId Unique identifier for the view
+     * @param viewType Component type (e.g., "View", "Text", "Button")
+     * @param propsJson JSON string containing view properties
+     * @return `true` if the view was created successfully, `false` otherwise
+     */
     fun createView(viewId: String, viewType: String, propsJson: String): Boolean {
         return try {
             val existingView = ViewRegistry.shared.getView(viewId)
             if (existingView != null) {
                 // Check if view is actually in the hierarchy - if not, delete and recreate
                 if (existingView.parent == null) {
-                    Log.d(TAG, "🔥 REDIRECT: View $viewId exists but not in hierarchy, deleting and recreating")
                     deleteView(viewId)
                 } else {
-                    Log.d(TAG, "🔥 REDIRECT: View $viewId exists, calling updateView")
                     return updateView(viewId, propsJson)
                 }
             }
@@ -115,7 +143,6 @@ class DCMauiBridgeImpl private constructor() {
             val view = ViewRegistry.shared.getView(viewId)
             if (view != null) {
                 views[viewId] = view
-                Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
                 view.visibility = View.VISIBLE
                 view.alpha = 1.0f
             } else {
@@ -130,6 +157,16 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Updates properties of an existing native view.
+     * 
+     * Separates layout properties from non-layout properties and applies them
+     * through the appropriate systems (YogaShadowTree for layout, component updateView for others).
+     * 
+     * @param viewId Unique identifier for the view to update
+     * @param propsJson JSON string containing property changes
+     * @return `true` if the view was updated successfully, `false` otherwise
+     */
     fun updateView(viewId: String, propsJson: String): Boolean {
         return try {
             val view = ViewRegistry.shared.getView(viewId)
@@ -153,14 +190,6 @@ class DCMauiBridgeImpl private constructor() {
             val layoutProps = extractLayoutProps(props)
             val nonLayoutProps = props.filter { !layoutProps.containsKey(it.key) }
 
-            if (viewType == "Screen") {
-                Log.d(TAG, "🔍 UPDATE_VIEW Screen - viewId: $viewId")
-                Log.d(TAG, "🔍 All props: $props")
-                Log.d(TAG, "🔍 Layout props: $layoutProps")
-                Log.d(TAG, "🔍 Non-layout props: $nonLayoutProps")
-                Log.d(TAG, "🔍 Has routeNavigationCommand: ${props.containsKey("routeNavigationCommand")}")
-            }
-
             if (layoutProps.isNotEmpty()) {
                 val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
                 
@@ -182,10 +211,10 @@ class DCMauiBridgeImpl private constructor() {
                         val componentInstance = componentClass.getDeclaredConstructor().newInstance()
                         componentInstance.updateView(view, nonLayoutProps)
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ Error calling updateView on $viewType component", e)
+                        Log.e(TAG, "Error calling updateView on $viewType component", e)
                     }
                 } else {
-                    Log.w(TAG, "⚠️ Component class not found for type: $viewType")
+                    Log.w(TAG, "Component class not found for type: $viewType")
                 }
             }
 
@@ -206,6 +235,12 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Deletes a native view and all its children from the view hierarchy.
+     * 
+     * @param viewId Unique identifier for the view to delete
+     * @return `true` if the view was deleted successfully, `false` otherwise
+     */
     fun deleteView(viewId: String): Boolean {
         return try {
             deleteChildrenRecursively(viewId)
@@ -231,6 +266,17 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Attaches a child view to a parent view at the specified index.
+     * 
+     * If the child is already attached to another parent, it will be removed first.
+     * Updates the view hierarchy and YogaShadowTree accordingly.
+     * 
+     * @param childId Unique identifier for the child view
+     * @param parentId Unique identifier for the parent view
+     * @param index Position in the parent's child list
+     * @return `true` if the view was attached successfully, `false` otherwise
+     */
     fun attachView(childId: String, parentId: String, index: Int): Boolean {
         return try {
             val childView = ViewRegistry.shared.getView(childId)
@@ -242,14 +288,9 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
-            Log.d(TAG, "🔍 attachView: child='$childId' (type=${childView.javaClass.simpleName}), parent='$parentId' (type=${parentView.javaClass.simpleName})")
-            Log.d(TAG, "🔍 parentView is ViewGroup? ${parentView is ViewGroup}")
-            
             val parentViewGroup = parentView as? ViewGroup
             if (parentViewGroup == null) {
-                Log.e(TAG, "❌ Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
-                Log.e(TAG, "❌ Parent view class: ${parentView.javaClass.name}")
-                Log.e(TAG, "❌ Parent view superclass: ${parentView.javaClass.superclass?.name}")
+                Log.e(TAG, "Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
                 return false
             }
 
@@ -309,21 +350,29 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Sets the children of a view, replacing any existing children.
+     * 
+     * Removes all current children and attaches the new children in the specified order.
+     * Updates the view hierarchy and YogaShadowTree accordingly.
+     * 
+     * @param viewId Unique identifier for the parent view
+     * @param childrenIds List of child view identifiers in order
+     * @return `true` if children were set successfully, `false` otherwise
+     */
     fun setChildren(viewId: String, childrenIds: List<String>): Boolean {
         return try {
-            Log.d(TAG, "🔧 setChildren called: viewId='$viewId', children=${childrenIds.size}")
             val parentView = ViewRegistry.shared.getView(viewId)
             
             if (parentView == null) {
-                Log.e(TAG, "❌ setChildren: parent view '$viewId' not found in registry")
+                Log.e(TAG, "setChildren: parent view '$viewId' not found in registry")
                 return false
             }
             
-            Log.d(TAG, "🔍 setChildren: parentView type=${parentView.javaClass.simpleName}, is ViewGroup? ${parentView is ViewGroup}")
             val parentViewGroup = parentView as? ViewGroup
 
             if (parentViewGroup == null) {
-                Log.e(TAG, "❌ setChildren: Parent view '$viewId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
+                Log.e(TAG, "setChildren: Parent view '$viewId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
                 return false
             }
 
@@ -391,13 +440,16 @@ class DCMauiBridgeImpl private constructor() {
 
 
     /**
-     * ⭐ OPTIMIZED: Commit a batch of operations atomically with improved performance
-     * Now accepts pre-serialized JSON strings to eliminate native JSON parsing overhead
+     * Commits a batch of operations atomically with optimized performance.
+     * 
+     * Accepts pre-serialized JSON strings to eliminate native JSON parsing overhead.
+     * Operations are separated into create, update, attach, and event registration phases,
+     * then executed in order before triggering a single layout calculation.
+     * 
+     * @param operations List of operation dictionaries containing view operations
+     * @return `true` if all operations succeeded, `false` otherwise
      */
     fun commitBatchUpdate(operations: List<Map<String, Any>>): Boolean {
-        val startTime = System.currentTimeMillis()
-        Log.d(TAG, "🔥 BATCH: Committing ${operations.size} operations (OPTIMIZED ATOMIC)")
-        
         data class CreateOp(val viewId: String, val viewType: String, val propsJson: String)
         data class UpdateOp(val viewId: String, val propsJson: String)
         data class AttachOp(val childId: String, val parentId: String, val index: Int)
@@ -408,8 +460,7 @@ class DCMauiBridgeImpl private constructor() {
         val attachOps = mutableListOf<AttachOp>()
         val eventOps = mutableListOf<AddEventListenersOp>()
         
-        // ⭐ OPTIMIZATION: Parse phase - collect all operations
-        val parseStartTime = System.currentTimeMillis()
+        // Parse phase - collect all operations
         
         operations.forEach { operation ->
             val operationType = operation["operation"] as? String
@@ -467,48 +518,23 @@ class DCMauiBridgeImpl private constructor() {
             }
         }
         
-        val parseTime = System.currentTimeMillis() - parseStartTime
-        Log.d(TAG, "📊 BATCH_TIMING: Parse phase completed in ${parseTime}ms")
-        Log.d(TAG, "🔥 BATCH: Collected ${createOps.size} creates, ${updateOps.size} updates, ${attachOps.size} attaches, ${eventOps.size} event registrations")
-        
         try {
-            val createStartTime = System.currentTimeMillis()
-            
+            // Execute phase - process all operations
             createOps.forEach { op ->
                 createView(op.viewId, op.viewType, op.propsJson)
             }
-            
-            val createTime = System.currentTimeMillis() - createStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Create phase completed in ${createTime}ms (${createOps.size} views)")
-            
-            val updateStartTime = System.currentTimeMillis()
             
             updateOps.forEach { op ->
                 updateView(op.viewId, op.propsJson)
             }
             
-            val updateTime = System.currentTimeMillis() - updateStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Update phase completed in ${updateTime}ms (${updateOps.size} views)")
-            
-            val attachStartTime = System.currentTimeMillis()
-            
             attachOps.forEach { op ->
                 attachView(op.childId, op.parentId, op.index)
             }
             
-            val attachTime = System.currentTimeMillis() - attachStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Attach phase completed in ${attachTime}ms (${attachOps.size} attachments)")
-            
-            val eventsStartTime = System.currentTimeMillis()
-            
             eventOps.forEach { op ->
                 DCMauiEventMethodHandler.shared.addEventListenersForBatch(op.viewId, op.eventTypes)
             }
-            
-            val eventsTime = System.currentTimeMillis() - eventsStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Events phase completed in ${eventsTime}ms (${eventOps.size} registrations)")
-            
-            val layoutStartTime = System.currentTimeMillis()
             
             val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
             val screenWidth = displayMetrics.widthPixels.toFloat()
@@ -522,8 +548,9 @@ class DCMauiBridgeImpl private constructor() {
                 )
             }
             
-            val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
+            YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
             
+            // Make all views visible after layout
             ViewRegistry.shared.allViewIds.forEach { viewId ->
                 val view = ViewRegistry.shared.getView(viewId)
                 view?.let {
@@ -532,9 +559,7 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
             
-            val layoutTime = System.currentTimeMillis() - layoutStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Layout phase completed in ${layoutTime}ms")
-            
+            // Invalidate all views and trigger a post-layout calculation
             rootView?.let { root ->
                 fun invalidateAll(v: View) {
                     v.invalidate()
@@ -551,13 +576,9 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
             
-            val totalTime = System.currentTimeMillis() - startTime
-            Log.d(TAG, "📊 BATCH_TIMING: ✅ TOTAL BATCH COMMIT TIME: ${totalTime}ms for ${operations.size} operations")
-            Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
-            
             return true
         } catch (e: Exception) {
-            Log.e(TAG, "🔥 BATCH_COMMIT: Failed during atomic commit", e)
+            Log.e(TAG, "Failed during atomic commit", e)
             return false
         }
     }
