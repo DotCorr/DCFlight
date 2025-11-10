@@ -80,24 +80,17 @@ class DCFViewManager {
             return false
         }
         
-        // Create a new view
         let componentInstance = componentType.init()
-        let finalView = componentInstance.createView(props: props)
-        
-        // Ensure view is visible
-        finalView.isHidden = false
-        finalView.alpha = 1.0
-        
-        print("✨ DCFViewManager: Created new view for type '\(viewType)' (viewId: \(viewId))")
+        let view = componentInstance.createView(props: props)
         
         objc_setAssociatedObject(
-            finalView,
+            view,
             UnsafeRawPointer(bitPattern: "componentType".hashValue)!,
             viewType,
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
-        ViewRegistry.shared.registerView(finalView, id: viewId, type: viewType)
+        ViewRegistry.shared.registerView(view, id: viewId, type: viewType)
         
         let isScreen = (viewType == "Screen" || props["presentationStyle"] != nil)
         
@@ -128,7 +121,7 @@ class DCFViewManager {
             }
         }
         
-        DCFLayoutManager.shared.registerView(finalView, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
+        DCFLayoutManager.shared.registerView(view, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
         
         print("✅ DCFViewManager: Successfully created \(isScreen ? "screen" : "component") '\(viewId)'")
         return true
@@ -180,12 +173,6 @@ class DCFViewManager {
             }
         }
         
-        // Ensure view is visible and invalidated after update
-        view.isHidden = false
-        view.alpha = 1.0
-        view.setNeedsLayout()
-        view.setNeedsDisplay()
-        
         print("✅ DCFViewManager: Successfully updated view '\(viewId)'")
         return true
     }
@@ -211,6 +198,7 @@ class DCFViewManager {
         
         // 🎯 CRITICAL FIX: Check if this is a screen component
         let childIsScreen = YogaShadowTree.shared.isScreenRoot(childId)
+        let parentIsScreen = YogaShadowTree.shared.isScreenRoot(parentId)
         
         // Screens should be managed by their respective navigation components, not the general view manager
         if childIsScreen {
