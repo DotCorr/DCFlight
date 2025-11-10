@@ -9,7 +9,6 @@
 import UIKit
 import dcflight
 
-//Clone or copy this file with the accompanying dart side to create a custom icon package
 class DCFIconComponent: NSObject, DCFComponent {
     private let svgComponent = DCFSvgComponent()
 
@@ -22,17 +21,16 @@ class DCFIconComponent: NSObject, DCFComponent {
         imageView.contentMode = .scaleAspectFit
         imageView.clipsToBounds = true
         
-        // Set up adaptive background color (icons typically transparent)
-        let isAdaptive = props["adaptive"] as? Bool ?? true
-        if isAdaptive {
-            imageView.backgroundColor = UIColor.clear
-        } else {
-            imageView.backgroundColor = UIColor.clear
+        if let iconColor = ColorUtilities.getColor(
+            explicitColor: "iconColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            imageView.tintColor = iconColor
         }
         
         updateView(imageView, withProps: props)
         
-        // Apply StyleSheet properties
         imageView.applyStyles(props: props)
         
         return imageView
@@ -44,13 +42,10 @@ class DCFIconComponent: NSObject, DCFComponent {
             return false 
         }
 
-        // Handle prop updates - some props might not include name/package for incremental updates
         var svgProps = props
         
-        // Check if we have name and package to set up the asset path
         if let iconName = props["name"] as? String, let packageName = props["package"] as? String {
             
-            // Use Flutter lookupKey to resolve logical asset path
             guard let key = sharedFlutterViewController?.lookupKey(forAsset: "assets/icons/\(iconName).svg", fromPackage: packageName) else {
                 return false
             }
@@ -59,20 +54,55 @@ class DCFIconComponent: NSObject, DCFComponent {
             
             svgProps["asset"] = path
         } else {
-            // For prop updates, we don't need to set the asset again
-            // The SVG component should handle updates to existing assets
         }
         
-        // Convert "color" prop to "tintColor" for SVG component
-        if let color = props["color"] as? String {
-            svgProps["tintColor"] = color
+        if let iconColor = ColorUtilities.getColor(
+            explicitColor: "iconColor",
+            semanticColor: "primaryColor",
+            from: props
+        ) {
+            var red: CGFloat = 0
+            var green: CGFloat = 0
+            var blue: CGFloat = 0
+            var alpha: CGFloat = 0
+            iconColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            let hexString = String(format: "#%02X%02X%02X", 
+                                   Int(red * 255), 
+                                   Int(green * 255), 
+                                   Int(blue * 255))
+            svgProps["tintColor"] = hexString
+        } else if let primaryColor = props["primaryColor"] as? String {
+            svgProps["tintColor"] = primaryColor
         }
         
         let result = svgComponent.updateView(imageView, withProps: svgProps)
         
-        // Apply StyleSheet properties
         imageView.applyStyles(props: props)
         
         return result
+    }
+    
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        guard let imageView = view as? UIImageView else {
+            return CGSize.zero
+        }
+        
+        let size = props["size"] as? CGFloat ?? 24
+        
+        return CGSize(width: size, height: size)
+    }
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+    }
+
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        objc_setAssociatedObject(view,
+                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
+                               nodeId,
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        return nil
     }
 }

@@ -391,7 +391,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
       } catch (e) {
         // Error in global handler - silently fail
       }
-    }
+      }
   }
   
   /// Calls a method on a native component via the tunnel mechanism.
@@ -400,7 +400,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - [method]: Method name to call
   /// - [params]: Parameters for the method call
   /// - Returns: Result from the native method, or `null` if it failed
-  @override
+   @override
   Future<dynamic> tunnel(String componentType, String method, Map<String, dynamic> params) async {
     try {
       final result = await bridgeChannel.invokeMethod('tunnel', {
