@@ -192,7 +192,9 @@ class HotReloadWatcher {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        _logFlutter('📱', line);
+        if (_shouldShowLog(line)) {
+          _logFlutter('📱', line);
+        }
       });
 
       // Handle Flutter stderr (left side of split)
@@ -200,7 +202,9 @@ class HotReloadWatcher {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        _logFlutter('⚠️ ', line, _yellow);
+        if (_shouldShowLog(line)) {
+          _logFlutter('⚠️ ', line, _yellow);
+        }
       });
 
       _logWatcher('✅', 'DCFlight process started successfully', _brightGreen);
@@ -478,6 +482,33 @@ class HotReloadWatcher {
     print('=' * 60 + '\n');
 
     return deviceId;
+  }
+
+  /// Check if a log line should be shown.
+  /// 
+  /// Only shows DCFLogger formatted logs unless verbose mode is enabled.
+  /// DCFLogger format: [$timestamp]$idString $levelIcon $levelName $tag: $message
+  bool _shouldShowLog(String line) {
+    // If verbose mode, show all logs
+    if (verbose) {
+      return true;
+    }
+    
+    // Check if line matches DCFLogger format
+    // Pattern: [timestamp][optional identifiers] icon LEVEL tag: message
+    // Example: [2025-01-16T10:30:45.123][P:project|I:instance] ✅ INFO    Tag: message
+    // The level name is padded to 7 characters, so we match any 7+ character word
+    final dcfLoggerPattern = RegExp(
+      r'^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?\](\[.*?\])?\s*[❌⚠️✅🐛🔍]\s+(ERROR|WARNING|INFO|DEBUG|VERBOSE)\s+\w+:\s+.*'
+    );
+    
+    if (dcfLoggerPattern.hasMatch(line.trim())) {
+      return true;
+    }
+    
+    // Block all other Flutter/Dart framework logs
+    // Allow only DCFLogger formatted logs
+    return false;
   }
 
   /// Log DCFlight App output (left side)
