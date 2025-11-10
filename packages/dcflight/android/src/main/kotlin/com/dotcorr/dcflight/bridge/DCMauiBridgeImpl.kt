@@ -107,21 +107,15 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
-            // ⚡ PERFORMANCE: Use ViewManager which caches component instances
-            // This provides similar performance to iOS view pooling but at the factory layer
-            // ViewManager handles registration, Yoga node creation, and layout props
             val success = com.dotcorr.dcflight.Coordinator.DCFViewManager.shared.createView(viewId, viewType, props)
             if (!success) {
                 return false
             }
             
-            // Get the view from registry and add to local views map
             val view = ViewRegistry.shared.getView(viewId)
             if (view != null) {
                 views[viewId] = view
                 Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
-                
-                // Ensure view is visible
                 view.visibility = View.VISIBLE
                 view.alpha = 1.0f
             } else {
@@ -159,7 +153,6 @@ class DCMauiBridgeImpl private constructor() {
             val layoutProps = extractLayoutProps(props)
             val nonLayoutProps = props.filter { !layoutProps.containsKey(it.key) }
 
-            // Debug logging for Screen components
             if (viewType == "Screen") {
                 Log.d(TAG, "🔍 UPDATE_VIEW Screen - viewId: $viewId")
                 Log.d(TAG, "🔍 All props: $props")
@@ -196,10 +189,15 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
 
-            // Ensure view is visible and invalidated after update
+            val layoutPropsChanged = layoutProps.isNotEmpty()
             view.visibility = View.VISIBLE
-            view.invalidate()
-            view.requestLayout()
+            
+            if (layoutPropsChanged) {
+                view.invalidate()
+                view.requestLayout()
+            } else {
+                view.invalidate()
+            }
 
             true
         } catch (e: Exception) {
@@ -422,9 +420,7 @@ class DCMauiBridgeImpl private constructor() {
                     val viewType = operation["viewType"] as? String
                     
                     if (viewId != null && viewType != null) {
-                        // ⭐ OPTIMIZATION: Check for pre-serialized JSON first (from Dart)
                         val propsJson = operation["propsJson"] as? String ?: run {
-                            // Legacy fallback: serialize on native side
                             val props = operation["props"] as? Map<String, Any>
                             if (props != null) {
                                 JSONObject(props).toString()
@@ -440,9 +436,7 @@ class DCMauiBridgeImpl private constructor() {
                     val viewId = operation["viewId"] as? String
                     
                     if (viewId != null) {
-                        // ⭐ OPTIMIZATION: Check for pre-serialized JSON first (from Dart)
                         val propsJson = operation["propsJson"] as? String ?: run {
-                            // Legacy fallback: serialize on native side
                             val props = operation["props"] as? Map<String, Any>
                             if (props != null) {
                                 JSONObject(props).toString()
@@ -478,10 +472,8 @@ class DCMauiBridgeImpl private constructor() {
         Log.d(TAG, "🔥 BATCH: Collected ${createOps.size} creates, ${updateOps.size} updates, ${attachOps.size} attaches, ${eventOps.size} event registrations")
         
         try {
-            // ⭐ OPTIMIZATION: Execute phase - process all operations with minimal overhead
             val createStartTime = System.currentTimeMillis()
             
-            // Create all views (props are already JSON strings - no serialization needed!)
             createOps.forEach { op ->
                 createView(op.viewId, op.viewType, op.propsJson)
             }
@@ -491,7 +483,6 @@ class DCMauiBridgeImpl private constructor() {
             
             val updateStartTime = System.currentTimeMillis()
             
-            // Update all views (props are already JSON strings - no serialization needed!)
             updateOps.forEach { op ->
                 updateView(op.viewId, op.propsJson)
             }
@@ -501,7 +492,6 @@ class DCMauiBridgeImpl private constructor() {
             
             val attachStartTime = System.currentTimeMillis()
             
-            // Attach all views to hierarchy
             attachOps.forEach { op ->
                 attachView(op.childId, op.parentId, op.index)
             }
@@ -511,9 +501,7 @@ class DCMauiBridgeImpl private constructor() {
             
             val eventsStartTime = System.currentTimeMillis()
             
-            // Register all event listeners
             eventOps.forEach { op ->
-                Log.d(TAG, "🔥 BATCH_COMMIT: Registering event listeners for ${op.viewId}")
                 DCMauiEventMethodHandler.shared.addEventListenersForBatch(op.viewId, op.eventTypes)
             }
             
@@ -521,9 +509,6 @@ class DCMauiBridgeImpl private constructor() {
             Log.d(TAG, "📊 BATCH_TIMING: Events phase completed in ${eventsTime}ms (${eventOps.size} registrations)")
             
             val layoutStartTime = System.currentTimeMillis()
-            
-            // ⭐ OPTIMIZATION: Single layout calculation after all view operations
-            Log.d(TAG, "🔥 BATCH_COMMIT: Triggering SYNCHRONOUS layout calculation")
             
             val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
             val screenWidth = displayMetrics.widthPixels.toFloat()
@@ -535,14 +520,20 @@ class DCMauiBridgeImpl private constructor() {
                     View.MeasureSpec.makeMeasureSpec(screenWidth.toInt(), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(screenHeight.toInt(), View.MeasureSpec.EXACTLY)
                 )
-                Log.d(TAG, "🔥 BATCH_COMMIT: Root view measured: ${root.measuredWidth}x${root.measuredHeight}")
             }
             
             val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
             
+            ViewRegistry.shared.allViewIds.forEach { viewId ->
+                val view = ViewRegistry.shared.getView(viewId)
+                view?.let {
+                    it.visibility = View.VISIBLE
+                    it.alpha = 1.0f
+                }
+            }
+            
             val layoutTime = System.currentTimeMillis() - layoutStartTime
             Log.d(TAG, "📊 BATCH_TIMING: Layout phase completed in ${layoutTime}ms")
-            Log.d(TAG, "🔥 BATCH_COMMIT: Layout calculation completed synchronously: $layoutSuccess")
             
             rootView?.let { root ->
                 fun invalidateAll(v: View) {
@@ -554,11 +545,9 @@ class DCMauiBridgeImpl private constructor() {
                     }
                 }
                 invalidateAll(root)
-                Log.d(TAG, "🔥 BATCH_COMMIT: Forced recursive invalidation")
                 
                 root.post {
                     YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
-                    Log.d(TAG, "🔥 BATCH_COMMIT: Forced layout recalculation on next frame")
                 }
             }
             

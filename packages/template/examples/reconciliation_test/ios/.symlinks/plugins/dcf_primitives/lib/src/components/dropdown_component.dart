@@ -1,0 +1,238 @@
+/*
+ * Copyright (c) Dotcorr Studio. and affiliates.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+import 'package:dcflight/dcflight.dart';
+
+/// Dropdown properties
+class DCFDropdownProps {
+  /// Whether the dropdown is visible
+  final bool visible;
+
+  /// List of dropdown items
+  final List<DCFDropdownMenuItem> items;
+
+  /// Currently selected value
+  final String? selectedValue;
+
+  /// Placeholder text
+  final String? placeholder;
+
+  /// Explicit color override: placeholderColor (overrides StyleSheet.secondaryColor)
+  /// If provided, this will override the semantic secondaryColor for placeholder text
+  final Color? placeholderColor;
+
+  /// Position of the dropdown
+  final DCFDropdownPosition dropdownPosition;
+
+  /// Maximum height of dropdown
+  final double? maxHeight;
+
+  /// Height of each item
+  final double? itemHeight;
+
+  /// NOTE: backgroundColor removed - use StyleSheet.backgroundColor instead
+  /// NOTE: borderColor removed - use StyleSheet.borderColor instead
+
+  /// Border width
+  final double? borderWidth;
+
+  /// Border radius
+  final double? borderRadius;
+
+  /// Whether dropdown is searchable
+  final bool searchable;
+
+  /// Search placeholder text
+  final String? searchPlaceholder;
+
+  /// Whether multiple selection is enabled
+  final bool multiSelect;
+
+  /// Currently selected values (for multi-select)
+  final List<String>? selectedValues;
+
+  /// Whether dropdown is disabled
+  final bool disabled;
+
+
+  /// Create dropdown props
+  const DCFDropdownProps({
+    this.visible = false,
+    this.items = const [],
+    this.selectedValue,
+    this.placeholder,
+    this.placeholderColor,
+    this.dropdownPosition = DCFDropdownPosition.auto,
+    this.maxHeight,
+    this.itemHeight,
+    // backgroundColor and borderColor removed - use StyleSheet
+    this.borderWidth,
+    this.borderRadius,
+    this.searchable = false,
+    this.searchPlaceholder,
+    this.multiSelect = false,
+    this.selectedValues,
+    this.disabled = false,
+  });
+
+  /// Convert to props map
+  Map<String, dynamic> toMap() {
+    return {
+      'visible': visible,
+      'items': items
+          .map((item) => {
+                'value': item.value,
+                'label': item.title, // Use title as label for native
+                'disabled': item.disabled,
+              })
+          .toList(),
+      'selectedValue': selectedValue,
+      'placeholder': placeholder,
+      if (placeholderColor != null) 'placeholderColor': DCFColors.toNativeString(placeholderColor!),
+      'dropdownPosition': dropdownPosition.name,
+      'maxHeight': maxHeight,
+      'itemHeight': itemHeight,
+      // backgroundColor and borderColor removed - native components use StyleSheet
+      'borderWidth': borderWidth,
+      'borderRadius': borderRadius,
+      'searchable': searchable,
+      'searchPlaceholder': searchPlaceholder,
+      'multiSelect': multiSelect,
+      'selectedValues': selectedValues,
+      'disabled': disabled,
+    };
+  }
+}
+
+/// DCFDropdown - Cross-platform dropdown menu component
+/// Provides native dropdown functionality with type-safe positioning and items
+class DCFDropdown extends DCFStatelessComponent
+    with EquatableMixin
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.high;
+
+  /// The dropdown properties
+  final DCFDropdownProps dropdownProps;
+
+  /// The layout properties
+  final DCFLayout layout;
+
+  /// The style properties
+  final DCFStyleSheet styleSheet;
+
+  /// Event handlers
+  final Map<String, dynamic>? events;
+
+  /// Value change event handler - receives Map<dynamic, dynamic> with selected value and item data
+  final Function(Map<dynamic, dynamic>)? onValueChange;
+
+  /// Multi-value change event handler - receives Map<dynamic, dynamic> with selected values and items data
+  final Function(Map<dynamic, dynamic>)? onMultiValueChange;
+
+  /// Open event handler - receives Map<dynamic, dynamic> with dropdown state
+  final Function(Map<dynamic, dynamic>)? onOpen;
+
+  /// Close event handler - receives Map<dynamic, dynamic> with dropdown state
+  final Function(Map<dynamic, dynamic>)? onClose;
+
+  DCFDropdown({
+    super.key,
+    required this.dropdownProps,
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(),
+    this.onValueChange,
+    this.onMultiValueChange,
+    this.onOpen,
+    this.onClose,
+    this.events,
+  });
+
+  @override
+  List<Object?> get props => [
+        dropdownProps,
+        layout,
+        styleSheet,
+        onValueChange,
+        onMultiValueChange,
+        onOpen,
+        onClose,
+        events,
+        key,
+      ];
+
+  @override
+  DCFComponentNode render() {
+    Map<String, dynamic> eventMap = events ?? {};
+
+    if (onValueChange != null) {
+      eventMap['onValueChange'] = onValueChange;
+    }
+
+    if (onMultiValueChange != null) {
+      eventMap['onMultiValueChange'] = onMultiValueChange;
+    }
+
+    if (onOpen != null) {
+      eventMap['onOpen'] = onOpen;
+    }
+
+    if (onClose != null) {
+      eventMap['onClose'] = onClose;
+    }
+
+    return DCFElement(
+      type: 'Dropdown',
+      key: key,
+      elementProps: {
+        ...dropdownProps.toMap(),
+        ...layout.toMap(),
+        ...styleSheet.toMap(),
+        ...eventMap,
+      },
+      children: [],
+    );
+  }
+}
+
+/// Dropdown menu item configuration
+class DCFDropdownMenuItem {
+  final String value;
+  final String title;
+  final String? subtitle;
+  final String? icon;
+  final bool disabled;
+  final void Function(String value)? onSelected;
+
+  const DCFDropdownMenuItem({
+    required this.value,
+    required this.title,
+    this.subtitle,
+    this.icon,
+    this.disabled = false,
+    this.onSelected,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'value': value,
+      'title': title,
+      'subtitle': subtitle,
+      'icon': icon,
+      'disabled': disabled,
+    };
+  }
+}
+
+/// Dropdown menu positions
+enum DCFDropdownPosition {
+  auto,
+  top,
+  bottom,
+  left,
+  right,
+}
