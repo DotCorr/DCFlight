@@ -40,7 +40,7 @@ By participating in this project, you agree to maintain a respectful and inclusi
    ```
 3. Add upstream remote:
    ```bash
-   git remote add upstream https://github.com/squirelboy360/dcflight.git
+   git remote add upstream https://github.com/dotcorr/dcflight.git
    ```
 
 ---
