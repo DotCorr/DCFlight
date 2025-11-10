@@ -41,10 +41,20 @@ class DCMauiBridgeImpl private constructor() {
     private var appContext: Context? = null
     private var isInitialized = false
 
+    /**
+     * Sets the application context for view creation.
+     * 
+     * @param context The Android application context
+     */
     fun setContext(context: Context) {
         appContext = context
     }
 
+    /**
+     * Initializes the bridge implementation.
+     * 
+     * @return `true` if initialization succeeded, `false` otherwise
+     */
     fun initialize(): Boolean {
         if (isInitialized) return true
         Log.d(TAG, "Initializing DCMauiBridgeImpl")
@@ -52,6 +62,14 @@ class DCMauiBridgeImpl private constructor() {
         return true
     }
 
+    /**
+     * Handles tunnel method calls from Dart to native components.
+     * 
+     * @param componentType The type of component to call the method on
+     * @param method The method name to call
+     * @param params Parameters for the method call
+     * @return The result of the method call, or `null` if it failed
+     */
     fun handleTunnelMethod(componentType: String, method: String, params: Map<String, Any>): Any? {
         Log.d(TAG, "Tunneling $method to $componentType")
         
@@ -75,16 +93,26 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Creates a new native view with the specified type and properties.
+     * 
+     * If a view with the same ID already exists and is in the hierarchy,
+     * it will be updated instead. If it exists but is not in the hierarchy,
+     * it will be deleted and recreated.
+     * 
+     * @param viewId Unique identifier for the view
+     * @param viewType Component type (e.g., "View", "Text", "Button")
+     * @param propsJson JSON string containing view properties
+     * @return `true` if the view was created successfully, `false` otherwise
+     */
     fun createView(viewId: String, viewType: String, propsJson: String): Boolean {
         return try {
             val existingView = ViewRegistry.shared.getView(viewId)
             if (existingView != null) {
                 // Check if view is actually in the hierarchy - if not, delete and recreate
                 if (existingView.parent == null) {
-                    Log.d(TAG, "🔥 REDIRECT: View $viewId exists but not in hierarchy, deleting and recreating")
                     deleteView(viewId)
                 } else {
-                    Log.d(TAG, "🔥 REDIRECT: View $viewId exists, calling updateView")
                     return updateView(viewId, propsJson)
                 }
             }
@@ -115,7 +143,6 @@ class DCMauiBridgeImpl private constructor() {
             val view = ViewRegistry.shared.getView(viewId)
             if (view != null) {
                 views[viewId] = view
-                Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
                 view.visibility = View.VISIBLE
                 view.alpha = 1.0f
             } else {
@@ -130,6 +157,16 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Updates properties of an existing native view.
+     * 
+     * Separates layout properties from non-layout properties and applies them
+     * through the appropriate systems (YogaShadowTree for layout, component updateView for others).
+     * 
+     * @param viewId Unique identifier for the view to update
+     * @param propsJson JSON string containing property changes
+     * @return `true` if the view was updated successfully, `false` otherwise
+     */
     fun updateView(viewId: String, propsJson: String): Boolean {
         return try {
             val view = ViewRegistry.shared.getView(viewId)
@@ -153,14 +190,6 @@ class DCMauiBridgeImpl private constructor() {
             val layoutProps = extractLayoutProps(props)
             val nonLayoutProps = props.filter { !layoutProps.containsKey(it.key) }
 
-            if (viewType == "Screen") {
-                Log.d(TAG, "🔍 UPDATE_VIEW Screen - viewId: $viewId")
-                Log.d(TAG, "🔍 All props: $props")
-                Log.d(TAG, "🔍 Layout props: $layoutProps")
-                Log.d(TAG, "🔍 Non-layout props: $nonLayoutProps")
-                Log.d(TAG, "🔍 Has routeNavigationCommand: ${props.containsKey("routeNavigationCommand")}")
-            }
-
             if (layoutProps.isNotEmpty()) {
                 val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
                 
@@ -182,10 +211,10 @@ class DCMauiBridgeImpl private constructor() {
                         val componentInstance = componentClass.getDeclaredConstructor().newInstance()
                         componentInstance.updateView(view, nonLayoutProps)
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ Error calling updateView on $viewType component", e)
+                        Log.e(TAG, "Error calling updateView on $viewType component", e)
                     }
                 } else {
-                    Log.w(TAG, "⚠️ Component class not found for type: $viewType")
+                    Log.w(TAG, "Component class not found for type: $viewType")
                 }
             }
 
@@ -206,6 +235,12 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Deletes a native view and all its children from the view hierarchy.
+     * 
+     * @param viewId Unique identifier for the view to delete
+     * @return `true` if the view was deleted successfully, `false` otherwise
+     */
     fun deleteView(viewId: String): Boolean {
         return try {
             deleteChildrenRecursively(viewId)
@@ -231,6 +266,17 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Attaches a child view to a parent view at the specified index.
+     * 
+     * If the child is already attached to another parent, it will be removed first.
+     * Updates the view hierarchy and YogaShadowTree accordingly.
+     * 
+     * @param childId Unique identifier for the child view
+     * @param parentId Unique identifier for the parent view
+     * @param index Position in the parent's child list
+     * @return `true` if the view was attached successfully, `false` otherwise
+     */
     fun attachView(childId: String, parentId: String, index: Int): Boolean {
         return try {
             val childView = ViewRegistry.shared.getView(childId)
@@ -242,14 +288,9 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
-            Log.d(TAG, "🔍 attachView: child='$childId' (type=${childView.javaClass.simpleName}), parent='$parentId' (type=${parentView.javaClass.simpleName})")
-            Log.d(TAG, "🔍 parentView is ViewGroup? ${parentView is ViewGroup}")
-            
             val parentViewGroup = parentView as? ViewGroup
             if (parentViewGroup == null) {
-                Log.e(TAG, "❌ Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
-                Log.e(TAG, "❌ Parent view class: ${parentView.javaClass.name}")
-                Log.e(TAG, "❌ Parent view superclass: ${parentView.javaClass.superclass?.name}")
+                Log.e(TAG, "Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
                 return false
             }
 
@@ -309,21 +350,29 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
+    /**
+     * Sets the children of a view, replacing any existing children.
+     * 
+     * Removes all current children and attaches the new children in the specified order.
+     * Updates the view hierarchy and YogaShadowTree accordingly.
+     * 
+     * @param viewId Unique identifier for the parent view
+     * @param childrenIds List of child view identifiers in order
+     * @return `true` if children were set successfully, `false` otherwise
+     */
     fun setChildren(viewId: String, childrenIds: List<String>): Boolean {
         return try {
-            Log.d(TAG, "🔧 setChildren called: viewId='$viewId', children=${childrenIds.size}")
             val parentView = ViewRegistry.shared.getView(viewId)
             
             if (parentView == null) {
-                Log.e(TAG, "❌ setChildren: parent view '$viewId' not found in registry")
+                Log.e(TAG, "setChildren: parent view '$viewId' not found in registry")
                 return false
             }
             
-            Log.d(TAG, "🔍 setChildren: parentView type=${parentView.javaClass.simpleName}, is ViewGroup? ${parentView is ViewGroup}")
             val parentViewGroup = parentView as? ViewGroup
 
             if (parentViewGroup == null) {
-                Log.e(TAG, "❌ setChildren: Parent view '$viewId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
+                Log.e(TAG, "setChildren: Parent view '$viewId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
                 return false
             }
 

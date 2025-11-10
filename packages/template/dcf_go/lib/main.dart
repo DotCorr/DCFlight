@@ -1,143 +1,203 @@
-import 'dart:io';
-
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() async {
-  await DCFlight.go(app: MyApp());
+  await DCFlight.go(app: LifecycleTestApp());
 }
 
-class MyApp extends DCFStatefulComponent {
+/// Simple test app to verify all lifecycle methods and hooks work correctly
+class LifecycleTestApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     final count = useState<int>(0);
-    final sliderVal = useState<double>(0.0);
+    final showChild = useState<bool>(true);
     
-
-    final name = useState<String>("");
-    final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
-
-    return DCFView(
+    return DCFSafeArea(
       layout: DCFLayout(
-        padding:20,
+        padding: 20,
         flex: 1,
         justifyContent: YogaJustifyContent.center,
         alignItems: YogaAlign.center,
       ),
-      // Using unified theme system with semantic colors
       styleSheet: DCFStyleSheet(
         backgroundColor: DCFTheme.current.backgroundColor,
       ),
       children: [
-       
-        DCFText(
-          content: "Hello, Test ${name.state}! ${count.state}",
-          // Using semantic colors from StyleSheet instead of explicit color prop
-          styleSheet: DCFStyleSheet(
-            backgroundColor: DCFColors.red,
-            borderRadius: 20,
-            elevation: 10,
-            primaryColor:
-                DCFTheme.textColor, // Semantic color - maps to text color
-          ),
-          textProps: DCFTextProps(fontSize: 24, fontWeight: DCFFontWeight.bold),
-          layout: DCFLayout(
-            height: 100,
-            width: 200,
-            justifyContent: YogaJustifyContent.center,
-            alignItems: YogaAlign.center,
-          ),
-        ),
-        DCFWebView(
-          webViewProps: DCFWebViewProps(source: 'https://dotcorr.com'),
-        ),
-
-        DCFSlider(value: sliderVal.state.toDouble(),
-        onValueChange: (data) => sliderVal.setState(data.value),
-        ),
-        DCFSpinner(),
-        DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
-        DCFSegmentedControl(
-
-          segmentedControlProps: DCFSegmentedControlProps(
-            selectedIndex: sliderVal.state.toInt(),
-            segments: [
-              DCFSegmentItem(title: "Item 1"),
-              DCFSegmentItem(title: "Item 2"),
-            ],
-          ),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.blue),
-          layout: DCFLayout(width: 200,height: 40,alignItems: YogaAlign.center,justifyContent: YogaJustifyContent.center),
-        ),
-        DCFAlert(
-          visible: isDarkMode.state,
-          title: "Alert",
-          message: "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
-          textFields: [
-            DCFAlertTextField(placeholder: "Enter your name"),
-          ],
-          actions: [
-          
-            DCFAlertAction(
-              title: "Change Theme",
-              style: DCFAlertActionStyle.destructive,
-              handler: "Change Theme",
-            ),
-          ],
-          onActionPress: (data) {
-            if (data['handler'] == "Change Theme") {
-              final newDarkMode = !isDarkMode.state;
-              isDarkMode.setState(newDarkMode);
-              // Actually update the theme
-              DCFTheme.setTheme(
-                newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
-              );
-            }
-          },
-        ),
-        DCFDropdown(
-          dropdownProps: DCFDropdownProps(
-            items: [
-              DCFDropdownMenuItem(title: "Item 1", value: "item1"),
-              DCFDropdownMenuItem(title: "Item 2", value: "item2"),
-            ],
-          ),
-        ),
-       
-
-        DCFText(
-          content: "Theme: ${isDarkMode.state ? 'Dark' : 'Light'}",
-          // Using semantic secondaryColor for secondary text
-          styleSheet: DCFStyleSheet(
-            secondaryColor: DCFTheme.current.secondaryTextColor,
-          ),
-          textProps: DCFTextProps(fontSize: 16),
-          layout: DCFLayout(marginTop: 20),
-        ),
+        // Test component that uses all lifecycle methods and hooks
+        showChild.state
+            ? LifecycleTestComponent(
+                count: count.state,
+              )
+            : DCFText(
+                content: 'Component unmounted',
+                textProps: DCFTextProps(fontSize: 16),
+              ),
+        
         DCFButton(
           buttonProps: DCFButtonProps(title: "Count: ${count.state}"),
           onPress: (data) => count.setState(count.state + 1),
           layout: DCFLayout(marginTop: 20),
         ),
-        DCFButton(
-
-          buttonProps: DCFButtonProps(title: "Toggle Theme"),
-          onPress: (data) {
-            final newDarkMode = !isDarkMode.state;
-            isDarkMode.setState(newDarkMode);
-            // Actually update the theme
-            DCFTheme.setTheme(
-              newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
-            );
-          },
-          layout: DCFLayout(marginTop: 10,height: 
-          50),
-        ),
         
+        DCFButton(
+          buttonProps: DCFButtonProps(
+            title: showChild.state ? "Unmount Component" : "Mount Component",
+          ),
+          onPress: (data) => showChild.setState(!showChild.state),
+          layout: DCFLayout(marginTop: 10),
+        ),
       ],
     );
   }
+}
 
+/// Component that tests all lifecycle methods and hooks
+class LifecycleTestComponent extends DCFStatefulComponent {
+  final int count;
+  
+  LifecycleTestComponent({
+    required this.count,
+    super.key,
+  });
+  
   @override
-  List<Object?> get props => [];
+  DCFComponentNode render() {
+    // Test useState hook
+    final internalCount = useState<int>(0);
+    final effectCount = useState<int>(0);
+    final layoutEffectCount = useState<int>(0);
+    final insertionEffectCount = useState<int>(0);
+    
+    // Test useEffect - runs after render
+    useEffect(() {
+      print('✅ useEffect: Running effect (count: $count, internalCount: ${internalCount.state})');
+      effectCount.setState(effectCount.state + 1);
+      
+      // Cleanup function
+      return () {
+        print('🧹 useEffect: Cleanup called');
+      };
+    }, dependencies: [count, internalCount.state]);
+    
+    // Test useLayoutEffect - runs after layout
+    useLayoutEffect(() {
+      print('✅ useLayoutEffect: Running layout effect');
+      layoutEffectCount.setState(layoutEffectCount.state + 1);
+      
+      return () {
+        print('🧹 useLayoutEffect: Cleanup called');
+      };
+    }, dependencies: [count]);
+    
+    // Test useInsertionEffect - runs after insertion
+    useInsertionEffect(() {
+      print('✅ useInsertionEffect: Running insertion effect');
+      insertionEffectCount.setState(insertionEffectCount.state + 1);
+      
+      return () {
+        print('🧹 useInsertionEffect: Cleanup called');
+      };
+    }, dependencies: [count]);
+    
+    // Test useRef - returns RefObject directly
+    final textRef = useRef<String>('Initial ref value');
+    
+    return DCFView(
+      layout: DCFLayout(
+        padding: 20,
+      ),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: DCFColors.blue.withOpacity(0.1),
+        borderColor: DCFColors.blue,
+        borderWidth: 2,
+        borderRadius: 12,
+      ),
+      children: [
+        DCFText(
+          content: "Lifecycle Test Component",
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontWeight: DCFFontWeight.bold,
+          ),
+          styleSheet: DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+        ),
+        
+        DCFText(
+          content: "Props count: $count",
+          textProps: DCFTextProps(fontSize: 16),
+          styleSheet: DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+          layout: DCFLayout(marginTop: 10),
+        ),
+        
+        DCFText(
+          content: "Internal count: ${internalCount.state}",
+          textProps: DCFTextProps(fontSize: 16),
+          styleSheet: DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+          layout: DCFLayout(marginTop: 5),
+        ),
+        
+        DCFText(
+          content: "useEffect runs: ${effectCount.state}",
+          textProps: DCFTextProps(fontSize: 14),
+          styleSheet: DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+          layout: DCFLayout(marginTop: 10),
+        ),
+        
+        DCFText(
+          content: "useLayoutEffect runs: ${layoutEffectCount.state}",
+          textProps: DCFTextProps(fontSize: 14),
+          styleSheet: DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+          layout: DCFLayout(marginTop: 5),
+        ),
+        
+        DCFText(
+          content: "useInsertionEffect runs: ${insertionEffectCount.state}",
+          textProps: DCFTextProps(fontSize: 14),
+          styleSheet: DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+          layout: DCFLayout(marginTop: 5),
+        ),
+        
+        DCFText(
+          content: "Ref value: ${textRef.current}",
+          textProps: DCFTextProps(fontSize: 14),
+          styleSheet: DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+          layout: DCFLayout(marginTop: 10),
+        ),
+        
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Increment Internal"),
+          onPress: (data) => internalCount.setState(internalCount.state + 1),
+          layout: DCFLayout(marginTop: 15),
+        ),
+        
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Update Ref"),
+          onPress: (data) {
+            textRef.current = 'Updated at ${DateTime.now().millisecondsSinceEpoch}';
+            scheduleUpdate(); // Manually trigger update to show ref change
+          },
+          layout: DCFLayout(marginTop: 10),
+        ),
+      ],
+    );
+  }
+  
+  @override
+  void componentDidMount() {
+    super.componentDidMount();
+    print('✅ componentDidMount: LifecycleTestComponent mounted');
+  }
+  
+  @override
+  void componentDidUpdate(Map<String, dynamic> prevProps) {
+    super.componentDidUpdate(prevProps);
+    print('✅ componentDidUpdate: LifecycleTestComponent updated');
+    print('   Previous count: ${prevProps['count'] ?? 'N/A'}, New count: $count');
+  }
+  
+  @override
+  void componentWillUnmount() {
+    super.componentWillUnmount();
+    print('✅ componentWillUnmount: LifecycleTestComponent unmounting');
+  }
 }
