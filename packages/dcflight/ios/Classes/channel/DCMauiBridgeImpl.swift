@@ -271,24 +271,23 @@ import Foundation
     
     /// Clean up all views except root view for hot restart
     @objc func cleanupForHotRestart() {
-        print("🧹 iOS: Starting hot restart cleanup...")
+        print("🧹 iOS: Starting hot restart cleanup in DCMauiBridgeImpl...")
         
-        // 🔥 CRITICAL: Cancel layout calculation timer FIRST
-        // This prevents stale layout calculations from firing after cleanup
-        DCFLayoutManager.shared.cancelAllPendingLayoutWork()
-        
+        // Remove all non-root views from superview
         let nonRootViews = views.filter { $0.key != "root" }
         for (viewId, view) in nonRootViews {
             view.removeFromSuperview()
             views.removeValue(forKey: viewId)
         }
         
+        // Clear root view's subviews
         if let rootView = views["root"] {
             for subview in rootView.subviews {
                 subview.removeFromSuperview()
             }
         }
         
+        // Clear hierarchy tracking
         let nonRootHierarchy = viewHierarchy.filter { $0.key != "root" }
         for (parentId, _) in nonRootHierarchy {
             viewHierarchy.removeValue(forKey: parentId)
@@ -301,6 +300,7 @@ import Foundation
         
         viewHierarchy["root"] = []
         
+        print("✅ iOS: DCMauiBridgeImpl cleanup complete")
     }
     
     

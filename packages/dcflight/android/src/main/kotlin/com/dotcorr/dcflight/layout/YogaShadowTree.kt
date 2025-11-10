@@ -801,12 +801,17 @@ class YogaShadowTree private constructor() {
 
 
     fun clearAll() {
+        Log.d(TAG, "🧹 YogaShadowTree: Clearing all nodes and recreating root")
+        
+        // Clear all nodes and mappings
         nodes.clear()
         nodeParents.clear()
         nodeTypes.clear()
         screenRoots.clear()
         screenRootIds.clear()
         
+        // 🔥 CRITICAL: Recreate root node completely to ensure clean state
+        // This prevents layout stacking after hot restart
         rootNode = YogaNodeFactory.create()
         rootNode?.let { root ->
             root.setDirection(YogaDirection.LTR)
@@ -820,7 +825,7 @@ class YogaShadowTree private constructor() {
             nodeTypes["root"] = "View"
         }
         
-        Log.d(TAG, "YogaShadowTree cleared and root node recreated")
+        Log.d(TAG, "✅ YogaShadowTree: All nodes cleared and root node recreated")
     }
 
     fun viewRegisteredWithShadowTree(viewId: String): Boolean {
