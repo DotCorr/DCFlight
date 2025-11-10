@@ -269,10 +269,11 @@ import Foundation
     }
     
     
-    /// Clean up all views except root view for hot restart
+    /// Cleans up all views except the root view for hot restart.
+    /// 
+    /// Removes all non-root views from the view hierarchy, clears root view's subviews,
+    /// and resets all hierarchy tracking dictionaries. The root view is preserved.
     @objc func cleanupForHotRestart() {
-        print("🧹 iOS: Starting hot restart cleanup in DCMauiBridgeImpl...")
-        
         // Remove all non-root views from superview
         let nonRootViews = views.filter { $0.key != "root" }
         for (viewId, view) in nonRootViews {
@@ -299,32 +300,30 @@ import Foundation
         }
         
         viewHierarchy["root"] = []
-        
-        print("✅ iOS: DCMauiBridgeImpl cleanup complete")
     }
     
     
     /// Start a batch update (no-op on iOS, kept for compatibility)
     @objc func startBatchUpdate() -> Bool {
-        print("🔥 iOS_BRIDGE: startBatchUpdate called")
         return true
     }
     
-    /// Commit a batch of operations atomically with optimized processing
-    /// ⭐ OPTIMIZED: Now accepts pre-serialized JSON strings to eliminate native JSON parsing overhead
+    /// Commits a batch of operations atomically with optimized processing.
+    /// 
+    /// This method accepts pre-serialized JSON strings to eliminate native JSON parsing overhead.
+    /// Operations are separated into create, update, attach, and event registration phases,
+    /// then executed in order.
+    /// 
+    /// - Parameter updates: Array of operation dictionaries containing view operations
+    /// - Returns: `true` if all operations succeeded, `false` otherwise
     @objc func commitBatchUpdate(updates: [[String: Any]]) -> Bool {
-        let startTime = CFAbsoluteTimeGetCurrent()
-        NSLog("🚨 iOS_BRIDGE: COMMIT BATCH UPDATE CALLED WITH %d UPDATES", updates.count)
-        print("🔥 iOS_BRIDGE: commitBatchUpdate called with \(updates.count) updates")
-        
-        // ⭐ OPTIMIZATION: Separate pre-serialized JSON operations from legacy Map operations
+        // Separate pre-serialized JSON operations from legacy Map operations
         var createOps: [(viewId: String, viewType: String, propsJson: String)] = []
         var updateOps: [(viewId: String, propsJson: String)] = []
         var attachOps: [(childId: String, parentId: String, index: Int)] = []
         var eventOps: [(viewId: String, eventTypes: [String])] = []
         
         // Parse phase - collect all operations
-        let parseStartTime = CFAbsoluteTimeGetCurrent()
         for operation in updates {
             guard let operationType = operation["operation"] as? String else {
                 continue
@@ -334,14 +333,13 @@ import Foundation
             case "createView":
                 if let viewId = operation["viewId"] as? String,
                    let viewType = operation["viewType"] as? String {
-                    // ⭐ OPTIMIZATION: Check for pre-serialized JSON first
+                    // Check for pre-serialized JSON first (optimized path)
                     if let propsJson = operation["propsJson"] as? String {
                         createOps.append((viewId, viewType, propsJson))
                     } else if let props = operation["props"] as? [String: Any] {
                         // Legacy fallback: serialize on native side
                         guard let propsData = try? JSONSerialization.data(withJSONObject: props),
                               let propsJson = String(data: propsData, encoding: .utf8) else {
-                            print("❌ Failed to serialize props for \(viewId)")
                             continue
                         }
                         createOps.append((viewId, viewType, propsJson))
@@ -350,14 +348,13 @@ import Foundation
                 
             case "updateView":
                 if let viewId = operation["viewId"] as? String {
-                    // ⭐ OPTIMIZATION: Check for pre-serialized JSON first
+                    // Check for pre-serialized JSON first (optimized path)
                     if let propsJson = operation["propsJson"] as? String {
                         updateOps.append((viewId, propsJson))
                     } else if let props = operation["props"] as? [String: Any] {
                         // Legacy fallback: serialize on native side
                         guard let propsData = try? JSONSerialization.data(withJSONObject: props),
                               let propsJson = String(data: propsData, encoding: .utf8) else {
-                            print("❌ Failed to serialize props for \(viewId)")
                             continue
                         }
                         updateOps.append((viewId, propsJson))
@@ -378,15 +375,12 @@ import Foundation
                 }
                 
             default:
-                print("🔥 iOS_BRIDGE: Unknown operation type: \(operationType)")
+                // Unknown operation type - skip
+                continue
             }
         }
         
-        let parseTime = (CFAbsoluteTimeGetCurrent() - parseStartTime) * 1000
-        print("📊 iOS_BATCH_TIMING: Parse phase completed in \(String(format: "%.2f", parseTime))ms")
-        print("🔥 iOS_BRIDGE: Collected \(createOps.count) creates, \(updateOps.count) updates, \(attachOps.count) attaches, \(eventOps.count) event registrations")
-        
-        // ⭐ OPTIMIZATION: Execute phase - process all operations with minimal overhead
+        // Execute phase - process all operations with minimal overhead
         do {
             let createStartTime = CFAbsoluteTimeGetCurrent()
             
