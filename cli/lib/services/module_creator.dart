@@ -11,21 +11,20 @@ import 'package:path/path.dart' as path;
 import 'package:dcflight_cli/services/user_input.dart';
 
 class ModuleCreator {
-  /// Create a new DCFlight module
+  /// Creates a new DCFlight module.
+  /// 
+  /// Collects user input, validates the module name, copies the template,
+  /// and configures the module with the provided information.
   static Future<void> createModule() async {
     try {
-      // 1. Collect module information
       final moduleName = await UserInput.promptModuleName();
       final moduleDescription = await UserInput.promptModuleDescription();
       
-      // 2. Validate module name
       _validateModuleName(moduleName);
       
-      // 3. Copy module template
       print('📁 Copying module template...');
       await _copyModuleTemplate(moduleName, moduleDescription);
       
-      // 4. Success message
       _printSuccessMessage(moduleName);
       
     } catch (e) {
@@ -34,7 +33,13 @@ class ModuleCreator {
     }
   }
 
-  /// Validate module name format
+  /// Validates module name format.
+  /// 
+  /// Module names must be lowercase, contain only letters, numbers, and underscores,
+  /// and cannot start or end with an underscore.
+  /// 
+  /// - [name]: Module name to validate
+  /// - Throws: [ArgumentError] if the name is invalid
   static void _validateModuleName(String name) {
     if (name.isEmpty) {
       throw ArgumentError('Module name cannot be empty');
@@ -49,12 +54,13 @@ class ModuleCreator {
     }
   }
 
-  /// Copy module template and configure it
+  /// Copies module template and configures it with the provided information.
+  /// 
+  /// - [moduleName]: Name of the module to create
+  /// - [description]: Description of the module
   static Future<void> _copyModuleTemplate(String moduleName, String description) async {
-    // Get template path
     final templatePath = await _getModuleTemplatePath();
     
-    // Create target directory in lib/modules/
     final currentDir = Directory.current;
     final targetPath = path.join(currentDir.path, 'lib', 'modules', moduleName);
     final targetDir = Directory(targetPath);
@@ -64,17 +70,14 @@ class ModuleCreator {
     }
     
     await targetDir.create(recursive: true);
-    
-    // Copy template files with renaming
     await _copyDirectoryWithRenaming(templatePath, targetPath, moduleName);
-    
-    // Replace placeholders in file contents
     await _replaceModulePlaceholders(moduleName, description, targetPath);
   }
 
-  /// Get the path to the module template directory
+  /// Gets the path to the module template directory.
+  /// 
+  /// Tries multiple possible locations and returns the first one that exists.
   static Future<String> _getModuleTemplatePath() async {
-    // Try to find the template path in multiple locations
     final possiblePaths = await _getPossibleModuleTemplatePaths();
     
     for (final templatePath in possiblePaths) {
@@ -89,16 +92,35 @@ class ModuleCreator {
 
   /// Get possible module template paths to check
   static Future<List<String>> _getPossibleModuleTemplatePaths() async {
-    final currentDir = Directory.current.path;
     final paths = <String>[];
     
-    // 1. If we're in the cli subfolder, go up one level (development mode)
+    // 1. Try to resolve template path relative to the CLI script location
+    // This works when running: dart run /path/to/DCFlight/cli/bin/dcflight_cli.dart
+    try {
+      final scriptPath = Platform.script.toFilePath();
+      final scriptDir = path.dirname(scriptPath);
+      
+      // If script is in cli/bin/, go up to cli/, then to repo root
+      if (path.basename(scriptDir) == 'bin' && path.basename(path.dirname(scriptDir)) == 'cli') {
+        final cliDir = path.dirname(scriptDir);
+        final repoRoot = path.dirname(cliDir);
+        paths.add(path.join(repoRoot, 'packages', 'template', 'dcf_module'));
+      }
+      // If script is directly in cli/, go up to repo root
+      else if (path.basename(scriptDir) == 'cli') {
+        final repoRoot = path.dirname(scriptDir);
+        paths.add(path.join(repoRoot, 'packages', 'template', 'dcf_module'));
+      }
+    } catch (e) {
+      // Ignore errors when trying to get script path
+    }
+    
+    // 2. Try current working directory (development mode - when running from repo root)
+    final currentDir = Directory.current.path;
     if (path.basename(currentDir) == 'cli') {
       final repoRoot = path.dirname(currentDir);
       paths.add(path.join(repoRoot, 'packages', 'template', 'dcf_module'));
     }
-    
-    // 2. Try current directory (development mode)
     paths.add(path.join(currentDir, 'packages', 'template', 'dcf_module'));
     
     // 3. Try to find the CLI installation path (global mode)
@@ -140,12 +162,10 @@ class ModuleCreator {
     await for (final entity in sourceDir.list(recursive: false)) {
       final entityName = path.basename(entity.path);
       
-      // Skip build artifacts and other files we don't want to copy
       if (_shouldSkipEntity(entityName)) {
         continue;
       }
       
-      // Determine target entity name (rename if needed)
       final targetEntityName = _renameEntity(entityName, moduleName);
       final targetEntityPath = path.join(targetPath, targetEntityName);
       
@@ -157,9 +177,12 @@ class ModuleCreator {
     }
   }
 
-  /// Rename entity if it matches template patterns
+  /// Renames entity if it matches template patterns.
+  /// 
+  /// - [entityName]: Original entity name
+  /// - [moduleName]: Module name to use in renamed files
+  /// - Returns: Renamed entity name or original if no match
   static String _renameEntity(String entityName, String moduleName) {
-    // Define file renaming patterns
     final renamingMap = {
       'dcf_module.dart': '$moduleName.dart',
       'dcf_module.podspec': '$moduleName.podspec',
@@ -170,35 +193,29 @@ class ModuleCreator {
     return renamingMap[entityName] ?? entityName;
   }
 
-  /// Check if an entity should be skipped during copying
+  /// Checks if an entity should be skipped during copying.
+  /// 
+  /// - [name]: Name of the entity to check
+  /// - Returns: `true` if the entity should be skipped, `false` otherwise
   static bool _shouldSkipEntity(String name) {
     final skipList = {
-      // Build artifacts
       'build',
       '.dart_tool',
       '.packages',
       'pubspec.lock',
-      
-      // IDE files
       '.idea',
       '.vscode',
       '*.iml',
-      
-      // Version control
       '.git',
       '.gitignore',
-      
-      // OS files
       '.DS_Store',
       'Thumbs.db',
     };
 
-    // Check exact matches
     if (skipList.contains(name)) {
       return true;
     }
 
-    // Check pattern matches
     for (final pattern in skipList) {
       if (pattern.contains('*')) {
         final regex = RegExp(pattern.replaceAll('*', '.*'));
@@ -211,7 +228,11 @@ class ModuleCreator {
     return false;
   }
 
-  /// Replace module placeholders in copied files
+  /// Replaces module placeholders in copied files.
+  /// 
+  /// - [moduleName]: Name of the module
+  /// - [description]: Description of the module
+  /// - [modulePath]: Path to the module directory
   static Future<void> _replaceModulePlaceholders(String moduleName, String description, String modulePath) async {
     final className = _toPascalCase(moduleName);
     final replacements = {
@@ -222,11 +243,13 @@ class ModuleCreator {
       'DcfModulePlugin': '${className}Plugin',
     };
 
-    // Process all files in the module directory
     await _processDirectory(Directory(modulePath), replacements);
   }
 
-  /// Process directory recursively to replace placeholders
+  /// Processes directory recursively to replace placeholders.
+  /// 
+  /// - [dir]: Directory to process
+  /// - [replacements]: Map of placeholder to replacement value
   static Future<void> _processDirectory(Directory dir, Map<String, String> replacements) async {
     await for (final entity in dir.list()) {
       if (entity is Directory) {
@@ -237,12 +260,16 @@ class ModuleCreator {
     }
   }
 
-  /// Process individual file to replace placeholders
+  /// Processes individual file to replace placeholders.
+  /// 
+  /// Only processes text files with supported extensions.
+  /// 
+  /// - [file]: File to process
+  /// - [replacements]: Map of placeholder to replacement value
   static Future<void> _processFile(File file, Map<String, String> replacements) async {
     final fileName = path.basename(file.path);
     final extension = path.extension(fileName);
     
-    // Process text files and specific file types
     final textExtensions = {'.dart', '.yaml', '.yml', '.md', '.txt', '.json', '.podspec', '.swift'};
     if (!textExtensions.contains(extension)) {
       return;
@@ -263,12 +290,14 @@ class ModuleCreator {
         await file.writeAsString(content);
       }
     } catch (e) {
-      // Skip files that can't be read as text
       print('Warning: Could not process file ${file.path}: $e');
     }
   }
 
-  /// Convert snake_case to PascalCase
+  /// Converts snake_case to PascalCase.
+  /// 
+  /// - [input]: Input string in snake_case
+  /// - Returns: String in PascalCase
   static String _toPascalCase(String input) {
     return input.split('_').map((word) => 
         word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase()

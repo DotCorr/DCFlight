@@ -11,31 +11,30 @@ import 'package:path/path.dart' as path;
 import 'package:dcflight_cli/models/project_config.dart';
 
 class PackageRenamer {
-  /// Rename and configure the project based on user input
+  /// Renames and configures the project based on user input.
+  /// 
+  /// Replaces template placeholders, configures the package, and updates pubspec.yaml.
+  /// 
+  /// - [config]: Project configuration containing naming information
   static Future<void> renameProject(ProjectConfig config) async {
     final projectPath = path.join(Directory.current.path, config.projectDirectoryName);
     
-    // Change to project directory
     final originalDir = Directory.current;
     Directory.current = projectPath;
     
     try {
-      // 1. Replace template placeholders in files
       await _replaceTemplatePlaceholders(config, projectPath);
-      
-      // 2. Use package_rename to configure the project
       await _configurePackage(config);
-      
-      // 3. Update pubspec.yaml with correct name and description
       await _updatePubspec(config, projectPath);
-      
     } finally {
-      // Restore original directory
       Directory.current = originalDir;
     }
   }
 
-  /// Replace template placeholders in all files
+  /// Replaces template placeholders in all files.
+  /// 
+  /// - [config]: Project configuration
+  /// - [projectPath]: Path to the project directory
   static Future<void> _replaceTemplatePlaceholders(ProjectConfig config, String projectPath) async {
     final replacements = {
       '{{PROJECT_NAME}}': config.projectDirectoryName,
@@ -44,20 +43,22 @@ class PackageRenamer {
       '{{PACKAGE_NAME}}': config.packageName,
       '{{DESCRIPTION}}': config.description,
       '{{ORGANIZATION}}': config.organization,
-      // Also replace the template app name directly
       'dcf_go': config.projectDirectoryName,
       'package:dcf_go': 'package:${config.projectDirectoryName}',
     };
 
-    // Find all text files and replace placeholders
     await _processDirectory(Directory(projectPath), replacements);
   }
 
-  /// Process directory recursively to replace placeholders
+  /// Processes directory recursively to replace placeholders.
+  /// 
+  /// Skips build and hidden directories.
+  /// 
+  /// - [dir]: Directory to process
+  /// - [replacements]: Map of placeholder to replacement value
   static Future<void> _processDirectory(Directory dir, Map<String, String> replacements) async {
     await for (final entity in dir.list()) {
       if (entity is Directory) {
-        // Skip build and hidden directories
         final dirName = path.basename(entity.path);
         if (!dirName.startsWith('.') && dirName != 'build') {
           await _processDirectory(entity, replacements);
@@ -68,12 +69,16 @@ class PackageRenamer {
     }
   }
 
-  /// Process individual file to replace placeholders
+  /// Processes individual file to replace placeholders.
+  /// 
+  /// Only processes text files with supported extensions.
+  /// 
+  /// - [file]: File to process
+  /// - [replacements]: Map of placeholder to replacement value
   static Future<void> _processFile(File file, Map<String, String> replacements) async {
     final fileName = path.basename(file.path);
     final extension = path.extension(fileName);
     
-    // Only process text files
     final textExtensions = {'.dart', '.yaml', '.yml', '.md', '.txt', '.json', '.xml', '.gradle', '.swift', '.kt'};
     if (!textExtensions.contains(extension)) {
       return;
@@ -94,37 +99,40 @@ class PackageRenamer {
         await file.writeAsString(content);
       }
     } catch (e) {
-      // Skip files that can't be read as text
       print('Warning: Could not process file ${file.path}: $e');
     }
   }
 
-  /// Configure package using basic file replacement
+  /// Configures package using basic file replacement.
+  /// 
+  /// This can be enhanced later with proper package_rename integration.
+  /// 
+  /// - [config]: Project configuration
   static Future<void> _configurePackage(ProjectConfig config) async {
     try {
-      // For now, we'll use simple file replacement instead of package_rename
-      // This can be enhanced later with proper package_rename integration
       print('✅ Package configuration completed via template replacement');
     } catch (e) {
       print('Warning: Could not configure package: $e');
-      // Continue anyway as this is not critical for basic functionality
     }
   }
 
-  /// Update pubspec.yaml with correct project information
+  /// Updates pubspec.yaml with correct project information.
+  /// 
+  /// Replaces project name, description, and fixes dependency paths.
+  /// 
+  /// - [config]: Project configuration
+  /// - [projectPath]: Path to the project directory
   static Future<void> _updatePubspec(ProjectConfig config, String projectPath) async {
     final pubspecFile = File(path.join(projectPath, 'pubspec.yaml'));
     
     if (await pubspecFile.exists()) {
       String content = await pubspecFile.readAsString();
       
-      // Replace project name, description and other placeholders
       content = content.replaceAll('name: dcf_go', 'name: ${config.projectDirectoryName}');
       content = content.replaceAll('name: {{PROJECT_NAME}}', 'name: ${config.projectDirectoryName}');
       content = content.replaceAll('description: "A new DCFlight project."', 'description: "${config.description}"');
       content = content.replaceAll('description: {{DESCRIPTION}}', 'description: "${config.description}"');
       
-      // Fix dependency paths - they should point to ../packages/ from the project root
       content = content.replaceAll('path: ../../dcflight', 'path: ../packages/dcflight');
       content = content.replaceAll('path: ../../dcf_primitives', 'path: ../packages/dcf_primitives');
       
