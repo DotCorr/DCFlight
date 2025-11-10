@@ -10,7 +10,7 @@ import 'package:equatable/equatable.dart';
 
 /// Fragment component that renders its children without creating a wrapper element
 /// Similar to React.Fragment - useful for grouping elements without adding extra DOM nodes
-class DCFFragment extends DCFComponentNode with EquatableMixin {
+class DCFFragment extends DCFComponentNode {
   /// Children to be rendered directly to the parent
   final List<DCFComponentNode> children;
   
@@ -30,9 +30,6 @@ class DCFFragment extends DCFComponentNode with EquatableMixin {
   });
 
   /// EquatableMixin props for equality comparison
-  @override
-  List<Object?> get props => [children, metadata, key];
-
   /// Whether this fragment is mounted
   bool get isMounted => _isMounted;
 

@@ -140,7 +140,6 @@ class DCFScrollViewContentSizeData {
 /// DCFScrollView - Optimized scroll view component
 /// Uses your native VirtualizedScrollView for best performance
 class DCFScrollView extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
@@ -279,36 +278,10 @@ class DCFScrollView extends DCFStatelessComponent
       children: children,
     );
   }
-
-  @override
-  List<Object?> get props => [
-        children,
-        horizontal,
-        layout,
-        styleSheet,
-        showsScrollIndicator,
-        contentContainerStyle,
-        onScroll,
-        onScrollBeginDrag,
-        onScrollEndDrag,
-        onScrollEnd,
-        onContentSizeChange,
-        // scrollIndicatorColor removed
-        scrollIndicatorSize,
-        scrollEnabled,
-        alwaysBounceVertical,
-        alwaysBounceHorizontal,
-        pagingEnabled,
-        keyboardDismissMode,
-        contentInset,
-        command,
-        events,
-        key,
-      ];
 }
 
 /// Content insets for scroll views
-class DCFContentInset extends Equatable {
+class DCFContentInset {
   final double top;
   final double left;
   final double bottom;
@@ -343,9 +316,6 @@ class DCFContentInset extends Equatable {
       'right': right,
     };
   }
-
-  @override
-  List<Object?> get props => [top, left, bottom, right];
 }
 
 /// Command to scroll to a specific position

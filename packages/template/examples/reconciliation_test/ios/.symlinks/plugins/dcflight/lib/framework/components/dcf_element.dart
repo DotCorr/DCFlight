@@ -8,7 +8,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// Represents an element in the Virtual DOM tree
-class DCFElement extends DCFComponentNode with EquatableMixin {
+class DCFElement extends DCFComponentNode {
   /// Type of the element (e.g., 'View', 'Text', 'Button')
   final String type;
 
@@ -30,9 +30,6 @@ class DCFElement extends DCFComponentNode with EquatableMixin {
   }
 
   /// EquatableMixin props for equality comparison
-  @override
-  List<Object?> get props => [type, elementProps, children, key];
-
   @override
   DCFComponentNode clone() {
     return DCFElement(

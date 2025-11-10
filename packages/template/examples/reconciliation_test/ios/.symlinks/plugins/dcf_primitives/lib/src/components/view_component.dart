@@ -48,7 +48,6 @@ class DCFViewLayoutData {
 
 /// A basic view component implementation using StatelessComponent
 class DCFView extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.normal;
@@ -97,14 +96,4 @@ class DCFView extends DCFStatelessComponent
       children: children,
     );
   }
-
-  @override
-  List<Object?> get props => [
-        layout,
-        styleSheet,
-        children,
-        events,
-        onLayout,
-        key,
-      ];
 }

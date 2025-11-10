@@ -547,14 +547,5 @@ class DCFAlert extends DCFStatelessComponent {
       },
     );
   }
-  
-  @override
-  List<Object?> get props => [
-        title,
-        message,
-        actions,
-        onActionPress,
-        onTextFieldChange,
-      ];
 }
 

@@ -93,7 +93,6 @@ class DCFSliderCompleteData {
 ///
 /// A slider component that provides native platform behavior.
 class DCFSlider extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.immediate;
@@ -206,23 +205,4 @@ class DCFSlider extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        value,
-        minimumValue,
-        maximumValue,
-        step,
-        onValueChange,
-        onSlidingStart,
-        onSlidingComplete,
-        disabled,
-        minimumTrackColor,
-        maximumTrackColor,
-        thumbColor,
-        layout,
-        styleSheet,
-        events,
-        key,
-      ];
 }

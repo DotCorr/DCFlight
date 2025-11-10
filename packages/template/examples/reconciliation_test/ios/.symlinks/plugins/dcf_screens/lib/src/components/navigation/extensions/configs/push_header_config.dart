@@ -1,7 +1,6 @@
-import "package:equatable/equatable.dart";
 import "package:flutter/material.dart";
 
-class DCFPushHeaderActionConfig extends Equatable {
+class DCFPushHeaderActionConfig {
   final String title;
   final dynamic icon;
   final String? actionId;
@@ -22,10 +21,6 @@ class DCFPushHeaderActionConfig extends Equatable {
       'enabled': enabled,
     };
   }
-
-  @override
-  List<Object?> get props => [title, icon, actionId, enabled];
-
   // STATIC FACTORY METHODS - This is the correct way!
 
   /// Create SF Symbol icon config
@@ -159,7 +154,7 @@ class DCFPushHeaderActionConfig extends Equatable {
   }
 }
 
-class DCFPushConfig extends Equatable {
+class DCFPushConfig {
   final String? title;
   final bool hideNavigationBar;
   final bool hideBackButton;
@@ -195,15 +190,4 @@ class DCFPushConfig extends Equatable {
             suffixActions!.map((action) => action.toMap()).toList(),
     };
   }
-
-  @override
-  List<Object?> get props => [
-        title,
-        hideNavigationBar,
-        hideBackButton,
-        backButtonTitle,
-        largeTitleDisplayMode,
-        prefixActions,
-        suffixActions,
-      ];
 }

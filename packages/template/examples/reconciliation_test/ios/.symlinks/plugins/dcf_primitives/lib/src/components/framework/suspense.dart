@@ -13,7 +13,7 @@ import 'package:dcflight/dcflight.dart';
 /// This component allows you to suspend rendering of expensive content
 /// until a condition is met, preventing unnecessary component creation
 /// and lifecycle execution.
-class DCFSuspense extends DCFStatelessComponent with EquatableMixin {
+class DCFSuspense extends DCFStatelessComponent {
   /// Whether to render the children or show fallback
   final bool shouldRender;
 
@@ -81,16 +81,4 @@ class DCFSuspense extends DCFStatelessComponent with EquatableMixin {
       }
     }
   }
-
-  @override
-  List<Object?> get props => [
-        key,
-        shouldRender,
-        children,
-        fallback,
-        debugName,
-        layout,
-        styleSheet,
-        enableDebugLogs,
-      ];
 }

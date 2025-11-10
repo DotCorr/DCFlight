@@ -67,7 +67,7 @@ enum DCFTextAlign {
 }
 
 /// Text style properties
-class DCFTextProps extends Equatable {
+class DCFTextProps {
   /// Font size
   final double? fontSize;
 
@@ -113,22 +113,10 @@ class DCFTextProps extends Equatable {
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
     };
   }
-
-  @override
-  List<Object?> get props => [
-        fontSize,
-        fontWeight,
-        fontFamily,
-        isFontAsset,
-        // color removed - use StyleSheet.primaryColor instead
-        textAlign,
-        numberOfLines,
-      ];
 }
 
 /// A text component implementation using StatelessComponent
 class DCFText extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.normal;
@@ -180,16 +168,5 @@ class DCFText extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        content,
-        textProps,
-        layout,
-        styleSheet,
-        textColor,
-        events,
-        key,
-      ];
 }
 

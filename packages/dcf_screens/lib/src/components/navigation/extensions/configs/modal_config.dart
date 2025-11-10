@@ -1,8 +1,6 @@
 import 'package:dcflight/dcflight.dart';
-import 'package:equatable/equatable.dart';
-
 /// Configuration for modal presentation
-class DCFModalConfig extends Equatable {
+class DCFModalConfig {
   /// List of available detents (standard enum values)
   final List<DCFModalDetent>? detents;
 
@@ -104,17 +102,6 @@ class DCFModalConfig extends Equatable {
       if (transitionStyle != null) 'transitionStyle': transitionStyle,
     };
   }
-
-  @override
-  List<Object?> get props => [
-        detents,
-        selectedDetentIndex,
-        showDragIndicator,
-        cornerRadius,
-        isDismissible,
-        allowsBackgroundDismiss,
-        transitionStyle,
-      ];
 }
 
 

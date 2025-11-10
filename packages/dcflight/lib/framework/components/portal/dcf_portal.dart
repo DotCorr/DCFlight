@@ -50,9 +50,6 @@ class DCFPortal extends DCFStatefulComponent {
   }
   
   @override
-  List<Object?> get props => [target, children, key];
-  
-  @override
   DCFComponentNode render() {
     // Portal doesn't render itself - it renders children to target
     // Return empty fragment as placeholder

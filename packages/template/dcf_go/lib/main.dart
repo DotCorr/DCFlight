@@ -49,9 +49,6 @@ class LifecycleTestApp extends DCFStatefulComponent {
       ],
     );
   }
-
-  @override
-  List<Object?> get props => [];
 }
 
 /// Component that tests all lifecycle methods and hooks
@@ -62,9 +59,6 @@ class LifecycleTestComponent extends DCFStatefulComponent {
     required this.count,
     super.key,
   });
-  
-  @override
-  List<Object?> get props => [count, key];
   
   @override
   DCFComponentNode render() {
