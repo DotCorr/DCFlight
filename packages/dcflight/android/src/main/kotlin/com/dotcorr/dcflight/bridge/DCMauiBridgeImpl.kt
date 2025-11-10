@@ -107,20 +107,27 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
-            // Create a new view
-            val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-            val view = componentInstance.createView(context, props)
-            Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
-
-            // Ensure view is visible
-            view.visibility = View.VISIBLE
-            view.alpha = 1.0f
-
-            ViewRegistry.shared.registerView(view, viewId, viewType)
-            views[viewId] = view
-
-            YogaShadowTree.shared.createNode(viewId, viewType)
-            YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
+            // ⚡ PERFORMANCE: Use ViewManager which caches component instances
+            // This provides similar performance to iOS view pooling but at the factory layer
+            // ViewManager handles registration, Yoga node creation, and layout props
+            val success = com.dotcorr.dcflight.Coordinator.DCFViewManager.shared.createView(viewId, viewType, props)
+            if (!success) {
+                return false
+            }
+            
+            // Get the view from registry and add to local views map
+            val view = ViewRegistry.shared.getView(viewId)
+            if (view != null) {
+                views[viewId] = view
+                Log.d(TAG, "✨ Created new view for type '$viewType' (viewId: $viewId)")
+                
+                // Ensure view is visible
+                view.visibility = View.VISIBLE
+                view.alpha = 1.0f
+            } else {
+                Log.e(TAG, "View '$viewId' was created but not found in registry")
+                return false
+            }
 
             true
         } catch (e: Exception) {
