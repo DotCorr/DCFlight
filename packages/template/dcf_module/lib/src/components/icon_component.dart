@@ -5,8 +5,60 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
+
+/// Icon load callback data
+class DCFIconLoadData {
+  /// Whether the load was successful
+  final bool success;
+  
+  /// Timestamp of the load event
+  final DateTime timestamp;
+
+  DCFIconLoadData({
+    required this.success,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFIconLoadData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFIconLoadData(
+      success: data['success'] as bool,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
+
+/// Icon error callback data
+class DCFIconErrorData {
+  /// Error message
+  final String message;
+  
+  /// Error code
+  final String? code;
+  
+  /// Timestamp of the error
+  final DateTime timestamp;
+
+  DCFIconErrorData({
+    required this.message,
+    this.code,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Create from raw map data
+  factory DCFIconErrorData.fromMap(Map<dynamic, dynamic> data) {
+    return DCFIconErrorData(
+      message: data['message'] as String,
+      code: data['code'] as String?,
+      timestamp: data['timestamp'] != null 
+          ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
+          : DateTime.now(),
+    );
+  }
+}
 
 /// Icon properties
 class DCFIconProps {
@@ -14,19 +66,18 @@ class DCFIconProps {
   final String name;
 
   /// Size of the icon
-  // final double size;
 
-  /// Color of the icon
-  final Color? color;
+  /// NOTE: Color removed - use StyleSheet.primaryColor instead
 
   /// Package where the icon is defined
   final String package;
 
+
   /// Create icon props
+  /// NOTE: Use StyleSheet.primaryColor for icon color instead of color prop
   const DCFIconProps({
     required this.name,
-    // this.size = 24.0,
-    this.color,
+    // Color removed - use StyleSheet.primaryColor
     this.package = 'dcf_primitives',
   });
 
@@ -34,39 +85,47 @@ class DCFIconProps {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      // 'size': size,
       'package': package,
       'isRelativePath': false,
-      if (color != null) 'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
+      // Color removed - native components use StyleSheet.primaryColor
     };
   }
 }
 
 /// An icon component implementation using StatelessComponent
-class DCFIcon extends StatelessComponent {
+class DCFIcon extends DCFStatelessComponent
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.normal;
+
   /// The icon properties
   final DCFIconProps iconProps;
 
   /// The layout properties
-  final LayoutProps layout;
+  final DCFLayout layout;
 
-  /// The style properties
-  final StyleSheet style;
+  /// The styleSheet properties
+  final DCFStyleSheet styleSheet;
+
+  /// Explicit color override: iconColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for icon
+  final Color? iconColor;
 
   /// Event handlers
   final Map<String, dynamic>? events;
 
-  /// Load event handler - receives Map<dynamic, dynamic> with icon load data
-  final Function(Map<dynamic, dynamic>)? onLoad;
+  /// Load event handler - receives type-safe icon load data
+  final Function(DCFIconLoadData)? onLoad;
 
-  /// Error event handler - receives Map<dynamic, dynamic> with error data
-  final Function(Map<dynamic, dynamic>)? onError;
+  /// Error event handler - receives type-safe error data
+  final Function(DCFIconErrorData)? onError;
 
   /// Create an icon component
   DCFIcon({
     required this.iconProps,
-    this.layout = const LayoutProps(height: 20, width: 20),
-    this.style = const StyleSheet(),
+    this.layout = const DCFLayout(height: 20, width: 20),
+    this.styleSheet = const DCFStyleSheet(),
+    this.iconColor,
     this.onLoad,
     this.onError,
     this.events,
@@ -75,23 +134,27 @@ class DCFIcon extends StatelessComponent {
 
   @override
   DCFComponentNode render() {
-    // Create an events map for callbacks
     Map<String, dynamic> eventMap = events ?? {};
 
     if (onLoad != null) {
-      eventMap['onLoad'] = onLoad;
+      eventMap['onLoad'] = (Map<dynamic, dynamic> data) {
+        onLoad!(DCFIconLoadData.fromMap(data));
+      };
     }
 
     if (onError != null) {
-      eventMap['onError'] = onError;
+      eventMap['onError'] = (Map<dynamic, dynamic> data) {
+        onError!(DCFIconErrorData.fromMap(data));
+      };
     }
 
     return DCFElement(
       type: 'DCFIcon',
-      props: {
+      elementProps: {
         ...iconProps.toMap(),
         ...layout.toMap(),
-        ...style.toMap(),
+        ...styleSheet.toMap(),
+        if (iconColor != null) 'iconColor': DCFColors.toNativeString(iconColor!),
         ...eventMap,
       },
       children: [],

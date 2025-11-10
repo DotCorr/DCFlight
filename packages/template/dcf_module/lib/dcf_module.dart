@@ -8,8 +8,11 @@
 
 library;
 
-// Export component-based primitives
-export 'src/components/dictionary/components.dart';
+// Export module components
+export 'src/components/view_component.dart';
+export 'src/components/text_component.dart';
+export 'src/components/svg_component.dart';
+export 'src/components/icon_component.dart';
 
 // Export the plugin class
 export 'src/dcf_module_plugin.dart';
