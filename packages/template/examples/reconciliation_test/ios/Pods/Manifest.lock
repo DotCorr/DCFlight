@@ -1,0 +1,59 @@
+PODS:
+  - CocoaLumberjack (3.9.0):
+    - CocoaLumberjack/Core (= 3.9.0)
+  - CocoaLumberjack/Core (3.9.0)
+  - dcf_primitives (0.0.1):
+    - dcflight
+    - SVGKit (~> 3.0.0)
+  - dcf_reanimated (0.0.1):
+    - dcflight
+    - SVGKit (~> 3.0.0)
+  - dcf_screens (0.0.1):
+    - dcflight
+    - SVGKit (~> 3.0.0)
+  - dcflight (0.0.1):
+    - Flutter
+    - Yoga (~> 3.0.0)
+  - Flutter (1.0.0)
+  - SVGKit (3.0.0):
+    - CocoaLumberjack (~> 3.0)
+  - Yoga (3.0.4)
+
+DEPENDENCIES:
+  - dcf_primitives (from `.symlinks/plugins/dcf_primitives/ios`)
+  - dcf_reanimated (from `.symlinks/plugins/dcf_reanimated/ios`)
+  - dcf_screens (from `.symlinks/plugins/dcf_screens/ios`)
+  - dcflight (from `.symlinks/plugins/dcflight/ios`)
+  - Flutter (from `Flutter`)
+
+SPEC REPOS:
+  trunk:
+    - CocoaLumberjack
+    - SVGKit
+    - Yoga
+
+EXTERNAL SOURCES:
+  dcf_primitives:
+    :path: ".symlinks/plugins/dcf_primitives/ios"
+  dcf_reanimated:
+    :path: ".symlinks/plugins/dcf_reanimated/ios"
+  dcf_screens:
+    :path: ".symlinks/plugins/dcf_screens/ios"
+  dcflight:
+    :path: ".symlinks/plugins/dcflight/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  CocoaLumberjack: 5644158777912b7de7469fa881f8a3f259c2512a
+  dcf_primitives: d79c4f56cf3943beb0f6f2edd96825eb1f0632f3
+  dcf_reanimated: b09705f88e5aa2e80874f480550495137530de4b
+  dcf_screens: 94ba86b52d3703cba69c068a2ffe6b9d89d8b64e
+  dcflight: f75dc1fdfa716b20f5536599081f3d15dd8b81b4
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  SVGKit: 1ad7513f8c74d9652f94ed64ddecda1a23864dea
+  Yoga: 0f46dad0c6ef4ea4d9bfa73c3155d84dfdcad0a6
+
+PODFILE CHECKSUM: e7ba086104a4dcba0aede791a6d2271fb254b2fd
+
+COCOAPODS: 1.16.2
