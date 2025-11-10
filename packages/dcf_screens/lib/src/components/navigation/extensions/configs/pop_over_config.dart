@@ -2,7 +2,7 @@
 import 'package:dcflight/dcflight.dart';
 
 /// Configuration for popover presentation
-class DCFPopoverConfig extends Equatable {
+class DCFPopoverConfig {
   final String? title;
   final double? preferredWidth;
   final double? preferredHeight;
@@ -27,19 +27,10 @@ class DCFPopoverConfig extends Equatable {
       'dismissOnOutsideTap': dismissOnOutsideTap,
     };
   }
-
-  @override
-  List<Object?> get props => [
-        title,
-        preferredWidth,
-        preferredHeight,
-        permittedArrowDirections,
-        dismissOnOutsideTap,
-      ];
 }
 
 /// Configuration for overlay presentation
-class DCFOverlayConfig extends Equatable {
+class DCFOverlayConfig {
   final String? title;
   final Color? overlayBackgroundColor;
   final bool dismissOnTap;
@@ -65,13 +56,4 @@ class DCFOverlayConfig extends Equatable {
       'blocksInteraction': blocksInteraction,
     };
   }
-
-  @override
-  List<Object?> get props => [
-        title,
-        overlayBackgroundColor,
-        dismissOnTap,
-        animationDuration,
-        blocksInteraction,
-      ];
 }

@@ -5,7 +5,7 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 ///
 /// This variant automatically determines when to render based on
 /// the current active screen state.
-class DCFLazySuspense extends DCFStatefulComponent with EquatableMixin {
+class DCFLazySuspense extends DCFStatefulComponent {
   /// The route/screen name this suspense is for
   final String routeName;
 
@@ -87,19 +87,6 @@ class DCFLazySuspense extends DCFStatefulComponent with EquatableMixin {
       }
     }
   }
-
-  @override
-  List<Object?> get props => [
-        key,
-        routeName,
-        activeScreenStore,
-        children,
-        fallback,
-        additionalCondition,
-        layout,
-        styleSheet,
-        enableDebugLogs,
-      ];
 }
 
 /// 🎯 Helper extension for Store to create Suspense easily

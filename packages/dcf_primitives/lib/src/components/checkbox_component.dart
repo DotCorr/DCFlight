@@ -40,7 +40,6 @@ class DCFCheckboxValueData {
 ///
 /// A checkbox component that provides native platform behavior.
 class DCFCheckbox extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
@@ -126,22 +125,6 @@ class DCFCheckbox extends DCFStatelessComponent
       children: [],
     );
   }
-
-  @override
-  List<Object?> get props => [
-        checked,
-        onValueChange,
-        disabled,
-        checkedColor,
-        uncheckedColor,
-        checkmarkColor,
-        size,
-        checkboxStyle,
-        layout,
-        styleSheet,
-        events,
-        key,
-      ];
 }
 
 /// Checkbox size constants

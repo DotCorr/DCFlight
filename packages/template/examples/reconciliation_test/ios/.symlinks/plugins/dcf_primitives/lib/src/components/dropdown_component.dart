@@ -111,7 +111,6 @@ class DCFDropdownProps {
 /// DCFDropdown - Cross-platform dropdown menu component
 /// Provides native dropdown functionality with type-safe positioning and items
 class DCFDropdown extends DCFStatelessComponent
-    with EquatableMixin
     implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
@@ -151,20 +150,6 @@ class DCFDropdown extends DCFStatelessComponent
     this.onClose,
     this.events,
   });
-
-  @override
-  List<Object?> get props => [
-        dropdownProps,
-        layout,
-        styleSheet,
-        onValueChange,
-        onMultiValueChange,
-        onOpen,
-        onClose,
-        events,
-        key,
-      ];
-
   @override
   DCFComponentNode render() {
     Map<String, dynamic> eventMap = events ?? {};

@@ -10,10 +10,9 @@ import 'package:dcflight/framework/components/hooks/store.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dcflight/framework/components/component_node.dart';
-import 'package:equatable/equatable.dart';
 import 'hooks/state_hook.dart';
 
-abstract class DCFStatefulComponent extends DCFComponentNode with EquatableMixin {
+abstract class DCFStatefulComponent extends DCFComponentNode {
   final String instanceId;
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
@@ -26,10 +25,6 @@ abstract class DCFStatefulComponent extends DCFComponentNode with EquatableMixin
       : instanceId = '${DateTime.now().millisecondsSinceEpoch}_${Object().hashCode}' {
     scheduleUpdate = _defaultScheduleUpdate;
   }
-
-  /// Abstract props getter - StatefulComponents must implement this for Equatable
-  @override
-  List<Object?> get props;
 
   void _defaultScheduleUpdate() {}
 
@@ -291,14 +286,11 @@ abstract class DCFStatefulComponent extends DCFComponentNode with EquatableMixin
   }
 }
 
-abstract class DCFStatelessComponent extends DCFComponentNode with EquatableMixin {
+abstract class DCFStatelessComponent extends DCFComponentNode {
   DCFComponentNode? _renderedNode;
   bool _isMounted = false;
 
   DCFStatelessComponent({super.key});
-
-  @override
-  List<Object?> get props;
 
   DCFComponentNode render();
 
