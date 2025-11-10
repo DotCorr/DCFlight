@@ -1,0 +1,33 @@
+{
+  "name": "dcf_screens",
+  "version": "0.0.1",
+  "summary": "A module for natively navigating between screens in the DCFlight app using Flutter's platform channels.",
+  "description": "A crossplatform framework.",
+  "homepage": "https://github.com/squirelboy360/dcflight",
+  "license": {
+    "file": "../LICENSE"
+  },
+  "authors": {
+    "Tahiru": "squirelboy360@gmail.com"
+  },
+  "source": {
+    "path": "."
+  },
+  "source_files": "Classes/**/*",
+  "platforms": {
+    "ios": "13.5"
+  },
+  "dependencies": {
+    "dcflight": [],
+    "SVGKit": [
+      "~> 3.0.0"
+    ]
+  },
+  "swift_versions": "5.0",
+  "static_framework": false,
+  "pod_target_xcconfig": {
+    "DEFINES_MODULE": "YES",
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": "i386"
+  },
+  "swift_version": "5.0"
+}

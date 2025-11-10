@@ -1,0 +1,8 @@
+${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh
+${BUILT_PRODUCTS_DIR}/CocoaLumberjack/CocoaLumberjack.framework
+${BUILT_PRODUCTS_DIR}/SVGKit/SVGKit.framework
+${BUILT_PRODUCTS_DIR}/Yoga/yoga.framework
+${BUILT_PRODUCTS_DIR}/dcf_primitives/dcf_primitives.framework
+${BUILT_PRODUCTS_DIR}/dcf_reanimated/dcf_reanimated.framework
+${BUILT_PRODUCTS_DIR}/dcf_screens/dcf_screens.framework
+${BUILT_PRODUCTS_DIR}/dcflight/dcflight.framework
