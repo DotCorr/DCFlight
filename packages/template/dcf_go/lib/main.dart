@@ -1,9 +1,29 @@
-import 'dart:io';
-
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() async {
+  // Set log level to see all logs (default is warning)
+  // Options: none, error, warning, info, debug, verbose
+  DCFLogger.setLevel(DCFLogLevel.info);
+  
+  // Optional: Set identifiers for log isolation
+  // DCFLogger.setProjectId('my-project');
+  // DCFLogger.setInstanceId('instance-1');
+  
+  // Log app startup (tag defaults to 'DCFlight' if not provided)
+  DCFLogger.info('Starting DCFlight app...', 'App');
+  
+  // Example of all log levels (tag is optional, defaults to 'DCFlight'):
+  // DCFLogger.error('Error message', error: errorObject, stackTrace: stackTrace, tag: 'MyTag');
+  // DCFLogger.warning('Warning message', 'MyTag');
+  // DCFLogger.info('Info message', 'MyTag');
+  // DCFLogger.debug('Debug message', 'MyTag');
+  // DCFLogger.verbose('Verbose message', 'MyTag');
+  
+  // Or without tag (uses default 'DCFlight'):
+  // DCFLogger.info('Simple message');
+  // DCFLogger.debug('Debug message');
+  
   await DCFlight.go(app: MyApp());
 }
 
@@ -52,8 +72,13 @@ class MyApp extends DCFStatefulComponent {
           webViewProps: DCFWebViewProps(source: 'https://dotcorr.com'),
         ),
 
-        DCFSlider(value: sliderVal.state.toDouble(),
-        onValueChange: (data) => sliderVal.setState(data.value),
+        DCFSlider(
+          value: sliderVal.state.toDouble(),
+          onValueChange: (data) {
+            sliderVal.setState(data.value);
+            // Log slider change (using debug level for frequent updates)
+            DCFLogger.debug('Slider value changed to: ${data.value}', 'MyApp');
+          },
         ),
         DCFSpinner(),
         DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
@@ -92,6 +117,8 @@ class MyApp extends DCFStatefulComponent {
               DCFTheme.setTheme(
                 newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
               );
+              // Log alert action
+              DCFLogger.info('Alert action pressed: Change Theme', 'MyApp');
             }
           },
         ),
@@ -116,11 +143,15 @@ class MyApp extends DCFStatefulComponent {
         ),
         DCFButton(
           buttonProps: DCFButtonProps(title: "Count: ${count.state}"),
-          onPress: (data) => count.setState(count.state + 1),
+          onPress: (data) {
+            final newCount = count.state + 1;
+            count.setState(newCount);
+            // Log button press
+            DCFLogger.info('Count button pressed, new count: $newCount', 'MyApp');
+          },
           layout: DCFLayout(marginTop: 20),
         ),
         DCFButton(
-
           buttonProps: DCFButtonProps(title: "Toggle Theme"),
           onPress: (data) {
             final newDarkMode = !isDarkMode.state;
@@ -129,9 +160,10 @@ class MyApp extends DCFStatefulComponent {
             DCFTheme.setTheme(
               newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
             );
+            // Log theme change
+            DCFLogger.info('Theme changed to ${newDarkMode ? 'Dark' : 'Light'}', 'MyApp');
           },
-          layout: DCFLayout(marginTop: 10,height: 
-          50),
+          layout: DCFLayout(marginTop: 10, height: 50),
         ),
         
       ],

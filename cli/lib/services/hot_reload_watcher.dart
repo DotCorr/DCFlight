@@ -21,6 +21,7 @@ class HotReloadWatcher {
   String? _selectedDeviceId;
   Process? _iproxyProcess;
   bool _iproxySetup = false; // Track if iproxy has been set up
+  bool _normalShutdown = false; // Track if shutdown was normal (via 'q') or forced (Ctrl+C)
 
   // Terminal styling
   static const String _reset = '\x1B[0m';
@@ -76,6 +77,14 @@ class HotReloadWatcher {
   Future<void> start() async {
     print('🚨 DEBUG: NEW DEVICE SELECTION CODE IS RUNNING!');
 
+    // Setup signal handlers for graceful shutdown
+    ProcessSignal.sigint.watch().listen((_) async {
+      await _handleForcedShutdown();
+    });
+    ProcessSignal.sigterm.watch().listen((_) async {
+      await _handleForcedShutdown();
+    });
+
     // SELECT DEVICE FIRST - before any UI setup
     final deviceId = await _selectDevice();
 
@@ -97,7 +106,32 @@ class HotReloadWatcher {
     // Clean shutdown
     await _watcherSubscription.cancel();
     await _cleanupIproxy();
-    await _printShutdownMessage(exitCode);
+    
+    // Only print shutdown message if it was a normal shutdown
+    if (_normalShutdown) {
+      await _printShutdownMessage(exitCode);
+    }
+  }
+
+  /// Handle forced shutdown (Ctrl+C or kill signal)
+  Future<void> _handleForcedShutdown() async {
+    // Kill Flutter process immediately
+    try {
+      _flutterProcess.kill();
+    } catch (e) {
+      // Process might already be dead
+    }
+    
+    // Cleanup
+    try {
+      await _watcherSubscription.cancel();
+    } catch (e) {
+      // Already cancelled
+    }
+    await _cleanupIproxy();
+    
+    // Exit immediately without printing shutdown message
+    exit(0);
   }
 
   /// Print commands menu
@@ -285,6 +319,7 @@ class HotReloadWatcher {
             _flutterProcess.stdin.flush();
             break;
           case 'q':
+            _normalShutdown = true;
             _logWatcher('👋', 'Quit command sent by user', _red);
             _flutterProcess.stdin.writeln('q');
             _flutterProcess.stdin.flush();
@@ -292,11 +327,6 @@ class HotReloadWatcher {
           case 'h':
             _logWatcher('❓', 'Help command sent by user', _cyan);
             _flutterProcess.stdin.writeln('h');
-            _flutterProcess.stdin.flush();
-            break;
-          case 'd':
-            _logWatcher('🔌', 'Detach command sent by user', _yellow);
-            _flutterProcess.stdin.writeln('d');
             _flutterProcess.stdin.flush();
             break;
           case 'c':
