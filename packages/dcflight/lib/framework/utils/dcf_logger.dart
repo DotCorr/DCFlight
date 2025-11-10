@@ -52,7 +52,7 @@ class DCFLogger {
   static DCFLogLevel get currentLevel => _currentLevel;
   
   /// Log an error message
-  static void error(String tag, String message, [Object? error, StackTrace? stackTrace]) {
+  static void error(String message, {Object? error, StackTrace? stackTrace, String tag = 'DCFlight'}) {
     if (_shouldLog(DCFLogLevel.error)) {
       _log(DCFLogLevel.error, tag, message);
       if (error != null) {
@@ -65,28 +65,28 @@ class DCFLogger {
   }
   
   /// Log a warning message
-  static void warning(String tag, String message) {
+  static void warning(String message, [String tag = 'DCFlight']) {
     if (_shouldLog(DCFLogLevel.warning)) {
       _log(DCFLogLevel.warning, tag, message);
     }
   }
   
   /// Log an info message
-  static void info(String tag, String message) {
+  static void info(String message, [String tag = 'DCFlight']) {
     if (_shouldLog(DCFLogLevel.info)) {
       _log(DCFLogLevel.info, tag, message);
     }
   }
   
   /// Log a debug message
-  static void debug(String tag, String message) {
+  static void debug(String message, [String tag = 'DCFlight']) {
     if (_shouldLog(DCFLogLevel.debug)) {
       _log(DCFLogLevel.debug, tag, message);
     }
   }
   
   /// Log a verbose message (internal development)
-  static void verbose(String tag, String message) {
+  static void verbose(String message, [String tag = 'DCFlight']) {
     if (_shouldLog(DCFLogLevel.verbose)) {
       _log(DCFLogLevel.verbose, tag, message);
     }
@@ -135,19 +135,19 @@ class DCFLoggerTags {
   static void layout(String message, [DCFLogLevel level = DCFLogLevel.debug]) {
     switch (level) {
       case DCFLogLevel.error:
-        DCFLogger.error('Layout', message);
+        DCFLogger.error(message, tag: 'Layout');
         break;
       case DCFLogLevel.warning:
-        DCFLogger.warning('Layout', message);
+        DCFLogger.warning(message, 'Layout');
         break;
       case DCFLogLevel.info:
-        DCFLogger.info('Layout', message);
+        DCFLogger.info(message, 'Layout');
         break;
       case DCFLogLevel.debug:
-        DCFLogger.debug('Layout', message);
+        DCFLogger.debug(message, 'Layout');
         break;
       case DCFLogLevel.verbose:
-        DCFLogger.verbose('Layout', message);
+        DCFLogger.verbose(message, 'Layout');
         break;
       case DCFLogLevel.none:
         break;
@@ -157,19 +157,19 @@ class DCFLoggerTags {
   static void animation(String message, [DCFLogLevel level = DCFLogLevel.debug]) {
     switch (level) {
       case DCFLogLevel.error:
-        DCFLogger.error('Animation', message);
+        DCFLogger.error(message, tag: 'Animation');
         break;
       case DCFLogLevel.warning:
-        DCFLogger.warning('Animation', message);
+        DCFLogger.warning(message, 'Animation');
         break;
       case DCFLogLevel.info:
-        DCFLogger.info('Animation', message);
+        DCFLogger.info(message, 'Animation');
         break;
       case DCFLogLevel.debug:
-        DCFLogger.debug('Animation', message);
+        DCFLogger.debug(message, 'Animation');
         break;
       case DCFLogLevel.verbose:
-        DCFLogger.verbose('Animation', message);
+        DCFLogger.verbose(message, 'Animation');
         break;
       case DCFLogLevel.none:
         break;
@@ -179,19 +179,19 @@ class DCFLoggerTags {
   static void component(String message, [DCFLogLevel level = DCFLogLevel.debug]) {
     switch (level) {
       case DCFLogLevel.error:
-        DCFLogger.error('Component', message);
+        DCFLogger.error(message, tag: 'Component');
         break;
       case DCFLogLevel.warning:
-        DCFLogger.warning('Component', message);
+        DCFLogger.warning(message, 'Component');
         break;
       case DCFLogLevel.info:
-        DCFLogger.info('Component', message);
+        DCFLogger.info(message, 'Component');
         break;
       case DCFLogLevel.debug:
-        DCFLogger.debug('Component', message);
+        DCFLogger.debug(message, 'Component');
         break;
       case DCFLogLevel.verbose:
-        DCFLogger.verbose('Component', message);
+        DCFLogger.verbose(message, 'Component');
         break;
       case DCFLogLevel.none:
         break;
@@ -201,19 +201,19 @@ class DCFLoggerTags {
   static void bridge(String message, [DCFLogLevel level = DCFLogLevel.debug]) {
     switch (level) {
       case DCFLogLevel.error:
-        DCFLogger.error('Bridge', message);
+        DCFLogger.error(message, tag: 'Bridge');
         break;
       case DCFLogLevel.warning:
-        DCFLogger.warning('Bridge', message);
+        DCFLogger.warning(message, 'Bridge');
         break;
       case DCFLogLevel.info:
-        DCFLogger.info('Bridge', message);
+        DCFLogger.info(message, 'Bridge');
         break;
       case DCFLogLevel.debug:
-        DCFLogger.debug('Bridge', message);
+        DCFLogger.debug(message, 'Bridge');
         break;
       case DCFLogLevel.verbose:
-        DCFLogger.verbose('Bridge', message);
+        DCFLogger.verbose(message, 'Bridge');
         break;
       case DCFLogLevel.none:
         break;
