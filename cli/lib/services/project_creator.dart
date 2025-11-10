@@ -13,27 +13,24 @@ import 'package:dcflight_cli/services/package_renamer.dart';
 import 'package:dcflight_cli/models/project_config.dart';
 
 class ProjectCreator {
+  /// Creates a new DCFlight app project.
+  /// 
+  /// Collects user input, validates configuration, copies template,
+  /// configures the project, and installs dependencies.
   Future<void> createApp() async {
     try {
-      // 1. Collect user input
       final config = await _collectUserInput();
-
-      // 2. Validate project doesn't exist
       await _validateProject(config);
 
-      // 3. Copy template
       print('📁 Copying template...');
       await TemplateCopier.copyTemplate(config);
 
-      // 4. Run package rename
       print('🔧 Configuring project...');
       await PackageRenamer.renameProject(config);
 
-      // 5. Run flutter pub get
       print('📦 Installing dependencies...');
       await _runPubGet(config);
 
-      // 6. Success message
       _printSuccessMessage(config);
     } catch (e) {
       print('❌ Error creating project: $e');
@@ -72,17 +69,16 @@ class ProjectCreator {
     config.validate();
   }
 
-  /// Run pub get in the new project
+  /// Runs pub get in the new project to install dependencies.
+  /// 
+  /// - [config]: Project configuration
   Future<void> _runPubGet(ProjectConfig config) async {
     final projectPath =
         path.join(Directory.current.path, config.projectDirectoryName);
     final originalDir = Directory.current;
 
     try {
-      // Change to project directory
       Directory.current = projectPath;
-
-      // Run flutter pub get (DCFlight projects use Flutter's pub system)
       final result = await Process.run('flutter', ['pub', 'get']);
 
       if (result.exitCode != 0) {
@@ -94,7 +90,6 @@ class ProjectCreator {
         print('✅ Dependencies installed successfully');
       }
     } finally {
-      // Restore original directory
       Directory.current = originalDir;
     }
   }

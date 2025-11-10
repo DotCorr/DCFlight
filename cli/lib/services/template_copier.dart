@@ -11,29 +11,31 @@ import 'package:path/path.dart' as path;
 import 'package:dcflight_cli/models/project_config.dart';
 
 class TemplateCopier {
-  /// Copy template files to create a new project
+  /// Copies template files to create a new project.
+  /// 
+  /// Creates the target directory, copies all template files, and processes
+  /// platform-specific files based on the selected platforms.
+  /// 
+  /// - [config]: Project configuration containing directory name and platform selections
   static Future<void> copyTemplate(ProjectConfig config) async {
     final templatePath = await _getTemplatePath();
     final targetPath = path.join(Directory.current.path, config.projectDirectoryName);
     
-    // Create target directory
     final targetDir = Directory(targetPath);
     if (await targetDir.exists()) {
       throw Exception('Directory ${config.projectDirectoryName} already exists');
     }
     
     await targetDir.create(recursive: true);
-    
-    // Copy template files
     await _copyDirectory(templatePath, targetPath);
-    
-    // Process platform-specific files
     await _processPlatformFiles(config, targetPath);
   }
 
-  /// Get the path to the template directory
+  /// Gets the path to the template directory.
+  /// 
+  /// Tries multiple possible locations and returns the first one that exists.
+  /// Throws an exception if no template directory is found.
   static Future<String> _getTemplatePath() async {
-    // Try to find the template path in multiple locations
     final possiblePaths = await _getPossibleTemplatePaths();
     
     for (final templatePath in possiblePaths) {
@@ -46,21 +48,38 @@ class TemplateCopier {
     throw Exception('DCFlight template not found. Tried paths:\n${possiblePaths.join('\n')}\n\nMake sure DCFlight is properly installed.');
   }
 
-  /// Get possible template paths to check
+  /// Gets possible template paths to check.
+  /// 
+  /// Checks multiple locations in order:
+  /// 1. Relative to CLI script location (works when running from any directory)
+  /// 2. Current working directory (development mode)
+  /// 3. Global installation path (if CLI is globally installed)
   static Future<List<String>> _getPossibleTemplatePaths() async {
-    final currentDir = Directory.current.path;
     final paths = <String>[];
     
-    // 1. If we're in the cli subfolder, go up one level (development mode)
+    try {
+      final scriptPath = Platform.script.toFilePath();
+      final scriptDir = path.dirname(scriptPath);
+      
+      if (path.basename(scriptDir) == 'bin' && path.basename(path.dirname(scriptDir)) == 'cli') {
+        final cliDir = path.dirname(scriptDir);
+        final repoRoot = path.dirname(cliDir);
+        paths.add(path.join(repoRoot, 'packages', 'template', 'dcf_go'));
+      } else if (path.basename(scriptDir) == 'cli') {
+        final repoRoot = path.dirname(scriptDir);
+        paths.add(path.join(repoRoot, 'packages', 'template', 'dcf_go'));
+      }
+    } catch (e) {
+      // Ignore errors when trying to get script path
+    }
+    
+    final currentDir = Directory.current.path;
     if (path.basename(currentDir) == 'cli') {
       final repoRoot = path.dirname(currentDir);
       paths.add(path.join(repoRoot, 'packages', 'template', 'dcf_go'));
     }
-    
-    // 2. Try current directory (development mode)
     paths.add(path.join(currentDir, 'packages', 'template', 'dcf_go'));
     
-    // 3. Try to find the CLI installation path (global mode)
     try {
       final result = await Process.run('dart', ['pub', 'global', 'list']);
       if (result.exitCode == 0) {
@@ -83,7 +102,12 @@ class TemplateCopier {
     return paths;
   }
 
-  /// Copy directory recursively
+  /// Copies a directory recursively to the target path.
+  /// 
+  /// Skips build artifacts, IDE files, and version control directories.
+  /// 
+  /// - [sourcePath]: Source directory to copy from
+  /// - [targetPath]: Target directory to copy to
   static Future<void> _copyDirectory(String sourcePath, String targetPath) async {
     final sourceDir = Directory(sourcePath);
     final targetDir = Directory(targetPath);
@@ -99,7 +123,6 @@ class TemplateCopier {
     await for (final entity in sourceDir.list(recursive: false)) {
       final entityName = path.basename(entity.path);
       
-      // Skip build artifacts and other files we don't want to copy
       if (_shouldSkipEntity(entityName)) {
         continue;
       }
@@ -114,38 +137,31 @@ class TemplateCopier {
     }
   }
 
-  /// Check if an entity should be skipped during copying
+  /// Checks if an entity should be skipped during copying.
+  /// 
+  /// Skips build artifacts, IDE files, version control directories, OS files, and logs.
+  /// 
+  /// - [name]: Name of the entity to check
+  /// - Returns: `true` if the entity should be skipped, `false` otherwise
   static bool _shouldSkipEntity(String name) {
     final skipList = {
-      // Build artifacts
       'build',
       '.dart_tool',
       '.packages',
       'pubspec.lock',
-      
-      // IDE files
       '.idea',
       '.vscode',
       '*.iml',
-      
-      // Version control
       '.git',
-      // '.gitignore',
-      
-      // OS files
       '.DS_Store',
       'Thumbs.db',
-      
-      // Logs
       '*.log',
     };
 
-    // Check exact matches
     if (skipList.contains(name)) {
       return true;
     }
 
-    // Check pattern matches
     for (final pattern in skipList) {
       if (pattern.contains('*')) {
         final regex = RegExp(pattern.replaceAll('*', '.*'));
@@ -158,9 +174,11 @@ class TemplateCopier {
     return false;
   }
 
-  /// Process platform-specific files
+  /// Processes platform-specific files by removing directories for unselected platforms.
+  /// 
+  /// - [config]: Project configuration containing selected platforms
+  /// - [projectPath]: Path to the project directory
   static Future<void> _processPlatformFiles(ProjectConfig config, String projectPath) async {
-    // Remove platform directories that are not selected
     final platformDirs = ['ios', 'android', 'web', 'macos', 'windows', 'linux'];
     final selectedPlatforms = config.platforms.map((p) => p.name).toSet();
     
