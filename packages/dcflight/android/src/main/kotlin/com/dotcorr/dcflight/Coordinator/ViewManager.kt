@@ -28,12 +28,45 @@ class DCFViewManager private constructor() {
         @JvmField
         val shared = DCFViewManager()
     }
+    
+    /**
+     * ⚡ PERFORMANCE OPTIMIZATION: Component Instance Caching
+     * 
+     * Android doesn't use view pooling (for stability), but we cache component class instances
+     * to avoid repeated instantiation overhead. This provides similar performance benefits
+     * to iOS view pooling but at the factory layer instead of the view layer.
+     * 
+     * Component instances are stateless factories, so caching them is safe and doesn't cause
+     * the duplicate view issues that view pooling had.
+     */
+    private val componentInstanceCache = mutableMapOf<String, DCFComponent>()
+    
+    /**
+     * Get or create a cached component instance for a given view type
+     * This avoids the overhead of calling getDeclaredConstructor().newInstance() repeatedly
+     */
+    private fun getCachedComponentInstance(viewType: String): DCFComponent? {
+        val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
+            ?: return null
+        
+        // Return cached instance if available, otherwise create and cache
+        return componentInstanceCache.getOrPut(viewType) {
+            try {
+                componentClass.getDeclaredConstructor().newInstance()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create component instance for type '$viewType'", e)
+                throw e
+            }
+        }
+    }
 
     /**
      * Clean up for hot restart (simplified version)
      */
     fun cleanupForHotRestart() {
         Log.d(TAG, "🔥 DCF_ENGINE: ViewManager hot restart cleanup called")
+        // Clear component instance cache on hot restart
+        componentInstanceCache.clear()
         Log.d(TAG, "🔥 DCF_ENGINE: ViewManager cleanup for hot restart completed")
     }
 
@@ -51,12 +84,13 @@ class DCFViewManager private constructor() {
             return false
         }
 
+        // ⚡ PERFORMANCE: Use cached component instance to avoid repeated instantiation
         val componentInstance = try {
-            componentClass.getDeclaredConstructor().newInstance()
+            getCachedComponentInstance(viewType)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create component instance", e)
+            Log.e(TAG, "Failed to get component instance", e)
             return false
-        }
+        } ?: return false
 
         val view = componentInstance.createView(context, props)
 
@@ -95,18 +129,13 @@ class DCFViewManager private constructor() {
         val nonLayoutProps = extractNonLayoutProps(props)
 
         if (nonLayoutProps.isNotEmpty()) {
-            val componentClass = DCFComponentRegistry.shared.getComponentType(type)
-            if (componentClass == null) {
-                Log.e(TAG, "Component type '$type' not found for update")
-                return false
-            }
-
+            // ⚡ PERFORMANCE: Use cached component instance
             val componentInstance = try {
-                componentClass.getDeclaredConstructor().newInstance()
+                getCachedComponentInstance(type)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create component instance for update", e)
+                Log.e(TAG, "Failed to get component instance for update", e)
                 return false
-            }
+            } ?: return false
 
             val success = componentInstance.updateView(view, nonLayoutProps)
 
