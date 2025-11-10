@@ -33,12 +33,6 @@ import Flutter
             return
         }
         window.rootViewController = nativeRootVC
-        
-        // CRITICAL: Ensure root view has proper frame before setup
-        // This prevents white screen on iOS where views might be attached before frame is set
-        nativeRootVC.view.frame = window.bounds
-        nativeRootVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        
         setupDCF(rootView: nativeRootVC.view, flutterEngine: flutterEngine)
 
         _ = DCFScreenUtilities.shared
@@ -52,17 +46,6 @@ import Flutter
         runInternalModules()
         setupSizeChangeDetection()
         
-        // CRITICAL: Calculate initial layout synchronously to prevent white screen
-        // Views need proper layout before they can be displayed
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first {
-            let windowBounds = window.bounds
-            print("🎯 DCFlight: Setting initial window size synchronously: \(windowBounds.width)x\(windowBounds.height)")
-            DCFScreenUtilities.shared.updateScreenDimensions(width: windowBounds.width, height: windowBounds.height)
-            YogaShadowTree.shared.calculateAndApplyLayout(width: windowBounds.width, height: windowBounds.height)
-        }
-        
-        // Also schedule async update as fallback
         DispatchQueue.main.async {
             self.updateInitialWindowSize()
         }
