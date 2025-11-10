@@ -358,14 +358,18 @@ class PlatformInterfaceImpl implements PlatformInterface {
     _eventCallbacks[viewId]![eventType] = callback;
   }
 
+  /// Handles native events received from the platform bridge.
+  /// 
+  /// First checks for view-specific callbacks, then falls back to the global event handler.
+  /// 
+  /// - [viewId]: Unique identifier for the view that triggered the event
+  /// - [eventType]: Type of event (e.g., "onPress", "onChange")
+  /// - [eventData]: Event data dictionary
   @override
   void handleNativeEvent(
       String viewId, String eventType, Map<String, dynamic> eventData) {
-    print('🔥 DCF_ENGINE: handleNativeEvent received - viewId: $viewId, eventType: $eventType, data: $eventData');
-    
     final callback = _eventCallbacks[viewId]?[eventType];
     if (callback != null) {
-      print('🔥 DCF_ENGINE: Found specific callback for $viewId.$eventType');
       try {
         final Function func = callback;
         if (func is Function()) {
@@ -377,22 +381,26 @@ class PlatformInterfaceImpl implements PlatformInterface {
         }
         return;
       } catch (e) {
-        print('🔥 DCF_ENGINE: Error in specific callback: $e');
+        // Error in callback - fall through to global handler
       }
     }
     
     if (_eventHandler != null) {
-      print('🔥 DCF_ENGINE: Forwarding to global event handler');
       try {
         _eventHandler!(viewId, eventType, eventData);
       } catch (e) {
-        print('🔥 DCF_ENGINE: Error in global event handler: $e');
+        // Error in global handler - silently fail
       }
-    } else {
-      print('🔥 DCF_ENGINE: No global event handler set!');
     }
   }
-   @override
+  
+  /// Calls a method on a native component via the tunnel mechanism.
+  /// 
+  /// - [componentType]: Type of component to call the method on
+  /// - [method]: Method name to call
+  /// - [params]: Parameters for the method call
+  /// - Returns: Result from the native method, or `null` if it failed
+  @override
   Future<dynamic> tunnel(String componentType, String method, Map<String, dynamic> params) async {
     try {
       final result = await bridgeChannel.invokeMethod('tunnel', {
@@ -400,10 +408,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
         'method': method,
         'params': params,
       });
-      print("🚇 Tunnel: Called $method on $componentType - Success");
       return result;
     } catch (e) {
-      print("❌ Tunnel: Failed to call $method on $componentType - Error: $e");
       return null;
     }
   }

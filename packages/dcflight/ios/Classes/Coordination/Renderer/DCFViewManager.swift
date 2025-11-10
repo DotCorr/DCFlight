@@ -30,7 +30,7 @@ class SupportedLayoutsProps {
 
 typealias ViewTypeInfo = (view: UIView, type: String)
 
-/// Registry for storing and managing view references
+/// Registry for storing and managing view references.
 class ViewRegistry {
     static let shared = ViewRegistry()
     
@@ -38,29 +38,48 @@ class ViewRegistry {
     
     private init() {}
     
+    /// Registers a view with the registry and layout manager.
+    /// 
+    /// - Parameters:
+    ///   - view: The view to register
+    ///   - id: Unique identifier for the view
+    ///   - type: Component type (e.g., "View", "Text")
     func registerView(_ view: UIView, id: String, type: String) {
         registry[id] = (view, type)
         
         DCFLayoutManager.shared.registerView(view, withId: id)
     }
     
+    /// Gets view information (view and type) by ID.
+    /// 
+    /// - Parameter id: Unique identifier for the view
+    /// - Returns: Tuple containing the view and type, or `nil` if not found
     func getViewInfo(id: String) -> ViewTypeInfo? {
         return registry[id]
     }
     
+    /// Gets a view by ID.
+    /// 
+    /// - Parameter id: Unique identifier for the view
+    /// - Returns: The view, or `nil` if not found
     func getView(id: String) -> UIView? {
         return registry[id]?.view
     }
     
+    /// Removes a view from the registry and layout manager.
+    /// 
+    /// - Parameter id: Unique identifier for the view to remove
     func removeView(id: String) {
         registry.removeValue(forKey: id)
         DCFLayoutManager.shared.unregisterView(withId: id)
     }
     
+    /// Returns all registered view IDs.
     var allViewIds: [String] {
         return Array(registry.keys)
     }
     
+    /// Cleans up all registered views.
     func cleanup() {
         registry.removeAll()
     }
@@ -72,11 +91,18 @@ class DCFViewManager {
     
     private init() {}
     
-    /// Create a view with automatic layout handling
+    /// Creates a view with automatic layout handling.
+    /// 
+    /// Handles both regular components and screen components, setting up the appropriate
+    /// layout nodes in YogaShadowTree and registering the view with the layout manager.
+    /// 
+    /// - Parameters:
+    ///   - viewId: Unique identifier for the view
+    ///   - viewType: Component type (e.g., "View", "Text", "Screen")
+    ///   - props: Properties dictionary for the view
+    /// - Returns: `true` if the view was created successfully, `false` otherwise
     func createView(viewId: String, viewType: String, props: [String: Any]) -> Bool {
-        
         guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
-            print("❌ DCFViewManager: Component type '\(viewType)' not found")
             return false
         }
         
@@ -95,19 +121,13 @@ class DCFViewManager {
         let isScreen = (viewType == "Screen" || props["presentationStyle"] != nil)
         
         if isScreen {
-            print("🖼️ DCFViewManager: Creating screen '\(viewId)' with presentation style: \(props["presentationStyle"] ?? "unknown")")
-            
             YogaShadowTree.shared.createScreenRoot(id: viewId, componentType: viewType)
             
             let layoutProps = extractLayoutProps(from: props)
             if !layoutProps.isEmpty {
                 YogaShadowTree.shared.updateNodeLayoutProps(nodeId: viewId, props: layoutProps)
-                print("📐 DCFViewManager: Applied layout props to screen root '\(viewId)'")
             }
-            
         } else {
-            print("🧩 DCFViewManager: Creating regular component '\(viewId)' of type '\(viewType)'")
-            
             YogaShadowTree.shared.createNode(id: viewId, componentType: viewType)
             
             let layoutProps = extractLayoutProps(from: props)
@@ -117,27 +137,30 @@ class DCFViewManager {
                     componentType: viewType,
                     props: layoutProps
                 )
-                print("📐 DCFViewManager: Applied layout props to component '\(viewId)'")
             }
         }
         
         DCFLayoutManager.shared.registerView(view, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
         
-        print("✅ DCFViewManager: Successfully created \(isScreen ? "screen" : "component") '\(viewId)'")
         return true
     }
     
-    /// Update a view with automatic layout handling
+    /// Updates a view with automatic layout handling.
+    /// 
+    /// Separates layout properties from non-layout properties and applies them through
+    /// the appropriate systems (YogaShadowTree for screens, DCFLayoutManager for regular components).
+    /// 
+    /// - Parameters:
+    ///   - viewId: Unique identifier for the view to update
+    ///   - props: Properties dictionary containing updates
+    /// - Returns: `true` if the view was updated successfully, `false` otherwise
     func updateView(viewId: String, props: [String: Any]) -> Bool {
         guard let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
-            print("❌ DCFViewManager: View '\(viewId)' not found for update")
             return false
         }
         
         let view = viewInfo.view
         let viewType = viewInfo.type
-        
-        print("🔄 DCFViewManager: Updating view '\(viewId)' of type '\(viewType)'")
         
         let layoutProps = extractLayoutProps(from: props)
         let nonLayoutProps = props.filter { !layoutProps.keys.contains($0.key) }
@@ -146,10 +169,8 @@ class DCFViewManager {
             let isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
             
             if isScreen {
-                print("📐 DCFViewManager: Updating layout props for screen root '\(viewId)'")
                 YogaShadowTree.shared.updateNodeLayoutProps(nodeId: viewId, props: layoutProps)
             } else {
-                print("📐 DCFViewManager: Updating layout props for regular component '\(viewId)'")
                 DCFLayoutManager.shared.updateNodeWithLayoutProps(
                     nodeId: viewId,
                     componentType: viewType,
@@ -160,7 +181,6 @@ class DCFViewManager {
         
         if !nonLayoutProps.isEmpty {
             guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
-                print("❌ DCFViewManager: Component type '\(viewType)' not found for update")
                 return false
             }
             
@@ -168,72 +188,71 @@ class DCFViewManager {
             let success = componentInstance.updateView(view, withProps: nonLayoutProps)
             
             if !success {
-                print("❌ DCFViewManager: Failed to update non-layout props for view '\(viewId)'")
                 return false
             }
         }
         
-        print("✅ DCFViewManager: Successfully updated view '\(viewId)'")
         return true
     }
     
-    /// Delete a view with automatic cleanup
+    /// Deletes a view with automatic cleanup.
+    /// 
+    /// Removes the view from the registry and layout manager, cleaning up all associated resources.
+    /// 
+    /// - Parameter viewId: Unique identifier for the view to delete
+    /// - Returns: `true` if the view was deleted successfully
     func deleteView(viewId: String) -> Bool {
-        print("🗑️ DCFViewManager: Deleting view '\(viewId)'")
-        
         ViewRegistry.shared.removeView(id: viewId)
         DCFLayoutManager.shared.removeNode(nodeId: viewId)
-        
-        print("✅ DCFViewManager: Successfully deleted view '\(viewId)'")
         return true
     }
     
-    /// CRITICAL FIX: Modified attachView to handle screen attachment properly
+    /// Attaches a child view to a parent view at the specified index.
+    /// 
+    /// Handles special cases for screen components and view controller hierarchies.
+    /// Screens are managed by navigation controllers and are not attached through this method.
+    /// 
+    /// - Parameters:
+    ///   - childId: Unique identifier for the child view
+    ///   - parentId: Unique identifier for the parent view
+    ///   - index: Position in the parent's child list
+    /// - Returns: `true` if the view was attached successfully, `false` otherwise
     func attachView(childId: String, parentId: String, index: Int) -> Bool {
         guard let childView = ViewRegistry.shared.getView(id: childId),
               let parentView = ViewRegistry.shared.getView(id: parentId) else {
-            print("❌ DCFViewManager: Cannot attach - child '\(childId)' or parent '\(parentId)' not found")
             return false
         }
         
-        // 🎯 CRITICAL FIX: Check if this is a screen component
+        // Check if this is a screen component - screens are managed by navigation controllers
         let childIsScreen = YogaShadowTree.shared.isScreenRoot(childId)
-        let parentIsScreen = YogaShadowTree.shared.isScreenRoot(parentId)
-        
-        // Screens should be managed by their respective navigation components, not the general view manager
         if childIsScreen {
-            print("🚫 DCFViewManager: Skipping attachment for screen '\(childId)' - screens are managed by navigation controllers")
             return true
         }
         
-        // 🎯 CRITICAL FIX: Check if this is a view controller hierarchy issue
+        // Handle view controller hierarchy issues
         if let childViewController = childView.next as? UIViewController,
            let parentViewController = parentView.next as? UIViewController {
             
             // If child is already in a navigation controller, don't reattach
             if childViewController.navigationController != nil && parentViewController.navigationController != nil {
-                print("🔧 DCFViewManager: Skipping attachment - child '\(childId)' already in navigation hierarchy")
                 return true
             }
             
             // If child has a parent view controller, remove it properly
             if childViewController.parent != nil {
-                print("🔧 DCFViewManager: Removing child '\(childId)' from existing view controller hierarchy")
                 childViewController.willMove(toParent: nil)
                 childViewController.view.removeFromSuperview()
                 childViewController.removeFromParent()
             }
         }
         
-        // 🎯 CRITICAL FIX: Remove from existing parent before attaching to new parent
+        // Remove from existing parent before attaching to new parent
         if childView.superview != nil {
-            print("🔧 DCFViewManager: Removing child '\(childId)' from existing parent before reattaching")
             childView.removeFromSuperview()
         }
         
-        // 🎯 CRITICAL FIX: Check if parent is already the superview
+        // Check if parent is already the superview
         if childView.superview == parentView {
-            print("🔧 DCFViewManager: Child '\(childId)' already attached to parent '\(parentId)' - skipping")
             return true
         }
         
@@ -242,25 +261,32 @@ class DCFViewManager {
         } else {
             parentView.addSubview(childView)
         }
-        print("🔗 DCFViewManager: Attached view '\(childId)' to parent '\(parentId)' at index \(index)")
         
         if !childIsScreen {
             DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
-            print("📊 DCFViewManager: Added '\(childId)' to Yoga tree under parent '\(parentId)'")
-        } else {
-            print("🚫 DCFViewManager: Skipped Yoga tree update for screen '\(childId)' - screens are independent roots")
         }
         
         return true
     }
     
-    /// CRITICAL FIX: Add method to handle screen dimension updates
+    /// Updates dimensions for all screen roots.
+    /// 
+    /// Called when the device orientation changes or screen size updates.
+    /// 
+    /// - Parameters:
+    ///   - width: New screen width
+    ///   - height: New screen height
     func updateScreenDimensions(width: CGFloat, height: CGFloat) {
-        print("📐 DCFViewManager: Updating all screen dimensions to \(width)x\(height)")
         YogaShadowTree.shared.updateScreenRootDimensions(width: width, height: height)
     }
     
-    /// Extract layout properties from props dictionary
+    /// Extracts layout properties from a props dictionary.
+    /// 
+    /// Filters the props dictionary to only include properties that are supported
+    /// by the layout system (e.g., width, height, margin, padding, flex properties).
+    /// 
+    /// - Parameter props: Full properties dictionary
+    /// - Returns: Dictionary containing only layout-related properties
     private func extractLayoutProps(from props: [String: Any]) -> [String: Any] {
         return props.filter { SupportedLayoutsProps.supportedLayoutProps.contains($0.key) }
     }
