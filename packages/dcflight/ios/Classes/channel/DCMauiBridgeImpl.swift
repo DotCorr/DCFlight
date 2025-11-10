@@ -271,6 +271,11 @@ import Foundation
     
     /// Clean up all views except root view for hot restart
     @objc func cleanupForHotRestart() {
+        print("🧹 iOS: Starting hot restart cleanup...")
+        
+        // 🔥 CRITICAL: Cancel layout calculation timer FIRST
+        // This prevents stale layout calculations from firing after cleanup
+        DCFLayoutManager.shared.cancelAllPendingLayoutWork()
         
         let nonRootViews = views.filter { $0.key != "root" }
         for (viewId, view) in nonRootViews {
