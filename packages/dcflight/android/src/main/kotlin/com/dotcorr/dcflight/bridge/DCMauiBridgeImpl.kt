@@ -440,13 +440,16 @@ class DCMauiBridgeImpl private constructor() {
 
 
     /**
-     * ⭐ OPTIMIZED: Commit a batch of operations atomically with improved performance
-     * Now accepts pre-serialized JSON strings to eliminate native JSON parsing overhead
+     * Commits a batch of operations atomically with optimized performance.
+     * 
+     * Accepts pre-serialized JSON strings to eliminate native JSON parsing overhead.
+     * Operations are separated into create, update, attach, and event registration phases,
+     * then executed in order before triggering a single layout calculation.
+     * 
+     * @param operations List of operation dictionaries containing view operations
+     * @return `true` if all operations succeeded, `false` otherwise
      */
     fun commitBatchUpdate(operations: List<Map<String, Any>>): Boolean {
-        val startTime = System.currentTimeMillis()
-        Log.d(TAG, "🔥 BATCH: Committing ${operations.size} operations (OPTIMIZED ATOMIC)")
-        
         data class CreateOp(val viewId: String, val viewType: String, val propsJson: String)
         data class UpdateOp(val viewId: String, val propsJson: String)
         data class AttachOp(val childId: String, val parentId: String, val index: Int)
@@ -457,8 +460,7 @@ class DCMauiBridgeImpl private constructor() {
         val attachOps = mutableListOf<AttachOp>()
         val eventOps = mutableListOf<AddEventListenersOp>()
         
-        // ⭐ OPTIMIZATION: Parse phase - collect all operations
-        val parseStartTime = System.currentTimeMillis()
+        // Parse phase - collect all operations
         
         operations.forEach { operation ->
             val operationType = operation["operation"] as? String
@@ -516,48 +518,23 @@ class DCMauiBridgeImpl private constructor() {
             }
         }
         
-        val parseTime = System.currentTimeMillis() - parseStartTime
-        Log.d(TAG, "📊 BATCH_TIMING: Parse phase completed in ${parseTime}ms")
-        Log.d(TAG, "🔥 BATCH: Collected ${createOps.size} creates, ${updateOps.size} updates, ${attachOps.size} attaches, ${eventOps.size} event registrations")
-        
         try {
-            val createStartTime = System.currentTimeMillis()
-            
+            // Execute phase - process all operations
             createOps.forEach { op ->
                 createView(op.viewId, op.viewType, op.propsJson)
             }
-            
-            val createTime = System.currentTimeMillis() - createStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Create phase completed in ${createTime}ms (${createOps.size} views)")
-            
-            val updateStartTime = System.currentTimeMillis()
             
             updateOps.forEach { op ->
                 updateView(op.viewId, op.propsJson)
             }
             
-            val updateTime = System.currentTimeMillis() - updateStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Update phase completed in ${updateTime}ms (${updateOps.size} views)")
-            
-            val attachStartTime = System.currentTimeMillis()
-            
             attachOps.forEach { op ->
                 attachView(op.childId, op.parentId, op.index)
             }
             
-            val attachTime = System.currentTimeMillis() - attachStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Attach phase completed in ${attachTime}ms (${attachOps.size} attachments)")
-            
-            val eventsStartTime = System.currentTimeMillis()
-            
             eventOps.forEach { op ->
                 DCMauiEventMethodHandler.shared.addEventListenersForBatch(op.viewId, op.eventTypes)
             }
-            
-            val eventsTime = System.currentTimeMillis() - eventsStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Events phase completed in ${eventsTime}ms (${eventOps.size} registrations)")
-            
-            val layoutStartTime = System.currentTimeMillis()
             
             val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
             val screenWidth = displayMetrics.widthPixels.toFloat()
@@ -571,8 +548,9 @@ class DCMauiBridgeImpl private constructor() {
                 )
             }
             
-            val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
+            YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
             
+            // Make all views visible after layout
             ViewRegistry.shared.allViewIds.forEach { viewId ->
                 val view = ViewRegistry.shared.getView(viewId)
                 view?.let {
@@ -581,9 +559,7 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
             
-            val layoutTime = System.currentTimeMillis() - layoutStartTime
-            Log.d(TAG, "📊 BATCH_TIMING: Layout phase completed in ${layoutTime}ms")
-            
+            // Invalidate all views and trigger a post-layout calculation
             rootView?.let { root ->
                 fun invalidateAll(v: View) {
                     v.invalidate()
@@ -600,13 +576,9 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
             
-            val totalTime = System.currentTimeMillis() - startTime
-            Log.d(TAG, "📊 BATCH_TIMING: ✅ TOTAL BATCH COMMIT TIME: ${totalTime}ms for ${operations.size} operations")
-            Log.d(TAG, "🔥 BATCH_COMMIT: Successfully committed all operations atomically")
-            
             return true
         } catch (e: Exception) {
-            Log.e(TAG, "🔥 BATCH_COMMIT: Failed during atomic commit", e)
+            Log.e(TAG, "Failed during atomic commit", e)
             return false
         }
     }

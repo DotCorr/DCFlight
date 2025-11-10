@@ -102,7 +102,10 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
-     * CRASH FIX: Perform automatic layout calculation with reconciliation coordination
+     * Performs automatic layout calculation with reconciliation coordination.
+     * 
+     * Executes layout calculation on a background thread and updates the UI on the main thread.
+     * Reschedules if the calculation is deferred.
      */
     private fun performAutomaticLayoutCalculation() {
         if (!needsLayoutCalculation.get()) return
@@ -168,14 +171,21 @@ class DCFLayoutManager private constructor() {
 
 
     /**
-     * Register a view with an ID
+     * Registers a view with the layout manager.
+     * 
+     * @param view The view to register
+     * @param viewId Unique identifier for the view
      */
     fun registerView(view: View, viewId: String) {
         viewRegistry[viewId] = view
     }
 
     /**
-     * Unregister a view
+     * Unregisters a view from the layout manager.
+     * 
+     * Also removes it from the absolute layout views set if it was using absolute layout.
+     * 
+     * @param viewId Unique identifier for the view to unregister
      */
     fun unregisterView(viewId: String) {
         val view = viewRegistry.remove(viewId)
@@ -455,7 +465,14 @@ class DCFLayoutManager private constructor() {
 
 
     /**
-     * Register view with layout system - MATCH iOS exactly
+     * Registers a view with the layout system and notifies the component instance.
+     * 
+     * Matches iOS behavior exactly. If the node is the root node, triggers an immediate layout calculation.
+     * 
+     * @param view The view to register
+     * @param nodeId Unique identifier for the node
+     * @param componentType Type of component (e.g., "View", "Text")
+     * @param componentInstance The component instance to notify
      */
     fun registerView(view: View, nodeId: String, componentType: String, componentInstance: DCFComponent) {
         registerView(view, nodeId)
@@ -468,7 +485,13 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
-     * Add a child node to a parent in the layout tree with safe coordination
+     * Adds a child node to a parent in the layout tree.
+     * 
+     * Updates the YogaShadowTree and schedules a layout calculation.
+     * 
+     * @param parentId Unique identifier for the parent node
+     * @param childId Unique identifier for the child node
+     * @param index Position in the parent's child list
      */
     fun addChildNode(parentId: String, childId: String, index: Int) {
         YogaShadowTree.shared.addChildNode(parentId, childId, index)
@@ -478,7 +501,11 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
-     * Remove a node from the layout tree with safe coordination
+     * Removes a node from the layout tree.
+     * 
+     * Updates the YogaShadowTree and schedules a layout calculation.
+     * 
+     * @param nodeId Unique identifier for the node to remove
      */
     fun removeNode(nodeId: String) {
         YogaShadowTree.shared.removeNode(nodeId)
@@ -488,7 +515,13 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
-     * Update a node's layout properties
+     * Updates a node's layout properties.
+     * 
+     * Applies the properties to the YogaShadowTree node and schedules a layout calculation.
+     * 
+     * @param nodeId Unique identifier for the node
+     * @param componentType Type of component (for reference)
+     * @param props Map of layout properties to apply
      */
     fun updateNodeWithLayoutProps(nodeId: String, componentType: String, props: Map<String, Any>) {
         YogaShadowTree.shared.updateNodeLayoutProps(nodeId, props)
@@ -498,7 +531,10 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
-     * Manually trigger layout calculation (useful for initial layout or when needed)
+     * Manually triggers a layout calculation.
+     * 
+     * Detects rapid updates and adjusts debouncing accordingly. Useful for initial layout
+     * or when layout needs to be recalculated outside of normal update cycles.
      */
     fun triggerLayoutCalculation() {
         needsLayoutCalculation.set(true)
@@ -513,7 +549,10 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
-     * Force immediate layout calculation (synchronous) with reconciliation awareness
+     * Forces an immediate synchronous layout calculation.
+     * 
+     * Executes layout calculation immediately on a background thread, bypassing
+     * the normal debounced scheduling. Used when immediate layout is required.
      */
     fun calculateLayoutNow() {
         layoutExecutor.execute {
@@ -537,36 +576,37 @@ class DCFLayoutManager private constructor() {
     }
 
     /**
-     * HOT RESTART FIX: Ensure all views start invisible during hot restart
-     * This prevents flash during hot restart by making all views invisible initially
+     * Prepares all views for hot restart by making them invisible.
+     * 
+     * Cancels all pending layout calculations first to prevent stale calculations
+     * from firing after cleanup. This prevents flash during hot restart.
      */
     fun prepareForHotRestart() {
-        // 🔥 CRITICAL: Cancel all pending layout calculations FIRST
-        // This prevents stale layout calculations from firing after cleanup
+        // Cancel all pending layout calculations first to prevent stale calculations
         cancelAllPendingLayoutWork()
         
         for ((_, view) in viewRegistry) {
             view.visibility = View.INVISIBLE
             view.alpha = 0f
         }
-        Log.d(TAG, "Prepared ${viewRegistry.size} views for hot restart")
     }
     
     /**
-     * FLASH SCREEN FIX: Make all views visible after batch operations
-     * This ensures text and other components are visible after batch creation
+     * Makes all views visible after batch operations.
+     * 
+     * Ensures text and other components are visible after batch creation.
      */
     fun makeAllViewsVisible() {
         for ((_, view) in viewRegistry) {
             view.visibility = View.VISIBLE
             view.alpha = 1.0f
         }
-        Log.d(TAG, "Made ${viewRegistry.size} views visible after batch operations")
     }
     
     /**
-     * SLIDER PERFORMANCE FIX: Optimize layout application during rapid updates
-     * This prevents the flash issue during slider drag by batching layout updates
+     * Optimizes layout application during rapid updates.
+     * 
+     * Prevents flash issues during slider drag by batching layout updates.
      */
     fun optimizeForRapidUpdates() {
         if (isRapidUpdateMode.get()) {
@@ -578,8 +618,9 @@ class DCFLayoutManager private constructor() {
     }
     
     /**
-     * SLIDER PERFORMANCE FIX: Prevent flash during slider updates
-     * This is called specifically when slider values change rapidly
+     * Handles slider updates to prevent flash during rapid value changes.
+     * 
+     * Called specifically when slider values change rapidly to optimize layout performance.
      */
     fun handleSliderUpdate() {
         isRapidUpdateMode.set(true)
@@ -589,12 +630,11 @@ class DCFLayoutManager private constructor() {
     }
     
     /**
-     * ROTATION FIX: Handle device rotation by forcing text remeasurement
-     * This ensures text remains visible after rotation
+     * Handles device rotation by forcing text remeasurement.
+     * 
+     * Invalidates all views and their children to ensure text remains visible after rotation.
      */
     fun handleDeviceRotation() {
-        Log.d(TAG, "🔄 Handling device rotation - clean invalidation like iOS")
-        
         for ((viewId, view) in viewRegistry) {
             view.requestLayout()
             view.invalidate()
@@ -609,17 +649,15 @@ class DCFLayoutManager private constructor() {
         }
         
         triggerLayoutCalculation()
-        
-        Log.d(TAG, "🔄 Device rotation handling completed for ${viewRegistry.size} views")
     }
     
     /**
-     * Cancel all pending layout calculations (for hot restart)
-     * This prevents stale layout calculations from firing after cleanup
+     * Cancels all pending layout calculations.
+     * 
+     * Used during hot restart to prevent stale layout calculations from firing after cleanup.
+     * Cancels Handler callbacks, ScheduledExecutorService tasks, and clears pending layouts.
      */
     fun cancelAllPendingLayoutWork() {
-        Log.d(TAG, "🧹 DCFLayoutManager: Cancelling all pending layout work")
-        
         // Cancel Handler callbacks
         mainHandler.removeCallbacks(layoutCalculationRunnable)
         
@@ -633,8 +671,6 @@ class DCFLayoutManager private constructor() {
         
         // Clear pending layouts
         pendingLayouts.clear()
-        
-        Log.d(TAG, "✅ DCFLayoutManager: All pending layout work cancelled")
     }
     
 }
