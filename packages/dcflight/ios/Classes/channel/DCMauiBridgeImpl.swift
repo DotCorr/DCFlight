@@ -296,9 +296,6 @@ import Foundation
         
         viewHierarchy["root"] = []
         
-        // Clear view pools on hot restart
-        ViewPoolManager.shared.clearAllPools()
-        
     }
     
     
@@ -437,30 +434,8 @@ import Foundation
             
             let layoutStartTime = CFAbsoluteTimeGetCurrent()
             
-            // ⭐ CRITICAL: Synchronous layout calculation to prevent white screen
-            // Views must have proper layout before they can be displayed
-            print("🔥 iOS_BATCH_COMMIT: Triggering synchronous layout calculation")
-            
-            // Get window bounds for accurate layout calculation
-            let windowBounds: CGRect
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let window = windowScene.windows.first {
-                windowBounds = window.bounds
-            } else {
-                windowBounds = UIScreen.main.bounds
-            }
-            
-            // Calculate layout synchronously on main thread
-            let layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(
-                width: windowBounds.width,
-                height: windowBounds.height
-            )
-            
-            // Ensure all views are visible after layout
-            for (_, view) in views {
-                view.isHidden = false
-                view.alpha = 1.0
-            }
+            print("🔥 iOS_BATCH_COMMIT: Triggering layout calculation")
+            DCFLayoutManager.shared.calculateLayoutNow()
             
             let layoutTime = (CFAbsoluteTimeGetCurrent() - layoutStartTime) * 1000
             print("� iOS_BATCH_TIMING: Layout phase completed in \(String(format: "%.2f", layoutTime))ms")

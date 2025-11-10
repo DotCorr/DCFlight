@@ -39,9 +39,6 @@ class DCFEngine {
   final Map<String, DCFStatefulComponent> _statefulComponents = {};
   final Map<String, DCFComponentNode> _previousRenderedNodes = {};
   
-  /// Store previous props for componentDidUpdate
-  final Map<String, Map<String, dynamic>> _previousProps = {};
-  
   /// Component instance tracking by position + type
   /// Key: "parentViewId:index:type" -> Component instance
   /// This allows instance persistence across renders
@@ -64,46 +61,6 @@ class DCFEngine {
       return node.elementProps.hashCode;
     }
     return node.hashCode;
-  }
-
-  /// Convert component props list to a map for componentDidUpdate
-  /// Uses positional keys (prop0, prop1, etc.) and tries to infer meaningful names
-  Map<String, dynamic> _propsListToMap(DCFComponentNode component, List<Object?> props) {
-    final map = <String, dynamic>{};
-    
-    // Add positional keys
-    for (var i = 0; i < props.length; i++) {
-      map['prop$i'] = props[i];
-    }
-    
-    // Try to infer meaningful names for common patterns
-    // For components with a single prop, use common names
-    if (props.length == 1 && props[0] != null) {
-      // Try common single-prop names
-      final componentType = component.runtimeType.toString();
-      if (componentType.contains('Count') || componentType.contains('Counter')) {
-        map['count'] = props[0];
-      } else if (componentType.contains('Text') || componentType.contains('Label')) {
-        map['text'] = props[0];
-      } else if (componentType.contains('Value')) {
-        map['value'] = props[0];
-      } else {
-        // Generic name for single prop
-        map['value'] = props[0];
-      }
-    } else if (props.length == 2) {
-      // Common two-prop patterns
-      final componentType = component.runtimeType.toString();
-      if (componentType.contains('Count') || componentType.contains('Counter')) {
-        map['count'] = props[0];
-        map['key'] = props[1];
-      }
-    }
-    
-    // Also add all props as a list for flexible access
-    map['_propsList'] = props;
-    
-    return map;
   }
 
   /// Priority-based update system
@@ -736,14 +693,11 @@ class DCFEngine {
         lifecycleInterceptor.beforeUpdate(component, context);
       }
 
-      // Capture previous props before component is updated
-      // component is already DCFStatefulComponent from _statefulComponents map
-      final previousProps = _propsListToMap(component, component.props);
-      _previousProps[componentId] = previousProps;
-      
-      EngineDebugLogger.log(
-          'COMPONENT_PREPARE', 'Preparing StatefulComponent for render');
-      component.prepareForRender();
+      if (component is DCFStatefulComponent) {
+        EngineDebugLogger.log(
+            'COMPONENT_PREPARE', 'Preparing StatefulComponent for render');
+        component.prepareForRender();
+      }
 
       final oldRenderedNode = component.renderedNode;
       EngineDebugLogger.log('COMPONENT_OLD_NODE', 'Stored old rendered node',
@@ -872,11 +826,7 @@ class DCFEngine {
 
       EngineDebugLogger.log(
           'LIFECYCLE_DID_UPDATE', 'Calling componentDidUpdate');
-      // Get previous props that were captured before the update
-      final prevProps = _previousProps[componentId] ?? {};
-      component.componentDidUpdate(prevProps);
-      // Clean up previous props after use
-      _previousProps.remove(componentId);
+      component.componentDidUpdate({});
 
       EngineDebugLogger.log(
           'LIFECYCLE_EFFECTS_IMMEDIATE', 'Running immediate effects');
@@ -2142,7 +2092,6 @@ class DCFEngine {
       _statefulComponents.clear();
       _nodesByViewId.clear();
       _previousRenderedNodes.clear();
-      _previousProps.clear();
       _pendingUpdates.clear();
       _componentPriorities.clear();
       _errorBoundaries.clear();
