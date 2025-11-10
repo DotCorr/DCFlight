@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import 'package:dcflight/dcflight.dart';
 
 /// Font weight options for text components
@@ -45,44 +44,63 @@ enum DCFFontWeight {
   }
 }
 
+/// Text alignment options for text components  
+enum DCFTextAlign {
+  left,
+  center,
+  right,
+  justify;
+
+  /// Convert to string value for native side
+  String get value {
+    switch (this) {
+      case DCFTextAlign.left:
+        return 'left';
+      case DCFTextAlign.center:
+        return 'center';
+      case DCFTextAlign.right:
+        return 'right';
+      case DCFTextAlign.justify:
+        return 'justify';
+    }
+  }
+}
+
 /// Text style properties
 class DCFTextProps {
   /// Font size
   final double? fontSize;
-  
+
   /// Font weight
   final DCFFontWeight? fontWeight;
-  
+
   /// Font family
   final String? fontFamily;
-  
+
   /// Whether the font family refers to an asset path
   final bool isFontAsset;
-  
-  /// Text color
-  final Color? color;
-  
+
   /// Text alignment
-  final String? textAlign;
+  final DCFTextAlign? textAlign;
   
+  /// NOTE: Color is now handled via StyleSheet.primaryColor
+  /// Use DCFStyleSheet(primaryColor: ...) instead of textProps.color
+
   /// Number of lines (0 for unlimited)
   final int? numberOfLines;
-  
-  /// Whether to use adaptive theming
-  final bool adaptive;
-  
+
   /// Create text props
+  /// 
+  /// NOTE: Use StyleSheet.primaryColor for text color instead of color prop
   const DCFTextProps({
     this.fontSize,
     this.fontWeight,
     this.fontFamily,
     this.isFontAsset = false,
-    this.color,
-    this.textAlign,
+    this.textAlign =  DCFTextAlign.center,
     this.numberOfLines,
-    this.adaptive = true,
   });
-  
+
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
@@ -90,53 +108,65 @@ class DCFTextProps {
       if (fontWeight != null) 'fontWeight': fontWeight!.value,
       if (fontFamily != null) 'fontFamily': fontFamily,
       if (isFontAsset) 'isFontAsset': isFontAsset,
-      if (color != null) 'color': '#${color!.value.toRadixString(16).padLeft(8, '0')}',
-      if (textAlign != null) 'textAlign': textAlign,
+      // Color removed - use StyleSheet.primaryColor instead
+      if (textAlign != null) 'textAlign': textAlign!.value,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
-      'adaptive': adaptive,
     };
   }
 }
 
 /// A text component implementation using StatelessComponent
-class DCFText extends StatelessComponent {
+class DCFText extends DCFStatelessComponent
+    implements ComponentPriorityInterface {
+  @override
+  ComponentPriority get priority => ComponentPriority.normal;
+
   /// The text content to display
   final String content;
-  
+
   /// The text properties
   final DCFTextProps textProps;
-  
+
   /// The layout properties
-  final LayoutProps layout;
-  
+  final DCFLayout layout;
+
   /// The style properties
-  final StyleSheet styleSheet;
-  
+  final DCFStyleSheet styleSheet;
+
+  /// Explicit color override: textColor (overrides StyleSheet.primaryColor)
+  /// If provided, this will override the semantic primaryColor for text
+  final Color? textColor;
+
   /// Event handlers
   final Map<String, dynamic>? events;
-  
+
   /// Create a text component
   DCFText({
     required this.content,
     this.textProps = const DCFTextProps(),
-    this.layout = const LayoutProps(),
-    this.styleSheet = const StyleSheet(),
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(),
+    this.textColor,
     this.events,
     super.key,
   });
-  
+
   @override
   DCFComponentNode render() {
+    Map<String, dynamic> props = {
+      'content': content,
+      ...textProps.toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
+      if (textColor != null) 'textColor': DCFColors.toNativeString(textColor!),
+      ...(events ?? {}),
+    };
+
     return DCFElement(
       type: 'Text',
-      props: {
-        'content': content,
-        ...textProps.toMap(),
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
-        ...(events ?? {}),
-      },
+      elementProps: props,
       children: [],
     );
   }
 }
+

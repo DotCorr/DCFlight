@@ -27,6 +27,9 @@ flutter:
     platforms:
       ios:
         pluginClass: DcfModule
+      android:
+        package: com.dotcorr.dcf_module
+        pluginClass: DcfModulePlugin
 
 
   assets:
