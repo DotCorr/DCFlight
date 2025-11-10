@@ -11,13 +11,13 @@
 
 # DCFlight
 
-A cross-platform mobile framework that renders **actual native UI** using a declarative component architecture. Built on the Flutter engine for Dart runtime, DCFlight provides direct native rendering without platform views or heavy abstractions.
+A cross-platform mobile framework that renders **actual native UI** using a declarative component architecture. Built on the Flutter engine for Dart runtime, DCFlight provides direct native rendering - **no platform views and no absurd abstractions**.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 🚀 What is DCFlight?
 
-DCFlight is a framework that renders **actual native UI** (UIKit on iOS, Android Views on Android) using a declarative component system written in Dart. Unlike Flutter's widget system, DCFlight directly renders native views, providing:
+DCFlight is a framework that renders **actual native UI** (UIKit on iOS, Android Views on Android) using a declarative component system written in Dart. It diverges from Flutter's abstraction for UI rendering and renders the root view that DCFlight depends on to render native UI. **No platform views and no absurd abstractions.** As a bonus, you can still render a Flutter Widget by using the `WidgetToDCFAdaptor` without impacting performance.
 
 - ✅ **True Native Performance** - Direct native UI rendering, no platform views
 - ✅ **Declarative Components** - Component-based architecture with state management
@@ -39,6 +39,7 @@ Dart Components → VDOM Engine → Native Bridge → Native Views (UIKit/Androi
 - **Native-First**: Direct native rendering, not a web view or abstraction layer
 - **Dart-Based**: Uses Dart for the component layer, not JavaScript
 - **Framework-Managed**: Framework handles component lifecycle and updates
+- **Swappable Bridge**: The communication layer is abstracted and can be replaced with different mechanisms
 
 ## 📝 Quick Start
 
@@ -144,7 +145,7 @@ DCFlight follows a layered architecture:
               ↓
 ┌─────────────────────────────────────┐
 │      Native Bridge Interface         │
-│  Method Channel Communication        │
+│  Communication Layer (Swappable)     │
 └─────────────────────────────────────┘
               ↓
 ┌─────────────────────────────────────┐
@@ -184,4 +185,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with ❤️ by the DCFlight team**
+**Built with ❤️**
