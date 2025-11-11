@@ -9,7 +9,6 @@ import UIKit
 import Foundation
 
 /// Bridge between Dart FFI and native Swift/Objective-C code
-/// Simplified version that focuses on core view operations
 @objc class DCMauiBridgeImpl: NSObject {
     
     @objc static let shared = DCMauiBridgeImpl()
@@ -382,6 +381,7 @@ import Foundation
         
         // Execute phase - process all operations with minimal overhead
         do {
+            let startTime = CFAbsoluteTimeGetCurrent()
             let createStartTime = CFAbsoluteTimeGetCurrent()
             
             // Create all views (props are already JSON strings - no serialization needed!)

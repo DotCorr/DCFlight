@@ -10,7 +10,7 @@ library;
 import 'dart:io';
 export 'framework/constants/style/dcf_colors.dart';
 export 'framework/theme/dcf_theme.dart';
-export 'package:dcflight/framework/utilities/flutter_framework_interop.dart'
+export 'package:dcflight/framework/utils/flutter_framework_interop.dart'
     hide
         Colors,
         PlatformDispatcher,
@@ -62,7 +62,7 @@ export 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 export 'framework/constants/style/style_properties.dart';
 export 'framework/constants/style/color_utils.dart';
 
-export 'framework/utilities/screen_utilities.dart';
+export 'framework/utils/screen_utilities.dart';
 export 'framework/utils/dcf_logger.dart';
 
 export 'framework/devtools/hot_restart.dart';
@@ -74,7 +74,7 @@ import 'package:dcflight/framework/components/component_node.dart';
 
 import 'framework/renderer/engine/engine_api.dart';
 import 'framework/renderer/interface/interface.dart';
-import 'framework/utilities/screen_utilities.dart';
+import 'framework/utils/screen_utilities.dart';
 import 'framework/protocol/plugin_protocol.dart';
 export 'framework/renderer/interface/tunnel.dart';
 import 'framework/devtools/hot_restart.dart';

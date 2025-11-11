@@ -13,6 +13,7 @@ dependencies:
     sdk: flutter
   # framework dependencies (prod)
   equatable: ^2.0.7
+  logger: ^2.6.2
 
   # Note: dcflight does NOT depend on dcf_primitives
   # The primitives are a separate plugin that depends on dcflight
