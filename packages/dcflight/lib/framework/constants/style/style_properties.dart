@@ -257,12 +257,14 @@ class DCFStyleSheet extends Equatable {
     final finalSecondaryColor = secondaryColor ?? DCFTheme.current.secondaryTextColor;
     final finalTertiaryColor = tertiaryColor ?? DCFTheme.current.secondaryTextColor;
     final finalAccentColor = accentColor ?? DCFTheme.accentColor;
+    final finalBackgroundColor = backgroundColor ?? DCFTheme.backgroundColor;
+
     
     map['primaryColor'] = _colorToString(finalPrimaryColor);
     map['secondaryColor'] = _colorToString(finalSecondaryColor);
     map['tertiaryColor'] = _colorToString(finalTertiaryColor);
     map['accentColor'] = _colorToString(finalAccentColor);
-
+    map['backgroundColor'] = _colorToString(finalBackgroundColor);
     return map;
   }
 
