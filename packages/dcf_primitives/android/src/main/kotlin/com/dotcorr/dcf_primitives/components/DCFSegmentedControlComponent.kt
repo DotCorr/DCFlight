@@ -44,12 +44,13 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val selectedIndex = getSelectedIndex(props, segments.size)
         
         segments.forEachIndexed { index, segmentTitle ->
-            val button = createSegmentButton(context, segmentTitle, index == selectedIndex, index, segments.size)
+            val button = createSegmentButton(context, segmentTitle, index == selectedIndex, index, segments.size, props)
             button.setOnClickListener {
                 val currentSegments = parseSegments(getStoredProps(container))
                 val title = currentSegments.getOrNull(index) ?: ""
                 
-                updateSelectedButton(container, index)
+                val nonNullProps = getStoredProps(container).filterValues { it != null }.mapValues { it.value!! }
+                updateSelectedButton(container, index, nonNullProps)
                 
                 propagateEvent(container, "onSelectionChange", mapOf(
                     "selectedIndex" to index,
@@ -60,6 +61,8 @@ class DCFSegmentedControlComponent : DCFComponent() {
         }
         
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        updateButtonColors(container, selectedIndex, nonNullProps)
+        
         container.applyStyles(nonNullProps)
         
         Log.d(TAG, "Created View-based SegmentedControl with ${segments.size} segments")
@@ -77,12 +80,12 @@ class DCFSegmentedControlComponent : DCFComponent() {
             
             container.removeAllViews()
             segments.forEachIndexed { index, segmentTitle ->
-                val button = createSegmentButton(container.context, segmentTitle, index == selectedIndex, index, segments.size)
+                val button = createSegmentButton(container.context, segmentTitle, index == selectedIndex, index, segments.size, props)
                 button.setOnClickListener {
                     val currentSegments = parseSegments(getStoredProps(container))
                     val title = currentSegments.getOrNull(index) ?: ""
                     
-                    updateSelectedButton(container, index)
+                    updateSelectedButton(container, index, props)
                     
                     propagateEvent(container, "onSelectionChange", mapOf(
                         "selectedIndex" to index,
@@ -91,12 +94,13 @@ class DCFSegmentedControlComponent : DCFComponent() {
                 }
                 container.addView(button)
             }
+            updateButtonColors(container, selectedIndex, props)
             hasUpdates = true
         }
 
         if (hasPropChanged("selectedIndex", existingProps, props)) {
             val selectedIndex = getSelectedIndex(props, container.childCount)
-            updateSelectedButton(container, selectedIndex)
+            updateSelectedButton(container, selectedIndex, props)
             hasUpdates = true
         }
 
@@ -161,7 +165,8 @@ class DCFSegmentedControlComponent : DCFComponent() {
         title: String,
         isSelected: Boolean,
         index: Int,
-        totalCount: Int
+        totalCount: Int,
+        props: Map<String, Any?>
     ): Button {
         val button = Button(context)
         button.text = title
@@ -235,12 +240,8 @@ class DCFSegmentedControlComponent : DCFComponent() {
         return 0
     }
     
-    private fun updateSelectedButton(container: LinearLayout, selectedIndex: Int) {
-        for (i in 0 until container.childCount) {
-            val button = container.getChildAt(i) as? Button ?: continue
-            val isSelected = i == selectedIndex
-            updateButtonBackground(button, isSelected, i, container.childCount)
-        }
+    private fun updateSelectedButton(container: LinearLayout, selectedIndex: Int, props: Map<String, Any>) {
+        updateButtonColors(container, selectedIndex, props)
     }
     
     private fun updateButtonColors(container: LinearLayout, selectedIndex: Int, props: Map<String, Any>) {
@@ -281,6 +282,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
     
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         val container = view as? LinearLayout ?: return
+        val props = getStoredProps(container).filterValues { it != null }.mapValues { it.value!! }
         
         for (i in 0 until container.childCount) {
             val button = container.getChildAt(i) as? Button ?: continue
@@ -288,7 +290,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
                 val segments = parseSegments(getStoredProps(container))
                 val title = segments.getOrNull(i) ?: ""
                 
-                updateSelectedButton(container, i)
+                updateSelectedButton(container, i, props)
                 
                 propagateEvent(container, "onSelectionChange", mapOf(
                     "selectedIndex" to i,
