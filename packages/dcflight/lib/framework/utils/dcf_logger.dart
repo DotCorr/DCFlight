@@ -66,8 +66,8 @@ class DCFLogger {
     _logger ??= logger_pkg.Logger(
       filter: _DCFLogFilter(),
       printer: logger_pkg.PrettyPrinter(
-        methodCount: 2,
-        errorMethodCount: 8,
+        methodCount: 0, // No stack trace for normal logs (info, debug, warning)
+        errorMethodCount: 8, // Full stack trace (8 lines) for errors
         lineLength: 120,
         colors: true,
         printEmojis: true,
