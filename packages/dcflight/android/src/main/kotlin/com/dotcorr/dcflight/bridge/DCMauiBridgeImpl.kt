@@ -40,6 +40,33 @@ class DCMauiBridgeImpl private constructor() {
     private val childToParent = ConcurrentHashMap<String, String>()
     private var appContext: Context? = null
     private var isInitialized = false
+    
+    /**
+     * ⚡ PERFORMANCE OPTIMIZATION: Component Instance Caching
+     * 
+     * Cache component class instances to avoid repeated instantiation overhead.
+     * Component instances are stateless factories, so caching them is safe.
+     */
+    private val componentInstanceCache = ConcurrentHashMap<String, DCFComponent>()
+    
+    /**
+     * Get or create a cached component instance for a given view type
+     * This avoids the overhead of calling getDeclaredConstructor().newInstance() repeatedly
+     */
+    private fun getCachedComponentInstance(viewType: String): DCFComponent? {
+        val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
+            ?: return null
+        
+        // Return cached instance if available, otherwise create and cache
+        return componentInstanceCache.getOrPut(viewType) {
+            try {
+                componentClass.getDeclaredConstructor().newInstance()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create component instance for type '$viewType'", e)
+                throw e
+            }
+        }
+    }
 
     /**
      * Sets the application context for view creation.
@@ -74,17 +101,12 @@ class DCMauiBridgeImpl private constructor() {
         Log.d(TAG, "Tunneling $method to $componentType")
         
         return try {
-            val componentClass = DCFComponentRegistry.shared.getComponent(componentType)
-            if (componentClass == null) {
-                Log.e(TAG, "Component $componentType not registered")
-                return null
-            }
-
-            val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-            if (componentInstance is DCFComponent) {
+            // ⚡ PERFORMANCE: Use cached component instance
+            val componentInstance = getCachedComponentInstance(componentType)
+            if (componentInstance != null) {
                 componentInstance.handleTunnelMethod(method, params)
             } else {
-                Log.e(TAG, "Component $componentType is not a DCFComponent")
+                Log.e(TAG, "Component $componentType not registered or failed to create instance")
                 null
             }
         } catch (e: Exception) {
@@ -208,8 +230,13 @@ class DCMauiBridgeImpl private constructor() {
                 val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
                 if (componentClass != null) {
                     try {
-                        val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-                        componentInstance.updateView(view, nonLayoutProps)
+                        // ⚡ PERFORMANCE: Use cached component instance (matches ViewManager pattern)
+                        val componentInstance = getCachedComponentInstance(viewType)
+                        if (componentInstance != null) {
+                            componentInstance.updateView(view, nonLayoutProps)
+                        } else {
+                            Log.e(TAG, "Failed to get component instance for type: $viewType")
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error calling updateView on $viewType component", e)
                     }
@@ -218,15 +245,10 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
 
-            val layoutPropsChanged = layoutProps.isNotEmpty()
+            // ✅ FIX: Components handle their own invalidation/layout needs
+            // ✅ FIX: YogaShadowTree handles layout calculations via DCFLayoutManager
+            // ✅ FIX: Removing redundant invalidate/requestLayout calls eliminates text flashing
             view.visibility = View.VISIBLE
-            
-            if (layoutPropsChanged) {
-                view.invalidate()
-                view.requestLayout()
-            } else {
-                view.invalidate()
-            }
 
             true
         } catch (e: Exception) {
@@ -369,6 +391,23 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
             
+            // ✅ FIX: Filter out child views that aren't registered yet (race condition protection)
+            // This prevents crashes when setChildren is called before all views are registered
+            val registeredChildIds = childrenIds.filter { childId ->
+                val exists = ViewRegistry.shared.getView(childId) != null
+                if (!exists) {
+                    Log.w(TAG, "setChildren: Child view '$childId' not yet registered, skipping")
+                }
+                exists
+            }
+            
+            if (registeredChildIds.isEmpty() && childrenIds.isNotEmpty()) {
+                Log.w(TAG, "setChildren: No child views registered yet, deferring setChildren for view '$viewId'")
+                // All children missing - likely a race condition, skip for now
+                // The framework will retry on next update cycle
+                return false
+            }
+            
             val parentViewGroup = parentView as? ViewGroup
 
             if (parentViewGroup == null) {
@@ -419,7 +458,7 @@ class DCMauiBridgeImpl private constructor() {
             parentViewGroup.removeAllViews()
             viewHierarchy[viewId]?.clear()
 
-            childrenIds.forEachIndexed { index: Int, childId: String ->
+            registeredChildIds.forEachIndexed { index: Int, childId: String ->
                 val childView = ViewRegistry.shared.getView(childId)
                 if (childView != null) {
                     parentViewGroup.addView(childView)
@@ -604,6 +643,7 @@ class DCMauiBridgeImpl private constructor() {
         try {
             childToParent.clear()
             viewHierarchy.clear()
+            componentInstanceCache.clear()
             Log.d(TAG, "🔥 DCF_ENGINE: DCMauiBridgeImpl cleared successfully")
         } catch (e: Exception) {
             Log.e(TAG, "🔥 DCF_ENGINE: Error clearing DCMauiBridgeImpl", e)

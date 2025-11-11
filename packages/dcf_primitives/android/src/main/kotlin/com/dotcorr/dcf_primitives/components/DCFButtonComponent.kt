@@ -62,13 +62,7 @@ class DCFButtonComponent : DCFComponent() {
         
         Log.d(TAG, "Updating button with props: $props")
         
-        if (hasPropChanged("title", existingProps, props) ||
-            hasPropChanged("disabled", existingProps, props) ||
-            hasPropChanged("textColor", existingProps, props) ||
-            hasPropChanged("primaryColor", existingProps, props) ||
-            hasPropChanged("backgroundColor", existingProps, props)) {
-            updateComposeContent(composeView, props)
-        }
+        updateComposeContent(composeView, props)
         
         composeView.applyStyles(props)
         

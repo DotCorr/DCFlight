@@ -55,11 +55,9 @@ class DCFSpinnerComponent : DCFComponent() {
             hasUpdates = true
         }
 
-        if (hasPropChanged("spinnerColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            ColorUtilities.getColor("spinnerColor", "primaryColor", props)?.let { colorInt ->
-                progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
-                hasUpdates = true
-            }
+        ColorUtilities.getColor("spinnerColor", "primaryColor", props)?.let { colorInt ->
+            progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
+            hasUpdates = true
         }
 
         if (hasPropChanged("size", existingProps, props)) {
