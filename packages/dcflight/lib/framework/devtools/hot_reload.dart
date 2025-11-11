@@ -30,13 +30,13 @@ class HotReloadDetector {
   void initialize() {
     if (!kDebugMode || _isInitialized) return;
     
-    DCFLogger.debug('HOT_RELOAD', 'Initializing hot reload detection system');
+    DCFLogger.debug('Initializing hot reload detection system', 'HOT_RELOAD');
     
     WidgetsBinding.instance.addObserver(_HotReloadObserver(this));
     
     _isInitialized = true;
     
-    DCFLogger.debug('HOT_RELOAD', 'Hot reload detection system initialized with automatic detection');
+    DCFLogger.debug('Hot reload detection system initialized with automatic detection', 'HOT_RELOAD');
   }
 
   /// Cleanup the hot reload detection system
@@ -47,7 +47,7 @@ class HotReloadDetector {
     _monitorTimer = null;
     _isInitialized = false;
     
-    DCFLogger.debug('HOT_RELOAD', 'Hot reload detection system disposed');
+    DCFLogger.debug('Hot reload detection system disposed', 'HOT_RELOAD');
   }
 
   /// Handle hot reload - this is called when actual hot reload occurs
@@ -55,16 +55,16 @@ class HotReloadDetector {
     if (!kDebugMode) return;
     
     print('🔥 DCFlight HotReloadDetector.handleHotReload() called');
-    DCFLogger.debug('HOT_RELOAD', '🔥 REAL Hot reload detected! Triggering VDOM tree re-render...');
+    DCFLogger.debug('🔥 REAL Hot reload detected! Triggering VDOM tree re-render...', 'HOT_RELOAD');
     
     try {
       await Future.delayed(Duration(milliseconds: 50));
       
       await _triggerVDOMHotReload();
       
-      DCFLogger.debug('HOT_RELOAD', '✅ VDOM hot reload completed successfully');
+      DCFLogger.debug('✅ VDOM hot reload completed successfully', 'HOT_RELOAD');
     } catch (e) {
-      DCFLogger.error('HOT_RELOAD', 'Failed to handle hot reload: $e');
+      DCFLogger.error('Failed to handle hot reload: $e', tag: 'HOT_RELOAD');
     }
   }
 

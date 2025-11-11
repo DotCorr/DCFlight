@@ -21,6 +21,7 @@ class HotReloadWatcher {
   String? _selectedDeviceId;
   Process? _iproxyProcess;
   bool _iproxySetup = false; // Track if iproxy has been set up
+  bool _normalShutdown = false; // Track if shutdown was normal (via 'q') or forced (Ctrl+C)
 
   // Terminal styling
   static const String _reset = '\x1B[0m';
@@ -76,6 +77,14 @@ class HotReloadWatcher {
   Future<void> start() async {
     print('🚨 DEBUG: NEW DEVICE SELECTION CODE IS RUNNING!');
 
+    // Setup signal handlers for graceful shutdown
+    ProcessSignal.sigint.watch().listen((_) async {
+      await _handleForcedShutdown();
+    });
+    ProcessSignal.sigterm.watch().listen((_) async {
+      await _handleForcedShutdown();
+    });
+
     // SELECT DEVICE FIRST - before any UI setup
     final deviceId = await _selectDevice();
 
@@ -97,7 +106,32 @@ class HotReloadWatcher {
     // Clean shutdown
     await _watcherSubscription.cancel();
     await _cleanupIproxy();
-    await _printShutdownMessage(exitCode);
+    
+    // Only print shutdown message if it was a normal shutdown
+    if (_normalShutdown) {
+      await _printShutdownMessage(exitCode);
+    }
+  }
+
+  /// Handle forced shutdown (Ctrl+C or kill signal)
+  Future<void> _handleForcedShutdown() async {
+    // Kill Flutter process immediately
+    try {
+      _flutterProcess.kill();
+    } catch (e) {
+      // Process might already be dead
+    }
+    
+    // Cleanup
+    try {
+      await _watcherSubscription.cancel();
+    } catch (e) {
+      // Already cancelled
+    }
+    await _cleanupIproxy();
+    
+    // Exit immediately without printing shutdown message
+    exit(0);
   }
 
   /// Print commands menu
@@ -186,13 +220,22 @@ class HotReloadWatcher {
         args,
         mode: ProcessStartMode.normal,
       );
+      
+      // Ensure stdin is connected and ready
+      _flutterProcess.stdin.done.then((_) {
+        // stdin closed
+      }).catchError((e) {
+        // Ignore stdin errors
+      });
 
       // Handle Flutter stdout (left side of split)
       _flutterProcess.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        _logFlutter('📱', line);
+        if (_shouldShowLog(line)) {
+          _logFlutter('📱', line);
+        }
       });
 
       // Handle Flutter stderr (left side of split)
@@ -200,7 +243,9 @@ class HotReloadWatcher {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
-        _logFlutter('⚠️ ', line, _yellow);
+        if (_shouldShowLog(line)) {
+          _logFlutter('⚠️ ', line, _yellow);
+        }
       });
 
       _logWatcher('✅', 'DCFlight process started successfully', _brightGreen);
@@ -278,9 +323,12 @@ class HotReloadWatcher {
           case 'R':
             _logWatcher('🔄', 'Hot restart triggered by user', _yellow);
             _flutterProcess.stdin.writeln('R');
-            _flutterProcess.stdin.flush();
+            _flutterProcess.stdin.flush().catchError((e) {
+              _logWatcher('❌', 'Failed to send hot restart command: $e', _red);
+            });
             break;
           case 'q':
+            _normalShutdown = true;
             _logWatcher('👋', 'Quit command sent by user', _red);
             _flutterProcess.stdin.writeln('q');
             _flutterProcess.stdin.flush();
@@ -288,11 +336,6 @@ class HotReloadWatcher {
           case 'h':
             _logWatcher('❓', 'Help command sent by user', _cyan);
             _flutterProcess.stdin.writeln('h');
-            _flutterProcess.stdin.flush();
-            break;
-          case 'd':
-            _logWatcher('🔌', 'Detach command sent by user', _yellow);
-            _flutterProcess.stdin.writeln('d');
             _flutterProcess.stdin.flush();
             break;
           case 'c':
@@ -480,20 +523,59 @@ class HotReloadWatcher {
     return deviceId;
   }
 
-  /// Log DCFlight App output (left side)
-  void _logFlutter(String icon, String message, [String color = '']) {
-    final timestamp = _getTimestamp();
-    final splitPosition = _getSplitPosition();
-    final maxMessageLength =
-        splitPosition - icon.length - timestamp.length - 8; // Extra padding
-
-    // Truncate message if too long
-    String displayMessage = message;
-    if (message.length > maxMessageLength && maxMessageLength > 10) {
-      displayMessage = '${message.substring(0, maxMessageLength - 3)}...';
+  /// Check if a log line should be shown.
+  /// 
+  /// Only show:
+  /// - DCFLogger logs (contain "DCFLOG:")
+  /// - Syntax/compilation errors
+  /// - Everything if verbose mode is enabled
+  bool _shouldShowLog(String line) {
+    // If verbose mode, show all logs
+    if (verbose) {
+      return true;
     }
+    
+    final trimmedLine = line.trim();
+    
+    // Show DCFLogger logs (they contain "DCFLOG:" - can be prefixed with I/flutter, etc.)
+    if (trimmedLine.contains('DCFLOG:')) {
+      return true;
+    }
+    
+    // Show syntax/compilation errors
+    if (RegExp(r'\bError:', caseSensitive: false).hasMatch(trimmedLine) ||
+        RegExp(r'\bException:', caseSensitive: false).hasMatch(trimmedLine) ||
+        RegExp(r'^\d+:\d+:\s+error:', caseSensitive: false).hasMatch(trimmedLine)) {
+      return true;
+    }
+    
+    // Block everything else (Android logs, Flutter framework logs, etc.)
+    return false;
+  }
 
-    print('$color  $icon $timestamp $displayMessage$_reset');
+  /// Log DCFlight App output (left side)
+  /// For DCFLOG: lines, strip prefixes and print as-is (logger package already formatted them beautifully)
+  /// For other lines (errors), show them fully without truncation
+  void _logFlutter(String icon, String message, [String color = '']) {
+    final trimmed = message.trim();
+    
+    // If it's a DCFLOG line, strip all prefixes and print as-is
+    if (trimmed.contains('DCFLOG:')) {
+      String displayMessage = trimmed;
+      // Remove Android format: I/flutter (pid): prefix if present
+      displayMessage = displayMessage.replaceFirst(RegExp(r'^[VDIWEF]/flutter\s*\(\d+\):\s*'), '');
+      // Remove iOS format: flutter: prefix if present
+      displayMessage = displayMessage.replaceFirst(RegExp(r'^flutter:\s*'), '');
+      // Remove DCFLOG: prefix
+      displayMessage = displayMessage.replaceFirst(RegExp(r'^DCFLOG:\s*'), '');
+      // Print the formatted output directly - logger package already did the work
+      print(displayMessage);
+      return;
+    }
+    
+    // For syntax errors and other errors, show them fully (don't truncate)
+    final timestamp = _getTimestamp();
+    print('$color  $icon $timestamp $message$_reset');
   }
 
   /// Log watcher output (right side)
