@@ -41,7 +41,7 @@ class MyApp extends DCFStatefulComponent {
         padding: 20,
         flex: 1,
         justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
+        alignItems:isDarkMode.state ? YogaAlign.center : YogaAlign.flexStart,
       ),
       // Using unified theme system with semantic colors
       styleSheet: DCFStyleSheet(
@@ -52,7 +52,7 @@ class MyApp extends DCFStatefulComponent {
           content: "Hello, Test ${name.state}! ${count.state}",
           // Using semantic colors from StyleSheet instead of explicit color prop
           styleSheet: DCFStyleSheet(
-            backgroundColor: DCFColors.green,
+            backgroundColor: DCFColors.amber,
             borderRadius: 20,
             elevation: 10,
             primaryColor:
@@ -88,7 +88,7 @@ class MyApp extends DCFStatefulComponent {
               DCFSegmentItem(title: "Item 2"),
             ],
           ),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.blue),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.red),
           layout: DCFLayout(
             width: 200,
             height: 40,

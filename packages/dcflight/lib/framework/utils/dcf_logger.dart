@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'package:logger/logger.dart' as logger_pkg;
+
 /// Log levels for DCFlight framework
 enum DCFLogLevel {
   /// No logging output
@@ -22,110 +24,145 @@ enum DCFLogLevel {
   /// All messages including debug information
   debug,
   
-  /// Extremely verbose logging (internal development only)
+  /// All messages including verbose information
   verbose,
 }
 
+/// Custom LogOutput that appends DCFLOG marker for CLI detection
+/// The logger package's PrettyPrinter already formats everything beautifully
+/// We just need to mark each line so the CLI can filter it
+class DCFLogOutput extends logger_pkg.LogOutput {
+  @override
+  void output(logger_pkg.OutputEvent event) {
+    // The logger package's PrettyPrinter already handles colors, emojis, formatting
+    for (var line in event.lines) {
+      // Prepend DCFLOG: to each line so CLI can easily detect and show these logs
+      // Use print() which goes to stdout - CLI reads from Flutter process stdout/stderr
+      print('DCFLOG: $line');
+    }
+  }
+}
+
 /// Centralized logging system for DCFlight
+/// Uses the logger package under the hood for beautiful formatting
 class DCFLogger {
-  static DCFLogLevel _currentLevel = DCFLogLevel.warning;
+  static logger_pkg.Logger? _logger;
+  static DCFLogLevel _currentLevel = DCFLogLevel.info;
   static String? _instanceId;
   static String? _projectId;
   
-  /// Set the global log level
-  static void setLevel(DCFLogLevel level) {
-    _currentLevel = level;
-    _log(DCFLogLevel.info, 'DCFLogger', 'Log level set to: ${level.name}');
-  }
-  
-  /// Set instance ID for log isolation
+  /// Set instance ID for log isolation (kept for API compatibility)
   static void setInstanceId(String id) {
     _instanceId = id;
   }
   
-  /// Set project ID for log isolation
+  /// Set project ID for log isolation (kept for API compatibility)
   static void setProjectId(String id) {
     _projectId = id;
+  }
+  
+  /// Get or create the logger instance
+  static logger_pkg.Logger get _instance {
+    _logger ??= logger_pkg.Logger(
+      filter: _DCFLogFilter(),
+      printer: logger_pkg.PrettyPrinter(
+        methodCount: 2,
+        errorMethodCount: 8,
+        lineLength: 120,
+        colors: true,
+        printEmojis: true,
+        dateTimeFormat: logger_pkg.DateTimeFormat.onlyTimeAndSinceStart,
+      ),
+      output: DCFLogOutput(),
+      level: logger_pkg.Level.trace, // Always log everything, our filter handles levels
+    );
+    return _logger!;
+  }
+  
+  /// Set the global log level
+  static void setLevel(DCFLogLevel level) {
+    _currentLevel = level;
+    // Don't log the level change - it creates a circular dependency and the logger might not be ready yet
   }
   
   /// Get the current log level
   static DCFLogLevel get currentLevel => _currentLevel;
   
+  /// Normalize tag to ensure it has DCF prefix for custom tags
+  static String _normalizeTag(String tag) {
+    // Default tag stays as is
+    if (tag == 'DCFlight') {
+      return tag;
+    }
+    // If tag already has DCF: prefix, return as is
+    if (tag.startsWith('DCF:')) {
+      return tag;
+    }
+    // Otherwise, add DCF: prefix for custom tags
+    return 'DCF:$tag';
+  }
+  
   /// Log an error message
   static void error(String message, {Object? error, StackTrace? stackTrace, String tag = 'DCFlight'}) {
-    if (_shouldLog(DCFLogLevel.error)) {
-      _log(DCFLogLevel.error, tag, message);
-      if (error != null) {
-        _log(DCFLogLevel.error, tag, 'Error: $error');
-      }
-      if (stackTrace != null) {
-        _log(DCFLogLevel.error, tag, 'Stack trace:\n$stackTrace');
-      }
-    }
+    final normalizedTag = _normalizeTag(tag);
+    final fullMessage = '[$normalizedTag] $message';
+    _instance.e(fullMessage, error: error, stackTrace: stackTrace);
   }
   
   /// Log a warning message
   static void warning(String message, [String tag = 'DCFlight']) {
-    if (_shouldLog(DCFLogLevel.warning)) {
-      _log(DCFLogLevel.warning, tag, message);
-    }
+    final normalizedTag = _normalizeTag(tag);
+    final fullMessage = '[$normalizedTag] $message';
+    _instance.w(fullMessage);
   }
   
   /// Log an info message
   static void info(String message, [String tag = 'DCFlight']) {
-    if (_shouldLog(DCFLogLevel.info)) {
-      _log(DCFLogLevel.info, tag, message);
-    }
+    final normalizedTag = _normalizeTag(tag);
+    final fullMessage = '[$normalizedTag] $message';
+    _instance.i(fullMessage);
   }
   
   /// Log a debug message
   static void debug(String message, [String tag = 'DCFlight']) {
-    if (_shouldLog(DCFLogLevel.debug)) {
-      _log(DCFLogLevel.debug, tag, message);
-    }
+    final normalizedTag = _normalizeTag(tag);
+    final fullMessage = '[$normalizedTag] $message';
+    _instance.d(fullMessage);
   }
   
   /// Log a verbose message (internal development)
   static void verbose(String message, [String tag = 'DCFlight']) {
-    if (_shouldLog(DCFLogLevel.verbose)) {
-      _log(DCFLogLevel.verbose, tag, message);
-    }
+    final normalizedTag = _normalizeTag(tag);
+    final fullMessage = '[$normalizedTag] $message';
+    _instance.t(fullMessage);
+  }
+}
+
+/// Custom LogFilter that respects DCFLogLevel
+class _DCFLogFilter extends logger_pkg.LogFilter {
+  bool shouldLog(logger_pkg.LogEvent event) {
+    final dcfLevel = _mapLoggerLevelToDCFLevel(event.level);
+    return dcfLevel.index <= DCFLogger._currentLevel.index;
   }
   
-  /// Check if we should log at this level
-  static bool _shouldLog(DCFLogLevel level) {
-    return level.index <= _currentLevel.index;
-  }
-  
-  /// Internal logging implementation
-  static void _log(DCFLogLevel level, String tag, String message) {
-    final timestamp = DateTime.now().toIso8601String();
-    final levelIcon = _getLevelIcon(level);
-    final levelName = level.name.toUpperCase().padRight(7);
-    
-    final identifiers = <String>[];
-    if (_projectId != null) identifiers.add('P:$_projectId');
-    if (_instanceId != null) identifiers.add('I:$_instanceId');
-    final idString = identifiers.isNotEmpty ? '[${identifiers.join('|')}]' : '';
-    
-    print('[$timestamp]$idString $levelIcon $levelName $tag: $message');
-  }
-  
-  /// Get emoji icon for log level
-  static String _getLevelIcon(DCFLogLevel level) {
+  DCFLogLevel _mapLoggerLevelToDCFLevel(logger_pkg.Level level) {
     switch (level) {
-      case DCFLogLevel.none:
-        return '🔇';
-      case DCFLogLevel.error:
-        return '❌';
-      case DCFLogLevel.warning:
-        return '⚠️';
-      case DCFLogLevel.info:
-        return '✅';
-      case DCFLogLevel.debug:
-        return '🐛';
-      case DCFLogLevel.verbose:
-        return '🔍';
+      case logger_pkg.Level.trace:
+        return DCFLogLevel.verbose;
+      case logger_pkg.Level.debug:
+        return DCFLogLevel.debug;
+      case logger_pkg.Level.info:
+        return DCFLogLevel.info;
+      case logger_pkg.Level.warning:
+        return DCFLogLevel.warning;
+      case logger_pkg.Level.error:
+        return DCFLogLevel.error;
+      case logger_pkg.Level.fatal:
+        return DCFLogLevel.error;
+      case logger_pkg.Level.nothing:
+        return DCFLogLevel.none;
+      default:
+        return DCFLogLevel.none;
     }
   }
 }
@@ -220,4 +257,3 @@ class DCFLoggerTags {
     }
   }
 }
-

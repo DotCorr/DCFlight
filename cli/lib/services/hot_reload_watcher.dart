@@ -220,6 +220,13 @@ class HotReloadWatcher {
         args,
         mode: ProcessStartMode.normal,
       );
+      
+      // Ensure stdin is connected and ready
+      _flutterProcess.stdin.done.then((_) {
+        // stdin closed
+      }).catchError((e) {
+        // Ignore stdin errors
+      });
 
       // Handle Flutter stdout (left side of split)
       _flutterProcess.stdout
@@ -316,7 +323,9 @@ class HotReloadWatcher {
           case 'R':
             _logWatcher('🔄', 'Hot restart triggered by user', _yellow);
             _flutterProcess.stdin.writeln('R');
-            _flutterProcess.stdin.flush();
+            _flutterProcess.stdin.flush().catchError((e) {
+              _logWatcher('❌', 'Failed to send hot restart command: $e', _red);
+            });
             break;
           case 'q':
             _normalShutdown = true;
@@ -516,11 +525,10 @@ class HotReloadWatcher {
 
   /// Check if a log line should be shown.
   /// 
-  /// Only shows DCFLogger formatted logs unless verbose mode is enabled.
-  /// DCFLogger format: [$timestamp]$idString $levelIcon $levelName $tag: $message
-  /// Supports:
-  /// - Default tag: "DCFlight: message"
-  /// - Custom tags: "DCF:TagName message"
+  /// Only show:
+  /// - DCFLogger logs (contain "DCFLOG:")
+  /// - Syntax/compilation errors
+  /// - Everything if verbose mode is enabled
   bool _shouldShowLog(String line) {
     // If verbose mode, show all logs
     if (verbose) {
@@ -529,42 +537,45 @@ class HotReloadWatcher {
     
     final trimmedLine = line.trim();
     
-    // Must start with timestamp pattern [YYYY-MM-DDTHH:MM:SS
-    if (!trimmedLine.startsWith('[') || !trimmedLine.contains('T')) {
-      return false;
-    }
-    
-    // Check if it contains level names (ERROR, WARNING, INFO, DEBUG, VERBOSE)
-    final hasLevel = RegExp(r'\b(ERROR|WARNING|INFO|DEBUG|VERBOSE)\s+').hasMatch(trimmedLine);
-    if (!hasLevel) {
-      return false;
-    }
-    
-    // Check for DCFLogger tag patterns:
-    // 1. Default tag: "DCFlight: message"
-    // 2. Custom tags: "DCF:TagName message" (DCF: followed by tag name, then space, then message)
-    if (trimmedLine.contains('DCFlight: ') || RegExp(r'DCF:\w+\s+').hasMatch(trimmedLine)) {
+    // Show DCFLogger logs (they contain "DCFLOG:" - can be prefixed with I/flutter, etc.)
+    if (trimmedLine.contains('DCFLOG:')) {
       return true;
     }
     
-    // Block all other Flutter/Dart framework logs
+    // Show syntax/compilation errors
+    if (RegExp(r'\bError:', caseSensitive: false).hasMatch(trimmedLine) ||
+        RegExp(r'\bException:', caseSensitive: false).hasMatch(trimmedLine) ||
+        RegExp(r'^\d+:\d+:\s+error:', caseSensitive: false).hasMatch(trimmedLine)) {
+      return true;
+    }
+    
+    // Block everything else (Android logs, Flutter framework logs, etc.)
     return false;
   }
 
   /// Log DCFlight App output (left side)
+  /// For DCFLOG: lines, strip prefixes and print as-is (logger package already formatted them beautifully)
+  /// For other lines (errors), show them fully without truncation
   void _logFlutter(String icon, String message, [String color = '']) {
-    final timestamp = _getTimestamp();
-    final splitPosition = _getSplitPosition();
-    final maxMessageLength =
-        splitPosition - icon.length - timestamp.length - 8; // Extra padding
-
-    // Truncate message if too long
-    String displayMessage = message;
-    if (message.length > maxMessageLength && maxMessageLength > 10) {
-      displayMessage = '${message.substring(0, maxMessageLength - 3)}...';
+    final trimmed = message.trim();
+    
+    // If it's a DCFLOG line, strip all prefixes and print as-is
+    if (trimmed.contains('DCFLOG:')) {
+      String displayMessage = trimmed;
+      // Remove Android format: I/flutter (pid): prefix if present
+      displayMessage = displayMessage.replaceFirst(RegExp(r'^[VDIWEF]/flutter\s*\(\d+\):\s*'), '');
+      // Remove iOS format: flutter: prefix if present
+      displayMessage = displayMessage.replaceFirst(RegExp(r'^flutter:\s*'), '');
+      // Remove DCFLOG: prefix
+      displayMessage = displayMessage.replaceFirst(RegExp(r'^DCFLOG:\s*'), '');
+      // Print the formatted output directly - logger package already did the work
+      print(displayMessage);
+      return;
     }
-
-    print('$color  $icon $timestamp $displayMessage$_reset');
+    
+    // For syntax errors and other errors, show them fully (don't truncate)
+    final timestamp = _getTimestamp();
+    print('$color  $icon $timestamp $message$_reset');
   }
 
   /// Log watcher output (right side)
