@@ -69,15 +69,12 @@ class DCFTextComponent : DCFComponent() {
         val textView = view as? TextView ?: return false
         var needsLayout = false
 
-        // Update text content - use setText with BufferType to avoid requestLayout
-        if (hasPropChanged("content", existingProps, props)) {
-            props["content"]?.let { content ->
-                val newText = content.toString()
-                if (textView.text.toString() != newText) {
-                    // Use setText with BufferType.NORMAL to avoid triggering requestLayout
-                    textView.setText(newText, TextView.BufferType.NORMAL)
-                    Log.d(TAG, "Set text content: $newText")
-                }
+        props["content"]?.let { content ->
+            val newText = content.toString()
+            val currentText = textView.text.toString()
+            if (currentText != newText) {
+                textView.setText(newText, TextView.BufferType.NORMAL)
+                Log.d(TAG, "Set text content: $newText (was: $currentText)")
             }
         }
 
@@ -165,16 +162,12 @@ class DCFTextComponent : DCFComponent() {
             }
         }
 
-        // Apply styles (framework handles layout vs style separation)
         textView.applyStyles(props)
         
-        // Update text color
-        if (hasPropChanged("textColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
-                if (textView.currentTextColor != colorInt) {
-                    textView.setTextColor(colorInt)
-                    Log.d(TAG, "Updated text color: ${ColorUtilities.hexString(colorInt)}")
-                }
+        ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
+            if (textView.currentTextColor != colorInt) {
+                textView.setTextColor(colorInt)
+                Log.d(TAG, "Updated text color: ${ColorUtilities.hexString(colorInt)}")
             }
         }
 
