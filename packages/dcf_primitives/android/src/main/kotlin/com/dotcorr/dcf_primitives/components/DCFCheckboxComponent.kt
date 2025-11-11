@@ -102,16 +102,18 @@ class DCFCheckboxComponent : DCFComponent() {
             ?: props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
         
         if (activeColor != null && inactiveColor != null) {
-                val states = arrayOf(
-                    intArrayOf(android.R.attr.state_checked),
-                    intArrayOf(-android.R.attr.state_checked)
-                )
-                checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
-            }
-            
-            checkmarkColor?.let {
-                checkBox.setTextColor(it)
-            }
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf(-android.R.attr.state_checked)
+            )
+            checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
+        }
+        
+        checkmarkColor?.let {
+            checkBox.setTextColor(it)
+        }
+        
+        if (activeColor != null || inactiveColor != null || checkmarkColor != null) {
             hasUpdates = true
         }
 
