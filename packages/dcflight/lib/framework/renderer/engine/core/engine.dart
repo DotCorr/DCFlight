@@ -2784,7 +2784,9 @@ class DCFEngine {
     EngineDebugLogger.log('RECONCILE_KEYED_MAP', 'Created old children map',
         extra: {'KeyCount': oldChildrenMap.length});
 
-    final updatedChildIds = <String>[];
+    // CRITICAL: Pre-allocate updatedChildIds to match newChildren length
+    // This ensures we maintain the correct order even if some children fail reconciliation
+    final updatedChildIds = List<String?>.filled(newChildren.length, null);
     final processedOldChildren = <DCFComponentNode>{};
     bool hasStructuralChanges = false;
 
@@ -2822,8 +2824,9 @@ class DCFEngine {
             parentViewId: parentViewId, index: i);
       }
 
-      if (childViewId != null) {
-        updatedChildIds.add(childViewId);
+      // CRITICAL: Store viewId at the correct index to maintain order
+      if (childViewId != null && childViewId.isNotEmpty) {
+        updatedChildIds[i] = childViewId;
       }
     }
 
@@ -2852,12 +2855,37 @@ class DCFEngine {
       }
     }
 
-    if (hasStructuralChanges && updatedChildIds.isNotEmpty) {
+    // CRITICAL: Filter out null values and ensure order matches newChildren
+    final validChildIds = <String>[];
+    final missingIndices = <int>[];
+    for (int i = 0; i < updatedChildIds.length; i++) {
+      if (updatedChildIds[i] != null && updatedChildIds[i]!.isNotEmpty) {
+        validChildIds.add(updatedChildIds[i]!);
+      } else {
+        missingIndices.add(i);
+      }
+    }
+    
+    // CRITICAL: Only call setChildren if we have all view IDs
+    // Missing view IDs would cause incorrect order
+    final hasAllViewIds = validChildIds.length == newChildren.length && validChildIds.isNotEmpty;
+    
+    if (hasStructuralChanges && hasAllViewIds) {
       EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
-        'ChildIds': updatedChildIds,
-        'ChildCount': updatedChildIds.length
+        'ChildIds': validChildIds,
+        'ChildCount': validChildIds.length,
+        'ExpectedCount': newChildren.length
       });
-      await _nativeBridge.setChildren(parentViewId, updatedChildIds);
+      await _nativeBridge.setChildren(parentViewId, validChildIds);
+    } else if (hasStructuralChanges && !hasAllViewIds) {
+      EngineDebugLogger.log('RECONCILE_KEYED_SET_CHILDREN_SKIPPED',
+          '⚠️ CRITICAL: Skipping setChildren - missing view IDs (would cause order corruption)',
+          extra: {
+            'ExpectedCount': newChildren.length,
+            'ActualCount': validChildIds.length,
+            'MissingIndices': missingIndices,
+            'HasStructuralChanges': hasStructuralChanges
+          });
     }
 
     EngineDebugLogger.log(
@@ -2881,7 +2909,9 @@ class DCFEngine {
           'NewCount': newChildren.length
         });
 
-    final updatedChildIds = <String>[];
+    // CRITICAL: Pre-allocate updatedChildIds to match newChildren length
+    // This ensures we maintain the correct order even if some children fail reconciliation
+    final updatedChildIds = List<String?>.filled(newChildren.length, null);
     final commonLength = math.min(oldChildren.length, newChildren.length);
     bool hasStructuralChanges = false;
     bool hasReplacements = false;
@@ -3078,10 +3108,12 @@ class DCFEngine {
         }
       }
 
+      // CRITICAL: Store viewId at the correct index to maintain order
+      // This ensures updatedChildIds[i] corresponds to newChildren[i]
       if (childViewId != null && childViewId.isNotEmpty) {
-        updatedChildIds.add(childViewId);
+        updatedChildIds[i] = childViewId;
         EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
-            'Added view ID to updatedChildIds',
+            'Added view ID to updatedChildIds at index $i',
             extra: {'ViewId': childViewId, 'Index': i, 'TotalCount': updatedChildIds.length});
       } else {
         // CRITICAL: If we still don't have a view ID, we MUST NOT call setChildren
@@ -3114,7 +3146,7 @@ class DCFEngine {
             parentViewId: parentViewId, index: i);
 
         if (childViewId != null) {
-          updatedChildIds.add(childViewId);
+          updatedChildIds[i] = childViewId;
         }
       }
     } else if (oldChildren.length > newChildren.length) {
@@ -3144,15 +3176,26 @@ class DCFEngine {
       }
     }
 
-    // Only call setChildren if we have all the view IDs we need
+    // CRITICAL: Filter out null values and ensure order matches newChildren
+    // This ensures updatedChildIds[i] corresponds to newChildren[i]
+    final validChildIds = <String>[];
+    final missingIndices = <int>[];
+    for (int i = 0; i < updatedChildIds.length; i++) {
+      if (updatedChildIds[i] != null && updatedChildIds[i]!.isNotEmpty) {
+        validChildIds.add(updatedChildIds[i]!);
+      } else {
+        missingIndices.add(i);
+      }
+    }
+    
     final expectedCount = newChildren.length;
-    final actualCount = updatedChildIds.length;
+    final actualCount = validChildIds.length;
     final hasAdditionsOrRemovals = newChildren.length != oldChildren.length;
     
     // CRITICAL: Never call setChildren if we're missing view IDs
     // setChildren does removeAllViews() which will remove views that aren't in the list
     // This would cause views to disappear permanently
-    final hasAllViewIds = actualCount == expectedCount && updatedChildIds.isNotEmpty;
+    final hasAllViewIds = actualCount == expectedCount && validChildIds.isNotEmpty;
     
     if (!hasAllViewIds) {
       EngineDebugLogger.log('RECONCILE_SIMPLE_SET_CHILDREN_SKIPPED',
@@ -3161,7 +3204,8 @@ class DCFEngine {
             'ExpectedCount': expectedCount,
             'ActualCount': actualCount,
             'MissingCount': expectedCount - actualCount,
-            'UpdatedChildIds': updatedChildIds,
+            'MissingIndices': missingIndices,
+            'ValidChildIds': validChildIds,
             'HasStructuralChanges': hasStructuralChanges,
             'HasReplacements': hasReplacements,
             'ReplacementCount': replacementCount,
@@ -3169,26 +3213,26 @@ class DCFEngine {
             'Warning': 'setChildren would call removeAllViews() and lose views without IDs'
           });
     } else {
-      // Only call setChildren if:
-      // 1. There are structural changes (additions/removals), OR
-      // 2. There are replacements (to ensure correct order after replacement)
+      // CRITICAL: Always call setChildren when there are replacements to ensure correct order
+      // Even if there are no structural changes, replacements can change the order
+      // Also call it when there are structural changes (additions/removals)
       if (hasStructuralChanges || hasReplacements) {
         EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
-          'ChildIds': updatedChildIds,
-          'ChildCount': updatedChildIds.length,
+          'ChildIds': validChildIds,
+          'ChildCount': validChildIds.length,
           'ExpectedCount': expectedCount,
           'HasReplacements': hasReplacements,
           'ReplacementCount': replacementCount,
           'HasAdditionsOrRemovals': hasAdditionsOrRemovals,
           'Reason': hasStructuralChanges ? 'Structural changes' : 'Replacements only - ensuring correct order'
         });
-        await _nativeBridge.setChildren(parentViewId, updatedChildIds);
+        await _nativeBridge.setChildren(parentViewId, validChildIds);
       } else {
         EngineDebugLogger.log('RECONCILE_SIMPLE_SET_CHILDREN_SKIPPED',
             'Skipping setChildren - no structural changes or replacements',
             extra: {
               'ParentViewId': parentViewId,
-              'ChildCount': updatedChildIds.length
+              'ChildCount': validChildIds.length
             });
       }
     }
@@ -3197,8 +3241,10 @@ class DCFEngine {
         'RECONCILE_SIMPLE_COMPLETE', 'Simple children reconciliation completed',
         extra: {
           'StructuralChanges': hasStructuralChanges,
-          'FinalChildCount': updatedChildIds.length,
-          'ExpectedCount': expectedCount
+          'HasReplacements': hasReplacements,
+          'FinalChildCount': validChildIds.length,
+          'ExpectedCount': expectedCount,
+          'AllViewIdsPresent': hasAllViewIds
         });
   }
 
