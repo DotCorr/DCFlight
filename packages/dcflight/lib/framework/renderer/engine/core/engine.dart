@@ -2870,6 +2870,13 @@ class DCFEngine {
     // Missing view IDs would cause incorrect order
     final hasAllViewIds = validChildIds.length == newChildren.length && validChildIds.isNotEmpty;
     
+    // PRODUCTION SAFEGUARD: Runtime assertion to catch any edge cases in development
+    // This assertion is automatically disabled in release mode
+    assert(
+      validChildIds.length == newChildren.length,
+      'RECONCILE_KEYED: Child order mismatch - expected ${newChildren.length} children, got ${validChildIds.length}. Missing indices: $missingIndices',
+    );
+    
     if (hasStructuralChanges && hasAllViewIds) {
       EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
         'ChildIds': validChildIds,
@@ -3196,6 +3203,13 @@ class DCFEngine {
     // setChildren does removeAllViews() which will remove views that aren't in the list
     // This would cause views to disappear permanently
     final hasAllViewIds = actualCount == expectedCount && validChildIds.isNotEmpty;
+    
+    // PRODUCTION SAFEGUARD: Runtime assertion to catch any edge cases in development
+    // This assertion is automatically disabled in release mode
+    assert(
+      validChildIds.length == newChildren.length,
+      'RECONCILE_SIMPLE: Child order mismatch - expected ${newChildren.length} children, got ${validChildIds.length}. Missing indices: $missingIndices',
+    );
     
     if (!hasAllViewIds) {
       EngineDebugLogger.log('RECONCILE_SIMPLE_SET_CHILDREN_SKIPPED',
