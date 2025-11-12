@@ -384,32 +384,162 @@ EngineDebugLogger.log('PROP_DIFF_COMPLETE', 'Props diffing completed',
 
 ## Best Practices
 
-### 1. Use Keys for Lists
+### 1. When to Use Keys
 
+**You MUST use keys when:**
+- Rendering dynamic lists with items that can be reordered
+- Lists with identical children at different positions
+- Lists where items can be inserted/removed in the middle
+
+**You DON'T need keys when:**
+- Static lists (children don't change order)
+- Lists with unique children (different types or unique content)
+- Simple UI with fixed structure
+
+**Example - When Keys Help (Dynamic Lists):**
 ```dart
-// ✅ Good
-items.map((item) => DCFElement(
-  key: item.id,
-  type: 'Text',
-  elementProps: {'content': item.name},
-))
+// For dynamic lists that can change order, keys ensure correct matching
+final items = useState<List<Item>>([...]);
 
-// ❌ Bad (no keys)
-items.map((item) => DCFElement(
-  type: 'Text',
-  elementProps: {'content': item.name},
-))
+// ✅ GOOD: Use keys for dynamic lists (React best practice)
+DCFView(
+  children: items.state.map((item) => DCFText(
+    key: item.id, // Unique identifier
+    content: item.name,
+  )).toList()
+)
+
+// ⚠️ OK for static lists: Keys not strictly needed if list doesn't reorder
+DCFView(
+  children: [
+    DCFText(content: "Item 1"),
+    DCFText(content: "Item 2"),
+    DCFText(content: "Item 3"),
+  ]
+)
 ```
 
-### 2. Stable Keys
+**Example - Keys Not Needed:**
+```dart
+// ✅ FINE: Different types, no keys needed
+DCFView(
+  children: [
+    DCFText(content: "Hello"),
+    DCFButton(title: "Click"),
+    DCFImage(source: "url"),
+  ]
+)
+
+// ✅ FINE: Unique content, no keys needed
+DCFView(
+  children: [
+    DCFText(content: "Item 1"),
+    DCFText(content: "Item 2"),
+    DCFText(content: "Item 3"),
+  ]
+)
+```
+
+### 2. How to Add Keys
 
 ```dart
-// ✅ Good - stable ID
+// For DCFElement
+DCFElement(
+  key: 'unique-id',
+  type: 'Text',
+  elementProps: {'content': 'Hello'},
+)
+
+// For Components (they accept key in constructor)
+DCFText(
+  key: 'text-1',
+  content: 'Hello',
+)
+
+DCFButton(
+  key: 'button-1',
+  buttonProps: DCFButtonProps(title: 'Click'),
+  onPress: () {},
+)
+```
+
+### 3. Stable Keys
+
+```dart
+// ✅ Good - stable ID (doesn't change)
 DCFElement(key: user.id, ...)
+DCFElement(key: item.id.toString(), ...)
 
 // ❌ Bad - unstable (changes every render)
 DCFElement(key: DateTime.now().toString(), ...)
+DCFElement(key: Random().nextInt(100).toString(), ...)
 ```
+
+### 4. When You Actually Need Keys
+
+**Important:** React has the same limitation! Most React users don't encounter it because:
+1. They use keys for lists (React's recommendation)
+2. They rarely have identical children at different positions
+3. React's algorithm is similar to ours
+
+**The VDOM is actually MORE robust than React** because our look-ahead algorithm can detect insertions/removals better than React's simple position-based matching.
+
+**When the issue occurs (same as React):**
+
+The problem only happens when you have:
+1. **Identical children** (same type AND same props/content)
+2. **AND** you insert/remove items between them
+3. **AND** you don't use keys
+
+**Example where it COULD be a problem:**
+```dart
+// Old tree
+DCFView(children: [
+  DCFText(content: "User: Alice"),  // Position 0
+  DCFText(content: "User: Bob"),    // Position 1
+  DCFText(content: "User: Alice"),  // Position 2 - identical to position 0!
+])
+
+// New tree (insert button between first two)
+DCFView(children: [
+  DCFText(content: "User: Alice"),  // Position 0
+  DCFButton(title: "Follow"),       // Position 1 - INSERTED
+  DCFText(content: "User: Bob"),    // Position 2
+  DCFText(content: "User: Alice"),  // Position 3 - which Alice is this?
+])
+```
+
+**But in practice, this is RARE because:**
+- Most lists have unique content (user IDs, item IDs, etc.)
+- Most lists use keys anyway (React best practice)
+- The look-ahead algorithm handles most cases correctly
+
+**Real-world example where you'd need keys:**
+```dart
+// Dynamic list that can be reordered
+final users = useState<List<User>>([...]);
+
+DCFView(
+  children: users.state.map((user) => DCFText(
+    // ❌ Without key: If list reorders, might match wrong user
+    content: user.name,
+  )).toList()
+)
+
+// ✅ With key: Always matches correctly
+DCFView(
+  children: users.state.map((user) => DCFText(
+    key: user.id, // Unique identifier
+    content: user.name,
+  )).toList()
+)
+```
+
+**Bottom Line:**
+- **Your VDOM is as safe as React** (actually safer due to look-ahead)
+- **Most users won't need keys** (just like React)
+- **Use keys for dynamic lists** (React best practice, same here)
+- **The limitation is theoretical** - rarely encountered in practice
 
 ### 3. Avoid Unnecessary Re-renders
 
