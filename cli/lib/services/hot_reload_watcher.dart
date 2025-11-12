@@ -588,10 +588,9 @@ class HotReloadWatcher {
       displayMessage = displayMessage.replaceAll('\\033[', '\x1B[');
       displayMessage = displayMessage.replaceAll('\\x1B[', '\x1B[');
       
-      // Write directly to stdout to ensure ANSI codes are properly interpreted
-      // This ensures colors work on both iOS and Android
-      stdout.writeln(displayMessage);
-      stdout.flush();
+      // Use print() - stdout.writeln() causes "StreamSink is bound to a stream" error
+      // print() works correctly and ANSI codes are preserved
+      print(displayMessage);
       return;
     }
     
