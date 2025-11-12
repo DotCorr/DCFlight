@@ -3103,89 +3103,171 @@ class DCFEngine {
     // CRITICAL: Pre-allocate updatedChildIds to match newChildren length
     // This ensures we maintain the correct order even if some children fail reconciliation
     final updatedChildIds = List<String?>.filled(newChildren.length, null);
-    final commonLength = math.min(oldChildren.length, newChildren.length);
     bool hasStructuralChanges = false;
     bool hasReplacements = false;
     int replacementCount = 0;
 
-    for (int i = 0; i < commonLength; i++) {
-      final oldChild = oldChildren[i];
-      final newChild = newChildren[i];
-
+    // CRITICAL: Use smart matching to detect insertions vs replacements
+    // This prevents incorrect matching when children are added in the middle
+    int oldIndex = 0;
+    int newIndex = 0;
+    final processedOldIndices = <int>{};
+    
+    while (oldIndex < oldChildren.length && newIndex < newChildren.length) {
+      final oldChild = oldChildren[oldIndex];
+      final newChild = newChildren[newIndex];
+      
+      // Check if current positions match
+      final positionsMatch = !_shouldReplaceAtSamePosition(oldChild, newChild);
+      
+      // Check if next new child matches current old child (indicates insertion)
+      final isInsertion = newIndex + 1 < newChildren.length &&
+          oldIndex < oldChildren.length &&
+          !_shouldReplaceAtSamePosition(oldChild, newChildren[newIndex + 1]);
+      
+      // Check if current new child matches next old child (indicates removal)
+      final isRemoval = oldIndex + 1 < oldChildren.length &&
+          newIndex < newChildren.length &&
+          !_shouldReplaceAtSamePosition(oldChildren[oldIndex + 1], newChild);
+      
       EngineDebugLogger.log(
-          'RECONCILE_SIMPLE_UPDATE', 'Updating child at index $i');
-
-      // Track component instance by position for automatic key inference
-      final childPositionKey = "$parentViewId:$i:${newChild.runtimeType}";
-      final childPropsHash = _computePropsHash(newChild);
-      final childPropsKey = "$childPositionKey:$childPropsHash";
-      _componentInstancesByPosition[childPositionKey] = newChild;
-      _componentInstancesByProps[childPropsKey] = newChild;
+          'RECONCILE_SIMPLE_UPDATE', 'Processing children',
+          extra: {
+            'OldIndex': oldIndex,
+            'NewIndex': newIndex,
+            'PositionsMatch': positionsMatch,
+            'IsInsertion': isInsertion,
+            'IsRemoval': isRemoval
+          });
 
       String? childViewId;
-      if (_shouldReplaceAtSamePosition(oldChild, newChild)) {
+      bool wasInsertion = false;
+      
+      if (isInsertion && !positionsMatch) {
+        // New child is inserted - create it
+        wasInsertion = true;
+        hasStructuralChanges = true;
+        EngineDebugLogger.log('RECONCILE_SIMPLE_INSERT',
+            'Inserting new child at index $newIndex',
+            extra: {'NewType': newChild.runtimeType.toString()});
+        
+        childViewId = await renderToNative(newChild,
+            parentViewId: parentViewId, index: newIndex);
+        
+        if (childViewId != null && childViewId.isNotEmpty) {
+          updatedChildIds[newIndex] = childViewId;
+          EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
+              'Added view ID to updatedChildIds at index $newIndex',
+              extra: {'ViewId': childViewId, 'Index': newIndex});
+        }
+        
+        newIndex++; // Move to next new child, keep old index
+        continue;
+      } else if (isRemoval && !positionsMatch) {
+        // Old child is removed - unmount it
+        hasStructuralChanges = true;
+        EngineDebugLogger.log('RECONCILE_SIMPLE_REMOVE',
+            'Removing old child at index $oldIndex',
+            extra: {'OldType': oldChild.runtimeType.toString()});
+        
+        try {
+          oldChild.componentWillUnmount();
+        } catch (e) {
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
+              'Error in componentWillUnmount', extra: {'Error': e.toString()});
+        }
+        
+        final viewId = oldChild.effectiveNativeViewId;
+        if (viewId != null) {
+          EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
+          await _nativeBridge.deleteView(viewId);
+          _nodesByViewId.remove(viewId);
+        }
+        
+        oldIndex++; // Move to next old child, keep new index
+        continue;
+      } else if (positionsMatch) {
+        // Positions match - reconcile
+        // Track component instance by position for automatic key inference
+        final childPositionKey = "$parentViewId:$newIndex:${newChild.runtimeType}";
+        final childPropsHash = _computePropsHash(newChild);
+        final childPropsKey = "$childPositionKey:$childPropsHash";
+        _componentInstancesByPosition[childPositionKey] = newChild;
+        _componentInstancesByProps[childPropsKey] = newChild;
+        
+        await _reconcile(oldChild, newChild);
+        childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
+        
+        // CRITICAL: After reconciling each child, IMMEDIATELY ensure the mapping points to newChild
+        if (childViewId != null && childViewId.isNotEmpty) {
+          final mappedNode = _nodesByViewId[childViewId];
+          
+          if (newChild is DCFElement) {
+            if (mappedNode != newChild) {
+              _nodesByViewId[childViewId] = newChild;
+              EngineDebugLogger.log('RECONCILE_CHILD_FIX_MAPPING',
+                  '⚠️ Fixed mapping to point to new child element',
+                  extra: {
+                    'ViewId': childViewId,
+                    'ChildType': newChild.type,
+                    'HasOnPress': newChild.elementProps.containsKey('onPress'),
+                  });
+            }
+          } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+            final renderedElement = newChild.renderedNode;
+            if (renderedElement is DCFElement) {
+              final renderedViewId = renderedElement.nativeViewId;
+              if (renderedViewId != null && renderedViewId.isNotEmpty) {
+                final renderedMappedNode = _nodesByViewId[renderedViewId];
+                if (renderedMappedNode != renderedElement) {
+                  _nodesByViewId[renderedViewId] = renderedElement;
+                }
+              }
+            }
+          }
+        }
+        
+        processedOldIndices.add(oldIndex);
+        oldIndex++;
+        newIndex++;
+      } else {
+        // Types don't match and it's not an insertion/removal - replace
         hasReplacements = true;
         replacementCount++;
         EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE',
-            'Replacing child at index $i due to conditional rendering pattern',
+            'Replacing child at index $newIndex',
             extra: {
               'OldType': oldChild.runtimeType.toString(),
               'NewType': newChild.runtimeType.toString(),
-              'OldViewId': oldChild.effectiveNativeViewId
             });
         
-        // Store the old view ID as fallback
         final oldViewId = oldChild.effectiveNativeViewId;
-        
         await _replaceNode(oldChild, newChild);
-        
-        // After replace, get the view ID from the new node
         childViewId = newChild.effectiveNativeViewId;
         
-        // Triple-check: try multiple fallback strategies to get the view ID
+        // Fallback strategies for view ID (same as before)
         if (childViewId == null || childViewId.isEmpty) {
-          // Strategy 1: Check rendered node for components
           if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
             final renderedNode = newChild.renderedNode;
             if (renderedNode is DCFElement) {
               childViewId = renderedNode.nativeViewId;
               if (childViewId != null && childViewId.isNotEmpty) {
                 newChild.contentViewId = childViewId;
-                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID_RENDERED',
-                    'Fixed missing view ID from rendered node',
-                    extra: {'ViewId': childViewId, 'Index': i});
-              }
-            } else if (renderedNode != null && (renderedNode is DCFStatefulComponent || renderedNode is DCFStatelessComponent)) {
-              // For nested components, check their contentViewId
-              childViewId = renderedNode.contentViewId;
-              if (childViewId != null && childViewId.isNotEmpty) {
-                newChild.contentViewId = childViewId;
-                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID_NESTED',
-                    'Fixed missing view ID from nested component',
-                    extra: {'ViewId': childViewId, 'Index': i});
               }
             }
           }
           
-          // Strategy 2: Check _nodesByViewId for the new node (in case it was registered)
           if ((childViewId == null || childViewId.isEmpty) && newChild is DCFElement) {
-            // Try to find the view ID by looking up the node in the registry
             for (final entry in _nodesByViewId.entries) {
               if (entry.value == newChild) {
                 childViewId = entry.key;
                 newChild.nativeViewId = childViewId;
-                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID_REGISTRY',
-                    'Fixed missing view ID from registry lookup',
-                    extra: {'ViewId': childViewId, 'Index': i});
                 break;
               }
             }
           }
           
-          // Strategy 3: If still null and we have an old view ID, use it as last resort
-          // This should only happen if the view was reused (not replaced)
           if ((childViewId == null || childViewId.isEmpty) && oldViewId != null && oldViewId.isNotEmpty) {
-            // Check if the old view ID still exists in the registry
             if (_nodesByViewId.containsKey(oldViewId)) {
               final registeredNode = _nodesByViewId[oldViewId];
               if (registeredNode == newChild || 
@@ -3197,175 +3279,80 @@ class DCFEngine {
                 } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
                   newChild.contentViewId = childViewId;
                 }
-                EngineDebugLogger.log('RECONCILE_SIMPLE_FIXED_VIEW_ID_REUSED',
-                    'Using old view ID as fallback (view was reused)',
-                    extra: {'ViewId': childViewId, 'Index': i});
               }
             }
           }
         }
         
-        EngineDebugLogger.log('RECONCILE_SIMPLE_AFTER_REPLACE',
-            'After replace, checking view ID',
-            extra: {
-              'NewViewId': childViewId,
-              'EffectiveViewId': newChild.effectiveNativeViewId,
-              'ContentViewId': (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) 
-                  ? newChild.contentViewId 
-                  : null,
-              'NativeViewId': (newChild is DCFElement) 
-                  ? newChild.nativeViewId 
-                  : null,
-              'OldViewId': oldViewId
-            });
-      } else {
-        await _reconcile(oldChild, newChild);
-        // After reconcile, prefer new node's view ID, fallback to old
-        childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
-        
-        // CRITICAL: After reconciling each child, IMMEDIATELY ensure the mapping points to newChild
-        // This is especially important when parent components (like SafeArea) re-render
-        // and create new child instances. The _reconcile call should have already
-        // updated the mapping via _reconcileElement, but we verify and fix it here as a safeguard
-        if (childViewId != null && childViewId.isNotEmpty) {
-          final mappedNode = _nodesByViewId[childViewId];
-          
-          // If the mapping doesn't point to newChild (or its rendered element), fix it IMMEDIATELY
-          if (newChild is DCFElement) {
-            if (mappedNode != newChild) {
-              // Update mapping to point to newChild which has the latest handlers
-              _nodesByViewId[childViewId] = newChild;
-              EngineDebugLogger.log('RECONCILE_CHILD_FIX_MAPPING',
-                  '⚠️ Fixed mapping to point to new child element (immediate fix)',
-                  extra: {
-                    'ViewId': childViewId,
-                    'ChildType': newChild.type,
-                    'HasOnPress': newChild.elementProps.containsKey('onPress'),
-                    'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null',
-                    'OldMappedHasOnPress': (mappedNode is DCFElement) ? mappedNode.elementProps.containsKey('onPress') : false
-                  });
-            } else {
-              // Verify the mapped element actually has the handlers
-              if (newChild.type == 'Button' && !newChild.elementProps.containsKey('onPress')) {
-                EngineDebugLogger.log('RECONCILE_CHILD_NO_HANDLERS_IMMEDIATE',
-                    '⚠️ Button child has no onPress handler after reconciliation!',
-                    extra: {
-                      'ViewId': childViewId,
-                      'ElementProps': newChild.elementProps.keys.toList()
-                    });
-              }
-            }
-          } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
-            // For components, ensure the mapping points to the rendered element
-            final renderedElement = newChild.renderedNode;
-            if (renderedElement is DCFElement) {
-              final renderedViewId = renderedElement.nativeViewId;
-              // Use effectiveNativeViewId to handle nested components
-              final effectiveViewId = newChild.effectiveNativeViewId ?? renderedViewId;
-              
-              // CRITICAL: Always ensure the rendered element's view ID is mapped correctly
-              // This is the root cause: when SafeArea creates new Button instances, they
-              // might reuse view IDs, but the mapping must point to the NEW rendered element
-              if (renderedViewId != null && renderedViewId.isNotEmpty) {
-                final renderedMappedNode = _nodesByViewId[renderedViewId];
-                if (renderedMappedNode != renderedElement) {
-                  _nodesByViewId[renderedViewId] = renderedElement;
-                  EngineDebugLogger.log('RECONCILE_CHILD_RENDERED_ELEMENT_MAPPING_FIX',
-                      '⚠️ Fixed rendered element mapping (immediate fix)',
-                      extra: {
-                        'ViewId': childViewId,
-                        'RenderedViewId': renderedViewId,
-                        'ElementType': renderedElement.type,
-                        'HasOnPress': renderedElement.elementProps.containsKey('onPress'),
-                        'OldMappedType': renderedMappedNode?.runtimeType.toString() ?? 'null'
-                      });
-                }
-              }
-              
-              // Also check if effectiveViewId matches childViewId and fix if needed
-              if (effectiveViewId == childViewId && mappedNode != renderedElement) {
-                _nodesByViewId[childViewId] = renderedElement;
-                EngineDebugLogger.log('RECONCILE_CHILD_FIX_MAPPING_COMPONENT',
-                    '⚠️ Fixed mapping to point to component\'s rendered element (immediate fix)',
-                    extra: {
-                      'ViewId': childViewId,
-                      'RenderedViewId': renderedViewId,
-                      'HasOnPress': renderedElement.elementProps.containsKey('onPress'),
-                      'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
-                    });
-              }
-            }
-          }
-        }
+        processedOldIndices.add(oldIndex);
+        oldIndex++;
+        newIndex++;
       }
 
       // CRITICAL: Store viewId at the correct index to maintain order
-      // This ensures updatedChildIds[i] corresponds to newChildren[i]
-      if (childViewId != null && childViewId.isNotEmpty) {
-        updatedChildIds[i] = childViewId;
+      // Note: For reconcile/replace cases, newIndex was already incremented, so use newIndex - 1
+      // For insertions, the viewId was already stored above
+      if (childViewId != null && childViewId.isNotEmpty && !wasInsertion) {
+        final storeIndex = newIndex - 1; // newIndex was already incremented
+        updatedChildIds[storeIndex] = childViewId;
         EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
-            'Added view ID to updatedChildIds at index $i',
-            extra: {'ViewId': childViewId, 'Index': i, 'TotalCount': updatedChildIds.length});
-      } else {
+            'Added view ID to updatedChildIds',
+            extra: {'ViewId': childViewId, 'Index': storeIndex});
+      } else if (childViewId == null || childViewId.isEmpty && !wasInsertion) {
         // CRITICAL: If we still don't have a view ID, we MUST NOT call setChildren
         // because it will remove all views and this one will be lost
+        final storeIndex = newIndex - 1;
         EngineDebugLogger.log('RECONCILE_SIMPLE_MISSING_VIEW_ID',
-            '⚠️ CRITICAL: Child at index $i has no view ID after reconciliation - will skip setChildren',
+            '⚠️ CRITICAL: Child at index $storeIndex has no view ID after reconciliation - will skip setChildren',
             extra: {
               'OldType': oldChild.runtimeType.toString(),
               'NewType': newChild.runtimeType.toString(),
-              'OldViewId': oldChild.effectiveNativeViewId,
-              'NewViewId': newChild.effectiveNativeViewId,
-              'NewContentViewId': (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) 
-                  ? newChild.contentViewId 
-                  : null,
-              'NewNativeViewId': (newChild is DCFElement) 
-                  ? newChild.nativeViewId 
-                  : null,
-              'Index': i,
+              'Index': storeIndex,
               'Warning': 'setChildren will be skipped to prevent view loss'
             });
       }
-    } // O((new - common) * render complexity) - Handle length differences
-    if (newChildren.length > oldChildren.length) {
-      hasStructuralChanges = true;
-      EngineDebugLogger.log('RECONCILE_SIMPLE_ADD',
-          'Adding ${newChildren.length - commonLength} new children');
-
-      for (int i = commonLength; i < newChildren.length; i++) {
-        final childViewId = await renderToNative(newChildren[i],
-            parentViewId: parentViewId, index: i);
-
-        if (childViewId != null) {
-          updatedChildIds[i] = childViewId;
-        }
-      }
-    } else if (oldChildren.length > newChildren.length) {
-      hasStructuralChanges = true;
-      EngineDebugLogger.log('RECONCILE_SIMPLE_REMOVE',
-          'Removing ${oldChildren.length - commonLength} old children');
-
-      for (int i = commonLength; i < oldChildren.length; i++) {
-        final oldChild = oldChildren[i];
-
-        try {
-          oldChild.componentWillUnmount();
-          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT',
-              'Called componentWillUnmount for removed child');
-        } catch (e) {
-          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
-              'Error in componentWillUnmount for removed child',
-              extra: {'Error': e.toString()});
-        }
-
-        final viewId = oldChild.effectiveNativeViewId;
-        if (viewId != null) {
-          EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
-          await _nativeBridge.deleteView(viewId);
-          _nodesByViewId.remove(viewId);
-        }
-      }
     }
+    
+    // Handle remaining old children (removals at the end)
+    while (oldIndex < oldChildren.length) {
+      final oldChild = oldChildren[oldIndex];
+      hasStructuralChanges = true;
+      
+      try {
+        oldChild.componentWillUnmount();
+      } catch (e) {
+        EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
+            'Error in componentWillUnmount', extra: {'Error': e.toString()});
+      }
+      
+      final viewId = oldChild.effectiveNativeViewId;
+      if (viewId != null) {
+        EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
+        await _nativeBridge.deleteView(viewId);
+        _nodesByViewId.remove(viewId);
+      }
+      
+      oldIndex++;
+    }
+    
+    // Handle remaining new children (insertions at the end)
+    while (newIndex < newChildren.length) {
+      final newChild = newChildren[newIndex];
+      hasStructuralChanges = true;
+      
+      EngineDebugLogger.log('RECONCILE_SIMPLE_ADD_END',
+          'Adding new child at end, index $newIndex');
+      
+      final childViewId = await renderToNative(newChild,
+          parentViewId: parentViewId, index: newIndex);
+      
+      if (childViewId != null && childViewId.isNotEmpty) {
+        updatedChildIds[newIndex] = childViewId;
+      }
+      
+      newIndex++;
+    }
+
 
     // CRITICAL: Filter out null values and ensure order matches newChildren
     // This ensures updatedChildIds[i] corresponds to newChildren[i]
