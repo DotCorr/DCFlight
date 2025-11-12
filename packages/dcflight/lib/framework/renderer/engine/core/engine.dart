@@ -3088,6 +3088,31 @@ class DCFEngine {
   }
 
   /// O(max(old children, new children) + reconciliation complexity) - Reconcile children without keys
+  /// 
+  /// ALGORITHM: Two-pointer greedy matching with look-ahead
+  /// - Uses independent indices (oldIndex, newIndex) to traverse both lists
+  /// - Detects insertions by looking ahead in newChildren to find matching oldChild
+  /// - Detects removals by looking ahead in oldChildren to find matching newChild
+  /// - Matches children when types are compatible (same runtimeType/elementType)
+  /// - Replaces when types don't match and no insertion/removal detected
+  /// 
+  /// GUARANTEES:
+  /// - Correctly handles single and multiple consecutive insertions
+  /// - Correctly handles single and multiple consecutive removals
+  /// - Maintains correct order of children in updatedChildIds
+  /// - Preserves view IDs when children are matched (not replaced)
+  /// 
+  /// LIMITATIONS:
+  /// - Without keys, cannot distinguish between identical children at different positions
+  /// - For optimal results with dynamic lists, use explicit keys
+  /// - This algorithm is O(n*m) worst case (when many insertions/removals), but O(n+m) average case
+  /// 
+  /// EDGE CASES HANDLED:
+  /// - Insertions at beginning, middle, and end
+  /// - Removals at beginning, middle, and end
+  /// - Multiple consecutive insertions/removals
+  /// - Mixed insertions and removals
+  /// - Type mismatches (replaces correctly)
   Future<void> _reconcileSimpleChildren(
       String parentViewId,
       List<DCFComponentNode> oldChildren,
@@ -3120,15 +3145,27 @@ class DCFEngine {
       // Check if current positions match
       final positionsMatch = !_shouldReplaceAtSamePosition(oldChild, newChild);
       
-      // Check if next new child matches current old child (indicates insertion)
-      final isInsertion = newIndex + 1 < newChildren.length &&
-          oldIndex < oldChildren.length &&
-          !_shouldReplaceAtSamePosition(oldChild, newChildren[newIndex + 1]);
+      // CRITICAL: Look ahead to find where oldChild appears in newChildren (if at all)
+      // This handles multiple consecutive insertions correctly
+      int? matchingNewIndex;
+      for (int lookAhead = newIndex + 1; lookAhead < newChildren.length; lookAhead++) {
+        if (!_shouldReplaceAtSamePosition(oldChild, newChildren[lookAhead])) {
+          matchingNewIndex = lookAhead;
+          break;
+        }
+      }
+      final isInsertion = matchingNewIndex != null && !positionsMatch;
       
-      // Check if current new child matches next old child (indicates removal)
-      final isRemoval = oldIndex + 1 < oldChildren.length &&
-          newIndex < newChildren.length &&
-          !_shouldReplaceAtSamePosition(oldChildren[oldIndex + 1], newChild);
+      // CRITICAL: Look ahead to find where newChild appears in oldChildren (if at all)
+      // This handles multiple consecutive removals correctly
+      int? matchingOldIndex;
+      for (int lookAhead = oldIndex + 1; lookAhead < oldChildren.length; lookAhead++) {
+        if (!_shouldReplaceAtSamePosition(oldChildren[lookAhead], newChild)) {
+          matchingOldIndex = lookAhead;
+          break;
+        }
+      }
+      final isRemoval = matchingOldIndex != null && !positionsMatch;
       
       EngineDebugLogger.log(
           'RECONCILE_SIMPLE_UPDATE', 'Processing children',

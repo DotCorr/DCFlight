@@ -38,16 +38,29 @@ if (oldNode.key != null && newNode.key != null) {
 
 **Priority:** Highest (most reliable)
 
-### 2. Position-Based Matching
+### 2. Position-Based Matching (Smart Algorithm)
 
-If no keys, match by position and type:
+If no keys, uses a two-pointer greedy matching algorithm with look-ahead:
 
 ```dart
-final positionKey = "$parentViewId:$index:${node.runtimeType}";
-final existing = _componentInstancesByPosition[positionKey];
+// Two independent indices traverse both lists
+int oldIndex = 0;
+int newIndex = 0;
+
+// Look ahead to detect insertions/removals
+// Matches children when types are compatible
+// Replaces when types don't match
 ```
 
-**Priority:** Medium (works for most cases)
+**Algorithm Features:**
+- Detects insertions by looking ahead in `newChildren` to find matching `oldChild`
+- Detects removals by looking ahead in `oldChildren` to find matching `newChild`
+- Handles multiple consecutive insertions/removals correctly
+- Maintains correct order of children
+
+**Priority:** Medium (works for most cases, but keys are recommended for dynamic lists)
+
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 3091-3400)
 
 ### 3. Props-Based Matching
 
