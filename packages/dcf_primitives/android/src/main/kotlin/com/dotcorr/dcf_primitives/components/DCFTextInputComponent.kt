@@ -85,16 +85,16 @@
              }
          }
  
-         ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
-             editText.setTextColor(colorInt)
+             ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
+                 editText.setTextColor(colorInt)
          }
  
-         ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
-             editText.setHintTextColor(colorInt)
+             ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
+                 editText.setHintTextColor(colorInt)
          }
  
-         ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
-             editText.setHighlightColor(colorInt)
+             ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
+                 editText.setHighlightColor(colorInt)
          }
  
          props["fontSize"]?.let { size ->

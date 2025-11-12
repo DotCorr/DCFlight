@@ -40,7 +40,7 @@ class DCMauiBridgeImpl private constructor() {
     private val childToParent = ConcurrentHashMap<String, String>()
     private var appContext: Context? = null
     private var isInitialized = false
-    
+
     /**
      * ⚡ PERFORMANCE OPTIMIZATION: Component Instance Caching
      * 
@@ -233,7 +233,7 @@ class DCMauiBridgeImpl private constructor() {
                         // ⚡ PERFORMANCE: Use cached component instance (matches ViewManager pattern)
                         val componentInstance = getCachedComponentInstance(viewType)
                         if (componentInstance != null) {
-                            componentInstance.updateView(view, nonLayoutProps)
+                        componentInstance.updateView(view, nonLayoutProps)
                         } else {
                             Log.e(TAG, "Failed to get component instance for type: $viewType")
                         }
