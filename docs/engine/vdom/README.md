@@ -153,6 +153,16 @@ Native View Update
 3. **Read Stores and State** to understand state management
 4. **Read Reconciliation** to understand how updates work efficiently
 
+## Android Compose Integration
+
+DCFlight supports Jetpack Compose for Android components. See [Android Compose Integration](../../ANDROID_COMPOSE_INTEGRATION.md) for:
+- How `ComposeView` works with Yoga layout (it's just a View!)
+- Compose component implementation patterns
+- `getIntrinsicSize` pattern for Compose components
+- Best practices and troubleshooting
+
+**Key Insight:** `ComposeView` extends `View`, so Yoga measures it natively with constraints, allowing Compose Text to wrap correctly.
+
 ## Contributing
 
 When adding new features or making changes:

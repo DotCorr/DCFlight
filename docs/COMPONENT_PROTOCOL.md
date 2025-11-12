@@ -228,7 +228,7 @@ func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
 }
 ```
 
-**Android:**
+**Android (Traditional View):**
 ```kotlin
 override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
     val button = view as Button
@@ -246,10 +246,36 @@ override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
 }
 ```
 
+**Android (Compose Component):**
+```kotlin
+override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+    // CRITICAL: Yoga calls getIntrinsicSize with emptyMap(), 
+    // so we MUST get props from storedProps
+    val storedProps = getStoredProps(view)
+    val allProps = if (props.isEmpty()) storedProps else props
+    
+    val content = allProps["content"]?.toString() ?: ""
+    if (content.isEmpty()) {
+        return PointF(0f, 0f)
+    }
+    
+    // Estimation based on content (Compose can't be measured before layout)
+    val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+    val preferredWidth = content.length * fontSize * 0.6f
+    val singleLineHeight = fontSize * 1.2f
+    
+    return PointF(
+        preferredWidth.coerceAtLeast(1f),
+        singleLineHeight.coerceAtLeast(1f)
+    )
+}
+```
+
 **Key Points:**
 - ✅ Return intrinsic content size
 - ✅ Used by Yoga for layout calculation
 - ✅ Return at least 1x1 (never zero)
+- ✅ **For Compose:** Use estimation since Compose content can't be measured before layout. Yoga will measure the actual view with constraints when available.
 
 ---
 
@@ -548,7 +574,7 @@ class DCFButtonComponent: NSObject, DCFComponent {
 }
 ```
 
-### Android Example
+### Android Example (Traditional View)
 
 ```kotlin
 class DCFButtonComponent : DCFComponent() {
@@ -576,6 +602,45 @@ class DCFButtonComponent : DCFComponent() {
         updateView(button, props)
         
         return button
+    }
+```
+
+### Android Example (Compose Component)
+
+```kotlin
+class DCFTextComponent : DCFComponent() {
+    
+    override fun createView(context: Context, props: Map<String, Any?>): View {
+        val composeView = ComposeView(context)
+        composeView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
+        
+        // CRITICAL: Set visibility explicitly
+        composeView.visibility = View.VISIBLE
+        composeView.alpha = 1.0f
+        
+        storeProps(composeView, props)
+        
+        // Set Compose content
+        updateComposeContent(composeView, props)
+        
+        // Apply styles (Yoga layout properties)
+        composeView.applyStyles(props)
+        
+        return composeView
+    }
+    
+    private fun updateComposeContent(composeView: ComposeView, props: Map<String, Any?>) {
+        val content = props["content"]?.toString() ?: ""
+        val textColor = ColorUtilities.getColor("textColor", "primaryColor", props)
+        val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: 17f
+        
+        composeView.setContent {
+            Material3Text(
+                text = content,
+                color = Color(textColor ?: Color.Black),
+                fontSize = fontSize.sp,
+            )
+        }
     }
     
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
@@ -623,8 +688,19 @@ class DCFButtonComponent : DCFComponent() {
 
 ---
 
+## Compose Integration
+
+DCFlight supports Jetpack Compose for Android components. See [Android Compose Integration](./ANDROID_COMPOSE_INTEGRATION.md) for:
+- How ComposeView works with Yoga layout
+- Compose component implementation patterns
+- getIntrinsicSize pattern for Compose
+- Best practices and troubleshooting
+
+**Key Point:** `ComposeView` extends `View`, so it works natively with Yoga - no special handling needed!
+
 ## Next Steps
 
+- [Android Compose Integration](./ANDROID_COMPOSE_INTEGRATION.md) - How to use Compose in components
 - [Registry System](./REGISTRY_SYSTEM.md) - How to register components
 - [Event System](./EVENT_SYSTEM.md) - How events work
 - [Component Conventions](./COMPONENT_CONVENTIONS.md) - Requirements and best practices

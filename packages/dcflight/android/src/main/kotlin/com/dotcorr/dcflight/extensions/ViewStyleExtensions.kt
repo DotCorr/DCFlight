@@ -17,7 +17,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.util.TypedValue
 import com.dotcorr.dcflight.utils.ColorUtilities
-import com.dotcorr.dcflight.R
+import com.dotcorr.dcflight.components.DCFTags
 
 /**
  * CRITICAL FIX: Apply density scaling to style properties for cross-platform consistency
@@ -116,7 +116,7 @@ fun View.applyStyles(props: Map<String, Any>) {
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         props["shadowColor"]?.let { shadowColor ->
-            this.setTag(R.id.dcf_shadow_color, shadowColor)
+            this.setTag(DCFTags.SHADOW_COLOR_KEY, shadowColor)
         }
 
     props["shadowRadius"]?.let { shadowRadius ->
@@ -133,13 +133,13 @@ fun View.applyStyles(props: Map<String, Any>) {
             val scaledOffsetX = if (offsetX is Number) {
                 applyStyleDensityScaling(offsetX.toFloat())
             } else offsetX
-            this.setTag(R.id.dcf_shadow_offset_x, scaledOffsetX)
+            this.setTag(DCFTags.SHADOW_OFFSET_X_KEY, scaledOffsetX)
         }
         props["shadowOffsetY"]?.let { offsetY ->
             val scaledOffsetY = if (offsetY is Number) {
                 applyStyleDensityScaling(offsetY.toFloat())
             } else offsetY
-            this.setTag(R.id.dcf_shadow_offset_y, scaledOffsetY)
+            this.setTag(DCFTags.SHADOW_OFFSET_Y_KEY, scaledOffsetY)
         }
     }
 
@@ -161,10 +161,10 @@ fun View.applyStyles(props: Map<String, Any>) {
             val left = (hitSlop["left"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
             val right = (hitSlop["right"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
 
-            this.setTag(R.id.dcf_hit_slop_top, top)
-            this.setTag(R.id.dcf_hit_slop_bottom, bottom)
-            this.setTag(R.id.dcf_hit_slop_left, left)
-            this.setTag(R.id.dcf_hit_slop_right, right)
+            this.setTag(DCFTags.HIT_SLOP_TOP_KEY, top)
+            this.setTag(DCFTags.HIT_SLOP_BOTTOM_KEY, bottom)
+            this.setTag(DCFTags.HIT_SLOP_LEFT_KEY, left)
+            this.setTag(DCFTags.HIT_SLOP_RIGHT_KEY, right)
         }
     }
 
@@ -299,7 +299,7 @@ fun View.applyStyles(props: Map<String, Any>) {
     }
 
     props["testID"]?.let { testID ->
-        this.setTag(R.id.dcf_test_id, testID)
+        this.setTag(DCFTags.TEST_ID_KEY, testID)
     }
 
     props["pointerEvents"]?.let { pointerEvents ->
@@ -374,108 +374,15 @@ private fun View.applyGradientBackground(gradientData: Map<String, Any>, cornerR
         drawable.cornerRadius = cornerRadius
     }
 
-    this.setTag(R.id.dcf_gradient_drawable, drawable)
+    this.setTag(DCFTags.GRADIENT_DRAWABLE_KEY, drawable)
     this.background = drawable
-}
-
-/**
- * Apply adaptive defaults based on view type - matches iOS behavior
- */
-private fun View.applyAdaptiveDefaults() {
-    val context = this.context
-    try {
-        when (this) {
-            is android.widget.TextView -> {
-                val typedValue = TypedValue()
-                if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
-                    this.setTextColor(typedValue.data)
-                }
-            }
-            else -> {
-                val typedValue = TypedValue()
-                if (context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)) {
-                    this.setBackgroundColor(typedValue.data)
-                }
-            }
-        }
-    } catch (e: Exception) {
-        val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        when (this) {
-            is android.widget.TextView -> {
-                this.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
-            }
-            else -> {
-                this.setBackgroundColor(if (isDarkTheme) Color.BLACK else Color.WHITE)
-            }
-        }
-    }
-}
-
-/**
- * Apply adaptive background color based on current theme
- */
-fun View.applyAdaptiveBackgroundColor() {
-    val context = this.context
-    try {
-        val typedValue = TypedValue()
-        if (context.theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)) {
-            this.setBackgroundColor(typedValue.data)
-        } else {
-            val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-            this.setBackgroundColor(if (isDarkTheme) Color.BLACK else Color.WHITE)
-        }
-    } catch (e: Exception) {
-        this.setBackgroundColor(Color.WHITE)
-    }
-}
-
-/**
- * Apply adaptive text color based on current theme
- */
-fun View.applyAdaptiveTextColor() {
-    if (this is android.widget.TextView) {
-        val context = this.context
-        try {
-            val typedValue = TypedValue()
-            if (context.theme.resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
-                this.setTextColor(typedValue.data)
-            } else {
-                val isDarkTheme = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-                this.setTextColor(if (isDarkTheme) Color.WHITE else Color.BLACK)
-            }
-        } catch (e: Exception) {
-            this.setTextColor(Color.BLACK)
-        }
-    }
-}
-
-/**
- * Apply adaptive accent color (for buttons, etc.)
- */
-fun View.applyAdaptiveAccentColor() {
-    val context = this.context
-    try {
-        val typedValue = TypedValue()
-        val attrId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            android.R.attr.colorAccent
-        } else {
-            android.R.attr.colorAccent
-        }
-        if (context.theme.resolveAttribute(attrId, typedValue, true)) {
-            this.setBackgroundColor(typedValue.data)
-        } else {
-            this.setBackgroundColor(Color.parseColor("#2196F3")) // Material Blue
-        }
-    } catch (e: Exception) {
-        this.setBackgroundColor(Color.parseColor("#2196F3"))
-    }
 }
 
 /**
  * Update gradient layer frame when view bounds change - matching iOS
  */
 fun View.updateGradientFrame() {
-    val gradientDrawable = this.getTag(R.id.dcf_gradient_drawable) as? GradientDrawable
+    val gradientDrawable = this.getTag(DCFTags.GRADIENT_DRAWABLE_KEY) as? GradientDrawable
     gradientDrawable?.let {
         this.invalidate()
     }

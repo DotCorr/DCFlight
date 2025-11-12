@@ -19,12 +19,12 @@
  import android.view.inputmethod.EditorInfo
  import android.widget.EditText
  import androidx.appcompat.widget.AppCompatEditText
-import com.dotcorr.dcflight.components.DCFComponent
+ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFTags
-import com.dotcorr.dcflight.extensions.applyStyles
+ import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
-import com.dotcorr.dcflight.utils.ColorUtilities
-import com.dotcorr.dcflight.components.propagateEvent
+ import com.dotcorr.dcflight.utils.ColorUtilities
+ import com.dotcorr.dcflight.components.propagateEvent
  import com.dotcorr.dcf_primitives.components.dpToPx
  import com.dotcorr.dcf_primitives.components.parseColor
  import kotlin.math.max
