@@ -3350,38 +3350,52 @@ class DCFEngine {
       final newChild = newChildren[newIndex];
       
       // 🔥 CRITICAL: Check props similarity FIRST before any position matching
-      // If props differ significantly, treat as replacement immediately (React-like behavior)
+      // If props differ significantly OR types don't match, treat as replacement immediately (React-like behavior)
       // This prevents incorrect matching when structure changes dramatically
       bool propsDifferSignificantly = false;
-      if (oldChild is DCFElement && newChild is DCFElement) {
-        final propsSimilarity = _computePropsSimilarity(oldChild.elementProps, newChild.elementProps);
-        if (propsSimilarity < 0.5) {
-          propsDifferSignificantly = true;
-          EngineDebugLogger.log('RECONCILE_SIMPLE_PROPS_DIFFER',
-              'Props differ significantly - forcing replacement (no position matching)',
-              extra: {
-                'OldIndex': oldIndex,
-                'NewIndex': newIndex,
-                'PropsSimilarity': propsSimilarity,
-                'OldType': oldChild.type,
-                'NewType': newChild.type,
-              });
+      bool typesDontMatch = false;
+      
+      // Check if types don't match (different component types or element types)
+      if (oldChild.runtimeType != newChild.runtimeType) {
+        typesDontMatch = true;
+      } else if (oldChild is DCFElement && newChild is DCFElement) {
+        if (oldChild.type != newChild.type) {
+          typesDontMatch = true;
+        } else {
+          // Same type - check props similarity
+          final propsSimilarity = _computePropsSimilarity(oldChild.elementProps, newChild.elementProps);
+          if (propsSimilarity < 0.5) {
+            propsDifferSignificantly = true;
+            EngineDebugLogger.log('RECONCILE_SIMPLE_PROPS_DIFFER',
+                'Props differ significantly - forcing replacement (no position matching)',
+                extra: {
+                  'OldIndex': oldIndex,
+                  'NewIndex': newIndex,
+                  'PropsSimilarity': propsSimilarity,
+                  'OldType': oldChild.type,
+                  'NewType': newChild.type,
+                });
+          }
         }
       }
       
-      // If props differ significantly, replace immediately (don't try position matching)
-      if (propsDifferSignificantly) {
+      // If props differ significantly OR types don't match, replace immediately (don't try position matching)
+      if (propsDifferSignificantly || typesDontMatch) {
         hasReplacements = true;
         replacementCount++;
         hasStructuralChanges = true;
         
-        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE_PROPS_IMMEDIATE',
-            'Replacing child immediately due to props mismatch',
+        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE_IMMEDIATE',
+            typesDontMatch 
+                ? 'Replacing child immediately due to type mismatch'
+                : 'Replacing child immediately due to props mismatch',
             extra: {
               'OldIndex': oldIndex,
               'NewIndex': newIndex,
               'OldType': oldChild.runtimeType.toString(),
               'NewType': newChild.runtimeType.toString(),
+              'TypesDontMatch': typesDontMatch,
+              'PropsDifferSignificantly': propsDifferSignificantly,
             });
         
         try {
