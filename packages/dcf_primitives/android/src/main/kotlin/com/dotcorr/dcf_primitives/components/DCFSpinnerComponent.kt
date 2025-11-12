@@ -14,9 +14,9 @@ import android.graphics.PointF
 import android.view.View
 import android.widget.ProgressBar
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
-import com.dotcorr.dcf_primitives.R
 
 /**
  * DCFSpinnerComponent - Activity indicator matching iOS DCFSpinnerComponent
@@ -33,7 +33,7 @@ class DCFSpinnerComponent : DCFComponent() {
             progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
         }
 
-        progressBar.setTag(R.id.dcf_component_type, "Spinner")
+        progressBar.setTag(DCFTags.COMPONENT_TYPE_KEY, "Spinner")
 
         updateView(progressBar, props)
         return progressBar

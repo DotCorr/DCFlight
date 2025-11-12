@@ -57,12 +57,12 @@ class DCFTextComponent : DCFComponent() {
         // CRITICAL: Set content BEFORE applying styles
         // This ensures Compose can measure correctly
         updateComposeContent(composeView, props)
-        
+
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         composeView.applyStyles(nonNullProps)
         
         Log.d(TAG, "Created Compose-based Text component")
-        
+
         return composeView
     }
 
@@ -73,10 +73,10 @@ class DCFTextComponent : DCFComponent() {
         updateComposeContent(composeView, props)
         
         composeView.applyStyles(props)
-        
+
         return true
     }
-    
+
     private fun updateComposeContent(composeView: ComposeView, props: Map<String, Any?>) {
         val content = props["content"]?.toString() ?: ""
         val textColor = ColorUtilities.getColor("textColor", "primaryColor", props)
@@ -113,13 +113,13 @@ class DCFTextComponent : DCFComponent() {
         // CRITICAL: Yoga calls getIntrinsicSize with emptyMap(), so we MUST get props from storedProps
         val storedProps = getStoredProps(view)
         val allProps = if (props.isEmpty()) storedProps else props
-        
+
         val content = allProps["content"]?.toString() ?: ""
         if (content.isEmpty()) {
             Log.w(TAG, "getIntrinsicSize: No content found in props or storedProps")
             return PointF(0f, 0f)
         }
-        
+
         // CRITICAL: ComposeView can't be reliably measured before it's laid out
         // Return preferred size - Yoga will constrain based on parent width
         // Compose Text will wrap automatically when given width constraints
@@ -136,7 +136,7 @@ class DCFTextComponent : DCFComponent() {
         // Ensure minimum size
         val finalWidth = preferredWidth.coerceAtLeast(1f)
         val finalHeight = singleLineHeight.coerceAtLeast(1f)
-        
+
         Log.d(TAG, "Text preferred size for Yoga: ${finalWidth}x${finalHeight} (will wrap if parent constrains width)")
         return PointF(finalWidth, finalHeight)
     }

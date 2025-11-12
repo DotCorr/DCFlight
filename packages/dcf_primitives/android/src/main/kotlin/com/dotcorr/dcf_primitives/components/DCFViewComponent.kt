@@ -13,8 +13,8 @@ import android.util.Log
 import android.view.View
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFFrameLayout
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_primitives.R
 
 /**
  * EXACT iOS DCFViewComponent port for Android
@@ -30,7 +30,7 @@ class DCFViewComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val view = DCFFrameLayout(context)
 
-        view.setTag(R.id.dcf_component_type, "View")
+        view.setTag(DCFTags.COMPONENT_TYPE_KEY, "View")
 
         // Use updateView (not updateViewInternal) to ensure props are stored for merging
         updateView(view, props)

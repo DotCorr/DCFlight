@@ -15,10 +15,10 @@ import android.widget.Spinner
 import android.widget.AdapterView
 import android.widget.TextView
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
-import com.dotcorr.dcf_primitives.R
 
 /**
  * DCFDropdownComponent - 1:1 mapping with iOS DCFDropdownComponent
@@ -29,7 +29,7 @@ class DCFDropdownComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val spinner = Spinner(context)
         
-        spinner.setTag(R.id.dcf_component_type, "Dropdown")
+        spinner.setTag(DCFTags.COMPONENT_TYPE_KEY, "Dropdown")
         
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {

@@ -13,10 +13,10 @@ import android.graphics.PointF
 import android.view.View
 import android.widget.SeekBar
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
-import com.dotcorr.dcf_primitives.R
 
 /**
  * DCFSliderComponent - 1:1 mapping with iOS DCFSliderComponent
@@ -39,7 +39,7 @@ class DCFSliderComponent : DCFComponent() {
             seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
         }
         
-        seekBar.setTag(R.id.dcf_component_type, "Slider")
+        seekBar.setTag(DCFTags.COMPONENT_TYPE_KEY, "Slider")
         
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {

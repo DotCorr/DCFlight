@@ -18,10 +18,10 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
-import com.dotcorr.dcf_primitives.R
 
 /**
  * DCFSegmentedControlComponent - View-based segmented control using LinearLayout and Buttons
@@ -36,7 +36,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val container = LinearLayout(context)
         container.orientation = LinearLayout.HORIZONTAL
-        container.setTag(R.id.dcf_component_type, "SegmentedControl")
+        container.setTag(DCFTags.COMPONENT_TYPE_KEY, "SegmentedControl")
         
         storeProps(container, props)
         

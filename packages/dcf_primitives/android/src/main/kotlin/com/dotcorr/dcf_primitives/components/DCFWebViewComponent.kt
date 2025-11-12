@@ -16,9 +16,10 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebChromeClient
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_primitives.R
+import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
 
 /**
  * DCFWebViewComponent - WebView component matching iOS DCFWebViewComponent
@@ -31,7 +32,7 @@ class DCFWebViewComponent : DCFComponent() {
 
         webView.settings.javaScriptEnabled = true
 
-        webView.setTag(R.id.dcf_component_type, "WebView")
+        webView.setTag(DCFTags.COMPONENT_TYPE_KEY, "WebView")
 
         props["source"]?.let { source ->
             when (source) {
@@ -122,7 +123,7 @@ class DCFWebViewComponent : DCFComponent() {
         }
 
         props["allowsBackForwardNavigationGestures"]?.let { allows ->
-            webView.setTag(R.id.dcf_webview_navigation_gestures, allows)
+            webView.setTag(DCFPrimitiveTags.WEBVIEW_NAVIGATION_GESTURES_KEY, allows)
         }
 
         props["bounces"]?.let { bounces ->
@@ -184,7 +185,7 @@ class DCFWebViewComponent : DCFComponent() {
 
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 props["onNavigationStateChange"]?.let { onChange ->
-                    webView.setTag(R.id.dcf_event_callback, onChange)
+                    webView.setTag(DCFTags.EVENT_CALLBACK_KEY, onChange)
                 }
                 return false
             }
@@ -194,14 +195,14 @@ class DCFWebViewComponent : DCFComponent() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 super.onProgressChanged(view, newProgress)
                 props["onLoadProgress"]?.let { onProgress ->
-                    webView.setTag(R.id.dcf_webview_progress, newProgress / 100f)
-                    webView.setTag(R.id.dcf_event_callback, onProgress)
+                    webView.setTag(DCFPrimitiveTags.WEBVIEW_PROGRESS_KEY, newProgress / 100f)
+                    webView.setTag(DCFTags.EVENT_CALLBACK_KEY, onProgress)
                 }
             }
         }
 
-        webView.setTag(R.id.dcf_webview_client, webView.webViewClient)
-        webView.setTag(R.id.dcf_webview_chrome_client, webView.webChromeClient)
+        webView.setTag(DCFPrimitiveTags.WEBVIEW_CLIENT_KEY, webView.webViewClient)
+        webView.setTag(DCFPrimitiveTags.WEBVIEW_CHROME_CLIENT_KEY, webView.webChromeClient)
 
         props["injectedJavaScript"]?.let { script ->
             webView.evaluateJavascript(script.toString(), null)
@@ -212,7 +213,7 @@ class DCFWebViewComponent : DCFComponent() {
         }
 
         props["testID"]?.let { testId ->
-            webView.setTag(R.id.dcf_test_id, testId)
+            webView.setTag(DCFPrimitiveTags.TEST_ID_KEY, testId)
         }
 
         return true

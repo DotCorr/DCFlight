@@ -13,9 +13,9 @@ import android.graphics.drawable.Drawable
 import android.view.View
 import android.widget.ImageView
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_primitives.R
 import com.dotcorr.dcflight.utils.ColorUtilities
 
 /**
@@ -31,7 +31,7 @@ class DCFSvgComponent : DCFComponent() {
             imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
         }
         
-        imageView.setTag(R.id.dcf_component_type, "Svg")
+        imageView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Svg")
         
         updateView(imageView, props)
         return imageView

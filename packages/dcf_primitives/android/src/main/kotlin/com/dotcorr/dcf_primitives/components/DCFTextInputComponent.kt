@@ -19,11 +19,12 @@
  import android.view.inputmethod.EditorInfo
  import android.widget.EditText
  import androidx.appcompat.widget.AppCompatEditText
- import com.dotcorr.dcflight.components.DCFComponent
- import com.dotcorr.dcflight.extensions.applyStyles
- import com.dotcorr.dcflight.utils.ColorUtilities
- import com.dotcorr.dcflight.components.propagateEvent
- import com.dotcorr.dcf_primitives.R
+import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
+import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
+import com.dotcorr.dcflight.utils.ColorUtilities
+import com.dotcorr.dcflight.components.propagateEvent
  import com.dotcorr.dcf_primitives.components.dpToPx
  import com.dotcorr.dcf_primitives.components.parseColor
  import kotlin.math.max
@@ -60,7 +61,7 @@
          val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
          editText.applyStyles(nonNullStyleProps)
  
-         editText.setTag(R.id.dcf_component_type, "TextInput")
+         editText.setTag(DCFTags.COMPONENT_TYPE_KEY, "TextInput")
  
          return editText
      }
@@ -244,7 +245,7 @@
          props["blurOnSubmit"]?.let { blurOnSubmit ->
              when (blurOnSubmit) {
                  is Boolean -> {
-                     editText.setTag(R.id.dcf_text_input_blur_on_submit, blurOnSubmit)
+                     editText.setTag(DCFPrimitiveTags.TEXT_INPUT_BLUR_ON_SUBMIT_KEY, blurOnSubmit)
                  }
              }
          }
@@ -266,13 +267,13 @@
              }
  
              editText.addTextChangedListener(textWatcher)
-             editText.setTag(R.id.dcf_text_input_watcher, textWatcher)
+             editText.setTag(DCFPrimitiveTags.TEXT_INPUT_WATCHER_KEY, textWatcher)
          }
  
          props["onFocus"]?.let { onFocus ->
              editText.setOnFocusChangeListener { _, hasFocus ->
                  if (hasFocus) {
-                     editText.setTag(R.id.dcf_text_input_focus_listener, onFocus)
+                     editText.setTag(DCFPrimitiveTags.TEXT_INPUT_FOCUS_LISTENER_KEY, onFocus)
                  }
              }
          }
@@ -280,7 +281,7 @@
          props["onBlur"]?.let { onBlur ->
              editText.setOnFocusChangeListener { _, hasFocus ->
                  if (!hasFocus) {
-                     editText.setTag(R.id.dcf_text_input_focus_listener, onBlur)
+                     editText.setTag(DCFPrimitiveTags.TEXT_INPUT_FOCUS_LISTENER_KEY, onBlur)
                  }
              }
          }
@@ -293,9 +294,9 @@
                      actionId == EditorInfo.IME_ACTION_SEND
                  ) {
  
-                     editText.setTag(R.id.dcf_event_callback, onSubmit)
+                     editText.setTag(DCFTags.EVENT_CALLBACK_KEY, onSubmit)
  
-                     val shouldBlur = editText.getTag(R.id.dcf_text_input_blur_on_submit) as? Boolean ?: true
+                     val shouldBlur = editText.getTag(DCFPrimitiveTags.TEXT_INPUT_BLUR_ON_SUBMIT_KEY) as? Boolean ?: true
                      if (shouldBlur) {
                          editText.clearFocus()
                      }
@@ -312,19 +313,19 @@
          }
  
          props["testID"]?.let { testId ->
-             editText.setTag(R.id.dcf_test_id, testId)
+             editText.setTag(DCFPrimitiveTags.TEST_ID_KEY, testId)
          }
  
-         editText.setTag(R.id.dcf_text_input_placeholder, props["placeholder"])
+         editText.setTag(DCFPrimitiveTags.TEXT_INPUT_PLACEHOLDER_KEY, props["placeholder"])
  
          return true
      }
  
      private fun removeTextWatcher(editText: EditText) {
-         val existingWatcher = editText.getTag(R.id.dcf_text_input_watcher) as? TextWatcher
+         val existingWatcher = editText.getTag(DCFPrimitiveTags.TEXT_INPUT_WATCHER_KEY) as? TextWatcher
          existingWatcher?.let {
              editText.removeTextChangedListener(it)
-             editText.setTag(R.id.dcf_text_input_watcher, null)
+             editText.setTag(DCFPrimitiveTags.TEXT_INPUT_WATCHER_KEY, null)
          }
      }
  
