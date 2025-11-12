@@ -3329,24 +3329,60 @@ class DCFEngine {
       // CRITICAL: Store viewId at the correct index to maintain order
       // Note: For reconcile/replace cases, newIndex was already incremented, so use newIndex - 1
       // For insertions, the viewId was already stored above
-      if (childViewId != null && childViewId.isNotEmpty && !wasInsertion) {
+      if (!wasInsertion) {
         final storeIndex = newIndex - 1; // newIndex was already incremented
-        updatedChildIds[storeIndex] = childViewId;
-        EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
-            'Added view ID to updatedChildIds',
-            extra: {'ViewId': childViewId, 'Index': storeIndex});
-      } else if (childViewId == null || childViewId.isEmpty && !wasInsertion) {
-        // CRITICAL: If we still don't have a view ID, we MUST NOT call setChildren
-        // because it will remove all views and this one will be lost
-        final storeIndex = newIndex - 1;
-        EngineDebugLogger.log('RECONCILE_SIMPLE_MISSING_VIEW_ID',
-            '⚠️ CRITICAL: Child at index $storeIndex has no view ID after reconciliation - will skip setChildren',
-            extra: {
-              'OldType': oldChild.runtimeType.toString(),
-              'NewType': newChild.runtimeType.toString(),
-              'Index': storeIndex,
-              'Warning': 'setChildren will be skipped to prevent view loss'
-            });
+        
+        // CRITICAL: If childViewId is null/empty, try to get it from the node after reconciliation
+        if (childViewId == null || childViewId.isEmpty) {
+          // Try to get viewId from newChild after reconciliation
+          childViewId = newChild.effectiveNativeViewId;
+          
+          // If still null, try to get it from oldChild (shouldn't happen, but safety check)
+          if ((childViewId == null || childViewId.isEmpty) && oldChild.effectiveNativeViewId != null) {
+            childViewId = oldChild.effectiveNativeViewId;
+            // Update newChild to use the old viewId
+            if (newChild is DCFElement) {
+              newChild.nativeViewId = childViewId;
+            } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+              newChild.contentViewId = childViewId;
+            }
+          }
+          
+          // Final fallback: search _nodesByViewId for the node
+          if (childViewId == null || childViewId.isEmpty) {
+            for (final entry in _nodesByViewId.entries) {
+              if (entry.value == newChild || 
+                  (newChild is DCFStatefulComponent && entry.value == newChild.renderedNode) ||
+                  (newChild is DCFStatelessComponent && entry.value == newChild.renderedNode)) {
+                childViewId = entry.key;
+                if (newChild is DCFElement) {
+                  newChild.nativeViewId = childViewId;
+                } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+                  newChild.contentViewId = childViewId;
+                }
+                break;
+              }
+            }
+          }
+        }
+        
+        if (childViewId != null && childViewId.isNotEmpty) {
+          updatedChildIds[storeIndex] = childViewId;
+          EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
+              'Added view ID to updatedChildIds',
+              extra: {'ViewId': childViewId, 'Index': storeIndex});
+        } else {
+          // CRITICAL: If we still don't have a view ID, we MUST NOT call setChildren
+          // because it will remove all views and this one will be lost
+          EngineDebugLogger.log('RECONCILE_SIMPLE_MISSING_VIEW_ID',
+              '⚠️ CRITICAL: Child at index $storeIndex has no view ID after reconciliation - will skip setChildren',
+              extra: {
+                'OldType': oldChild.runtimeType.toString(),
+                'NewType': newChild.runtimeType.toString(),
+                'Index': storeIndex,
+                'Warning': 'setChildren will be skipped to prevent view loss'
+              });
+        }
       }
     }
     
@@ -3378,13 +3414,30 @@ class DCFEngine {
       hasStructuralChanges = true;
       
       EngineDebugLogger.log('RECONCILE_SIMPLE_ADD_END',
-          'Adding new child at end, index $newIndex');
+          'Adding new child at end, index $newIndex',
+          extra: {
+            'ChildType': newChild.runtimeType.toString(),
+            'IsLastChild': newIndex == newChildren.length - 1,
+            'TotalNewChildren': newChildren.length
+          });
       
       final childViewId = await renderToNative(newChild,
           parentViewId: parentViewId, index: newIndex);
       
       if (childViewId != null && childViewId.isNotEmpty) {
         updatedChildIds[newIndex] = childViewId;
+        EngineDebugLogger.log('RECONCILE_SIMPLE_END_VIEW_ID_ADDED',
+            'Added view ID for end child',
+            extra: {'ViewId': childViewId, 'Index': newIndex, 'IsLastChild': newIndex == newChildren.length - 1});
+      } else {
+        EngineDebugLogger.log('RECONCILE_SIMPLE_END_MISSING_VIEW_ID',
+            '⚠️ CRITICAL: End child at index $newIndex has no view ID after renderToNative',
+            extra: {
+              'ChildType': newChild.runtimeType.toString(),
+              'Index': newIndex,
+              'IsLastChild': newIndex == newChildren.length - 1,
+              'Warning': 'This child will be missing from setChildren'
+            });
       }
       
       newIndex++;
