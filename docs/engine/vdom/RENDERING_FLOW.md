@@ -155,14 +155,18 @@ When state changes, the engine reconciles the old and new VDOM trees:
    - Calculates layout based on style props
    - Handles flexbox layout
    - Computes positions and sizes
+   - **For Android Compose:** Measures `ComposeView` with constraints using `View.MeasureSpec.AT_MOST` for proper text wrapping
 
 2. **Layout Application**
    - Applies calculated layout to native views
    - Triggers native view updates
+   - **For Android Compose:** Compose content wraps correctly when Yoga provides width constraints
 
 **Location:** 
 - iOS: `packages/dcflight/ios/Classes/Layout/YogaShadowTree.swift`
 - Android: `packages/dcflight/android/src/main/kotlin/com/dotcorr/dcflight/layout/YogaShadowTree.kt`
+
+**Note:** Android Compose components (like `DCFTextComponent`) use `ComposeView`, which extends `View`. Yoga measures it generically with constraints, allowing Compose Text to wrap correctly. See [Android Compose Integration](../../ANDROID_COMPOSE_INTEGRATION.md) for details.
 
 ## Update Flow (State Change)
 
