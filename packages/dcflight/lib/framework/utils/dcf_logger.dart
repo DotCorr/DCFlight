@@ -135,9 +135,9 @@ class DCFLogger {
     final normalizedTag = _normalizeTag(tag);
     final fullMessage = '[$normalizedTag] $message';
     _instance.t(fullMessage);
+    }
   }
-}
-
+  
 /// Custom LogFilter that respects DCFLogLevel
 class _DCFLogFilter extends logger_pkg.LogFilter {
   bool shouldLog(logger_pkg.LogEvent event) {

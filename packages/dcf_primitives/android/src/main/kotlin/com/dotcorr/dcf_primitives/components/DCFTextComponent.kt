@@ -40,11 +40,14 @@ class DCFTextComponent : DCFComponent() {
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val textView = TextView(context)
 
+        // Enable hardware acceleration for smoother rendering
+        textView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
         textView.maxLines = Int.MAX_VALUE // numberOfLines = 0 in iOS means unlimited
         textView.gravity = Gravity.START
         
         props["content"]?.let { content ->
-            textView.text = content.toString()
+            textView.setText(content.toString(), TextView.BufferType.NORMAL)
             Log.d(TAG, "Set initial text content: $content")
         }
 
@@ -64,20 +67,26 @@ class DCFTextComponent : DCFComponent() {
 
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
         val textView = view as? TextView ?: return false
+        var needsLayout = false
 
-        Log.d(TAG, "Updating text view with props: $props")
-
-        if (hasPropChanged("content", existingProps, props)) {
         props["content"]?.let { content ->
-            textView.text = content.toString()
-            Log.d(TAG, "Set text content: $content")
+            val newText = content.toString()
+            val currentText = textView.text.toString()
+            if (currentText != newText) {
+                textView.setText(newText, TextView.BufferType.NORMAL)
+                Log.d(TAG, "Set text content: $newText (was: $currentText)")
             }
         }
 
-        val hasAnyFontProp = props.containsKey("fontSize") || props.containsKey("fontWeight") || 
-                            props.containsKey("fontFamily") || props.containsKey("isFontAsset")
+        // Update font properties - these require layout recalculation
+        val hasAnyFontProp = hasPropChanged("fontSize", existingProps, props) || 
+                            hasPropChanged("fontWeight", existingProps, props) || 
+                            hasPropChanged("fontFamily", existingProps, props) || 
+                            hasPropChanged("isFontAsset", existingProps, props)
 
         if (hasAnyFontProp) {
+            needsLayout = true // Font changes require layout
+            
             val currentSize = textView.textSize / textView.context.resources.displayMetrics.scaledDensity
             val finalFontSize = (props["fontSize"] as? Number)?.toFloat() ?: currentSize
 
@@ -117,7 +126,8 @@ class DCFTextComponent : DCFComponent() {
             }
         }
 
-        if (props.containsKey("textAlign")) {
+        // Update text alignment
+        if (hasPropChanged("textAlign", existingProps, props)) {
             props["textAlign"]?.let { textAlign ->
                 when (textAlign.toString()) {
                     "center" -> {
@@ -141,21 +151,32 @@ class DCFTextComponent : DCFComponent() {
                 }
                 Log.d(TAG, "Set text alignment: $textAlign")
             }
-        } else {
-            textView.gravity = Gravity.START or Gravity.CENTER_VERTICAL
         }
 
-        props["numberOfLines"]?.let { numberOfLines ->
-            val lines = (numberOfLines as? Number)?.toInt() ?: Int.MAX_VALUE
-            textView.maxLines = if (lines == 0) Int.MAX_VALUE else lines
-            Log.d(TAG, "Set number of lines: $numberOfLines")
+        // Update numberOfLines
+        if (hasPropChanged("numberOfLines", existingProps, props)) {
+            props["numberOfLines"]?.let { numberOfLines ->
+                val lines = (numberOfLines as? Number)?.toInt() ?: Int.MAX_VALUE
+                textView.maxLines = if (lines == 0) Int.MAX_VALUE else lines
+                Log.d(TAG, "Set number of lines: $numberOfLines")
+            }
         }
 
         textView.applyStyles(props)
         
         ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
-            textView.setTextColor(colorInt)
-            Log.d(TAG, "Updated text color: ${ColorUtilities.hexString(colorInt)}")
+            if (textView.currentTextColor != colorInt) {
+                textView.setTextColor(colorInt)
+                Log.d(TAG, "Updated text color: ${ColorUtilities.hexString(colorInt)}")
+            }
+        }
+
+        // Only trigger layout if actually needed (font changes), otherwise just invalidate for redraw
+        if (needsLayout) {
+            textView.requestLayout()
+        } else {
+            // Just redraw without layout - much faster, no flash
+            textView.invalidate()
         }
 
         return true

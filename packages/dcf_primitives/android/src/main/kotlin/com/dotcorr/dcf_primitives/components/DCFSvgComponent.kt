@@ -80,11 +80,9 @@ class DCFSvgComponent : DCFComponent() {
             }
         }
 
-        if (hasPropChanged("tintColor", existingProps, props) || hasPropChanged("primaryColor", existingProps, props)) {
-            ColorUtilities.getColor("tintColor", "primaryColor", props)?.let { colorInt ->
-                imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
-                hasUpdates = true
-            }
+        ColorUtilities.getColor("tintColor", "primaryColor", props)?.let { colorInt ->
+            imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
+            hasUpdates = true
         }
 
         view.applyStyles(props)
