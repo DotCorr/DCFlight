@@ -37,42 +37,179 @@ class MyApp extends DCFStatefulComponent {
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
 
     return DCFView(
-      layout: DCFLayout(flex: 1, gap: 10),
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
+      layout: DCFLayout(
+        padding: 20,
+        flex: 1,
+        justifyContent: YogaJustifyContent.center,
+        alignItems: YogaAlign.center,
+      ),
+      // Using unified theme system with semantic colors
+      styleSheet: DCFStyleSheet(
+        // backgroundColor: DCFTheme.current.backgroundColor,
+      ),
       children: [
-        DCFImage(
-          imageProps: DCFImageProps(
-            source:
-                "https://avatars.githubusercontent.com/u/205313423?s=400&u=23a520c2d386edf2466223ba05f5f44a4a9ddf42&v=4",
+        DCFText(
+          content: "Hello, Test ${name.state}! ${count.state}",
+          // Using semantic colors from StyleSheet instead of explicit color prop
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFColors.amber,
+            borderRadius: 20,
+            elevation: 10,
+            primaryColor:
+                DCFTheme.textColor, // Semantic color - maps to text color
           ),
-          layout: DCFLayout(width: 100, height: 100),
-          styleSheet: DCFStyleSheet(backgroundColor: DCFColors.pink),
+          textProps: DCFTextProps(fontSize: 24, fontWeight: DCFFontWeight.bold),
+          layout: DCFLayout(
+            height: 100,
+            width: 200,
+            justifyContent: YogaJustifyContent.center,
+            alignItems: YogaAlign.center,
+          ),
+        ),
+        DCFTextInput(
+          onChangeText: (text) {
+            name.setState(text);
+          },
+          layout: DCFLayout(
+            marginTop: 20,
+            marginBottom: 20,
+            width: 200,
+            height: 40,
+            alignItems: YogaAlign.center,
+            justifyContent: YogaJustifyContent.center,
+          ),
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFTheme.surfaceColor,
+            borderRadius: 10,
+            borderColor: DCFTheme.surfaceColor,
+            borderWidth: 1,
+          
+          ),
         ),
 
-        DCFText(content: "Count: ${count.state}"),
-        DCFButton(
-          buttonProps: DCFButtonProps(title: "Click me"),
-          onPress:
-              (data) => {
-                count.setState(count.state + 1),
-                DCFLogger.info("Button pressed"),
-              },
-        ),
-        DCFText(content: "Hello World"),
-        DCFText(content: "Hello World"),
-        DCFText(content: "Hello World"),
-        DCFText(content: "Hello World"),
-        DCFText(content: "Hello World"),
-        DCFTextInput(
-          styleSheet: DCFStyleSheet(
-            backgroundColor: DCFColors.orange,
-            borderRadius: 10,
+        DCFWebView(
+          layout: DCFLayout(
+            width: "100%",
+            height: 200,
+            alignItems: YogaAlign.center,
+            justifyContent: YogaJustifyContent.center,
           ),
-          layout: DCFLayout(padding: 5, margin: 10, width: "95%", height: 50),
-          value: name.state,
-          onBlur: (data) => name.setState(data.isBlurred.toString()),
+          webViewProps: DCFWebViewProps(source: 'https://dotcorr.com'),
         ),
-        DCFText(content: "Hello World"),
+
+        DCFSlider(
+          value: sliderVal.state.toDouble(),
+          onValueChange: (data) {
+            sliderVal.setState(data.value);
+            // Log slider change (using debug level for frequent updates)
+            DCFLogger.debug('Slider value changed to: ${data.value}', 'MyApp');
+          },
+        ),
+        DCFSpinner(),
+        DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
+        DCFSegmentedControl(
+          segmentedControlProps: DCFSegmentedControlProps(
+            selectedIndex: sliderVal.state.toInt(),
+            segments: [
+              DCFSegmentItem(title: "Item 1"),
+              DCFSegmentItem(title: "Item 2"),
+            ],
+          ),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.red),
+          layout: DCFLayout(
+            width: 200,
+            height: 40,
+            alignItems: YogaAlign.center,
+            justifyContent: YogaJustifyContent.center,
+          ),
+        ),
+        DCFAlert(
+          visible: isDarkMode.state,
+          title: "Alert",
+          message: "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
+          textFields: [DCFAlertTextField(placeholder: "Enter your name")],
+          actions: [
+            DCFAlertAction(
+              title: "Change Theme",
+              style: DCFAlertActionStyle.destructive,
+              handler: "Change Theme",
+            ),
+          ],
+          onActionPress: (data) {
+            if (data['handler'] == "Change Theme") {
+              final newDarkMode = !isDarkMode.state;
+              isDarkMode.setState(newDarkMode);
+              // Actually update the theme
+              DCFTheme.setTheme(
+                newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
+              );
+              // Log alert action
+              DCFLogger.info('Alert action pressed: Change Theme', 'MyApp');
+            }
+          },
+        ),
+        DCFDropdown(
+          dropdownProps: DCFDropdownProps(
+            items: [
+              DCFDropdownMenuItem(title: "Item 1", value: "item1"),
+              DCFDropdownMenuItem(title: "Item 2", value: "item2"),
+            ],
+          ),
+        ),
+
+        DCFText(
+          content: "Theme: ${isDarkMode.state ? 'Dark' : 'Light'}",
+          // Using semantic secondaryColor for secondary text
+          styleSheet: DCFStyleSheet(
+            secondaryColor: DCFTheme.current.secondaryTextColor,
+          ),
+          textProps: DCFTextProps(fontSize: 16),
+          layout: DCFLayout(marginTop: 20),
+        ),
+       DCFView(
+        styleSheet: DCFStyleSheet(
+          backgroundColor: DCFTheme.surfaceColor,
+          borderRadius: 10,
+          borderColor: DCFTheme.surfaceColor,
+          borderWidth: 1,
+        ),
+        layout: DCFLayout(
+          padding: 20,
+          alignItems: YogaAlign.center,
+          justifyContent: YogaJustifyContent.center,
+        ),
+        children: [
+         DCFButton(
+          buttonProps: DCFButtonProps(title: "Count: ${count.state}"),
+          onPress: (data) {
+            final newCount = count.state + 1;
+            count.setState(newCount);
+            // Log button press
+            DCFLogger.info(
+              'Count button pressed, new count: $newCount',
+              'MyApp',
+            );
+          },
+          layout: DCFLayout(marginTop: 20),
+        ),
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Toggle Theme"),
+          onPress: (data) {
+            final newDarkMode = !isDarkMode.state;
+            isDarkMode.setState(newDarkMode);
+            // Actually update the theme
+            DCFTheme.setTheme(
+              newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
+            );
+            // Log theme change
+            DCFLogger.info(
+              'Theme changed to ${newDarkMode ? 'Dark' : 'Light'}',
+              'MyApp',
+            );
+          },
+          layout: DCFLayout(marginTop: 10, height: 50),
+        ),
+       ])
       ],
     );
   }
