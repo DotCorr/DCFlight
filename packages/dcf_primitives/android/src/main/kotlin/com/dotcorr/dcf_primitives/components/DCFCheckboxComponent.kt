@@ -94,30 +94,26 @@ class DCFCheckboxComponent : DCFComponent() {
             }
         }
 
-        if (hasPropChanged("checkedColor", existingProps, props) ||
-            hasPropChanged("uncheckedColor", existingProps, props) ||
-            hasPropChanged("checkmarkColor", existingProps, props) ||
-            hasPropChanged("primaryColor", existingProps, props) ||
-            hasPropChanged("secondaryColor", existingProps, props) ||
-            hasPropChanged("tertiaryColor", existingProps, props)) {
-            val activeColor = ColorUtilities.getColor("checkedColor", "primaryColor", props)
-                ?: props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-            val inactiveColor = ColorUtilities.getColor("uncheckedColor", "secondaryColor", props)
-                ?: props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-            val checkmarkColor = ColorUtilities.getColor("checkmarkColor", "primaryColor", props)
-                ?: props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-            
-            if (activeColor != null && inactiveColor != null) {
-                val states = arrayOf(
-                    intArrayOf(android.R.attr.state_checked),
-                    intArrayOf(-android.R.attr.state_checked)
-                )
-                checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
-            }
-            
-            checkmarkColor?.let {
-                checkBox.setTextColor(it)
-            }
+        val activeColor = ColorUtilities.getColor("checkedColor", "primaryColor", props)
+            ?: props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        val inactiveColor = ColorUtilities.getColor("uncheckedColor", "secondaryColor", props)
+            ?: props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        val checkmarkColor = ColorUtilities.getColor("checkmarkColor", "primaryColor", props)
+            ?: props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        
+        if (activeColor != null && inactiveColor != null) {
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf(-android.R.attr.state_checked)
+            )
+            checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
+        }
+        
+        checkmarkColor?.let {
+            checkBox.setTextColor(it)
+        }
+        
+        if (activeColor != null || inactiveColor != null || checkmarkColor != null) {
             hasUpdates = true
         }
 

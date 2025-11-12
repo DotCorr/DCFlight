@@ -41,11 +41,11 @@ class MyApp extends DCFStatefulComponent {
         padding: 20,
         flex: 1,
         justifyContent: YogaJustifyContent.center,
-        alignItems:isDarkMode.state ? YogaAlign.center : YogaAlign.flexStart,
+        alignItems: YogaAlign.center,
       ),
       // Using unified theme system with semantic colors
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFTheme.current.backgroundColor,
+        // backgroundColor: DCFTheme.current.backgroundColor,
       ),
       children: [
         DCFText(
@@ -66,7 +66,34 @@ class MyApp extends DCFStatefulComponent {
             alignItems: YogaAlign.center,
           ),
         ),
+        DCFTextInput(
+          onChangeText: (text) {
+            name.setState(text);
+          },
+          layout: DCFLayout(
+            marginTop: 20,
+            marginBottom: 20,
+            width: 200,
+            height: 40,
+            alignItems: YogaAlign.center,
+            justifyContent: YogaJustifyContent.center,
+          ),
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFTheme.surfaceColor,
+            borderRadius: 10,
+            borderColor: DCFTheme.surfaceColor,
+            borderWidth: 1,
+          
+          ),
+        ),
+
         DCFWebView(
+          layout: DCFLayout(
+            width: "100%",
+            height: 200,
+            alignItems: YogaAlign.center,
+            justifyContent: YogaJustifyContent.center,
+          ),
           webViewProps: DCFWebViewProps(source: 'https://dotcorr.com'),
         ),
 
@@ -139,7 +166,20 @@ class MyApp extends DCFStatefulComponent {
           textProps: DCFTextProps(fontSize: 16),
           layout: DCFLayout(marginTop: 20),
         ),
-        DCFButton(
+       DCFView(
+        styleSheet: DCFStyleSheet(
+          backgroundColor: DCFTheme.surfaceColor,
+          borderRadius: 10,
+          borderColor: DCFTheme.surfaceColor,
+          borderWidth: 1,
+        ),
+        layout: DCFLayout(
+          padding: 20,
+          alignItems: YogaAlign.center,
+          justifyContent: YogaJustifyContent.center,
+        ),
+        children: [
+         DCFButton(
           buttonProps: DCFButtonProps(title: "Count: ${count.state}"),
           onPress: (data) {
             final newCount = count.state + 1;
@@ -169,6 +209,7 @@ class MyApp extends DCFStatefulComponent {
           },
           layout: DCFLayout(marginTop: 10, height: 50),
         ),
+       ])
       ],
     );
   }

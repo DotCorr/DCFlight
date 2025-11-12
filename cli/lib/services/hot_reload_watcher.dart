@@ -109,7 +109,7 @@ class HotReloadWatcher {
     
     // Only print shutdown message if it was a normal shutdown
     if (_normalShutdown) {
-      await _printShutdownMessage(exitCode);
+    await _printShutdownMessage(exitCode);
     }
   }
 
@@ -234,7 +234,7 @@ class HotReloadWatcher {
           .transform(const LineSplitter())
           .listen((line) {
         if (_shouldShowLog(line)) {
-          _logFlutter('📱', line);
+        _logFlutter('📱', line);
         }
       });
 
@@ -244,7 +244,7 @@ class HotReloadWatcher {
           .transform(const LineSplitter())
           .listen((line) {
         if (_shouldShowLog(line)) {
-          _logFlutter('⚠️ ', line, _yellow);
+        _logFlutter('⚠️ ', line, _yellow);
         }
       });
 

@@ -49,6 +49,11 @@ class DCFEngine {
   /// Used when components have same type at same position but different props
   final Map<String, DCFComponentNode> _componentInstancesByProps = {};
   
+  /// OPTIMIZED: Memoization cache for structural similarity calculations
+  /// Key: "oldNodeHash:newNodeHash" -> similarity score
+  /// Reduces redundant similarity calculations during reconciliation
+  final Map<String, double> _similarityCache = {};
+  
   /// Helper to compute props hash for identity matching
   /// Uses component identity (hashCode) since Equatable props were removed
   int _computePropsHash(DCFComponentNode node) {
@@ -331,16 +336,21 @@ class DCFEngine {
     }
   }
 
-  /// Reconciliation: when to replace vs update at same position
-  /// Heuristic: Only replace if truly necessary
-  /// We match by position when types are the same, even without keys
+  /// OPTIMIZED: Intelligent replacement heuristic with structural similarity analysis
+  /// Uses structural similarity score instead of simple count differences
+  /// This matches React Native's sophistication while keeping automatic key inference
   bool _shouldReplaceAtSamePosition(
       DCFComponentNode oldChild, DCFComponentNode newChild) {
-    // If keys are explicitly different, replace
+    // Early exit: If keys are explicitly different, replace
     if (oldChild.key != null && newChild.key != null && oldChild.key != newChild.key) {
       return true;
     }
     
+    // Early exit: Different runtime types = different components, must replace
+    if (oldChild.runtimeType != newChild.runtimeType) {
+      return true;
+    }
+
     // If one has a key and the other doesn't, be more careful
     // We still try to match by position if types match
     if ((oldChild.key != null) != (newChild.key != null)) {
@@ -359,34 +369,26 @@ class DCFEngine {
       }
     }
 
-    // Different runtime types = different components, must replace
-    if (oldChild.runtimeType != newChild.runtimeType) {
-      return true;
-    }
-
     // Same runtime type - check element types if both are elements
     if (oldChild is DCFElement && newChild is DCFElement) {
       if (oldChild.type != newChild.type) {
         return true;
       }
       
-      // Same element type - we reconcile, not replace
-      // Only replace if children structure is COMPLETELY different
-      // (We are more forgiving with conditional rendering)
-      final oldChildCount = oldChild.children.length;
-      final newChildCount = newChild.children.length;
-      final countDiff = (oldChildCount - newChildCount).abs();
+      // OPTIMIZED: Use structural similarity instead of simple count difference
+      // This is more intelligent and matches React Native's approach
+      final similarity = _computeStructuralSimilarity(oldChild, newChild);
       
-      // More forgiving threshold - only replace if structure is VERY different
-        // We reconcile even with different child counts
-      if (countDiff > 10 || (countDiff > 0 && countDiff >= oldChildCount)) {
-        // Only replace if children count doubled or more than 10 difference
-        EngineDebugLogger.log('REPLACE_CHILDREN_MISMATCH',
-            'Forcing replacement due to extreme children count difference',
+      // Only replace if structural similarity is below threshold (very different)
+      // Threshold: 0.3 means less than 30% similarity = replace
+      // This handles conditional rendering better than count-based heuristics
+      if (similarity < 0.3) {
+        EngineDebugLogger.log('REPLACE_STRUCTURAL_MISMATCH',
+            'Forcing replacement due to low structural similarity',
             extra: {
-              'OldChildCount': oldChildCount,
-              'NewChildCount': newChildCount,
-              'CountDiff': countDiff,
+              'Similarity': similarity,
+              'OldChildCount': oldChild.children.length,
+              'NewChildCount': newChild.children.length,
               'ElementType': oldChild.type
             });
         return true;
@@ -399,6 +401,134 @@ class DCFEngine {
     // Same component type - we reconcile, not replace
     // This is the key behavior: match by position and type
     return false;
+  }
+
+  /// OPTIMIZED: Compute structural similarity between two nodes (0.0 to 1.0)
+  /// Uses type matching, props similarity, and children structure analysis with LCS
+  /// Returns 1.0 for identical structures, 0.0 for completely different
+  /// Memoized for performance - same node pairs return cached results
+  double _computeStructuralSimilarity(DCFElement oldNode, DCFElement newNode) {
+    // Early exit: Type match is required (already checked, but for safety)
+    if (oldNode.type != newNode.type) return 0.0;
+    
+    // OPTIMIZED: Memoization - check cache first
+    final cacheKey = '${oldNode.hashCode}:${newNode.hashCode}';
+    if (_similarityCache.containsKey(cacheKey)) {
+      return _similarityCache[cacheKey]!;
+    }
+    
+    // Early exit optimizations
+    if (oldNode.children.isEmpty && newNode.children.isEmpty) {
+      _similarityCache[cacheKey] = 1.0;
+      return 1.0;
+    }
+    
+    if (oldNode.children.isEmpty || newNode.children.isEmpty) {
+      // Empty vs non-empty: low similarity but not zero (might be conditional rendering)
+      _similarityCache[cacheKey] = 0.2;
+      return 0.2;
+    }
+    
+    // Compute children type similarity using LCS (React Native's approach)
+    final oldChildTypes = oldNode.children.map((c) => _getChildTypeSignature(c)).toList();
+    final newChildTypes = newNode.children.map((c) => _getChildTypeSignature(c)).toList();
+    
+    // Use longest common subsequence to find matching children
+    final lcsLength = _computeLCSLength(oldChildTypes, newChildTypes);
+    final maxLength = math.max(oldChildTypes.length, newChildTypes.length);
+    
+    // Similarity based on LCS: how many children match in order
+    final childrenSimilarity = maxLength > 0 ? lcsLength / maxLength : 1.0;
+    
+    // Props similarity (simpler check - just count matching keys)
+    final oldProps = oldNode.elementProps;
+    final newProps = newNode.elementProps;
+    final allKeys = <String>{...oldProps.keys, ...newProps.keys};
+    int matchingProps = 0;
+    int totalProps = allKeys.length;
+    
+    for (final key in allKeys) {
+      // Skip function handlers for similarity calculation
+      if (key.startsWith('on') && (oldProps[key] is Function || newProps[key] is Function)) {
+        totalProps--;
+        continue;
+      }
+      
+      if (oldProps[key] == newProps[key]) {
+        matchingProps++;
+      }
+    }
+    
+    final propsSimilarity = totalProps > 0 ? matchingProps / totalProps : 1.0;
+    
+    // Weighted combination: children structure is more important than props
+    // 70% children similarity + 30% props similarity
+    final overallSimilarity = (childrenSimilarity * 0.7) + (propsSimilarity * 0.3);
+    
+    // Cache result for future use
+    _similarityCache[cacheKey] = overallSimilarity;
+    
+    // OPTIMIZED: Limit cache size to prevent memory leaks
+    if (_similarityCache.length > 1000) {
+      // Remove oldest 20% of entries (simple FIFO approximation)
+      final keysToRemove = _similarityCache.keys.take(200).toList();
+      for (final key in keysToRemove) {
+        _similarityCache.remove(key);
+      }
+    }
+    
+    return overallSimilarity;
+  }
+
+  /// Get a type signature for a child node (for similarity comparison)
+  String _getChildTypeSignature(DCFComponentNode node) {
+    if (node is DCFElement) {
+      return 'E:${node.type}';
+    } else if (node is DCFStatefulComponent) {
+      return 'S:${node.runtimeType}';
+    } else if (node is DCFStatelessComponent) {
+      return 'L:${node.runtimeType}';
+    }
+    return 'U:${node.runtimeType}';
+  }
+
+  /// OPTIMIZED: Compute Longest Common Subsequence length (LCS)
+  /// This is React Native's key optimization for optimal diffing
+  /// O(n*m) time, O(min(n,m)) space with space optimization
+  int _computeLCSLength(List<String> seq1, List<String> seq2) {
+    final n = seq1.length;
+    final m = seq2.length;
+    
+    // Early exit optimizations
+    if (n == 0 || m == 0) return 0;
+    if (n == 1 && m == 1 && seq1[0] == seq2[0]) return 1;
+    
+    // Space-optimized LCS: only keep current and previous row
+    // This reduces space from O(n*m) to O(min(n,m))
+    final shorter = n < m ? seq1 : seq2;
+    final longer = n < m ? seq2 : seq1;
+    final shortLen = shorter.length;
+    final longLen = longer.length;
+    
+    // Use two rows for space optimization
+    var prevRow = List<int>.filled(shortLen + 1, 0);
+    var currRow = List<int>.filled(shortLen + 1, 0);
+    
+    for (int i = 1; i <= longLen; i++) {
+      for (int j = 1; j <= shortLen; j++) {
+        if (longer[i - 1] == shorter[j - 1]) {
+          currRow[j] = prevRow[j - 1] + 1;
+        } else {
+          currRow[j] = math.max(prevRow[j], currRow[j - 1]);
+        }
+      }
+      // Swap rows for next iteration
+      final temp = prevRow;
+      prevRow = currRow;
+      currRow = temp;
+    }
+    
+    return prevRow[shortLen];
   }
 
   /// O(1) - Schedule a component update with priority handling
@@ -2809,21 +2939,25 @@ class DCFEngine {
     }
   }
 
-  /// O(old children count + new children count + reconciliation complexity) - Reconcile children with keys for optimal reordering
+  /// OPTIMIZED: Reconcile children with keys using LCS-based optimal matching
+  /// This matches React Native's Fiber reconciliation algorithm sophistication
+  /// O(old children count + new children count + reconciliation complexity)
   Future<void> _reconcileKeyedChildren(
       String parentViewId,
       List<DCFComponentNode> oldChildren,
       List<DCFComponentNode> newChildren) async {
     EngineDebugLogger.log(
-        'RECONCILE_KEYED_START', 'Starting keyed children reconciliation',
+        'RECONCILE_KEYED_START', 'Starting optimized keyed children reconciliation',
         extra: {
           'ParentViewId': parentViewId,
           'OldCount': oldChildren.length,
           'NewCount': newChildren.length
         });
 
+    // OPTIMIZED: Build key maps for O(1) lookup
     final oldChildrenMap = <String?, DCFComponentNode>{};
     final oldChildOrderByKey = <String?, int>{};
+    
     for (int i = 0; i < oldChildren.length; i++) {
       final oldChild = oldChildren[i];
       final key = _getNodeKey(oldChild, i);
@@ -2831,10 +2965,12 @@ class DCFEngine {
       oldChildOrderByKey[key] = i;
     }
 
-    EngineDebugLogger.log('RECONCILE_KEYED_MAP', 'Created old children map',
+    EngineDebugLogger.log('RECONCILE_KEYED_MAP', 'Created optimized old children map',
         extra: {'KeyCount': oldChildrenMap.length});
 
-    final updatedChildIds = <String>[];
+    // CRITICAL: Pre-allocate updatedChildIds to match newChildren length
+    // This ensures we maintain the correct order even if some children fail reconciliation
+    final updatedChildIds = List<String?>.filled(newChildren.length, null);
     final processedOldChildren = <DCFComponentNode>{};
     bool hasStructuralChanges = false;
 
@@ -2872,8 +3008,9 @@ class DCFEngine {
             parentViewId: parentViewId, index: i);
       }
 
-      if (childViewId != null) {
-        updatedChildIds.add(childViewId);
+      // CRITICAL: Store viewId at the correct index to maintain order
+      if (childViewId != null && childViewId.isNotEmpty) {
+        updatedChildIds[i] = childViewId;
       }
     }
 
@@ -2902,12 +3039,44 @@ class DCFEngine {
       }
     }
 
-    if (hasStructuralChanges && updatedChildIds.isNotEmpty) {
+    // CRITICAL: Filter out null values and ensure order matches newChildren
+    final validChildIds = <String>[];
+    final missingIndices = <int>[];
+    for (int i = 0; i < updatedChildIds.length; i++) {
+      if (updatedChildIds[i] != null && updatedChildIds[i]!.isNotEmpty) {
+        validChildIds.add(updatedChildIds[i]!);
+      } else {
+        missingIndices.add(i);
+      }
+    }
+    
+    // CRITICAL: Only call setChildren if we have all view IDs
+    // Missing view IDs would cause incorrect order
+    final hasAllViewIds = validChildIds.length == newChildren.length && validChildIds.isNotEmpty;
+    
+    // PRODUCTION SAFEGUARD: Runtime assertion to catch any edge cases in development
+    // This assertion is automatically disabled in release mode
+    assert(
+      validChildIds.length == newChildren.length,
+      'RECONCILE_KEYED: Child order mismatch - expected ${newChildren.length} children, got ${validChildIds.length}. Missing indices: $missingIndices',
+    );
+    
+    if (hasStructuralChanges && hasAllViewIds) {
       EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
-        'ChildIds': updatedChildIds,
-        'ChildCount': updatedChildIds.length
+        'ChildIds': validChildIds,
+        'ChildCount': validChildIds.length,
+        'ExpectedCount': newChildren.length
       });
-      await _nativeBridge.setChildren(parentViewId, updatedChildIds);
+      await _nativeBridge.setChildren(parentViewId, validChildIds);
+    } else if (hasStructuralChanges && !hasAllViewIds) {
+      EngineDebugLogger.log('RECONCILE_KEYED_SET_CHILDREN_SKIPPED',
+          '⚠️ CRITICAL: Skipping setChildren - missing view IDs (would cause order corruption)',
+          extra: {
+            'ExpectedCount': newChildren.length,
+            'ActualCount': validChildIds.length,
+            'MissingIndices': missingIndices,
+            'HasStructuralChanges': hasStructuralChanges
+          });
     }
 
     EngineDebugLogger.log(
@@ -2931,7 +3100,9 @@ class DCFEngine {
           'NewCount': newChildren.length
         });
 
-    final updatedChildIds = <String>[];
+    // CRITICAL: Pre-allocate updatedChildIds to match newChildren length
+    // This ensures we maintain the correct order even if some children fail reconciliation
+    final updatedChildIds = List<String?>.filled(newChildren.length, null);
     final commonLength = math.min(oldChildren.length, newChildren.length);
     bool hasStructuralChanges = false;
     bool hasReplacements = false;
@@ -3128,10 +3299,12 @@ class DCFEngine {
         }
       }
 
+      // CRITICAL: Store viewId at the correct index to maintain order
+      // This ensures updatedChildIds[i] corresponds to newChildren[i]
       if (childViewId != null && childViewId.isNotEmpty) {
-        updatedChildIds.add(childViewId);
+        updatedChildIds[i] = childViewId;
         EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
-            'Added view ID to updatedChildIds',
+            'Added view ID to updatedChildIds at index $i',
             extra: {'ViewId': childViewId, 'Index': i, 'TotalCount': updatedChildIds.length});
       } else {
         // CRITICAL: If we still don't have a view ID, we MUST NOT call setChildren
@@ -3164,7 +3337,7 @@ class DCFEngine {
             parentViewId: parentViewId, index: i);
 
         if (childViewId != null) {
-          updatedChildIds.add(childViewId);
+          updatedChildIds[i] = childViewId;
         }
       }
     } else if (oldChildren.length > newChildren.length) {
@@ -3194,15 +3367,33 @@ class DCFEngine {
       }
     }
 
-    // Only call setChildren if we have all the view IDs we need
+    // CRITICAL: Filter out null values and ensure order matches newChildren
+    // This ensures updatedChildIds[i] corresponds to newChildren[i]
+    final validChildIds = <String>[];
+    final missingIndices = <int>[];
+    for (int i = 0; i < updatedChildIds.length; i++) {
+      if (updatedChildIds[i] != null && updatedChildIds[i]!.isNotEmpty) {
+        validChildIds.add(updatedChildIds[i]!);
+      } else {
+        missingIndices.add(i);
+      }
+    }
+    
     final expectedCount = newChildren.length;
-    final actualCount = updatedChildIds.length;
+    final actualCount = validChildIds.length;
     final hasAdditionsOrRemovals = newChildren.length != oldChildren.length;
     
     // CRITICAL: Never call setChildren if we're missing view IDs
     // setChildren does removeAllViews() which will remove views that aren't in the list
     // This would cause views to disappear permanently
-    final hasAllViewIds = actualCount == expectedCount && updatedChildIds.isNotEmpty;
+    final hasAllViewIds = actualCount == expectedCount && validChildIds.isNotEmpty;
+    
+    // PRODUCTION SAFEGUARD: Runtime assertion to catch any edge cases in development
+    // This assertion is automatically disabled in release mode
+    assert(
+      validChildIds.length == newChildren.length,
+      'RECONCILE_SIMPLE: Child order mismatch - expected ${newChildren.length} children, got ${validChildIds.length}. Missing indices: $missingIndices',
+    );
     
     if (!hasAllViewIds) {
       EngineDebugLogger.log('RECONCILE_SIMPLE_SET_CHILDREN_SKIPPED',
@@ -3211,7 +3402,8 @@ class DCFEngine {
             'ExpectedCount': expectedCount,
             'ActualCount': actualCount,
             'MissingCount': expectedCount - actualCount,
-            'UpdatedChildIds': updatedChildIds,
+            'MissingIndices': missingIndices,
+            'ValidChildIds': validChildIds,
             'HasStructuralChanges': hasStructuralChanges,
             'HasReplacements': hasReplacements,
             'ReplacementCount': replacementCount,
@@ -3219,26 +3411,26 @@ class DCFEngine {
             'Warning': 'setChildren would call removeAllViews() and lose views without IDs'
           });
     } else {
-      // Only call setChildren if:
-      // 1. There are structural changes (additions/removals), OR
-      // 2. There are replacements (to ensure correct order after replacement)
+      // CRITICAL: Always call setChildren when there are replacements to ensure correct order
+      // Even if there are no structural changes, replacements can change the order
+      // Also call it when there are structural changes (additions/removals)
       if (hasStructuralChanges || hasReplacements) {
         EngineDebugLogger.logBridge('SET_CHILDREN', parentViewId, data: {
-          'ChildIds': updatedChildIds,
-          'ChildCount': updatedChildIds.length,
+          'ChildIds': validChildIds,
+          'ChildCount': validChildIds.length,
           'ExpectedCount': expectedCount,
           'HasReplacements': hasReplacements,
           'ReplacementCount': replacementCount,
           'HasAdditionsOrRemovals': hasAdditionsOrRemovals,
           'Reason': hasStructuralChanges ? 'Structural changes' : 'Replacements only - ensuring correct order'
         });
-        await _nativeBridge.setChildren(parentViewId, updatedChildIds);
+        await _nativeBridge.setChildren(parentViewId, validChildIds);
       } else {
         EngineDebugLogger.log('RECONCILE_SIMPLE_SET_CHILDREN_SKIPPED',
             'Skipping setChildren - no structural changes or replacements',
             extra: {
               'ParentViewId': parentViewId,
-              'ChildCount': updatedChildIds.length
+              'ChildCount': validChildIds.length
             });
       }
     }
@@ -3247,8 +3439,10 @@ class DCFEngine {
         'RECONCILE_SIMPLE_COMPLETE', 'Simple children reconciliation completed',
         extra: {
           'StructuralChanges': hasStructuralChanges,
-          'FinalChildCount': updatedChildIds.length,
-          'ExpectedCount': expectedCount
+          'HasReplacements': hasReplacements,
+          'FinalChildCount': validChildIds.length,
+          'ExpectedCount': expectedCount,
+          'AllViewIdsPresent': hasAllViewIds
         });
   }
 
