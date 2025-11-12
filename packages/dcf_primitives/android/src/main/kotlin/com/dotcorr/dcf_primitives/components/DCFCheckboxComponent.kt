@@ -13,10 +13,10 @@ import android.graphics.Color
 import android.view.View
 import android.widget.CheckBox
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
-import com.dotcorr.dcf_primitives.R
 
 /**
  * DCFCheckboxComponent - 1:1 mapping with iOS DCFCheckboxComponent
@@ -48,7 +48,7 @@ class DCFCheckboxComponent : DCFComponent() {
             checkBox.setTextColor(checkmarkColor)
         }
         
-        checkBox.setTag(R.id.dcf_component_type, "Checkbox")
+        checkBox.setTag(DCFTags.COMPONENT_TYPE_KEY, "Checkbox")
         
         updateView(checkBox, props)
         

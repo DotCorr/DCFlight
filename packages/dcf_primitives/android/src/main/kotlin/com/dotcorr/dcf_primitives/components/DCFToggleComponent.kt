@@ -14,10 +14,11 @@ import android.graphics.PointF
 import android.view.View
 import androidx.appcompat.widget.SwitchCompat
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.components.propagateEvent
-import com.dotcorr.dcf_primitives.R
 import com.dotcorr.dcf_primitives.components.parseColor
 
 /**
@@ -53,7 +54,7 @@ class DCFToggleComponent : DCFComponent() {
             switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
         }
 
-        switchControl.setTag(R.id.dcf_component_type, "Toggle")
+        switchControl.setTag(DCFTags.COMPONENT_TYPE_KEY, "Toggle")
 
         updateView(switchControl, props)
 
@@ -123,7 +124,7 @@ class DCFToggleComponent : DCFComponent() {
         }
 
         props["testID"]?.let { testId ->
-            switchControl.setTag(R.id.dcf_test_id, testId)
+            switchControl.setTag(DCFPrimitiveTags.TEST_ID_KEY, testId)
         }
 
         return true

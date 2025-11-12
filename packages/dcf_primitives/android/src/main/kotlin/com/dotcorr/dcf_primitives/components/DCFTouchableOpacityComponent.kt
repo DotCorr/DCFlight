@@ -15,9 +15,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_primitives.R
 
 /**
  * EXACT iOS DCFTouchableOpacityComponent port for Android
@@ -39,7 +39,7 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         
         frameLayout.setBackgroundColor(Color.TRANSPARENT)
         
-        frameLayout.setTag(R.id.dcf_component_type, "TouchableOpacity")
+        frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "TouchableOpacity")
         
         originalAlpha = frameLayout.alpha
         

@@ -14,9 +14,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_primitives.R
 
 /**
  * DCFGestureDetectorComponent - 1:1 mapping with iOS DCFGestureDetectorComponent
@@ -28,7 +28,7 @@ class DCFGestureDetectorComponent : DCFComponent() {
         val frameLayout = FrameLayout(context)
         
         
-        frameLayout.setTag(R.id.dcf_component_type, "GestureDetector")
+        frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "GestureDetector")
         
         val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onSingleTapUp(e: MotionEvent): Boolean {

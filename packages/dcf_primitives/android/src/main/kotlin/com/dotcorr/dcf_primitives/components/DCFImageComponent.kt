@@ -15,9 +15,10 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_primitives.R
+import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 
@@ -108,7 +109,7 @@ class DCFImageComponent : DCFComponent() {
         when {
             source.startsWith("http://") || source.startsWith("https://") -> {
                 Log.d(TAG, "Loading network image: $source")
-                imageView.setTag(R.id.dcf_image_source, source)
+                imageView.setTag(DCFPrimitiveTags.IMAGE_SOURCE_KEY, source)
                 
                 propagateEvent(imageView, "onLoadStart", mapOf("source" to source))
             }

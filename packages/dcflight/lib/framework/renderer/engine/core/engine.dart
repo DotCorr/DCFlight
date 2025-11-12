@@ -3336,14 +3336,14 @@ class DCFEngine {
         if (childViewId == null || childViewId.isEmpty) {
           // Try to get viewId from newChild after reconciliation
           childViewId = newChild.effectiveNativeViewId;
-          
+        
           // If still null, try to get it from oldChild (shouldn't happen, but safety check)
           if ((childViewId == null || childViewId.isEmpty) && oldChild.effectiveNativeViewId != null) {
             childViewId = oldChild.effectiveNativeViewId;
             // Update newChild to use the old viewId
-            if (newChild is DCFElement) {
+          if (newChild is DCFElement) {
               newChild.nativeViewId = childViewId;
-            } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+          } else if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
               newChild.contentViewId = childViewId;
             }
           }
@@ -3366,23 +3366,23 @@ class DCFEngine {
           }
         }
         
-        if (childViewId != null && childViewId.isNotEmpty) {
+      if (childViewId != null && childViewId.isNotEmpty) {
           updatedChildIds[storeIndex] = childViewId;
-          EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
+        EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
               'Added view ID to updatedChildIds',
               extra: {'ViewId': childViewId, 'Index': storeIndex});
-        } else {
-          // CRITICAL: If we still don't have a view ID, we MUST NOT call setChildren
-          // because it will remove all views and this one will be lost
-          EngineDebugLogger.log('RECONCILE_SIMPLE_MISSING_VIEW_ID',
+      } else {
+        // CRITICAL: If we still don't have a view ID, we MUST NOT call setChildren
+        // because it will remove all views and this one will be lost
+        EngineDebugLogger.log('RECONCILE_SIMPLE_MISSING_VIEW_ID',
               '⚠️ CRITICAL: Child at index $storeIndex has no view ID after reconciliation - will skip setChildren',
-              extra: {
-                'OldType': oldChild.runtimeType.toString(),
-                'NewType': newChild.runtimeType.toString(),
+            extra: {
+              'OldType': oldChild.runtimeType.toString(),
+              'NewType': newChild.runtimeType.toString(),
                 'Index': storeIndex,
-                'Warning': 'setChildren will be skipped to prevent view loss'
-              });
-        }
+              'Warning': 'setChildren will be skipped to prevent view loss'
+            });
+      }
       }
     }
     
