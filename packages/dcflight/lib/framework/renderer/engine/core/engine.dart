@@ -80,6 +80,10 @@ class DCFEngine {
   final Set<String> _componentsWaitingForLayout = {};
   final Set<String> _componentsWaitingForInsertion = {};
   bool _isTreeComplete = false;
+  
+  /// Structural shock flag - when true, force full replacement instead of reconciliation
+  /// This prevents component/prop leakage when app structure changes dramatically
+  bool _isStructuralShock = false;
 
   /// Concurrent processing features
   static const int _concurrentThreshold = 5;
@@ -1294,6 +1298,15 @@ class DCFEngine {
     EngineDebugLogger.logReconcile('START', oldNode, newNode,
         reason: 'Beginning reconciliation');
 
+    // 🔥 CRITICAL: Check structural shock flag FIRST, before any position key computation
+    // This prevents position-based matching from incorrectly matching old components
+    if (_isStructuralShock) {
+      EngineDebugLogger.logReconcile('REPLACE_STRUCTURAL_SHOCK', oldNode, newNode,
+          reason: 'Structural shock active - forcing full replacement');
+      await _replaceNode(oldNode, newNode);
+      return;
+    }
+
     final customHandler = VDomExtensionRegistry.instance
         .getReconciliationHandler(newNode.runtimeType);
     if (customHandler != null && customHandler.shouldHandle(oldNode, newNode)) {
@@ -1316,31 +1329,34 @@ class DCFEngine {
 
     newNode.parent = oldNode.parent;
 
+    // 🔥 CRITICAL: Skip position tracking during structural shock to prevent incorrect matching
     // Component instance tracking by position + type + props
     // We maintain component instances across renders when at same position with same type
-    final parentViewId = _findParentViewId(oldNode) ?? "root";
-    final nodeIndex = _findNodeIndexInParent(oldNode);
-    final positionKey = "$parentViewId:$nodeIndex:${newNode.runtimeType}";
-    final propsHash = _computePropsHash(newNode);
-    final propsKey = "$positionKey:$propsHash";
-    
-    // Try to find existing instance by position + type + props
-    // This is automatic key inference - match by position when types/props match
-    final existingByProps = _componentInstancesByProps[propsKey];
-    
-    // If we found an existing instance with same props, reuse it
-    if (existingByProps != null && existingByProps.runtimeType == newNode.runtimeType) {
-      if (existingByProps is DCFStatefulComponent && newNode is DCFStatefulComponent) {
-        // Same component instance - update it instead of creating new one
-        EngineDebugLogger.logReconcile('REUSE_INSTANCE_BY_PROPS', oldNode, newNode,
-            reason: 'Reusing component instance by position+props');
-        // Continue with reconciliation - this is the same instance
+    if (!_isStructuralShock) {
+      final parentViewId = _findParentViewId(oldNode) ?? "root";
+      final nodeIndex = _findNodeIndexInParent(oldNode);
+      final positionKey = "$parentViewId:$nodeIndex:${newNode.runtimeType}";
+      final propsHash = _computePropsHash(newNode);
+      final propsKey = "$positionKey:$propsHash";
+      
+      // Try to find existing instance by position + type + props
+      // This is automatic key inference - match by position when types/props match
+      final existingByProps = _componentInstancesByProps[propsKey];
+      
+      // If we found an existing instance with same props, reuse it
+      if (existingByProps != null && existingByProps.runtimeType == newNode.runtimeType) {
+        if (existingByProps is DCFStatefulComponent && newNode is DCFStatefulComponent) {
+          // Same component instance - update it instead of creating new one
+          EngineDebugLogger.logReconcile('REUSE_INSTANCE_BY_PROPS', oldNode, newNode,
+              reason: 'Reusing component instance by position+props');
+          // Continue with reconciliation - this is the same instance
+        }
       }
+      
+      // Track component instance by position and props (automatic key inference)
+      _componentInstancesByPosition[positionKey] = newNode;
+      _componentInstancesByProps[propsKey] = newNode;
     }
-    
-    // Track component instance by position and props (automatic key inference)
-    _componentInstancesByPosition[positionKey] = newNode;
-    _componentInstancesByProps[propsKey] = newNode;
     
     // Check keys first
     // Only replace if keys are explicitly different (both have keys)
@@ -1364,6 +1380,25 @@ class DCFEngine {
             reason: 'Different element types - full replacement');
         await _replaceNode(oldNode, newNode);
       } else {
+        // 🔥 CRITICAL: Check if props/content differ significantly
+        // This prevents prop leakage when components are matched by position/type
+        // but have completely different content/props
+        final propsSimilarity = _computePropsSimilarity(oldNode.elementProps, newNode.elementProps);
+        if (propsSimilarity < 0.5) {
+          EngineDebugLogger.log('REPLACE_ELEMENT_PROPS_MISMATCH',
+              'Props/content differ significantly - forcing replacement',
+              extra: {
+                'ElementType': oldNode.type,
+                'PropsSimilarity': propsSimilarity,
+                'OldPropsKeys': oldNode.elementProps.keys.toList(),
+                'NewPropsKeys': newNode.elementProps.keys.toList(),
+              });
+          EngineDebugLogger.logReconcile('REPLACE_ELEMENT_PROPS_MISMATCH', oldNode, newNode,
+              reason: 'Props/content differ significantly - forcing replacement');
+          await _replaceNode(oldNode, newNode);
+          return;
+        }
+        
         // Check if children differ significantly
         // We would use keys here, but we can detect structural differences
         // If children count differs significantly, it's likely conditional rendering
@@ -2217,14 +2252,97 @@ class DCFEngine {
     }
   }
 
+  /// Detect if root component structure changed dramatically (structural shock)
+  /// Returns true if the rendered structure is significantly different
+  /// This prevents component instance leakage when copy-pasting different app structures
+  bool _detectStructuralShock(DCFComponentNode? oldRoot, DCFComponentNode newRoot) {
+    if (oldRoot == null) return false;
+    
+    // If different runtime types, definitely a structural shock
+    if (oldRoot.runtimeType != newRoot.runtimeType) {
+      return true;
+    }
+    
+    // If different instances of same class, check if structure changed
+    // Access renderedNode (will call render() if needed via getter)
+    final oldRendered = oldRoot.renderedNode;
+    final newRendered = newRoot.renderedNode;
+    
+    // If either renderedNode is null, can't compare - assume no shock
+    if (oldRendered == null || newRendered == null) {
+      return false;
+    }
+    
+    if (oldRendered is DCFElement && newRendered is DCFElement) {
+      // Different element types = structural shock
+      if (oldRendered.type != newRendered.type) {
+        EngineDebugLogger.log('STRUCTURAL_SHOCK_DETECTED',
+            'Root rendered element type changed',
+            extra: {
+              'OldType': oldRendered.type,
+              'NewType': newRendered.type,
+            });
+        return true;
+      }
+      
+      // 🔥 CRITICAL: Check props similarity first - props/content differences indicate structural shock
+      // This catches cases where structure looks similar but content is completely different
+      final propsSimilarity = _computePropsSimilarity(oldRendered.elementProps, newRendered.elementProps);
+      if (propsSimilarity < 0.5) {
+        EngineDebugLogger.log('STRUCTURAL_SHOCK_DETECTED',
+            'Root component props/content changed dramatically',
+            extra: {
+              'PropsSimilarity': propsSimilarity,
+              'OldPropsKeys': oldRendered.elementProps.keys.toList(),
+              'NewPropsKeys': newRendered.elementProps.keys.toList(),
+            });
+        return true;
+      }
+      
+      // Check structural similarity - if very different, it's a shock
+      final similarity = _computeStructuralSimilarity(oldRendered, newRendered);
+      if (similarity < 0.3) {
+        EngineDebugLogger.log('STRUCTURAL_SHOCK_DETECTED',
+            'Root component structure changed dramatically',
+            extra: {
+              'Similarity': similarity,
+              'OldChildrenCount': oldRendered.children.length,
+              'NewChildrenCount': newRendered.children.length,
+            });
+        return true;
+      }
+    } else if (oldRendered.runtimeType != newRendered.runtimeType) {
+      // Different rendered node types = structural shock
+      EngineDebugLogger.log('STRUCTURAL_SHOCK_DETECTED',
+          'Root rendered node type changed',
+          extra: {
+            'OldType': oldRendered.runtimeType.toString(),
+            'NewType': newRendered.runtimeType.toString(),
+          });
+      return true;
+    }
+    
+    return false;
+  }
+
   /// O(tree render complexity) - Create the root component for the application
   Future<void> createRoot(DCFComponentNode component) async {
     EngineDebugLogger.log('CREATE_ROOT_START', 'Creating root component',
         component: component.runtimeType.toString());
 
-    if (rootComponent != null && rootComponent != component) {
-      EngineDebugLogger.log('CREATE_ROOT_HOT_RESTART',
-          'Hot restart detected. Tearing down old VDOM state.');
+    // Check for structural shock even if rootComponent class is the same
+    // This handles cases where copy-pasting a different app structure
+    final hasStructuralShock = _detectStructuralShock(rootComponent, component);
+    final isDifferentRoot = rootComponent != null && rootComponent != component;
+
+    if (isDifferentRoot || hasStructuralShock) {
+      if (hasStructuralShock && !isDifferentRoot) {
+        EngineDebugLogger.log('CREATE_ROOT_STRUCTURAL_SHOCK',
+            'Structural shock detected - same class but different structure. Clearing instance tracking.');
+      } else {
+        EngineDebugLogger.log('CREATE_ROOT_HOT_RESTART',
+            'Hot restart detected. Tearing down old VDOM state.');
+      }
 
       // 🔥 CRITICAL: Cancel ALL pending async work FIRST
       // This prevents timers and microtasks from firing after cleanup
@@ -2233,7 +2351,9 @@ class DCFEngine {
       // Small delay to let any in-flight timers/microtasks drain
       await Future.delayed(Duration(milliseconds: 50));
 
-      await _disposeOldComponent(rootComponent!);
+      if (rootComponent != null) {
+        await _disposeOldComponent(rootComponent!);
+      }
 
       _statefulComponents.clear();
       _nodesByViewId.clear();
@@ -2241,12 +2361,20 @@ class DCFEngine {
       _pendingUpdates.clear();
       _componentPriorities.clear();
       _errorBoundaries.clear();
+      
+      // 🔥 CRITICAL: Clear instance tracking maps to prevent component leakage
+      // This fixes the issue where old components leak into new app structure
       _componentInstancesByPosition.clear();
       _componentInstancesByProps.clear();
+      _similarityCache.clear(); // Also clear similarity cache
 
       _componentsWaitingForLayout.clear();
       _componentsWaitingForInsertion.clear();
       _isTreeComplete = false;
+      
+      // 🔥 CRITICAL: Set structural shock flag to force full replacement
+      // This prevents position-based matching from incorrectly matching old components
+      _isStructuralShock = true;
 
       EngineDebugLogger.log(
           'VDOM_STATE_CLEARED', 'All VDOM tracking maps have been cleared.');
@@ -2258,10 +2386,13 @@ class DCFEngine {
       await renderToNative(component, parentViewId: "root");
       await _nativeBridge.commitBatchUpdate();
       
+      // Clear structural shock flag after rendering is complete
+      _isStructuralShock = false;
+      
       setRootComponent(component);
 
       EngineDebugLogger.log('CREATE_ROOT_COMPLETE',
-          'Root component re-created successfully after hot restart.');
+          'Root component re-created successfully after ${hasStructuralShock ? "structural shock" : "hot restart"}.');
     } else {
       EngineDebugLogger.log(
           'CREATE_ROOT_FIRST', 'Creating first root component');
@@ -2526,6 +2657,12 @@ class DCFEngine {
       final changedProps = _diffProps(
           oldElement.type, oldElement.elementProps, newElement.elementProps);
 
+      // 🔥 CRITICAL: During structural shock, send ALL props to ensure no leakage
+      // This prevents old props from persisting when structure changes dramatically
+      final propsToSend = _isStructuralShock 
+          ? Map<String, dynamic>.from(newElement.elementProps) // Send all props
+          : changedProps; // Send only changed props
+
       // DEBUG: Log prop comparison for button components
       if (oldElement.type == 'Button') {
         print('🔥 RECONCILE: Button props comparison:');
@@ -2533,16 +2670,22 @@ class DCFEngine {
         print('  New title: ${newElement.elementProps["title"]}');
         print('  Changed props: ${changedProps.keys.toList()}');
         print('  Changed props count: ${changedProps.length}');
+        print('  Structural shock: $_isStructuralShock');
+        print('  Props to send: ${propsToSend.keys.toList()}');
         print('  Old onPress: ${oldElement.elementProps.containsKey("onPress")} (${oldElement.elementProps["onPress"] is Function})');
         print('  New onPress: ${newElement.elementProps.containsKey("onPress")} (${newElement.elementProps["onPress"] is Function})');
         print('  Mapped node type: ${_nodesByViewId[oldElement.nativeViewId!]?.runtimeType}');
         print('  Mapped node == newElement: ${_nodesByViewId[oldElement.nativeViewId!] == newElement}');
       }
 
-      if (changedProps.isNotEmpty) {
+      if (propsToSend.isNotEmpty) {
         EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
-            data: {'ChangedProps': changedProps.keys.toList()});
-        final updateSuccess = await _nativeBridge.updateView(oldElement.nativeViewId!, changedProps);
+            data: {
+              'ChangedProps': propsToSend.keys.toList(),
+              'StructuralShock': _isStructuralShock,
+              'SendAllProps': _isStructuralShock
+            });
+        final updateSuccess = await _nativeBridge.updateView(oldElement.nativeViewId!, propsToSend);
         if (!updateSuccess) {
           EngineDebugLogger.log('UPDATE_VIEW_FAILED', 'updateView failed, falling back to createView',
               extra: {'ViewId': oldElement.nativeViewId});
@@ -2835,6 +2978,55 @@ class DCFEngine {
     }
 
     return changedProps;
+  }
+
+  /// Compute props similarity (0.0 to 1.0) to detect prop leakage
+  /// Returns 1.0 for identical props, 0.0 for completely different
+  double _computePropsSimilarity(Map<String, dynamic> oldProps, Map<String, dynamic> newProps) {
+    // Skip function handlers for similarity calculation
+    final oldNonFunctionProps = oldProps.entries
+        .where((e) => !(e.key.startsWith('on') && e.value is Function))
+        .toList();
+    final newNonFunctionProps = newProps.entries
+        .where((e) => !(e.key.startsWith('on') && e.value is Function))
+        .toList();
+    
+    if (oldNonFunctionProps.isEmpty && newNonFunctionProps.isEmpty) {
+      return 1.0; // Both empty
+    }
+    
+    if (oldNonFunctionProps.isEmpty || newNonFunctionProps.isEmpty) {
+      return 0.0; // One empty, one not = completely different
+    }
+    
+    // Count matching keys and values
+    final allKeys = <String>{...oldNonFunctionProps.map((e) => e.key), ...newNonFunctionProps.map((e) => e.key)};
+    int matchingProps = 0;
+    int totalProps = allKeys.length;
+    
+    for (final key in allKeys) {
+      final oldValue = oldProps[key];
+      final newValue = newProps[key];
+      
+      if (oldValue == null && newValue == null) {
+        matchingProps++;
+      } else if (oldValue == null || newValue == null) {
+        // One is null, one isn't = different
+        continue;
+      } else if (oldValue is Map && newValue is Map) {
+        if (_mapsEqual(oldValue, newValue)) {
+          matchingProps++;
+        }
+      } else if (oldValue is List && newValue is List) {
+        if (_listsEqual(oldValue, newValue)) {
+          matchingProps++;
+        }
+      } else if (oldValue == newValue) {
+        matchingProps++;
+      }
+    }
+    
+    return totalProps > 0 ? matchingProps / totalProps : 1.0;
   }
 
   /// Deep equality check for maps
@@ -3225,12 +3417,15 @@ class DCFEngine {
         continue;
       } else if (positionsMatch) {
         // Positions match - reconcile
-      // Track component instance by position for automatic key inference
-        final childPositionKey = "$parentViewId:$newIndex:${newChild.runtimeType}";
-      final childPropsHash = _computePropsHash(newChild);
-      final childPropsKey = "$childPositionKey:$childPropsHash";
-      _componentInstancesByPosition[childPositionKey] = newChild;
-      _componentInstancesByProps[childPropsKey] = newChild;
+        // 🔥 CRITICAL: Skip position tracking during structural shock to prevent incorrect matching
+        if (!_isStructuralShock) {
+          // Track component instance by position for automatic key inference
+          final childPositionKey = "$parentViewId:$newIndex:${newChild.runtimeType}";
+          final childPropsHash = _computePropsHash(newChild);
+          final childPropsKey = "$childPositionKey:$childPropsHash";
+          _componentInstancesByPosition[childPositionKey] = newChild;
+          _componentInstancesByProps[childPropsKey] = newChild;
+        }
 
         await _reconcile(oldChild, newChild);
         childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
