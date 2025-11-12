@@ -65,9 +65,9 @@ class DCFIconComponent : DCFComponent() {
         }
         }
 
-        ColorUtilities.getColor("iconColor", "primaryColor", props)?.let { colorInt ->
-            imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
-            hasUpdates = true
+            ColorUtilities.getColor("iconColor", "primaryColor", props)?.let { colorInt ->
+                imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
+                hasUpdates = true
         }
 
         view.applyStyles(props)

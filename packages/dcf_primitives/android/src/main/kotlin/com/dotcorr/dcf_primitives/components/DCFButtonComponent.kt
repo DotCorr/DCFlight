@@ -43,7 +43,8 @@ class DCFButtonComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val composeView = ComposeView(context)
-        composeView.setTag(R.id.dcf_component_type, "Button")
+        // ✅ Use pure Kotlin tag keys instead of XML resource IDs
+        composeView.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, "Button")
         
         storeProps(composeView, props)
         
@@ -62,7 +63,7 @@ class DCFButtonComponent : DCFComponent() {
         
         Log.d(TAG, "Updating button with props: $props")
         
-        updateComposeContent(composeView, props)
+            updateComposeContent(composeView, props)
         
         composeView.applyStyles(props)
         
@@ -88,7 +89,8 @@ class DCFButtonComponent : DCFComponent() {
                 primaryColor = primaryColor,
                 backgroundColor = backgroundColor,
                 onPress = {
-                    val viewId = composeView.getTag(com.dotcorr.dcflight.R.id.dcf_view_id) as? String
+                    // ✅ Use pure Kotlin tag keys instead of XML resource IDs
+                    val viewId = composeView.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? String
                         ?: ViewRegistry.shared.allViewIds.firstOrNull { id ->
                             ViewRegistry.shared.getView(id) == composeView
                         }

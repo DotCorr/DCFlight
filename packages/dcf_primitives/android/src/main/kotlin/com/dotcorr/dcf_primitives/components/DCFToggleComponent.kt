@@ -88,25 +88,25 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-        val states = arrayOf(
-            intArrayOf(android.R.attr.state_checked),
-            intArrayOf()
-        )
-        
-        val activeTrackColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
-            ?: props["primaryColor"]?.let { parseColor(it as String) }
-        val inactiveTrackColor = ColorUtilities.getColor("inactiveColor", "secondaryColor", props)
-            ?: props["secondaryColor"]?.let { parseColor(it as String) }
-        val activeThumbColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
-            ?: props["primaryColor"]?.let { parseColor(it as String) }
-        val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) }
-        
-        if (activeTrackColor != null && inactiveTrackColor != null) {
-            switchControl.trackTintList = ColorStateList(states, intArrayOf(activeTrackColor, inactiveTrackColor))
-        }
-        
-        if (activeThumbColor != null && inactiveThumbColor != null) {
-            switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf()
+            )
+            
+            val activeTrackColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
+                ?: props["primaryColor"]?.let { parseColor(it as String) }
+            val inactiveTrackColor = ColorUtilities.getColor("inactiveColor", "secondaryColor", props)
+                ?: props["secondaryColor"]?.let { parseColor(it as String) }
+            val activeThumbColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
+                ?: props["primaryColor"]?.let { parseColor(it as String) }
+            val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) }
+            
+            if (activeTrackColor != null && inactiveTrackColor != null) {
+                switchControl.trackTintList = ColorStateList(states, intArrayOf(activeTrackColor, inactiveTrackColor))
+            }
+            
+            if (activeThumbColor != null && inactiveThumbColor != null) {
+                switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
         }
 
         props["onValueChange"]?.let { 

@@ -115,19 +115,19 @@ class DCFSliderComponent : DCFComponent() {
             }
         }
 
-        ColorUtilities.getColor("minimumTrackColor", "primaryColor", props)?.let { colorInt ->
-            seekBar.progressTintList = ColorStateList.valueOf(colorInt)
-            hasUpdates = true
+            ColorUtilities.getColor("minimumTrackColor", "primaryColor", props)?.let { colorInt ->
+                seekBar.progressTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
         }
 
-        ColorUtilities.getColor("thumbColor", "primaryColor", props)?.let { colorInt ->
-            seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
-            hasUpdates = true
+            ColorUtilities.getColor("thumbColor", "primaryColor", props)?.let { colorInt ->
+                seekBar.thumbTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
         }
 
-        ColorUtilities.getColor("maximumTrackColor", "secondaryColor", props)?.let { colorInt ->
-            seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
-            hasUpdates = true
+            ColorUtilities.getColor("maximumTrackColor", "secondaryColor", props)?.let { colorInt ->
+                seekBar.progressBackgroundTintList = ColorStateList.valueOf(colorInt)
+                hasUpdates = true
         }
 
         view.applyStyles(props)
