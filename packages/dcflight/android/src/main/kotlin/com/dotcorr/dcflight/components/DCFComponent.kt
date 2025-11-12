@@ -20,11 +20,6 @@ abstract class DCFComponent {
     
     companion object {
         private const val TAG = "DCFComponent"
-        
-        const val TAG_VIEW_ID = "dcf_view_id"
-        const val TAG_EVENT_TYPES = "dcf_event_types"  
-        const val TAG_EVENT_CALLBACK = "dcf_event_callback"
-        const val TAG_STORED_PROPS = "dcf_stored_props"
     }
 
     /**
@@ -53,17 +48,19 @@ abstract class DCFComponent {
     /**
      * Store props in view tag for merging on updates (React Native pattern)
      * This ensures properties are preserved across partial updates
+     * Uses pure Kotlin tag keys - NO XML resources needed
      */
     protected fun storeProps(view: View, props: Map<String, Any?>) {
-        view.setTag(TAG_STORED_PROPS.hashCode(), props.toMutableMap())
+        view.setTag(DCFTags.STORED_PROPS_KEY, props.toMutableMap())
     }
     
     /**
      * Get stored props from view tag
+     * Uses pure Kotlin tag keys - NO XML resources needed
      */
     protected fun getStoredProps(view: View): MutableMap<String, Any?> {
         @Suppress("UNCHECKED_CAST")
-        return (view.getTag(TAG_STORED_PROPS.hashCode()) as? MutableMap<String, Any?>) ?: mutableMapOf()
+        return (view.getTag(DCFTags.STORED_PROPS_KEY) as? MutableMap<String, Any?>) ?: mutableMapOf()
     }
     
     /**
@@ -186,9 +183,10 @@ fun propagateEvent(
     try {
         nativeAction?.invoke(view, data)
 
-        val viewId = view.getTag(com.dotcorr.dcflight.R.id.dcf_view_id) as? String
-        val eventTypes = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_types) as? Set<String>
-        val eventCallback = view.getTag(com.dotcorr.dcflight.R.id.dcf_event_callback) as? (String, Map<String, Any?>) -> Unit
+        // ✅ Use pure Kotlin tag keys instead of XML resource IDs
+        val viewId = view.getTag(DCFTags.VIEW_ID_KEY) as? String
+        val eventTypes = view.getTag(DCFTags.EVENT_TYPES_KEY) as? Set<String>
+        val eventCallback = view.getTag(DCFTags.EVENT_CALLBACK_KEY) as? (String, Map<String, Any?>) -> Unit
 
         android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventName=$eventName, viewId=$viewId")
         android.util.Log.d("DCFComponent", "🔥 propagateEvent: eventTypes=$eventTypes")

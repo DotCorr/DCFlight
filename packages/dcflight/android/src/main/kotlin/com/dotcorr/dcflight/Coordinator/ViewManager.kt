@@ -94,7 +94,8 @@ class DCFViewManager private constructor() {
 
         val view = componentInstance.createView(context, props)
 
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_component_type, viewType)
+        // ✅ Use pure Kotlin tag keys instead of XML resource IDs
+        view.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, viewType)
 
         ViewRegistry.shared.registerView(view, viewId, viewType)
 

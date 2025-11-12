@@ -214,13 +214,14 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             return
         }
 
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, eventTypes.toSet())
+        // ✅ Use pure Kotlin tag keys instead of XML resource IDs
+        view.setTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY, viewId)
+        view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_TYPES_KEY, eventTypes.toSet())
 
         val eventCallback: (String, Map<String, Any?>) -> Unit = { eventType, eventData ->
             shared.sendEventToFlutter(viewId, eventType, eventData)
         }
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, eventCallback)
+        view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_CALLBACK_KEY, eventCallback)
 
         Log.d(TAG, "Event listeners registered for view $viewId: $eventTypes")
         result.success(true)
@@ -236,13 +237,14 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
             return false
         }
 
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, viewId)
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, eventTypes.toSet())
+        // ✅ Use pure Kotlin tag keys instead of XML resource IDs
+        view.setTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY, viewId)
+        view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_TYPES_KEY, eventTypes.toSet())
 
         val eventCallback: (String, Map<String, Any?>) -> Unit = { eventType, eventData ->
             shared.sendEventToFlutter(viewId, eventType, eventData)
         }
-        view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, eventCallback)
+        view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_CALLBACK_KEY, eventCallback)
 
         Log.d(TAG, "Event listeners registered for view $viewId: $eventTypes")
         return true
@@ -287,9 +289,10 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
 
         val view = ViewRegistry.shared.getView(viewId)
         if (view != null) {
-            view.setTag(com.dotcorr.dcflight.R.id.dcf_view_id, null)
-            view.setTag(com.dotcorr.dcflight.R.id.dcf_event_types, null)
-            view.setTag(com.dotcorr.dcflight.R.id.dcf_event_callback, null)
+            // ✅ Use pure Kotlin tag keys instead of XML resource IDs
+            view.setTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY, null)
+            view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_TYPES_KEY, null)
+            view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_CALLBACK_KEY, null)
         }
 
         result.success(true)
