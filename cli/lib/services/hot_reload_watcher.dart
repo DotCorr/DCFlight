@@ -233,6 +233,10 @@ class HotReloadWatcher {
           .transform(utf8.decoder)
           .transform(const LineSplitter())
           .listen((line) {
+        // Debug: Log all lines in verbose mode to see what's being captured
+        if (verbose && !line.contains('DCFLOG:')) {
+          print('🔍 DEBUG: Captured line (not DCFLOG): ${line.substring(0, line.length > 100 ? 100 : line.length)}');
+        }
         if (_shouldShowLog(line)) {
         _logFlutter('📱', line);
         }
@@ -564,12 +568,30 @@ class HotReloadWatcher {
       String displayMessage = trimmed;
       // Remove Android format: I/flutter (pid): prefix if present
       displayMessage = displayMessage.replaceFirst(RegExp(r'^[VDIWEF]/flutter\s*\(\d+\):\s*'), '');
-      // Remove iOS format: flutter: prefix if present
+      // Remove iOS format: @dart (pid) or @dart (pid-pid) prefix if present
+      displayMessage = displayMessage.replaceFirst(RegExp(r'^@dart\s*\([^)]+\)\s*'), '');
+      // Remove iOS format: flutter: prefix if present (fallback)
       displayMessage = displayMessage.replaceFirst(RegExp(r'^flutter:\s*'), '');
       // Remove DCFLOG: prefix
       displayMessage = displayMessage.replaceFirst(RegExp(r'^DCFLOG:\s*'), '');
-      // Print the formatted output directly - logger package already did the work
-      print(displayMessage);
+      
+      // Fix escaped ANSI codes on iOS
+      // iOS Flutter sometimes escapes ANSI codes, showing them as literal text
+      // We need to convert escaped sequences back to actual ANSI codes
+      // Pattern: \^[ followed by [ and numbers/semicolons (ANSI escape sequence)
+      displayMessage = displayMessage.replaceAllMapped(
+        RegExp(r'\\\^\[(\[[\d;]*[a-zA-Z])'),
+        (match) => '\x1B${match.group(1)}',
+      );
+      
+      // Also handle cases where ESC is shown as \033 or \x1B literally
+      displayMessage = displayMessage.replaceAll('\\033[', '\x1B[');
+      displayMessage = displayMessage.replaceAll('\\x1B[', '\x1B[');
+      
+      // Write directly to stdout to ensure ANSI codes are properly interpreted
+      // This ensures colors work on both iOS and Android
+      stdout.writeln(displayMessage);
+      stdout.flush();
       return;
     }
     
