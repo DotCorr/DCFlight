@@ -30,6 +30,17 @@ This directory contains comprehensive documentation about DCFlight's Virtual DOM
    - Props diffing
    - Performance optimizations
 
+5. **[Concurrent Features](./CONCURRENT_FEATURES.md)**
+   - Priority-based update scheduling
+   - Parallel processing
+   - Concurrent mode activation
+   - Performance benefits
+
+6. **[Concurrent Mode Evidence](./CONCURRENT_MODE_EVIDENCE.md)**
+   - Direct code evidence
+   - Implementation details
+   - API reference
+
 ## Quick Reference
 
 ### Component Tree → VDOM Tree → Native Views
