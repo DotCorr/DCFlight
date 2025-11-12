@@ -15,6 +15,7 @@ import android.os.Looper
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
+import androidx.compose.ui.platform.ComposeView
 import com.facebook.yoga.*
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
@@ -179,6 +180,40 @@ class YogaShadowTree private constructor() {
                         height
                     }
                     
+                    // CRITICAL: For ComposeView (Text, Button), actually measure with constraints
+                    // This allows text wrapping when parent has width constraints
+                    // ComposeView will measure its content and return the correct size
+                    if (view is ComposeView && widthMode != YogaMeasureMode.UNDEFINED) {
+                        // Measure ComposeView with width constraint for proper text wrapping
+                        // Use AT_MOST so text can wrap within the constraint
+                        val widthSpec = android.view.View.MeasureSpec.makeMeasureSpec(
+                            constraintWidth.toInt(),
+                            android.view.View.MeasureSpec.AT_MOST
+                        )
+                        val heightSpec = if (heightMode == YogaMeasureMode.UNDEFINED) {
+                            android.view.View.MeasureSpec.makeMeasureSpec(
+                                0,
+                                android.view.View.MeasureSpec.UNSPECIFIED
+                            )
+                        } else {
+                            android.view.View.MeasureSpec.makeMeasureSpec(
+                                constraintHeight.toInt(),
+                                android.view.View.MeasureSpec.AT_MOST
+                            )
+                        }
+                        
+                        view.measure(widthSpec, heightSpec)
+                        
+                        val measuredWidth = view.measuredWidth.toFloat()
+                        val measuredHeight = view.measuredHeight.toFloat()
+                        
+                        // Use measured size if valid, otherwise fall back to intrinsic
+                        if (measuredWidth > 0 && measuredHeight > 0) {
+                            return@setMeasureFunction YogaMeasureOutput.make(measuredWidth, measuredHeight)
+                        }
+                    }
+                    
+                    // Fallback: Use intrinsic size for non-ComposeView or when measurement fails
                     val intrinsicSize = componentInstance.getIntrinsicSize(view, emptyMap())
                     
                     val finalWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {

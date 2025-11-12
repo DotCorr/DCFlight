@@ -1,8 +1,5 @@
-group 'com.dotcorr.dcflight'
-version '1.0'
-
 buildscript {
-    ext.kotlin_version = '1.9.0'
+    ext.kotlin_version = '2.1.0'
     repositories {
         google()
         mavenCentral()
@@ -14,15 +11,21 @@ buildscript {
     }
 }
 
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android' version '2.1.0'
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.1.0'
+}
+
+group 'com.dotcorr.dcflight'
+version '1.0'
+
 rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
     }
 }
-
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
 
 android {
     namespace 'com.dotcorr.dcflight'
@@ -47,24 +50,39 @@ android {
         minSdkVersion 21
     }
 
-    dependencies {
-        implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-        implementation 'androidx.core:core-ktx:1.12.0'
-        implementation 'androidx.appcompat:appcompat:1.6.1'
-        implementation 'com.google.android.material:material:1.11.0'
-        implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-
-        // Lifecycle support for Compose
-        implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.5'
-        implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.5'
-        implementation 'androidx.savedstate:savedstate-ktx:1.2.1'
-
-        // Yoga layout engine - Updated to 2.0+ for gap support
-        implementation 'com.facebook.yoga:yoga:2.0.0'
-        implementation 'com.facebook.soloader:soloader:0.10.4'
-
-        // Coroutines for async operations
-        implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-        implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+    buildFeatures {
+        compose true
     }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0"
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    // Lifecycle support for Compose
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.5'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.5'
+    implementation 'androidx.savedstate:savedstate-ktx:1.2.1'
+
+    // Jetpack Compose (for DCFComposeContainerView)
+    def composeBom = platform('androidx.compose:compose-bom:2024.02.00')
+    implementation composeBom
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.runtime:runtime'
+
+    // Yoga layout engine - Updated to 2.0+ for gap support
+    implementation 'com.facebook.yoga:yoga:2.0.0'
+    implementation 'com.facebook.soloader:soloader:0.10.4'
+
+    // Coroutines for async operations
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+}
+
+// Compose Compiler configuration (top level, required for Kotlin 2.0+)
+composeCompiler {
+    enableStrongSkippingMode = true
 }
