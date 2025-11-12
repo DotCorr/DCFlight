@@ -379,6 +379,21 @@ class DCFEngine {
         return true;
       }
       
+      // 🔥 CRITICAL: Check props similarity first - props/content differences indicate replacement needed
+      // This prevents matching components by position/type when they have completely different content
+      final propsSimilarity = _computePropsSimilarity(oldChild.elementProps, newChild.elementProps);
+      if (propsSimilarity < 0.5) {
+        EngineDebugLogger.log('REPLACE_PROPS_MISMATCH',
+            'Forcing replacement due to low props similarity',
+            extra: {
+              'PropsSimilarity': propsSimilarity,
+              'ElementType': oldChild.type,
+              'OldPropsKeys': oldChild.elementProps.keys.toList(),
+              'NewPropsKeys': newChild.elementProps.keys.toList(),
+            });
+        return true;
+      }
+      
       // OPTIMIZED: Use structural similarity instead of simple count difference
       // This is more intelligent and matches React Native's approach
       final similarity = _computeStructuralSimilarity(oldChild, newChild);
@@ -398,7 +413,7 @@ class DCFEngine {
         return true;
       }
       
-      // Same type, similar structure - reconcile, don't replace
+      // Same type, similar props and structure - reconcile, don't replace
       return false;
     }
 
@@ -3334,27 +3349,114 @@ class DCFEngine {
       final oldChild = oldChildren[oldIndex];
       final newChild = newChildren[newIndex];
       
-      // Check if current positions match
+      // 🔥 CRITICAL: Check props similarity FIRST before any position matching
+      // If props differ significantly, treat as replacement immediately (React-like behavior)
+      // This prevents incorrect matching when structure changes dramatically
+      bool propsDifferSignificantly = false;
+      if (oldChild is DCFElement && newChild is DCFElement) {
+        final propsSimilarity = _computePropsSimilarity(oldChild.elementProps, newChild.elementProps);
+        if (propsSimilarity < 0.5) {
+          propsDifferSignificantly = true;
+          EngineDebugLogger.log('RECONCILE_SIMPLE_PROPS_DIFFER',
+              'Props differ significantly - forcing replacement (no position matching)',
+              extra: {
+                'OldIndex': oldIndex,
+                'NewIndex': newIndex,
+                'PropsSimilarity': propsSimilarity,
+                'OldType': oldChild.type,
+                'NewType': newChild.type,
+              });
+        }
+      }
+      
+      // If props differ significantly, replace immediately (don't try position matching)
+      if (propsDifferSignificantly) {
+        hasReplacements = true;
+        replacementCount++;
+        hasStructuralChanges = true;
+        
+        EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE_PROPS_IMMEDIATE',
+            'Replacing child immediately due to props mismatch',
+            extra: {
+              'OldIndex': oldIndex,
+              'NewIndex': newIndex,
+              'OldType': oldChild.runtimeType.toString(),
+              'NewType': newChild.runtimeType.toString(),
+            });
+        
+        try {
+          oldChild.componentWillUnmount();
+        } catch (e) {
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
+              'Error in componentWillUnmount', extra: {'Error': e.toString()});
+        }
+        
+        final oldViewId = oldChild.effectiveNativeViewId;
+        if (oldViewId != null) {
+          EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
+          await _nativeBridge.deleteView(oldViewId);
+          _nodesByViewId.remove(oldViewId);
+        }
+        
+        final childViewId = await renderToNative(newChild,
+            parentViewId: parentViewId, index: newIndex);
+        
+        if (childViewId != null && childViewId.isNotEmpty) {
+          updatedChildIds[newIndex] = childViewId;
+        }
+        
+        oldIndex++;
+        newIndex++;
+        continue;
+      }
+      
+      // Check if current positions match (only if props are similar)
       final positionsMatch = !_shouldReplaceAtSamePosition(oldChild, newChild);
       
       // CRITICAL: Look ahead to find where oldChild appears in newChildren (if at all)
       // This handles multiple consecutive insertions correctly
+      // BUT: Only look ahead if props are similar (to avoid matching wrong components)
       int? matchingNewIndex;
-      for (int lookAhead = newIndex + 1; lookAhead < newChildren.length; lookAhead++) {
-        if (!_shouldReplaceAtSamePosition(oldChild, newChildren[lookAhead])) {
-          matchingNewIndex = lookAhead;
-          break;
+      if (!propsDifferSignificantly) {
+        for (int lookAhead = newIndex + 1; lookAhead < newChildren.length; lookAhead++) {
+          final lookAheadChild = newChildren[lookAhead];
+          // Check props similarity before matching
+          bool canMatch = true;
+          if (oldChild is DCFElement && lookAheadChild is DCFElement) {
+            final lookAheadPropsSimilarity = _computePropsSimilarity(
+                oldChild.elementProps, lookAheadChild.elementProps);
+            if (lookAheadPropsSimilarity < 0.5) {
+              canMatch = false;
+            }
+          }
+          if (canMatch && !_shouldReplaceAtSamePosition(oldChild, lookAheadChild)) {
+            matchingNewIndex = lookAhead;
+            break;
+          }
         }
       }
       final isInsertion = matchingNewIndex != null && !positionsMatch;
       
       // CRITICAL: Look ahead to find where newChild appears in oldChildren (if at all)
       // This handles multiple consecutive removals correctly
+      // BUT: Only look ahead if props are similar (to avoid matching wrong components)
       int? matchingOldIndex;
-      for (int lookAhead = oldIndex + 1; lookAhead < oldChildren.length; lookAhead++) {
-        if (!_shouldReplaceAtSamePosition(oldChildren[lookAhead], newChild)) {
-          matchingOldIndex = lookAhead;
-          break;
+      if (!propsDifferSignificantly) {
+        for (int lookAhead = oldIndex + 1; lookAhead < oldChildren.length; lookAhead++) {
+          final lookAheadChild = oldChildren[lookAhead];
+          // Check props similarity before matching
+          bool canMatch = true;
+          if (newChild is DCFElement && lookAheadChild is DCFElement) {
+            final lookAheadPropsSimilarity = _computePropsSimilarity(
+                newChild.elementProps, lookAheadChild.elementProps);
+            if (lookAheadPropsSimilarity < 0.5) {
+              canMatch = false;
+            }
+          }
+          if (canMatch && !_shouldReplaceAtSamePosition(lookAheadChild, newChild)) {
+            matchingOldIndex = lookAhead;
+            break;
+          }
         }
       }
       final isRemoval = matchingOldIndex != null && !positionsMatch;
@@ -3416,7 +3518,68 @@ class DCFEngine {
         oldIndex++; // Move to next old child, keep new index
         continue;
       } else if (positionsMatch) {
-        // Positions match - reconcile
+        // Positions match - but check if props differ significantly
+        // 🔥 CRITICAL: If props differ significantly, force replacement instead of reconciliation
+        // This prevents prop leakage when components are matched by position/type but have different content
+        bool shouldForceReplace = false;
+        if (oldChild is DCFElement && newChild is DCFElement) {
+          final propsSimilarity = _computePropsSimilarity(oldChild.elementProps, newChild.elementProps);
+          if (propsSimilarity < 0.5) {
+            shouldForceReplace = true;
+            EngineDebugLogger.log('RECONCILE_SIMPLE_PROPS_MISMATCH',
+                'Props differ significantly at same position - forcing replacement',
+                extra: {
+                  'OldIndex': oldIndex,
+                  'NewIndex': newIndex,
+                  'PropsSimilarity': propsSimilarity,
+                  'OldType': oldChild.type,
+                  'NewType': newChild.type,
+                });
+          }
+        }
+        
+        if (shouldForceReplace) {
+          // Force replacement instead of reconciliation
+          hasReplacements = true;
+          replacementCount++;
+          hasStructuralChanges = true;
+          
+          EngineDebugLogger.log('RECONCILE_SIMPLE_REPLACE_PROPS',
+              'Replacing child due to props mismatch',
+              extra: {
+                'OldIndex': oldIndex,
+                'NewIndex': newIndex,
+                'OldType': oldChild.runtimeType.toString(),
+                'NewType': newChild.runtimeType.toString(),
+              });
+          
+          try {
+            oldChild.componentWillUnmount();
+          } catch (e) {
+            EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
+                'Error in componentWillUnmount', extra: {'Error': e.toString()});
+          }
+          
+          final oldViewId = oldChild.effectiveNativeViewId;
+          if (oldViewId != null) {
+            EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
+            await _nativeBridge.deleteView(oldViewId);
+            _nodesByViewId.remove(oldViewId);
+          }
+          
+          childViewId = await renderToNative(newChild,
+              parentViewId: parentViewId, index: newIndex);
+          
+          if (childViewId != null && childViewId.isNotEmpty) {
+            updatedChildIds[newIndex] = childViewId;
+          }
+          
+          oldIndex++;
+          newIndex++;
+          continue;
+        }
+        
+        // Positions match and props are similar - reconcile
         // 🔥 CRITICAL: Skip position tracking during structural shock to prevent incorrect matching
         if (!_isStructuralShock) {
           // Track component instance by position for automatic key inference
