@@ -38,6 +38,7 @@ class DCFLogOutput extends logger_pkg.LogOutput {
     for (var line in event.lines) {
       // Prepend DCFLOG: to each line so CLI can easily detect and show these logs
       // Use print() which goes to stdout - CLI reads from Flutter process stdout/stderr
+      // Note: ANSI codes should work fine with print() - the issue was in CLI processing
       print('DCFLOG: $line');
     }
   }
