@@ -1965,7 +1965,7 @@ class DCFEngine {
       EngineDebugLogger.log('REPLACE_COLLECTED_CHILDREN',
           'Collected ${childViewIds.length} child view IDs for cleanup',
           extra: {'ChildViewIds': childViewIds});
-
+      
       // Only delete the old view after the new one is created and attached
       EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
       await _nativeBridge.deleteView(oldViewId);
@@ -2184,8 +2184,8 @@ class DCFEngine {
         // Android's deleteView will handle recursive deletion when the parent is deleted.
         // This prevents text components from being removed prematurely, causing flashing/disappearing.
         if (!skipChildrenDisposal) {
-          for (final child in oldNode.children) {
-            await _disposeOldComponent(child);
+        for (final child in oldNode.children) {
+          await _disposeOldComponent(child);
           }
         } else {
           EngineDebugLogger.log('DISPOSE_SKIP_CHILDREN',
@@ -3166,7 +3166,7 @@ class DCFEngine {
         }
       }
       final isRemoval = matchingOldIndex != null && !positionsMatch;
-      
+
       EngineDebugLogger.log(
           'RECONCILE_SIMPLE_UPDATE', 'Processing children',
           extra: {
@@ -3225,13 +3225,13 @@ class DCFEngine {
         continue;
       } else if (positionsMatch) {
         // Positions match - reconcile
-        // Track component instance by position for automatic key inference
+      // Track component instance by position for automatic key inference
         final childPositionKey = "$parentViewId:$newIndex:${newChild.runtimeType}";
-        final childPropsHash = _computePropsHash(newChild);
-        final childPropsKey = "$childPositionKey:$childPropsHash";
-        _componentInstancesByPosition[childPositionKey] = newChild;
-        _componentInstancesByProps[childPropsKey] = newChild;
-        
+      final childPropsHash = _computePropsHash(newChild);
+      final childPropsKey = "$childPositionKey:$childPropsHash";
+      _componentInstancesByPosition[childPositionKey] = newChild;
+      _componentInstancesByProps[childPropsKey] = newChild;
+
         await _reconcile(oldChild, newChild);
         childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
         
@@ -3317,9 +3317,9 @@ class DCFEngine {
                   newChild.contentViewId = childViewId;
                 }
               }
+              }
             }
           }
-        }
         
         processedOldIndices.add(oldIndex);
         oldIndex++;
@@ -3354,20 +3354,20 @@ class DCFEngine {
     while (oldIndex < oldChildren.length) {
       final oldChild = oldChildren[oldIndex];
       hasStructuralChanges = true;
-      
-      try {
-        oldChild.componentWillUnmount();
-      } catch (e) {
-        EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
+
+        try {
+          oldChild.componentWillUnmount();
+        } catch (e) {
+          EngineDebugLogger.log('LIFECYCLE_WILL_UNMOUNT_ERROR',
             'Error in componentWillUnmount', extra: {'Error': e.toString()});
-      }
-      
-      final viewId = oldChild.effectiveNativeViewId;
-      if (viewId != null) {
-        EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
-        await _nativeBridge.deleteView(viewId);
-        _nodesByViewId.remove(viewId);
-      }
+        }
+
+        final viewId = oldChild.effectiveNativeViewId;
+        if (viewId != null) {
+          EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
+          await _nativeBridge.deleteView(viewId);
+          _nodesByViewId.remove(viewId);
+        }
       
       oldIndex++;
     }
