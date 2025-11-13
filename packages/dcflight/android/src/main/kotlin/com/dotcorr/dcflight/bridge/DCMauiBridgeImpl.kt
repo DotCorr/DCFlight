@@ -264,10 +264,9 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
 
-            // ✅ FIX: Components handle their own invalidation/layout needs
-            // ✅ FIX: YogaShadowTree handles layout calculations via DCFLayoutManager
-            // ✅ FIX: Removing redundant invalidate/requestLayout calls eliminates text flashing
-            view.visibility = View.VISIBLE
+            // Framework controls visibility in layout application (not here)
+            // Visibility is ensured in DCFLayoutManager.applyLayoutDirectly (matches iOS)
+            // This prevents redundant visibility changes that cause flash
 
             true
         } catch (e: Exception) {
