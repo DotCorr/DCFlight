@@ -11,7 +11,6 @@ import android.content.Context
 import android.graphics.PointF
 import android.util.Log
 import android.view.View
-import android.view.ViewGroup
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFTags
+import com.dotcorr.dcflight.components.DCFComposeWrapper
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 import androidx.compose.ui.platform.ComposeView
@@ -46,7 +46,7 @@ class DCFTextComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val composeView = ComposeView(context)
-        val wrapper = NonLayoutRequestingWrapper(context, composeView)
+        val wrapper = DCFComposeWrapper(context, composeView)
         wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
         wrapper.visibility = View.VISIBLE
         wrapper.alpha = 1.0f
@@ -63,7 +63,7 @@ class DCFTextComponent : DCFComponent() {
     }
 
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        val wrapper = view as? NonLayoutRequestingWrapper ?: return false
+        val wrapper = view as? DCFComposeWrapper ?: return false
         val composeView = wrapper.composeView
         
         val contentChanged = props["content"]?.toString() != existingProps["content"]?.toString()
@@ -179,7 +179,7 @@ class DCFTextComponent : DCFComponent() {
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        val wrapper = view as? NonLayoutRequestingWrapper ?: return
+        val wrapper = view as? DCFComposeWrapper ?: return
         val composeView = wrapper.composeView
         val storedProps = getStoredProps(view)
         updateComposeContent(composeView, storedProps)
@@ -212,54 +212,6 @@ class DCFTextComponent : DCFComponent() {
             "justify" -> TextAlign.Justify
             else -> TextAlign.Start
         }
-    }
-}
-
-/**
- * Wrapper ViewGroup that prevents ComposeView from requesting layout during content-only updates.
- * Layout requests are only allowed when layout props (width, height, margin, padding) change.
- */
-private class NonLayoutRequestingWrapper(
-    context: Context,
-    val composeView: ComposeView
-) : ViewGroup(context) {
-    private var allowLayoutRequests = true
-    private var resetRunnable: Runnable? = null
-    
-    init {
-        addView(composeView, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-    }
-    
-    fun setAllowLayoutRequests(allow: Boolean) {
-        resetRunnable?.let { removeCallbacks(it) }
-        resetRunnable = null
-        allowLayoutRequests = allow
-        
-        if (!allow) {
-            resetRunnable = Runnable {
-                allowLayoutRequests = true
-            }
-            post(resetRunnable!!)
-        }
-    }
-    
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        composeView.measure(widthMeasureSpec, heightMeasureSpec)
-        setMeasuredDimension(composeView.measuredWidth, composeView.measuredHeight)
-    }
-    
-    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        composeView.layout(0, 0, r - l, b - t)
-    }
-    
-    override fun requestLayout() {
-        if (allowLayoutRequests) {
-            super.requestLayout()
-        }
-    }
-    
-    override fun invalidate() {
-        super.invalidate()
     }
 }
 
