@@ -58,7 +58,7 @@ class MyApp extends DCFStatefulComponent {
             backgroundColor: DCFTheme.current.backgroundColor,
           ),
           children: [
-            CFText(
+            DCFSlider(
               layout: DCFLayout(
                 height: 200,
                 width: 50,
