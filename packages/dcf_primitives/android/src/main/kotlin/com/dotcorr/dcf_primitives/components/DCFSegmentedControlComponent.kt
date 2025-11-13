@@ -18,6 +18,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFPropConstants
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
@@ -110,10 +111,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
             hasUpdates = true
         } else if (hasPropChanged("selectedBackgroundColor", existingProps, props) ||
             hasPropChanged("tintColor", existingProps, props) ||
-            hasPropChanged("primaryColor", existingProps, props) ||
-            hasPropChanged("secondaryColor", existingProps, props) ||
-            hasPropChanged("tertiaryColor", existingProps, props) ||
-            hasPropChanged("accentColor", existingProps, props)) {
+            DCFPropConstants.SEMANTIC_COLOR_PROPS.any { hasPropChanged(it, existingProps, props) }) {
             val selectedIndex = getSelectedIndex(props, container.childCount)
             updateButtonColors(container, selectedIndex, props)
             hasUpdates = true
