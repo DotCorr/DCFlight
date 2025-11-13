@@ -15,7 +15,11 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcflight.components.DCFFrameLayout
+import com.dotcorr.dcflight.components.DCFNodeLayout
+import com.dotcorr.dcflight.components.DCFTags
+import com.dotcorr.dcflight.layout.ViewRegistry
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -227,30 +231,23 @@ class DCFLayoutManager private constructor() {
 
     /**
      * Apply calculated layout to a view with optional animation - MATCH iOS exactly
+     * Now uses component.applyLayout() instead of direct view manipulation
      */
     fun applyLayout(viewId: String, left: Float, top: Float, width: Float, height: Float, animationDuration: Long = 0): Boolean {
         val view = getView(viewId) ?: return false
 
-        val frame = Rect(
-            left.toInt(),
-            top.toInt(),
-            (left + max(1f, width)).toInt(),
-            (top + max(1f, height)).toInt()
+        val layout = DCFNodeLayout(
+            left,
+            top,
+            max(1f, width),
+            max(1f, height)
         )
 
         if (Looper.myLooper() == Looper.getMainLooper()) {
-            if (animationDuration > 0) {
-                applyLayoutDirectly(view, frame)
-            } else {
-                applyLayoutDirectly(view, frame)
-            }
+            applyLayoutDirectly(viewId, view, layout, animationDuration)
         } else {
             mainHandler.post {
-                if (animationDuration > 0) {
-                    applyLayoutDirectly(view, frame)
-                } else {
-                    applyLayoutDirectly(view, frame)
-                }
+                applyLayoutDirectly(viewId, view, layout, animationDuration)
             }
         }
 
@@ -275,91 +272,86 @@ class DCFLayoutManager private constructor() {
         return true
     }
 
-    private fun applyLayoutDirectly(view: View, frame: Rect) {
-
+    /**
+     * Apply layout using component.applyLayout() - MATCH iOS architecture
+     * This removes "glue code" and lets components handle their own layout/transforms
+     */
+    private fun applyLayoutDirectly(viewId: String, view: View, layout: DCFNodeLayout, animationDuration: Long) {
         if (view.parent == null && view.rootView == null) {
             return
         }
 
-        if (!frame.width().toFloat().isFinite() || !frame.height().toFloat().isFinite() ||
-            !frame.left.toFloat().isFinite() || !frame.top.toFloat().isFinite() ||
-            frame.width().toFloat().isNaN() || frame.height().toFloat().isNaN() ||
-            frame.left.toFloat().isNaN() || frame.top.toFloat().isNaN()) {
+        // Validate layout values
+        if (!layout.width.isFinite() || !layout.height.isFinite() ||
+            !layout.left.isFinite() || !layout.top.isFinite() ||
+            layout.width.isNaN() || layout.height.isNaN() ||
+            layout.left.isNaN() || layout.top.isNaN()) {
             return
         }
 
-        if (frame.width() > 10000 || frame.height() > 10000 ||
-            frame.width() < 0 || frame.height() < 0) {
+        if (layout.width > 10000 || layout.height > 10000 ||
+            layout.width < 0 || layout.height < 0) {
             return
         }
 
-        val safeFrame = Rect(
-            frame.left,
-            frame.top,
-            frame.left + max(1, frame.width()),
-            frame.top + max(1, frame.height())
-        )
+        try {
+            if (view.parent != null || view.rootView != null) {
+                val parent = view.parent
+                if (parent is DCFFrameLayout) {
+                    parent.setChildManuallyPositioned(view, true)
+                }
 
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            try {
-                if (view.parent != null || view.rootView != null) {
-                    val parent = view.parent
-                    if (parent is DCFFrameLayout) {
-                        parent.setChildManuallyPositioned(view, true)
-                    }
+                val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
+                if (!isScreen) {
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+                }
 
-                    val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
-                    if (!isScreen) {
-                        view.visibility = View.VISIBLE
-                        view.alpha = 1.0f
-                    }
-
-                    val width = safeFrame.width()
-                    val height = safeFrame.height()
-                    view.measure(
-                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+                // Measure view first
+                view.measure(
+                    View.MeasureSpec.makeMeasureSpec(layout.width.toInt(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(layout.height.toInt(), View.MeasureSpec.EXACTLY)
+                )
+                
+                // Get component type and instance
+                val componentType = ViewRegistry.shared.getViewType(viewId) 
+                    ?: view.getTag(DCFTags.COMPONENT_TYPE_KEY) as? String
+                    ?: "View"
+                
+                val componentClass = DCFComponentRegistry.shared.getComponentType(componentType)
+                if (componentClass != null) {
+                    // Get stored props from view
+                    @Suppress("UNCHECKED_CAST")
+                    val storedProps = (view.getTag(DCFTags.STORED_PROPS_KEY) as? MutableMap<String, Any?>) ?: emptyMap<String, Any?>()
+                    
+                    // Create component instance and call applyLayout
+                    val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                    componentInstance.applyLayout(view, layout, storedProps)
+                } else {
+                    // Fallback to direct layout if component not found
+                    view.layout(
+                        layout.left.toInt(),
+                        layout.top.toInt(),
+                        (layout.left + layout.width).toInt(),
+                        (layout.top + layout.height).toInt()
                     )
-                    
-                    view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
+                }
 
-                    view.invalidate()
-                    
-                    (view.parent as? View)?.invalidate()
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Error applying layout to view", e)
+                view.invalidate()
+                (view.parent as? View)?.invalidate()
             }
-        } else {
-            mainHandler.post {
-                try {
-                    if (view.parent != null || view.rootView != null) {
-                        val parent = view.parent
-                        if (parent is DCFFrameLayout) {
-                            parent.setChildManuallyPositioned(view, true)
-                        }
-                        
-                        val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true
-                        if (!isScreen) {
-                            view.visibility = View.VISIBLE
-                            view.alpha = 1.0f
-                        }
-                        
-                        val width = safeFrame.width()
-                        val height = safeFrame.height()
-                        view.measure(
-                            View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
-                        )
-                        
-                        view.layout(safeFrame.left, safeFrame.top, safeFrame.right, safeFrame.bottom)
-                        
-                        view.invalidate()
-                        (view.parent as? View)?.invalidate()
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Error applying layout to view", e)
-                }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error applying layout to view $viewId", e)
+            // Fallback to direct layout on error
+            try {
+                view.layout(
+                    layout.left.toInt(),
+                    layout.top.toInt(),
+                    (layout.left + layout.width).toInt(),
+                    (layout.top + layout.height).toInt()
+                )
+            } catch (e2: Exception) {
+                Log.e(TAG, "Fallback layout also failed", e2)
             }
         }
     }
@@ -449,13 +441,25 @@ class DCFLayoutManager private constructor() {
                 if (animationDuration > 0) {
                     for ((viewId, frame) in layoutsToApply) {
                         getView(viewId)?.let { view ->
-                            applyLayoutDirectly(view, frame)
+                            val layout = DCFNodeLayout(
+                                frame.left.toFloat(),
+                                frame.top.toFloat(),
+                                frame.width().toFloat(),
+                                frame.height().toFloat()
+                            )
+                            applyLayoutDirectly(viewId, view, layout, animationDuration)
                         }
                     }
                 } else {
                     for ((viewId, frame) in layoutsToApply) {
                         getView(viewId)?.let { view ->
-                            applyLayoutDirectly(view, frame)
+                            val layout = DCFNodeLayout(
+                                frame.left.toFloat(),
+                                frame.top.toFloat(),
+                                frame.width().toFloat(),
+                                frame.height().toFloat()
+                            )
+                            applyLayoutDirectly(viewId, view, layout, 0)
                         }
                     }
                 }
