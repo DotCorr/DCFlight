@@ -97,11 +97,8 @@ class DCFViewManager private constructor() {
         // ✅ Use pure Kotlin tag keys instead of XML resource IDs
         view.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, viewType)
 
-        // Framework controls lifecycle - views start invisible until layout is ready
-        // This prevents flash/stutter on initial render (matches iOS behavior)
-        view.visibility = View.INVISIBLE
-        view.alpha = 0f
-
+        // Framework controls lifecycle - match iOS: views created normally, visibility ensured in layout
+        // iOS doesn't set views invisible initially - it ensures visibility in applyLayoutDirectly
         ViewRegistry.shared.registerView(view, viewId, viewType)
 
         val isScreen = (viewType == "Screen" || props["presentationStyle"] != null)

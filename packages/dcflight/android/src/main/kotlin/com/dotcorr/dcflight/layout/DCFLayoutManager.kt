@@ -301,6 +301,14 @@ class DCFLayoutManager private constructor() {
                     parent.setChildManuallyPositioned(view, true)
                 }
 
+                // Framework ensures visibility BEFORE layout (matches iOS exactly)
+                // iOS: isHidden = false, alpha = 1.0 BEFORE setting frame
+                val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
+                if (!isScreen) {
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+                }
+
                 // Measure view first (framework controls measurement)
                 view.measure(
                     View.MeasureSpec.makeMeasureSpec(layout.width.toInt(), View.MeasureSpec.EXACTLY),
@@ -326,14 +334,6 @@ class DCFLayoutManager private constructor() {
                         (layout.left + layout.width).toInt(),
                         (layout.top + layout.height).toInt()
                     )
-                }
-
-                // Framework controls visibility - make visible AFTER layout is applied
-                // This prevents flash/stutter on initial render (matches iOS)
-                val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
-                if (!isScreen) {
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
                 }
 
                 // Framework handles invalidation - components don't need to know
