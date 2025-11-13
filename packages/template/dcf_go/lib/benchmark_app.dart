@@ -2,13 +2,6 @@ import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 import 'benchmark.dart';
 
-void main() async {
-  DCFLogger.setLevel(DCFLogLevel.info);
-  DCFLogger.info('Starting Performance Benchmark App...', 'Benchmark');
-  
-  // Initialize DCFlight first (this initializes the engine)
-  await DCFlight.go(app: BenchmarkApp());
-}
 
 class BenchmarkApp extends DCFStatefulComponent {
   final VoidCallback? onBack;
