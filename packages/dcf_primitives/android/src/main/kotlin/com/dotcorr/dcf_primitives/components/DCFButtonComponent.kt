@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFComposeWrapper
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.layout.ViewRegistry
@@ -43,29 +44,43 @@ class DCFButtonComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         val composeView = ComposeView(context)
-        // ✅ Use pure Kotlin tag keys instead of XML resource IDs
-        composeView.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, "Button")
+        val wrapper = DCFComposeWrapper(context, composeView)
+        wrapper.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, "Button")
         
-        storeProps(composeView, props)
-        
+        storeProps(wrapper, props)
         updateComposeContent(composeView, props)
         
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        composeView.applyStyles(nonNullProps)
+        wrapper.applyStyles(nonNullProps)
         
         Log.d(TAG, "Created Compose-based Material3 Button component")
         
-        return composeView
+        return wrapper
     }
 
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        val composeView = view as? ComposeView ?: return false
+        val wrapper = view as? DCFComposeWrapper ?: return false
+        val composeView = wrapper.composeView
         
-        Log.d(TAG, "Updating button with props: $props")
+        val titleChanged = props["title"]?.toString() != existingProps["title"]?.toString()
+        val disabledChanged = props["disabled"] != existingProps["disabled"]
+        val backgroundColorChanged = props["backgroundColor"] != existingProps["backgroundColor"]
         
+        val layoutPropsChanged = props["width"] != existingProps["width"] ||
+                                 props["height"] != existingProps["height"] ||
+                                 props["margin"] != existingProps["margin"] ||
+                                 props["padding"] != existingProps["padding"] ||
+                                 props["marginTop"] != existingProps["marginTop"] ||
+                                 props["marginBottom"] != existingProps["marginBottom"] ||
+                                 props["marginLeft"] != existingProps["marginLeft"] ||
+                                 props["marginRight"] != existingProps["marginRight"]
+        
+        wrapper.setAllowLayoutRequests(layoutPropsChanged)
+        wrapper.applyStyles(props)
+        
+        if (titleChanged || disabledChanged || backgroundColorChanged) {
             updateComposeContent(composeView, props)
-        
-        composeView.applyStyles(props)
+        }
         
         return true
     }
@@ -89,20 +104,21 @@ class DCFButtonComponent : DCFComponent() {
                 primaryColor = primaryColor,
                 backgroundColor = backgroundColor,
                 onPress = {
-                    // ✅ Use pure Kotlin tag keys instead of XML resource IDs
-                    val viewId = composeView.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? String
+                    val wrapper = composeView.parent as? DCFComposeWrapper
+                    val view = wrapper ?: composeView
+                    val viewId = view.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? String
                         ?: ViewRegistry.shared.allViewIds.firstOrNull { id ->
-                            ViewRegistry.shared.getView(id) == composeView
+                            ViewRegistry.shared.getView(id) == view
                         }
                     
                     if (viewId != null) {
-                        propagateEvent(composeView, "onPress", mapOf(
+                        propagateEvent(view, "onPress", mapOf(
                             "pressed" to true,
                             "timestamp" to System.currentTimeMillis() / 1000.0,
                             "title" to title
                         ))
                     } else {
-                        Log.w(TAG, "Cannot propagate event - viewId not found for ComposeView")
+                        Log.w(TAG, "Cannot propagate event - viewId not found")
                     }
                 }
             )
@@ -110,7 +126,7 @@ class DCFButtonComponent : DCFComponent() {
     }
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val composeView = view as? ComposeView ?: return PointF(0f, 0f)
+        val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
         
         val title = props["title"]?.toString() ?: ""
         
