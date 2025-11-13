@@ -10,11 +10,17 @@ class PerformanceBenchmark {
     
     final results = <String, dynamic>{};
     
+    // Yield to event loop before starting
+    await Future.delayed(Duration(milliseconds: 10));
+    
     // Test 1: Initial render with 1000 nodes
     print('📊 Test 1: Initial render (1000 nodes)');
     final initialRenderTime = await _benchmarkInitialRender(1000);
     results['initialRender_1000'] = initialRenderTime;
     print('   Result: ${initialRenderTime.toStringAsFixed(2)}ms\n');
+    
+    // Yield between tests
+    await Future.delayed(Duration(milliseconds: 10));
     
     // Test 2: Update 100 nodes
     print('📊 Test 2: Update (100 nodes)');
@@ -22,11 +28,17 @@ class PerformanceBenchmark {
     results['update_100'] = updateTime;
     print('   Result: ${updateTime.toStringAsFixed(2)}ms\n');
     
+    // Yield between tests
+    await Future.delayed(Duration(milliseconds: 10));
+    
     // Test 3: Initial render with 500 nodes
     print('📊 Test 3: Initial render (500 nodes)');
     final initialRender500 = await _benchmarkInitialRender(500);
     results['initialRender_500'] = initialRender500;
     print('   Result: ${initialRender500.toStringAsFixed(2)}ms\n');
+    
+    // Yield between tests
+    await Future.delayed(Duration(milliseconds: 10));
     
     // Test 4: Keyed list reconciliation (1000 items)
     print('📊 Test 4: Keyed list reconciliation (1000 items)');
@@ -69,12 +81,15 @@ class PerformanceBenchmark {
     
     // Run 10 iterations, exclude first 2 (warmup)
     for (int i = 0; i < 10; i++) {
+      // Yield to event loop before starting
+      await Future.delayed(Duration(milliseconds: 1));
+      
       final stopwatch = Stopwatch()..start();
       
-      // Create a component tree with N nodes
+      // Create a component tree with N nodes (now async)
       // This measures Dart-side component creation time
       // We DON'T render to native because that would cause UI to display 1000 components
-      _createComponentTree(nodeCount);
+      await _createComponentTree(nodeCount);
       
       // Just measure component tree creation, not native rendering
       // Native rendering time would be measured separately if needed
@@ -84,7 +99,7 @@ class PerformanceBenchmark {
       final elapsed = stopwatch.elapsedMicroseconds / 1000.0;
       times.add(elapsed);
       
-      // Small delay between runs
+      // Small delay between runs to yield to event loop
       await Future.delayed(Duration(milliseconds: 10));
     }
     
@@ -101,10 +116,13 @@ class PerformanceBenchmark {
   static Future<double> _benchmarkUpdate(int nodeCount) async {
     final times = <double>[];
     
-    // Create initial tree
-    final component = _createComponentTree(nodeCount);
+    // Create initial tree (now async)
+    final component = await _createComponentTree(nodeCount);
     
     for (int i = 0; i < 10; i++) {
+      // Yield to event loop before starting
+      await Future.delayed(Duration(milliseconds: 1));
+      
       final stopwatch = Stopwatch()..start();
       
       // Simulate updating N nodes (changing content)
@@ -127,6 +145,9 @@ class PerformanceBenchmark {
     final times = <double>[];
     
     for (int i = 0; i < 10; i++) {
+      // Yield to event loop before starting
+      await Future.delayed(Duration(milliseconds: 1));
+      
       final stopwatch = Stopwatch()..start();
       
       // Create keyed list
@@ -151,18 +172,27 @@ class PerformanceBenchmark {
   }
   
   /// Create a component tree with N nodes
-  static DCFComponentNode _createComponentTree(int nodeCount) {
-    final children = List.generate(
-      nodeCount,
-      (i) => DCFText(
-        key: 'node-$i',
-        content: 'Node $i',
-      ),
-    );
+  /// This is async to prevent blocking the event loop
+  static Future<DCFComponentNode> _createComponentTree(int nodeCount) async {
+    final children = <DCFComponentNode>[];
     
-    return DCFView(
-      children: children,
-    );
+    // Create components in chunks to yield to event loop
+    const chunkSize = 100;
+    for (int i = 0; i < nodeCount; i += chunkSize) {
+      final chunkEnd = (i + chunkSize < nodeCount) ? i + chunkSize : nodeCount;
+      for (int j = i; j < chunkEnd; j++) {
+        children.add(DCFText(
+          key: 'node-$j',
+          content: 'Node $j',
+        ));
+      }
+      // Yield to event loop every chunk
+      if (i + chunkSize < nodeCount) {
+        await Future.delayed(Duration(milliseconds: 0));
+      }
+    }
+    
+    return DCFView(children: children);
   }
   
   /// Update component tree (simulate state change)
