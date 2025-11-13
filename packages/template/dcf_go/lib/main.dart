@@ -90,7 +90,7 @@ class MyApp extends DCFStatefulComponent {
         DCFWebView(
           layout: DCFLayout(
             width: "100%",
-            height: 200,
+            height: sliderVal.state*100,
             alignItems: YogaAlign.center,
             justifyContent: YogaJustifyContent.center,
           ),
