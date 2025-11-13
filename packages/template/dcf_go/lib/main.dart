@@ -51,7 +51,7 @@ class MyApp extends DCFStatefulComponent {
       ),
       // Using unified theme system with semantic colors
       styleSheet: DCFStyleSheet(
-        // backgroundColor: DCFTheme.current.backgroundColor,
+        backgroundColor: DCFTheme.current.backgroundColor,
       ),
       children: [
         DCFText(
