@@ -19,6 +19,7 @@ import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcflight.components.DCFFrameLayout
 import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
+import com.dotcorr.dcflight.components.DCFComposeWrapper
 import com.dotcorr.dcflight.layout.ViewRegistry
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -301,14 +302,6 @@ class DCFLayoutManager private constructor() {
                     parent.setChildManuallyPositioned(view, true)
                 }
 
-                // Framework ensures visibility BEFORE layout (matches iOS exactly)
-                // iOS: isHidden = false, alpha = 1.0 BEFORE setting frame
-                val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
-                if (!isScreen) {
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
-                }
-
                 // Measure view first (framework controls measurement)
                 view.measure(
                     View.MeasureSpec.makeMeasureSpec(layout.width.toInt(), View.MeasureSpec.EXACTLY),
@@ -334,6 +327,43 @@ class DCFLayoutManager private constructor() {
                         (layout.left + layout.width).toInt(),
                         (layout.top + layout.height).toInt()
                     )
+                }
+
+                // CRITICAL: Handle visibility for ComposeView-based components
+                // ComposeView.setContent is async - we need to wait for composition to complete
+                // before making the view visible to prevent flash
+                val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
+                if (!isScreen) {
+                    // Check if this is a ComposeView-based component (DCFComposeWrapper)
+                    val isComposeViewBased = view is DCFComposeWrapper
+                    val isCurrentlyInvisible = view.visibility != View.VISIBLE || view.alpha < 1.0f
+                    
+                    if (isComposeViewBased && isCurrentlyInvisible) {
+                        // Defer visibility until ComposeView has composed
+                        // Only for views that are currently invisible (new views during reconciliation)
+                        // Post to next frame to ensure composition is complete
+                        view.post {
+                            val wrapper = view as? DCFComposeWrapper
+                            val composeView = wrapper?.composeView
+                            
+                            // If ComposeView exists and has been measured, make visible
+                            // Otherwise, it means composition hasn't completed yet - wait another frame
+                            if (composeView != null && (composeView.measuredWidth > 0 || composeView.measuredHeight > 0)) {
+                                view.visibility = View.VISIBLE
+                                view.alpha = 1.0f
+                            } else {
+                                // Composition not ready yet - wait one more frame
+                                view.post {
+                                    view.visibility = View.VISIBLE
+                                    view.alpha = 1.0f
+                                }
+                            }
+                        }
+                    } else {
+                        // Non-ComposeView components or already visible: make visible immediately (matches iOS)
+                        view.visibility = View.VISIBLE
+                        view.alpha = 1.0f
+                    }
                 }
 
                 // Framework handles invalidation - components don't need to know

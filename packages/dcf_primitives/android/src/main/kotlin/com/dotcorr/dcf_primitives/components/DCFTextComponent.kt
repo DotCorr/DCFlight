@@ -36,10 +36,17 @@ class DCFTextComponent : DCFComponent() {
         val composeView = ComposeView(context)
         val wrapper = DCFComposeWrapper(context, composeView)
         wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
-        // Framework controls visibility - don't set here!
-        // Views start invisible and become visible after layout (prevents flash)
+        
+        // CRITICAL: Keep invisible until composition completes to prevent flash
+        // ComposeView.setContent is async - we'll make visible after layout is applied
+        wrapper.visibility = View.INVISIBLE
+        wrapper.alpha = 0f
         
         storeProps(wrapper, props)
+        
+        // CRITICAL: Set content BEFORE measuring to prevent flash
+        // Framework calls getIntrinsicSize during layout calculation
+        // ComposeView must have content composed before measurement
         updateComposeContent(composeView, props)
 
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
@@ -69,6 +76,8 @@ class DCFTextComponent : DCFComponent() {
         
         if (contentChanged || textColorChanged || fontSizeChanged || fontWeightChanged || 
             textAlignChanged || maxLinesChanged) {
+            // CRITICAL: For content changes during reconciliation, ensure composition completes
+            // before view becomes visible again (handled by framework in applyLayoutDirectly)
             updateComposeContent(composeView, props)
         }
 
@@ -142,26 +151,76 @@ class DCFTextComponent : DCFComponent() {
     )
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
+        val composeView = wrapper.composeView
+        
+        // Match iOS: Use actual measurement, not estimate
+        // iOS: label.sizeThatFits(maxSize) - we do the same with ComposeView
+        
         val storedProps = getStoredProps(view)
         val allProps = if (props.isEmpty()) storedProps else props
-
         val content = allProps["content"]?.toString() ?: ""
+        
         if (content.isEmpty()) {
             return PointF(0f, 0f)
         }
-
-        val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
-        val preferredWidth = content.length * fontSize * 0.6f
-        val singleLineHeight = fontSize * 1.2f
         
-        return PointF(preferredWidth.coerceAtLeast(1f), singleLineHeight.coerceAtLeast(1f))
+        // CRITICAL: Ensure ComposeView is composed before measuring
+        // ComposeView.setContent is async, so we need to ensure composition is ready
+        // This prevents flash on reconciliation (new views need accurate size immediately)
+        
+        // Force composition if not already composed
+        val STATE_HOLDER_TAG_KEY = "DCFTextStateHolder".hashCode()
+        @Suppress("UNCHECKED_CAST")
+        val stateHolder = composeView.getTag(STATE_HOLDER_TAG_KEY) as? androidx.compose.runtime.MutableState<*>
+        if (stateHolder == null) {
+            // Not composed yet - ensure it's composed now
+            updateComposeContent(composeView, allProps)
+        }
+        
+        // Measure the actual ComposeView (like iOS measures UILabel)
+        // Use a reasonable width constraint for measurement (like iOS maxSize)
+        val maxWidth = 10000 // Large but finite width for measurement
+        composeView.measure(
+            View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        
+        val measuredWidth = composeView.measuredWidth.toFloat()
+        val measuredHeight = composeView.measuredHeight.toFloat()
+        
+        // If measurement returns 0 (Compose not composed yet), use improved fallback
+        // This should be rare - we ensure composition above
+        if (measuredWidth == 0f || measuredHeight == 0f) {
+            val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+            // Improved estimate: account for multi-line text and actual character width
+            val lines = content.split("\n")
+            val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
+            val estimatedWidth = maxLineLength * fontSize * 0.6f
+            val estimatedHeight = lines.size * fontSize * 1.2f
+            return PointF(estimatedWidth.coerceAtLeast(1f), estimatedHeight.coerceAtLeast(1f))
+        }
+        
+        return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         val wrapper = view as? DCFComposeWrapper ?: return
         val composeView = wrapper.composeView
         val storedProps = getStoredProps(view)
+        
+        // CRITICAL: Ensure ComposeView is composed before layout calculation
+        // This prevents flash because getIntrinsicSize will get accurate measurement
+        // Framework calls this before layout calculation, so we ensure composition is ready
         updateComposeContent(composeView, storedProps)
+        
+        // Force immediate composition if view is attached
+        // This ensures measurement in getIntrinsicSize is accurate
+        if (view.parent != null) {
+            composeView.post {
+                composeView.requestLayout()
+            }
+        }
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
