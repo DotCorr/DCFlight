@@ -16,6 +16,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
+import com.dotcorr.dcflight.components.DCFPropConstants
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.ViewRegistry
@@ -707,22 +708,7 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     private fun extractLayoutProps(props: Map<String, Any?>): Map<String, Any?> {
-        val supportedLayoutProps = setOf(
-            "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
-            "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
-            "marginHorizontal", "marginVertical",
-            "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-            "paddingHorizontal", "paddingVertical",
-            "left", "top", "right", "bottom", "position",
-            "translateX", "translateY",
-            "rotateInDegrees",
-            "scale", "scaleX", "scaleY",
-            "flexDirection", "justifyContent", "alignItems", "alignSelf", "alignContent",
-            "flexWrap", "flex", "flexGrow", "flexShrink", "flexBasis",
-            "display", "overflow", "direction", "borderWidth",
-            "aspectRatio", "gap", "rowGap", "columnGap"
-        )
-        
+        val supportedLayoutProps = DCFPropConstants.LAYOUT_PROPS.toSet()
         return props.filter { supportedLayoutProps.contains(it.key) }
     }
 }

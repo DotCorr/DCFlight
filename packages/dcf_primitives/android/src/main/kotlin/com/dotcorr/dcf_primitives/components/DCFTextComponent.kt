@@ -76,16 +76,7 @@ class DCFTextComponent : DCFComponent() {
         val maxLinesChanged = (props["numberOfLines"] as? Number)?.toInt() != 
                              (existingProps["numberOfLines"] as? Number)?.toInt()
         
-        val layoutPropsChanged = props["width"] != existingProps["width"] ||
-                                 props["height"] != existingProps["height"] ||
-                                 props["margin"] != existingProps["margin"] ||
-                                 props["padding"] != existingProps["padding"] ||
-                                 props["marginTop"] != existingProps["marginTop"] ||
-                                 props["marginBottom"] != existingProps["marginBottom"] ||
-                                 props["marginLeft"] != existingProps["marginLeft"] ||
-                                 props["marginRight"] != existingProps["marginRight"]
-        
-        wrapper.setAllowLayoutRequests(layoutPropsChanged)
+        wrapper.setAllowLayoutRequests(hasLayoutPropsChanged(existingProps, props))
         wrapper.applyStyles(props)
         
         if (contentChanged || textColorChanged || fontSizeChanged || fontWeightChanged || 

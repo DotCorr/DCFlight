@@ -71,16 +71,7 @@ class DCFButtonComponent : DCFComponent() {
         val accentColorChanged = ColorUtilities.getColor("accentColor", null, props) != 
                                  ColorUtilities.getColor("accentColor", null, existingProps)
         
-        val layoutPropsChanged = props["width"] != existingProps["width"] ||
-                                 props["height"] != existingProps["height"] ||
-                                 props["margin"] != existingProps["margin"] ||
-                                 props["padding"] != existingProps["padding"] ||
-                                 props["marginTop"] != existingProps["marginTop"] ||
-                                 props["marginBottom"] != existingProps["marginBottom"] ||
-                                 props["marginLeft"] != existingProps["marginLeft"] ||
-                                 props["marginRight"] != existingProps["marginRight"]
-        
-        wrapper.setAllowLayoutRequests(layoutPropsChanged)
+        wrapper.setAllowLayoutRequests(hasLayoutPropsChanged(existingProps, props))
         wrapper.applyStyles(props)
         
         if (titleChanged || disabledChanged || backgroundColorChanged || primaryColorChanged || accentColorChanged) {
