@@ -98,7 +98,7 @@ class MyApp extends DCFStatefulComponent {
           layout: DCFLayout(
             padding: 20,
             width: "80%",
-            height: sliderVal.state*100,
+            height: "${sliderVal.state*100}%",
             alignItems: DCFAlign.center,
             justifyContent: DCFJustifyContent.center,
           ),
