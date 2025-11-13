@@ -66,6 +66,11 @@ class DCFButtonComponent : DCFComponent() {
         val disabledChanged = props["disabled"] != existingProps["disabled"]
         val backgroundColorChanged = props["backgroundColor"] != existingProps["backgroundColor"]
         
+        val primaryColorChanged = ColorUtilities.getColor("textColor", "primaryColor", props) != 
+                                  ColorUtilities.getColor("textColor", "primaryColor", existingProps)
+        val accentColorChanged = ColorUtilities.getColor("accentColor", null, props) != 
+                                 ColorUtilities.getColor("accentColor", null, existingProps)
+        
         val layoutPropsChanged = props["width"] != existingProps["width"] ||
                                  props["height"] != existingProps["height"] ||
                                  props["margin"] != existingProps["margin"] ||
@@ -78,7 +83,7 @@ class DCFButtonComponent : DCFComponent() {
         wrapper.setAllowLayoutRequests(layoutPropsChanged)
         wrapper.applyStyles(props)
         
-        if (titleChanged || disabledChanged || backgroundColorChanged) {
+        if (titleChanged || disabledChanged || backgroundColorChanged || primaryColorChanged || accentColorChanged) {
             updateComposeContent(composeView, props)
         }
         
