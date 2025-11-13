@@ -5,12 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/components/hooks/memo_hook.dart';
-import 'package:dcflight/framework/components/hooks/store.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
+import 'package:dcflight/framework/renderer/engine/index.dart';
 import 'package:flutter/foundation.dart';
-import 'package:dcflight/framework/components/component_node.dart';
-import 'hooks/state_hook.dart';
 
 abstract class DCFStatefulComponent extends DCFComponentNode {
   final String instanceId;
@@ -34,7 +31,26 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
   DCFComponentNode get renderedNode {
     if (_renderedNode == null) {
       prepareForRender();
-      _renderedNode = render();
+      final rawRendered = render();
+
+      // 🔧 CRITICAL: Automatically wrap component returns in View for stable root container
+      // This ensures VDOM always has a stable root, preventing parent search issues
+      // This is transparent to the user - they can still return single elements/components
+      if (rawRendered is DCFElement) {
+        _renderedNode = rawRendered;
+      } else {
+        // Wrap in View to ensure stable root container
+        // Use flex: 1 to fill parent (works on both iOS and Android)
+        _renderedNode = DCFElement(
+          type: 'View',
+          elementProps: {
+            'height': '100%',
+            'width': '100%',
+            'flex': 1,
+          },
+          children: [rawRendered],
+        );
+      }
 
       if (_renderedNode != null) {
         _renderedNode!.parent = this;
