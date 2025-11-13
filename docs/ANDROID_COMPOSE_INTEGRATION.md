@@ -10,7 +10,15 @@ DCFlight supports Jetpack Compose for Android components, allowing you to use mo
 - ✅ Yoga can measure and position it natively
 - ✅ No special handling needed in the layout system
 - ✅ Works seamlessly with existing framework architecture
-- ✅ No wrapper classes or workarounds needed
+- ✅ Framework automatically ensures composition is ready before measurement
+
+## Framework-Level Composition Handling
+
+**CRITICAL:** The framework automatically handles ComposeView composition timing:
+- ✅ **YogaShadowTree** ensures ComposeView is composed before `getIntrinsicSize` is called
+- ✅ **DCFComposeWrapper** tracks composition readiness
+- ✅ **No component-specific code needed** - framework handles it uniformly
+- ✅ **No flash or disappearing text** - composition happens before layout
 
 ## Architecture
 
@@ -25,14 +33,15 @@ DCFlight supports Jetpack Compose for Android components, allowing you to use mo
 ┌──────────────────────▼───────────────────────────────────┐
 │         Android Component Implementation                 │
 │  DCFTextComponent.createView()                          │
-│    └─> ComposeView(context)                              │
-│        └─> setContent { Material3Text(...) }            │
+│    └─> DCFComposeWrapper(context, ComposeView)          │
+│        └─> ComposeView.setContent { Material3Text(...) } │
 └──────────────────────┬───────────────────────────────────┘
                        │
                        │ Yoga Layout
                        │
 ┌──────────────────────▼───────────────────────────────────┐
 │         YogaShadowTree.setupMeasureFunction()            │
+│  • Framework ensures ComposeView is composed            │
 │  • Measures ComposeView with constraints                 │
 │  • Uses View.MeasureSpec.AT_MOST for wrapping           │
 │  • Falls back to getIntrinsicSize() if needed            │
@@ -55,26 +64,29 @@ DCFlight supports Jetpack Compose for Android components, allowing you to use mo
 class DCFTextComponent : DCFComponent() {
     
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        // 1. Create ComposeView directly (no wrapper needed)
+        // 1. Create ComposeView and wrap it in DCFComposeWrapper
+        // DCFComposeWrapper provides composition readiness tracking
         val composeView = ComposeView(context)
+        val wrapper = DCFComposeWrapper(context, composeView)
         
-        // 2. Tag the view for framework tracking
-        composeView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
+        // 2. Tag the wrapper for framework tracking
+        wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
         
-        // 3. CRITICAL: Set visibility explicitly
-        composeView.visibility = View.VISIBLE
-        composeView.alpha = 1.0f
+        // 3. Framework controls visibility - don't set here!
+        // Visibility is handled by framework after layout is applied
         
         // 4. Store props for later retrieval
-        storeProps(composeView, props)
+        storeProps(wrapper, props)
         
-        // 5. Set Compose content
+        // 5. Set Compose content BEFORE measuring
+        // Framework calls getIntrinsicSize during layout calculation
         updateComposeContent(composeView, props)
         
         // 6. Apply styles (Yoga layout properties)
-        composeView.applyStyles(props)
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        wrapper.applyStyles(nonNullProps)
         
-        return composeView
+        return wrapper
     }
     
     override fun updateViewInternal(
@@ -82,13 +94,14 @@ class DCFTextComponent : DCFComponent() {
         props: Map<String, Any>, 
         existingProps: Map<String, Any>
     ): Boolean {
-        val composeView = view as? ComposeView ?: return false
+        val wrapper = view as? DCFComposeWrapper ?: return false
+        val composeView = wrapper.composeView
         
         // Update Compose content
         updateComposeContent(composeView, props)
         
         // Update styles
-        composeView.applyStyles(props)
+        wrapper.applyStyles(props)
         
         return true
     }
@@ -166,10 +179,13 @@ return YogaMeasureOutput.make(intrinsicSize.x, intrinsicSize.y)
 
 ## getIntrinsicSize Pattern for Compose
 
-Since Compose content can't be measured before it's laid out, use **estimation**:
+**FRAMEWORK HANDLES COMPOSITION:** The framework ensures ComposeView is composed before `getIntrinsicSize` is called, so you can use **actual measurement**:
 
 ```kotlin
 override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+    val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
+    val composeView = wrapper.composeView
+    
     // CRITICAL: Yoga calls getIntrinsicSize with emptyMap(), 
     // so we MUST get props from storedProps
     val storedProps = getStoredProps(view)
@@ -180,29 +196,42 @@ override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         return PointF(0f, 0f)
     }
     
-    // Estimation based on content length and font size
-    val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+    // CRITICAL: Framework ensures ComposeView is composed before this is called
+    // (handled in YogaShadowTree.setupMeasureFunction)
+    // So we can use actual measurement, not estimation
     
-    // For text wrapping: Return preferred width (single line estimate)
-    // Yoga will constrain this based on parent width, and Compose Text will wrap
-    val preferredWidth = content.length * fontSize * 0.6f
+    // Ensure composition is ready (framework does this, but double-check)
+    wrapper.ensureCompositionReady()
     
-    // Height: single line height (text will grow vertically when wrapping)
-    val singleLineHeight = fontSize * 1.2f
+    // Measure the actual ComposeView (like iOS measures UILabel)
+    val maxWidth = 10000 // Large but finite width for measurement
+    composeView.measure(
+        View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
+        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+    )
     
-    // Ensure minimum size
-    val finalWidth = preferredWidth.coerceAtLeast(1f)
-    val finalHeight = singleLineHeight.coerceAtLeast(1f)
+    val measuredWidth = composeView.measuredWidth.toFloat()
+    val measuredHeight = composeView.measuredHeight.toFloat()
     
-    return PointF(finalWidth, finalHeight)
+    // If measurement returns 0 (rare - framework ensures composition), use fallback
+    if (measuredWidth == 0f || measuredHeight == 0f) {
+        val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+        val lines = content.split("\n")
+        val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
+        val estimatedWidth = maxLineLength * fontSize * 0.6f
+        val estimatedHeight = lines.size * fontSize * 1.2f
+        return PointF(estimatedWidth.coerceAtLeast(1f), estimatedHeight.coerceAtLeast(1f))
+    }
+    
+    return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
 }
 ```
 
-**Why Estimation Works:**
-1. Yoga uses this for initial layout calculation
-2. When constraints are available, Yoga measures the actual view
-3. Compose Text wraps correctly when given width constraints
-4. Final size is determined by actual measurement, not estimation
+**Why Actual Measurement Works:**
+1. **Framework ensures composition** before `getIntrinsicSize` is called (in `YogaShadowTree.setupMeasureFunction`)
+2. ComposeView is composed and ready to measure
+3. Accurate measurement prevents flash and layout issues
+4. Fallback estimation handles edge cases (should be rare)
 
 ## Complete Example: Text Component
 
@@ -214,22 +243,24 @@ class DCFTextComponent : DCFComponent() {
     }
     
     override fun createView(context: Context, props: Map<String, Any?>): View {
+        // Use DCFComposeWrapper for composition readiness tracking
         val composeView = ComposeView(context)
-        composeView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
+        val wrapper = DCFComposeWrapper(context, composeView)
+        wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
         
-        // CRITICAL: Set visibility explicitly
-        composeView.visibility = View.VISIBLE
-        composeView.alpha = 1.0f
+        // Framework controls visibility - don't set here!
+        // Visibility is handled by framework after layout is applied
         
-        storeProps(composeView, props)
+        storeProps(wrapper, props)
         
-        // Set content BEFORE applying styles
+        // CRITICAL: Set content BEFORE measuring to prevent flash
+        // Framework calls getIntrinsicSize during layout calculation
         updateComposeContent(composeView, props)
         
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        composeView.applyStyles(nonNullProps)
+        wrapper.applyStyles(nonNullProps)
         
-        return composeView
+        return wrapper
     }
     
     override fun updateViewInternal(
@@ -237,12 +268,13 @@ class DCFTextComponent : DCFComponent() {
         props: Map<String, Any>, 
         existingProps: Map<String, Any>
     ): Boolean {
-        val composeView = view as? ComposeView ?: return false
+        val wrapper = view as? DCFComposeWrapper ?: return false
+        val composeView = wrapper.composeView
         
-        // Always update content to ensure text is visible
+        // Update Compose content
         updateComposeContent(composeView, props)
         
-        composeView.applyStyles(props)
+        wrapper.applyStyles(props)
         
         return true
     }
@@ -277,6 +309,9 @@ class DCFTextComponent : DCFComponent() {
     }
     
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
+        val composeView = wrapper.composeView
+        
         // Get props from storedProps if empty (Yoga calls with emptyMap())
         val storedProps = getStoredProps(view)
         val allProps = if (props.isEmpty()) storedProps else props
@@ -286,24 +321,48 @@ class DCFTextComponent : DCFComponent() {
             return PointF(0f, 0f)
         }
         
-        val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+        // CRITICAL: Framework ensures ComposeView is composed before this is called
+        // (handled in YogaShadowTree.setupMeasureFunction)
+        // So we can use actual measurement
         
-        // Estimation for Yoga's initial layout
-        val preferredWidth = content.length * fontSize * 0.6f
-        val singleLineHeight = fontSize * 1.2f
+        // Ensure composition is ready (framework does this, but double-check)
+        wrapper.ensureCompositionReady()
         
-        return PointF(
-            preferredWidth.coerceAtLeast(1f),
-            singleLineHeight.coerceAtLeast(1f)
+        // Measure the actual ComposeView
+        val maxWidth = 10000
+        composeView.measure(
+            View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
+        
+        val measuredWidth = composeView.measuredWidth.toFloat()
+        val measuredHeight = composeView.measuredHeight.toFloat()
+        
+        // Fallback if measurement returns 0 (should be rare)
+        if (measuredWidth == 0f || measuredHeight == 0f) {
+            val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+            val lines = content.split("\n")
+            val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
+            val estimatedWidth = maxLineLength * fontSize * 0.6f
+            val estimatedHeight = lines.size * fontSize * 1.2f
+            return PointF(estimatedWidth.coerceAtLeast(1f), estimatedHeight.coerceAtLeast(1f))
+        }
+        
+        return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
     }
     
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Ensure content is set after registration
-        val composeView = view as? ComposeView
-        val props = getStoredProps(composeView)
-        if (props.isNotEmpty()) {
-            updateComposeContent(composeView, props)
+        val wrapper = view as? DCFComposeWrapper ?: return
+        val composeView = wrapper.composeView
+        val storedProps = getStoredProps(view)
+        
+        // CRITICAL: Ensure ComposeView is composed before layout calculation
+        // This prevents flash because getIntrinsicSize will get accurate measurement
+        updateComposeContent(composeView, storedProps)
+        
+        // Force composition to be ready before layout calculation
+        if (view.parent != null) {
+            wrapper.ensureCompositionReady()
         }
     }
     
@@ -337,18 +396,30 @@ class DCFTextComponent : DCFComponent() {
 
 ## Best Practices
 
-### 1. Always Set Visibility Explicitly
+### 1. Use DCFComposeWrapper
 
 ```kotlin
-// ✅ Good
-composeView.visibility = View.VISIBLE
-composeView.alpha = 1.0f
-
-// ❌ Bad - might be invisible
+// ✅ Good - Framework handles composition readiness
 val composeView = ComposeView(context)
+val wrapper = DCFComposeWrapper(context, composeView)
+return wrapper
+
+// ❌ Bad - No composition tracking
+val composeView = ComposeView(context)
+return composeView
 ```
 
-### 2. Set Content Before Styles
+### 2. Framework Controls Visibility
+
+```kotlin
+// ✅ Good - Framework handles visibility after layout
+// Don't set visibility in createView
+
+// ❌ Bad - Don't manually set visibility
+composeView.visibility = View.VISIBLE  // Framework does this
+```
+
+### 3. Set Content Before Styles
 
 ```kotlin
 // ✅ Good
@@ -360,7 +431,7 @@ composeView.applyStyles(props)
 updateComposeContent(composeView, props)
 ```
 
-### 3. Don't Use wrapContentSize Modifier
+### 4. Don't Use wrapContentSize Modifier
 
 ```kotlin
 // ✅ Good - constraints come from Yoga
@@ -376,7 +447,26 @@ Material3Text(
 )
 ```
 
-### 4. Retrieve Props from storedProps in getIntrinsicSize
+### 5. Use Actual Measurement in getIntrinsicSize
+
+```kotlin
+// ✅ Good - Framework ensures composition, so use actual measurement
+override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+    val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
+    val composeView = wrapper.composeView
+    
+    // Framework ensures composition before this is called
+    wrapper.ensureCompositionReady()
+    
+    composeView.measure(...)
+    return PointF(composeView.measuredWidth.toFloat(), composeView.measuredHeight.toFloat())
+}
+
+// ❌ Bad - Don't use estimation (framework handles composition)
+val estimatedWidth = content.length * fontSize * 0.6f
+```
+
+### 6. Retrieve Props from storedProps in getIntrinsicSize
 
 ```kotlin
 // ✅ Good - handles emptyMap() from Yoga
@@ -392,7 +482,7 @@ override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
 }
 ```
 
-### 5. Use ColorUtilities for Colors
+### 7. Use ColorUtilities for Colors
 
 ```kotlin
 // ✅ Good - supports explicit + semantic colors
@@ -423,15 +513,16 @@ override fun createView(context: Context, props: Map<String, Any?>): View {
 ```kotlin
 override fun createView(context: Context, props: Map<String, Any?>): View {
     val composeView = ComposeView(context)
-    composeView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
-    composeView.visibility = View.VISIBLE
-    composeView.alpha = 1.0f
+    val wrapper = DCFComposeWrapper(context, composeView)
+    wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
     
-    storeProps(composeView, props)
+    // Framework controls visibility - don't set here!
+    
+    storeProps(wrapper, props)
     updateComposeContent(composeView, props)
-    composeView.applyStyles(props)
+    wrapper.applyStyles(props)
     
-    return composeView
+    return wrapper
 }
 
 private fun updateComposeContent(composeView: ComposeView, props: Map<String, Any?>) {
@@ -468,12 +559,14 @@ Any component can use Compose:
 
 **Solution:**
 ```kotlin
-// Ensure visibility is set
-composeView.visibility = View.VISIBLE
-composeView.alpha = 1.0f
+// ✅ Use DCFComposeWrapper
+val wrapper = DCFComposeWrapper(context, composeView)
 
-// Ensure content is set
+// ✅ Ensure content is set
 updateComposeContent(composeView, props)
+
+// ✅ Framework handles visibility automatically
+// Don't manually set visibility - framework does this after layout
 ```
 
 ### Text Not Wrapping
@@ -502,13 +595,29 @@ return PointF(
 )
 ```
 
+## Framework-Level Composition Handling
+
+**The framework automatically ensures ComposeView composition is ready before measurement:**
+
+1. **YogaShadowTree.setupMeasureFunction()** - Detects `DCFComposeWrapper` and calls `ensureCompositionReady()` before `getIntrinsicSize`
+2. **DCFComposeWrapper** - Tracks composition readiness and provides `ensureCompositionReady()` method
+3. **No component-specific code needed** - Framework handles it uniformly for all ComposeView-based components
+
+**Benefits:**
+- ✅ **No flash or disappearing text** - Composition happens before layout
+- ✅ **Accurate measurement** - Can use actual measurement instead of estimation
+- ✅ **Automatic** - Works for all ComposeView components (Text, Button, etc.)
+- ✅ **Scalable** - Future ComposeView components automatically benefit
+
 ## Summary
 
 ✅ **ComposeView is just a View** - Works natively with Yoga  
-✅ **No special handling needed** - Generic measurement works for all Views  
+✅ **Framework handles composition** - No flash, no disappearing text  
+✅ **Use DCFComposeWrapper** - Provides composition readiness tracking  
 ✅ **Modern Material Design 3** - Latest Android components  
 ✅ **No XML dependencies** - Pure Kotlin implementation  
 ✅ **Perfect text wrapping** - Compose + Yoga constraints work together  
+✅ **Actual measurement** - Framework ensures composition before `getIntrinsicSize`  
 
-The integration is **fully modular and scalable** - any component can use Compose without framework changes.
+The integration is **fully modular and scalable** - any component can use Compose without framework changes, and the framework automatically handles composition timing.
 
