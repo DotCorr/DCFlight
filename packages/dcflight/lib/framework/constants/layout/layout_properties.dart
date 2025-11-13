@@ -96,8 +96,8 @@ class DCFLayout extends Equatable {
     this.scaleX,
     this.scaleY,
     this.flexDirection = YogaFlexDirection.column,
-    this.justifyContent, // No default - let parent control layout flow
-    this.alignItems, // No default - let parent control alignment 
+    this.justifyContent = YogaJustifyContent.center, // Default to center like iOS
+    this.alignItems = YogaAlign.center, // Default to center like iOS 
     this.alignSelf,
     this.alignContent, // No default - let parent control content alignment
     this.flexWrap = YogaWrap.nowrap,
