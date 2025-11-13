@@ -12,24 +12,36 @@ void main() async {
 
 class BenchmarkApp extends DCFStatefulComponent {
   final VoidCallback? onBack;
+  bool _benchmarkStarted = false;
+  Map<String, dynamic>? _results;
   
   BenchmarkApp({this.onBack});
   
   @override
-  DCFComponentNode render() {
-    final resultsState = useState<Map<String, dynamic>?>(null);
-    final benchmarkRunning = useState<bool>(false);
-    
-    // Run benchmark once when component mounts
-    if (!benchmarkRunning.state && resultsState.state == null) {
-      benchmarkRunning.setState(true);
-      _runBenchmark().then((results) {
-        resultsState.setState(results);
-        benchmarkRunning.setState(false);
+  void componentDidMount() {
+    super.componentDidMount();
+    // Start benchmark AFTER component is mounted and rendered
+    // This ensures the UI is visible and responsive
+    if (!_benchmarkStarted) {
+      _benchmarkStarted = true;
+      // Use a small delay to ensure native view is fully created
+      Future.delayed(Duration(milliseconds: 200), () async {
+        try {
+          final results = await _runBenchmark();
+          _results = results;
+          // Trigger a re-render to show results
+          scheduleUpdate();
+        } catch (e) {
+          print('❌ Benchmark error: $e');
+          _benchmarkStarted = false; // Allow retry on error
+        }
       });
     }
-    
-    if (resultsState.state == null) {
+  }
+  
+  @override
+  DCFComponentNode render() {
+    if (_results == null) {
       return DCFView(
         layout: DCFLayout(
           flexDirection: DCFFlexDirection.column,
@@ -46,7 +58,7 @@ class BenchmarkApp extends DCFStatefulComponent {
     }
     
     return BenchmarkResultsApp(
-      results: resultsState.state!,
+      results: _results!,
       onBack: onBack,
     );
   }

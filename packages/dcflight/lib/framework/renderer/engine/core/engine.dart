@@ -1344,6 +1344,17 @@ class DCFEngine {
 
     newNode.parent = oldNode.parent;
 
+    // 🔥 CRITICAL: Different component base types (Stateless vs Stateful) = full replacement
+    // This handles cases like DCFView (Stateless) → BenchmarkApp (Stateful)
+    if ((oldNode is DCFStatelessComponent && newNode is DCFStatefulComponent) ||
+        (oldNode is DCFStatefulComponent && newNode is DCFStatelessComponent)) {
+      print('🔍 RECONCILE: Different component base types: ${oldNode.runtimeType} (${oldNode is DCFStatelessComponent ? "Stateless" : "Stateful"}) → ${newNode.runtimeType} (${newNode is DCFStatelessComponent ? "Stateless" : "Stateful"})');
+      EngineDebugLogger.logReconcile('REPLACE_COMPONENT_BASE_TYPE', oldNode, newNode,
+          reason: 'Different component base types (Stateless vs Stateful) - full replacement');
+      await _replaceNode(oldNode, newNode);
+      return;
+    }
+
     // 🔥 CRITICAL: Skip position tracking during structural shock to prevent incorrect matching
     // Component instance tracking by position + type + props
     // We maintain component instances across renders when at same position with same type
@@ -3427,15 +3438,20 @@ class DCFEngine {
       // Check if current positions match (only if props are similar)
       final positionsMatch = !_shouldReplaceAtSamePosition(oldChild, newChild);
       
-      // CRITICAL: Only look ahead if positions DON'T match
+      // CRITICAL: Only look ahead if positions DON'T match AND we're sure there's an insertion/removal
       // If positions match, we should reconcile at current position, not look for "better" matches
       // This prevents incorrect matching when identical components are at the same position
       int? matchingNewIndex;
       int? matchingOldIndex;
       
-      if (!positionsMatch && !propsDifferSignificantly) {
+      // Only look ahead if:
+      // 1. Positions don't match (types/keys differ at current position)
+      // 2. Props don't differ significantly (so we can potentially match)
+      // 3. We haven't already processed the old child at this position
+      if (!positionsMatch && !propsDifferSignificantly && !processedOldIndices.contains(oldIndex)) {
         // Look ahead to find where oldChild appears in newChildren (if at all)
         // This handles multiple consecutive insertions correctly
+        // BUT: Only if the old child doesn't match the new child at current position
         for (int lookAhead = newIndex + 1; lookAhead < newChildren.length; lookAhead++) {
           final lookAheadChild = newChildren[lookAhead];
           // Check props similarity before matching
@@ -3447,7 +3463,11 @@ class DCFEngine {
               canMatch = false;
             }
           }
-          if (canMatch && !_shouldReplaceAtSamePosition(oldChild, lookAheadChild)) {
+          // CRITICAL: Only match if types match AND props are similar
+          // This prevents matching different components just because they're similar
+          if (canMatch && 
+              oldChild.runtimeType == lookAheadChild.runtimeType &&
+              !_shouldReplaceAtSamePosition(oldChild, lookAheadChild)) {
             matchingNewIndex = lookAhead;
             break;
           }
@@ -3455,8 +3475,13 @@ class DCFEngine {
         
         // Look ahead to find where newChild appears in oldChildren (if at all)
         // This handles multiple consecutive removals correctly
+        // BUT: Only if the new child doesn't match the old child at current position
         for (int lookAhead = oldIndex + 1; lookAhead < oldChildren.length; lookAhead++) {
           final lookAheadChild = oldChildren[lookAhead];
+          // Skip if already processed
+          if (processedOldIndices.contains(lookAhead)) {
+            continue;
+          }
           // Check props similarity before matching
           bool canMatch = true;
           if (newChild is DCFElement && lookAheadChild is DCFElement) {
@@ -3466,7 +3491,11 @@ class DCFEngine {
               canMatch = false;
             }
           }
-          if (canMatch && !_shouldReplaceAtSamePosition(lookAheadChild, newChild)) {
+          // CRITICAL: Only match if types match AND props are similar
+          // This prevents matching different components just because they're similar
+          if (canMatch && 
+              newChild.runtimeType == lookAheadChild.runtimeType &&
+              !_shouldReplaceAtSamePosition(lookAheadChild, newChild)) {
             matchingOldIndex = lookAhead;
             break;
           }
