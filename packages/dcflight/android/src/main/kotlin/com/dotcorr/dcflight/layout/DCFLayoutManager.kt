@@ -301,13 +301,7 @@ class DCFLayoutManager private constructor() {
                     parent.setChildManuallyPositioned(view, true)
                 }
 
-                val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
-                if (!isScreen) {
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
-                }
-
-                // Measure view first
+                // Measure view first (framework controls measurement)
                 view.measure(
                     View.MeasureSpec.makeMeasureSpec(layout.width.toInt(), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(layout.height.toInt(), View.MeasureSpec.EXACTLY)
@@ -320,13 +314,10 @@ class DCFLayoutManager private constructor() {
                 
                 val componentClass = DCFComponentRegistry.shared.getComponentType(componentType)
                 if (componentClass != null) {
-                    // Get stored props from view
-                    @Suppress("UNCHECKED_CAST")
-                    val storedProps = (view.getTag(DCFTags.STORED_PROPS_KEY) as? MutableMap<String, Any?>) ?: emptyMap<String, Any?>()
-                    
-                    // Create component instance and call applyLayout
+                    // Framework controls everything - components just set frame
+                    // No props needed - framework handles all lifecycle and state
                     val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-                    componentInstance.applyLayout(view, layout, storedProps)
+                    componentInstance.applyLayout(view, layout)
                 } else {
                     // Fallback to direct layout if component not found
                     view.layout(
@@ -337,6 +328,15 @@ class DCFLayoutManager private constructor() {
                     )
                 }
 
+                // Framework controls visibility - make visible AFTER layout is applied
+                // This prevents flash/stutter on initial render (matches iOS)
+                val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
+                if (!isScreen) {
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+                }
+
+                // Framework handles invalidation - components don't need to know
                 view.invalidate()
                 (view.parent as? View)?.invalidate()
             }

@@ -36,8 +36,8 @@ class DCFTextComponent : DCFComponent() {
         val composeView = ComposeView(context)
         val wrapper = DCFComposeWrapper(context, composeView)
         wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
-        wrapper.visibility = View.VISIBLE
-        wrapper.alpha = 1.0f
+        // Framework controls visibility - don't set here!
+        // Views start invisible and become visible after layout (prevents flash)
         
         storeProps(wrapper, props)
         updateComposeContent(composeView, props)

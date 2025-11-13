@@ -187,19 +187,18 @@ abstract class DCFComponent {
     /**
      * Apply layout to a view - MATCH iOS applyLayout exactly
      * 
-     * iOS: Just sets view.frame = CGRect(...) - that's it!
-     * Android: Just sets view.layout(...) - that's it!
+     * iOS signature: func applyLayout(_ view: UIView, layout: YGNodeLayout)
+     * Android signature: fun applyLayout(view: View, layout: DCFNodeLayout)
      * 
-     * NO transform logic here - transforms are handled in applyStyles (like iOS)
-     * Components should NEVER override this - framework handles everything uniformly.
+     * Framework controls everything - components just set the frame.
+     * NO props parameter - framework handles all lifecycle and state.
      * 
      * @param view The view to apply layout to
      * @param layout Layout information from Yoga (left, top, width, height)
-     * @param props Current props (not used - kept for compatibility)
      */
-    open fun applyLayout(view: View, layout: DCFNodeLayout, props: Map<String, Any?> = emptyMap()) {
+    open fun applyLayout(view: View, layout: DCFNodeLayout) {
         // Match iOS exactly: just set the frame, nothing else
-        // Transforms are in applyStyles, not here!
+        // Framework handles all transforms, lifecycle, state - components don't need to know
         view.layout(
             layout.left.toInt(),
             layout.top.toInt(),
