@@ -11,8 +11,11 @@ import android.content.Context
 import android.graphics.PointF
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.wrapContentSize
@@ -45,34 +48,70 @@ class DCFTextComponent : DCFComponent() {
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
+        // CRITICAL: Wrap ComposeView to prevent layout requests during content-only updates
+        // This eliminates flickering by preventing double layout passes
         val composeView = ComposeView(context)
-        composeView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
+        val wrapper = NonLayoutRequestingWrapper(context, composeView)
+        wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
         
         // CRITICAL: Set visibility explicitly
-        composeView.visibility = View.VISIBLE
-        composeView.alpha = 1.0f
+        wrapper.visibility = View.VISIBLE
+        wrapper.alpha = 1.0f
         
-        storeProps(composeView, props)
+        storeProps(wrapper, props)
         
         // CRITICAL: Set content BEFORE applying styles
         // This ensures Compose can measure correctly
         updateComposeContent(composeView, props)
 
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        composeView.applyStyles(nonNullProps)
+        wrapper.applyStyles(nonNullProps)
         
         Log.d(TAG, "Created Compose-based Text component")
 
-        return composeView
+        return wrapper
     }
 
     override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        val composeView = view as? ComposeView ?: return false
+        val wrapper = view as? NonLayoutRequestingWrapper ?: return false
+        val composeView = wrapper.composeView
         
-        // Always update content to ensure text is visible
-        updateComposeContent(composeView, props)
+        // Check if content or text-related props actually changed
+        val contentChanged = props["content"]?.toString() != existingProps["content"]?.toString()
+        val textColorChanged = ColorUtilities.getColor("textColor", "primaryColor", props) != 
+                               ColorUtilities.getColor("textColor", "primaryColor", existingProps)
+        val fontSizeChanged = (props["fontSize"] as? Number)?.toFloat() != 
+                             (existingProps["fontSize"] as? Number)?.toFloat()
+        val fontWeightChanged = props["fontWeight"]?.toString() != existingProps["fontWeight"]?.toString()
+        val textAlignChanged = props["textAlign"]?.toString() != existingProps["textAlign"]?.toString()
+        val maxLinesChanged = (props["numberOfLines"] as? Number)?.toInt() != 
+                             (existingProps["numberOfLines"] as? Number)?.toInt()
         
-        composeView.applyStyles(props)
+        // Check if layout props changed (width, height, margin, padding, etc.)
+        val layoutPropsChanged = props["width"] != existingProps["width"] ||
+                                 props["height"] != existingProps["height"] ||
+                                 props["margin"] != existingProps["margin"] ||
+                                 props["padding"] != existingProps["padding"] ||
+                                 props["marginTop"] != existingProps["marginTop"] ||
+                                 props["marginBottom"] != existingProps["marginBottom"] ||
+                                 props["marginLeft"] != existingProps["marginLeft"] ||
+                                 props["marginRight"] != existingProps["marginRight"]
+        
+        // CRITICAL: Only allow layout requests if layout props changed
+        // This prevents double layout passes when only content changes
+        // The flag will be reset automatically after the current frame
+        wrapper.setAllowLayoutRequests(layoutPropsChanged)
+        
+        // CRITICAL: Apply styles FIRST to avoid layout thrashing
+        // This ensures layout is stable before Compose recomposition
+        wrapper.applyStyles(props)
+        
+        // Only update Compose content if text-related props changed
+        // This prevents unnecessary recomposition and flickering
+        if (contentChanged || textColorChanged || fontSizeChanged || fontWeightChanged || 
+            textAlignChanged || maxLinesChanged) {
+            updateComposeContent(composeView, props)
+        }
 
         return true
     }
@@ -93,10 +132,42 @@ class DCFTextComponent : DCFComponent() {
         val defaultColor = if (isDarkTheme) android.graphics.Color.WHITE else android.graphics.Color.BLACK
         val finalColor = textColor ?: defaultColor
         
-        composeView.setContent {
-            Material3Text(
-                text = content,
-                color = finalColor,
+        // CRITICAL: Use a SINGLE state object to prevent multiple recompositions
+        // This ensures only ONE state change triggers ONE recomposition, eliminating flickering
+        val STATE_HOLDER_TAG_KEY = "DCFTextStateHolder".hashCode()
+        @Suppress("UNCHECKED_CAST")
+        var stateHolder = composeView.getTag(STATE_HOLDER_TAG_KEY) as? androidx.compose.runtime.MutableState<TextState>
+        if (stateHolder == null) {
+            // First time: Create single state object and set content once
+            val initialState = TextState(
+                content = content,
+                textColor = finalColor,
+                fontSize = fontSize,
+                fontWeight = fontWeight,
+                textAlign = textAlign,
+                maxLines = if (maxLines == 0) Int.MAX_VALUE else maxLines
+            )
+            stateHolder = mutableStateOf(initialState)
+            composeView.setTag(STATE_HOLDER_TAG_KEY, stateHolder)
+            
+            // Set content once - single state object ensures stable recomposition
+            composeView.setContent {
+                val state = remember { stateHolder }.value
+                Material3Text(
+                    text = state.content,
+                    color = state.textColor,
+                    fontSize = state.fontSize,
+                    fontWeight = state.fontWeight,
+                    textAlign = state.textAlign,
+                    maxLines = state.maxLines
+                )
+            }
+        } else {
+            // Subsequent updates: Update single state object atomically
+            // This triggers only ONE recomposition, preventing flickering
+            stateHolder.value = TextState(
+                content = content,
+                textColor = finalColor,
                 fontSize = fontSize,
                 fontWeight = fontWeight,
                 textAlign = textAlign,
@@ -105,12 +176,23 @@ class DCFTextComponent : DCFComponent() {
         }
         
         if (content.isNotEmpty()) {
-            Log.d(TAG, "Set text content: $content, color: ${ColorUtilities.hexString(finalColor)}")
+            Log.d(TAG, "Updated text content: $content, color: ${ColorUtilities.hexString(finalColor)}")
         }
     }
+    
+    private data class TextState(
+        val content: String,
+        val textColor: Int,
+        val fontSize: Float,
+        val fontWeight: FontWeight,
+        val textAlign: TextAlign,
+        val maxLines: Int
+    )
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         // CRITICAL: Yoga calls getIntrinsicSize with emptyMap(), so we MUST get props from storedProps
+        // Also, view is now the wrapper, not ComposeView directly
+        val wrapper = view as? NonLayoutRequestingWrapper
         val storedProps = getStoredProps(view)
         val allProps = if (props.isEmpty()) storedProps else props
 
@@ -146,7 +228,8 @@ class DCFTextComponent : DCFComponent() {
         
         // CRITICAL: Ensure content is set after registration
         // This fixes the issue where the last text component doesn't show
-        val composeView = view as? ComposeView ?: return
+        val wrapper = view as? NonLayoutRequestingWrapper ?: return
+        val composeView = wrapper.composeView
         val storedProps = getStoredProps(view)
         updateComposeContent(composeView, storedProps)
     }
@@ -178,6 +261,66 @@ class DCFTextComponent : DCFComponent() {
             "justify" -> TextAlign.Justify
             else -> TextAlign.Start
         }
+    }
+}
+
+/**
+ * Wrapper ViewGroup that prevents ComposeView from requesting layout during content-only updates.
+ * 
+ * This eliminates flickering by preventing double layout passes when only text content changes.
+ * Layout requests are only allowed when layout props (width, height, margin, padding) change.
+ */
+private class NonLayoutRequestingWrapper(
+    context: Context,
+    val composeView: ComposeView
+) : ViewGroup(context) {
+    private var allowLayoutRequests = true
+    private var resetRunnable: Runnable? = null
+    
+    init {
+        addView(composeView, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    }
+    
+    fun setAllowLayoutRequests(allow: Boolean) {
+        // Cancel any pending reset
+        resetRunnable?.let { removeCallbacks(it) }
+        resetRunnable = null
+        
+        allowLayoutRequests = allow
+        
+        // CRITICAL: Reset flag after current frame to allow future layout requests
+        // This ensures Compose recomposition doesn't trigger layout during content-only updates
+        // Using View.post() ensures it runs after the current frame is processed
+        if (!allow) {
+            resetRunnable = Runnable {
+                allowLayoutRequests = true
+            }
+            post(resetRunnable!!)
+        }
+    }
+    
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        composeView.measure(widthMeasureSpec, heightMeasureSpec)
+        setMeasuredDimension(composeView.measuredWidth, composeView.measuredHeight)
+    }
+    
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        composeView.layout(0, 0, r - l, b - t)
+    }
+    
+    override fun requestLayout() {
+        // CRITICAL: Only request layout if allowed
+        // This prevents double layout passes when only content changes
+        // When ComposeView calls requestLayout(), it propagates to parent (this wrapper)
+        // So we intercept it here to prevent unnecessary Yoga recalculations
+        if (allowLayoutRequests) {
+            super.requestLayout()
+        }
+    }
+    
+    override fun invalidate() {
+        // Always allow invalidation (redraw) but not layout requests
+        super.invalidate()
     }
 }
 
