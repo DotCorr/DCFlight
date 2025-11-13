@@ -60,18 +60,8 @@ class MyApp extends DCFStatefulComponent {
           children: [
             DCFSlider(
               layout: DCFLayout(
-                height: 200,
-                width: 50,
-                rotateInDegrees: -90, // Rotate vertically, facing up (negative rotates counter-clockwise)
-                position: DCFPositionType.absolute,
-                absoluteLayout: AbsoluteLayout(
-                  left: 20, // Position on the left side with some margin
-                  top: "50%", // Center vertically
-                  translateY: "-50%", // Translate back by half height to center
-                ),
-              ),
-              styleSheet: DCFStyleSheet(
-                elevation: 10.0, // High elevation to bring slider on top of other components
+                
+               
               ),
               value: sliderVal2.state.toDouble(),
               onValueChange: (DCFSliderValueData data) {
@@ -136,10 +126,6 @@ class MyApp extends DCFStatefulComponent {
             ),
 
             DCFSlider(
-              layout: DCFLayout(
-                width: 200,
-                height: 50,
-              ),
               value: sliderVal.state.toDouble(),
               onValueChange: (data) {
                 sliderVal.setState(data.value);
@@ -156,10 +142,6 @@ class MyApp extends DCFStatefulComponent {
                 borderRadius: 10,
                 borderColor: DCFTheme.surfaceColor,
                 borderWidth: 1,
-              ),
-              layout: DCFLayout(
-                width: 200,
-                height: 50,
               ),
             ),
             DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
@@ -180,7 +162,6 @@ class MyApp extends DCFStatefulComponent {
               ),
             ),
             DCFAlert(
-
               visible: isDarkMode.state,
               title: "Alert",
               message:
@@ -207,10 +188,6 @@ class MyApp extends DCFStatefulComponent {
               },
             ),
             DCFDropdown(
-               layout: DCFLayout(
-                width: 200,
-                height: 50,
-              ),
               dropdownProps: DCFDropdownProps(
                 items: [
                   DCFDropdownMenuItem(title: "Item 1", value: "item1"),
