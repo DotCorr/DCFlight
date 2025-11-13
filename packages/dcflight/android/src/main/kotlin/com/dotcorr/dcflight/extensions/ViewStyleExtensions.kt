@@ -325,6 +325,89 @@ fun View.applyStyles(props: Map<String, Any>) {
             }
         }
     }
+
+    // Transforms - handled in styling like iOS (not in applyLayout)
+    // Framework handles this uniformly - NO component-specific glue code needed
+    var rotation = 0f
+    var translateX = 0f
+    var translateY = 0f
+    var scaleX = 1f
+    var scaleY = 1f
+    var hasTransforms = false
+
+    props["rotateInDegrees"]?.let {
+        rotation = when (it) {
+            is Number -> it.toFloat()
+            is String -> it.toFloatOrNull() ?: 0f
+            else -> 0f
+        }
+        hasTransforms = true
+    }
+
+    props["translateX"]?.let {
+        translateX = when (it) {
+            is Number -> it.toFloat()
+            is String -> it.toFloatOrNull() ?: 0f
+            else -> 0f
+        }
+        hasTransforms = true
+    }
+
+    props["translateY"]?.let {
+        translateY = when (it) {
+            is Number -> it.toFloat()
+            is String -> it.toFloatOrNull() ?: 0f
+            else -> 0f
+        }
+        hasTransforms = true
+    }
+
+    props["scale"]?.let {
+        val scale = when (it) {
+            is Number -> it.toFloat()
+            is String -> it.toFloatOrNull() ?: 1f
+            else -> 1f
+        }
+        scaleX = scale
+        scaleY = scale
+        hasTransforms = true
+    }
+
+    props["scaleX"]?.let {
+        scaleX = when (it) {
+            is Number -> it.toFloat()
+            is String -> it.toFloatOrNull() ?: 1f
+            else -> 1f
+        }
+        hasTransforms = true
+    }
+
+    props["scaleY"]?.let {
+        scaleY = when (it) {
+            is Number -> it.toFloat()
+            is String -> it.toFloatOrNull() ?: 1f
+            else -> 1f
+        }
+        hasTransforms = true
+    }
+
+    if (hasTransforms) {
+        // Apply pivot at center for rotation
+        this.pivotX = this.width / 2f
+        this.pivotY = this.height / 2f
+        this.rotation = rotation
+        this.translationX = translateX
+        this.translationY = translateY
+        this.scaleX = scaleX
+        this.scaleY = scaleY
+    } else {
+        // Reset transforms if none specified
+        this.rotation = 0f
+        this.translationX = 0f
+        this.translationY = 0f
+        this.scaleX = 1f
+        this.scaleY = 1f
+    }
 }
 
 /**
