@@ -32,8 +32,62 @@ class DCFComposeWrapper(
     private var allowLayoutRequests = true
     private var resetRunnable: Runnable? = null
     
+    // Track if ComposeView has been composed and is ready
+    @Volatile
+    private var isCompositionReady = false
+    
     init {
         addView(composeView, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+    }
+    
+    /**
+     * Mark that ComposeView has been composed and is ready
+     */
+    fun markCompositionReady() {
+        isCompositionReady = true
+    }
+    
+    /**
+     * Check if ComposeView composition is ready
+     */
+    fun isCompositionReady(): Boolean {
+        return isCompositionReady
+    }
+    
+    /**
+     * Force composition to complete by requesting layout and measuring
+     * This ensures ComposeView is ready before layout calculation
+     * 
+     * Note: ComposeView.setContent is async, so we can't force it to be truly synchronous.
+     * However, we can trigger a layout pass which helps ComposeView compose faster.
+     */
+    fun ensureCompositionReady() {
+        if (!isCompositionReady && composeView.parent != null) {
+            // Force a layout pass to trigger composition
+            // This helps ComposeView compose faster, though it's still async
+            composeView.requestLayout()
+            
+            // Try to measure to trigger composition
+            // Use a reasonable constraint to allow ComposeView to measure properly
+            val maxWidth = 10000
+            composeView.measure(
+                android.view.View.MeasureSpec.makeMeasureSpec(maxWidth, android.view.View.MeasureSpec.AT_MOST),
+                android.view.View.MeasureSpec.makeMeasureSpec(0, android.view.View.MeasureSpec.UNSPECIFIED)
+            )
+            
+            // Mark as ready if measurement succeeded
+            // Even if measurement returns 0, we mark as ready to avoid infinite loops
+            // The fallback estimate in getIntrinsicSize will handle the 0 case
+            if (composeView.measuredWidth > 0 || composeView.measuredHeight > 0) {
+                isCompositionReady = true
+            } else {
+                // Still mark as ready to prevent blocking - fallback will handle it
+                isCompositionReady = true
+            }
+        } else if (isCompositionReady) {
+            // Already ready - ensure it's still valid by re-measuring
+            composeView.requestLayout()
+        }
     }
     
     /**

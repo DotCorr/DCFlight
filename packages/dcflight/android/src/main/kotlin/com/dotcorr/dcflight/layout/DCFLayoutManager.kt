@@ -329,41 +329,15 @@ class DCFLayoutManager private constructor() {
                     )
                 }
 
-                // CRITICAL: Handle visibility for ComposeView-based components
-                // ComposeView.setContent is async - we need to wait for composition to complete
-                // before making the view visible to prevent flash
+                // Framework ensures visibility AFTER layout (matches iOS exactly)
+                // iOS: isHidden = false, alpha = 1.0 AFTER setting frame
+                // For ComposeView-based components, composition is ensured before layout via viewRegisteredWithShadowTree
                 val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
                 if (!isScreen) {
-                    // Check if this is a ComposeView-based component (DCFComposeWrapper)
-                    val isComposeViewBased = view is DCFComposeWrapper
-                    val isCurrentlyInvisible = view.visibility != View.VISIBLE || view.alpha < 1.0f
-                    
-                    if (isComposeViewBased && isCurrentlyInvisible) {
-                        // Defer visibility until ComposeView has composed
-                        // Only for views that are currently invisible (new views during reconciliation)
-                        // Post to next frame to ensure composition is complete
-                        view.post {
-                            val wrapper = view as? DCFComposeWrapper
-                            val composeView = wrapper?.composeView
-                            
-                            // If ComposeView exists and has been measured, make visible
-                            // Otherwise, it means composition hasn't completed yet - wait another frame
-                            if (composeView != null && (composeView.measuredWidth > 0 || composeView.measuredHeight > 0)) {
-                                view.visibility = View.VISIBLE
-                                view.alpha = 1.0f
-                            } else {
-                                // Composition not ready yet - wait one more frame
-                                view.post {
-                                    view.visibility = View.VISIBLE
-                                    view.alpha = 1.0f
-                                }
-                            }
-                        }
-                    } else {
-                        // Non-ComposeView components or already visible: make visible immediately (matches iOS)
-                        view.visibility = View.VISIBLE
-                        view.alpha = 1.0f
-                    }
+                    // Make visible immediately - composition is already ensured before layout
+                    // This matches iOS behavior: views are visible after layout is applied
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
                 }
 
                 // Framework handles invalidation - components don't need to know

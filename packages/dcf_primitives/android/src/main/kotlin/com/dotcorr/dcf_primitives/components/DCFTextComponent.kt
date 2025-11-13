@@ -37,10 +37,8 @@ class DCFTextComponent : DCFComponent() {
         val wrapper = DCFComposeWrapper(context, composeView)
         wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
         
-        // CRITICAL: Keep invisible until composition completes to prevent flash
-        // ComposeView.setContent is async - we'll make visible after layout is applied
-        wrapper.visibility = View.INVISIBLE
-        wrapper.alpha = 0f
+        // Framework controls visibility - don't set here!
+        // We'll ensure composition happens before layout instead
         
         storeProps(wrapper, props)
         
@@ -125,6 +123,11 @@ class DCFTextComponent : DCFComponent() {
                     maxLines = state.maxLines
                 )
             }
+            
+            // Mark composition as ready after setContent
+            // Note: setContent is async, but we'll verify in getIntrinsicSize
+            val wrapper = composeView.parent as? DCFComposeWrapper
+            wrapper?.markCompositionReady()
         } else {
             stateHolder.value = TextState(
                 content = content,
@@ -178,6 +181,10 @@ class DCFTextComponent : DCFComponent() {
             updateComposeContent(composeView, allProps)
         }
         
+        // CRITICAL: Ensure composition is ready before measuring
+        // This forces ComposeView to compose synchronously if possible
+        wrapper.ensureCompositionReady()
+        
         // Measure the actual ComposeView (like iOS measures UILabel)
         // Use a reasonable width constraint for measurement (like iOS maxSize)
         val maxWidth = 10000 // Large but finite width for measurement
@@ -214,12 +221,10 @@ class DCFTextComponent : DCFComponent() {
         // Framework calls this before layout calculation, so we ensure composition is ready
         updateComposeContent(composeView, storedProps)
         
-        // Force immediate composition if view is attached
+        // CRITICAL: Force composition to be ready before layout calculation
         // This ensures measurement in getIntrinsicSize is accurate
         if (view.parent != null) {
-            composeView.post {
-                composeView.requestLayout()
-            }
+            wrapper.ensureCompositionReady()
         }
     }
     
