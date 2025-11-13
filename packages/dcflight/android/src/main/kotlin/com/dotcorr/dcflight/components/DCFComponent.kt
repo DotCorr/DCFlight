@@ -9,6 +9,7 @@ package com.dotcorr.dcflight.components
 
 import android.content.Context
 import android.view.View
+import android.view.ViewGroup
 
 /**
  * DCFComponent - Base class for all DCFlight components
@@ -185,120 +186,67 @@ abstract class DCFComponent {
     
     /**
      * Apply layout to a view - MATCH iOS applyLayout exactly
-     * This is called by the layout manager after Yoga calculates layout
-     * Components can override this to handle special layout cases (e.g., rotation, transforms)
      * 
-     * Default implementation applies the frame directly.
-     * Components that need transforms/rotations should override this.
+     * iOS: Just sets view.frame = CGRect(...) - that's it!
+     * Android: Just sets view.layout(...) - that's it!
+     * 
+     * NO transform logic here - transforms are handled in applyStyles (like iOS)
+     * Components should NEVER override this - framework handles everything uniformly.
      * 
      * @param view The view to apply layout to
      * @param layout Layout information from Yoga (left, top, width, height)
-     * @param props Current props (may contain transform properties like rotateInDegrees, translateX, etc.)
+     * @param props Current props (not used - kept for compatibility)
      */
     open fun applyLayout(view: View, layout: DCFNodeLayout, props: Map<String, Any?> = emptyMap()) {
-        // Default implementation: just set the frame
-        // Components can override for transforms/rotations
+        // Match iOS exactly: just set the frame, nothing else
+        // Transforms are in applyStyles, not here!
         view.layout(
             layout.left.toInt(),
             layout.top.toInt(),
             (layout.left + layout.width).toInt(),
             (layout.top + layout.height).toInt()
         )
-        
-        // Apply transforms if present
-        applyTransforms(view, layout, props)
     }
     
     /**
-     * Apply transforms (rotation, translation, scale) to a view
-     * This is called by applyLayout by default, but components can override
-     * to handle transforms differently (e.g., vertical slider needs custom rotation)
+     * Prepare a view for recycling (view pooling) - MATCH iOS prepareForRecycle
+     * 
+     * iOS uses view pooling for performance. Android doesn't use pooling (for stability),
+     * but we provide this method for consistency and future use.
+     * 
+     * Components can override this for custom cleanup if needed.
+     * 
+     * @param view The view to prepare for recycling
      */
-    protected open fun applyTransforms(view: View, layout: DCFNodeLayout, props: Map<String, Any?>) {
-        var transformApplied = false
-        var rotation = 0f
-        var translateX = 0f
-        var translateY = 0f
-        var scaleX = 1f
-        var scaleY = 1f
+    open fun prepareForRecycle(view: View) {
+        // Remove from parent
+        (view.parent as? ViewGroup)?.removeView(view)
         
-        // Get rotation
-        props["rotateInDegrees"]?.let {
-            rotation = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 0f
-                else -> 0f
-            }
-            transformApplied = true
-        }
+        // Reset visibility
+        view.visibility = View.VISIBLE
+        view.alpha = 1.0f
         
-        // Get translation
-        props["translateX"]?.let {
-            translateX = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 0f
-                else -> 0f
-            }
-            transformApplied = true
-        }
+        // Clear stored props
+        view.setTag(DCFTags.STORED_PROPS_KEY, null)
         
-        props["translateY"]?.let {
-            translateY = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 0f
-                else -> 0f
-            }
-            transformApplied = true
-        }
+        // Clear event callbacks
+        view.setTag(DCFTags.EVENT_CALLBACK_KEY, null)
+        view.setTag(DCFTags.VIEW_ID_KEY, null)
+        view.setTag(DCFTags.EVENT_TYPES_KEY, null)
         
-        // Get scale
-        props["scale"]?.let {
-            val scale = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 1f
-                else -> 1f
-            }
-            scaleX = scale
-            scaleY = scale
-            transformApplied = true
-        }
+        // Reset transforms
+        view.rotation = 0f
+        view.translationX = 0f
+        view.translationY = 0f
+        view.scaleX = 1f
+        view.scaleY = 1f
         
-        props["scaleX"]?.let {
-            scaleX = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 1f
-                else -> 1f
-            }
-            transformApplied = true
-        }
+        // Reset frame (will be set by layout)
+        view.layout(0, 0, 0, 0)
         
-        props["scaleY"]?.let {
-            scaleY = when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 1f
-                else -> 1f
-            }
-            transformApplied = true
-        }
-        
-        if (transformApplied) {
-            // Apply pivot point at center for rotation
-            view.pivotX = layout.width / 2f
-            view.pivotY = layout.height / 2f
-            
-            // Build transform matrix
-            view.rotation = rotation
-            view.translationX = translateX
-            view.translationY = translateY
-            view.scaleX = scaleX
-            view.scaleY = scaleY
-        } else {
-            // Reset transforms if none specified
-            view.rotation = 0f
-            view.translationX = 0f
-            view.translationY = 0f
-            view.scaleX = 1f
-            view.scaleY = 1f
+        // Clear subviews (components should handle this if needed)
+        if (view is ViewGroup) {
+            view.removeAllViews()
         }
     }
 }
