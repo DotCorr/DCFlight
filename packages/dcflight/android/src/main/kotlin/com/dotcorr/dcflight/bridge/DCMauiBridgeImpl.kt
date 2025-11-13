@@ -212,17 +212,35 @@ class DCMauiBridgeImpl private constructor() {
             val layoutProps = extractLayoutProps(props)
             val nonLayoutProps = props.filter { !layoutProps.containsKey(it.key) }
 
+            // CRITICAL: Only trigger layout calculation if layout props actually changed
+            // This prevents double layout passes when only content changes
             if (layoutProps.isNotEmpty()) {
-                val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
+                // Get stored props from view to compare with new props
+                @Suppress("UNCHECKED_CAST")
+                val storedProps = (view.getTag(com.dotcorr.dcflight.components.DCFTags.STORED_PROPS_KEY) as? MutableMap<String, Any?>) ?: emptyMap<String, Any?>()
+                val previousLayoutProps = extractLayoutProps(storedProps)
                 
-                if (isScreen) {
-                    YogaShadowTree.shared.updateNodeLayoutProps(viewId, layoutProps)
-                } else {
-                    DCFLayoutManager.shared.updateNodeWithLayoutProps(
-                        nodeId = viewId,
-                        componentType = viewType,
-                        props = layoutProps
-                    )
+                // Check if layout props actually changed
+                // Convert both to non-null maps for comparison
+                val layoutPropsNonNull = layoutProps.filterValues { it != null }.mapValues { it.value!! }
+                val previousLayoutPropsNonNull = previousLayoutProps.filterValues { it != null }.mapValues { it.value!! }
+                
+                val layoutPropsChanged = layoutPropsNonNull.any { (key, value) ->
+                    previousLayoutPropsNonNull[key] != value
+                } || previousLayoutPropsNonNull.keys != layoutPropsNonNull.keys
+                
+                if (layoutPropsChanged) {
+                    val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
+                    
+                    if (isScreen) {
+                        YogaShadowTree.shared.updateNodeLayoutProps(viewId, layoutProps)
+                    } else {
+                        DCFLayoutManager.shared.updateNodeWithLayoutProps(
+                            nodeId = viewId,
+                            componentType = viewType,
+                            props = layoutProps.filterValues { it != null }.mapValues { it.value!! }
+                        )
+                    }
                 }
             }
 
@@ -688,7 +706,7 @@ class DCMauiBridgeImpl private constructor() {
         return list
     }
 
-    private fun extractLayoutProps(props: Map<String, Any>): Map<String, Any> {
+    private fun extractLayoutProps(props: Map<String, Any?>): Map<String, Any?> {
         val supportedLayoutProps = setOf(
             "width", "height", "minWidth", "maxWidth", "minHeight", "maxHeight",
             "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
