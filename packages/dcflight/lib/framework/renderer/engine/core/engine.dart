@@ -80,7 +80,7 @@ class DCFEngine {
   final Set<String> _componentsWaitingForLayout = {};
   final Set<String> _componentsWaitingForInsertion = {};
   bool _isTreeComplete = false;
-  
+
   /// Structural shock flag - when true, force full replacement instead of reconciliation
   /// This prevents component/prop leakage when app structure changes dramatically
   bool _isStructuralShock = false;
@@ -1348,29 +1348,29 @@ class DCFEngine {
     // Component instance tracking by position + type + props
     // We maintain component instances across renders when at same position with same type
     if (!_isStructuralShock) {
-      final parentViewId = _findParentViewId(oldNode) ?? "root";
-      final nodeIndex = _findNodeIndexInParent(oldNode);
-      final positionKey = "$parentViewId:$nodeIndex:${newNode.runtimeType}";
-      final propsHash = _computePropsHash(newNode);
-      final propsKey = "$positionKey:$propsHash";
-      
-      // Try to find existing instance by position + type + props
-      // This is automatic key inference - match by position when types/props match
-      final existingByProps = _componentInstancesByProps[propsKey];
-      
-      // If we found an existing instance with same props, reuse it
-      if (existingByProps != null && existingByProps.runtimeType == newNode.runtimeType) {
-        if (existingByProps is DCFStatefulComponent && newNode is DCFStatefulComponent) {
-          // Same component instance - update it instead of creating new one
-          EngineDebugLogger.logReconcile('REUSE_INSTANCE_BY_PROPS', oldNode, newNode,
-              reason: 'Reusing component instance by position+props');
-          // Continue with reconciliation - this is the same instance
-        }
+    final parentViewId = _findParentViewId(oldNode) ?? "root";
+    final nodeIndex = _findNodeIndexInParent(oldNode);
+    final positionKey = "$parentViewId:$nodeIndex:${newNode.runtimeType}";
+    final propsHash = _computePropsHash(newNode);
+    final propsKey = "$positionKey:$propsHash";
+    
+    // Try to find existing instance by position + type + props
+    // This is automatic key inference - match by position when types/props match
+    final existingByProps = _componentInstancesByProps[propsKey];
+    
+    // If we found an existing instance with same props, reuse it
+    if (existingByProps != null && existingByProps.runtimeType == newNode.runtimeType) {
+      if (existingByProps is DCFStatefulComponent && newNode is DCFStatefulComponent) {
+        // Same component instance - update it instead of creating new one
+        EngineDebugLogger.logReconcile('REUSE_INSTANCE_BY_PROPS', oldNode, newNode,
+            reason: 'Reusing component instance by position+props');
+        // Continue with reconciliation - this is the same instance
       }
-      
-      // Track component instance by position and props (automatic key inference)
-      _componentInstancesByPosition[positionKey] = newNode;
-      _componentInstancesByProps[propsKey] = newNode;
+    }
+    
+    // Track component instance by position and props (automatic key inference)
+    _componentInstancesByPosition[positionKey] = newNode;
+    _componentInstancesByProps[propsKey] = newNode;
     }
     
     // Check keys first
@@ -2355,8 +2355,8 @@ class DCFEngine {
         EngineDebugLogger.log('CREATE_ROOT_STRUCTURAL_SHOCK',
             'Structural shock detected - same class but different structure. Clearing instance tracking.');
       } else {
-        EngineDebugLogger.log('CREATE_ROOT_HOT_RESTART',
-            'Hot restart detected. Tearing down old VDOM state.');
+      EngineDebugLogger.log('CREATE_ROOT_HOT_RESTART',
+          'Hot restart detected. Tearing down old VDOM state.');
       }
 
       // 🔥 CRITICAL: Cancel ALL pending async work FIRST
@@ -2367,7 +2367,7 @@ class DCFEngine {
       await Future.delayed(Duration(milliseconds: 50));
 
       if (rootComponent != null) {
-        await _disposeOldComponent(rootComponent!);
+      await _disposeOldComponent(rootComponent!);
       }
 
       _statefulComponents.clear();
@@ -3427,11 +3427,15 @@ class DCFEngine {
       // Check if current positions match (only if props are similar)
       final positionsMatch = !_shouldReplaceAtSamePosition(oldChild, newChild);
       
-      // CRITICAL: Look ahead to find where oldChild appears in newChildren (if at all)
-      // This handles multiple consecutive insertions correctly
-      // BUT: Only look ahead if props are similar (to avoid matching wrong components)
+      // CRITICAL: Only look ahead if positions DON'T match
+      // If positions match, we should reconcile at current position, not look for "better" matches
+      // This prevents incorrect matching when identical components are at the same position
       int? matchingNewIndex;
-      if (!propsDifferSignificantly) {
+      int? matchingOldIndex;
+      
+      if (!positionsMatch && !propsDifferSignificantly) {
+        // Look ahead to find where oldChild appears in newChildren (if at all)
+        // This handles multiple consecutive insertions correctly
         for (int lookAhead = newIndex + 1; lookAhead < newChildren.length; lookAhead++) {
           final lookAheadChild = newChildren[lookAhead];
           // Check props similarity before matching
@@ -3448,14 +3452,9 @@ class DCFEngine {
             break;
           }
         }
-      }
-      final isInsertion = matchingNewIndex != null && !positionsMatch;
-      
-      // CRITICAL: Look ahead to find where newChild appears in oldChildren (if at all)
-      // This handles multiple consecutive removals correctly
-      // BUT: Only look ahead if props are similar (to avoid matching wrong components)
-      int? matchingOldIndex;
-      if (!propsDifferSignificantly) {
+        
+        // Look ahead to find where newChild appears in oldChildren (if at all)
+        // This handles multiple consecutive removals correctly
         for (int lookAhead = oldIndex + 1; lookAhead < oldChildren.length; lookAhead++) {
           final lookAheadChild = oldChildren[lookAhead];
           // Check props similarity before matching
@@ -3473,6 +3472,8 @@ class DCFEngine {
           }
         }
       }
+      
+      final isInsertion = matchingNewIndex != null && !positionsMatch;
       final isRemoval = matchingOldIndex != null && !positionsMatch;
 
       EngineDebugLogger.log(
@@ -3596,12 +3597,12 @@ class DCFEngine {
         // Positions match and props are similar - reconcile
         // 🔥 CRITICAL: Skip position tracking during structural shock to prevent incorrect matching
         if (!_isStructuralShock) {
-          // Track component instance by position for automatic key inference
+      // Track component instance by position for automatic key inference
           final childPositionKey = "$parentViewId:$newIndex:${newChild.runtimeType}";
-          final childPropsHash = _computePropsHash(newChild);
-          final childPropsKey = "$childPositionKey:$childPropsHash";
-          _componentInstancesByPosition[childPositionKey] = newChild;
-          _componentInstancesByProps[childPropsKey] = newChild;
+      final childPropsHash = _computePropsHash(newChild);
+      final childPropsKey = "$childPositionKey:$childPropsHash";
+      _componentInstancesByPosition[childPositionKey] = newChild;
+      _componentInstancesByProps[childPropsKey] = newChild;
         }
 
         await _reconcile(oldChild, newChild);

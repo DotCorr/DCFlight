@@ -33,7 +33,7 @@ class DCFLayout extends Equatable {
   final dynamic paddingHorizontal;
   final dynamic paddingVertical;
 
-  final YogaPositionType? position;
+  final DCFPositionType? position;
 
   final AbsoluteLayout? absoluteLayout;
 
@@ -43,21 +43,21 @@ class DCFLayout extends Equatable {
   final double? scaleX; // Scale factor for x axis only
   final double? scaleY; // Scale factor for y axis only
 
-  final YogaFlexDirection? flexDirection;
-  final YogaJustifyContent? justifyContent;
-  final YogaAlign? alignItems;
-  final YogaAlign? alignSelf;
-  final YogaAlign? alignContent;
-  final YogaWrap? flexWrap;
+  final DCFFlexDirection? flexDirection;
+  final DCFJustifyContent? justifyContent;
+  final DCFAlign? alignItems;
+  final DCFAlign? alignSelf;
+  final DCFAlign? alignContent;
+  final DCFWrap? flexWrap;
   final double? flex;
   final double? flexGrow;
   final double? flexShrink;
   final dynamic flexBasis;
 
-  final YogaDisplay? display;
-  final YogaOverflow? overflow;
+  final DCFDisplay? display;
+  final DCFOverflow? overflow;
 
-  final YogaDirection? direction;
+  final DCFDirection? direction;
 
   final double? aspectRatio;
   final dynamic gap;
@@ -95,17 +95,17 @@ class DCFLayout extends Equatable {
     this.scale,
     this.scaleX,
     this.scaleY,
-    this.flexDirection = YogaFlexDirection.column,
-    this.justifyContent = YogaJustifyContent.center, // Default to center like iOS
-    this.alignItems = YogaAlign.center, // Default to center like iOS 
+    this.flexDirection = DCFFlexDirection.column,
+    this.justifyContent = DCFJustifyContent.center, // Default to center like iOS
+    this.alignItems = DCFAlign.center, // Default to center like iOS 
     this.alignSelf,
     this.alignContent, // No default - let parent control content alignment
-    this.flexWrap = YogaWrap.nowrap,
+    this.flexWrap = DCFWrap.nowrap,
     this.flex,
     this.flexGrow,
     this.flexShrink,
     this.flexBasis,
-    this.display = YogaDisplay.flex,
+    this.display = DCFDisplay.flex,
     this.overflow,
     this.direction,
     this.aspectRatio,
@@ -324,25 +324,25 @@ class DCFLayout extends Equatable {
     dynamic paddingLeft,
     dynamic paddingHorizontal,
     dynamic paddingVertical,
-    YogaPositionType? position,
+    DCFPositionType? position,
     AbsoluteLayout? absoluteLayout,
     double? rotateInDegrees,
     double? scale,
     double? scaleX,
     double? scaleY,
-    YogaFlexDirection? flexDirection,
-    YogaJustifyContent? justifyContent,
-    YogaAlign? alignItems,
-    YogaAlign? alignSelf,
-    YogaAlign? alignContent,
-    YogaWrap? flexWrap,
+    DCFFlexDirection? flexDirection,
+    DCFJustifyContent? justifyContent,
+    DCFAlign? alignItems,
+    DCFAlign? alignSelf,
+    DCFAlign? alignContent,
+    DCFWrap? flexWrap,
     double? flex,
     double? flexGrow,
     double? flexShrink,
     dynamic flexBasis,
-    YogaDisplay? display,
-    YogaOverflow? overflow,
-    YogaDirection? direction,
+    DCFDisplay? display,
+    DCFOverflow? overflow,
+    DCFDirection? direction,
     double? aspectRatio,
     dynamic gap,
     dynamic rowGap,

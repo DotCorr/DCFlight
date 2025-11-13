@@ -250,8 +250,8 @@ class DCFScreenView extends DCFStatefulComponent {
     return DCFView(
       layout: DCFLayout(
         flex: 1,
-        justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
+        justifyContent: DCFJustifyContent.center,
+        alignItems: DCFAlign.center,
         padding: 20,
       ),
       children: [

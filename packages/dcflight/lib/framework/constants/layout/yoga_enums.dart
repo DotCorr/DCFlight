@@ -11,7 +11,7 @@
 /// - [ltr]: Left-to-right layout direction.
 /// - [rtl]: Right-to-left layout direction.
 /// Direction for layout
-enum YogaDirection {
+enum DCFDirection {
   inherit,
   ltr,
   rtl,
@@ -24,7 +24,7 @@ enum YogaDirection {
 /// - [row]: Horizontal layout, left to right.
 /// - [rowReverse]: Horizontal layout, right to left.
 /// Flex direction
-enum YogaFlexDirection {
+enum DCFFlexDirection {
   column,
   columnReverse,
   row,
@@ -40,7 +40,7 @@ enum YogaFlexDirection {
 /// - [spaceAround]: Items are evenly distributed with equal space around them.
 /// - [spaceEvenly]: Items are distributed so that the spacing between any two items (and the space to the edges) is equal.
 /// Justify content options
-enum YogaJustifyContent {
+enum DCFJustifyContent {
   flexStart,
   center,
   flexEnd,
@@ -60,7 +60,7 @@ enum YogaJustifyContent {
 /// - [spaceBetween]: Evenly distributes items with the first at the start and last at the end.
 /// - [spaceAround]: Evenly distributes items with equal space around them.
 /// Align options
-enum YogaAlign {
+enum DCFAlign {
   auto,
   flexStart,
   center,
@@ -77,7 +77,7 @@ enum YogaAlign {
 /// - [wrap]: Items wrap onto multiple lines from top to bottom or left to right.
 /// - [wrapReverse]: Items wrap onto multiple lines from bottom to top or right to left.
 /// Flex wrap options
-enum YogaWrap {
+enum DCFWrap {
   nowrap,
   wrap,
   wrapReverse,
@@ -88,7 +88,7 @@ enum YogaWrap {
 /// - [flex]: The element is rendered as a flex container.
 /// - [none]: The element is not rendered.
 /// Display options
-enum YogaDisplay {
+enum DCFDisplay {
   flex,
   none,
 }
@@ -99,7 +99,7 @@ enum YogaDisplay {
 /// - [absolute]: Positioned absolutely within its parent.
 /// - [static]: Positioned according to normal flow, ignores insets and doesn't form containing blocks.
 /// Position type options
-enum YogaPositionType {
+enum DCFPositionType {
   relative,
   absolute,
   static, // ENHANCEMENT: Added static position support
@@ -111,7 +111,7 @@ enum YogaPositionType {
 /// - [hidden]: Content is clipped and not visible outside the container.
 /// - [scroll]: Content is clipped, but can be scrolled into view.
 /// Overflow options
-enum YogaOverflow {
+enum DCFOverflow {
   visible,
   hidden,
   scroll,
@@ -129,7 +129,7 @@ enum YogaOverflow {
 /// - [vertical]: Both top and bottom edges.
 /// - [all]: All edges.
 /// Edge options for position, margin, padding and border
-enum YogaEdge {
+enum DCFEdge {
   left,
   top,
   right,
