@@ -37,6 +37,7 @@ class BenchmarkApp extends DCFStatefulComponent {
     if (_results == null) {
       return DCFView(
         layout: DCFLayout(
+          flex:1,
           flexDirection: DCFFlexDirection.column,
           justifyContent: DCFJustifyContent.center,
           alignItems: DCFAlign.center,
@@ -92,6 +93,7 @@ class BenchmarkResultsApp extends DCFStatefulComponent {
     return DCFView(
       layout: DCFLayout(
         padding: 20,
+        flex:1,
         flexDirection: DCFFlexDirection.column,
         justifyContent: DCFJustifyContent.center,
         alignItems: DCFAlign.center,

@@ -18,6 +18,7 @@ import android.view.View
 import com.facebook.yoga.*
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
+import com.dotcorr.dcflight.components.DCFComposeWrapper
 import com.dotcorr.dcflight.utils.DCFScreenUtilities
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
@@ -222,6 +223,15 @@ class YogaShadowTree private constructor() {
                             // If measurement fails, fall back to intrinsic size
                             Log.w(TAG, "Failed to measure view $nodeId with constraints, using intrinsic size", e)
                         }
+                    }
+                    
+                    // CRITICAL FRAMEWORK FIX: Ensure ComposeView-based components are composed before getIntrinsicSize
+                    // This prevents flash by ensuring accurate measurement
+                    // Framework handles this uniformly - no component-specific code needed
+                    if (view is DCFComposeWrapper) {
+                        val wrapper = view as DCFComposeWrapper
+                        // Ensure ComposeView is composed before measuring
+                        wrapper.ensureCompositionReady()
                     }
                     
                     // Fallback: Use intrinsic size when constraints are undefined or measurement fails
