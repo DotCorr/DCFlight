@@ -543,12 +543,17 @@ class YogaShadowTree private constructor() {
     }
 
     private fun applyLayoutsBatch(layouts: List<Pair<String, Rect>>) {
+        // CRITICAL FIX: Apply all layouts first WITHOUT making views visible
+        // This prevents flash - views are laid out while invisible, then made visible in batch
+        
+        val viewsToMakeVisible = mutableListOf<View>()
         
         for ((viewId, frame) in layouts) {
             val view = DCFLayoutManager.shared.getView(viewId)
             if (view != null) {
                 val wasUserInteractionEnabled = view.isEnabled
                 
+                // Apply layout WITHOUT making visible
                 DCFLayoutManager.shared.applyLayout(
                     viewId = viewId,
                     left = frame.left.toFloat(),
@@ -558,6 +563,21 @@ class YogaShadowTree private constructor() {
                 )
                 
                 view.isEnabled = wasUserInteractionEnabled
+                
+                // Collect all views to make visible in batch
+                viewsToMakeVisible.add(view)
+            }
+        }
+        
+        // CRITICAL: Make all views visible in batch AFTER all layouts are applied
+        // This prevents flash during reconciliation
+        if (viewsToMakeVisible.isNotEmpty()) {
+            mainHandler.post {
+                for (view in viewsToMakeVisible) {
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+                }
+                Log.d(TAG, "Made ${viewsToMakeVisible.size} views visible after batch layout")
             }
         }
         

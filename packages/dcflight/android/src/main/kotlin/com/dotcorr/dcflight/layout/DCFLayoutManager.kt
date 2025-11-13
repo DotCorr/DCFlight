@@ -329,16 +329,9 @@ class DCFLayoutManager private constructor() {
                     )
                 }
 
-                // Framework ensures visibility AFTER layout (matches iOS exactly)
-                // iOS: isHidden = false, alpha = 1.0 AFTER setting frame
-                // For ComposeView-based components, composition is ensured before layout via viewRegisteredWithShadowTree
-                val isScreen = view.tag == "DCFScreen" || view::class.simpleName?.contains("Screen") == true || view::class.simpleName?.contains("DCFEscapeVisibility") == true
-                if (!isScreen) {
-                    // Make visible immediately - composition is already ensured before layout
-                    // This matches iOS behavior: views are visible after layout is applied
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
-                }
+                // CRITICAL FIX: Don't make visible here - batch visibility after ALL layouts are applied
+                // This prevents flash during reconciliation (views flash when visible but not yet laid out)
+                // Visibility will be set in batch after all layouts complete
 
                 // Framework handles invalidation - components don't need to know
                 view.invalidate()
