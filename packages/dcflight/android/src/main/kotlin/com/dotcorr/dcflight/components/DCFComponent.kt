@@ -73,8 +73,7 @@ abstract class DCFComponent {
     protected fun mergeProps(existing: Map<String, Any?>, updates: Map<String, Any?>): MutableMap<String, Any?> {
         val merged = existing.toMutableMap()
         
-        val semanticColorKeys = listOf("primaryColor", "secondaryColor", "tertiaryColor", "accentColor")
-        for (key in semanticColorKeys) {
+        for (key in DCFPropConstants.SEMANTIC_COLOR_PROPS) {
             if (updates.containsKey(key) && updates[key] == null) {
                 merged.remove(key)
             }
@@ -134,6 +133,7 @@ abstract class DCFComponent {
      * @param existingProps Previous props (from getStoredProps)
      * @param props New props (merged)
      * @param stateProps List of prop keys that represent component state (e.g., ["selectedIndex", "value", "checked"])
+     *                   Common state props like "enabled", "disabled" are automatically included.
      * @return true if only semantic colors changed, false if state props also changed
      */
     protected fun onlySemanticColorsChanged(
@@ -141,15 +141,33 @@ abstract class DCFComponent {
         props: Map<String, Any>,
         stateProps: List<String> = emptyList()
     ): Boolean {
-        val semanticColorKeys = listOf("primaryColor", "secondaryColor", "tertiaryColor", "accentColor")
-        val allStateProps = stateProps + listOf("segments", "enabled", "disabled")
+        val allStateProps = stateProps + DCFPropConstants.COMMON_STATE_PROPS + listOf("segments")
         
         val stateChanged = allStateProps.any { hasPropChanged(it, existingProps, props) }
         if (stateChanged) return false
         
-        val colorChanged = semanticColorKeys.any { hasPropChanged(it, existingProps, props) }
+        val colorChanged = DCFPropConstants.SEMANTIC_COLOR_PROPS.any { hasPropChanged(it, existingProps, props) }
         
         return colorChanged
+    }
+    
+    /**
+     * Check if layout props changed between existing and new props.
+     * 
+     * This is a framework-level utility to avoid duplicating layout prop detection logic.
+     * Components should use this instead of manually checking layout props.
+     * 
+     * Uses DCFPropConstants.LAYOUT_PROPS to ensure consistency with bridge-level layout prop extraction.
+     * 
+     * @param existingProps Previous props (from getStoredProps)
+     * @param props New props (merged)
+     * @return true if any layout props changed, false otherwise
+     */
+    protected fun hasLayoutPropsChanged(
+        existingProps: Map<String, Any>,
+        props: Map<String, Any>
+    ): Boolean {
+        return DCFPropConstants.LAYOUT_PROPS.any { hasPropChanged(it, existingProps, props) }
     }
     
     /**
