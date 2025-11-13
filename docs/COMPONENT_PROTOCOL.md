@@ -249,6 +249,9 @@ override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
 **Android (Compose Component):**
 ```kotlin
 override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+    val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
+    val composeView = wrapper.composeView
+    
     // CRITICAL: Yoga calls getIntrinsicSize with emptyMap(), 
     // so we MUST get props from storedProps
     val storedProps = getStoredProps(view)
@@ -259,15 +262,32 @@ override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
         return PointF(0f, 0f)
     }
     
-    // Estimation based on content (Compose can't be measured before layout)
-    val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
-    val preferredWidth = content.length * fontSize * 0.6f
-    val singleLineHeight = fontSize * 1.2f
+    // CRITICAL: Framework ensures ComposeView is composed before this is called
+    // (handled in YogaShadowTree.setupMeasureFunction)
+    // So we can use actual measurement, not estimation
+    wrapper.ensureCompositionReady()
     
-    return PointF(
-        preferredWidth.coerceAtLeast(1f),
-        singleLineHeight.coerceAtLeast(1f)
+    // Measure the actual ComposeView
+    val maxWidth = 10000
+    composeView.measure(
+        View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
+        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
     )
+    
+    val measuredWidth = composeView.measuredWidth.toFloat()
+    val measuredHeight = composeView.measuredHeight.toFloat()
+    
+    // Fallback if measurement returns 0 (should be rare)
+    if (measuredWidth == 0f || measuredHeight == 0f) {
+        val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+        val lines = content.split("\n")
+        val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
+        val estimatedWidth = maxLineLength * fontSize * 0.6f
+        val estimatedHeight = lines.size * fontSize * 1.2f
+        return PointF(estimatedWidth.coerceAtLeast(1f), estimatedHeight.coerceAtLeast(1f))
+    }
+    
+    return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
 }
 ```
 
@@ -275,7 +295,7 @@ override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
 - ✅ Return intrinsic content size
 - ✅ Used by Yoga for layout calculation
 - ✅ Return at least 1x1 (never zero)
-- ✅ **For Compose:** Use estimation since Compose content can't be measured before layout. Yoga will measure the actual view with constraints when available.
+- ✅ **For Compose:** Framework ensures composition before `getIntrinsicSize` is called, so use **actual measurement** instead of estimation. See [Android Compose Integration](../ANDROID_COMPOSE_INTEGRATION.md) for details.
 
 ---
 
@@ -611,22 +631,36 @@ class DCFButtonComponent : DCFComponent() {
 class DCFTextComponent : DCFComponent() {
     
     override fun createView(context: Context, props: Map<String, Any?>): View {
+        // Use DCFComposeWrapper for composition readiness tracking
         val composeView = ComposeView(context)
-        composeView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
+        val wrapper = DCFComposeWrapper(context, composeView)
+        wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
         
-        // CRITICAL: Set visibility explicitly
-        composeView.visibility = View.VISIBLE
-        composeView.alpha = 1.0f
+        // Framework controls visibility - don't set here!
         
-        storeProps(composeView, props)
+        storeProps(wrapper, props)
         
-        // Set Compose content
+        // CRITICAL: Set content BEFORE measuring to prevent flash
         updateComposeContent(composeView, props)
         
         // Apply styles (Yoga layout properties)
-        composeView.applyStyles(props)
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        wrapper.applyStyles(nonNullProps)
         
-        return composeView
+        return wrapper
+    }
+    
+    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+        val wrapper = view as? DCFComposeWrapper ?: return false
+        val composeView = wrapper.composeView
+        
+        // Update Compose content
+        updateComposeContent(composeView, props)
+        
+        // Update styles
+        wrapper.applyStyles(props)
+        
+        return true
     }
     
     private fun updateComposeContent(composeView: ComposeView, props: Map<String, Any?>) {
@@ -643,41 +677,51 @@ class DCFTextComponent : DCFComponent() {
         }
     }
     
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        val button = view as Button
-        
-        // Update title if changed
-        if (hasPropChanged("title", existingProps, props)) {
-            props["title"]?.let { button.text = it.toString() }
-        }
-        
-        // Update semantic colors if changed (MUST)
-        if (hasPropChanged("primaryColor", existingProps, props)) {
-            props["primaryColor"]?.let { color ->
-                val colorInt = ColorUtilities.parseColor(color.toString())
-                if (colorInt != null) {
-                    button.setTextColor(colorInt)
-                }
-            }
-        }
-        
-        return true
-    }
-    
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val button = view as Button
-        button.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+        val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
+        val composeView = wrapper.composeView
+        
+        // Framework ensures ComposeView is composed before this is called
+        wrapper.ensureCompositionReady()
+        
+        // Measure the actual ComposeView
+        val maxWidth = 10000
+        composeView.measure(
+            View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
-        return PointF(
-            max(1f, button.measuredWidth.toFloat()),
-            max(1f, button.measuredHeight.toFloat())
-        )
+        
+        val measuredWidth = composeView.measuredWidth.toFloat()
+        val measuredHeight = composeView.measuredHeight.toFloat()
+        
+        // Fallback if measurement returns 0 (should be rare)
+        if (measuredWidth == 0f || measuredHeight == 0f) {
+            val storedProps = getStoredProps(view)
+            val allProps = if (props.isEmpty()) storedProps else props
+            val content = allProps["content"]?.toString() ?: ""
+            val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+            val lines = content.split("\n")
+            val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
+            val estimatedWidth = maxLineLength * fontSize * 0.6f
+            val estimatedHeight = lines.size * fontSize * 1.2f
+            return PointF(estimatedWidth.coerceAtLeast(1f), estimatedHeight.coerceAtLeast(1f))
+        }
+        
+        return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
     }
     
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // Store nodeId if needed
+        val wrapper = view as? DCFComposeWrapper ?: return
+        val composeView = wrapper.composeView
+        val storedProps = getStoredProps(view)
+        
+        // CRITICAL: Ensure ComposeView is composed before layout calculation
+        updateComposeContent(composeView, storedProps)
+        
+        // Force composition to be ready before layout calculation
+        if (view.parent != null) {
+            wrapper.ensureCompositionReady()
+        }
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
@@ -696,7 +740,7 @@ DCFlight supports Jetpack Compose for Android components. See [Android Compose I
 - getIntrinsicSize pattern for Compose
 - Best practices and troubleshooting
 
-**Key Point:** `ComposeView` extends `View`, so it works natively with Yoga - no special handling needed!
+**Key Point:** `ComposeView` extends `View`, so it works natively with Yoga. The framework automatically ensures composition is ready before measurement - use `DCFComposeWrapper` and actual measurement in `getIntrinsicSize`. See [Android Compose Integration](./ANDROID_COMPOSE_INTEGRATION.md) for details.
 
 ## Next Steps
 
