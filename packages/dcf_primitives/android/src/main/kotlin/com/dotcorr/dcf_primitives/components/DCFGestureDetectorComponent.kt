@@ -18,10 +18,6 @@ import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 
-/**
- * DCFGestureDetectorComponent - 1:1 mapping with iOS DCFGestureDetectorComponent
- * Provides gesture detection like iOS UIGestureRecognizer
- */
 class DCFGestureDetectorComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {

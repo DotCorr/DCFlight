@@ -19,10 +19,6 @@ import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 
-/**
- * DCFIconComponent - 1:1 mapping with iOS DCFIconComponent
- * Displays system and custom icons like iOS SF Symbols
- */
 class DCFIconComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {

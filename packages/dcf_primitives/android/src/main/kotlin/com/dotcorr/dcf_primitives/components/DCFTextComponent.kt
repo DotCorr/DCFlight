@@ -26,18 +26,6 @@ import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 import androidx.compose.ui.platform.ComposeView
 
-/**
- * DCFTextComponent - Pure Compose Text implementation
- * 
- * Uses Jetpack Compose for rendering with Yoga layout integration.
- * ComposeView IS a View, so Yoga can measure and position it natively.
- * 
- * Benefits:
- * - No XML resources needed
- * - Modern Material Design 3 styling
- * - Consistent with Button component
- * - Works perfectly with Yoga layout
- */
 class DCFTextComponent : DCFComponent() {
 
     companion object {

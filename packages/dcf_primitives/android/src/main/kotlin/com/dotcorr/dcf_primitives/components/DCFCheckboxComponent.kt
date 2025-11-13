@@ -18,12 +18,6 @@ import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 
-/**
- * DCFCheckboxComponent - 1:1 mapping with iOS DCFCheckboxComponent
- * ONLY implements props that iOS DCFCheckboxComponent has:
- * - checked: Boolean
- * - disabled: Boolean
- */
 class DCFCheckboxComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {

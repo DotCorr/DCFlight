@@ -32,10 +32,6 @@ import com.dotcorr.dcflight.layout.ViewRegistry
 import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcf_primitives.R
 
-/**
- * DCFButtonComponent - Material Design 3 Button using Jetpack Compose
- * Provides native Material Design 3 button with proper theming and animations
- */
 class DCFButtonComponent : DCFComponent() {
 
     companion object {

@@ -24,10 +24,6 @@ import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 
-/**
- * DCFSegmentedControlComponent - View-based segmented control using LinearLayout and Buttons
- * Provides native Android segmented control similar to iOS UISegmentedControl
- */
 class DCFSegmentedControlComponent : DCFComponent() {
 
     companion object {

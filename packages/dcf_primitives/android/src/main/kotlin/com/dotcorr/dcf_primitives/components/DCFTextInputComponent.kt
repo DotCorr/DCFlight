@@ -29,9 +29,6 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
  import com.dotcorr.dcf_primitives.components.parseColor
  import kotlin.math.max
  
- /**
-  * DCFTextInputComponent - Text input component matching iOS DCFTextInputComponent
-  */
  class DCFTextInputComponent : DCFComponent() {
  
      override fun createView(context: Context, props: Map<String, Any?>): View {

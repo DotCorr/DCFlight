@@ -21,10 +21,6 @@ import com.dotcorr.dcflight.utils.ColorUtilities
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcf_primitives.components.parseColor
 
-/**
- * DCFToggleComponent - Toggle/Switch component matching iOS DCFToggleComponent
- * Uses exact same prop names as iOS for cross-platform consistency
- */
 class DCFToggleComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {

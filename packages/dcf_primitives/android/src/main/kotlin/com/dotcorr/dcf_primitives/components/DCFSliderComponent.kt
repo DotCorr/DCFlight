@@ -18,10 +18,6 @@ import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 
-/**
- * DCFSliderComponent - 1:1 mapping with iOS DCFSliderComponent
- * Uses exact same prop names as iOS UISlider for cross-platform consistency
- */
 class DCFSliderComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {

@@ -20,10 +20,6 @@ import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 
-/**
- * DCFDropdownComponent - 1:1 mapping with iOS DCFDropdownComponent
- * Provides dropdown selection like iOS UIPickerView
- */
 class DCFDropdownComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
