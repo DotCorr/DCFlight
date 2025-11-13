@@ -182,7 +182,136 @@ abstract class DCFComponent {
      * Components MUST implement this
      */
     abstract fun viewRegisteredWithShadowTree(view: View, nodeId: String)
+    
+    /**
+     * Apply layout to a view - MATCH iOS applyLayout exactly
+     * This is called by the layout manager after Yoga calculates layout
+     * Components can override this to handle special layout cases (e.g., rotation, transforms)
+     * 
+     * Default implementation applies the frame directly.
+     * Components that need transforms/rotations should override this.
+     * 
+     * @param view The view to apply layout to
+     * @param layout Layout information from Yoga (left, top, width, height)
+     * @param props Current props (may contain transform properties like rotateInDegrees, translateX, etc.)
+     */
+    open fun applyLayout(view: View, layout: DCFNodeLayout, props: Map<String, Any?> = emptyMap()) {
+        // Default implementation: just set the frame
+        // Components can override for transforms/rotations
+        view.layout(
+            layout.left.toInt(),
+            layout.top.toInt(),
+            (layout.left + layout.width).toInt(),
+            (layout.top + layout.height).toInt()
+        )
+        
+        // Apply transforms if present
+        applyTransforms(view, layout, props)
+    }
+    
+    /**
+     * Apply transforms (rotation, translation, scale) to a view
+     * This is called by applyLayout by default, but components can override
+     * to handle transforms differently (e.g., vertical slider needs custom rotation)
+     */
+    protected open fun applyTransforms(view: View, layout: DCFNodeLayout, props: Map<String, Any?>) {
+        var transformApplied = false
+        var rotation = 0f
+        var translateX = 0f
+        var translateY = 0f
+        var scaleX = 1f
+        var scaleY = 1f
+        
+        // Get rotation
+        props["rotateInDegrees"]?.let {
+            rotation = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 0f
+                else -> 0f
+            }
+            transformApplied = true
+        }
+        
+        // Get translation
+        props["translateX"]?.let {
+            translateX = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 0f
+                else -> 0f
+            }
+            transformApplied = true
+        }
+        
+        props["translateY"]?.let {
+            translateY = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 0f
+                else -> 0f
+            }
+            transformApplied = true
+        }
+        
+        // Get scale
+        props["scale"]?.let {
+            val scale = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 1f
+                else -> 1f
+            }
+            scaleX = scale
+            scaleY = scale
+            transformApplied = true
+        }
+        
+        props["scaleX"]?.let {
+            scaleX = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 1f
+                else -> 1f
+            }
+            transformApplied = true
+        }
+        
+        props["scaleY"]?.let {
+            scaleY = when (it) {
+                is Number -> it.toFloat()
+                is String -> it.toFloatOrNull() ?: 1f
+                else -> 1f
+            }
+            transformApplied = true
+        }
+        
+        if (transformApplied) {
+            // Apply pivot point at center for rotation
+            view.pivotX = layout.width / 2f
+            view.pivotY = layout.height / 2f
+            
+            // Build transform matrix
+            view.rotation = rotation
+            view.translationX = translateX
+            view.translationY = translateY
+            view.scaleX = scaleX
+            view.scaleY = scaleY
+        } else {
+            // Reset transforms if none specified
+            view.rotation = 0f
+            view.translationX = 0f
+            view.translationY = 0f
+            view.scaleX = 1f
+            view.scaleY = 1f
+        }
+    }
 }
+
+/**
+ * Layout information from a Yoga node - MATCH iOS YGNodeLayout exactly
+ */
+data class DCFNodeLayout(
+    val left: Float,
+    val top: Float,
+    val width: Float,
+    val height: Float
+)
 
 /**
  * Global propagateEvent function - matches iOS DCFComponentProtocol exactly
