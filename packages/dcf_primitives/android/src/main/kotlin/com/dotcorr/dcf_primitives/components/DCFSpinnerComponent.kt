@@ -18,10 +18,6 @@ import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 
-/**
- * DCFSpinnerComponent - Activity indicator matching iOS DCFSpinnerComponent
- * Uses exact same prop names as iOS UIActivityIndicatorView for cross-platform consistency
- */
 class DCFSpinnerComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {

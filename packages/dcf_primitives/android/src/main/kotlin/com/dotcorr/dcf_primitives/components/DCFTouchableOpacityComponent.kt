@@ -19,11 +19,6 @@ import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 
-/**
- * EXACT iOS DCFTouchableOpacityComponent port for Android
- * Matches iOS DCFTouchableOpacityComponent.swift behavior 1:1
- * Provides touch feedback with opacity animation like iOS
- */
 class DCFTouchableOpacityComponent : DCFComponent() {
 
     companion object {

@@ -17,10 +17,6 @@ import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 
-/**
- * DCFAlertComponent - 1:1 mapping with iOS DCFAlertComponent
- * Provides alert dialogs like iOS UIAlertController
- */
 class DCFAlertComponent : DCFComponent() {
 
     companion object {

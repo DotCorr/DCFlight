@@ -18,10 +18,6 @@ import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
 
-/**
- * DCFSvgComponent - 1:1 mapping with iOS DCFSvgComponent
- * Displays SVG images like iOS
- */
 class DCFSvgComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {

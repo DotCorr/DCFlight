@@ -21,10 +21,6 @@ import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
 
-/**
- * DCFWebViewComponent - WebView component matching iOS DCFWebViewComponent
- * Uses exact same prop names as iOS WKWebView for cross-platform consistency
- */
 class DCFWebViewComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {

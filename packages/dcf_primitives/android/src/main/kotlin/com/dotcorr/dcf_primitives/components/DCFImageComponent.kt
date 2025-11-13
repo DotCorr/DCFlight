@@ -22,10 +22,6 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 
-/**
- * EXACT iOS DCFImageComponent port for Android
- * Matches iOS DCFImageComponent.swift behavior 1:1
- */
 class DCFImageComponent : DCFComponent() {
 
     companion object {

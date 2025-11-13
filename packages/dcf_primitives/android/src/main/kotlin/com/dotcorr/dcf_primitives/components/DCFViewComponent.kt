@@ -16,11 +16,6 @@ import com.dotcorr.dcflight.components.DCFFrameLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.extensions.applyStyles
 
-/**
- * EXACT iOS DCFViewComponent port for Android
- * Matches iOS DCFViewComponent.swift behavior 1:1
- * Acts as a container view similar to UIView in iOS
- */
 class DCFViewComponent : DCFComponent() {
 
     companion object {
