@@ -97,12 +97,14 @@ class DCFViewManager private constructor() {
         // ✅ Use pure Kotlin tag keys instead of XML resource IDs
         view.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, viewType)
 
-        // Framework controls lifecycle - match iOS: views created normally, visibility ensured in layout
-        // iOS doesn't set views invisible initially - it ensures visibility in applyLayoutDirectly
+        // CRITICAL FIX: Start views invisible to prevent flash during reconciliation
+        // Visibility will be set in batch after all layouts are applied
+        view.visibility = View.INVISIBLE
+        view.alpha = 0f
+
         ViewRegistry.shared.registerView(view, viewId, viewType)
 
         val isScreen = (viewType == "Screen" || props["presentationStyle"] != null)
-
         if (isScreen) {
             YogaShadowTree.shared.createScreenRoot(viewId, viewType)
         } else {
