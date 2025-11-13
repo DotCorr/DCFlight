@@ -1,3 +1,4 @@
+import 'package:dcf_go/benchmark_app.dart';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
@@ -31,17 +32,22 @@ class MyApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     final count = useState<int>(0);
+    final benchmarkTest = useState<bool>(false);
     final sliderVal = useState<double>(0.0);
 
     final name = useState<String>("");
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
 
-    return DCFView(
+    return benchmarkTest.state ? BenchmarkApp(
+      onBack: () {
+        benchmarkTest.setState(false);
+      },
+    ) : DCFView(
       layout: DCFLayout(
         padding: 20,
         flex: 1,
-        justifyContent: YogaJustifyContent.center,
-        alignItems: YogaAlign.center,
+        justifyContent: DCFJustifyContent.center,
+        alignItems: DCFAlign.center,
       ),
       // Using unified theme system with semantic colors
       styleSheet: DCFStyleSheet(
@@ -62,8 +68,8 @@ class MyApp extends DCFStatefulComponent {
           layout: DCFLayout(
             height: 100,
             width: 200,
-            justifyContent: YogaJustifyContent.center,
-            alignItems: YogaAlign.center,
+            justifyContent: DCFJustifyContent.center,
+            alignItems: DCFAlign.center,
           ),
         ),
         DCFTextInput(
@@ -75,8 +81,8 @@ class MyApp extends DCFStatefulComponent {
             marginBottom: 20,
             width: 200,
             height: 40,
-            alignItems: YogaAlign.center,
-            justifyContent: YogaJustifyContent.center,
+            alignItems: DCFAlign.center,
+            justifyContent: DCFJustifyContent.center,
           ),
           styleSheet: DCFStyleSheet(
             backgroundColor: DCFTheme.surfaceColor,
@@ -88,11 +94,13 @@ class MyApp extends DCFStatefulComponent {
         ),
 
         DCFWebView(
+          
           layout: DCFLayout(
-            width: "100%",
+            padding: 20,
+            width: "80%",
             height: sliderVal.state*100,
-            alignItems: YogaAlign.center,
-            justifyContent: YogaJustifyContent.center,
+            alignItems: DCFAlign.center,
+            justifyContent: DCFJustifyContent.center,
           ),
           webViewProps: DCFWebViewProps(source: 'https://dotcorr.com'),
         ),
@@ -105,7 +113,14 @@ class MyApp extends DCFStatefulComponent {
             DCFLogger.debug('Slider value changed to: ${data.value}', 'MyApp');
           },
         ),
-        DCFSpinner(),
+        DCFSpinner(
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFColors.blue100,
+            borderRadius: 10,
+            borderColor: DCFTheme.surfaceColor,
+            borderWidth: 1,
+          ),
+        ),
         DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
         DCFSegmentedControl(
           segmentedControlProps: DCFSegmentedControlProps(
@@ -119,8 +134,8 @@ class MyApp extends DCFStatefulComponent {
           layout: DCFLayout(
             width: 200,
             height: 40,
-            alignItems: YogaAlign.center,
-            justifyContent: YogaJustifyContent.center,
+            alignItems: DCFAlign.center,
+            justifyContent: DCFJustifyContent.center,
           ),
         ),
         DCFAlert(
@@ -175,8 +190,8 @@ class MyApp extends DCFStatefulComponent {
         ),
         layout: DCFLayout(
           padding: 20,
-          alignItems: YogaAlign.center,
-          justifyContent: YogaJustifyContent.center,
+          alignItems: DCFAlign.center,
+          justifyContent: DCFJustifyContent.center,
         ),
         children: [
          DCFButton(
@@ -209,6 +224,15 @@ class MyApp extends DCFStatefulComponent {
           },
           layout: DCFLayout(marginTop: 10, height: 50),
         ),
+
+        DCFButton(
+          buttonProps: DCFButtonProps(title: "Benchmark"),
+          onPress: (DCFButtonPressData data) {
+            DCFLogger.info('Benchmark button pressed', 'MyApp');
+            benchmarkTest.setState(true);
+          },
+          layout: DCFLayout(marginTop: 10, height: 50),
+        )
        ])
       ],
     );
