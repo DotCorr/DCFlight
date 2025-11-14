@@ -163,7 +163,12 @@ class DCFEngine {
 
       _nativeBridge.setEventHandler(_handleNativeEvent);
 
-      await _initializeConcurrentProcessing();
+      // Initialize concurrent processing (non-blocking - just sets up listener)
+      // This doesn't spawn isolates, so it's fast and won't block initialization
+      _initializeConcurrentProcessing().catchError((e) {
+        EngineDebugLogger.log('ISOLATE_INIT_ERROR', 
+            'Isolate infrastructure setup failed: $e');
+      });
 
       _readyCompleter.complete();
       EngineDebugLogger.log(
@@ -177,9 +182,13 @@ class DCFEngine {
 
   /// Initialize concurrent processing capabilities (lazy - only sets up listener)
   Future<void> _initializeConcurrentProcessing() async {
-    if (_concurrentEnabled) return;
+    if (_concurrentEnabled) {
+      print('✅ ISOLATES: Already initialized (${_workerIsolates.length} workers ready)');
+      return;
+    }
     
     try {
+      print('🔄 ISOLATES: Setting up isolate infrastructure (lazy initialization)...');
       EngineDebugLogger.log('ISOLATE_INIT', 'Setting up isolate infrastructure (lazy initialization)');
       
       // Cancel existing subscription if any (for hot restart)
@@ -212,6 +221,7 @@ class DCFEngine {
           } else {
             _workerLastUsed.add(DateTime.now());
           }
+          print('✅ ISOLATES: Worker isolate $index ready (total: ${_workerPorts.length})');
           EngineDebugLogger.log('ISOLATE_PORT_RECEIVED', 'Worker isolate $index sent port');
         }
       });
@@ -220,9 +230,11 @@ class DCFEngine {
       _startIsolateCleanupTimer();
       
       _concurrentEnabled = true;
+      print('✅ ISOLATES: Infrastructure ready (will spawn on demand, max ${_maxWorkers} workers)');
       EngineDebugLogger.log('ISOLATE_INIT_SUCCESS', 
           'Isolate infrastructure ready (will spawn on demand)');
     } catch (e) {
+      print('❌ ISOLATES: Initialization failed: $e');
       EngineDebugLogger.log('ISOLATE_INIT_ERROR', 
           'Failed to initialize isolate infrastructure: $e');
       _concurrentEnabled = false;
@@ -1613,10 +1625,22 @@ class DCFEngine {
       try {
         await _reconcileWithIsolate(oldNode, newNode);
         usedIsolate = true;
+        print('✅ ISOLATES: Reconciliation completed using isolates');
       } catch (e) {
+        print('⚠️ ISOLATES: Reconciliation failed, falling back to regular: $e');
         EngineDebugLogger.logReconcile('ISOLATE_FALLBACK_ERROR', oldNode, newNode,
             reason: 'Isolate reconciliation failed, falling back: $e');
         // Continue with regular reconciliation
+      }
+    } else if (!isInitialRender) {
+      // Log why isolates weren't used (for debugging)
+      final nodeCount = _countNodeChildren(oldNode) + _countNodeChildren(newNode);
+      if (nodeCount < 50) {
+        // Tree too small - this is normal, don't log
+      } else if (!_concurrentEnabled) {
+        print('⚠️ ISOLATES: Not enabled (concurrent processing disabled)');
+      } else if (_workerPorts.isEmpty) {
+        print('⚠️ ISOLATES: No workers available (will spawn on demand)');
       }
     }
     
@@ -2152,7 +2176,13 @@ class DCFEngine {
     final newNodeCount = _countNodeChildren(newNode);
     final totalNodes = oldNodeCount + newNodeCount;
     
-    return totalNodes >= 50 && _concurrentEnabled && _workerPorts.isNotEmpty;
+    final shouldUse = totalNodes >= 50 && _concurrentEnabled && _workerPorts.isNotEmpty;
+    
+    if (totalNodes >= 50) {
+      print('📊 ISOLATES: Tree size: $totalNodes nodes | Enabled: $_concurrentEnabled | Workers: ${_workerPorts.length} | Will use: $shouldUse');
+    }
+    
+    return shouldUse;
   }
   
   /// Count children recursively
@@ -2174,6 +2204,7 @@ class DCFEngine {
   /// Reconcile using isolate-based parallel diffing
   Future<void> _reconcileWithIsolate(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
+    print('🚀 ISOLATES: Starting parallel reconciliation (${_countNodeChildren(oldNode) + _countNodeChildren(newNode)} nodes)');
     EngineDebugLogger.logReconcile('ISOLATE_START', oldNode, newNode,
         reason: 'Using isolate-based reconciliation');
     
@@ -2211,10 +2242,11 @@ class DCFEngine {
       
       if (isolateIndex == -1) {
         // Fallback to regular reconciliation if no isolates available
+        print('⚠️ ISOLATES: No isolates available, falling back to regular reconciliation');
         EngineDebugLogger.logReconcile('ISOLATE_FALLBACK', oldNode, newNode,
             reason: 'No isolates available, using regular reconciliation');
-        // Continue with regular reconciliation flow
-        return;
+        // Throw to trigger fallback in _reconcile
+        throw Exception('No isolates available for reconciliation');
       }
       
       _workerAvailable[isolateIndex] = false;
@@ -2243,9 +2275,12 @@ class DCFEngine {
         _workerLastUsed[isolateIndex] = DateTime.now();
       }
       
+      print('✅ ISOLATES: Parallel reconciliation completed, applying diff...');
+      
       // Apply diff results
       await _applyIsolateDiff(oldNode, newNode, result);
       
+      print('✅ ISOLATES: Diff applied successfully');
       EngineDebugLogger.logReconcile('ISOLATE_COMPLETE', oldNode, newNode,
           reason: 'Isolate-based reconciliation completed');
     } catch (e) {
@@ -3029,9 +3064,13 @@ class DCFEngine {
 
       rootComponent = component;
       
-      // 🔥 CRITICAL: Reinitialize isolates after hot restart cleanup
+      // 🔥 CRITICAL: Reinitialize isolates after hot restart cleanup (non-blocking)
       // This ensures isolates are in a clean state for the new app
-      await _initializeConcurrentProcessing();
+      // Don't await - let it initialize in background, initial render must happen first
+      _initializeConcurrentProcessing().catchError((e) {
+        EngineDebugLogger.log('ISOLATE_INIT_DEFERRED', 
+            'Isolate initialization deferred due to error: $e');
+      });
       
       await _nativeBridge.startBatchUpdate();
       await renderToNative(component, parentViewId: 0);
