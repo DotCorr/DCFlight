@@ -74,10 +74,12 @@ Native View Display
 
 1. **View ID Generation**
    ```dart
-   final viewId = _generateViewId(); // Incremental counter
+   final viewId = _generateViewId(); // Incremental integer (0 = root)
    _nodesByViewId[viewId] = element;
    element.nativeViewId = viewId;
    ```
+   
+   **Note:** View IDs are integers (matching React Native's tag system), with 0 reserved for the root view.
 
 2. **Native Bridge Call**
    ```dart
