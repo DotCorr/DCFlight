@@ -120,9 +120,9 @@ class DCFEngine {
   final List<SendPort> _workerPorts = [];
   final List<bool> _workerAvailable = [];
   final List<DateTime> _workerLastUsed = []; // Track when each worker was last used
-  final int _maxWorkers = 2; // Reduced from 4 - only keep 2 max
-  final int _minWorkers = 0; // Start with 0, spawn on demand
-  final Duration _isolateIdleTimeout = const Duration(seconds: 30); // Close after 30s idle
+  final int _maxWorkers = 2; // Maximum number of worker isolates
+  final int _minWorkers = 2; // Keep all pre-spawned workers alive for optimal performance
+  final Duration _isolateIdleTimeout = const Duration(seconds: 30); // Close after 30s idle (but won't close if at minWorkers)
   Timer? _isolateCleanupTimer;
   final ReceivePort _mainIsolateReceivePort = ReceivePort();
   StreamSubscription<dynamic>? _mainIsolateReceivePortSubscription;
@@ -4167,17 +4167,34 @@ class DCFEngine {
       return;
     }
 
+    // Handle case where oldElement doesn't have a viewId (e.g., when reconciling newly rendered components)
+    int? parentViewId = oldElement.nativeViewId ?? newElement.nativeViewId;
+    
+    if (parentViewId == null) {
+      // If neither has a viewId, try to find parent from component hierarchy
+      // This can happen when reconciling components that haven't been rendered yet
+      EngineDebugLogger.log(
+          'RECONCILE_CHILDREN_NO_VIEWID', 
+          'Both old and new elements have no viewId - cannot reconcile children without parent viewId',
+          extra: {
+            'OldType': oldElement.type,
+            'NewType': newElement.type
+          });
+      // Skip children reconciliation - they will be rendered when the parent is rendered
+      return;
+    }
+
     final hasKeys = _childrenHaveKeys(newChildren);
     EngineDebugLogger.log(
         'RECONCILE_CHILDREN_STRATEGY', 'Choosing reconciliation strategy',
-        extra: {'HasKeys': hasKeys});
+        extra: {'HasKeys': hasKeys, 'ParentViewId': parentViewId});
 
     if (hasKeys) {
       await _reconcileKeyedChildren(
-          oldElement.nativeViewId!, oldChildren, newChildren);
+          parentViewId, oldChildren, newChildren);
     } else {
       await _reconcileSimpleChildren(
-          oldElement.nativeViewId!, oldChildren, newChildren);
+          parentViewId, oldChildren, newChildren);
     }
   }
 
