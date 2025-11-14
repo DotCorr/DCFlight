@@ -24,9 +24,9 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
   // IMPORTANT: We disable platform-level batching on Android due to implementation issues
 
-  final Map<String, Map<String, Function>> _eventCallbacks = {};
+  final Map<int, Map<String, Function>> _eventCallbacks = {};
   
-  Function(String viewId, String eventType, Map<String, dynamic> eventData)? _eventHandler;
+  Function(int viewId, String eventType, Map<String, dynamic> eventData)? _eventHandler;
 
   PlatformInterfaceImpl() {
     _setupMethodChannelEventHandling();
@@ -37,7 +37,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
     eventChannel.setMethodCallHandler((call) async {
       if (call.method == 'onEvent') {
         final Map<dynamic, dynamic> args = call.arguments;
-        final String viewId = args['viewId'];
+        final int viewId = args['viewId'] is int ? args['viewId'] : int.parse(args['viewId'].toString());
         final String eventType = args['eventType'];
         final Map<dynamic, dynamic> eventData = args['eventData'] ?? {};
 
@@ -75,7 +75,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - Returns: `true` if the view was created successfully, `false` otherwise
   @override
   Future<bool> createView(
-      String viewId, String type, Map<String, dynamic> props) async {
+      int viewId, String type, Map<String, dynamic> props) async {
     if (_batchUpdateInProgress) {
       final processedProps = preprocessProps(props);
       // Pre-serialize to JSON on Dart side to avoid native JSON parsing overhead
@@ -114,7 +114,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - Returns: `true` if the view was updated successfully, `false` otherwise
   @override
   Future<bool> updateView(
-      String viewId, Map<String, dynamic> propPatches) async {
+      int viewId, Map<String, dynamic> propPatches) async {
     if (_batchUpdateInProgress) {
       final processedProps = preprocessProps(propPatches);
       // Pre-serialize to JSON on Dart side to avoid native JSON parsing overhead
@@ -151,7 +151,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - [viewId]: Unique identifier for the view to delete
   /// - Returns: `true` if the view was deleted successfully, `false` otherwise
   @override
-  Future<bool> deleteView(String viewId) async {
+  Future<bool> deleteView(int viewId) async {
     try {
       final result = await bridgeChannel.invokeMethod<bool>('deleteView', {
         'viewId': viewId,
@@ -167,7 +167,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - [viewId]: Unique identifier for the view to detach
   /// - Returns: `true` if the view was detached successfully, `false` otherwise
   @override
-  Future<bool> detachView(String viewId) async {
+  Future<bool> detachView(int viewId) async {
     try {
       final result = await bridgeChannel.invokeMethod<bool>('detachView', {
         'viewId': viewId,
@@ -187,7 +187,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - [index]: Position in the parent's child list
   /// - Returns: `true` if the view was attached successfully, `false` otherwise
   @override
-  Future<bool> attachView(String childId, String parentId, int index) async {
+  Future<bool> attachView(int childId, int parentId, int index) async {
     if (_batchUpdateInProgress) {
       // No props serialization needed for attachView - just metadata
       _pendingBatchUpdates.add({
@@ -217,7 +217,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - [childrenIds]: List of child view identifiers in order
   /// - Returns: `true` if children were set successfully, `false` otherwise
   @override
-  Future<bool> setChildren(String viewId, List<String> childrenIds) async {
+  Future<bool> setChildren(int viewId, List<int> childrenIds) async {
     try {
       
       final result = await bridgeChannel.invokeMethod<bool>('setChildren', {
@@ -239,7 +239,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - [eventTypes]: List of event types to listen for (e.g., ["onPress", "onChange"])
   /// - Returns: `true` if listeners were added successfully, `false` otherwise
   @override
-  Future<bool> addEventListeners(String viewId, List<String> eventTypes) async {
+  Future<bool> addEventListeners(int viewId, List<String> eventTypes) async {
     if (_batchUpdateInProgress) {
       _pendingBatchUpdates.add({
         'operation': 'addEventListeners',
@@ -267,7 +267,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - Returns: `true` if listeners were removed successfully, `false` otherwise
   @override
   Future<bool> removeEventListeners(
-      String viewId, List<String> eventTypes) async {
+      int viewId, List<String> eventTypes) async {
     try {
       final result =
           await eventChannel.invokeMethod<bool>('removeEventListeners', {
@@ -286,7 +286,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - [handler]: Function to call when native events are received
   @override
   void setEventHandler(
-      Function(String viewId, String eventType, Map<String, dynamic> eventData)
+      Function(int viewId, String eventType, Map<String, dynamic> eventData)
           handler) {
     _eventHandler = handler;
   }
@@ -353,7 +353,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
   @override
   void registerEventCallback(
-      String viewId, String eventType, Function callback) {
+      int viewId, String eventType, Function callback) {
     _eventCallbacks[viewId] ??= {};
     _eventCallbacks[viewId]![eventType] = callback;
   }
@@ -367,7 +367,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - [eventData]: Event data dictionary
   @override
   void handleNativeEvent(
-      String viewId, String eventType, Map<String, dynamic> eventData) {
+      int viewId, String eventType, Map<String, dynamic> eventData) {
     final callback = _eventCallbacks[viewId]?[eventType];
     if (callback != null) {
       try {

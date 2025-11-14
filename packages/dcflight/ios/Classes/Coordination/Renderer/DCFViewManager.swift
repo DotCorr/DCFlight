@@ -34,7 +34,7 @@ typealias ViewTypeInfo = (view: UIView, type: String)
 class ViewRegistry {
     static let shared = ViewRegistry()
     
-    public var registry = [String: ViewTypeInfo]()
+    public var registry = [Int: ViewTypeInfo]()
     
     private init() {}
     
@@ -44,7 +44,7 @@ class ViewRegistry {
     ///   - view: The view to register
     ///   - id: Unique identifier for the view
     ///   - type: Component type (e.g., "View", "Text")
-    func registerView(_ view: UIView, id: String, type: String) {
+    func registerView(_ view: UIView, id: Int, type: String) {
         registry[id] = (view, type)
         
         DCFLayoutManager.shared.registerView(view, withId: id)
@@ -54,7 +54,7 @@ class ViewRegistry {
     /// 
     /// - Parameter id: Unique identifier for the view
     /// - Returns: Tuple containing the view and type, or `nil` if not found
-    func getViewInfo(id: String) -> ViewTypeInfo? {
+    func getViewInfo(id: Int) -> ViewTypeInfo? {
         return registry[id]
     }
     
@@ -62,20 +62,20 @@ class ViewRegistry {
     /// 
     /// - Parameter id: Unique identifier for the view
     /// - Returns: The view, or `nil` if not found
-    func getView(id: String) -> UIView? {
+    func getView(id: Int) -> UIView? {
         return registry[id]?.view
     }
     
     /// Removes a view from the registry and layout manager.
     /// 
     /// - Parameter id: Unique identifier for the view to remove
-    func removeView(id: String) {
+    func removeView(id: Int) {
         registry.removeValue(forKey: id)
         DCFLayoutManager.shared.unregisterView(withId: id)
     }
     
     /// Returns all registered view IDs.
-    var allViewIds: [String] {
+    var allViewIds: [Int] {
         return Array(registry.keys)
     }
     
@@ -101,7 +101,7 @@ class DCFViewManager {
     ///   - viewType: Component type (e.g., "View", "Text", "Screen")
     ///   - props: Properties dictionary for the view
     /// - Returns: `true` if the view was created successfully, `false` otherwise
-    func createView(viewId: String, viewType: String, props: [String: Any]) -> Bool {
+    func createView(viewId: Int, viewType: String, props: [String: Any]) -> Bool {
         guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
             return false
         }
@@ -121,14 +121,14 @@ class DCFViewManager {
         let isScreen = (viewType == "Screen" || props["presentationStyle"] != nil)
         
         if isScreen {
-            YogaShadowTree.shared.createScreenRoot(id: viewId, componentType: viewType)
+            YogaShadowTree.shared.createScreenRoot(id: String(viewId), componentType: viewType)
             
             let layoutProps = extractLayoutProps(from: props)
             if !layoutProps.isEmpty {
-                YogaShadowTree.shared.updateNodeLayoutProps(nodeId: viewId, props: layoutProps)
+                YogaShadowTree.shared.updateNodeLayoutProps(nodeId: String(viewId), props: layoutProps)
             }
         } else {
-            YogaShadowTree.shared.createNode(id: viewId, componentType: viewType)
+            YogaShadowTree.shared.createNode(id: String(viewId), componentType: viewType)
             
             let layoutProps = extractLayoutProps(from: props)
             if !layoutProps.isEmpty {
@@ -154,7 +154,7 @@ class DCFViewManager {
     ///   - viewId: Unique identifier for the view to update
     ///   - props: Properties dictionary containing updates
     /// - Returns: `true` if the view was updated successfully, `false` otherwise
-    func updateView(viewId: String, props: [String: Any]) -> Bool {
+    func updateView(viewId: Int, props: [String: Any]) -> Bool {
         guard let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) else {
             return false
         }
@@ -166,10 +166,11 @@ class DCFViewManager {
         let nonLayoutProps = props.filter { !layoutProps.keys.contains($0.key) }
         
         if !layoutProps.isEmpty {
-            let isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
+            let viewIdStr = String(viewId)
+            let isScreen = YogaShadowTree.shared.isScreenRoot(viewIdStr)
             
             if isScreen {
-                YogaShadowTree.shared.updateNodeLayoutProps(nodeId: viewId, props: layoutProps)
+                YogaShadowTree.shared.updateNodeLayoutProps(nodeId: viewIdStr, props: layoutProps)
             } else {
                 DCFLayoutManager.shared.updateNodeWithLayoutProps(
                     nodeId: viewId,
@@ -201,7 +202,7 @@ class DCFViewManager {
     /// 
     /// - Parameter viewId: Unique identifier for the view to delete
     /// - Returns: `true` if the view was deleted successfully
-    func deleteView(viewId: String) -> Bool {
+    func deleteView(viewId: Int) -> Bool {
         ViewRegistry.shared.removeView(id: viewId)
         DCFLayoutManager.shared.removeNode(nodeId: viewId)
         return true
@@ -217,14 +218,14 @@ class DCFViewManager {
     ///   - parentId: Unique identifier for the parent view
     ///   - index: Position in the parent's child list
     /// - Returns: `true` if the view was attached successfully, `false` otherwise
-    func attachView(childId: String, parentId: String, index: Int) -> Bool {
+    func attachView(childId: Int, parentId: Int, index: Int) -> Bool {
         guard let childView = ViewRegistry.shared.getView(id: childId),
               let parentView = ViewRegistry.shared.getView(id: parentId) else {
             return false
         }
         
         // Check if this is a screen component - screens are managed by navigation controllers
-        let childIsScreen = YogaShadowTree.shared.isScreenRoot(childId)
+        let childIsScreen = YogaShadowTree.shared.isScreenRoot(String(childId))
         if childIsScreen {
             return true
         }

@@ -71,8 +71,8 @@ class YogaShadowTree private constructor() {
         }
         
         rootNode?.let { root ->
-            nodes["root"] = root
-            nodeTypes["root"] = "View"
+            nodes["0"] = root
+            nodeTypes["0"] = "View"
         }
         
         Log.d(TAG, "Initializing YogaShadowTree")
@@ -164,7 +164,8 @@ class YogaShadowTree private constructor() {
         val childCount = node.childCount
         
         if (childCount == 0) {
-            val view = DCFLayoutManager.shared.getView(nodeId)
+            val viewIdInt = nodeId.toIntOrNull() ?: return
+            val view = DCFLayoutManager.shared.getView(viewIdInt)
             val componentType = nodeTypes[nodeId] ?: "View"
             val componentInstance = getComponentInstance(componentType)
             
@@ -262,23 +263,25 @@ class YogaShadowTree private constructor() {
     }
 
     @Synchronized
-    fun addChildNode(parentId: String, childId: String, index: Int? = null) {
-        val parentNode = nodes[parentId]
-        val childNode = nodes[childId]
+    fun addChildNode(parentId: Int, childId: Int, index: Int? = null) {
+        val parentIdStr = parentId.toString()
+        val childIdStr = childId.toString()
+        val parentNode = nodes[parentIdStr]
+        val childNode = nodes[childIdStr]
         
         if (parentNode == null || childNode == null) {
             Log.w(TAG, "Cannot add child - parent or child node not found")
             return
         }
         
-        if (screenRootIds.contains(childId)) {
+        if (screenRootIds.contains(childIdStr)) {
             Log.d(TAG, "Skipping screen root child attachment")
             return
         }
         
-        nodeParents[childId]?.let { oldParentId ->
+        nodeParents[childIdStr]?.let { oldParentId ->
             nodes[oldParentId]?.let { oldParentNode ->
-                safeRemoveChildFromParent(oldParentNode, childNode, childId)
+                safeRemoveChildFromParent(oldParentNode, childNode, childIdStr)
                 setupMeasureFunction(oldParentId, oldParentNode)
             }
         }
@@ -293,13 +296,13 @@ class YogaShadowTree private constructor() {
         
         try {
             parentNode.addChildAt(childNode, safeIndex)
-            nodeParents[childId] = parentId
+            nodeParents[childIdStr] = parentIdStr
             
-            applyParentLayoutInheritance(childNode, parentNode, childId)
+            applyParentLayoutInheritance(childNode, parentNode, childIdStr)
             
-            setupMeasureFunction(childId, childNode)
+            setupMeasureFunction(childIdStr, childNode)
             
-            Log.d(TAG, "Added child: $childId to parent: $parentId at index: $safeIndex")
+            Log.d(TAG, "Added child: $childIdStr to parent: $parentIdStr at index: $safeIndex")
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add child node", e)
@@ -413,7 +416,7 @@ class YogaShadowTree private constructor() {
         isLayoutCalculating = true
         
         try {
-            val mainRoot = nodes["root"]
+            val mainRoot = nodes["0"]
             if (mainRoot == null) {
                 Log.e(TAG, "Root node not found")
                 return false
@@ -514,7 +517,8 @@ class YogaShadowTree private constructor() {
         var invalidatedCount = 0
         for ((viewId, node) in nodes) {
             if (node.isMeasureDefined) {
-                val view = DCFLayoutManager.shared.getView(viewId)
+                val viewIdInt = viewId.toIntOrNull() ?: continue
+                val view = DCFLayoutManager.shared.getView(viewIdInt)
                 view?.requestLayout()
                 invalidatedCount++
             }
@@ -561,13 +565,14 @@ class YogaShadowTree private constructor() {
         val viewsToMakeVisible = mutableListOf<View>()
         
         for ((viewId, frame) in layouts) {
-            val view = DCFLayoutManager.shared.getView(viewId)
+            val viewIdInt = viewId.toIntOrNull() ?: continue
+            val view = DCFLayoutManager.shared.getView(viewIdInt)
             if (view != null) {
                 val wasUserInteractionEnabled = view.isEnabled
                 
                 // Apply layout WITHOUT making visible
                 DCFLayoutManager.shared.applyLayout(
-                    viewId = viewId,
+                    viewId = viewIdInt,
                     left = frame.left.toFloat(),
                     top = frame.top.toFloat(),
                     width = frame.width().toFloat(),
@@ -610,7 +615,8 @@ class YogaShadowTree private constructor() {
     }
 
     private fun applyLayoutToView(viewId: String, frame: Rect) {
-        val view = DCFLayoutManager.shared.getView(viewId)
+        val viewIdInt = viewId.toIntOrNull() ?: return
+        val view = DCFLayoutManager.shared.getView(viewIdInt)
         val node = nodes[viewId]
         
         if (view == null || node == null) {
@@ -621,11 +627,11 @@ class YogaShadowTree private constructor() {
         
         
         mainHandler.post {
-            if (DCFLayoutManager.shared.getView(viewId) != null) {
+            if (DCFLayoutManager.shared.getView(viewIdInt) != null) {
                 val wasUserInteractionEnabled = view.isEnabled
                 
                 DCFLayoutManager.shared.applyLayout(
-                    viewId = viewId,
+                    viewId = viewIdInt,
                     left = finalFrame.left.toFloat(),
                     top = finalFrame.top.toFloat(),
                     width = finalFrame.width().toFloat(),
@@ -925,8 +931,8 @@ class YogaShadowTree private constructor() {
             root.setWidth(displayMetrics.widthPixels.toFloat())
             root.setHeight(displayMetrics.heightPixels.toFloat())
             
-            nodes["root"] = root
-            nodeTypes["root"] = "View"
+            nodes["0"] = root
+            nodeTypes["0"] = "View"
         }
     }
 

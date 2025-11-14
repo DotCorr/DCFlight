@@ -77,12 +77,12 @@ class EngineDebugLogger {
   }
   
   /// Log render operations
-  static void logRender(String phase, DCFComponentNode node, {String? viewId, String? parentId, String? error}) {
+  static void logRender(String phase, DCFComponentNode node, {dynamic viewId, dynamic parentId, String? error}) {
     if (!enabled) return;
     
     final extra = <String, dynamic>{
-      'ViewId': viewId ?? 'unknown',
-      'ParentId': parentId ?? 'unknown',
+      'ViewId': viewId?.toString() ?? 'unknown',
+      'ParentId': parentId?.toString() ?? 'unknown',
     };
     
     if (error != null) {
@@ -104,7 +104,7 @@ class EngineDebugLogger {
   }
   
   /// Log native bridge operations
-  static void logBridge(String operation, String viewId, {Map<String, dynamic>? data}) {
+  static void logBridge(String operation, dynamic viewId, {Map<String, dynamic>? data}) {
     if (!enabled) return;
     
     log('BRIDGE_$operation', 'ViewId: $viewId', extra: data);

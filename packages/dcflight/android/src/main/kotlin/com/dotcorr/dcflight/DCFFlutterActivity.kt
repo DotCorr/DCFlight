@@ -161,7 +161,7 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
             
             DCFLayoutManager.shared.handleDeviceRotation()
             
-            val rootView: View? = ViewRegistry.shared.getView("root")
+            val rootView: View? = ViewRegistry.shared.getView(0)
             if (rootView != null) {
                 val displayMetrics = resources.displayMetrics
                 rootView.measure(

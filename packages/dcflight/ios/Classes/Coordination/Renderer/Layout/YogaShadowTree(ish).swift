@@ -35,8 +35,8 @@ class YogaShadowTree {
             YGNodeStyleSetWidth(root, Float(UIScreen.main.bounds.width))
             YGNodeStyleSetHeight(root, Float(UIScreen.main.bounds.height))
             
-            nodes["root"] = root
-            nodeTypes["root"] = "View"
+            nodes["0"] = root
+            nodeTypes["0"] = "View"
         }
     }
     
@@ -280,7 +280,7 @@ class YogaShadowTree {
             isLayoutCalculating = true
             defer { isLayoutCalculating = false }
             
-            guard let mainRoot = nodes["root"] else {
+            guard let mainRoot = nodes["0"] else {
                 return false
             }
             
@@ -324,8 +324,8 @@ class YogaShadowTree {
     /// The root node might still have old children attached from previous sessions.
     func clearRootNodeChildren() {
         syncQueue.sync {
-            if let root = nodes["root"] {
-                safeRemoveAllChildren(from: root, nodeId: "root")
+            if let root = nodes["0"] {
+                safeRemoveAllChildren(from: root, nodeId: "0")
             }
         }
     }
@@ -338,7 +338,7 @@ class YogaShadowTree {
     ///   - height: The new height for the root node
     func resetRootNodeDimensions(width: Float, height: Float) {
         syncQueue.sync {
-            if let root = nodes["root"] {
+            if let root = nodes["0"] {
                 YGNodeStyleSetWidth(root, width)
                 YGNodeStyleSetHeight(root, height)
             }
@@ -798,7 +798,8 @@ class YogaShadowTree {
             }
             
             private func applyLayoutToView(viewId: String, frame: CGRect) {
-                guard let view = DCFLayoutManager.shared.getView(withId: viewId),
+                guard let viewIdInt = Int(viewId),
+                      let view = DCFLayoutManager.shared.getView(withId: viewIdInt),
                       let node = nodes[viewId] else {
                     return
                 }
@@ -881,7 +882,8 @@ class YogaShadowTree {
                 }
                 
                 DispatchQueue.main.async {
-                    guard let view = DCFLayoutManager.shared.getView(withId: viewId) else {
+                    guard let viewIdInt = Int(viewId),
+                          let view = DCFLayoutManager.shared.getView(withId: viewIdInt) else {
                         return
                     }
                     
@@ -899,7 +901,7 @@ class YogaShadowTree {
                     let wasUserInteractionEnabled = view.isUserInteractionEnabled
                     
                     DCFLayoutManager.shared.applyLayout(
-                        to: viewId,
+                        to: viewIdInt,
                         left: finalFrame.origin.x,
                         top: finalFrame.origin.y,
                         width: finalFrame.width,
@@ -1070,7 +1072,7 @@ extension YogaShadowTree {
             currentId = parentId
         }
         
-        return nodes["root"]!
+        return nodes["0"]!
     }
     
     /// Apply layout updates to a subtree starting from a specific node

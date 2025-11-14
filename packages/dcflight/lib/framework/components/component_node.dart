@@ -16,10 +16,10 @@ abstract class DCFComponentNode {
   DCFComponentNode? parent;
 
   /// Native view ID once rendered
-  String? nativeViewId;
+  int? nativeViewId;
 
   /// The native view ID of the rendered content
-  String? contentViewId;
+  int? contentViewId;
 
   /// The rendered node from the component (for component nodes)
   DCFComponentNode? _renderedNode;
@@ -66,7 +66,7 @@ abstract class DCFComponentNode {
   }
 
   /// Get effective native view ID (may be from rendered content)
-  String? get effectiveNativeViewId {
+  int? get effectiveNativeViewId {
     return contentViewId ?? nativeViewId;
   }
 

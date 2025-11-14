@@ -16,9 +16,9 @@ public class DCFLayoutManager {
     
     private var absoluteLayoutViews = Set<UIView>()
     
-    internal var viewRegistry = [String: UIView]()
+    internal var viewRegistry = [Int: UIView]()
     
-    private var pendingLayouts = [String: CGRect]()
+    private var pendingLayouts = [Int: CGRect]()
     private var isLayoutUpdateScheduled = false
     
     private var needsLayoutCalculation = false
@@ -85,17 +85,17 @@ public class DCFLayoutManager {
     
     
     /// Register a view with an ID
-    func registerView(_ view: UIView, withId viewId: String) {
+    func registerView(_ view: UIView, withId viewId: Int) {
         viewRegistry[viewId] = view
     }
     
     /// Unregister a view
-    func unregisterView(withId viewId: String) {
+    func unregisterView(withId viewId: Int) {
         viewRegistry.removeValue(forKey: viewId)
     }
     
     /// Get view by ID
-    func getView(withId viewId: String) -> UIView? {
+    func getView(withId viewId: Int) -> UIView? {
         return viewRegistry[viewId]
     }
     
@@ -112,7 +112,7 @@ public class DCFLayoutManager {
     
     
     /// Clean up resources for a view
-    func cleanUp(viewId: String) {
+    func cleanUp(viewId: Int) {
         if let view = viewRegistry[viewId] {
             absoluteLayoutViews.remove(view)
         }
@@ -127,7 +127,7 @@ public class DCFLayoutManager {
     
     
     /// Queue layout update to happen off the main thread
-    func queueLayoutUpdate(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
+    func queueLayoutUpdate(to viewId: Int, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat) -> Bool {
         guard viewRegistry[viewId] != nil else {
             return false
         }
@@ -151,7 +151,7 @@ public class DCFLayoutManager {
     
     /// Apply calculated layout to a view with optional animation
     @discardableResult
-    func applyLayout(to viewId: String, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat,
+    func applyLayout(to viewId: Int, left: CGFloat, top: CGFloat, width: CGFloat, height: CGFloat,
                      animationDuration: TimeInterval = 0.0) -> Bool {
         guard let view = getView(withId: viewId) else {
             return false
@@ -241,7 +241,7 @@ public class DCFLayoutManager {
         view.layoutIfNeeded()
     }
 
-    func applyLayoutResults(_ results: [String: CGRect], animationDuration: TimeInterval = 0.0) {
+    func applyLayoutResults(_ results: [Int: CGRect], animationDuration: TimeInterval = 0.0) {
         assert(Thread.isMainThread, "applyLayoutResults must be called on the main thread")
         
         
@@ -269,7 +269,7 @@ public class DCFLayoutManager {
         
         isLayoutUpdateScheduled = false
         
-        var layoutsToApply: [String: CGRect] = [:]
+        var layoutsToApply: [Int: CGRect] = [:]
         
         layoutQueue.sync {
             layoutsToApply = self.pendingLayouts
@@ -297,37 +297,37 @@ public class DCFLayoutManager {
 
 
 extension DCFLayoutManager {
-    func registerView(_ view: UIView, withNodeId nodeId: String, componentType: String, componentInstance: DCFComponent) {
+    func registerView(_ view: UIView, withNodeId nodeId: Int, componentType: String, componentInstance: DCFComponent) {
         registerView(view, withId: nodeId)
         
         
-        componentInstance.viewRegisteredWithShadowTree(view, nodeId: nodeId)
+        componentInstance.viewRegisteredWithShadowTree(view, nodeId: String(nodeId))
         
-        if nodeId == "root" {
+        if nodeId == 0 {
             triggerLayoutCalculation()
         }
     }
     
-    func addChildNode(parentId: String, childId: String, index: Int) {
+    func addChildNode(parentId: Int, childId: Int, index: Int) {
         
-        YogaShadowTree.shared.addChildNode(parentId: parentId, childId: childId, index: index)
-        
-        needsLayoutCalculation = true
-        scheduleLayoutCalculation()
-        
-    }
-    
-    func removeNode(nodeId: String) {
-        
-        YogaShadowTree.shared.removeNode(nodeId: nodeId)
+        YogaShadowTree.shared.addChildNode(parentId: String(parentId), childId: String(childId), index: index)
         
         needsLayoutCalculation = true
         scheduleLayoutCalculation()
         
     }
     
-    public func updateNodeWithLayoutProps(nodeId: String, componentType: String, props: [String: Any]) {
-        YogaShadowTree.shared.updateNodeLayoutProps(nodeId: nodeId, props: props)
+    func removeNode(nodeId: Int) {
+        
+        YogaShadowTree.shared.removeNode(nodeId: String(nodeId))
+        
+        needsLayoutCalculation = true
+        scheduleLayoutCalculation()
+        
+    }
+    
+    public func updateNodeWithLayoutProps(nodeId: Int, componentType: String, props: [String: Any]) {
+        YogaShadowTree.shared.updateNodeLayoutProps(nodeId: String(nodeId), props: props)
         
         needsLayoutCalculation = true
         scheduleLayoutCalculation()

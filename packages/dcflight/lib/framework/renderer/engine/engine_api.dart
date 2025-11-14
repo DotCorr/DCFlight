@@ -83,13 +83,13 @@ class DCFEngineAPI {
   }
   
   /// Render a component to the native side
-  Future<String?> renderToNative(DCFComponentNode node, {String? parentViewId, int? index}) async {
+  Future<int?> renderToNative(DCFComponentNode node, {int? parentViewId, int? index}) async {
     await isReady;
     return _vdom!.renderToNative(node, parentViewId: parentViewId, index: index);
   }
   
   /// Delete a view from the native side
-  Future<void> deleteView(String viewId) async {
+  Future<void> deleteView(int viewId) async {
     await isReady;
     return _vdom!.deleteView(viewId);
   }

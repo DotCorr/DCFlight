@@ -39,7 +39,7 @@ import Flutter
     }
 
     private func setupDCF(rootView: UIView, flutterEngine: FlutterEngine) {
-        DCMauiBridgeImpl.shared.registerView(rootView, withId: "root")
+        DCMauiBridgeImpl.shared.registerView(rootView, withId: 0)
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         _ = YogaShadowTree.shared
         _ = DCFLayoutManager.shared

@@ -70,14 +70,14 @@ class DCFViewManager private constructor() {
         Log.d(TAG, "🔥 DCF_ENGINE: ViewManager cleanup for hot restart completed")
     }
 
-    fun createView(viewId: String, viewType: String, props: Map<String, Any?>): Boolean {
+    fun createView(viewId: Int, viewType: String, props: Map<String, Any?>): Boolean {
         val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
         if (componentClass == null) {
             Log.e(TAG, "Component type '$viewType' not found")
             return false
         }
 
-        val rootView = ViewRegistry.shared.getView("root")
+        val rootView = ViewRegistry.shared.getView(0)
         val context = rootView?.context
         if (context == null) {
             Log.e(TAG, "No context available for creating view")
@@ -99,24 +99,27 @@ class DCFViewManager private constructor() {
 
         // CRITICAL FIX: Start views invisible to prevent flash during reconciliation
         // Visibility will be set in batch after all layouts are applied
-        view.visibility = View.INVISIBLE
-        view.alpha = 0f
+        // Root view (0) is always visible
+        if (viewId != 0) {
+            view.visibility = View.INVISIBLE
+            view.alpha = 0f
+        }
 
         ViewRegistry.shared.registerView(view, viewId, viewType)
 
         val isScreen = (viewType == "Screen" || props["presentationStyle"] != null)
         if (isScreen) {
-            YogaShadowTree.shared.createScreenRoot(viewId, viewType)
+            YogaShadowTree.shared.createScreenRoot(viewId.toString(), viewType)
         } else {
-            YogaShadowTree.shared.createNode(viewId, viewType)
+            YogaShadowTree.shared.createNode(viewId.toString(), viewType)
         }
 
-        YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
+        YogaShadowTree.shared.updateNodeLayoutProps(viewId.toString(), props)
 
         return true
     }
 
-    fun updateView(viewId: String, props: Map<String, Any?>): Boolean {
+    fun updateView(viewId: Int, props: Map<String, Any?>): Boolean {
         val viewInfo = ViewRegistry.shared.getViewInfo(viewId)
         if (viewInfo == null) {
             Log.e(TAG, "View '$viewId' not found for update")
@@ -132,12 +135,12 @@ class DCFViewManager private constructor() {
         if (view.visibility == View.VISIBLE && props.isNotEmpty()) {
             view.visibility = View.INVISIBLE
             view.alpha = 0f
-            YogaShadowTree.shared.markViewHiddenForUpdate(viewId)
+            YogaShadowTree.shared.markViewHiddenForUpdate(viewId.toString())
             Log.d(TAG, "Temporarily hid view $viewId during update (framework-level fix)")
         }
 
-        if (!YogaShadowTree.shared.isScreenRoot(viewId)) {
-            YogaShadowTree.shared.updateNodeLayoutProps(viewId, props)
+        if (!YogaShadowTree.shared.isScreenRoot(viewId.toString())) {
+            YogaShadowTree.shared.updateNodeLayoutProps(viewId.toString(), props)
         }
 
         val layoutProps = extractLayoutProps(props)
@@ -163,14 +166,14 @@ class DCFViewManager private constructor() {
         return true
     }
 
-    fun deleteView(viewId: String): Boolean {
+    fun deleteView(viewId: Int): Boolean {
         ViewRegistry.shared.removeView(viewId)
         DCFLayoutManager.shared.unregisterView(viewId)
 
         return true
     }
 
-    fun attachView(childId: String, parentId: String, index: Int): Boolean {
+    fun attachView(childId: Int, parentId: Int, index: Int): Boolean {
         val childView = ViewRegistry.shared.getView(childId)
         val parentView = ViewRegistry.shared.getView(parentId)
 
@@ -195,7 +198,7 @@ class DCFViewManager private constructor() {
         if (parentView.visibility == View.VISIBLE && childView.visibility == View.INVISIBLE) {
             parentView.visibility = View.INVISIBLE
             parentView.alpha = 0f
-            YogaShadowTree.shared.markViewHiddenForUpdate(parentId)
+            YogaShadowTree.shared.markViewHiddenForUpdate(parentId.toString())
             Log.d(TAG, "Temporarily hid parent $parentId during child attachment")
         }
 
@@ -205,7 +208,7 @@ class DCFViewManager private constructor() {
             parentViewGroup.addView(childView)
         }
 
-        if (!YogaShadowTree.shared.isScreenRoot(childId)) {
+        if (!YogaShadowTree.shared.isScreenRoot(childId.toString())) {
             YogaShadowTree.shared.addChildNode(parentId, childId, index)
         }
 
@@ -216,7 +219,7 @@ class DCFViewManager private constructor() {
         return true
     }
 
-    fun detachView(viewId: String): Boolean {
+    fun detachView(viewId: Int): Boolean {
         val view = ViewRegistry.shared.getView(viewId)
         if (view == null) {
             Log.e(TAG, "View '$viewId' not found for detach")
@@ -226,12 +229,12 @@ class DCFViewManager private constructor() {
         val parentView = view.parent as? ViewGroup
         parentView?.removeView(view)
 
-        YogaShadowTree.shared.removeNode(viewId)
+        YogaShadowTree.shared.removeNode(viewId.toString())
 
         return true
     }
 
-    fun setChildren(viewId: String, childrenIds: List<String>): Boolean {
+    fun setChildren(viewId: Int, childrenIds: List<Int>): Boolean {
         val parentView = ViewRegistry.shared.getView(viewId)
         val parentViewGroup = parentView as? ViewGroup
 

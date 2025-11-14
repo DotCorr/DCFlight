@@ -20,7 +20,7 @@ class DCFFragment extends DCFComponentNode {
   bool _isMounted = false;
   
   /// Child view IDs for cleanup tracking
-  List<String> childViewIds = [];
+  List<int> childViewIds = [];
 
   DCFFragment({
     required this.children,
@@ -63,7 +63,7 @@ class DCFFragment extends DCFComponentNode {
 
   /// Fragments don't have their own native view ID - they're transparent
   @override
-  String? get effectiveNativeViewId => null;
+  int? get effectiveNativeViewId => null;
 
   @override
   String toString() {

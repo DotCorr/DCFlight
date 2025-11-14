@@ -13,10 +13,10 @@ import Foundation
     
     @objc static let shared = DCMauiBridgeImpl()
     
-    internal var views = [String: UIView]()
+    internal var views = [Int: UIView]()
     
-    private var viewHierarchy = [String: [String]]() // parent ID -> child IDs
-    private var childToParent = [String: String]() // child ID -> parent ID
+    private var viewHierarchy = [String: [String]]() // parent ID -> child IDs (String for YogaShadowTree)
+    private var childToParent = [String: String]() // child ID -> parent ID (String for YogaShadowTree)
     
     private override init() {
         super.init()
@@ -24,7 +24,7 @@ import Foundation
     
     
     /// Register a pre-existing view with the bridge
-    @objc func registerView(_ view: UIView, withId viewId: String) {
+    @objc func registerView(_ view: UIView, withId viewId: Int) {
         views[viewId] = view
         ViewRegistry.shared.registerView(view, id: viewId, type: "View")
         DCFLayoutManager.shared.registerView(view, withId: viewId)
@@ -33,10 +33,10 @@ import Foundation
     /// Initialize the framework
     @objc func initialize() -> Bool {
         
-        if let rootView = views["root"] {
+        if let rootView = views[0] {
             
-            if YogaShadowTree.shared.nodes["root"] == nil {
-                YogaShadowTree.shared.createNode(id: "root", componentType: "View")
+            if YogaShadowTree.shared.nodes["0"] == nil {
+                YogaShadowTree.shared.createNode(id: "0", componentType: "View")
             }
         } else {
         }
@@ -45,7 +45,7 @@ import Foundation
     }
     
     /// Create a view with properties
-    @objc func createView(viewId: String, viewType: String, propsJson: String) -> Bool {
+    @objc func createView(viewId: Int, viewType: String, propsJson: String) -> Bool {
         
         guard let propsData = propsJson.data(using: .utf8),
               let props = try? JSONSerialization.jsonObject(with: propsData, options: []) as? [String: Any] else {
@@ -64,7 +64,7 @@ import Foundation
     }
     
     /// Update a view's properties
-    @objc func updateView(viewId: String, propsJson: String) -> Bool {
+    @objc func updateView(viewId: Int, propsJson: String) -> Bool {
         
         guard let propsData = propsJson.data(using: .utf8),
               let props = try? JSONSerialization.jsonObject(with: propsData, options: []) as? [String: Any] else {
@@ -75,7 +75,7 @@ import Foundation
     }
     
     /// Delete a view
-    @objc func deleteView(viewId: String) -> Bool {
+    @objc func deleteView(viewId: Int) -> Bool {
         
         let success = DCFViewManager.shared.deleteView(viewId: viewId)
         
@@ -94,91 +94,94 @@ import Foundation
     }
     
     /// Recursively delete all children of a view
-    private func deleteChildrenRecursively(parentId: String) {
-        guard let children = viewHierarchy[parentId], !children.isEmpty else {
+    private func deleteChildrenRecursively(parentId: Int) {
+        let parentIdStr = String(parentId)
+        guard let children = viewHierarchy[parentIdStr], !children.isEmpty else {
             return
         }
         
         
         let childrenCopy = children
         
-        for childId in childrenCopy {
-            deleteChildrenRecursively(parentId: childId)
-            
-            if let childView = self.views[childId] {
-                childView.removeFromSuperview()
+        for childIdStr in childrenCopy {
+            if let childId = Int(childIdStr) {
+                deleteChildrenRecursively(parentId: childId)
                 
-                self.views.removeValue(forKey: childId)
-                ViewRegistry.shared.removeView(id: childId)
-                YogaShadowTree.shared.removeNode(nodeId: childId)
-                DCFLayoutManager.shared.unregisterView(withId: childId)
-                
+                if let childView = self.views[childId] {
+                    childView.removeFromSuperview()
+                    
+                    self.views.removeValue(forKey: childId)
+                    ViewRegistry.shared.removeView(id: childId)
+                    YogaShadowTree.shared.removeNode(nodeId: childIdStr)
+                    DCFLayoutManager.shared.unregisterView(withId: childId)
+                    
+                }
             }
             
-            childToParent.removeValue(forKey: childId)
+            childToParent.removeValue(forKey: childIdStr)
         }
         
-        viewHierarchy[parentId] = []
+        viewHierarchy[parentIdStr] = []
     }
     
     /// Clean up any orphaned children if parent is no longer in registry
-    private func cleanupOrphanedChildren(parentId: String) {
-        guard let children = viewHierarchy[parentId], !children.isEmpty else {
+    private func cleanupOrphanedChildren(parentId: Int) {
+        let parentIdStr = String(parentId)
+        guard let children = viewHierarchy[parentIdStr], !children.isEmpty else {
             return
         }
         
         
         let childrenCopy = children
         
-        for childId in childrenCopy {
-            deleteChildrenRecursively(parentId: childId)
-            
-            if let childView = self.views[childId] {
-                childView.removeFromSuperview()
-                self.views.removeValue(forKey: childId)
+        for childIdStr in childrenCopy {
+            if let childId = Int(childIdStr) {
+                deleteChildrenRecursively(parentId: childId)
+                
+                if let childView = self.views[childId] {
+                    childView.removeFromSuperview()
+                    self.views.removeValue(forKey: childId)
+                }
+                ViewRegistry.shared.removeView(id: childId)
+                YogaShadowTree.shared.removeNode(nodeId: childIdStr)
+                DCFLayoutManager.shared.unregisterView(withId: childId)
+                
+                
             }
-            ViewRegistry.shared.removeView(id: childId)
-            YogaShadowTree.shared.removeNode(nodeId: childId)
-            DCFLayoutManager.shared.unregisterView(withId: childId)
-            
-            
-            childToParent.removeValue(forKey: childId)
+            childToParent.removeValue(forKey: childIdStr)
         }
         
-        viewHierarchy.removeValue(forKey: parentId)
+        viewHierarchy.removeValue(forKey: parentIdStr)
     }
     
     /// Attach a child view to a parent view
-    @objc func attachView(childId: String, parentId: String, index: Int) -> Bool {
+    @objc func attachView(childId: Int, parentId: Int, index: Int) -> Bool {
         
         let success = DCFViewManager.shared.attachView(childId: childId, parentId: parentId, index: index)
         
         if success {
-            if viewHierarchy[parentId] == nil {
-                viewHierarchy[parentId] = []
+            let parentIdStr = String(parentId)
+            let childIdStr = String(childId)
+            if viewHierarchy[parentIdStr] == nil {
+                viewHierarchy[parentIdStr] = []
             }
             
-            if let currentParent = childToParent[childId] {
-                viewHierarchy[currentParent]?.removeAll { $0 == childId }
+            if let currentParent = childToParent[childIdStr] {
+                viewHierarchy[currentParent]?.removeAll { $0 == childIdStr }
             }
             
-            if !viewHierarchy[parentId]!.contains(childId) {
-                viewHierarchy[parentId]!.append(childId)
+            if !viewHierarchy[parentIdStr]!.contains(childIdStr) {
+                viewHierarchy[parentIdStr]!.append(childIdStr)
             }
             
-            childToParent[childId] = parentId
+            childToParent[childIdStr] = parentIdStr
         }
         
         return success
     }
     
     /// Set all children for a view
-    @objc func setChildren(viewId: String, childrenJson: String) -> Bool {
-        
-        guard let childrenData = childrenJson.data(using: .utf8),
-              let childrenIds = try? JSONSerialization.jsonObject(with: childrenData, options: []) as? [String] else {
-            return false
-        }
+    @objc func setChildren(viewId: Int, childrenIds: [Int]) -> Bool {
         
         guard let parentView = self.views[viewId] else {
             return false
@@ -188,18 +191,20 @@ import Foundation
     }
     
     /// Handle children for normal (non-present) components
-    private func setChildrenNormally(parentView: UIView, viewId: String, childrenIds: [String]) -> Bool {
-        let oldChildren = viewHierarchy[viewId] ?? []
-        for oldChildId in oldChildren {
-            if !childrenIds.contains(oldChildId) {
-                childToParent.removeValue(forKey: oldChildId)
+    private func setChildrenNormally(parentView: UIView, viewId: Int, childrenIds: [Int]) -> Bool {
+        let viewIdStr = String(viewId)
+        let childrenIdsStr = childrenIds.map { String($0) }
+        let oldChildren = viewHierarchy[viewIdStr] ?? []
+        for oldChildIdStr in oldChildren {
+            if !childrenIdsStr.contains(oldChildIdStr) {
+                childToParent.removeValue(forKey: oldChildIdStr)
             }
         }
         
-        viewHierarchy[viewId] = childrenIds
+        viewHierarchy[viewIdStr] = childrenIdsStr
         
-        for childId in childrenIds {
-            childToParent[childId] = viewId
+        for childIdStr in childrenIdsStr {
+            childToParent[childIdStr] = viewIdStr
         }
         
         for subview in parentView.subviews {
@@ -219,7 +224,7 @@ import Foundation
     
     
     /// Detach a view from its parent
-    @objc func detachView(childId: String) -> Bool {
+    @objc func detachView(childId: Int) -> Bool {
         
         guard let childView = self.views[childId] else {
             return false
@@ -227,10 +232,11 @@ import Foundation
         
         childView.removeFromSuperview()
         
-        if let parentId = childToParent[childId] {
-            viewHierarchy[parentId]?.removeAll(where: { $0 == childId })
+        let childIdStr = String(childId)
+        if let parentIdStr = childToParent[childIdStr] {
+            viewHierarchy[parentIdStr]?.removeAll(where: { $0 == childIdStr })
         }
-        childToParent.removeValue(forKey: childId)
+        childToParent.removeValue(forKey: childIdStr)
         
         
         return true
@@ -244,14 +250,15 @@ import Foundation
     }
     
     /// Clean up hierarchy references for a view
-    private func cleanupHierarchyReferences(viewId: String) {
-        if let parentId = childToParent[viewId] {
-            viewHierarchy[parentId]?.removeAll(where: { $0 == viewId })
+    private func cleanupHierarchyReferences(viewId: Int) {
+        let viewIdStr = String(viewId)
+        if let parentIdStr = childToParent[viewIdStr] {
+            viewHierarchy[parentIdStr]?.removeAll(where: { $0 == viewIdStr })
         }
         
-        childToParent.removeValue(forKey: viewId)
+        childToParent.removeValue(forKey: viewIdStr)
         
-        viewHierarchy.removeValue(forKey: viewId)
+        viewHierarchy.removeValue(forKey: viewIdStr)
     }
     
     @objc func getChildrenIds(viewId: String) -> [String] {
@@ -274,31 +281,31 @@ import Foundation
     /// and resets all hierarchy tracking dictionaries. The root view is preserved.
     @objc func cleanupForHotRestart() {
         // Remove all non-root views from superview
-        let nonRootViews = views.filter { $0.key != "root" }
+        let nonRootViews = views.filter { $0.key != 0 }
         for (viewId, view) in nonRootViews {
             view.removeFromSuperview()
             views.removeValue(forKey: viewId)
         }
         
         // Clear root view's subviews
-        if let rootView = views["root"] {
+        if let rootView = views[0] {
             for subview in rootView.subviews {
                 subview.removeFromSuperview()
             }
         }
         
         // Clear hierarchy tracking
-        let nonRootHierarchy = viewHierarchy.filter { $0.key != "root" }
+        let nonRootHierarchy = viewHierarchy.filter { $0.key != "0" }
         for (parentId, _) in nonRootHierarchy {
             viewHierarchy.removeValue(forKey: parentId)
         }
         
-        let nonRootChildMappings = childToParent.filter { $0.value != "root" && $0.key != "root" }
+        let nonRootChildMappings = childToParent.filter { $0.value != "0" && $0.key != "0" }
         for (childId, _) in nonRootChildMappings {
             childToParent.removeValue(forKey: childId)
         }
         
-        viewHierarchy["root"] = []
+        viewHierarchy["0"] = []
     }
     
     

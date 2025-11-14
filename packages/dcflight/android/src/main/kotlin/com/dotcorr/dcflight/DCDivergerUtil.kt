@@ -148,8 +148,10 @@ object DCDivergerUtil {
             DCFScreenUtilities.initialize(binaryMessenger, activity)
 
             rootView?.let { root ->
-                com.dotcorr.dcflight.layout.ViewRegistry.shared.registerView(root, "root", "View")
-                DCFLayoutManager.shared.registerView(root, "root")
+                root.visibility = View.VISIBLE
+                root.alpha = 1.0f
+                com.dotcorr.dcflight.layout.ViewRegistry.shared.registerView(root, 0, "View")
+                DCFLayoutManager.shared.registerView(root, 0)
             }
 
             Log.d(TAG, "DCFlight systems initialized")

@@ -278,7 +278,7 @@ fun propagateEvent(
         nativeAction?.invoke(view, data)
 
         // ✅ Use pure Kotlin tag keys instead of XML resource IDs
-        val viewId = view.getTag(DCFTags.VIEW_ID_KEY) as? String
+        val viewId = view.getTag(DCFTags.VIEW_ID_KEY) as? Int
         val eventTypes = view.getTag(DCFTags.EVENT_TYPES_KEY) as? Set<String>
         val eventCallback = view.getTag(DCFTags.EVENT_CALLBACK_KEY) as? (String, Map<String, Any?>) -> Unit
 

@@ -24,7 +24,7 @@ class DCMauiBridgeMethodChannel: NSObject {
     private static var sessionToken: String?
     
     /// Views dictionary for compatibility
-    var views = [String: UIView]()
+    var views = [Int: UIView]()
     
     func initialize() {
     }
@@ -156,7 +156,16 @@ class DCMauiBridgeMethodChannel: NSObject {
     
     private func handleCreateView(_ args: [String: Any], result: @escaping FlutterResult) {
         
-        guard let viewId = args["viewId"] as? String,
+        let viewId: Int?
+        if let viewIdInt = args["viewId"] as? Int {
+            viewId = viewIdInt
+        } else if let viewIdNum = args["viewId"] as? NSNumber {
+            viewId = viewIdNum.intValue
+        } else {
+            viewId = nil
+        }
+        
+        guard let viewId = viewId,
               let viewType = args["viewType"] as? String,
               let props = args["props"] as? [String: Any] else {
             result(FlutterError(code: "CREATE_ERROR", message: "Invalid view creation parameters", details: nil))
@@ -176,7 +185,16 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
 
     private func handleUpdateView(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let viewId = args["viewId"] as? String,
+        let viewId: Int?
+        if let viewIdInt = args["viewId"] as? Int {
+            viewId = viewIdInt
+        } else if let viewIdNum = args["viewId"] as? NSNumber {
+            viewId = viewIdNum.intValue
+        } else {
+            viewId = nil
+        }
+        
+        guard let viewId = viewId,
               let props = args["props"] as? [String: Any] else {
             result(FlutterError(code: "UPDATE_ERROR", message: "Invalid view update parameters", details: nil))
             return
@@ -195,7 +213,16 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     
     private func handleDeleteView(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let viewId = args["viewId"] as? String else {
+        let viewId: Int?
+        if let viewIdInt = args["viewId"] as? Int {
+            viewId = viewIdInt
+        } else if let viewIdNum = args["viewId"] as? NSNumber {
+            viewId = viewIdNum.intValue
+        } else {
+            viewId = nil
+        }
+        
+        guard let viewId = viewId else {
             result(FlutterError(code: "DELETE_ERROR", message: "Invalid view ID", details: nil))
             return
         }
@@ -207,7 +234,16 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     
     private func handleDetachView(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let viewId = args["viewId"] as? String else {
+        let viewId: Int?
+        if let viewIdInt = args["viewId"] as? Int {
+            viewId = viewIdInt
+        } else if let viewIdNum = args["viewId"] as? NSNumber {
+            viewId = viewIdNum.intValue
+        } else {
+            viewId = nil
+        }
+        
+        guard let viewId = viewId else {
             result(FlutterError(code: "DETACH_ERROR", message: "Invalid view ID", details: nil))
             return
         }
@@ -219,8 +255,26 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     
     private func handleAttachView(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let childId = args["childId"] as? String,
-              let parentId = args["parentId"] as? String,
+        let childId: Int?
+        if let childIdInt = args["childId"] as? Int {
+            childId = childIdInt
+        } else if let childIdNum = args["childId"] as? NSNumber {
+            childId = childIdNum.intValue
+        } else {
+            childId = nil
+        }
+        
+        let parentId: Int?
+        if let parentIdInt = args["parentId"] as? Int {
+            parentId = parentIdInt
+        } else if let parentIdNum = args["parentId"] as? NSNumber {
+            parentId = parentIdNum.intValue
+        } else {
+            parentId = nil
+        }
+        
+        guard let childId = childId,
+              let parentId = parentId,
               let index = args["index"] as? Int else {
             result(FlutterError(code: "ATTACH_ERROR", message: "Invalid view attachment parameters", details: nil))
             return
@@ -233,20 +287,32 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     
     private func handleSetChildren(_ args: [String: Any], result: @escaping FlutterResult) {
-        guard let viewId = args["viewId"] as? String,
-              let childrenIds = args["childrenIds"] as? [String] else {
+        let viewId: Int?
+        if let viewIdInt = args["viewId"] as? Int {
+            viewId = viewIdInt
+        } else if let viewIdNum = args["viewId"] as? NSNumber {
+            viewId = viewIdNum.intValue
+        } else {
+            viewId = nil
+        }
+        
+        let childrenIds: [Int]?
+        if let childrenIdsInt = args["childrenIds"] as? [Int] {
+            childrenIds = childrenIdsInt
+        } else if let childrenIdsNum = args["childrenIds"] as? [NSNumber] {
+            childrenIds = childrenIdsNum.map { $0.intValue }
+        } else {
+            childrenIds = nil
+        }
+        
+        guard let viewId = viewId,
+              let childrenIds = childrenIds else {
             result(FlutterError(code: "CHILDREN_ERROR", message: "Invalid children parameters", details: nil))
             return
         }
         
-        guard let childrenData = try? JSONSerialization.data(withJSONObject: childrenIds),
-              let childrenJson = String(data: childrenData, encoding: .utf8) else {
-            result(FlutterError(code: "JSON_ERROR", message: "Failed to serialize children", details: nil))
-            return
-        }
-        
         DispatchQueue.main.async {
-            let success = DCMauiBridgeImpl.shared.setChildren(viewId: viewId, childrenJson: childrenJson)
+            let success = DCMauiBridgeImpl.shared.setChildren(viewId: viewId, childrenIds: childrenIds)
             result(success)
         }
     }
@@ -322,7 +388,7 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     
     /// Helper to get a view by ID
-    func getViewById(_ viewId: String) -> UIView? {
+    func getViewById(_ viewId: Int) -> UIView? {
         if let view = views[viewId] {
             return view
         }
@@ -338,7 +404,7 @@ class DCMauiBridgeMethodChannel: NSObject {
 extension ViewRegistry {
     func clearAll() {
         for (viewId, viewInfo) in registry {
-            if viewId != "root" { // Don't remove root view from hierarchy
+            if viewId != 0 { // Don't remove root view from hierarchy
                 viewInfo.view.removeFromSuperview()
             } else {
                 let rootView = viewInfo.view
@@ -348,7 +414,7 @@ extension ViewRegistry {
             }
         }
         
-        let nonRootViews = registry.filter { $0.key != "root" }
+        let nonRootViews = registry.filter { $0.key != 0 }
         for (viewId, _) in nonRootViews {
             registry.removeValue(forKey: viewId)
         }
@@ -393,7 +459,7 @@ extension DCFLayoutManager {
     func clearAll() {
         let allViewIds = Array(viewRegistry.keys)
         for viewId in allViewIds {
-            if viewId != "root" { // Preserve root view in layout manager
+            if viewId != 0 { // Preserve root view in layout manager
                 cleanUp(viewId: viewId)
             }
         }

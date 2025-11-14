@@ -158,7 +158,32 @@ class MyApp extends DCFStatefulComponent {
                 justifyContent: DCFJustifyContent.center,
               ),
             ),
-            
+            DCFAlert(
+              visible: isDarkMode.state,
+              title: "Alert",
+              message:
+                  "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
+              textFields: [DCFAlertTextField(placeholder: "Enter your name")],
+              actions: [
+                DCFAlertAction(
+                  title: "Change Theme",
+                  style: DCFAlertActionStyle.destructive,
+                  handler: "Change Theme",
+                ),
+              ],
+              onActionPress: (data) {
+                if (data['handler'] == "Change Theme") {
+                  final newDarkMode = !isDarkMode.state;
+                  isDarkMode.setState(newDarkMode);
+                  // Actually update the theme
+                  DCFTheme.setTheme(
+                    newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
+                  );
+                  // Log alert action
+                  DCFLogger.info('Alert action pressed: Change Theme', 'MyApp');
+                }
+              },
+            ),
             DCFDropdown(
               dropdownProps: DCFDropdownProps(
                 items: [
