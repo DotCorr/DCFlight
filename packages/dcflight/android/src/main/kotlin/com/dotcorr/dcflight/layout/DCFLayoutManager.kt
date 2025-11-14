@@ -295,19 +295,19 @@ class DCFLayoutManager private constructor() {
             return
         }
 
-        try {
-            if (view.parent != null || view.rootView != null) {
-                val parent = view.parent
-                if (parent is DCFFrameLayout) {
-                    parent.setChildManuallyPositioned(view, true)
-                }
+            try {
+                if (view.parent != null || view.rootView != null) {
+                    val parent = view.parent
+                    if (parent is DCFFrameLayout) {
+                        parent.setChildManuallyPositioned(view, true)
+                    }
 
                 // Measure view first (framework controls measurement)
-                view.measure(
+                    view.measure(
                     View.MeasureSpec.makeMeasureSpec(layout.width.toInt(), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(layout.height.toInt(), View.MeasureSpec.EXACTLY)
-                )
-                
+                    )
+                    
                 // Get component type and instance
                 val componentType = ViewRegistry.shared.getViewType(viewId) 
                     ?: view.getTag(DCFTags.COMPONENT_TYPE_KEY) as? String
@@ -334,10 +334,10 @@ class DCFLayoutManager private constructor() {
                 // Visibility will be set in batch after all layouts complete
 
                 // Framework handles invalidation - components don't need to know
-                view.invalidate()
-                (view.parent as? View)?.invalidate()
-            }
-        } catch (e: Exception) {
+                        view.invalidate()
+                        (view.parent as? View)?.invalidate()
+                    }
+                } catch (e: Exception) {
             Log.w(TAG, "Error applying layout to view $viewId", e)
             // Fallback to direct layout on error
             try {

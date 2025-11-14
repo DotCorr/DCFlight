@@ -279,7 +279,7 @@ override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
     
     // Fallback if measurement returns 0 (should be rare)
     if (measuredWidth == 0f || measuredHeight == 0f) {
-        val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+    val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
         val lines = content.split("\n")
         val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
         val estimatedWidth = maxLineLength * fontSize * 0.6f

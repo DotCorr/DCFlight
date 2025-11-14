@@ -36,7 +36,6 @@ class MyApp extends DCFStatefulComponent {
     final sliderVal = useState<double>(0.0);
     final sliderVal2 = useState<double>(0.0);
 
-
     final name = useState<String>("");
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
 
@@ -59,10 +58,7 @@ class MyApp extends DCFStatefulComponent {
           ),
           children: [
             DCFSlider(
-              layout: DCFLayout(
-                
-               
-              ),
+              layout: DCFLayout(),
               value: sliderVal2.state.toDouble(),
               onValueChange: (DCFSliderValueData data) {
                 sliderVal2.setState(data.value);
@@ -118,7 +114,8 @@ class MyApp extends DCFStatefulComponent {
               layout: DCFLayout(
                 padding: 20,
                 width: "${sliderVal.state * 100}%",
-                height: "${sliderVal2.state * 100}%", // Now correct direction after fixing rotation
+                height:
+                    "${sliderVal2.state * 100}%", // Now correct direction after fixing rotation
                 alignItems: DCFAlign.center,
                 justifyContent: DCFJustifyContent.center,
               ),
@@ -161,32 +158,7 @@ class MyApp extends DCFStatefulComponent {
                 justifyContent: DCFJustifyContent.center,
               ),
             ),
-            DCFAlert(
-              visible: isDarkMode.state,
-              title: "Alert",
-              message:
-                  "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
-              textFields: [DCFAlertTextField(placeholder: "Enter your name")],
-              actions: [
-                DCFAlertAction(
-                  title: "Change Theme",
-                  style: DCFAlertActionStyle.destructive,
-                  handler: "Change Theme",
-                ),
-              ],
-              onActionPress: (data) {
-                if (data['handler'] == "Change Theme") {
-                  final newDarkMode = !isDarkMode.state;
-                  isDarkMode.setState(newDarkMode);
-                  // Actually update the theme
-                  DCFTheme.setTheme(
-                    newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
-                  );
-                  // Log alert action
-                  DCFLogger.info('Alert action pressed: Change Theme', 'MyApp');
-                }
-              },
-            ),
+            
             DCFDropdown(
               dropdownProps: DCFDropdownProps(
                 items: [
