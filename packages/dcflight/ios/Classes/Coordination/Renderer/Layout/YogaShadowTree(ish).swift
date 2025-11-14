@@ -111,7 +111,8 @@ class YogaShadowTree {
             YGNodeSetMeasureFunc(node) { (yogaNode, width, widthMode, height, heightMode) -> YGSize in
                 guard let context = YGNodeGetContext(yogaNode),
                       let contextDict = Unmanaged<NSDictionary>.fromOpaque(context).takeUnretainedValue() as? [String: Any],
-                      let nodeId = contextDict["nodeId"] as? String,
+                      let nodeIdStr = contextDict["nodeId"] as? String,
+                      let nodeId = Int(nodeIdStr),
                       let componentType = contextDict["componentType"] as? String,
                       let view = DCFLayoutManager.shared.getView(withId: nodeId) else {
                     return YGSize(width: 0, height: 0)
@@ -872,7 +873,8 @@ class YogaShadowTree {
                     
                     if hasTransform {
                         DispatchQueue.main.async {
-                            guard let view = DCFLayoutManager.shared.getView(withId: viewId),
+                            guard let viewIdInt = Int(viewId),
+                                  let view = DCFLayoutManager.shared.getView(withId: viewIdInt),
                                   view.superview != nil || view.window != nil else {
                                 return
                             }

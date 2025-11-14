@@ -111,6 +111,17 @@ class DCFEngineAPI {
     await isReady;
     await _vdom!.forceFullTreeReRender();
   }
+  
+  /// Get performance metrics (monitoring)
+  Map<String, dynamic> getPerformanceMetrics() {
+    if (_vdom == null) return {};
+    return _vdom!.getPerformanceMetrics();
+  }
+  
+  /// Reset performance metrics
+  void resetPerformanceMetrics() {
+    _vdom?.resetPerformanceMetrics();
+  }
 }
 
 

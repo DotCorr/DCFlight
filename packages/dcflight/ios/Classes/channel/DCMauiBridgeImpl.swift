@@ -324,10 +324,10 @@ import Foundation
     /// - Returns: `true` if all operations succeeded, `false` otherwise
     @objc func commitBatchUpdate(updates: [[String: Any]]) -> Bool {
         // Separate pre-serialized JSON operations from legacy Map operations
-        var createOps: [(viewId: String, viewType: String, propsJson: String)] = []
-        var updateOps: [(viewId: String, propsJson: String)] = []
-        var attachOps: [(childId: String, parentId: String, index: Int)] = []
-        var eventOps: [(viewId: String, eventTypes: [String])] = []
+        var createOps: [(viewId: Int, viewType: String, propsJson: String)] = []
+        var updateOps: [(viewId: Int, propsJson: String)] = []
+        var attachOps: [(childId: Int, parentId: Int, index: Int)] = []
+        var eventOps: [(viewId: Int, eventTypes: [String])] = []
         
         // Parse phase - collect all operations
         for operation in updates {
@@ -337,7 +337,18 @@ import Foundation
             
             switch operationType {
             case "createView":
-                if let viewId = operation["viewId"] as? String,
+                let viewId: Int?
+                if let viewIdInt = operation["viewId"] as? Int {
+                    viewId = viewIdInt
+                } else if let viewIdNum = operation["viewId"] as? NSNumber {
+                    viewId = viewIdNum.intValue
+                } else if let viewIdStr = operation["viewId"] as? String {
+                    viewId = Int(viewIdStr)
+                } else {
+                    viewId = nil
+                }
+                
+                if let viewId = viewId,
                    let viewType = operation["viewType"] as? String {
                     // Check for pre-serialized JSON first (optimized path)
                     if let propsJson = operation["propsJson"] as? String {
@@ -353,7 +364,18 @@ import Foundation
                 }
                 
             case "updateView":
-                if let viewId = operation["viewId"] as? String {
+                let viewId: Int?
+                if let viewIdInt = operation["viewId"] as? Int {
+                    viewId = viewIdInt
+                } else if let viewIdNum = operation["viewId"] as? NSNumber {
+                    viewId = viewIdNum.intValue
+                } else if let viewIdStr = operation["viewId"] as? String {
+                    viewId = Int(viewIdStr)
+                } else {
+                    viewId = nil
+                }
+                
+                if let viewId = viewId {
                     // Check for pre-serialized JSON first (optimized path)
                     if let propsJson = operation["propsJson"] as? String {
                         updateOps.append((viewId, propsJson))
@@ -368,14 +390,47 @@ import Foundation
                 }
                 
             case "attachView":
-                if let childId = operation["childId"] as? String,
-                   let parentId = operation["parentId"] as? String,
+                let childId: Int?
+                if let childIdInt = operation["childId"] as? Int {
+                    childId = childIdInt
+                } else if let childIdNum = operation["childId"] as? NSNumber {
+                    childId = childIdNum.intValue
+                } else if let childIdStr = operation["childId"] as? String {
+                    childId = Int(childIdStr)
+                } else {
+                    childId = nil
+                }
+                
+                let parentId: Int?
+                if let parentIdInt = operation["parentId"] as? Int {
+                    parentId = parentIdInt
+                } else if let parentIdNum = operation["parentId"] as? NSNumber {
+                    parentId = parentIdNum.intValue
+                } else if let parentIdStr = operation["parentId"] as? String {
+                    parentId = Int(parentIdStr)
+                } else {
+                    parentId = nil
+                }
+                
+                if let childId = childId,
+                   let parentId = parentId,
                    let index = operation["index"] as? Int {
                     attachOps.append((childId, parentId, index))
                 }
                 
             case "addEventListeners":
-                if let viewId = operation["viewId"] as? String,
+                let viewId: Int?
+                if let viewIdInt = operation["viewId"] as? Int {
+                    viewId = viewIdInt
+                } else if let viewIdNum = operation["viewId"] as? NSNumber {
+                    viewId = viewIdNum.intValue
+                } else if let viewIdStr = operation["viewId"] as? String {
+                    viewId = Int(viewIdStr)
+                } else {
+                    viewId = nil
+                }
+                
+                if let viewId = viewId,
                    let eventTypes = operation["eventTypes"] as? [String] {
                     eventOps.append((viewId, eventTypes))
                 }
