@@ -38,6 +38,7 @@ class MyApp extends DCFStatefulComponent {
 
     final name = useState<String>("");
     final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
+    final showThemeAlert = useState<bool>(false);
 
     return benchmarkTest.state
         ? BenchmarkApp(
@@ -159,29 +160,25 @@ class MyApp extends DCFStatefulComponent {
               ),
             ),
             DCFAlert(
-              visible: isDarkMode.state,
+              visible: showThemeAlert.state,
               title: "Alert",
               message:
                   "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
               textFields: [DCFAlertTextField(placeholder: "Enter your name")],
               actions: [
                 DCFAlertAction(
-                  title: "Change Theme",
-                  style: DCFAlertActionStyle.destructive,
-                  handler: "Change Theme",
+                  title: "OK",
+                  style: DCFAlertActionStyle.defaultStyle,
+                  handler: "ok",
                 ),
               ],
               onActionPress: (data) {
-                if (data['handler'] == "Change Theme") {
-                  final newDarkMode = !isDarkMode.state;
-                  isDarkMode.setState(newDarkMode);
-                  // Actually update the theme
-                  DCFTheme.setTheme(
-                    newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
-                  );
-                  // Log alert action
-                  DCFLogger.info('Alert action pressed: Change Theme', 'MyApp');
-                }
+                showThemeAlert.setState(false);
+                // Log alert action
+                DCFLogger.info('Alert action pressed: ${data['handler']}', 'MyApp');
+              },
+              onDismiss: (data) {
+                showThemeAlert.setState(false);
               },
             ),
             DCFDropdown(
@@ -237,6 +234,8 @@ class MyApp extends DCFStatefulComponent {
                     DCFTheme.setTheme(
                       newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
                     );
+                    // Show alert after theme change
+                    showThemeAlert.setState(true);
                     // Log theme change
                     DCFLogger.info(
                       'Theme changed to ${newDarkMode ? 'Dark' : 'Light'}',
