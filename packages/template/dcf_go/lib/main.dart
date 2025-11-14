@@ -184,7 +184,7 @@ class MyApp extends DCFStatefulComponent {
             DCFDropdown(
               dropdownProps: DCFDropdownProps(
                 items: [
-                  DCFDropdownMenuItem(title: "Item 1", value: "item1"),
+                  DCFDropdownMenuItem(title: "Item 2", value: "item1"),
                   DCFDropdownMenuItem(title: "Item 2", value: "item2"),
                 ],
               ),

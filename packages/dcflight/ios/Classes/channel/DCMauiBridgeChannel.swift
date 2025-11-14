@@ -428,16 +428,21 @@ extension YogaShadowTree {
     /// It removes all non-root nodes, clears root node children, resets root dimensions
     /// to current window bounds, and clears all parent mappings.
     func clearAll() {
-        // Remove all non-root nodes
+        // CRITICAL: Reset reconciliation flag first to prevent blocking layout
+        resetFlags()
+        
+        // Remove all non-root nodes (this will set isReconciling temporarily, but we reset it after)
         let nodeIds = Array(nodes.keys)
         for nodeId in nodeIds {
-            if nodeId != "root" {
+            if nodeId != "0" && nodeId != "root" {
                 removeNode(nodeId: nodeId)
             }
         }
         
+        // CRITICAL: Reset flags again after removeNode calls (they set isReconciling=true)
+        resetFlags()
+        
         // Clear root node's children to prevent stacking after hot restart
-        // The root node might still have old children attached, causing layout issues
         clearRootNodeChildren()
         
         // Reset root node dimensions to current window bounds
@@ -450,8 +455,13 @@ extension YogaShadowTree {
         }
         resetRootNodeDimensions(width: Float(windowBounds.width), height: Float(windowBounds.height))
         
-        // Clear all parent mappings
-        nodeParents.removeAll()
+        // Clear all parent mappings and screen roots
+        clearAllMappings()
+        
+        // Final reset to ensure flags are clear
+        resetFlags()
+        
+        print("✅ YogaShadowTree: clearAll completed - isReconciling=false, isLayoutCalculating=false")
     }
 }
 

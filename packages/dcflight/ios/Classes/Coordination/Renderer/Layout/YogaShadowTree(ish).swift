@@ -24,6 +24,23 @@ class YogaShadowTree {
     private var isLayoutCalculating = false
     private var isReconciling = false
     
+    /// Reset reconciliation and layout calculation flags (for hot restart cleanup)
+    func resetFlags() {
+        syncQueue.sync {
+            isReconciling = false
+            isLayoutCalculating = false
+        }
+    }
+    
+    /// Clear all parent mappings and screen roots (for hot restart cleanup)
+    func clearAllMappings() {
+        syncQueue.sync {
+            nodeParents.removeAll()
+            screenRoots.removeAll()
+            screenRootIds.removeAll()
+        }
+    }
+    
     private var useWebDefaults = false
     
     private init() {
