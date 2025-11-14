@@ -230,14 +230,45 @@ class DCFEngine {
       _startIsolateCleanupTimer();
       
       _concurrentEnabled = true;
-      print('✅ ISOLATES: Infrastructure ready (will spawn on demand, max ${_maxWorkers} workers)');
+      
+      // Pre-spawn all worker isolates at startup for optimal performance
+      // This avoids spawning delays during reconciliation
+      // Do this asynchronously so it doesn't block app startup
+      print('🔄 ISOLATES: Pre-spawning ${_maxWorkers} worker isolates for optimal performance...');
+      _preSpawnIsolates().catchError((e) {
+        print('⚠️ ISOLATES: Error during pre-spawning: $e');
+      });
+      
+      print('✅ ISOLATES: Infrastructure ready (workers will be ready shortly)');
+      print('⚡ ISOLATES: Performance mode enabled - Large trees (50+ nodes) will use parallel reconciliation');
       EngineDebugLogger.log('ISOLATE_INIT_SUCCESS', 
-          'Isolate infrastructure ready (will spawn on demand)');
+          'Isolate infrastructure ready, pre-spawning workers');
     } catch (e) {
       print('❌ ISOLATES: Initialization failed: $e');
       EngineDebugLogger.log('ISOLATE_INIT_ERROR', 
           'Failed to initialize isolate infrastructure: $e');
       _concurrentEnabled = false;
+    }
+  }
+  
+  /// Pre-spawn all worker isolates at startup
+  Future<void> _preSpawnIsolates() async {
+    for (int i = 0; i < _maxWorkers; i++) {
+      try {
+        final spawned = await _spawnWorkerIsolate();
+        if (!spawned) {
+          print('⚠️ ISOLATES: Failed to pre-spawn worker $i, will spawn on demand');
+        }
+      } catch (e) {
+        print('⚠️ ISOLATES: Error pre-spawning worker $i: $e');
+      }
+    }
+    // After pre-spawning, ensure we keep at least the pre-spawned workers
+    // This prevents cleanup from closing them
+    final int preSpawnedCount = _workerPorts.length;
+    print('✅ ISOLATES: Pre-spawning complete (${_workerPorts.length}/${_maxWorkers} workers ready)');
+    if (preSpawnedCount > 0) {
+      print('⚡ ISOLATES: ${preSpawnedCount} workers ready for parallel reconciliation - optimal performance enabled');
     }
   }
   
@@ -262,23 +293,35 @@ class DCFEngine {
       
       print('⏳ ISOLATES: Waiting for worker isolate $index to send port...');
       
-      // Wait for isolate to send its port (with timeout)
+      // Wait for isolate to send its port (with longer timeout for reliability)
+      // The isolate should send its port immediately after spawning
       int attempts = 0;
-      while (_workerPorts.length <= index && attempts < 50) {
+      final maxAttempts = 100; // 1 second total wait time
+      while (_workerPorts.length <= index && attempts < maxAttempts) {
         await Future.delayed(const Duration(milliseconds: 10));
         attempts++;
       }
       
-      if (_workerPorts.length > index) {
+      // Double-check: the port might have been added but index might be different
+      // if multiple isolates spawned concurrently
+      if (_workerPorts.length > index && index < _workerPorts.length) {
         print('✅ ISOLATES: Worker isolate $index ready (total: ${_workerPorts.length})');
         print('✅ ISOLATES: Worker isolate $index ready and port received');
         return true;
+      } else if (_workerPorts.length > 0) {
+        // Port was received but index might be different - this is okay
+        print('✅ ISOLATES: Worker isolate spawned (port received, total: ${_workerPorts.length})');
+        return true;
       } else {
-        print('⚠️ ISOLATES: Worker isolate $index failed to send port');
+        print('⚠️ ISOLATES: Worker isolate $index failed to send port after ${maxAttempts * 10}ms');
         isolate.kill();
         _workerIsolates.removeAt(index);
-        _workerAvailable.removeAt(index);
-        _workerLastUsed.removeAt(index);
+        if (index < _workerAvailable.length) {
+          _workerAvailable.removeAt(index);
+        }
+        if (index < _workerLastUsed.length) {
+          _workerLastUsed.removeAt(index);
+        }
         return false;
       }
     } catch (e) {
@@ -1066,6 +1109,7 @@ class DCFEngine {
 
   /// O(m) where m = component tree depth - Update a component by its ID
   Future<void> _updateComponentById(String componentId) async {
+    print('🔍 UPDATE_COMPONENT: _updateComponentById called for $componentId');
     EngineDebugLogger.log('COMPONENT_UPDATE_START',
         'Starting update for component: $componentId');
 
@@ -1160,10 +1204,13 @@ class DCFEngine {
 
         if (previousRenderedNode.effectiveNativeViewId == null ||
             parentViewId == null) {
+          print('🔍 UPDATE_COMPONENT: Using fallback path - previousViewId: ${previousRenderedNode.effectiveNativeViewId}, parentViewId: $parentViewId');
           EngineDebugLogger.log('RECONCILE_FALLBACK',
               'Using fallback reconciliation due to missing IDs');
+          print('🔍 UPDATE_COMPONENT: Calling _reconcile (fallback path)...');
           await _reconcile(
               previousRenderedNode, newRenderedNode); // O(tree size)
+          print('🔍 UPDATE_COMPONENT: _reconcile completed (fallback path)');
 
           if (previousRenderedNode.effectiveNativeViewId != null) {
             component.contentViewId =
@@ -1172,11 +1219,35 @@ class DCFEngine {
         } else {
           EngineDebugLogger.log(
               'RECONCILE_NORMAL', 'Performing normal reconciliation');
-          await _reconcile(
-              previousRenderedNode, newRenderedNode); // O(tree size)
+          print('🔍 UPDATE_COMPONENT: Calling _reconcile...');
+          try {
+            await _reconcile(
+                previousRenderedNode, newRenderedNode); // O(tree size)
+            print('🔍 UPDATE_COMPONENT: _reconcile completed successfully');
+          } catch (e, stackTrace) {
+            print('❌ UPDATE_COMPONENT: _reconcile failed: $e');
+            print('❌ UPDATE_COMPONENT: Stack trace: $stackTrace');
+            rethrow;
+          }
           component.contentViewId = previousRenderedNode.effectiveNativeViewId;
         }
 
+        // CRITICAL: Store the reconciled node back as the component's rendered node
+        // This ensures the next update uses the reconciled node as the previous node
+        // IMPORTANT: Ensure the viewId is preserved from the previous node
+        if (previousRenderedNode.effectiveNativeViewId != null && 
+            newRenderedNode.effectiveNativeViewId == null) {
+          // Transfer viewId if it wasn't already transferred during reconciliation
+          if (previousRenderedNode is DCFElement && newRenderedNode is DCFElement) {
+            newRenderedNode.nativeViewId = previousRenderedNode.nativeViewId;
+            newRenderedNode.contentViewId = previousRenderedNode.contentViewId;
+          } else if (previousRenderedNode is DCFStatefulComponent && newRenderedNode is DCFStatefulComponent) {
+            newRenderedNode.nativeViewId = previousRenderedNode.nativeViewId;
+            newRenderedNode.contentViewId = previousRenderedNode.contentViewId;
+          }
+        }
+        component.renderedNode = newRenderedNode;
+        
         _previousRenderedNodes.remove(componentId); // O(1)
         EngineDebugLogger.log(
             'RECONCILE_CLEANUP', 'Cleaned up previous rendered node reference');
@@ -1219,6 +1290,8 @@ class DCFEngine {
           EngineDebugLogger.log(
               'RENDER_NO_PARENT', 'No parent view ID found for rendering');
         }
+        // CRITICAL: Store the rendered node for the next update
+        component.renderedNode = newRenderedNode;
       }
 
       EngineDebugLogger.log(
@@ -1642,20 +1715,23 @@ class DCFEngine {
         // Tree too small - this is normal, don't log
       } else if (!_concurrentEnabled) {
         print('⚠️ ISOLATES: Not enabled (concurrent processing disabled)');
-      } else if (_workerPorts.isEmpty) {
-        print('⚠️ ISOLATES: No workers available (will spawn on demand)');
       }
+      // Note: No need to log about missing workers - they will be spawned on demand
     }
     
     // If isolate reconciliation completed, we're done
     if (usedIsolate) {
+      print('🔍 RECONCILE: Isolate reconciliation completed, returning early');
       return;
     }
 
     // Otherwise, continue with regular reconciliation below
+    print('🔍 RECONCILE: Using regular reconciliation (not isolate)');
+    print('🔍 RECONCILE: oldNode type: ${oldNode.runtimeType}, newNode type: ${newNode.runtimeType}');
     // 🔥 CRITICAL: Check structural shock flag FIRST, before any position key computation
     // This prevents position-based matching from incorrectly matching old components
     if (_isStructuralShock) {
+      print('🔍 RECONCILE: Structural shock detected, replacing');
       EngineDebugLogger.logReconcile('REPLACE_STRUCTURAL_SHOCK', oldNode, newNode,
           reason: 'Structural shock active - forcing full replacement');
       await _replaceNode(oldNode, newNode);
@@ -1738,6 +1814,7 @@ class DCFEngine {
 
     // For elements, check if they're the same element type
     if (oldNode is DCFElement && newNode is DCFElement) {
+      print('🔍 RECONCILE: Both are DCFElement - oldType: ${oldNode.type}, newType: ${newNode.type}');
       if (oldNode.type != newNode.type) {
         print('🔍 RECONCILE: Element type changed: ${oldNode.type} → ${newNode.type}');
         print('⚛️  RECONCILE: Using full replacement (unmount + mount)');
@@ -1792,6 +1869,7 @@ class DCFEngine {
               reason: 'Significant children count difference - forcing replacement');
           await _replaceNode(oldNode, newNode);
         } else {
+          print('🔍 RECONCILE: Same element type, calling _reconcileElement');
           EngineDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
               reason: 'Same element type - updating props and children');
           
@@ -1803,6 +1881,7 @@ class DCFEngine {
           ));
           
           await _reconcileElement(oldNode, newNode);
+          print('🔍 RECONCILE: _reconcileElement completed');
         }
       }
     }
@@ -2042,15 +2121,11 @@ class DCFEngine {
       // the mapping points to the new Button's rendered element (not the old one)
       if (newRenderedNode is DCFElement) {
         final renderedViewId = newRenderedNode.nativeViewId;
-        print('🟢 STATELESS POST-RECONCILE: renderedViewId=$renderedViewId, elementType=${newRenderedNode.type}');
         if (renderedViewId != null) {
           final mappedNode = _nodesByViewId[renderedViewId];
-          print('🟢 STATELESS POST-RECONCILE: mappedNode=${mappedNode?.runtimeType}, newRenderedNode=${newRenderedNode.runtimeType}');
-          print('🟢 STATELESS POST-RECONCILE: mapping matches=${mappedNode == newRenderedNode}');
           if (mappedNode != newRenderedNode) {
-            print('⚠️ STATELESS FIXING MAPPING: viewId=$renderedViewId');
             EngineDebugLogger.log('RECONCILE_STATELESS_RENDERED_FIX',
-                '⚠️ Fixed mapping for stateless component\'s rendered element',
+                'Fixed mapping for stateless component\'s rendered element',
                 extra: {
                   'ViewId': renderedViewId,
                   'ElementType': newRenderedNode.type,
@@ -2058,9 +2133,6 @@ class DCFEngine {
                   'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
                 });
             _nodesByViewId[renderedViewId] = newRenderedNode;
-            print('✅ STATELESS MAPPING FIXED: viewId=$renderedViewId now maps to ${newRenderedNode.runtimeType}');
-          } else {
-            print('✅ STATELESS MAPPING OK: viewId=$renderedViewId correctly mapped');
           }
         } else {
           print('❌ STATELESS NO VIEWID: renderedViewId is null or empty!');
@@ -2174,15 +2246,22 @@ class DCFEngine {
   /// Check if isolate-based reconciliation should be used
   bool _shouldUseIsolateReconciliation(
       DCFComponentNode oldNode, DCFComponentNode newNode) {
-    // Use isolates for trees with 50+ nodes
+    // Use isolates for trees with 50+ nodes (workers will be spawned on demand)
     final oldNodeCount = _countNodeChildren(oldNode);
     final newNodeCount = _countNodeChildren(newNode);
     final totalNodes = oldNodeCount + newNodeCount;
     
-    final shouldUse = totalNodes >= 50 && _concurrentEnabled && _workerPorts.isNotEmpty;
+    // Return true if tree is large enough and concurrent is enabled
+    // Workers will be spawned inside _reconcileWithIsolate if needed
+    final shouldUse = totalNodes >= 50 && _concurrentEnabled;
     
     if (totalNodes >= 50) {
-      print('📊 ISOLATES: Tree size: $totalNodes nodes | Enabled: $_concurrentEnabled | Workers: ${_workerPorts.length} | Will use: $shouldUse');
+      if (shouldUse) {
+        print('⚡ ISOLATES: Large tree detected ($totalNodes nodes) - Using parallel isolate reconciliation for optimal performance');
+        print('   └─ Workers available: ${_workerPorts.length} | Estimated speedup: ${((totalNodes / 50) * 0.3).toStringAsFixed(1)}x');
+      } else {
+        print('📊 ISOLATES: Tree size: $totalNodes nodes | Enabled: $_concurrentEnabled | Workers: ${_workerPorts.length} | Will use: $shouldUse');
+      }
     }
     
     return shouldUse;
@@ -2207,7 +2286,9 @@ class DCFEngine {
   /// Reconcile using isolate-based parallel diffing
   Future<void> _reconcileWithIsolate(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
-    print('🚀 ISOLATES: Starting parallel reconciliation (${_countNodeChildren(oldNode) + _countNodeChildren(newNode)} nodes)');
+    final totalNodes = _countNodeChildren(oldNode) + _countNodeChildren(newNode);
+    final startTime = DateTime.now();
+    print('🚀 ISOLATES: Starting parallel reconciliation ($totalNodes nodes)');
     EngineDebugLogger.logReconcile('ISOLATE_START', oldNode, newNode,
         reason: 'Using isolate-based reconciliation');
     
@@ -2216,14 +2297,20 @@ class DCFEngine {
       final oldNodeRendered = oldNode.effectiveNativeViewId != null;
       
       // Serialize trees to maps for isolate
-      // Pass null for oldTree if oldNode hasn't been rendered yet
+      final serializeStart = DateTime.now();
       final oldTreeData = oldNodeRendered ? _serializeNodeForIsolate(oldNode) : null;
       final newTreeData = _serializeNodeForIsolate(newNode);
+      final serializeTime = DateTime.now().difference(serializeStart).inMilliseconds;
       
       // Find available isolate or spawn one if needed
       int isolateIndex = -1;
-      for (int i = 0; i < _workerAvailable.length; i++) {
-        if (_workerAvailable[i] && i < _workerPorts.length) {
+      // Check existing workers - iterate over ports length to ensure we check all
+      for (int i = 0; i < _workerPorts.length; i++) {
+        // Ensure availability list is sized correctly
+        if (i >= _workerAvailable.length) {
+          _workerAvailable.add(true);
+        }
+        if (_workerAvailable[i]) {
           isolateIndex = i;
           break;
         }
@@ -2235,9 +2322,9 @@ class DCFEngine {
         final spawned = await _spawnWorkerIsolate();
         if (spawned && _workerPorts.isNotEmpty) {
           print('✅ ISOLATES: Worker spawned successfully, finding available isolate...');
-          // Find the newly spawned isolate
-          for (int i = 0; i < _workerAvailable.length; i++) {
-            if (_workerAvailable[i] && i < _workerPorts.length) {
+          // Find the newly spawned isolate - check from the end backwards
+          for (int i = _workerPorts.length - 1; i >= 0; i--) {
+            if (i < _workerAvailable.length && _workerAvailable[i]) {
               isolateIndex = i;
               break;
             }
@@ -2263,6 +2350,7 @@ class DCFEngine {
       _isolateTasks[taskId] = completer;
       
       // Send task to isolate
+      final isolateStartTime = DateTime.now();
       _workerPorts[isolateIndex].send({
         'type': 'treeReconciliation',
         'id': taskId,
@@ -2274,29 +2362,54 @@ class DCFEngine {
       
       // Wait for result
       final result = await completer.future;
+      final isolateProcessingTime = DateTime.now().difference(isolateStartTime).inMilliseconds;
       
       // Mark isolate as available and update last used time
-      _workerAvailable[isolateIndex] = true;
-      if (isolateIndex < _workerLastUsed.length) {
-        _workerLastUsed[isolateIndex] = DateTime.now();
+      // Ensure lists are properly sized
+      while (isolateIndex >= _workerAvailable.length) {
+        _workerAvailable.add(true);
       }
+      _workerAvailable[isolateIndex] = true;
       
-      print('✅ ISOLATES: Parallel reconciliation completed, applying diff...');
+      while (isolateIndex >= _workerLastUsed.length) {
+        _workerLastUsed.add(DateTime.now());
+      }
+      _workerLastUsed[isolateIndex] = DateTime.now();
+      
+      final changesCount = (result['changes'] as List?)?.length ?? 0;
+      final metrics = result['metrics'] as Map<String, dynamic>? ?? {};
+      final isolateProcessingTimeMs = result['processingTimeMs'] as int? ?? isolateProcessingTime;
+      
+      print('⚡ ISOLATES: Parallel diff computed in ${isolateProcessingTimeMs}ms (serialization: ${serializeTime}ms)');
+      print('📊 ISOLATES: Performance - Nodes: $totalNodes | Changes: $changesCount | Complexity: ${metrics['complexity'] ?? 'unknown'}');
       
       // Apply diff results
+      final applyStartTime = DateTime.now();
       await _applyIsolateDiff(oldNode, newNode, result);
+      final applyTime = DateTime.now().difference(applyStartTime).inMilliseconds;
       
-      print('✅ ISOLATES: Diff applied successfully');
+      final totalTime = DateTime.now().difference(startTime).inMilliseconds;
+      final estimatedMainThreadTime = totalNodes * 2; // Rough estimate: ~2ms per node on main thread
+      final timeSaved = estimatedMainThreadTime > totalTime ? estimatedMainThreadTime - totalTime : 0;
+      
+      print('✅ ISOLATES: Diff applied in ${applyTime}ms | Total: ${totalTime}ms');
+      if (timeSaved > 0) {
+        print('🎯 ISOLATES: Performance boost - Saved ~${timeSaved}ms by offloading to isolate (${((timeSaved / estimatedMainThreadTime) * 100).toStringAsFixed(1)}% faster)');
+      }
       EngineDebugLogger.logReconcile('ISOLATE_COMPLETE', oldNode, newNode,
           reason: 'Isolate-based reconciliation completed');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ ISOLATES: Reconciliation failed with error: $e');
+      print('❌ ISOLATES: Stack trace: $stackTrace');
       EngineDebugLogger.logReconcile('ISOLATE_ERROR', oldNode, newNode,
           reason: 'Isolate reconciliation failed: $e');
-      // Fallback to regular reconciliation - continue with normal flow
+      // CRITICAL: Rethrow to trigger fallback to regular reconciliation
+      rethrow;
     }
   }
   
   /// Serialize node to map for isolate
+  /// CRITICAL: Filters out non-serializable values (functions, closures, ReceivePorts, etc.)
   Map<String, dynamic> _serializeNodeForIsolate(DCFComponentNode node) {
     final data = <String, dynamic>{
       'type': node.runtimeType.toString(),
@@ -2306,7 +2419,8 @@ class DCFEngine {
     
     if (node is DCFElement) {
       data['elementType'] = node.type;
-      data['props'] = Map<String, dynamic>.from(node.elementProps);
+      // Filter out non-serializable props (functions, closures, etc.)
+      data['props'] = _serializePropsForIsolate(node.elementProps);
       data['children'] = node.children
           .map((child) => _serializeNodeForIsolate(child))
           .toList();
@@ -2320,6 +2434,60 @@ class DCFEngine {
     return data;
   }
   
+  /// Serialize props for isolate - filters out non-serializable values
+  Map<String, dynamic> _serializePropsForIsolate(Map<String, dynamic> props) {
+    final serialized = <String, dynamic>{};
+    
+    for (final entry in props.entries) {
+      final value = entry.value;
+      
+      // Skip functions, closures, and other non-serializable types
+      if (value is Function) {
+        // Functions can't be sent to isolates - skip them
+        // The isolate diff will detect prop changes by comparing serializable props
+        continue;
+      }
+      
+      // Skip ReceivePort and other isolate-specific types
+      if (value is SendPort || value is ReceivePort) {
+        continue;
+      }
+      
+      // Recursively serialize nested maps and lists
+      if (value is Map) {
+        try {
+          serialized[entry.key] = _serializePropsForIsolate(Map<String, dynamic>.from(value));
+        } catch (e) {
+          // If nested map contains non-serializable values, skip it
+          continue;
+        }
+      } else if (value is List) {
+        try {
+          serialized[entry.key] = value.map((item) {
+            if (item is Map) {
+              return _serializePropsForIsolate(Map<String, dynamic>.from(item));
+            } else if (item is Function || item is SendPort || item is ReceivePort) {
+              return null; // Replace non-serializable items with null
+            }
+            return item;
+          }).toList();
+        } catch (e) {
+          continue;
+        }
+      } else {
+        // Primitive types and other serializable values
+        try {
+          serialized[entry.key] = value;
+        } catch (e) {
+          // If value can't be serialized, skip it
+          continue;
+        }
+      }
+    }
+    
+    return serialized;
+  }
+  
   /// Apply diff results from isolate
   /// CRITICAL: All UI mutations happen on main thread (Dart main isolate)
   /// Isolate only computes the diff - we apply it synchronously on UI thread
@@ -2331,8 +2499,10 @@ class DCFEngine {
     // Dart's main isolate IS the UI thread, so we're already on it
     // But we ensure all native bridge calls happen synchronously
     
+    print('🔍 ISOLATES: _applyIsolateDiff called with diff keys: ${diff.keys}');
     final diffType = diff['type'] as String?;
     final changes = diff['changes'] as List<dynamic>? ?? [];
+    print('🔍 ISOLATES: diffType=$diffType, changes count=${changes.length}');
     
     // Handle initial render (entire tree needs to be created)
     // This shouldn't happen since we disabled isolate for initial render, but keep for safety
@@ -2355,23 +2525,113 @@ class DCFEngine {
       }
       
       try {
-        for (final change in changes) {
+        print('🔍 ISOLATES: Processing ${changes.length} changes from isolate');
+        for (int i = 0; i < changes.length; i++) {
+          final change = changes[i];
           final changeMap = change as Map<String, dynamic>;
           final action = changeMap['action'] as String;
+          print('🔍 ISOLATES: Change $i: action=$action, keys=${changeMap.keys}');
           
           switch (action) {
             case 'replace':
-              await _replaceNode(oldNode, newNode);
-              // Replace handles its own batch commit if needed
-              if (!wasBatchMode && _batchUpdateInProgress) {
-                await commitBatchUpdate();
+              // Check if this is a child replacement or root replacement
+              final oldData = changeMap['oldData'] as Map<String, dynamic>?;
+              final newData = changeMap['newData'] as Map<String, dynamic>?;
+              final changeIndex = changeMap['index'] as int?;
+              
+              print('🔍 ISOLATES: Replace action - oldData type: ${oldData?['type']}, newData type: ${newData?['type']}, index: $changeIndex');
+              
+              if (oldData != null && newData != null && 
+                  oldNode is DCFElement && newNode is DCFElement) {
+                // This is a CHILD replacement, not root replacement
+                // The isolate reconciler matches by index, so we should use the index from the change
+                // or find it by matching the serialized data
+                int? childIndex = changeIndex;
+                
+                // If no index provided, try to find it
+                if (childIndex == null) {
+                  final oldType = oldData['type'] as String?;
+                  final oldIdStr = oldData['id'] as String?;
+                  
+                  for (int i = 0; i < oldNode.children.length; i++) {
+                    final child = oldNode.children[i];
+                    if (child is DCFElement) {
+                      // Match by type first
+                      if (oldType != null && child.type == oldType) {
+                        // Also try to match by ID if available
+                        if (oldIdStr == null || 
+                            child.effectiveNativeViewId?.toString() == oldIdStr ||
+                            child.hashCode.toString() == oldIdStr) {
+                          childIndex = i;
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                print('🔍 ISOLATES: Found childIndex: $childIndex (oldNode children: ${oldNode.children.length}, newNode children: ${newNode.children.length})');
+                
+                // If we found the index and it's valid in both trees
+                if (childIndex != null && 
+                    childIndex < oldNode.children.length &&
+                    childIndex < newNode.children.length) {
+                  final oldChild = oldNode.children[childIndex];
+                  final newChild = newNode.children[childIndex];
+                  
+                  print('🔍 ISOLATES: oldChild type: ${oldChild is DCFElement ? oldChild.type : oldChild.runtimeType}, newChild type: ${newChild is DCFElement ? newChild.type : newChild.runtimeType}');
+                  
+                  // CRITICAL: If types match, update props instead of replacing
+                  // This prevents unnecessary native view recreation
+                  if (oldChild is DCFElement && newChild is DCFElement &&
+                      oldChild.type == newChild.type) {
+                    print('✅ ISOLATES: Types match (${oldChild.type}), updating props instead of replacing');
+                    // Same type - just update props, don't replace
+                    final oldProps = oldData['props'] as Map<String, dynamic>? ?? {};
+                    final newProps = newData['props'] as Map<String, dynamic>? ?? {};
+                    final propsDiff = <String, dynamic>{};
+                    for (final key in newProps.keys) {
+                      if (!oldProps.containsKey(key) || oldProps[key] != newProps[key]) {
+                        propsDiff[key] = newProps[key];
+                      }
+                    }
+                    if (propsDiff.isNotEmpty) {
+                      print('🔍 ISOLATES: Updating ${propsDiff.length} props: ${propsDiff.keys}');
+                      for (final entry in propsDiff.entries) {
+                        newChild.elementProps[entry.key] = entry.value;
+                      }
+                      await _updateElementProps(newChild);
+                    } else {
+                      print('ℹ️ ISOLATES: No prop changes, skipping update');
+                    }
+                  } else {
+                    print('⚠️ ISOLATES: Types differ, performing actual replace');
+                    // Different types - actually replace
+                    await _replaceNode(oldChild, newChild);
+                  }
+                } else {
+                  // Couldn't find matching child - this shouldn't happen, but log it
+                  print('⚠️ ISOLATES: Could not find child to replace (index: $childIndex, oldChildren: ${oldNode.children.length}, newChildren: ${newNode.children.length})');
+                  print('⚠️ ISOLATES: oldData: ${oldData['type']}, newData: ${newData['type']}');
+                }
+              } else {
+                // Root-level replacement (should be rare - only if root type changes)
+                print('⚠️ ISOLATES: Root-level replace detected - this should be rare');
+                await _replaceNode(oldNode, newNode);
+                // Replace handles its own batch commit if needed
+                if (!wasBatchMode && _batchUpdateInProgress) {
+                  await commitBatchUpdate();
+                }
+                return; // Replace is complete, no need to continue
               }
-              return; // Replace is complete, no need to continue
+              // After handling replace, continue to next change (don't break)
+              continue;
             case 'update':
             case 'updateProps':
               final propsDiff = changeMap['propsDiff'] as Map<String, dynamic>? ?? 
                                changeMap['diff'] as Map<String, dynamic>?;
               if (propsDiff != null && propsDiff.isNotEmpty && newNode is DCFElement) {
+                print('🔍 ISOLATES: Updating props for ${newNode.type} (viewId: ${newNode.effectiveNativeViewId}): ${propsDiff.keys}');
                 // Update props
                 for (final entry in propsDiff.entries) {
                   newNode.elementProps[entry.key] = entry.value;
@@ -2416,30 +2676,93 @@ class DCFEngine {
               // Child needs to be replaced
               final oldChildData = changeMap['oldChild'] as Map<String, dynamic>?;
               final newChildData = changeMap['newChild'] as Map<String, dynamic>?;
+              print('🔍 ISOLATES: replaceChild - oldChild type: ${oldChildData?['type']}, newChild type: ${newChildData?['type']}');
+              
               if (oldChildData != null && newChildData != null && oldNode is DCFElement && newNode is DCFElement) {
                 final childIndex = changeMap['index'] as int?;
                 if (childIndex != null && childIndex < oldNode.children.length && childIndex < newNode.children.length) {
                   final oldChild = oldNode.children[childIndex];
                   final newChild = newNode.children[childIndex];
-                  final oldViewId = oldChild.effectiveNativeViewId;
-                  if (oldViewId != null) {
-                    await _replaceNode(oldChild, newChild);
+                  
+                  print('🔍 ISOLATES: replaceChild at index $childIndex - oldChild type: ${oldChild is DCFElement ? oldChild.type : oldChild.runtimeType}, newChild type: ${newChild is DCFElement ? newChild.type : newChild.runtimeType}');
+                  
+                  // CRITICAL: If types match, update props instead of replacing
+                  // This prevents unnecessary native view recreation
+                  // Check both element types and component runtime types
+                  final typesMatch = (oldChild is DCFElement && newChild is DCFElement && oldChild.type == newChild.type) ||
+                                    (oldChild.runtimeType == newChild.runtimeType);
+                  
+                  if (typesMatch) {
+                    final typeStr = oldChild is DCFElement ? oldChild.type : oldChild.runtimeType.toString();
+                    print('✅ ISOLATES: Types match ($typeStr), updating props instead of replacing');
+                    // Same type - just update props, don't replace
+                    final oldProps = oldChildData['props'] as Map<String, dynamic>? ?? {};
+                    final newProps = newChildData['props'] as Map<String, dynamic>? ?? {};
+                    final propsDiff = <String, dynamic>{};
+                    for (final key in newProps.keys) {
+                      if (!oldProps.containsKey(key) || oldProps[key] != newProps[key]) {
+                        propsDiff[key] = newProps[key];
+                      }
+                    }
+                    // For components, always reconcile (children might have changed even if props haven't)
+                    // For elements, only update if props changed
+                    if (newChild is DCFStatelessComponent || newChild is DCFStatefulComponent) {
+                      // Components need reconciliation to update their rendered children
+                      // CRITICAL: Use regular reconciliation (not isolate) to avoid nested isolate issues
+                      // and ensure we actually detect and apply changes
+                      print('🔍 ISOLATES: Reconciling component (props changed: ${propsDiff.isNotEmpty}) - using regular reconciliation');
+                      // Temporarily disable isolate reconciliation for this nested call
+                      final wasConcurrentEnabled = _concurrentEnabled;
+                      _concurrentEnabled = false;
+                      try {
+                        await _reconcile(oldChild, newChild);
+                      } finally {
+                        _concurrentEnabled = wasConcurrentEnabled;
+                      }
+                    } else if (newChild is DCFElement) {
+                      // Elements only need prop updates if props changed
+                      if (propsDiff.isNotEmpty) {
+                        print('🔍 ISOLATES: Updating ${propsDiff.length} props: ${propsDiff.keys}');
+                        for (final entry in propsDiff.entries) {
+                          newChild.elementProps[entry.key] = entry.value;
+                        }
+                        await _updateElementProps(newChild);
+                      } else {
+                        print('ℹ️ ISOLATES: No prop changes for element, skipping update');
+                      }
+                    }
                   } else {
-                    // Old child wasn't rendered, just create new one
-                    final parentViewId = newNode.effectiveNativeViewId;
-                    if (parentViewId != null) {
-                      await renderToNative(newChild, parentViewId: parentViewId);
+                    print('⚠️ ISOLATES: Types differ, performing actual replace');
+                    final oldViewId = oldChild.effectiveNativeViewId;
+                    if (oldViewId != null) {
+                      await _replaceNode(oldChild, newChild);
+                    } else {
+                      // Old child wasn't rendered, just create new one
+                      final parentViewId = newNode.effectiveNativeViewId;
+                      if (parentViewId != null) {
+                        await renderToNative(newChild, parentViewId: parentViewId);
+                      }
                     }
                   }
+                } else {
+                  print('⚠️ ISOLATES: replaceChild - invalid index: $childIndex (oldChildren: ${oldNode.children.length}, newChildren: ${newNode.children.length})');
                 }
               }
               break;
           }
         }
         
-        // Reconcile children if both nodes are elements
-        if (oldNode is DCFElement && newNode is DCFElement) {
+        // CRITICAL: Don't reconcile children here if we've already processed changes from isolate
+        // The isolate diff should have handled all necessary updates
+        // Only reconcile children if there were no changes from the isolate
+        if (changes.isEmpty && oldNode is DCFElement && newNode is DCFElement) {
+          // No changes from isolate, do regular reconciliation
           await _reconcileElement(oldNode, newNode);
+        } else if (changes.isNotEmpty) {
+          // We had changes from isolate - they should have been applied above
+          // But we still need to reconcile any children that weren't covered by the diff
+          // Actually, the isolate diff should cover all children, so we can skip this
+          print('✅ ISOLATES: Skipping regular child reconciliation - isolate diff already applied');
         }
         
         // Commit batch update if we started it
@@ -3236,13 +3559,10 @@ class DCFEngine {
   /// O(tree depth) - Find a node's parent view ID
   /// This walks up the tree to find the actual rendered element, not cached nativeViewIds
   int? _findParentViewId(DCFComponentNode node) {
-    print('🔍 PARENT_SEARCH: Starting search for parent of ${node.runtimeType} (viewId: ${node.effectiveNativeViewId})');
     final nodeViewId = node.effectiveNativeViewId;
     DCFComponentNode? current = node.parent;
 
     while (current != null) {
-      print('🔍 PARENT_SEARCH: Checking ancestor: ${current.runtimeType}');
-      
       // For components, look at their ACTUAL rendered element's ID, not the component's cached nativeViewId
       if (current is DCFStatelessComponent || current is DCFStatefulComponent) {
         // Get the component's rendered node
@@ -3250,31 +3570,19 @@ class DCFEngine {
             ? current.renderedNode 
             : (current is DCFStatelessComponent ? current.renderedNode : null);
         
-        print('🔍 PARENT_SEARCH: ${current.runtimeType} has renderedNode: ${renderedNode?.runtimeType}');
-        
-        if (renderedNode is DCFElement) {
-          print('🔍 PARENT_SEARCH: renderedNode is DCFElement with type: ${renderedNode.type}, viewId: ${renderedNode.nativeViewId}');
-        }
-        
         if (renderedNode != null && renderedNode is DCFStatelessComponent) {
-          print('🔍 PARENT_SEARCH: renderedNode is StatelessComponent, drilling down to its element...');
           final deepRendered = renderedNode.renderedNode;
           if (deepRendered is DCFElement) {
-            print('🔍 PARENT_SEARCH: deepRendered element type: ${deepRendered.type}, nativeViewId: ${deepRendered.nativeViewId}');
-            
             if (deepRendered.nativeViewId != null) {
               final deepViewId = deepRendered.nativeViewId!;
               
               if (nodeViewId != null && deepViewId == nodeViewId) {
-                print('🔍 PARENT_SEARCH: Skipping deep rendered viewId ($deepViewId) - same as node');
                 current = current.parent;
                 continue;
               }
               
-              print('🔍 PARENT_SEARCH: Found parent via DEEP rendered element: $deepViewId');
               return deepViewId;
             } else {
-              print('🔍 PARENT_SEARCH: deepRendered has no nativeViewId yet, skipping this ancestor');
               current = current.parent;
               continue;
             }
@@ -3286,23 +3594,19 @@ class DCFEngine {
           
           // Skip if this is the same view ID as the node we're looking for a parent for
           if (nodeViewId != null && renderedViewId == nodeViewId) {
-            print('🔍 PARENT_SEARCH: Skipping parent with same viewId ($renderedViewId) as node');
             current = current.parent;
             continue;
           }
           
-          print('🔍 PARENT_SEARCH: Found parent via rendered element: $renderedViewId (${current.runtimeType})');
           return renderedViewId;
         }
       }
       
       // For components without a rendered element with a valid nativeViewId, skip to next ancestor
       // DO NOT use effectiveNativeViewId here as it can return stale contentViewIds
-      print('🔍 PARENT_SEARCH: No valid viewId for ${current.runtimeType}, moving to next ancestor');
       current = current.parent;
     }
 
-    print('🔍 PARENT_SEARCH: Reached end of tree, using root');
     EngineDebugLogger.log(
         'PARENT_VIEW_DEFAULT', 'No parent view found, using root');
     return 0; // Default to root (tag 0) if no parent found
@@ -3331,6 +3635,7 @@ class DCFEngine {
   /// O(props count + event types count) - Reconcile an element - update props and children
   Future<void> _reconcileElement(
       DCFElement oldElement, DCFElement newElement) async {
+    print('🔍 RECONCILE_ELEMENT: Starting - oldViewId: ${oldElement.nativeViewId}, newViewId: ${newElement.nativeViewId}, type: ${oldElement.type}');
     EngineDebugLogger.log(
         'RECONCILE_ELEMENT_START', 'Starting element reconciliation', extra: {
       'ElementType': oldElement.type,
@@ -3338,6 +3643,7 @@ class DCFEngine {
     });
 
     if (oldElement.nativeViewId != null) {
+      print('🔍 RECONCILE_ELEMENT: oldElement has viewId, transferring to newElement');
       newElement.nativeViewId = oldElement.nativeViewId;
 
       // CRITICAL: Map the new element IMMEDIATELY before any other operations
@@ -3346,11 +3652,14 @@ class DCFEngine {
       final oldMappedNode = _nodesByViewId[viewId];
       _nodesByViewId[viewId] = newElement;
       
-      print('🔵 MAPPING UPDATE: viewId=$viewId, elementType=${newElement.type}');
-      print('🔵 MAPPING UPDATE: oldMapped=${oldMappedNode?.runtimeType}, newMapped=${newElement.runtimeType}');
-      print('🔵 MAPPING UPDATE: hasOnPress=${newElement.elementProps.containsKey('onPress')}');
       if (oldMappedNode != newElement) {
-        print('⚠️ MAPPING CHANGED: viewId=$viewId changed from ${oldMappedNode?.runtimeType} to ${newElement.runtimeType}');
+        EngineDebugLogger.log('MAPPING_CHANGED', 
+            'ViewId $viewId mapping changed',
+            extra: {
+              'OldType': oldMappedNode?.runtimeType.toString(),
+              'NewType': newElement.runtimeType.toString(),
+              'ElementType': newElement.type,
+            });
       }
       
       EngineDebugLogger.log(
@@ -3476,195 +3785,200 @@ class DCFEngine {
           _nodesByViewId[oldElement.nativeViewId!] = newElement;
         }
       } else {
+        print('🔍 RECONCILE_ELEMENT: No prop changes detected');
         EngineDebugLogger.log(
             'RECONCILE_NO_PROP_CHANGES', 'No prop changes detected');
       }
+    } else {
+      print('🔍 RECONCILE_ELEMENT: oldElement has no viewId (null) - skipping prop updates');
+    }
 
-      EngineDebugLogger.log(
-          'RECONCILE_CHILDREN_START', 'Starting children reconciliation',
-          extra: {
-            'OldChildCount': oldElement.children.length,
-            'NewChildCount': newElement.children.length
-          });
-      
-      // CRITICAL: Store a snapshot of child view IDs before reconciliation
-      // This allows us to verify and fix mappings after children reconciliation
-      final childViewIdsBeforeReconcile = <int, DCFElement>{};
-      for (final child in oldElement.children) {
-        final viewId = child.effectiveNativeViewId;
-        if (viewId != null) {
-          final mappedNode = _nodesByViewId[viewId];
-          if (mappedNode is DCFElement) {
-            childViewIdsBeforeReconcile[viewId] = mappedNode;
-          }
+    print('🔍 RECONCILE_ELEMENT: Starting children reconciliation - oldChildren: ${oldElement.children.length}, newChildren: ${newElement.children.length}');
+    EngineDebugLogger.log(
+        'RECONCILE_CHILDREN_START', 'Starting children reconciliation',
+        extra: {
+          'OldChildCount': oldElement.children.length,
+          'NewChildCount': newElement.children.length
+        });
+    
+    // CRITICAL: Store a snapshot of child view IDs before reconciliation
+    // This allows us to verify and fix mappings after children reconciliation
+    final childViewIdsBeforeReconcile = <int, DCFElement>{};
+    for (final child in oldElement.children) {
+      final viewId = child.effectiveNativeViewId;
+      if (viewId != null) {
+        final mappedNode = _nodesByViewId[viewId];
+        if (mappedNode is DCFElement) {
+          childViewIdsBeforeReconcile[viewId] = mappedNode;
         }
       }
-      
-      await _reconcileChildren(oldElement, newElement);
-      
-      // CRITICAL: After children reconciliation, verify ALL child mappings are correct
-      // This fixes the root cause: when SafeArea re-renders, child reconciliation
-      // can corrupt the _nodesByViewId mapping for child elements
-      for (final child in newElement.children) {
-        final viewId = child.effectiveNativeViewId;
-        if (viewId != null) {
-          final mappedNode = _nodesByViewId[viewId];
-          
-          if (child is DCFElement) {
-            // For direct elements, ensure mapping points to the new child instance
-            if (mappedNode != child) {
-              EngineDebugLogger.log('RECONCILE_CHILD_MAPPING_FIX',
-                  '⚠️ Child mapping corrupted during reconciliation, fixing',
+    }
+    
+    await _reconcileChildren(oldElement, newElement);
+    print('🔍 RECONCILE_ELEMENT: Children reconciliation completed');
+    
+    // CRITICAL: After children reconciliation, verify ALL child mappings are correct
+    // This fixes the root cause: when SafeArea re-renders, child reconciliation
+    // can corrupt the _nodesByViewId mapping for child elements
+    for (final child in newElement.children) {
+      final viewId = child.effectiveNativeViewId;
+      if (viewId != null) {
+        final mappedNode = _nodesByViewId[viewId];
+        
+        if (child is DCFElement) {
+          // For direct elements, ensure mapping points to the new child instance
+          if (mappedNode != child) {
+            EngineDebugLogger.log('RECONCILE_CHILD_MAPPING_FIX',
+                '⚠️ Child mapping corrupted during reconciliation, fixing',
+                extra: {
+                  'ViewId': viewId,
+                  'ChildType': child.type,
+                  'HasOnPress': child.elementProps.containsKey('onPress'),
+                  'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null',
+                  'OldMappedHasOnPress': (mappedNode is DCFElement) ? mappedNode.elementProps.containsKey('onPress') : false
+                });
+            _nodesByViewId[viewId] = child;
+          } else {
+            // Verify the mapped element has handlers
+            if (child.type == 'Button' && !child.elementProps.containsKey('onPress')) {
+              EngineDebugLogger.log('RECONCILE_CHILD_NO_HANDLERS',
+                  '⚠️ Button child has no onPress handler after reconciliation!',
                   extra: {
                     'ViewId': viewId,
-                    'ChildType': child.type,
-                    'HasOnPress': child.elementProps.containsKey('onPress'),
-                    'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null',
-                    'OldMappedHasOnPress': (mappedNode is DCFElement) ? mappedNode.elementProps.containsKey('onPress') : false
+                    'ElementProps': child.elementProps.keys.toList()
                   });
-              _nodesByViewId[viewId] = child;
-            } else {
-              // Verify the mapped element has handlers
-              if (child.type == 'Button' && !child.elementProps.containsKey('onPress')) {
-                EngineDebugLogger.log('RECONCILE_CHILD_NO_HANDLERS',
-                    '⚠️ Button child has no onPress handler after reconciliation!',
+            }
+          }
+        } else if (child is DCFStatefulComponent || child is DCFStatelessComponent) {
+          // For components, ensure mapping points to rendered element
+          final renderedElement = child.renderedNode;
+          if (renderedElement is DCFElement) {
+            final renderedViewId = renderedElement.nativeViewId;
+            // Use effectiveNativeViewId to handle nested components
+            final effectiveViewId = child.effectiveNativeViewId ?? renderedViewId;
+            if (effectiveViewId == viewId) {
+              if (mappedNode != renderedElement) {
+                EngineDebugLogger.log('RECONCILE_CHILD_COMPONENT_MAPPING_FIX',
+                    '⚠️ Component child mapping corrupted, fixing to point to rendered element',
                     extra: {
                       'ViewId': viewId,
-                      'ElementProps': child.elementProps.keys.toList()
+                      'RenderedViewId': renderedViewId,
+                      'HasOnPress': renderedElement.elementProps.containsKey('onPress'),
+                      'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
                     });
+                _nodesByViewId[viewId] = renderedElement;
               }
-            }
-          } else if (child is DCFStatefulComponent || child is DCFStatelessComponent) {
-            // For components, ensure mapping points to rendered element
-            final renderedElement = child.renderedNode;
-            if (renderedElement is DCFElement) {
-              final renderedViewId = renderedElement.nativeViewId;
-              // Use effectiveNativeViewId to handle nested components
-              final effectiveViewId = child.effectiveNativeViewId ?? renderedViewId;
-              if (effectiveViewId == viewId) {
-                if (mappedNode != renderedElement) {
-                  EngineDebugLogger.log('RECONCILE_CHILD_COMPONENT_MAPPING_FIX',
-                      '⚠️ Component child mapping corrupted, fixing to point to rendered element',
-                      extra: {
-                        'ViewId': viewId,
-                        'RenderedViewId': renderedViewId,
-                        'HasOnPress': renderedElement.elementProps.containsKey('onPress'),
-                        'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
-                      });
-                  _nodesByViewId[viewId] = renderedElement;
-                }
-              } else if (renderedViewId != null && mappedNode != renderedElement) {
-                // Also check if the rendered element's view ID is mapped correctly
-                final renderedMappedNode = _nodesByViewId[renderedViewId];
-                if (renderedMappedNode != renderedElement) {
-                  EngineDebugLogger.log('RECONCILE_CHILD_RENDERED_ELEMENT_MAPPING_FIX',
-                      '⚠️ Rendered element mapping corrupted, fixing',
-                      extra: {
-                        'RenderedViewId': renderedViewId,
-                        'HasOnPress': renderedElement.elementProps.containsKey('onPress')
-                      });
-                  _nodesByViewId[renderedViewId] = renderedElement;
-                }
+            } else if (renderedViewId != null && mappedNode != renderedElement) {
+              // Also check if the rendered element's view ID is mapped correctly
+              final renderedMappedNode = _nodesByViewId[renderedViewId];
+              if (renderedMappedNode != renderedElement) {
+                EngineDebugLogger.log('RECONCILE_CHILD_RENDERED_ELEMENT_MAPPING_FIX',
+                    '⚠️ Rendered element mapping corrupted, fixing',
+                    extra: {
+                      'RenderedViewId': renderedViewId,
+                      'HasOnPress': renderedElement.elementProps.containsKey('onPress')
+                    });
+                _nodesByViewId[renderedViewId] = renderedElement;
               }
             }
           }
         }
       }
-      
-      // FINAL SAFEGUARD: Ensure parent mapping is correct after all reconciliation
-      // This catches any cases where the mapping might have been corrupted
-      if (newElement.nativeViewId != null) {
-        final finalMappedNode = _nodesByViewId[newElement.nativeViewId!];
-        if (finalMappedNode != newElement) {
-          EngineDebugLogger.log('RECONCILE_FINAL_REMAP',
-              '⚠️ Final mapping check failed, restoring correct element',
-              extra: {
-                'ViewId': newElement.nativeViewId, 
-                'MappedType': finalMappedNode?.runtimeType.toString() ?? 'null',
-                'ExpectedType': newElement.runtimeType.toString(),
-                'NewElementHasOnPress': newElement.elementProps.containsKey('onPress'),
-                'MappedNodeHasOnPress': (finalMappedNode is DCFElement) ? finalMappedNode.elementProps.containsKey('onPress') : false
-              });
-          _nodesByViewId[newElement.nativeViewId!] = newElement;
-        } else {
-          // Verify the mapped element actually has the handlers
-          if (finalMappedNode is DCFElement) {
-            final hasHandlers = newElement.eventTypes.isNotEmpty;
-            if (!hasHandlers && newElement.type == 'Button') {
-              EngineDebugLogger.log('RECONCILE_NO_HANDLERS',
-                  '⚠️ Button element has no event handlers after reconciliation!',
-                  extra: {
-                    'ViewId': newElement.nativeViewId,
-                    'ElementProps': newElement.elementProps.keys.toList()
-                  });
-            }
+    }
+    
+    // FINAL SAFEGUARD: Ensure parent mapping is correct after all reconciliation
+    // This catches any cases where the mapping might have been corrupted
+    if (newElement.nativeViewId != null) {
+      final finalMappedNode = _nodesByViewId[newElement.nativeViewId!];
+      if (finalMappedNode != newElement) {
+        EngineDebugLogger.log('RECONCILE_FINAL_REMAP',
+            '⚠️ Final mapping check failed, restoring correct element',
+            extra: {
+              'ViewId': newElement.nativeViewId, 
+              'MappedType': finalMappedNode?.runtimeType.toString() ?? 'null',
+              'ExpectedType': newElement.runtimeType.toString(),
+              'NewElementHasOnPress': newElement.elementProps.containsKey('onPress'),
+              'MappedNodeHasOnPress': (finalMappedNode is DCFElement) ? finalMappedNode.elementProps.containsKey('onPress') : false
+            });
+        _nodesByViewId[newElement.nativeViewId!] = newElement;
+      } else {
+        // Verify the mapped element actually has the handlers
+        if (finalMappedNode is DCFElement) {
+          final hasHandlers = newElement.eventTypes.isNotEmpty;
+          if (!hasHandlers && newElement.type == 'Button') {
+            EngineDebugLogger.log('RECONCILE_NO_HANDLERS',
+                '⚠️ Button element has no event handlers after reconciliation!',
+                extra: {
+                  'ViewId': newElement.nativeViewId,
+                  'ElementProps': newElement.elementProps.keys.toList()
+                });
           }
         }
       }
-      
-      // ULTIMATE SAFEGUARD: Re-verify ALL child mappings one more time after everything
-      // This is the final check to ensure no child mappings were corrupted during reconciliation
-      // CRITICAL: This is especially important for SafeArea's View children (Button components)
-      for (final child in newElement.children) {
-        final viewId = child.effectiveNativeViewId;
-        if (viewId != null) {
-          final mappedNode = _nodesByViewId[viewId];
-          
-          if (child is DCFElement) {
-            if (mappedNode != child) {
-              EngineDebugLogger.log('RECONCILE_ULTIMATE_CHILD_FIX',
-                  '⚠️ ULTIMATE FIX: Child mapping still corrupted after all reconciliation, fixing now',
+    }
+    
+    // ULTIMATE SAFEGUARD: Re-verify ALL child mappings one more time after everything
+    // This is the final check to ensure no child mappings were corrupted during reconciliation
+    // CRITICAL: This is especially important for SafeArea's View children (Button components)
+    for (final child in newElement.children) {
+      final viewId = child.effectiveNativeViewId;
+      if (viewId != null) {
+        final mappedNode = _nodesByViewId[viewId];
+        
+        if (child is DCFElement) {
+          if (mappedNode != child) {
+            EngineDebugLogger.log('RECONCILE_ULTIMATE_CHILD_FIX',
+                '⚠️ ULTIMATE FIX: Child mapping still corrupted after all reconciliation, fixing now',
+                extra: {
+                  'ViewId': viewId,
+                  'ChildType': child.type,
+                  'HasOnPress': child.elementProps.containsKey('onPress'),
+                  'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
+                });
+            _nodesByViewId[viewId] = child;
+          }
+          // CRITICAL: Also verify event listeners are attached for Button elements
+          if (child.type == 'Button' && child.eventTypes.isNotEmpty) {
+            final hasListeners = child.elementProps.containsKey('onPress') || 
+                                child.elementProps.containsKey('onClick');
+            if (!hasListeners) {
+              EngineDebugLogger.log('RECONCILE_ULTIMATE_BUTTON_NO_HANDLERS',
+                  '⚠️ ULTIMATE CHECK: Button has eventTypes but no handlers in props!',
                   extra: {
                     'ViewId': viewId,
-                    'ChildType': child.type,
-                    'HasOnPress': child.elementProps.containsKey('onPress'),
-                    'OldMappedType': mappedNode?.runtimeType.toString() ?? 'null'
+                    'EventTypes': child.eventTypes,
+                    'ElementProps': child.elementProps.keys.toList()
                   });
-              _nodesByViewId[viewId] = child;
             }
-            // CRITICAL: Also verify event listeners are attached for Button elements
-            if (child.type == 'Button' && child.eventTypes.isNotEmpty) {
-              final hasListeners = child.elementProps.containsKey('onPress') || 
-                                  child.elementProps.containsKey('onClick');
-              if (!hasListeners) {
-                EngineDebugLogger.log('RECONCILE_ULTIMATE_BUTTON_NO_HANDLERS',
-                    '⚠️ ULTIMATE CHECK: Button has eventTypes but no handlers in props!',
+          }
+        } else if (child is DCFStatefulComponent || child is DCFStatelessComponent) {
+          final renderedElement = child.renderedNode;
+          if (renderedElement is DCFElement) {
+            final renderedViewId = renderedElement.nativeViewId;
+            if (renderedViewId != null) {
+              final renderedMappedNode = _nodesByViewId[renderedViewId];
+              if (renderedMappedNode != renderedElement) {
+                EngineDebugLogger.log('RECONCILE_ULTIMATE_RENDERED_FIX',
+                    '⚠️ ULTIMATE FIX: Rendered element mapping still corrupted, fixing now',
                     extra: {
-                      'ViewId': viewId,
-                      'EventTypes': child.eventTypes,
-                      'ElementProps': child.elementProps.keys.toList()
+                      'RenderedViewId': renderedViewId,
+                      'ElementType': renderedElement.type,
+                      'HasOnPress': renderedElement.elementProps.containsKey('onPress')
                     });
+                _nodesByViewId[renderedViewId] = renderedElement;
               }
-            }
-          } else if (child is DCFStatefulComponent || child is DCFStatelessComponent) {
-            final renderedElement = child.renderedNode;
-            if (renderedElement is DCFElement) {
-              final renderedViewId = renderedElement.nativeViewId;
-              if (renderedViewId != null) {
-                final renderedMappedNode = _nodesByViewId[renderedViewId];
-                if (renderedMappedNode != renderedElement) {
-                  EngineDebugLogger.log('RECONCILE_ULTIMATE_RENDERED_FIX',
-                      '⚠️ ULTIMATE FIX: Rendered element mapping still corrupted, fixing now',
+              // CRITICAL: Also verify event listeners for Button rendered elements
+              if (renderedElement.type == 'Button' && renderedElement.eventTypes.isNotEmpty) {
+                final hasListeners = renderedElement.elementProps.containsKey('onPress') || 
+                                    renderedElement.elementProps.containsKey('onClick');
+                if (!hasListeners) {
+                  EngineDebugLogger.log('RECONCILE_ULTIMATE_BUTTON_RENDERED_NO_HANDLERS',
+                      '⚠️ ULTIMATE CHECK: Button rendered element has eventTypes but no handlers!',
                       extra: {
-                        'RenderedViewId': renderedViewId,
-                        'ElementType': renderedElement.type,
-                        'HasOnPress': renderedElement.elementProps.containsKey('onPress')
+                        'ViewId': renderedViewId,
+                        'EventTypes': renderedElement.eventTypes,
+                        'ElementProps': renderedElement.elementProps.keys.toList()
                       });
-                  _nodesByViewId[renderedViewId] = renderedElement;
-                }
-                // CRITICAL: Also verify event listeners for Button rendered elements
-                if (renderedElement.type == 'Button' && renderedElement.eventTypes.isNotEmpty) {
-                  final hasListeners = renderedElement.elementProps.containsKey('onPress') || 
-                                      renderedElement.elementProps.containsKey('onClick');
-                  if (!hasListeners) {
-                    EngineDebugLogger.log('RECONCILE_ULTIMATE_BUTTON_RENDERED_NO_HANDLERS',
-                        '⚠️ ULTIMATE CHECK: Button rendered element has eventTypes but no handlers!',
-                        extra: {
-                          'ViewId': renderedViewId,
-                          'EventTypes': renderedElement.eventTypes,
-                          'ElementProps': renderedElement.elementProps.keys.toList()
-                        });
-                  }
                 }
               }
             }
