@@ -105,7 +105,6 @@ class DCMauiEventMethodHandler: NSObject {
     
     private func handleAddEventListeners(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any],
-              let viewId = args["viewId"] as? String,
               let eventTypes = args["eventTypes"] as? [String] else {
             result(FlutterError(code: "INVALID_ARGS", 
                                message: "Invalid arguments for addEventListeners", 
@@ -113,6 +112,21 @@ class DCMauiEventMethodHandler: NSObject {
             return
         }
         
+        let viewId: Int?
+        if let viewIdInt = args["viewId"] as? Int {
+            viewId = viewIdInt
+        } else if let viewIdNum = args["viewId"] as? NSNumber {
+            viewId = viewIdNum.intValue
+        } else {
+            viewId = nil
+        }
+        
+        guard let viewId = viewId else {
+            result(FlutterError(code: "INVALID_ARGS", 
+                               message: "Invalid viewId for addEventListeners", 
+                               details: nil))
+            return
+        }
         
         var view: UIView? = ViewRegistry.shared.getView(id: viewId)
         
@@ -127,14 +141,13 @@ class DCMauiEventMethodHandler: NSObject {
         }
         
         DispatchQueue.main.async {
-            let success = self.registerEventListeners(view: foundView, viewId: viewId, eventTypes: eventTypes)
+            let success = self.registerEventListeners(view: foundView, viewId: String(viewId), eventTypes: eventTypes)
             result(success)
         }
     }
     
     private func handleRemoveEventListeners(_ call: FlutterMethodCall, _ result: @escaping FlutterResult) {
         guard let args = call.arguments as? [String: Any],
-              let viewId = args["viewId"] as? String,
               let eventTypes = args["eventTypes"] as? [String] else {
             result(FlutterError(code: "INVALID_ARGS", 
                                message: "Invalid arguments for removeEventListeners", 
@@ -142,6 +155,21 @@ class DCMauiEventMethodHandler: NSObject {
             return
         }
         
+        let viewId: Int?
+        if let viewIdInt = args["viewId"] as? Int {
+            viewId = viewIdInt
+        } else if let viewIdNum = args["viewId"] as? NSNumber {
+            viewId = viewIdNum.intValue
+        } else {
+            viewId = nil
+        }
+        
+        guard let viewId = viewId else {
+            result(FlutterError(code: "INVALID_ARGS", 
+                               message: "Invalid viewId for removeEventListeners", 
+                               details: nil))
+            return
+        }
         
         var view: UIView? = ViewRegistry.shared.getView(id: viewId)
         
@@ -156,12 +184,12 @@ class DCMauiEventMethodHandler: NSObject {
         }
         
         DispatchQueue.main.async {
-            let success = self.unregisterEventListeners(view: foundView, viewId: viewId, eventTypes: eventTypes)
+            let success = self.unregisterEventListeners(view: foundView, viewId: String(viewId), eventTypes: eventTypes)
             result(success)
         }
     }
     
-    func addEventListenersForBatch(viewId: String, eventTypes: [String]) {
+    func addEventListenersForBatch(viewId: Int, eventTypes: [String]) {
         var view: UIView? = ViewRegistry.shared.getView(id: viewId)
         
         if view == nil {
@@ -173,7 +201,7 @@ class DCMauiEventMethodHandler: NSObject {
             return
         }
         
-        _ = registerEventListeners(view: foundView, viewId: viewId, eventTypes: eventTypes)
+        _ = registerEventListeners(view: foundView, viewId: String(viewId), eventTypes: eventTypes)
     }
     
     private func registerEventListeners(view: UIView, viewId: String, eventTypes: [String]) -> Bool {

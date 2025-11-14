@@ -42,7 +42,7 @@ class PortalTargetRegistry {
   }
   
   /// Get the view ID of a PortalTarget by its ID
-  String? getViewId(String id) {
+  int? getViewId(String id) {
     final target = _targets[id];
     if (target == null) {
       if (kDebugMode) {
@@ -111,7 +111,7 @@ class DCFPortalTarget extends DCFStatelessComponent {
   
   /// Get the view ID of this PortalTarget
   /// This is used by Portal to find where to render its children
-  String? get targetViewId {
+  int? get targetViewId {
     final rendered = renderedNode;
     if (rendered is DCFElement) {
       return rendered.nativeViewId;

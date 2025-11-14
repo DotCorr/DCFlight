@@ -33,7 +33,7 @@ class DCFEngine {
   int _viewIdCounter = 1;
 
   /// Map of view IDs to their associated VDomNodes - O(1) lookup
-  final Map<String, DCFComponentNode> _nodesByViewId = {};
+  final Map<int, DCFComponentNode> _nodesByViewId = {};
 
   /// Component tracking maps
   final Map<String, DCFStatefulComponent> _statefulComponents = {};
@@ -141,8 +141,8 @@ class DCFEngine {
   Future<void> get isReady => _readyCompleter.future;
 
   /// O(1) - Generate a unique view ID
-  String _generateViewId() {
-    final viewId = (_viewIdCounter++).toString();
+  int _generateViewId() {
+    final viewId = _viewIdCounter++;
     EngineDebugLogger.log('VIEW_ID_GENERATE', 'Generated view ID: $viewId');
     return viewId;
   }
@@ -177,7 +177,7 @@ class DCFEngine {
   /// event handler. If the node is a component instead of an element, it fixes
   /// the mapping to point to the rendered element.
   void _handleNativeEvent(
-      String viewId, String eventType, Map<dynamic, dynamic> eventData) {
+      int viewId, String eventType, Map<dynamic, dynamic> eventData) {
     EngineDebugLogger.log(
         'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
         extra: {
@@ -909,7 +909,7 @@ class DCFEngine {
         // This is critical for SafeArea re-renders that create new Button instances
         if (newRenderedNode is DCFElement) {
           final viewId = newRenderedNode.nativeViewId;
-          if (viewId != null && viewId.isNotEmpty) {
+          if (viewId != null) {
             final mappedNode = _nodesByViewId[viewId];
             if (mappedNode != newRenderedNode) {
               _nodesByViewId[viewId] = newRenderedNode;
@@ -919,7 +919,7 @@ class DCFEngine {
           final renderedElement = newRenderedNode.renderedNode;
           if (renderedElement is DCFElement) {
             final viewId = renderedElement.nativeViewId;
-            if (viewId != null && viewId.isNotEmpty) {
+            if (viewId != null) {
               final mappedNode = _nodesByViewId[viewId];
               if (mappedNode != renderedElement) {
                 _nodesByViewId[viewId] = renderedElement;
@@ -985,8 +985,8 @@ class DCFEngine {
   }
 
   /// O(tree depth + children count) - Enhanced render to native with phased effects
-  Future<String?> renderToNative(DCFComponentNode node,
-      {String? parentViewId, int? index}) async {
+  Future<int?> renderToNative(DCFComponentNode node,
+      {int? parentViewId, int? index}) async {
     await isReady;
 
     EngineDebugLogger.logRender('START', node,
@@ -1013,7 +1013,7 @@ class DCFEngine {
         }
 
         int childIndex = index ?? 0;
-        final childIds = <String>[];
+        final childIds = <int>[];
 
         EngineDebugLogger.log('FRAGMENT_CHILDREN',
             'Rendering ${node.children.length} fragment children');
@@ -1021,7 +1021,7 @@ class DCFEngine {
           final childId = await renderToNative(child,
               parentViewId: parentViewId, index: childIndex++);
 
-          if (childId != null && childId.isNotEmpty) {
+          if (childId != null) {
             childIds.add(childId);
           }
         }
@@ -1087,7 +1087,7 @@ class DCFEngine {
           
           // CRITICAL: After rendering a component's rendered element, ensure the mapping is correct
           // This is essential for Button components inside SafeArea
-          if (renderedNode is DCFElement && viewId != null && viewId.isNotEmpty) {
+          if (renderedNode is DCFElement && viewId != null) {
             final mappedNode = _nodesByViewId[viewId];
             if (mappedNode != renderedNode) {
               print('⚠️ COMPONENT RENDER FIX: viewId=$viewId, component=${node.runtimeType}, elementType=${renderedNode.type}');
@@ -1221,8 +1221,8 @@ class DCFEngine {
   }
 
   /// O(children count + event types count) - Render an element to native UI
-  Future<String?> _renderElementToNative(DCFElement element,
-      {String? parentViewId, int? index}) async {
+  Future<int?> _renderElementToNative(DCFElement element,
+      {int? parentViewId, int? index}) async {
     EngineDebugLogger.log('ELEMENT_RENDER_START', 'Starting element render',
         extra: {
           'ElementType': element.type,
@@ -1283,14 +1283,14 @@ class DCFEngine {
       }
     }
 
-    final childIds = <String>[];
+    final childIds = <int>[];
     EngineDebugLogger.log('ELEMENT_CHILDREN_START',
         'Rendering ${element.children.length} children');
 
     for (var i = 0; i < element.children.length; i++) {
       final childId = await renderToNative(element.children[i],
           parentViewId: viewId, index: i);
-      if (childId != null && childId.isNotEmpty) {
+      if (childId != null) {
         childIds.add(childId);
       }
     }
@@ -1359,7 +1359,7 @@ class DCFEngine {
     // Component instance tracking by position + type + props
     // We maintain component instances across renders when at same position with same type
     if (!_isStructuralShock) {
-    final parentViewId = _findParentViewId(oldNode) ?? "root";
+    final parentViewId = _findParentViewId(oldNode) ?? 0;
     final nodeIndex = _findNodeIndexInParent(oldNode);
     final positionKey = "$parentViewId:$nodeIndex:${newNode.runtimeType}";
     final propsHash = _computePropsHash(newNode);
@@ -1509,7 +1509,7 @@ class DCFEngine {
       // the mapping points to the new Button's rendered element (not the old one)
       if (newRenderedNode is DCFElement) {
         final renderedViewId = newRenderedNode.nativeViewId;
-        if (renderedViewId != null && renderedViewId.isNotEmpty) {
+        if (renderedViewId != null) {
           final mappedNode = _nodesByViewId[renderedViewId];
           if (mappedNode != newRenderedNode) {
             EngineDebugLogger.log('RECONCILE_STATEFUL_RENDERED_FIX',
@@ -1529,7 +1529,7 @@ class DCFEngine {
           if (newRenderedNode.type == 'View' && newRenderedNode.children.isNotEmpty) {
             for (final child in newRenderedNode.children) {
               final childViewId = child.effectiveNativeViewId;
-              if (childViewId != null && childViewId.isNotEmpty) {
+              if (childViewId != null) {
                 if (child is DCFElement) {
                   final childMapped = _nodesByViewId[childViewId];
                   if (childMapped != child) {
@@ -1546,7 +1546,7 @@ class DCFEngine {
                   final renderedElement = child.renderedNode;
                   if (renderedElement is DCFElement) {
                     final renderedViewId = renderedElement.nativeViewId;
-                    if (renderedViewId != null && renderedViewId.isNotEmpty) {
+                    if (renderedViewId != null) {
                       final renderedMapped = _nodesByViewId[renderedViewId];
                       if (renderedMapped != renderedElement) {
                         EngineDebugLogger.log('RECONCILE_STATEFUL_VIEW_CHILD_COMPONENT_FIX',
@@ -1581,7 +1581,7 @@ class DCFEngine {
         }
         if (actualElement != null) {
           final elementViewId = actualElement.nativeViewId;
-          if (elementViewId != null && elementViewId.isNotEmpty) {
+          if (elementViewId != null) {
             final mappedNode = _nodesByViewId[elementViewId];
             if (mappedNode != actualElement) {
               EngineDebugLogger.log('RECONCILE_STATEFUL_NESTED_ELEMENT_FIX',
@@ -1695,7 +1695,7 @@ class DCFEngine {
       if (newRenderedNode is DCFElement) {
         final renderedViewId = newRenderedNode.nativeViewId;
         print('🟢 STATELESS POST-RECONCILE: renderedViewId=$renderedViewId, elementType=${newRenderedNode.type}');
-        if (renderedViewId != null && renderedViewId.isNotEmpty) {
+        if (renderedViewId != null) {
           final mappedNode = _nodesByViewId[renderedViewId];
           print('🟢 STATELESS POST-RECONCILE: mappedNode=${mappedNode?.runtimeType}, newRenderedNode=${newRenderedNode.runtimeType}');
           print('🟢 STATELESS POST-RECONCILE: mapping matches=${mappedNode == newRenderedNode}');
@@ -1733,7 +1733,7 @@ class DCFEngine {
         }
         if (actualElement != null) {
           final elementViewId = actualElement.nativeViewId;
-          if (elementViewId != null && elementViewId.isNotEmpty) {
+          if (elementViewId != null) {
             final mappedNode = _nodesByViewId[elementViewId];
             if (mappedNode != actualElement) {
               EngineDebugLogger.log('RECONCILE_STATELESS_NESTED_ELEMENT_FIX',
@@ -1754,7 +1754,7 @@ class DCFEngine {
                   final renderedElement = child.renderedNode;
                   if (renderedElement is DCFElement) {
                     final childViewId = renderedElement.nativeViewId;
-                    if (childViewId != null && childViewId.isNotEmpty) {
+                    if (childViewId != null) {
                       final childMappedNode = _nodesByViewId[childViewId];
                       if (childMappedNode != renderedElement) {
                         _nodesByViewId[childViewId] = renderedElement;
@@ -1770,7 +1770,7 @@ class DCFEngine {
                   }
                 } else if (child is DCFElement) {
                   final childViewId = child.nativeViewId;
-                  if (childViewId != null && childViewId.isNotEmpty) {
+                  if (childViewId != null) {
                     final childMappedNode = _nodesByViewId[childViewId];
                     if (childMappedNode != child) {
                       _nodesByViewId[childViewId] = child;
@@ -1809,7 +1809,7 @@ class DCFEngine {
                 'NewChildCount': newNode.children.length
               });
           await _reconcileFragmentChildren(
-              parentViewId, oldNode.children, newNode.children);
+              parentViewId!, oldNode.children, newNode.children);
         }
       }
     }
@@ -2004,12 +2004,12 @@ class DCFEngine {
       
       // 🔧 FIX: Collect all child view IDs before deleting parent
       // This ensures we can clean up _nodesByViewId after Android deletes the views
-      final childViewIds = <String>[];
+      final childViewIds = <int>[];
       void collectChildViewIds(DCFComponentNode node) {
         if (node is DCFElement) {
           for (final child in node.children) {
             final childViewId = child.effectiveNativeViewId;
-            if (childViewId != null && childViewId.isNotEmpty) {
+            if (childViewId != null) {
               childViewIds.add(childViewId);
             }
             collectChildViewIds(child);
@@ -2048,7 +2048,7 @@ class DCFEngine {
 
       // CRITICAL: Ensure view ID is set IMMEDIATELY after renderToNative returns
       // This must happen before any other code tries to read effectiveNativeViewId
-      if (newViewId != null && newViewId.isNotEmpty) {
+      if (newViewId != null) {
         // Ensure the newNode has the view ID set correctly
         if (newNode is DCFElement) {
           newNode.nativeViewId = newViewId;
@@ -2409,7 +2409,7 @@ class DCFEngine {
       rootComponent = component;
       
       await _nativeBridge.startBatchUpdate();
-      await renderToNative(component, parentViewId: "root");
+      await renderToNative(component, parentViewId: 0);
       await _nativeBridge.commitBatchUpdate();
       
       // Clear structural shock flag after rendering is complete
@@ -2425,7 +2425,7 @@ class DCFEngine {
       rootComponent = component;
 
       await _nativeBridge.startBatchUpdate();
-      final viewId = await renderToNative(component, parentViewId: "root");
+      final viewId = await renderToNative(component, parentViewId: 0);
       await _nativeBridge.commitBatchUpdate();
       
       setRootComponent(component);
@@ -2437,7 +2437,7 @@ class DCFEngine {
   }
 
   /// Delete a view from the native side
-  Future<void> deleteView(String viewId) async {
+  Future<void> deleteView(int viewId) async {
     await isReady;
     EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
     await _nativeBridge.deleteView(viewId);
@@ -2492,7 +2492,7 @@ class DCFEngine {
 
   /// O(tree depth) - Find a node's parent view ID
   /// This walks up the tree to find the actual rendered element, not cached nativeViewIds
-  String? _findParentViewId(DCFComponentNode node) {
+  int? _findParentViewId(DCFComponentNode node) {
     print('🔍 PARENT_SEARCH: Starting search for parent of ${node.runtimeType} (viewId: ${node.effectiveNativeViewId})');
     final nodeViewId = node.effectiveNativeViewId;
     DCFComponentNode? current = node.parent;
@@ -2562,7 +2562,7 @@ class DCFEngine {
     print('🔍 PARENT_SEARCH: Reached end of tree, using root');
     EngineDebugLogger.log(
         'PARENT_VIEW_DEFAULT', 'No parent view found, using root');
-    return "root"; // Default to root if no parent found
+    return 0; // Default to root (tag 0) if no parent found
   }
 
   /// Enhanced find node index that works for components too
@@ -2746,10 +2746,10 @@ class DCFEngine {
       
       // CRITICAL: Store a snapshot of child view IDs before reconciliation
       // This allows us to verify and fix mappings after children reconciliation
-      final childViewIdsBeforeReconcile = <String, DCFElement>{};
+      final childViewIdsBeforeReconcile = <int, DCFElement>{};
       for (final child in oldElement.children) {
         final viewId = child.effectiveNativeViewId;
-        if (viewId != null && viewId.isNotEmpty) {
+        if (viewId != null) {
           final mappedNode = _nodesByViewId[viewId];
           if (mappedNode is DCFElement) {
             childViewIdsBeforeReconcile[viewId] = mappedNode;
@@ -2764,7 +2764,7 @@ class DCFEngine {
       // can corrupt the _nodesByViewId mapping for child elements
       for (final child in newElement.children) {
         final viewId = child.effectiveNativeViewId;
-        if (viewId != null && viewId.isNotEmpty) {
+        if (viewId != null) {
           final mappedNode = _nodesByViewId[viewId];
           
           if (child is DCFElement) {
@@ -2810,7 +2810,7 @@ class DCFEngine {
                       });
                   _nodesByViewId[viewId] = renderedElement;
                 }
-              } else if (renderedViewId != null && renderedViewId.isNotEmpty && mappedNode != renderedElement) {
+              } else if (renderedViewId != null && mappedNode != renderedElement) {
                 // Also check if the rendered element's view ID is mapped correctly
                 final renderedMappedNode = _nodesByViewId[renderedViewId];
                 if (renderedMappedNode != renderedElement) {
@@ -2864,7 +2864,7 @@ class DCFEngine {
       // CRITICAL: This is especially important for SafeArea's View children (Button components)
       for (final child in newElement.children) {
         final viewId = child.effectiveNativeViewId;
-        if (viewId != null && viewId.isNotEmpty) {
+        if (viewId != null) {
           final mappedNode = _nodesByViewId[viewId];
           
           if (child is DCFElement) {
@@ -2897,7 +2897,7 @@ class DCFEngine {
             final renderedElement = child.renderedNode;
             if (renderedElement is DCFElement) {
               final renderedViewId = renderedElement.nativeViewId;
-              if (renderedViewId != null && renderedViewId.isNotEmpty) {
+              if (renderedViewId != null) {
                 final renderedMappedNode = _nodesByViewId[renderedViewId];
                 if (renderedMappedNode != renderedElement) {
                   EngineDebugLogger.log('RECONCILE_ULTIMATE_RENDERED_FIX',
@@ -3137,7 +3137,7 @@ class DCFEngine {
 
   /// O(children reconciliation complexity) - Reconcile fragment children directly without a container element
   Future<void> _reconcileFragmentChildren(
-      String parentViewId,
+      int parentViewId,
       List<DCFComponentNode> oldChildren,
       List<DCFComponentNode> newChildren) async {
     EngineDebugLogger.log(
@@ -3161,7 +3161,7 @@ class DCFEngine {
   /// This matches React Native's Fiber reconciliation algorithm sophistication
   /// O(old children count + new children count + reconciliation complexity)
   Future<void> _reconcileKeyedChildren(
-      String parentViewId,
+      int parentViewId,
       List<DCFComponentNode> oldChildren,
       List<DCFComponentNode> newChildren) async {
     EngineDebugLogger.log(
@@ -3188,7 +3188,7 @@ class DCFEngine {
 
     // CRITICAL: Pre-allocate updatedChildIds to match newChildren length
     // This ensures we maintain the correct order even if some children fail reconciliation
-    final updatedChildIds = List<String?>.filled(newChildren.length, null);
+    final updatedChildIds = List<int?>.filled(newChildren.length, null);
     final processedOldChildren = <DCFComponentNode>{};
     bool hasStructuralChanges = false;
 
@@ -3197,7 +3197,7 @@ class DCFEngine {
       final key = _getNodeKey(newChild, i);
       final oldChild = oldChildrenMap[key];
 
-      String? childViewId;
+      int? childViewId;
 
       if (oldChild != null) {
         EngineDebugLogger.log(
@@ -3227,7 +3227,7 @@ class DCFEngine {
       }
 
       // CRITICAL: Store viewId at the correct index to maintain order
-      if (childViewId != null && childViewId.isNotEmpty) {
+                    if (childViewId != null) {
         updatedChildIds[i] = childViewId;
       }
     }
@@ -3258,10 +3258,10 @@ class DCFEngine {
     }
 
     // CRITICAL: Filter out null values and ensure order matches newChildren
-    final validChildIds = <String>[];
+    final validChildIds = <int>[];
     final missingIndices = <int>[];
     for (int i = 0; i < updatedChildIds.length; i++) {
-      if (updatedChildIds[i] != null && updatedChildIds[i]!.isNotEmpty) {
+      if (updatedChildIds[i] != null) {
         validChildIds.add(updatedChildIds[i]!);
       } else {
         missingIndices.add(i);
@@ -3332,7 +3332,7 @@ class DCFEngine {
   /// - Mixed insertions and removals
   /// - Type mismatches (replaces correctly)
   Future<void> _reconcileSimpleChildren(
-      String parentViewId,
+      int parentViewId,
       List<DCFComponentNode> oldChildren,
       List<DCFComponentNode> newChildren) async {
     EngineDebugLogger.log(
@@ -3345,7 +3345,7 @@ class DCFEngine {
 
     // CRITICAL: Pre-allocate updatedChildIds to match newChildren length
     // This ensures we maintain the correct order even if some children fail reconciliation
-    final updatedChildIds = List<String?>.filled(newChildren.length, null);
+    final updatedChildIds = List<int?>.filled(newChildren.length, null);
     bool hasStructuralChanges = false;
     bool hasReplacements = false;
     int replacementCount = 0;
@@ -3426,7 +3426,7 @@ class DCFEngine {
         final childViewId = await renderToNative(newChild,
             parentViewId: parentViewId, index: newIndex);
         
-        if (childViewId != null && childViewId.isNotEmpty) {
+                    if (childViewId != null) {
           updatedChildIds[newIndex] = childViewId;
         }
         
@@ -3515,7 +3515,7 @@ class DCFEngine {
             'IsRemoval': isRemoval
           });
 
-      String? childViewId;
+      int? childViewId;
       bool wasInsertion = false;
       
       if (isInsertion && !positionsMatch) {
@@ -3529,7 +3529,7 @@ class DCFEngine {
         childViewId = await renderToNative(newChild,
             parentViewId: parentViewId, index: newIndex);
         
-        if (childViewId != null && childViewId.isNotEmpty) {
+                    if (childViewId != null) {
           updatedChildIds[newIndex] = childViewId;
           EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
               'Added view ID to updatedChildIds at index $newIndex',
@@ -3614,7 +3614,7 @@ class DCFEngine {
           childViewId = await renderToNative(newChild,
               parentViewId: parentViewId, index: newIndex);
           
-          if (childViewId != null && childViewId.isNotEmpty) {
+                    if (childViewId != null) {
             updatedChildIds[newIndex] = childViewId;
           }
           
@@ -3638,7 +3638,7 @@ class DCFEngine {
         childViewId = newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
         
         // CRITICAL: After reconciling each child, IMMEDIATELY ensure the mapping points to newChild
-        if (childViewId != null && childViewId.isNotEmpty) {
+                    if (childViewId != null) {
           final mappedNode = _nodesByViewId[childViewId];
           
           if (newChild is DCFElement) {
@@ -3656,7 +3656,7 @@ class DCFEngine {
             final renderedElement = newChild.renderedNode;
             if (renderedElement is DCFElement) {
               final renderedViewId = renderedElement.nativeViewId;
-              if (renderedViewId != null && renderedViewId.isNotEmpty) {
+              if (renderedViewId != null) {
                 final renderedMappedNode = _nodesByViewId[renderedViewId];
                 if (renderedMappedNode != renderedElement) {
                   _nodesByViewId[renderedViewId] = renderedElement;
@@ -3685,18 +3685,18 @@ class DCFEngine {
         childViewId = newChild.effectiveNativeViewId;
         
         // Fallback strategies for view ID (same as before)
-        if (childViewId == null || childViewId.isEmpty) {
+        if (childViewId == null) {
           if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
             final renderedNode = newChild.renderedNode;
             if (renderedNode is DCFElement) {
               childViewId = renderedNode.nativeViewId;
-              if (childViewId != null && childViewId.isNotEmpty) {
+              if (childViewId != null) {
                 newChild.contentViewId = childViewId;
               }
             }
           }
           
-          if ((childViewId == null || childViewId.isEmpty) && newChild is DCFElement) {
+          if (childViewId == null && newChild is DCFElement) {
             for (final entry in _nodesByViewId.entries) {
               if (entry.value == newChild) {
                 childViewId = entry.key;
@@ -3706,7 +3706,7 @@ class DCFEngine {
             }
           }
           
-          if ((childViewId == null || childViewId.isEmpty) && oldViewId != null && oldViewId.isNotEmpty) {
+          if (childViewId == null && oldViewId != null) {
             if (_nodesByViewId.containsKey(oldViewId)) {
               final registeredNode = _nodesByViewId[oldViewId];
               if (registeredNode == newChild || 
@@ -3735,12 +3735,12 @@ class DCFEngine {
         final storeIndex = newIndex - 1; // newIndex was already incremented
         
         // CRITICAL: If childViewId is null/empty, try to get it from the node after reconciliation
-        if (childViewId == null || childViewId.isEmpty) {
+        if (childViewId == null) {
           // Try to get viewId from newChild after reconciliation
           childViewId = newChild.effectiveNativeViewId;
         
           // If still null, try to get it from oldChild (shouldn't happen, but safety check)
-          if ((childViewId == null || childViewId.isEmpty) && oldChild.effectiveNativeViewId != null) {
+          if (childViewId == null && oldChild.effectiveNativeViewId != null) {
             childViewId = oldChild.effectiveNativeViewId;
             // Update newChild to use the old viewId
           if (newChild is DCFElement) {
@@ -3751,7 +3751,7 @@ class DCFEngine {
           }
           
           // Final fallback: search _nodesByViewId for the node
-          if (childViewId == null || childViewId.isEmpty) {
+          if (childViewId == null) {
             for (final entry in _nodesByViewId.entries) {
               if (entry.value == newChild || 
                   (newChild is DCFStatefulComponent && entry.value == newChild.renderedNode) ||
@@ -3768,7 +3768,7 @@ class DCFEngine {
           }
         }
         
-      if (childViewId != null && childViewId.isNotEmpty) {
+                    if (childViewId != null) {
           updatedChildIds[storeIndex] = childViewId;
         EngineDebugLogger.log('RECONCILE_SIMPLE_VIEW_ID_ADDED',
               'Added view ID to updatedChildIds',
@@ -3826,7 +3826,7 @@ class DCFEngine {
       final childViewId = await renderToNative(newChild,
           parentViewId: parentViewId, index: newIndex);
       
-      if (childViewId != null && childViewId.isNotEmpty) {
+                    if (childViewId != null) {
         updatedChildIds[newIndex] = childViewId;
         EngineDebugLogger.log('RECONCILE_SIMPLE_END_VIEW_ID_ADDED',
             'Added view ID for end child',
@@ -3848,10 +3848,10 @@ class DCFEngine {
 
     // CRITICAL: Filter out null values and ensure order matches newChildren
     // This ensures updatedChildIds[i] corresponds to newChildren[i]
-    final validChildIds = <String>[];
+    final validChildIds = <int>[];
     final missingIndices = <int>[];
     for (int i = 0; i < updatedChildIds.length; i++) {
-      if (updatedChildIds[i] != null && updatedChildIds[i]!.isNotEmpty) {
+      if (updatedChildIds[i] != null) {
         validChildIds.add(updatedChildIds[i]!);
       } else {
         missingIndices.add(i);
@@ -3926,7 +3926,7 @@ class DCFEngine {
   }
 
   /// O(1) - Move a child to a specific index in its parent
-  Future<void> _moveChild(String childId, String parentId, int index) async {
+  Future<void> _moveChild(int childId, int parentId, int index) async {
     EngineDebugLogger.logBridge('MOVE_CHILD', childId,
         data: {'ParentId': parentId, 'NewIndex': index});
 

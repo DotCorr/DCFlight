@@ -37,7 +37,7 @@ class DCMauiBridgeImpl private constructor() {
         val shared = DCMauiBridgeImpl()
     }
 
-    internal val views = ConcurrentHashMap<String, View>()
+    internal val views = ConcurrentHashMap<Int, View>()
     private val viewHierarchy = ConcurrentHashMap<String, MutableList<String>>()
     private val childToParent = ConcurrentHashMap<String, String>()
     private var appContext: Context? = null
@@ -129,7 +129,7 @@ class DCMauiBridgeImpl private constructor() {
      * @param propsJson JSON string containing view properties
      * @return `true` if the view was created successfully, `false` otherwise
      */
-    fun createView(viewId: String, viewType: String, propsJson: String): Boolean {
+    fun createView(viewId: Int, viewType: String, propsJson: String): Boolean {
         return try {
             val existingView = ViewRegistry.shared.getView(viewId)
             if (existingView != null) {
@@ -191,7 +191,7 @@ class DCMauiBridgeImpl private constructor() {
      * @param propsJson JSON string containing property changes
      * @return `true` if the view was updated successfully, `false` otherwise
      */
-    fun updateView(viewId: String, propsJson: String): Boolean {
+    fun updateView(viewId: Int, propsJson: String): Boolean {
         return try {
             val props = if (propsJson.isNotEmpty()) {
                 parseJsonToMap(propsJson)
@@ -215,9 +215,9 @@ class DCMauiBridgeImpl private constructor() {
      * @param viewId Unique identifier for the view to delete
      * @return `true` if the view was deleted successfully, `false` otherwise
      */
-    fun deleteView(viewId: String): Boolean {
+    fun deleteView(viewId: Int): Boolean {
         return try {
-            deleteChildrenRecursively(viewId)
+            deleteChildrenRecursively(viewId.toString())
             
             val view = ViewRegistry.shared.getView(viewId)
             val viewType = ViewRegistry.shared.getViewType(viewId)
@@ -227,11 +227,11 @@ class DCMauiBridgeImpl private constructor() {
                 parentView?.removeView(view)
             }
             
-            cleanupHierarchyReferences(viewId)
+            cleanupHierarchyReferences(viewId.toString())
             
             ViewRegistry.shared.removeView(viewId)
             views.remove(viewId)
-            YogaShadowTree.shared.removeNode(viewId)
+            YogaShadowTree.shared.removeNode(viewId.toString())
             
             true
         } catch (e: Exception) {
@@ -251,7 +251,7 @@ class DCMauiBridgeImpl private constructor() {
      * @param index Position in the parent's child list
      * @return `true` if the view was attached successfully, `false` otherwise
      */
-    fun attachView(childId: String, parentId: String, index: Int): Boolean {
+    fun attachView(childId: Int, parentId: Int, index: Int): Boolean {
         return try {
             val childView = ViewRegistry.shared.getView(childId)
             val parentView = ViewRegistry.shared.getView(parentId)
@@ -288,8 +288,8 @@ class DCMauiBridgeImpl private constructor() {
                 throw e
             }
 
-            childToParent[childId] = parentId
-            viewHierarchy.getOrPut(parentId) { mutableListOf() }.add(childId)
+            childToParent[childId.toString()] = parentId.toString()
+            viewHierarchy.getOrPut(parentId.toString()) { mutableListOf() }.add(childId.toString())
 
             YogaShadowTree.shared.addChildNode(parentId, childId, index)
 
@@ -300,7 +300,7 @@ class DCMauiBridgeImpl private constructor() {
         }
     }
 
-    fun detachView(viewId: String): Boolean {
+    fun detachView(viewId: Int): Boolean {
         return try {
             val view = ViewRegistry.shared.getView(viewId)
             if (view == null) {
@@ -311,12 +311,13 @@ class DCMauiBridgeImpl private constructor() {
             val parentView = view.parent as? ViewGroup
             parentView?.removeView(view)
 
-            val parentId = childToParent.remove(viewId)
+            val viewIdStr = viewId.toString()
+            val parentId = childToParent.remove(viewIdStr)
             if (parentId != null) {
-                viewHierarchy[parentId]?.remove(viewId)
+                viewHierarchy[parentId]?.remove(viewIdStr)
             }
 
-            YogaShadowTree.shared.removeNode(viewId)
+            YogaShadowTree.shared.removeNode(viewIdStr)
 
             true
         } catch (e: Exception) {
@@ -334,7 +335,7 @@ class DCMauiBridgeImpl private constructor() {
      * @param childrenIds List of child view identifiers in order
      * @return `true` if children were set successfully, `false` otherwise
      */
-    fun setChildren(viewId: String, childrenIds: List<String>): Boolean {
+    fun setChildren(viewId: Int, childrenIds: List<Int>): Boolean {
         return try {
             val parentView = ViewRegistry.shared.getView(viewId)
             
@@ -395,10 +396,12 @@ class DCMauiBridgeImpl private constructor() {
                 }
                 
                 // Update view hierarchy
-                viewHierarchy[viewId]?.clear()
+                val viewIdStr = viewId.toString()
+                viewHierarchy[viewIdStr]?.clear()
                 childrenIds.forEach { childId ->
-                    childToParent[childId] = viewId
-                    viewHierarchy.getOrPut(viewId) { mutableListOf() }.add(childId)
+                    val childIdStr = childId.toString()
+                    childToParent[childIdStr] = viewIdStr
+                    viewHierarchy.getOrPut(viewIdStr) { mutableListOf() }.add(childIdStr)
                     DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = childrenIds.indexOf(childId))
                 }
                 
@@ -408,14 +411,16 @@ class DCMauiBridgeImpl private constructor() {
 
             // Fallback to default behavior
             parentViewGroup.removeAllViews()
-            viewHierarchy[viewId]?.clear()
+            val viewIdStr = viewId.toString()
+            viewHierarchy[viewIdStr]?.clear()
 
-            registeredChildIds.forEachIndexed { index: Int, childId: String ->
+            registeredChildIds.forEachIndexed { index: Int, childId: Int ->
                 val childView = ViewRegistry.shared.getView(childId)
                 if (childView != null) {
                     parentViewGroup.addView(childView)
-                    childToParent[childId] = viewId
-                    viewHierarchy.getOrPut(viewId) { mutableListOf() }.add(childId)
+                    val childIdStr = childId.toString()
+                    childToParent[childIdStr] = viewIdStr
+                    viewHierarchy.getOrPut(viewIdStr) { mutableListOf() }.add(childIdStr)
                     
                     DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
                 }
@@ -441,10 +446,10 @@ class DCMauiBridgeImpl private constructor() {
      * @return `true` if all operations succeeded, `false` otherwise
      */
     fun commitBatchUpdate(operations: List<Map<String, Any>>): Boolean {
-        data class CreateOp(val viewId: String, val viewType: String, val propsJson: String)
-        data class UpdateOp(val viewId: String, val propsJson: String)
-        data class AttachOp(val childId: String, val parentId: String, val index: Int)
-        data class AddEventListenersOp(val viewId: String, val eventTypes: List<String>)
+        data class CreateOp(val viewId: Int, val viewType: String, val propsJson: String)
+        data class UpdateOp(val viewId: Int, val propsJson: String)
+        data class AttachOp(val childId: Int, val parentId: Int, val index: Int)
+        data class AddEventListenersOp(val viewId: Int, val eventTypes: List<String>)
         
         val createOps = mutableListOf<CreateOp>()
         val updateOps = mutableListOf<UpdateOp>()
@@ -458,7 +463,7 @@ class DCMauiBridgeImpl private constructor() {
             
             when (operationType) {
                 "createView" -> {
-                    val viewId = operation["viewId"] as? String
+                    val viewId = (operation["viewId"] as? Number)?.toInt() ?: (operation["viewId"] as? Int)
                     val viewType = operation["viewType"] as? String
                     
                     if (viewId != null && viewType != null) {
@@ -475,7 +480,7 @@ class DCMauiBridgeImpl private constructor() {
                 }
                 
                 "updateView" -> {
-                    val viewId = operation["viewId"] as? String
+                    val viewId = (operation["viewId"] as? Number)?.toInt() ?: (operation["viewId"] as? Int)
                     
                     if (viewId != null) {
                         val propsJson = operation["propsJson"] as? String ?: run {
@@ -491,8 +496,8 @@ class DCMauiBridgeImpl private constructor() {
                 }
                 
                 "attachView" -> {
-                    val childId = operation["childId"] as? String
-                    val parentId = operation["parentId"] as? String
+                    val childId = (operation["childId"] as? Number)?.toInt() ?: (operation["childId"] as? Int)
+                    val parentId = (operation["parentId"] as? Number)?.toInt() ?: (operation["parentId"] as? Int)
                     val index = operation["index"] as? Int
                     if (childId != null && parentId != null && index != null) {
                         attachOps.add(AttachOp(childId, parentId, index))
@@ -500,7 +505,7 @@ class DCMauiBridgeImpl private constructor() {
                 }
                 
                 "addEventListeners" -> {
-                    val viewId = operation["viewId"] as? String
+                    val viewId = (operation["viewId"] as? Number)?.toInt() ?: (operation["viewId"] as? Int)
                     val eventTypes = operation["eventTypes"] as? List<String>
                     if (viewId != null && eventTypes != null) {
                         eventOps.add(AddEventListenersOp(viewId, eventTypes))
@@ -531,7 +536,7 @@ class DCMauiBridgeImpl private constructor() {
             val screenWidth = displayMetrics.widthPixels.toFloat()
             val screenHeight = displayMetrics.heightPixels.toFloat()
             
-            val rootView = ViewRegistry.shared.getView("root")
+            val rootView = ViewRegistry.shared.getView(0)
             rootView?.let { root ->
                 root.measure(
                     View.MeasureSpec.makeMeasureSpec(screenWidth.toInt(), View.MeasureSpec.EXACTLY),
@@ -541,12 +546,16 @@ class DCMauiBridgeImpl private constructor() {
             
             YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
             
-            // Make all views visible after layout
+            // Make all views visible after layout (except root which is always visible)
             ViewRegistry.shared.allViewIds.forEach { viewId ->
-                val view = ViewRegistry.shared.getView(viewId)
-                view?.let {
-                    it.visibility = View.VISIBLE
-                    it.alpha = 1.0f
+                if (viewId != 0) { // Root is always visible
+                    val view = ViewRegistry.shared.getView(viewId)
+                    view?.let {
+                        if (it.visibility != View.VISIBLE || it.alpha < 1.0f) {
+                            it.visibility = View.VISIBLE
+                            it.alpha = 1.0f
+                        }
+                    }
                 }
             }
             

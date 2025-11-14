@@ -41,9 +41,9 @@ class DCFLayoutManager private constructor() {
 
     private val absoluteLayoutViews = mutableSetOf<View>()
 
-    internal val viewRegistry = ConcurrentHashMap<String, View>()
+    internal val viewRegistry = ConcurrentHashMap<Int, View>()
 
-    private val pendingLayouts = ConcurrentHashMap<String, Rect>()
+    private val pendingLayouts = ConcurrentHashMap<Int, Rect>()
     private val isLayoutUpdateScheduled = AtomicBoolean(false)
 
     private val needsLayoutCalculation = AtomicBoolean(false)
@@ -135,12 +135,12 @@ class DCFLayoutManager private constructor() {
         }
     }
 
-    private val pendingViewAttachments = mutableMapOf<String, PendingAttachment>()
+    private val pendingViewAttachments = mutableMapOf<Int, PendingAttachment>()
     private var isInDelayedRenderingMode = false
     
     data class PendingAttachment(
         val view: View,
-        val parentId: String,
+        val parentId: Int,
         val index: Int
     )
     
@@ -181,7 +181,7 @@ class DCFLayoutManager private constructor() {
      * @param view The view to register
      * @param viewId Unique identifier for the view
      */
-    fun registerView(view: View, viewId: String) {
+    fun registerView(view: View, viewId: Int) {
         viewRegistry[viewId] = view
     }
 
@@ -192,7 +192,7 @@ class DCFLayoutManager private constructor() {
      * 
      * @param viewId Unique identifier for the view to unregister
      */
-    fun unregisterView(viewId: String) {
+    fun unregisterView(viewId: Int) {
         val view = viewRegistry.remove(viewId)
         view?.let {
             absoluteLayoutViews.remove(it)
@@ -202,7 +202,7 @@ class DCFLayoutManager private constructor() {
     /**
      * Get view by ID
      */
-    fun getView(viewId: String): View? = viewRegistry[viewId]
+    fun getView(viewId: Int): View? = viewRegistry[viewId]
 
 
     /**
@@ -221,7 +221,7 @@ class DCFLayoutManager private constructor() {
     /**
      * Clean up resources for a view
      */
-    fun cleanUp(viewId: String) {
+    fun cleanUp(viewId: Int) {
         val view = viewRegistry[viewId]
         view?.let {
             absoluteLayoutViews.remove(it)
@@ -234,7 +234,7 @@ class DCFLayoutManager private constructor() {
      * Apply calculated layout to a view with optional animation - MATCH iOS exactly
      * Now uses component.applyLayout() instead of direct view manipulation
      */
-    fun applyLayout(viewId: String, left: Float, top: Float, width: Float, height: Float, animationDuration: Long = 0): Boolean {
+    fun applyLayout(viewId: Int, left: Float, top: Float, width: Float, height: Float, animationDuration: Long = 0): Boolean {
         val view = getView(viewId) ?: return false
 
         val layout = DCFNodeLayout(
@@ -259,7 +259,7 @@ class DCFLayoutManager private constructor() {
      * Apply layout without making view visible
      * Used for batch layout application to prevent flash
      */
-    fun applyLayoutWithoutVisibility(viewId: String, left: Float, top: Float, width: Float, height: Float): Boolean {
+    fun applyLayoutWithoutVisibility(viewId: Int, left: Float, top: Float, width: Float, height: Float): Boolean {
         val view = getView(viewId) ?: return false
 
         val frame = Rect(
@@ -277,7 +277,7 @@ class DCFLayoutManager private constructor() {
      * Apply layout using component.applyLayout() - MATCH iOS architecture
      * This removes "glue code" and lets components handle their own layout/transforms
      */
-    private fun applyLayoutDirectly(viewId: String, view: View, layout: DCFNodeLayout, animationDuration: Long) {
+    private fun applyLayoutDirectly(viewId: Int, view: View, layout: DCFNodeLayout, animationDuration: Long) {
         if (view.parent == null && view.rootView == null) {
             return
         }
@@ -400,7 +400,7 @@ class DCFLayoutManager private constructor() {
     /**
      * Queue layout update to happen off the main thread
      */
-    fun queueLayoutUpdate(viewId: String, left: Float, top: Float, width: Float, height: Float): Boolean {
+    fun queueLayoutUpdate(viewId: Int, left: Float, top: Float, width: Float, height: Float): Boolean {
         if (!viewRegistry.containsKey(viewId)) {
             return false
         }
@@ -428,7 +428,7 @@ class DCFLayoutManager private constructor() {
 
         isLayoutUpdateScheduled.set(false)
 
-        val layoutsToApply = mutableMapOf<String, Rect>()
+        val layoutsToApply = mutableMapOf<Int, Rect>()
 
         layoutExecutor.execute {
             layoutsToApply.putAll(pendingLayouts)
@@ -476,11 +476,12 @@ class DCFLayoutManager private constructor() {
      * @param componentInstance The component instance to notify
      */
     fun registerView(view: View, nodeId: String, componentType: String, componentInstance: DCFComponent) {
-        registerView(view, nodeId)
+        val nodeIdInt = nodeId.toIntOrNull() ?: return
+        registerView(view, nodeIdInt)
 
         componentInstance.viewRegisteredWithShadowTree(view, nodeId)
 
-        if (nodeId == "root") {
+        if (nodeIdInt == 0) {
             triggerLayoutCalculation()
         }
     }
@@ -494,7 +495,7 @@ class DCFLayoutManager private constructor() {
      * @param childId Unique identifier for the child node
      * @param index Position in the parent's child list
      */
-    fun addChildNode(parentId: String, childId: String, index: Int) {
+    fun addChildNode(parentId: Int, childId: Int, index: Int) {
         YogaShadowTree.shared.addChildNode(parentId, childId, index)
 
         needsLayoutCalculation.set(true)

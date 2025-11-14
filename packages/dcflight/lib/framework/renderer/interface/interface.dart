@@ -22,34 +22,34 @@ abstract class PlatformInterface {
   Future<bool> initialize();
 
   /// Create a view with the specified ID, type, and properties
-  Future<bool> createView(String viewId, String type, Map<String, dynamic> props);
+  Future<bool> createView(int viewId, String type, Map<String, dynamic> props);
 
   /// Update properties for an existing view
-  Future<bool> updateView(String viewId, Map<String, dynamic> propPatches);
+  Future<bool> updateView(int viewId, Map<String, dynamic> propPatches);
 
   /// Delete a view
-  Future<bool> deleteView(String viewId);
+  Future<bool> deleteView(int viewId);
 
   /// Detach a view from its parent without deleting it
-  Future<bool> detachView(String viewId);
+  Future<bool> detachView(int viewId);
 
   /// Attach a child view to a parent at the specified index
-  Future<bool> attachView(String childId, String parentId, int index);
+  Future<bool> attachView(int childId, int parentId, int index);
 
   /// Set all children for a view (replacing any existing children)
-  Future<bool> setChildren(String viewId, List<String> childrenIds);
+  Future<bool> setChildren(int viewId, List<int> childrenIds);
 
   /// Add event listeners to a view
-  Future<bool> addEventListeners(String viewId, List<String> eventTypes);
+  Future<bool> addEventListeners(int viewId, List<String> eventTypes);
 
   /// Remove event listeners from a view
-  Future<bool> removeEventListeners(String viewId, List<String> eventTypes);
+  Future<bool> removeEventListeners(int viewId, List<String> eventTypes);
 
   /// Register a specific callback for a view's event
-  void registerEventCallback(String viewId, String eventType, Function callback);
+  void registerEventCallback(int viewId, String eventType, Function callback);
 
   /// Set a global event handler for all events
-  void setEventHandler(Function(String viewId, String eventType, Map<String, dynamic> eventData) handler);
+  void setEventHandler(Function(int viewId, String eventType, Map<String, dynamic> eventData) handler);
 
 
 
@@ -63,7 +63,7 @@ abstract class PlatformInterface {
   Future<bool> cancelBatchUpdate();
 
   /// Handle an event from native code
-  void handleNativeEvent(String viewId, String eventType, Map<String, dynamic> eventData);
+  void handleNativeEvent(int viewId, String eventType, Map<String, dynamic> eventData);
 
   /// ✅ NEW: Universal tunnel for direct component method calls
   /// Bypasses VDOM and calls component methods directly on native side

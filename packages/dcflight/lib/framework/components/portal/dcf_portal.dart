@@ -31,7 +31,7 @@ class DCFPortal extends DCFStatefulComponent {
   final List<DCFComponentNode> children;
   
   /// Track rendered child view IDs for cleanup
-  List<String> _renderedChildViewIds = [];
+  List<int> _renderedChildViewIds = [];
   
   /// Previous target for change detection
   String? _prevTarget;
@@ -142,10 +142,10 @@ class DCFPortal extends DCFStatefulComponent {
       // CRITICAL: Don't clear _renderedChildViewIds here - we need to track old IDs
       // for cleanup. Only clear after new children are successfully rendered.
       // Store old IDs for cleanup
-      final oldRenderedChildViewIds = List<String>.from(_renderedChildViewIds);
+      final oldRenderedChildViewIds = List<int>.from(_renderedChildViewIds);
       
       // Prepare new list for tracking
-      final newRenderedChildViewIds = <String>[];
+      final newRenderedChildViewIds = <int>[];
       
       // If no children, cleanup old views and return
       if (children.isEmpty) {
@@ -169,19 +169,19 @@ class DCFPortal extends DCFStatefulComponent {
       
       // CRITICAL: Resolve target to actual view ID
       // First check if it's a PortalTarget ID, otherwise use as-is (for backward compatibility)
-      String actualTargetViewId;
+      int? actualTargetViewId;
       
       // Check PortalTarget registry first
       if (PortalTargetRegistry().has(target)) {
         final viewId = PortalTargetRegistry().getViewId(target);
-        if (viewId == null || viewId.isEmpty) {
+        if (viewId == null) {
           if (kDebugMode) {
             print('⚠️ DCFPortal: PortalTarget "$target" exists but has no view ID yet. Waiting for mount...');
           }
           // Target exists but not mounted yet - wait a bit and retry
           await Future.delayed(const Duration(milliseconds: 50));
           final retryViewId = PortalTargetRegistry().getViewId(target);
-          if (retryViewId == null || retryViewId.isEmpty) {
+          if (retryViewId == null) {
             if (kDebugMode) {
               print('❌ DCFPortal: PortalTarget "$target" still has no view ID after wait');
             }
@@ -202,11 +202,21 @@ class DCFPortal extends DCFStatefulComponent {
           if (kDebugMode) {
             print('⚠️ DCFPortal: Using "root" as target is not recommended. Use DCFPortalTarget instead.');
           }
+          actualTargetViewId = 0; // Root is tag 0
+        } else {
+          // Try to parse as int for backward compatibility
+          actualTargetViewId = int.tryParse(target);
+          if (actualTargetViewId == null) {
+            if (kDebugMode) {
+              print('❌ DCFPortal: Target "$target" is not a valid PortalTarget ID or view ID');
+            }
+            await engine.commitBatchUpdate();
+            return;
+          }
         }
-        actualTargetViewId = target;
       }
       
-      if (actualTargetViewId.isEmpty) {
+      if (actualTargetViewId == null) {
         if (kDebugMode) {
           print('❌ DCFPortal: Empty target view ID, cannot render');
         }
@@ -227,7 +237,7 @@ class DCFPortal extends DCFStatefulComponent {
           index: i,
         );
         
-        if (childViewId != null && childViewId.isNotEmpty) {
+        if (childViewId != null) {
           newRenderedChildViewIds.add(childViewId);
           if (kDebugMode) {
             print('✅ DCFPortal: Rendered child $i with viewId: $childViewId');

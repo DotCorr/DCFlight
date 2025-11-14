@@ -150,7 +150,7 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
     }
 
     private fun handleCreateView(args: Map<String, Any>, result: Result) {
-        val viewId = args["viewId"] as? String
+        val viewId = (args["viewId"] as? Number)?.toInt() ?: (args["viewId"] as? Int)
         val viewType = args["viewType"] as? String
         val props = args["props"] as? Map<String, Any>
 
@@ -174,7 +174,7 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
 
     private fun handleUpdateView(args: Map<String, Any>, result: Result) {
         Log.d(TAG, "🔥 METHOD_CHANNEL: handleUpdateView called with args: $args")
-        val viewId = args["viewId"] as? String
+        val viewId = (args["viewId"] as? Number)?.toInt() ?: (args["viewId"] as? Int)
         val props = args["props"] as? Map<String, Any>
 
         if (viewId == null || props == null) {
@@ -203,7 +203,7 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
     }
 
     private fun handleDeleteView(args: Map<String, Any>, result: Result) {
-        val viewId = args["viewId"] as? String
+        val viewId = (args["viewId"] as? Number)?.toInt() ?: (args["viewId"] as? Int)
 
         if (viewId == null) {
             result.error("DELETE_ERROR", "Invalid view ID", null)
@@ -217,8 +217,8 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
     }
 
     private fun handleAttachView(args: Map<String, Any>, result: Result) {
-        val childId = args["childId"] as? String
-        val parentId = args["parentId"] as? String
+        val childId = (args["childId"] as? Number)?.toInt() ?: (args["childId"] as? Int)
+        val parentId = (args["parentId"] as? Number)?.toInt() ?: (args["parentId"] as? Int)
         val index = args["index"] as? Int
 
         if (childId == null || parentId == null || index == null) {
@@ -233,7 +233,7 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
     }
 
     private fun handleDetachView(args: Map<String, Any>, result: Result) {
-        val viewId = args["viewId"] as? String
+        val viewId = (args["viewId"] as? Number)?.toInt() ?: (args["viewId"] as? Int)
 
         if (viewId == null) {
             result.error("DETACH_ERROR", "Invalid view ID", null)
@@ -247,8 +247,8 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
     }
 
     private fun handleSetChildren(args: Map<String, Any>, result: Result) {
-        val viewId = args["viewId"] as? String
-        val childrenIds = args["childrenIds"] as? List<String>
+        val viewId = (args["viewId"] as? Number)?.toInt() ?: (args["viewId"] as? Int)
+        val childrenIds = (args["childrenIds"] as? List<*>)?.mapNotNull { (it as? Number)?.toInt() ?: (it as? Int) }
 
         if (viewId == null || childrenIds == null) {
             result.error("SET_CHILDREN_ERROR", "Invalid set children parameters", null)
@@ -280,7 +280,7 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
         }
     }
 
-    private fun getView(viewId: String, callback: (View?) -> Unit) {
+    private fun getView(viewId: Int, callback: (View?) -> Unit) {
         val view = ViewRegistry.shared.getView(viewId)
         callback(view)
     }

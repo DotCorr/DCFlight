@@ -26,27 +26,27 @@ class ViewRegistry private constructor() {
 
     data class ViewTypeInfo(val view: View, val type: String)
     
-    private val registry = ConcurrentHashMap<String, ViewTypeInfo>()
+    private val registry = ConcurrentHashMap<Int, ViewTypeInfo>()
 
-    fun registerView(view: View, id: String, type: String) {
+    fun registerView(view: View, id: Int, type: String) {
         registry[id] = ViewTypeInfo(view, type)
         DCFLayoutManager.shared.registerView(view, id)
         Log.d(TAG, "Registered view: $id of type: $type")
     }
 
-    fun getViewInfo(id: String): ViewTypeInfo? {
+    fun getViewInfo(id: Int): ViewTypeInfo? {
         return registry[id]
     }
 
-    fun getView(id: String): View? {
+    fun getView(id: Int): View? {
         return registry[id]?.view
     }
 
-    fun getViewType(id: String): String? {
+    fun getViewType(id: Int): String? {
         return registry[id]?.type
     }
 
-    fun removeView(id: String) {
+    fun removeView(id: Int) {
         val viewInfo = registry.remove(id)
         if (viewInfo != null) {
             DCFLayoutManager.shared.unregisterView(id)
@@ -54,11 +54,11 @@ class ViewRegistry private constructor() {
         }
     }
 
-    fun hasView(id: String): Boolean {
+    fun hasView(id: Int): Boolean {
         return registry.containsKey(id)
     }
 
-    val allViewIds: List<String>
+    val allViewIds: List<Int>
         get() = registry.keys.toList()
 
     fun cleanup() {
@@ -76,12 +76,12 @@ class ViewRegistry private constructor() {
      * This prevents the first view from not getting cleared off the view manager
      */
     fun clearAllExceptRoot() {
-        Log.d(TAG, "Clearing all views except 'root' from ViewRegistry")
-        val rootViewInfo = registry["root"]
+        Log.d(TAG, "Clearing all views except root (tag 0) from ViewRegistry")
+        val rootViewInfo = registry[0]
         registry.clear()
         
         if (rootViewInfo != null) {
-            registry["root"] = rootViewInfo
+            registry[0] = rootViewInfo
             Log.d(TAG, "Preserved root view during cleanup")
         }
         

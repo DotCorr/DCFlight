@@ -42,8 +42,8 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
 
     internal var methodChannel: MethodChannel? = null
 
-    private val eventCallbacks = ConcurrentHashMap<String, MutableMap<String, EventCallback>>()
-    private val viewEventListeners = ConcurrentHashMap<String, MutableSet<String>>()
+    private val eventCallbacks = ConcurrentHashMap<Int, MutableMap<String, EventCallback>>()
+    private val viewEventListeners = ConcurrentHashMap<Int, MutableSet<String>>()
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
@@ -69,7 +69,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     }
 
     private fun handleRegisterEvent(args: Map<String, Any>?, result: Result) {
-        val viewId = args?.get("viewId") as? String
+        val viewId = (args?.get("viewId") as? Number)?.toInt() ?: (args?.get("viewId") as? Int)
         val eventType = args?.get("eventType") as? String
         val callbackId = args?.get("callbackId") as? String
 
@@ -97,7 +97,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     }
 
     private fun handleUnregisterEvent(args: Map<String, Any>?, result: Result) {
-        val viewId = args?.get("viewId") as? String
+        val viewId = (args?.get("viewId") as? Number)?.toInt() ?: (args?.get("viewId") as? Int)
         val eventType = args?.get("eventType") as? String
 
         if (viewId == null || eventType == null) {
@@ -117,7 +117,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     }
 
     private fun handleDispatchEvent(args: Map<String, Any>?, result: Result) {
-        val viewId = args?.get("viewId") as? String
+        val viewId = (args?.get("viewId") as? Number)?.toInt() ?: (args?.get("viewId") as? Int)
         val eventType = args?.get("eventType") as? String
         val eventData = args?.get("eventData") as? Map<String, Any>
 
@@ -200,7 +200,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     }
 
     private fun handleAddEventListeners(args: Map<String, Any>?, result: Result) {
-        val viewId = args?.get("viewId") as? String
+        val viewId = (args?.get("viewId") as? Number)?.toInt() ?: (args?.get("viewId") as? Int)
         val eventTypes = args?.get("eventTypes") as? List<String>
 
         if (viewId == null || eventTypes == null) {
@@ -230,7 +230,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     /**
      * Public method to add event listeners without Flutter Result (for batch operations)
      */
-    fun addEventListenersForBatch(viewId: String, eventTypes: List<String>): Boolean {
+    fun addEventListenersForBatch(viewId: Int, eventTypes: List<String>): Boolean {
         val view = ViewRegistry.shared.getView(viewId)
         if (view == null) {
             Log.e(TAG, "View $viewId not found for event listener registration")
@@ -253,7 +253,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     /**
      * Sends events back to Flutter via method channel - matches iOS sendEvent exactly
      */
-    internal fun sendEventToFlutter(viewId: String, eventName: String, eventData: Map<String, Any?>) {
+    internal fun sendEventToFlutter(viewId: Int, eventName: String, eventData: Map<String, Any?>) {
         try {
             Log.d(TAG, "📨 Attempting to send event to DCFEngine - viewId: $viewId, eventName: $eventName, eventData: $eventData")
             Log.d(TAG, "🔍 METHOD CHANNEL STATUS: $methodChannel")
@@ -279,7 +279,7 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
     }
 
     private fun handleRemoveEventListeners(args: Map<String, Any>?, result: Result) {
-        val viewId = args?.get("viewId") as? String
+        val viewId = (args?.get("viewId") as? Number)?.toInt() ?: (args?.get("viewId") as? Int)
         val eventTypes = args?.get("eventTypes") as? List<String>
 
         if (viewId == null || eventTypes == null) {
