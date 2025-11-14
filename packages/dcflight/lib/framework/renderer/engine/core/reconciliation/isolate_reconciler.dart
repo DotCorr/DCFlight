@@ -296,6 +296,7 @@ class IsolateReconciler {
             'action': 'replace',
             'oldData': oldChild,
             'newData': newChild,
+            'index': i, // Include index for efficient child lookup
           });
         } else {
           final oldProps = oldChild['props'] as Map<String, dynamic>? ?? {};
@@ -307,6 +308,7 @@ class IsolateReconciler {
               'action': 'update',
               'nodeId': newChild['id'] as String?,
               'propsDiff': propsDiff,
+              'index': i, // Include index for efficient child lookup
             });
           }
         }
