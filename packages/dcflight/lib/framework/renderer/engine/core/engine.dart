@@ -120,6 +120,8 @@ class DCFEngine {
   final List<SendPort> _workerPorts = [];
   final List<bool> _workerAvailable = [];
   final int _maxWorkers = 4;
+  final ReceivePort _mainIsolateReceivePort = ReceivePort();
+  final Map<String, Completer<Map<String, dynamic>>> _isolateTasks = {};
 
   /// Performance tracking and monitoring
   final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
@@ -170,9 +172,65 @@ class DCFEngine {
 
   /// Initialize concurrent processing capabilities
   Future<void> _initializeConcurrentProcessing() async {
-
-
-
+    if (_concurrentEnabled) return;
+    
+    try {
+      EngineDebugLogger.log('ISOLATE_INIT', 'Initializing worker isolates');
+      
+      // Set up main receive port listener for isolate responses
+      _mainIsolateReceivePort.listen((message) {
+        if (message is Map<String, dynamic>) {
+          final taskId = message['id'] as String?;
+          if (taskId != null && _isolateTasks.containsKey(taskId)) {
+            final completer = _isolateTasks.remove(taskId)!;
+            if (message['success'] == true) {
+              completer.complete(message['data'] as Map<String, dynamic>);
+            } else {
+              completer.completeError(
+                  Exception(message['error'] as String? ?? 'Isolate task failed'));
+            }
+          }
+        } else if (message is SendPort) {
+          // Isolate sending its port back
+          _workerPorts.add(message);
+          if (_workerPorts.length <= _workerAvailable.length) {
+            _workerAvailable[_workerPorts.length - 1] = true;
+          }
+        }
+      });
+      
+      // Spawn worker isolates
+      for (int i = 0; i < _maxWorkers; i++) {
+        final isolate = await Isolate.spawn(
+          _workerIsolateEntry,
+          _mainIsolateReceivePort.sendPort,
+        );
+        
+        _workerIsolates.add(isolate);
+        _workerAvailable.add(false);
+        
+        EngineDebugLogger.log('ISOLATE_SPAWNED', 'Worker isolate $i spawned');
+      }
+      
+      // Wait for all isolates to send their ports
+      int attempts = 0;
+      while (_workerPorts.length < _maxWorkers && attempts < 100) {
+        await Future.delayed(const Duration(milliseconds: 10));
+        attempts++;
+      }
+      
+      if (_workerPorts.length < _maxWorkers) {
+        throw Exception('Failed to initialize all worker isolates');
+      }
+      
+      _concurrentEnabled = true;
+      EngineDebugLogger.log('ISOLATE_INIT_SUCCESS', 
+          'Initialized ${_workerIsolates.length} worker isolates');
+    } catch (e) {
+      EngineDebugLogger.log('ISOLATE_INIT_ERROR', 
+          'Failed to initialize isolates: $e');
+      _concurrentEnabled = false;
+    }
   }
 
   Future<void> get isReady => _readyCompleter.future;
@@ -1451,7 +1509,7 @@ class DCFEngine {
 
 
   /// O(tree size) - Reconcile two nodes by efficiently updating only what changed
-  /// Supports incremental rendering with pause/resume
+  /// Supports incremental rendering with pause/resume and isolate-based parallel diffing
   Future<void> _reconcile(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
     EngineDebugLogger.logReconcile('START', oldNode, newNode,
@@ -1459,7 +1517,31 @@ class DCFEngine {
     
     // Set work in progress tree
     _workInProgressTree = newNode;
+    
+    // CRITICAL: Only use isolate reconciliation for updates to existing trees
+    // Never use it for initial render - initial render must happen synchronously
+    // on the main thread to ensure proper UI synchronization
+    final isInitialRender = oldNode.effectiveNativeViewId == null;
+    
+    // Use isolate-based reconciliation for large trees (but NOT for initial render)
+    bool usedIsolate = false;
+    if (!isInitialRender && _concurrentEnabled && _shouldUseIsolateReconciliation(oldNode, newNode)) {
+      try {
+        await _reconcileWithIsolate(oldNode, newNode);
+        usedIsolate = true;
+      } catch (e) {
+        EngineDebugLogger.logReconcile('ISOLATE_FALLBACK_ERROR', oldNode, newNode,
+            reason: 'Isolate reconciliation failed, falling back: $e');
+        // Continue with regular reconciliation
+      }
+    }
+    
+    // If isolate reconciliation completed, we're done
+    if (usedIsolate) {
+      return;
+    }
 
+    // Otherwise, continue with regular reconciliation below
     // 🔥 CRITICAL: Check structural shock flag FIRST, before any position key computation
     // This prevents position-based matching from incorrectly matching old components
     if (_isStructuralShock) {
@@ -1976,6 +2058,268 @@ class DCFEngine {
 
     EngineDebugLogger.logReconcile('COMPLETE', oldNode, newNode,
         reason: 'Reconciliation completed successfully');
+  }
+  
+  /// Check if isolate-based reconciliation should be used
+  bool _shouldUseIsolateReconciliation(
+      DCFComponentNode oldNode, DCFComponentNode newNode) {
+    // Use isolates for trees with 50+ nodes
+    final oldNodeCount = _countNodeChildren(oldNode);
+    final newNodeCount = _countNodeChildren(newNode);
+    final totalNodes = oldNodeCount + newNodeCount;
+    
+    return totalNodes >= 50 && _concurrentEnabled && _workerPorts.isNotEmpty;
+  }
+  
+  /// Count children recursively
+  int _countNodeChildren(DCFComponentNode node) {
+    int count = 1;
+    if (node is DCFElement) {
+      for (final child in node.children) {
+        count += _countNodeChildren(child);
+      }
+    } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      final rendered = node.renderedNode;
+      if (rendered != null) {
+        count += _countNodeChildren(rendered);
+      }
+    }
+    return count;
+  }
+  
+  /// Reconcile using isolate-based parallel diffing
+  Future<void> _reconcileWithIsolate(
+      DCFComponentNode oldNode, DCFComponentNode newNode) async {
+    EngineDebugLogger.logReconcile('ISOLATE_START', oldNode, newNode,
+        reason: 'Using isolate-based reconciliation');
+    
+    try {
+      // Check if oldNode has been rendered - if not, treat as initial render
+      final oldNodeRendered = oldNode.effectiveNativeViewId != null;
+      
+      // Serialize trees to maps for isolate
+      // Pass null for oldTree if oldNode hasn't been rendered yet
+      final oldTreeData = oldNodeRendered ? _serializeNodeForIsolate(oldNode) : null;
+      final newTreeData = _serializeNodeForIsolate(newNode);
+      
+      // Find available isolate
+      int isolateIndex = -1;
+      for (int i = 0; i < _workerAvailable.length; i++) {
+        if (_workerAvailable[i] && i < _workerPorts.length) {
+          isolateIndex = i;
+          break;
+        }
+      }
+      
+      if (isolateIndex == -1) {
+        // Fallback to regular reconciliation if no isolates available
+        EngineDebugLogger.logReconcile('ISOLATE_FALLBACK', oldNode, newNode,
+            reason: 'No isolates available, using regular reconciliation');
+        // Continue with regular reconciliation flow
+        return;
+      }
+      
+      _workerAvailable[isolateIndex] = false;
+      
+      final completer = Completer<Map<String, dynamic>>();
+      final taskId = 'reconcile_${DateTime.now().millisecondsSinceEpoch}_$isolateIndex';
+      _isolateTasks[taskId] = completer;
+      
+      // Send task to isolate
+      _workerPorts[isolateIndex].send({
+        'type': 'treeReconciliation',
+        'id': taskId,
+        'data': {
+          'oldTree': oldTreeData,
+          'newTree': newTreeData,
+        },
+      });
+      
+      // Wait for result
+      final result = await completer.future;
+      
+      // Mark isolate as available
+      _workerAvailable[isolateIndex] = true;
+      
+      // Apply diff results
+      await _applyIsolateDiff(oldNode, newNode, result);
+      
+      EngineDebugLogger.logReconcile('ISOLATE_COMPLETE', oldNode, newNode,
+          reason: 'Isolate-based reconciliation completed');
+    } catch (e) {
+      EngineDebugLogger.logReconcile('ISOLATE_ERROR', oldNode, newNode,
+          reason: 'Isolate reconciliation failed: $e');
+      // Fallback to regular reconciliation - continue with normal flow
+    }
+  }
+  
+  /// Serialize node to map for isolate
+  Map<String, dynamic> _serializeNodeForIsolate(DCFComponentNode node) {
+    final data = <String, dynamic>{
+      'type': node.runtimeType.toString(),
+      'key': node.key,
+      'id': node.effectiveNativeViewId?.toString(),
+    };
+    
+    if (node is DCFElement) {
+      data['elementType'] = node.type;
+      data['props'] = Map<String, dynamic>.from(node.elementProps);
+      data['children'] = node.children
+          .map((child) => _serializeNodeForIsolate(child))
+          .toList();
+    } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      final rendered = node.renderedNode;
+      if (rendered != null) {
+        data['rendered'] = _serializeNodeForIsolate(rendered);
+      }
+    }
+    
+    return data;
+  }
+  
+  /// Apply diff results from isolate
+  /// CRITICAL: All UI mutations happen on main thread (Dart main isolate)
+  /// Isolate only computes the diff - we apply it synchronously on UI thread
+  Future<void> _applyIsolateDiff(
+      DCFComponentNode oldNode,
+      DCFComponentNode newNode,
+      Map<String, dynamic> diff) async {
+    // CRITICAL: All UI operations must be on main thread
+    // Dart's main isolate IS the UI thread, so we're already on it
+    // But we ensure all native bridge calls happen synchronously
+    
+    final diffType = diff['type'] as String?;
+    final changes = diff['changes'] as List<dynamic>? ?? [];
+    
+    // Handle initial render (entire tree needs to be created)
+    // This shouldn't happen since we disabled isolate for initial render, but keep for safety
+    if (diffType == 'create') {
+      EngineDebugLogger.logReconcile('ISOLATE_CREATE', oldNode, newNode,
+          reason: 'Initial render - creating entire tree via isolate');
+      
+      // For initial render, we need to render the entire new tree
+      final parentViewId = _findParentViewId(newNode);
+      await renderToNative(newNode, parentViewId: parentViewId);
+      return;
+    }
+    
+    // Handle updates - apply diff synchronously on main thread
+    if (diffType == 'update') {
+      // Ensure we're in a batch update context
+      final wasBatchMode = _batchUpdateInProgress;
+      if (!wasBatchMode) {
+        await startBatchUpdate();
+      }
+      
+      try {
+        for (final change in changes) {
+          final changeMap = change as Map<String, dynamic>;
+          final action = changeMap['action'] as String;
+          
+          switch (action) {
+            case 'replace':
+              await _replaceNode(oldNode, newNode);
+              // Replace handles its own batch commit if needed
+              if (!wasBatchMode && _batchUpdateInProgress) {
+                await commitBatchUpdate();
+              }
+              return; // Replace is complete, no need to continue
+            case 'update':
+            case 'updateProps':
+              final propsDiff = changeMap['propsDiff'] as Map<String, dynamic>? ?? 
+                               changeMap['diff'] as Map<String, dynamic>?;
+              if (propsDiff != null && propsDiff.isNotEmpty && newNode is DCFElement) {
+                // Update props
+                for (final entry in propsDiff.entries) {
+                  newNode.elementProps[entry.key] = entry.value;
+                }
+                await _updateElementProps(newNode);
+              }
+              break;
+            case 'create':
+            case 'addChild':
+              // New child needs to be created
+              final newChildData = changeMap['newData'] as Map<String, dynamic>? ?? 
+                                  changeMap['node'] as Map<String, dynamic>? ??
+                                  changeMap['child'] as Map<String, dynamic>?;
+              if (newChildData != null && newNode is DCFElement) {
+                // Find the corresponding child in newNode
+                final childIndex = changeMap['index'] as int?;
+                if (childIndex != null && childIndex < newNode.children.length) {
+                  final child = newNode.children[childIndex];
+                  final parentViewId = newNode.effectiveNativeViewId;
+                  if (parentViewId != null) {
+                    await renderToNative(child, parentViewId: parentViewId);
+                  }
+                }
+              }
+              break;
+            case 'delete':
+            case 'removeChild':
+              // Child needs to be deleted
+              final oldChildData = changeMap['oldData'] as Map<String, dynamic>? ??
+                                  changeMap['child'] as Map<String, dynamic>?;
+              if (oldChildData != null && oldNode is DCFElement) {
+                final childIdStr = oldChildData['id'] as String?;
+                if (childIdStr != null) {
+                  final childId = int.tryParse(childIdStr);
+                  if (childId != null) {
+                    await deleteView(childId);
+                  }
+                }
+              }
+              break;
+            case 'replaceChild':
+              // Child needs to be replaced
+              final oldChildData = changeMap['oldChild'] as Map<String, dynamic>?;
+              final newChildData = changeMap['newChild'] as Map<String, dynamic>?;
+              if (oldChildData != null && newChildData != null && oldNode is DCFElement && newNode is DCFElement) {
+                final childIndex = changeMap['index'] as int?;
+                if (childIndex != null && childIndex < oldNode.children.length && childIndex < newNode.children.length) {
+                  final oldChild = oldNode.children[childIndex];
+                  final newChild = newNode.children[childIndex];
+                  final oldViewId = oldChild.effectiveNativeViewId;
+                  if (oldViewId != null) {
+                    await _replaceNode(oldChild, newChild);
+                  } else {
+                    // Old child wasn't rendered, just create new one
+                    final parentViewId = newNode.effectiveNativeViewId;
+                    if (parentViewId != null) {
+                      await renderToNative(newChild, parentViewId: parentViewId);
+                    }
+                  }
+                }
+              }
+              break;
+          }
+        }
+        
+        // Reconcile children if both nodes are elements
+        if (oldNode is DCFElement && newNode is DCFElement) {
+          await _reconcileElement(oldNode, newNode);
+        }
+        
+        // Commit batch update if we started it
+        if (!wasBatchMode && _batchUpdateInProgress) {
+          await commitBatchUpdate();
+        }
+      } catch (e) {
+        // If we started batch mode, cancel it on error
+        if (!wasBatchMode && _batchUpdateInProgress) {
+          await _nativeBridge.cancelBatchUpdate();
+          _batchUpdateInProgress = false;
+        }
+        rethrow;
+      }
+    }
+  }
+  
+  /// Update element props
+  Future<void> _updateElementProps(DCFElement element) async {
+    final viewId = element.effectiveNativeViewId;
+    if (viewId != null) {
+      await _nativeBridge.updateView(viewId, element.elementProps);
+    }
   }
 
   /// O(tree depth + disposal complexity) - Replace a node entirely
@@ -4436,7 +4780,6 @@ class DCFEngine {
   }
 
   /// Worker isolate entry point - handles real concurrent processing
-  /// ? Experimental --dead for now
   static void _workerIsolateEntry(SendPort mainSendPort) {
     final receivePort = ReceivePort();
     mainSendPort.send(receivePort.sendPort);
@@ -4483,7 +4826,7 @@ class DCFEngine {
         final Map<String, dynamic> safeMessageData =
             message is Map<String, dynamic> ? message : {};
         mainSendPort.send({
-          'type': 'error',
+          'type': 'result',
           'id': safeMessageData['id'] ?? 'unknown',
           'success': false,
           'error': e.toString(),
@@ -4495,7 +4838,8 @@ class DCFEngine {
   /// Reconcile tree structure in isolate (heavy algorithmic work)
   static Future<Map<String, dynamic>> _reconcileTreeInIsolate(
       Map<String, dynamic> data) async {
-    final oldTree = data['oldTree'] as Map<String, dynamic>?;
+    final treeData = data['oldTree'] as Map<String, dynamic>?;
+    final oldTree = treeData;
     final newTree = data['newTree'] as Map<String, dynamic>;
 
     if (oldTree == null) {
@@ -4507,8 +4851,6 @@ class DCFEngine {
         'metrics': {'nodesProcessed': 1, 'complexity': 'simple'}
       };
     }
-
-    await Future.delayed(Duration(milliseconds: 5)); // Simulate CPU work
 
     final changes = <Map<String, dynamic>>[];
 
@@ -4528,8 +4870,7 @@ class DCFEngine {
     final oldChildren = oldTree['children'] as List<dynamic>? ?? [];
     final newChildren = newTree['children'] as List<dynamic>? ?? [];
 
-    final childrenChanges =
-        await _computeChildrenDiff(oldChildren, newChildren);
+    final childrenChanges = _computeChildrenDiffSync(oldChildren, newChildren);
     changes.addAll(childrenChanges);
 
     return {
@@ -4549,8 +4890,6 @@ class DCFEngine {
     final oldProps = data['oldProps'] as Map<String, dynamic>;
     final newProps = data['newProps'] as Map<String, dynamic>;
 
-    await Future.delayed(Duration(milliseconds: 2));
-
     return _computeDeepPropsDiff(oldProps, newProps);
   }
 
@@ -4559,8 +4898,6 @@ class DCFEngine {
       Map<String, dynamic> data) async {
     final items = data['items'] as List<dynamic>;
     final operations = data['operations'] as List<String>? ?? [];
-
-    await Future.delayed(Duration(milliseconds: items.length ~/ 100));
 
     final processedItems = List<dynamic>.from(items);
 
@@ -4594,8 +4931,6 @@ class DCFEngine {
   static Future<Map<String, dynamic>> _serializeComponentInIsolate(
       Map<String, dynamic> data) async {
     final component = data['component'] as Map<String, dynamic>;
-
-    await Future.delayed(Duration(milliseconds: 3));
 
     final serialized = <String, dynamic>{};
 
@@ -4639,9 +4974,9 @@ class DCFEngine {
     return diff;
   }
 
-  /// Helper: Compute children diff
-  static Future<List<Map<String, dynamic>>> _computeChildrenDiff(
-      List<dynamic> oldChildren, List<dynamic> newChildren) async {
+  /// Helper: Compute children diff (synchronous for isolate)
+  static List<Map<String, dynamic>> _computeChildrenDiffSync(
+      List<dynamic> oldChildren, List<dynamic> newChildren) {
     final changes = <Map<String, dynamic>>[];
 
     final maxLength = math.max(oldChildren.length, newChildren.length);
@@ -4664,6 +4999,12 @@ class DCFEngine {
     }
 
     return changes;
+  }
+  
+  /// Helper: Compute children diff (async version for main thread)
+  static Future<List<Map<String, dynamic>>> _computeChildrenDiff(
+      List<dynamic> oldChildren, List<dynamic> newChildren) async {
+    return _computeChildrenDiffSync(oldChildren, newChildren);
   }
 
   /// Helper: Count nodes in tree
