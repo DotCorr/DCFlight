@@ -25,6 +25,15 @@ import dcflight
 It diverges from the flutter abstraction for UI rendering and renders the root view that dcflight depends on to render native UI. No platform views and no absurd abstractions. As a bonus you can still render a flutter Widget by using the ```WidgetToDCFAdaptor``` without impacting performance. 
 
 
+## 🚀 Key Features
+
+- **Native UI Rendering** - Direct native views (no Flutter widgets)
+- **VDOM with React Fiber Features** - Isolate-based parallel reconciliation, incremental rendering, dual trees, effect list
+- **Integer View IDs** - Matching React Native's tag system (0 = root)
+- **Isolate Workers** - 4 worker isolates for parallel reconciliation of heavy trees (50+ nodes)
+- **Unified Component API** - Same code, native iOS and Android
+- **Framework-Managed Lifecycle** - Framework handles component lifecycle
+
 ## 📝 Dart Example
 
 ```dart

@@ -30,10 +30,19 @@ DCFlight is a cross-platform UI framework that provides:
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │              DCFEngine (Reconciliation Engine)              │  │
 │  │  • Component lifecycle management                           │  │
-│  │  • Reconciliation & diffing                                │  │
+│  │  • Reconciliation & diffing (isolate support)             │  │
 │  │  • Props diffing (only changed props)                      │  │
+│  │  • Incremental rendering                                   │  │
+│  │  • Dual trees (Current/WorkInProgress)                     │  │
+│  │  • Effect list (atomic commit)                              │  │
 │  │  • Update scheduling                                       │  │
 │  │  • Bridge communication                                     │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │         Worker Isolates (4 workers)                       │  │
+│  │  • Parallel tree diffing (50+ nodes)                      │  │
+│  │  • Props computation                                        │  │
+│  │  • Large list processing                                   │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                             │

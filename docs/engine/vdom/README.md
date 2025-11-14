@@ -31,9 +31,11 @@ This directory contains comprehensive documentation about DCFlight's Virtual DOM
    - Performance optimizations
 
 5. **[Concurrent Features](./CONCURRENT_FEATURES.md)**
+   - Isolate-based parallel reconciliation (50+ nodes)
+   - Incremental rendering with deadline-based scheduling
+   - Dual trees (Current/WorkInProgress)
+   - Effect list for commit phase
    - Priority-based update scheduling
-   - Parallel processing
-   - Concurrent mode activation
    - Performance benefits
 
 6. **[Concurrent Mode Evidence](./CONCURRENT_MODE_EVIDENCE.md)**
@@ -65,7 +67,12 @@ Native View (iOS/Android)
 ### Key Concepts
 
 - **VDOM Tree**: Lightweight representation of UI
-- **Reconciliation**: Efficient diffing and updating
+- **Reconciliation**: Efficient diffing and updating (with isolate support for 50+ nodes)
+- **Isolate Workers**: 4 worker isolates for parallel reconciliation of heavy trees
+- **Integer View IDs**: Integer-based view identifiers (0 = root, like React Native)
+- **Dual Trees**: Current and WorkInProgress trees for safe updates
+- **Effect List**: Side-effects collected during render, applied in commit phase
+- **Incremental Rendering**: Frame-aware scheduling with deadline-based work
 - **Stores**: Reactive state management
 - **Native Bridge**: Communication with native layer
 - **Yoga Layout**: Flexbox layout engine
@@ -94,8 +101,19 @@ Native View (iOS/Android)
 │                    VDOM Engine                            │
 │  • Component Rendering                                    │
 │  • VDOM Tree Construction                                 │
-│  • Reconciliation                                         │
+│  • Reconciliation (Main Thread + Isolates)               │
 │  • Props Diffing                                          │
+│  • Incremental Rendering                                  │
+│  • Effect List (Commit Phase)                             │
+│  • Dual Trees (Current/WorkInProgress)                    │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ↓
+┌─────────────────────────────────────────────────────────┐
+│              Worker Isolates (4 workers)                  │
+│  • Parallel Tree Diffing (50+ nodes)                      │
+│  • Props Computation                                      │
+│  • Large List Processing                                  │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ↓
@@ -104,6 +122,7 @@ Native View (iOS/Android)
 │  • createView, updateView, deleteView                    │
 │  • attachView, detachView, setChildren                   │
 │  • Event Handling                                         │
+│  • Integer View IDs (0 = root)                            │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ↓
@@ -139,6 +158,9 @@ Native View Update
 - `packages/dcflight/lib/framework/renderer/engine/core/engine.dart`
   - Main VDOM engine
   - Rendering and reconciliation logic
+  - Isolate-based parallel reconciliation
+  - Incremental rendering with frame scheduler
+  - Dual trees and effect list management
 
 ### Components
 - `packages/dcflight/lib/framework/components/component_node.dart`
