@@ -119,8 +119,13 @@ class DCFEngine {
   final List<Isolate> _workerIsolates = [];
   final List<SendPort> _workerPorts = [];
   final List<bool> _workerAvailable = [];
-  final int _maxWorkers = 4;
+  final List<DateTime> _workerLastUsed = []; // Track when each worker was last used
+  final int _maxWorkers = 2; // Reduced from 4 - only keep 2 max
+  final int _minWorkers = 0; // Start with 0, spawn on demand
+  final Duration _isolateIdleTimeout = const Duration(seconds: 30); // Close after 30s idle
+  Timer? _isolateCleanupTimer;
   final ReceivePort _mainIsolateReceivePort = ReceivePort();
+  StreamSubscription<dynamic>? _mainIsolateReceivePortSubscription;
   final Map<String, Completer<Map<String, dynamic>>> _isolateTasks = {};
 
   /// Performance tracking and monitoring
@@ -170,15 +175,18 @@ class DCFEngine {
     }
   }
 
-  /// Initialize concurrent processing capabilities
+  /// Initialize concurrent processing capabilities (lazy - only sets up listener)
   Future<void> _initializeConcurrentProcessing() async {
     if (_concurrentEnabled) return;
     
     try {
-      EngineDebugLogger.log('ISOLATE_INIT', 'Initializing worker isolates');
+      EngineDebugLogger.log('ISOLATE_INIT', 'Setting up isolate infrastructure (lazy initialization)');
+      
+      // Cancel existing subscription if any (for hot restart)
+      await _mainIsolateReceivePortSubscription?.cancel();
       
       // Set up main receive port listener for isolate responses
-      _mainIsolateReceivePort.listen((message) {
+      _mainIsolateReceivePortSubscription = _mainIsolateReceivePort.listen((message) {
         if (message is Map<String, dynamic>) {
           final taskId = message['id'] as String?;
           if (taskId != null && _isolateTasks.containsKey(taskId)) {
@@ -192,44 +200,120 @@ class DCFEngine {
           }
         } else if (message is SendPort) {
           // Isolate sending its port back
+          final index = _workerPorts.length;
           _workerPorts.add(message);
-          if (_workerPorts.length <= _workerAvailable.length) {
-            _workerAvailable[_workerPorts.length - 1] = true;
+          if (index < _workerAvailable.length) {
+            _workerAvailable[index] = true;
+          } else {
+            _workerAvailable.add(true);
           }
+          if (index < _workerLastUsed.length) {
+            _workerLastUsed[index] = DateTime.now();
+          } else {
+            _workerLastUsed.add(DateTime.now());
+          }
+          EngineDebugLogger.log('ISOLATE_PORT_RECEIVED', 'Worker isolate $index sent port');
         }
       });
       
-      // Spawn worker isolates
-      for (int i = 0; i < _maxWorkers; i++) {
-        final isolate = await Isolate.spawn(
-          _workerIsolateEntry,
-          _mainIsolateReceivePort.sendPort,
-        );
-        
-        _workerIsolates.add(isolate);
-        _workerAvailable.add(false);
-        
-        EngineDebugLogger.log('ISOLATE_SPAWNED', 'Worker isolate $i spawned');
-      }
+      // Start cleanup timer to close idle isolates
+      _startIsolateCleanupTimer();
       
-      // Wait for all isolates to send their ports
+      _concurrentEnabled = true;
+      EngineDebugLogger.log('ISOLATE_INIT_SUCCESS', 
+          'Isolate infrastructure ready (will spawn on demand)');
+    } catch (e) {
+      EngineDebugLogger.log('ISOLATE_INIT_ERROR', 
+          'Failed to initialize isolate infrastructure: $e');
+      _concurrentEnabled = false;
+    }
+  }
+  
+  /// Spawn a single worker isolate on demand
+  Future<bool> _spawnWorkerIsolate() async {
+    if (_workerIsolates.length >= _maxWorkers) {
+      return false; // Already at max
+    }
+    
+    try {
+      final index = _workerIsolates.length;
+      EngineDebugLogger.log('ISOLATE_SPAWN', 'Spawning worker isolate $index on demand');
+      
+      final isolate = await Isolate.spawn(
+        _workerIsolateEntry,
+        _mainIsolateReceivePort.sendPort,
+      );
+      
+      _workerIsolates.add(isolate);
+      _workerAvailable.add(false);
+      _workerLastUsed.add(DateTime.now());
+      
+      // Wait for isolate to send its port (with timeout)
       int attempts = 0;
-      while (_workerPorts.length < _maxWorkers && attempts < 100) {
+      while (_workerPorts.length <= index && attempts < 50) {
         await Future.delayed(const Duration(milliseconds: 10));
         attempts++;
       }
       
-      if (_workerPorts.length < _maxWorkers) {
-        throw Exception('Failed to initialize all worker isolates');
+      if (_workerPorts.length > index) {
+        EngineDebugLogger.log('ISOLATE_SPAWN_SUCCESS', 'Worker isolate $index ready');
+        return true;
+      } else {
+        EngineDebugLogger.log('ISOLATE_SPAWN_TIMEOUT', 'Worker isolate $index failed to send port');
+        isolate.kill();
+        _workerIsolates.removeAt(index);
+        _workerAvailable.removeAt(index);
+        _workerLastUsed.removeAt(index);
+        return false;
       }
-      
-      _concurrentEnabled = true;
-      EngineDebugLogger.log('ISOLATE_INIT_SUCCESS', 
-          'Initialized ${_workerIsolates.length} worker isolates');
     } catch (e) {
-      EngineDebugLogger.log('ISOLATE_INIT_ERROR', 
-          'Failed to initialize isolates: $e');
-      _concurrentEnabled = false;
+      EngineDebugLogger.log('ISOLATE_SPAWN_ERROR', 'Failed to spawn isolate: $e');
+      return false;
+    }
+  }
+  
+  /// Start timer to cleanup idle isolates
+  void _startIsolateCleanupTimer() {
+    _isolateCleanupTimer?.cancel();
+    _isolateCleanupTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _cleanupIdleIsolates();
+    });
+  }
+  
+  /// Close isolates that have been idle for too long
+  void _cleanupIdleIsolates() {
+    if (_workerIsolates.isEmpty) return;
+    
+    final now = DateTime.now();
+    final toRemove = <int>[];
+    
+    // Find idle isolates (available and not used recently)
+    for (int i = _workerIsolates.length - 1; i >= 0; i--) {
+      if (i < _workerAvailable.length && 
+          i < _workerLastUsed.length &&
+          _workerAvailable[i]) {
+        final idleTime = now.difference(_workerLastUsed[i]);
+        if (idleTime > _isolateIdleTimeout) {
+          toRemove.add(i);
+        }
+      }
+    }
+    
+    // Remove idle isolates (keep at least _minWorkers)
+    final keepCount = _workerIsolates.length - toRemove.length;
+    if (keepCount >= _minWorkers) {
+      for (final index in toRemove) {
+        EngineDebugLogger.log('ISOLATE_CLEANUP', 'Closing idle isolate $index');
+        try {
+          _workerIsolates[index].kill();
+        } catch (e) {
+          // Ignore errors when killing
+        }
+        _workerIsolates.removeAt(index);
+        _workerPorts.removeAt(index);
+        _workerAvailable.removeAt(index);
+        _workerLastUsed.removeAt(index);
+      }
     }
   }
 
@@ -2102,12 +2186,26 @@ class DCFEngine {
       final oldTreeData = oldNodeRendered ? _serializeNodeForIsolate(oldNode) : null;
       final newTreeData = _serializeNodeForIsolate(newNode);
       
-      // Find available isolate
+      // Find available isolate or spawn one if needed
       int isolateIndex = -1;
       for (int i = 0; i < _workerAvailable.length; i++) {
         if (_workerAvailable[i] && i < _workerPorts.length) {
           isolateIndex = i;
           break;
+        }
+      }
+      
+      // If no isolate available, try to spawn one
+      if (isolateIndex == -1 && _workerIsolates.length < _maxWorkers) {
+        final spawned = await _spawnWorkerIsolate();
+        if (spawned && _workerPorts.isNotEmpty) {
+          // Find the newly spawned isolate
+          for (int i = 0; i < _workerAvailable.length; i++) {
+            if (_workerAvailable[i] && i < _workerPorts.length) {
+              isolateIndex = i;
+              break;
+            }
+          }
         }
       }
       
@@ -2120,6 +2218,7 @@ class DCFEngine {
       }
       
       _workerAvailable[isolateIndex] = false;
+      _workerLastUsed[isolateIndex] = DateTime.now();
       
       final completer = Completer<Map<String, dynamic>>();
       final taskId = 'reconcile_${DateTime.now().millisecondsSinceEpoch}_$isolateIndex';
@@ -2138,8 +2237,11 @@ class DCFEngine {
       // Wait for result
       final result = await completer.future;
       
-      // Mark isolate as available
+      // Mark isolate as available and update last used time
       _workerAvailable[isolateIndex] = true;
+      if (isolateIndex < _workerLastUsed.length) {
+        _workerLastUsed[isolateIndex] = DateTime.now();
+      }
       
       // Apply diff results
       await _applyIsolateDiff(oldNode, newNode, result);
@@ -2885,6 +2987,13 @@ class DCFEngine {
       // This prevents timers and microtasks from firing after cleanup
       cancelAllPendingWork();
       
+      // 🔥 CRITICAL: Shutdown isolates during hot restart to prevent stale state
+      // Isolates will be reinitialized after cleanup
+      await shutdownConcurrentProcessing();
+      
+      // Clear isolate task map
+      _isolateTasks.clear();
+      
       // Small delay to let any in-flight timers/microtasks drain
       await Future.delayed(Duration(milliseconds: 50));
 
@@ -2919,6 +3028,10 @@ class DCFEngine {
       EngineDebugLogger.reset();
 
       rootComponent = component;
+      
+      // 🔥 CRITICAL: Reinitialize isolates after hot restart cleanup
+      // This ensures isolates are in a clean state for the new app
+      await _initializeConcurrentProcessing();
       
       await _nativeBridge.startBatchUpdate();
       await renderToNative(component, parentViewId: 0);
@@ -4652,6 +4765,15 @@ class DCFEngine {
     _pendingUpdates.clear();
     _componentPriorities.clear();
     
+    // Clear isolate tasks (complete any pending with errors to prevent hanging)
+    final isolateTaskCount = _isolateTasks.length;
+    for (final completer in _isolateTasks.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(Exception('Task cancelled due to hot restart'));
+      }
+    }
+    _isolateTasks.clear();
+    
     // Clear effect queues (these use Future.microtask which can't be cancelled,
     // but clearing the sets prevents them from executing)
     final layoutCount = _componentsWaitingForLayout.length;
@@ -4663,6 +4785,7 @@ class DCFEngine {
         'Cancelled all pending async work',
         extra: {
           'PendingUpdates': pendingCount,
+          'IsolateTasks': isolateTaskCount,
           'LayoutEffects': layoutCount,
           'InsertionEffects': insertionCount,
         });
@@ -4761,6 +4884,14 @@ class DCFEngine {
     EngineDebugLogger.log(
         'VDOM_CONCURRENT_SHUTDOWN', 'Shutting down concurrent processing');
 
+    // Cancel cleanup timer
+    _isolateCleanupTimer?.cancel();
+    _isolateCleanupTimer = null;
+
+    // Cancel receive port subscription
+    await _mainIsolateReceivePortSubscription?.cancel();
+    _mainIsolateReceivePortSubscription = null;
+
     for (final isolate in _workerIsolates) {
       try {
         isolate.kill();
@@ -4773,6 +4904,7 @@ class DCFEngine {
     _workerIsolates.clear();
     _workerPorts.clear();
     _workerAvailable.clear();
+    _workerLastUsed.clear();
     _concurrentEnabled = false;
 
     EngineDebugLogger.log(
