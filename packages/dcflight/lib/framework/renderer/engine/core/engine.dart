@@ -10,9 +10,12 @@ import 'dart:async';
 import 'dart:isolate';
 import 'dart:math' as math;
 
+import 'package:dcflight/framework/renderer/engine/core/cache/lru_cache.dart';
 import 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dart';
 import 'package:dcflight/framework/renderer/engine/debug/engine_logger.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
+import 'package:dcflight/framework/renderer/engine/core/error/error_recovery.dart';
+import 'package:dcflight/framework/renderer/engine/core/performance/performance_monitor.dart';
 import 'package:dcflight/framework/renderer/interface/interface.dart'
     show PlatformInterface;
 import 'package:dcflight/framework/components/component.dart';
@@ -52,7 +55,10 @@ class DCFEngine {
   /// OPTIMIZED: Memoization cache for structural similarity calculations
   /// Key: "oldNodeHash:newNodeHash" -> similarity score
   /// Reduces redundant similarity calculations during reconciliation
-  final Map<String, double> _similarityCache = {};
+  /// Uses LRU eviction cache strategy
+  late final LRUCache<String, double> _similarityCache = LRUCache(
+    maxSize: 1000,
+  );
   
   /// Helper to compute props hash for identity matching
   /// Uses component identity (hashCode) since Equatable props were removed
@@ -93,7 +99,16 @@ class DCFEngine {
   final List<bool> _workerAvailable = [];
   final int _maxWorkers = 4;
 
-  /// Performance tracking
+  /// Performance tracking and monitoring
+  final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
+  
+  /// Error recovery manager with retry strategies
+  final ErrorRecoveryManager _errorRecovery = ErrorRecoveryManager(
+    maxRetries: 3,
+    retryDelay: const Duration(milliseconds: 100),
+  );
+
+  /// Performance tracking (legacy - kept for compatibility)
   final Map<String, dynamic> _performanceStats = {
     'totalConcurrentUpdates': 0,
     'totalSerialUpdates': 0,
@@ -342,7 +357,7 @@ class DCFEngine {
 
   /// OPTIMIZED: Intelligent replacement heuristic with structural similarity analysis
   /// Uses structural similarity score instead of simple count differences
-  /// This matches React Native's sophistication while keeping automatic key inference
+  /// Sophisticated reconciliation with automatic key inference
   bool _shouldReplaceAtSamePosition(
       DCFComponentNode oldChild, DCFComponentNode newChild) {
     // Early exit: If keys are explicitly different, replace
@@ -395,7 +410,7 @@ class DCFEngine {
       }
       
       // OPTIMIZED: Use structural similarity instead of simple count difference
-      // This is more intelligent and matches React Native's approach
+      // Intelligent matching based on position and type
       final similarity = _computeStructuralSimilarity(oldChild, newChild);
       
       // Only replace if structural similarity is below threshold (very different)
@@ -432,23 +447,26 @@ class DCFEngine {
     
     // OPTIMIZED: Memoization - check cache first
     final cacheKey = '${oldNode.hashCode}:${newNode.hashCode}';
-    if (_similarityCache.containsKey(cacheKey)) {
-      return _similarityCache[cacheKey]!;
+    final cached = _similarityCache.get(cacheKey);
+    if (cached != null) {
+      _performanceMonitor.recordCacheHit();
+      return cached;
     }
+    _performanceMonitor.recordCacheMiss();
     
     // Early exit optimizations
     if (oldNode.children.isEmpty && newNode.children.isEmpty) {
-      _similarityCache[cacheKey] = 1.0;
+      _similarityCache.put(cacheKey, 1.0);
       return 1.0;
     }
     
     if (oldNode.children.isEmpty || newNode.children.isEmpty) {
       // Empty vs non-empty: low similarity but not zero (might be conditional rendering)
-      _similarityCache[cacheKey] = 0.2;
+      _similarityCache.put(cacheKey, 0.2);
       return 0.2;
     }
     
-    // Compute children type similarity using LCS (React Native's approach)
+    // Compute children type similarity using LCS
     final oldChildTypes = oldNode.children.map((c) => _getChildTypeSignature(c)).toList();
     final newChildTypes = newNode.children.map((c) => _getChildTypeSignature(c)).toList();
     
@@ -484,17 +502,8 @@ class DCFEngine {
     // 70% children similarity + 30% props similarity
     final overallSimilarity = (childrenSimilarity * 0.7) + (propsSimilarity * 0.3);
     
-    // Cache result for future use
-    _similarityCache[cacheKey] = overallSimilarity;
-    
-    // OPTIMIZED: Limit cache size to prevent memory leaks
-    if (_similarityCache.length > 1000) {
-      // Remove oldest 20% of entries (simple FIFO approximation)
-      final keysToRemove = _similarityCache.keys.take(200).toList();
-      for (final key in keysToRemove) {
-        _similarityCache.remove(key);
-      }
-    }
+    // Cache result for future use (LRU automatically handles eviction)
+    _similarityCache.put(cacheKey, overallSimilarity);
     
     return overallSimilarity;
   }
@@ -512,7 +521,7 @@ class DCFEngine {
   }
 
   /// OPTIMIZED: Compute Longest Common Subsequence length (LCS)
-  /// This is React Native's key optimization for optimal diffing
+  /// Key optimization for optimal diffing
   /// O(n*m) time, O(min(n,m)) space with space optimization
   int _computeLCSLength(List<String> seq1, List<String> seq2) {
     final n = seq1.length;
@@ -1134,7 +1143,31 @@ class DCFEngine {
           EngineDebugLogger.logRender('SUCCESS', node, viewId: viewId);
           return viewId;
         } catch (error, stackTrace) {
+          _performanceMonitor.recordError();
           EngineDebugLogger.logRender('ERROR', node, error: error.toString());
+
+          // Attempt error recovery with exponential backoff
+          final viewId = await _errorRecovery.attemptRecovery(
+            operationId: 'render_${node.runtimeType}_${node.hashCode}',
+            operation: () async {
+              // Retry render operation
+              return await renderToNative(node,
+                  parentViewId: parentViewId, index: index);
+            },
+            strategy: ErrorRecoveryStrategy.exponentialBackoff,
+            fallbackValue: null,
+            onRetry: () async {
+              EngineDebugLogger.log('ERROR_RECOVERY_RETRY',
+                  'Retrying render operation after error');
+            },
+          );
+
+          if (viewId != null) {
+            _performanceMonitor.recordRecoverySuccess();
+            return viewId;
+          }
+
+          _performanceMonitor.recordRecoveryFailure();
 
           final errorBoundary = _findNearestErrorBoundary(node);
           if (errorBoundary != null) {
@@ -2393,6 +2426,7 @@ class DCFEngine {
       _componentInstancesByPosition.clear();
       _componentInstancesByProps.clear();
       _similarityCache.clear(); // Also clear similarity cache
+      _errorRecovery.clear(); // Clear error recovery state
 
       _componentsWaitingForLayout.clear();
       _componentsWaitingForInsertion.clear();
@@ -3158,7 +3192,7 @@ class DCFEngine {
   }
 
   /// OPTIMIZED: Reconcile children with keys using LCS-based optimal matching
-  /// This matches React Native's Fiber reconciliation algorithm sophistication
+  /// Sophisticated reconciliation algorithm with optimal matching
   /// O(old children count + new children count + reconciliation complexity)
   Future<void> _reconcileKeyedChildren(
       int parentViewId,
@@ -3361,7 +3395,7 @@ class DCFEngine {
       final newChild = newChildren[newIndex];
       
       // 🔥 CRITICAL: Check props similarity FIRST before any position matching
-      // If props differ significantly OR types don't match, treat as replacement immediately (React-like behavior)
+      // If props differ significantly OR types don't match, treat as replacement immediately
       // This prevents incorrect matching when structure changes dramatically
       bool propsDifferSignificantly = false;
       bool typesDontMatch = false;
@@ -4487,5 +4521,15 @@ class DCFEngine {
     }
 
     return suggestions;
+  }
+
+  /// Get performance metrics
+  Map<String, dynamic> getPerformanceMetrics() {
+    return _performanceMonitor.getMetrics();
+  }
+  
+  /// Reset performance metrics
+  void resetPerformanceMetrics() {
+    _performanceMonitor.reset();
   }
 }
