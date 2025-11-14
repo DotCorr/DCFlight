@@ -101,44 +101,136 @@ class DCFAlertComponent : DCFComponent() {
             }
         }
         
+        // Handle text fields
+        val textFields = props["textFields"] as? List<*>
+        val textFieldViews = mutableListOf<android.widget.EditText>()
+        
+        if (textFields != null && textFields.isNotEmpty()) {
+            if (textFields.size == 1) {
+                // Single text field - use setView directly
+                textFields[0]?.let { textField ->
+                    when (textField) {
+                        is Map<*, *> -> {
+                            val editText = android.widget.EditText(context)
+                            textField["placeholder"]?.let {
+                                editText.hint = it.toString()
+                            }
+                            textField["defaultValue"]?.let {
+                                editText.setText(it.toString())
+                            }
+                            textField["secureTextEntry"]?.let {
+                                if (it is Boolean && it) {
+                                    editText.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+                                }
+                            }
+                            textFieldViews.add(editText)
+                            builder.setView(editText)
+                        }
+                    }
+                }
+            } else {
+                // Multiple text fields - use LinearLayout container
+                val container = android.widget.LinearLayout(context)
+                container.orientation = android.widget.LinearLayout.VERTICAL
+                val layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                layoutParams.setMargins(50, 20, 50, 20)
+                container.layoutParams = layoutParams
+                
+                textFields.forEachIndexed { index, textField ->
+                    when (textField) {
+                        is Map<*, *> -> {
+                            val editText = android.widget.EditText(context)
+                            textField["placeholder"]?.let {
+                                editText.hint = it.toString()
+                            }
+                            textField["defaultValue"]?.let {
+                                editText.setText(it.toString())
+                            }
+                            textField["secureTextEntry"]?.let {
+                                if (it is Boolean && it) {
+                                    editText.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+                                }
+                            }
+                            val editTextParams = android.widget.LinearLayout.LayoutParams(
+                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                            )
+                            if (index > 0) {
+                                editTextParams.topMargin = 16
+                            }
+                            editText.layoutParams = editTextParams
+                            textFieldViews.add(editText)
+                            container.addView(editText)
+                        }
+                    }
+                }
+                builder.setView(container)
+            }
+        }
+        
         val actions = props["actions"] as? List<*> ?: props["buttons"] as? List<*>
-        actions?.let { actionList ->
-            when (actionList) {
+        if (actions != null && actions.isNotEmpty()) {
+            when (actions) {
                 is List<*> -> {
-                    actionList.forEachIndexed { index, action ->
+                    actions.forEachIndexed { index, action ->
                         when (action) {
                             is Map<*, *> -> {
                                 val text = action["title"]?.toString() ?: action["text"]?.toString() ?: "Button"
                                 val style = action["style"]?.toString() ?: "default"
+                                val handler = action["handler"]?.toString()
                                 
                                 when (style) {
                                     "cancel" -> {
                                         builder.setNegativeButton(text) { dialog, _ ->
-                                            propagateEvent(view, "onActionPress", mapOf(
+                                            val eventData = mutableMapOf<String, Any>(
                                                 "buttonIndex" to index,
                                                 "buttonText" to text,
                                                 "buttonStyle" to style
-                                            ))
+                                            )
+                                            handler?.let { eventData["handler"] = it }
+                                            if (textFieldViews.isNotEmpty()) {
+                                                eventData["textFieldValues"] = textFieldViews.mapIndexed { idx, editText ->
+                                                    mapOf("index" to idx, "value" to (editText.text?.toString() ?: ""))
+                                                }
+                                            }
+                                            propagateEvent(view, "onActionPress", eventData)
                                             dialog.dismiss()
                                         }
                                     }
                                     "destructive" -> {
                                         builder.setNeutralButton(text) { dialog, _ ->
-                                            propagateEvent(view, "onActionPress", mapOf(
+                                            val eventData = mutableMapOf<String, Any>(
                                                 "buttonIndex" to index,
                                                 "buttonText" to text,
                                                 "buttonStyle" to style
-                                            ))
+                                            )
+                                            handler?.let { eventData["handler"] = it }
+                                            if (textFieldViews.isNotEmpty()) {
+                                                eventData["textFieldValues"] = textFieldViews.mapIndexed { idx, editText ->
+                                                    mapOf("index" to idx, "value" to (editText.text?.toString() ?: ""))
+                                                }
+                                            }
+                                            propagateEvent(view, "onActionPress", eventData)
                                             dialog.dismiss()
                                         }
                                     }
                                     else -> {
                                         builder.setPositiveButton(text) { dialog, _ ->
-                                            propagateEvent(view, "onActionPress", mapOf(
+                                            val eventData = mutableMapOf<String, Any>(
                                                 "buttonIndex" to index,
                                                 "buttonText" to text,
                                                 "buttonStyle" to style
-                                            ))
+                                            )
+                                            handler?.let { eventData["handler"] = it }
+                                            if (textFieldViews.isNotEmpty()) {
+                                                eventData["textFieldValues"] = textFieldViews.mapIndexed { idx, editText ->
+                                                    mapOf("index" to idx, "value" to (editText.text?.toString() ?: ""))
+                                                }
+                                            }
+                                            propagateEvent(view, "onActionPress", eventData)
                                             dialog.dismiss()
                                         }
                                     }
@@ -148,11 +240,27 @@ class DCFAlertComponent : DCFComponent() {
                     }
                 }
             }
+        } else {
+            // Default OK button if no actions provided
+            builder.setPositiveButton("OK") { dialog, _ ->
+                val eventData = mutableMapOf<String, Any>(
+                    "buttonIndex" to 0,
+                    "buttonText" to "OK",
+                    "buttonStyle" to "default"
+                )
+                if (textFieldViews.isNotEmpty()) {
+                    eventData["textFieldValues"] = textFieldViews.mapIndexed { idx, editText ->
+                        mapOf("index" to idx, "value" to (editText.text?.toString() ?: ""))
+                    }
+                }
+                propagateEvent(view, "onActionPress", eventData)
+                dialog.dismiss()
+            }
         }
         
         val dialog = builder.create()
         
-        builder.setOnDismissListener {
+        dialog.setOnDismissListener {
             propagateEvent(view, "onDismiss", mapOf())
             setAlertDialog(view, null)
         }
