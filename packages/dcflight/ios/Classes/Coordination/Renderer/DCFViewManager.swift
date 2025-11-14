@@ -116,6 +116,15 @@ class DCFViewManager {
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
+        // CRITICAL: Set viewId on view immediately so propagateEvent can find it
+        // This must happen before event listeners are registered
+        objc_setAssociatedObject(
+            view,
+            UnsafeRawPointer(bitPattern: "viewId".hashValue)!,
+            String(viewId),
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
         ViewRegistry.shared.registerView(view, id: viewId, type: viewType)
         
         let isScreen = (viewType == "Screen" || props["presentationStyle"] != nil)
