@@ -166,14 +166,17 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
     
     guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
             as? (String, String, [String: Any]) -> Void else {
+        print("⚠️ propagateEvent: No event callback found for view \(view)")
         return
     }
     
     guard let viewId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String else {
+        print("⚠️ propagateEvent: No viewId found for view \(view)")
         return
     }
     
     guard let eventTypes = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventTypes".hashValue)!) as? [String] else {
+        print("⚠️ propagateEvent: No event types found for view \(viewId)")
         return
     }
     
