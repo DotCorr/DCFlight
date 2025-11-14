@@ -275,6 +275,7 @@ class YogaShadowTree {
         return syncQueue.sync {
             
             if isReconciling {
+                print("⚠️ YogaShadowTree: Layout calculation blocked - reconciliation in progress")
                 return false
             }
             
@@ -282,8 +283,12 @@ class YogaShadowTree {
             defer { isLayoutCalculating = false }
             
             guard let mainRoot = nodes["0"] else {
+                print("❌ YogaShadowTree: Root node (0) not found - cannot calculate layout")
                 return false
             }
+            
+            let childCount = YGNodeGetChildCount(mainRoot)
+            print("🎯 YogaShadowTree: Calculating layout for root with \(childCount) children, \(nodes.count) total nodes")
             
             YGNodeStyleSetWidth(mainRoot, Float(width))
             YGNodeStyleSetHeight(mainRoot, Float(height))
@@ -293,6 +298,7 @@ class YogaShadowTree {
                     YGNodeCalculateLayout(mainRoot, Float(width), Float(height), YGDirection.LTR)
                 }()
             } catch {
+                print("❌ YogaShadowTree: Layout calculation failed with error: \(error)")
                 return false
             }
             
@@ -309,12 +315,15 @@ class YogaShadowTree {
                 }
             }
             
+            var appliedCount = 0
             for (nodeId, _) in nodes {
                 if let layout = getNodeLayout(nodeId: nodeId) {
                     applyLayoutToView(viewId: nodeId, frame: layout)
+                    appliedCount += 1
                 }
             }
             
+            print("✅ YogaShadowTree: Applied layout to \(appliedCount) views out of \(nodes.count) nodes")
             return true
         }
     }
