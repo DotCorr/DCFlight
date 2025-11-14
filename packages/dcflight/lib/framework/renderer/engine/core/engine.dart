@@ -16,6 +16,11 @@ import 'package:dcflight/framework/renderer/engine/debug/engine_logger.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
 import 'package:dcflight/framework/renderer/engine/core/error/error_recovery.dart';
 import 'package:dcflight/framework/renderer/engine/core/performance/performance_monitor.dart';
+import 'package:dcflight/framework/renderer/engine/core/scheduling/frame_scheduler.dart';
+import 'package:dcflight/framework/renderer/engine/core/reconciliation/effect_list.dart'
+    show Effect, EffectList, EffectType;
+import 'package:dcflight/framework/renderer/engine/core/reconciliation/incremental_reconciler.dart'
+    show IncrementalReconciler;
 import 'package:dcflight/framework/renderer/interface/interface.dart'
     show PlatformInterface;
 import 'package:dcflight/framework/components/component.dart';
@@ -38,9 +43,26 @@ class DCFEngine {
   /// Map of view IDs to their associated VDomNodes - O(1) lookup
   final Map<int, DCFComponentNode> _nodesByViewId = {};
 
+  /// Current tree (rendered and visible)
+  DCFComponentNode? _currentTree;
+  
+  /// Work in progress tree (being built during reconciliation)
+  DCFComponentNode? _workInProgressTree;
+
   /// Component tracking maps
   final Map<String, DCFStatefulComponent> _statefulComponents = {};
   final Map<String, DCFComponentNode> _previousRenderedNodes = {};
+  
+  /// Effect list for commit phase
+  final EffectList _effectList = EffectList();
+  
+  /// Incremental reconciler for pause/resume
+  final IncrementalReconciler _incrementalReconciler = IncrementalReconciler();
+  
+  /// Reconciliation state
+  bool _isReconciling = false;
+  bool _shouldPauseReconciliation = false;
+  bool _incrementalReconciliationEnabled = true;
   
   /// Component instance tracking by position + type
   /// Key: "parentViewId:index:type" -> Component instance
@@ -703,6 +725,7 @@ class DCFEngine {
   }
 
   /// Process updates using concurrent processing
+  /// Now supports incremental rendering with deadline-based scheduling
   Future<void> _processPendingUpdatesConcurrently() async {
     EngineDebugLogger.log(
         'BATCH_CONCURRENT', 'Processing updates concurrently');
@@ -718,6 +741,12 @@ class DCFEngine {
 
     EngineDebugLogger.logBridge('START_BATCH', 'root');
     await _nativeBridge.startBatchUpdate();
+    
+    // Use incremental reconciliation if enabled and tree is large
+    if (_incrementalReconciliationEnabled && sortedUpdates.length > 50) {
+      await _processUpdatesIncrementally(sortedUpdates);
+      return;
+    }
 
     try {
       final batchSize =
@@ -737,7 +766,7 @@ class DCFEngine {
       }
 
       EngineDebugLogger.logBridge('COMMIT_BATCH', 'root');
-      await _nativeBridge.commitBatchUpdate();
+      await commitBatchUpdate();
       EngineDebugLogger.log('BATCH_COMMIT_SUCCESS',
           'Successfully committed concurrent batch updates');
 
@@ -756,6 +785,7 @@ class DCFEngine {
   }
 
   /// Process updates serially (original behavior)
+  /// Now supports incremental rendering with deadline-based scheduling
   Future<void> _processPendingUpdatesSerially() async {
     EngineDebugLogger.log('BATCH_SERIAL', 'Processing updates serially');
 
@@ -770,6 +800,12 @@ class DCFEngine {
 
     EngineDebugLogger.logBridge('START_BATCH', 'root');
     await _nativeBridge.startBatchUpdate();
+    
+    // Use incremental reconciliation if enabled and tree is large
+    if (_incrementalReconciliationEnabled && sortedUpdates.length > 50) {
+      await _processUpdatesIncrementally(sortedUpdates);
+      return;
+    }
 
     try {
       for (final componentId in sortedUpdates) {
@@ -779,7 +815,7 @@ class DCFEngine {
       }
 
       EngineDebugLogger.logBridge('COMMIT_BATCH', 'root');
-      await _nativeBridge.commitBatchUpdate();
+      await commitBatchUpdate();
       EngineDebugLogger.log('BATCH_COMMIT_SUCCESS',
           'Successfully committed serial batch updates');
 
@@ -795,6 +831,80 @@ class DCFEngine {
           extra: {'Error': e.toString()});
       rethrow;
     }
+  }
+  
+  /// Process updates incrementally with deadline-based scheduling
+  Future<void> _processUpdatesIncrementally(List<String> sortedUpdates) async {
+    EngineDebugLogger.log('BATCH_INCREMENTAL', 
+        'Processing ${sortedUpdates.length} updates incrementally');
+    
+    // Determine priority based on update count
+    final priority = sortedUpdates.length > 200 
+        ? WorkPriority.low 
+        : WorkPriority.high;
+    
+    final completer = Completer<void>();
+    bool hasError = false;
+    String? errorMessage;
+    
+    // Schedule work with frame scheduler
+    final scheduler = FrameScheduler.instance;
+    
+    if (priority == WorkPriority.high) {
+      scheduler.scheduleHighPriorityWork((deadline) async {
+        try {
+          await _processUpdatesWithDeadline(sortedUpdates, deadline, completer);
+        } catch (e) {
+          hasError = true;
+          errorMessage = e.toString();
+          completer.completeError(e);
+        }
+      });
+    } else {
+      scheduler.scheduleLowPriorityWork((deadline) async {
+        try {
+          await _processUpdatesWithDeadline(sortedUpdates, deadline, completer);
+        } catch (e) {
+          hasError = true;
+          errorMessage = e.toString();
+          completer.completeError(e);
+        }
+      });
+    }
+    
+    await completer.future;
+    
+    if (hasError) {
+      EngineDebugLogger.logBridge('CANCEL_BATCH', 'root',
+          data: {'Error': errorMessage});
+      await _nativeBridge.cancelBatchUpdate();
+      throw Exception(errorMessage);
+    }
+    
+    EngineDebugLogger.logBridge('COMMIT_BATCH', 'root');
+    await commitBatchUpdate();
+  }
+  
+  Future<void> _processUpdatesWithDeadline(
+      List<String> sortedUpdates, Deadline deadline, Completer<void> completer) async {
+    int processed = 0;
+    
+    for (final componentId in sortedUpdates) {
+      // Check deadline
+      if (deadline.timeRemaining() <= 0) {
+        // Schedule remaining work for next frame
+        final remaining = sortedUpdates.sublist(processed);
+        FrameScheduler.instance.scheduleLowPriorityWork((nextDeadline) async {
+          await _processUpdatesWithDeadline(remaining, nextDeadline, completer);
+        });
+        return;
+      }
+      
+      await _updateComponentById(componentId);
+      processed++;
+    }
+    
+    completer.complete();
   }
 
   /// O(m) where m = component tree depth - Update a component by its ID
@@ -1341,10 +1451,14 @@ class DCFEngine {
 
 
   /// O(tree size) - Reconcile two nodes by efficiently updating only what changed
+  /// Supports incremental rendering with pause/resume
   Future<void> _reconcile(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
     EngineDebugLogger.logReconcile('START', oldNode, newNode,
         reason: 'Beginning reconciliation');
+    
+    // Set work in progress tree
+    _workInProgressTree = newNode;
 
     // 🔥 CRITICAL: Check structural shock flag FIRST, before any position key computation
     // This prevents position-based matching from incorrectly matching old components
@@ -1487,6 +1601,14 @@ class DCFEngine {
         } else {
           EngineDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
               reason: 'Same element type - updating props and children');
+          
+          // Add update effect
+          _effectList.addEffect(Effect(
+            node: newNode,
+            type: EffectType.update,
+            payload: {'oldNode': oldNode},
+          ));
+          
           await _reconcileElement(oldNode, newNode);
         }
       }
@@ -1859,6 +1981,18 @@ class DCFEngine {
   /// O(tree depth + disposal complexity) - Replace a node entirely
   Future<void> _replaceNode(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
+    // Add deletion effect for old node
+    _effectList.addEffect(Effect(
+      node: oldNode,
+      type: EffectType.deletion,
+    ));
+    
+    // Add placement effect for new node
+    _effectList.addEffect(Effect(
+      node: newNode,
+      type: EffectType.placement,
+    ));
+    
     EngineDebugLogger.log('REPLACE_NODE_START', 'Starting node replacement',
         extra: {
           'OldNodeType': oldNode.runtimeType.toString(),
@@ -2488,11 +2622,84 @@ class DCFEngine {
   }
   
   /// Commit a batch update
+  /// This is the commit phase where effects are applied
   Future<void> commitBatchUpdate() async {
     await isReady;
     if (_batchUpdateInProgress) {
       _batchUpdateInProgress = false;
+      
+      // Commit phase: Process all effects
+      await _commitEffects();
+      
+      // Swap workInProgress tree to current tree
+      if (_workInProgressTree != null) {
+        _currentTree = _workInProgressTree;
+        _workInProgressTree = null;
+      }
+      
       await _nativeBridge.commitBatchUpdate();
+    }
+  }
+  
+  /// Commit phase: Process all side effects
+  Future<void> _commitEffects() async {
+    final effects = _effectList.getEffects();
+    
+    // Process deletions first
+    for (final effect in effects) {
+      if (effect.type == EffectType.deletion) {
+        await _commitDeletion(effect);
+      }
+    }
+    
+    // Process placements
+    for (final effect in effects) {
+      if (effect.type == EffectType.placement) {
+        await _commitPlacement(effect);
+      }
+    }
+    
+    // Process updates
+    for (final effect in effects) {
+      if (effect.type == EffectType.update) {
+        await _commitUpdate(effect);
+      }
+    }
+    
+    // Process lifecycle effects
+    for (final effect in effects) {
+      if (effect.type == EffectType.lifecycle) {
+        await _commitLifecycle(effect);
+      }
+    }
+    
+    // Clear effect list
+    _effectList.clear();
+  }
+  
+  Future<void> _commitDeletion(Effect effect) async {
+    final node = effect.node;
+    if (node.effectiveNativeViewId != null) {
+      await deleteView(node.effectiveNativeViewId!);
+    }
+  }
+  
+  Future<void> _commitPlacement(Effect effect) async {
+    // Placement is handled during renderToNative
+    // This is a no-op as the view is already created
+  }
+  
+  Future<void> _commitUpdate(Effect effect) async {
+    // Updates are handled during reconciliation
+    // This is a no-op as updates are already applied
+  }
+  
+  Future<void> _commitLifecycle(Effect effect) async {
+    final node = effect.node;
+    if (effect.payload?['method'] == 'componentDidMount') {
+      node.componentDidMount();
+    } else if (effect.payload?['method'] == 'componentWillUnmount') {
+      node.componentWillUnmount();
     }
   }
   
