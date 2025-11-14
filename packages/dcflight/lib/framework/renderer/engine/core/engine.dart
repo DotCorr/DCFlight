@@ -249,7 +249,7 @@ class DCFEngine {
     
     try {
       final index = _workerIsolates.length;
-      EngineDebugLogger.log('ISOLATE_SPAWN', 'Spawning worker isolate $index on demand');
+      print('🔄 ISOLATES: Spawning worker isolate $index...');
       
       final isolate = await Isolate.spawn(
         _workerIsolateEntry,
@@ -260,6 +260,8 @@ class DCFEngine {
       _workerAvailable.add(false);
       _workerLastUsed.add(DateTime.now());
       
+      print('⏳ ISOLATES: Waiting for worker isolate $index to send port...');
+      
       // Wait for isolate to send its port (with timeout)
       int attempts = 0;
       while (_workerPorts.length <= index && attempts < 50) {
@@ -268,10 +270,11 @@ class DCFEngine {
       }
       
       if (_workerPorts.length > index) {
-        EngineDebugLogger.log('ISOLATE_SPAWN_SUCCESS', 'Worker isolate $index ready');
+        print('✅ ISOLATES: Worker isolate $index ready (total: ${_workerPorts.length})');
+        print('✅ ISOLATES: Worker isolate $index ready and port received');
         return true;
       } else {
-        EngineDebugLogger.log('ISOLATE_SPAWN_TIMEOUT', 'Worker isolate $index failed to send port');
+        print('⚠️ ISOLATES: Worker isolate $index failed to send port');
         isolate.kill();
         _workerIsolates.removeAt(index);
         _workerAvailable.removeAt(index);
@@ -279,7 +282,7 @@ class DCFEngine {
         return false;
       }
     } catch (e) {
-      EngineDebugLogger.log('ISOLATE_SPAWN_ERROR', 'Failed to spawn isolate: $e');
+      print('❌ ISOLATES: Failed to spawn isolate: $e');
       return false;
     }
   }
@@ -2228,8 +2231,10 @@ class DCFEngine {
       
       // If no isolate available, try to spawn one
       if (isolateIndex == -1 && _workerIsolates.length < _maxWorkers) {
+        print('🔄 ISOLATES: No workers available, spawning on demand...');
         final spawned = await _spawnWorkerIsolate();
         if (spawned && _workerPorts.isNotEmpty) {
+          print('✅ ISOLATES: Worker spawned successfully, finding available isolate...');
           // Find the newly spawned isolate
           for (int i = 0; i < _workerAvailable.length; i++) {
             if (_workerAvailable[i] && i < _workerPorts.length) {
@@ -2249,6 +2254,7 @@ class DCFEngine {
         throw Exception('No isolates available for reconciliation');
       }
       
+      print('✅ ISOLATES: Using worker isolate $isolateIndex');
       _workerAvailable[isolateIndex] = false;
       _workerLastUsed[isolateIndex] = DateTime.now();
       
