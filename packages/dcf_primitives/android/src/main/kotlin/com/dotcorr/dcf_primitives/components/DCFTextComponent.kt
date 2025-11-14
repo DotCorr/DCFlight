@@ -167,7 +167,7 @@ class DCFTextComponent : DCFComponent() {
         if (content.isEmpty()) {
             return PointF(0f, 0f)
         }
-        
+
         // CRITICAL: Ensure ComposeView is composed before measuring
         // ComposeView.setContent is async, so we need to ensure composition is ready
         // This prevents flash on reconciliation (new views need accurate size immediately)
@@ -199,7 +199,7 @@ class DCFTextComponent : DCFComponent() {
         // If measurement returns 0 (Compose not composed yet), use improved fallback
         // This should be rare - we ensure composition above
         if (measuredWidth == 0f || measuredHeight == 0f) {
-            val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
+        val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
             // Improved estimate: account for multi-line text and actual character width
             val lines = content.split("\n")
             val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length

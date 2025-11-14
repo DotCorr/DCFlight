@@ -45,6 +45,8 @@ class YogaShadowTree private constructor() {
     
     private val componentInstances = ConcurrentHashMap<String, DCFComponent>()
     
+    // Track views that are being updated and temporarily hidden
+    private val viewsHiddenForUpdate = ConcurrentHashMap<String, Boolean>()
     
     @Volatile
     private var isLayoutCalculating = false
@@ -389,6 +391,9 @@ class YogaShadowTree private constructor() {
     fun updateNodeLayoutProps(nodeId: String, props: Map<String, Any?>) {
         val node = nodes[nodeId] ?: return
         
+        // Framework-level visibility is handled in ViewManager.updateView
+        // No prop-specific logic needed here - framework handles all updates uniformly
+        
         props.filterValues { it != null }.forEach { (key, value) ->
             applyLayoutProp(node, key, value!!, nodeId)
         }
@@ -522,6 +527,13 @@ class YogaShadowTree private constructor() {
     fun isScreenRoot(nodeId: String): Boolean {
         return screenRootIds.contains(nodeId)
     }
+    
+    /**
+     * Mark a view as hidden for update (used when parent is hidden during child attachment)
+     */
+    fun markViewHiddenForUpdate(viewId: String) {
+        viewsHiddenForUpdate[viewId] = true
+    }
 
     fun getNodeLayout(nodeId: String): Rect? {
         val node = nodes[nodeId] ?: return null
@@ -564,20 +576,31 @@ class YogaShadowTree private constructor() {
                 
                 view.isEnabled = wasUserInteractionEnabled
                 
-                // Collect all views to make visible in batch
-                viewsToMakeVisible.add(view)
+                // Collect views that are currently invisible (newly created OR temporarily hidden for update)
+                // Views that are already visible should stay visible (they're stable)
+                val wasHiddenForUpdate = viewsHiddenForUpdate.containsKey(viewId)
+                if (view.visibility != View.VISIBLE || view.alpha < 1.0f || wasHiddenForUpdate) {
+                    viewsToMakeVisible.add(view)
+                }
             }
         }
         
-        // CRITICAL: Make all views visible in batch AFTER all layouts are applied
-        // This prevents flash during reconciliation
+        // CRITICAL: Make only invisible views visible in batch AFTER all layouts are applied
+        // This prevents flash - we only show newly created views and views hidden for update
+        // Post to main thread to ensure we're on the UI thread (applyLayoutsBatch may be on background thread)
         if (viewsToMakeVisible.isNotEmpty()) {
             mainHandler.post {
+                // Make views visible immediately after layouts are posted
+                // applyLayout already posts to main thread, so this will run after layouts are applied
                 for (view in viewsToMakeVisible) {
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
+                    if (view.parent != null) { // Only if still attached
+                        view.visibility = View.VISIBLE
+                        view.alpha = 1.0f
+                    }
                 }
-                Log.d(TAG, "Made ${viewsToMakeVisible.size} views visible after batch layout")
+                // Clear the update tracking
+                viewsHiddenForUpdate.clear()
+                Log.d(TAG, "Made ${viewsToMakeVisible.size} views visible after batch layout (newly created + updated)")
             }
         }
         

@@ -17,6 +17,7 @@ import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcflight.components.DCFPropConstants
+import com.dotcorr.dcflight.Coordinator.DCFViewManager
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.ViewRegistry
@@ -192,83 +193,16 @@ class DCMauiBridgeImpl private constructor() {
      */
     fun updateView(viewId: String, propsJson: String): Boolean {
         return try {
-            val view = ViewRegistry.shared.getView(viewId)
-            if (view == null) {
-                Log.e(TAG, "View '$viewId' not found for update")
-                return false
-            }
-
             val props = if (propsJson.isNotEmpty()) {
                 parseJsonToMap(propsJson)
             } else {
                 emptyMap()
             }
 
-            val viewType = ViewRegistry.shared.getViewType(viewId)
-            if (viewType == null) {
-                Log.e(TAG, "View type for '$viewId' not found")
-                return false
-            }
-
-            val layoutProps = extractLayoutProps(props)
-            val nonLayoutProps = props.filter { !layoutProps.containsKey(it.key) }
-
-            // CRITICAL: Only trigger layout calculation if layout props actually changed
-            // This prevents double layout passes when only content changes
-            if (layoutProps.isNotEmpty()) {
-                // Get stored props from view to compare with new props
-                @Suppress("UNCHECKED_CAST")
-                val storedProps = (view.getTag(com.dotcorr.dcflight.components.DCFTags.STORED_PROPS_KEY) as? MutableMap<String, Any?>) ?: emptyMap<String, Any?>()
-                val previousLayoutProps = extractLayoutProps(storedProps)
-                
-                // Check if layout props actually changed
-                // Convert both to non-null maps for comparison
-                val layoutPropsNonNull = layoutProps.filterValues { it != null }.mapValues { it.value!! }
-                val previousLayoutPropsNonNull = previousLayoutProps.filterValues { it != null }.mapValues { it.value!! }
-                
-                val layoutPropsChanged = layoutPropsNonNull.any { (key, value) ->
-                    previousLayoutPropsNonNull[key] != value
-                } || previousLayoutPropsNonNull.keys != layoutPropsNonNull.keys
-                
-                if (layoutPropsChanged) {
-                    val isScreen = YogaShadowTree.shared.isScreenRoot(viewId)
-                    
-                    if (isScreen) {
-                        YogaShadowTree.shared.updateNodeLayoutProps(viewId, layoutProps)
-                    } else {
-                        DCFLayoutManager.shared.updateNodeWithLayoutProps(
-                            nodeId = viewId,
-                            componentType = viewType,
-                            props = layoutProps.filterValues { it != null }.mapValues { it.value!! }
-                        )
-                    }
-                }
-            }
-
-            if (nonLayoutProps.isNotEmpty()) {
-                val componentClass = DCFComponentRegistry.shared.getComponentType(viewType)
-                if (componentClass != null) {
-                    try {
-                        // ⚡ PERFORMANCE: Use cached component instance (matches ViewManager pattern)
-                        val componentInstance = getCachedComponentInstance(viewType)
-                        if (componentInstance != null) {
-                        componentInstance.updateView(view, nonLayoutProps)
-                        } else {
-                            Log.e(TAG, "Failed to get component instance for type: $viewType")
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error calling updateView on $viewType component", e)
-                    }
-                } else {
-                    Log.w(TAG, "Component class not found for type: $viewType")
-                }
-            }
-
-            // Framework controls visibility in layout application (not here)
-            // Visibility is ensured in DCFLayoutManager.applyLayoutDirectly (matches iOS)
-            // This prevents redundant visibility changes that cause flash
-
-            true
+            // CRITICAL FRAMEWORK FIX: Delegate to ViewManager.updateView for uniform framework-level handling
+            // This ensures all updates (bridge or internal) use the same visibility control logic
+            // No prop-specific edge cases - framework handles everything uniformly
+            return DCFViewManager.shared.updateView(viewId, props)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update view: $viewId", e)
             false
