@@ -39,6 +39,10 @@ import Flutter
     }
 
     private func setupDCF(rootView: UIView, flutterEngine: FlutterEngine) {
+        // Ensure root view is visible
+        rootView.isHidden = false
+        rootView.alpha = 1.0
+        
         DCMauiBridgeImpl.shared.registerView(rootView, withId: 0)
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)
         _ = YogaShadowTree.shared
@@ -46,18 +50,15 @@ import Flutter
         runInternalModules()
         setupSizeChangeDetection()
         
-        // CRITICAL: Calculate initial layout SYNCHRONOUSLY to prevent white screen/flash
-        // This ensures layout is calculated before views are displayed
-        // Matching Android behavior which does this synchronously
+        // Set initial screen dimensions (layout will be calculated after views are created in commitBatchUpdate)
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first {
             let windowBounds = window.bounds
-            print("🎯 DCFlight: Setting initial window size synchronously: \(windowBounds.width)x\(windowBounds.height)")
+            print("🎯 DCFlight: Setting initial window size: \(windowBounds.width)x\(windowBounds.height)")
             DCFScreenUtilities.shared.updateScreenDimensions(width: windowBounds.width, height: windowBounds.height)
-            YogaShadowTree.shared.calculateAndApplyLayout(width: windowBounds.width, height: windowBounds.height)
         }
         
-        // Also schedule async update as fallback
+        // Schedule async update as fallback
         DispatchQueue.main.async {
             self.updateInitialWindowSize()
         }
