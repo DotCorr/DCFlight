@@ -43,6 +43,13 @@ This directory contains comprehensive documentation about DCFlight's Virtual DOM
    - Implementation details
    - API reference
 
+7. **[Current VDOM State](./VDOM_STATE.md)**
+   - Current architecture after major upgrades
+   - Pre-spawned isolates
+   - Smart element-level reconciliation
+   - Performance characteristics
+   - Comparison with previous version
+
 ## Quick Reference
 
 ### Component Tree → VDOM Tree → Native Views
@@ -67,8 +74,9 @@ Native View (iOS/Android)
 ### Key Concepts
 
 - **VDOM Tree**: Lightweight representation of UI
-- **Reconciliation**: Efficient diffing and updating (with isolate support for 50+ nodes)
-- **Isolate Workers**: 4 worker isolates for parallel reconciliation of heavy trees
+- **Reconciliation**: Efficient diffing and updating with smart component/element-level reconciliation
+- **Isolate Workers**: 2 pre-spawned worker isolates for parallel reconciliation of heavy trees (50+ nodes)
+- **Smart Reconciliation**: Element-level reconciliation when components render to the same element type (prevents unnecessary view replacement)
 - **Integer View IDs**: Integer-based view identifiers (0 = root, like React Native)
 - **Dual Trees**: Current and WorkInProgress trees for safe updates
 - **Effect List**: Side-effects collected during render, applied in commit phase
@@ -110,10 +118,11 @@ Native View (iOS/Android)
                        │
                        ↓
 ┌─────────────────────────────────────────────────────────┐
-│              Worker Isolates (4 workers)                  │
+│              Worker Isolates (2 pre-spawned)             │
 │  • Parallel Tree Diffing (50+ nodes)                      │
 │  • Props Computation                                      │
 │  • Large List Processing                                  │
+│  • Smart Element-Level Reconciliation                    │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ↓

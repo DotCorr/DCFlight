@@ -284,7 +284,7 @@ When element type changes:
 Isolates are automatically used for reconciliation when:
 - Tree has **50+ nodes** (old + new combined)
 - Not initial render (initial render must be synchronous)
-- Worker isolates are available (4 workers spawned at startup)
+- Worker isolates are available (2 workers pre-spawned at startup for optimal performance)
 
 ### How It Works
 
@@ -320,10 +320,55 @@ Isolates are automatically used for reconciliation when:
 
 - **Heavy Trees**: 50+ nodes diffed in parallel
 - **UI Responsiveness**: Main thread stays responsive
-- **Performance**: 2-4x faster for large reconciliations
+- **Performance**: 50-80% faster for large reconciliations (typically saves 60-100ms)
 - **Safety**: All UI updates on main thread (no race conditions)
+- **Pre-spawned Workers**: 2 workers ready at startup (no spawning delay)
 
 **Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 2064-2160)
+
+## Smart Element-Level Reconciliation
+
+### Overview
+
+When components render to the same element type (e.g., `BenchmarkApp` and `DCFView` both render to `View`), DCFlight uses **element-level reconciliation** instead of component-level replacement. This prevents unnecessary native view destruction/recreation and eliminates layout shifts.
+
+### How It Works
+
+1. **Isolate Detection**: Isolate detects that both components render to the same element type
+   ```dart
+   // Isolate detects: BenchmarkApp → View, DCFView → View
+   // Both render to same element type → reconcile at element level
+   ```
+
+2. **ViewId Transfer**: Transfer viewId from old rendered element to new rendered element
+   ```dart
+   if (oldRendered.nativeViewId != null) {
+     newRendered.nativeViewId = oldRendered.nativeViewId;
+     newRendered.contentViewId = oldRendered.contentViewId;
+   }
+   ```
+
+3. **Element-Level Reconciliation**: Reconcile rendered elements directly
+   ```dart
+   // Bypass component type checks, reconcile at element level
+   await _reconcileElement(oldRendered, newRendered);
+   ```
+
+### Benefits
+
+- **No Layout Shifts**: Same native view reused (no destruction/recreation)
+- **Better Performance**: Element reconciliation is faster than full replacement
+- **Smooth Transitions**: UI updates without visual glitches
+- **Smart Strategy**: Automatically chooses best reconciliation level
+
+### When It Activates
+
+Element-level reconciliation activates when:
+- Isolate detects `replaceChild` or `replace` action
+- Both old and new components render to the same element type
+- Example: `BenchmarkApp` (Stateful) → `DCFView` (Stateless), both render to `View`
+
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 2611-2643)
 
 ## Performance Optimizations
 
