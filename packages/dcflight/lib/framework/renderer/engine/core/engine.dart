@@ -2581,28 +2581,96 @@ class DCFEngine {
                   
                   print('🔍 ISOLATES: oldChild type: ${oldChild is DCFElement ? oldChild.type : oldChild.runtimeType}, newChild type: ${newChild is DCFElement ? newChild.type : newChild.runtimeType}');
                   
-                  // CRITICAL: If types match, update props instead of replacing
-                  // This prevents unnecessary native view recreation
-                  if (oldChild is DCFElement && newChild is DCFElement &&
-                      oldChild.type == newChild.type) {
-                    print('✅ ISOLATES: Types match (${oldChild.type}), updating props instead of replacing');
-                    // Same type - just update props, don't replace
-                    final oldProps = oldData['props'] as Map<String, dynamic>? ?? {};
-                    final newProps = newData['props'] as Map<String, dynamic>? ?? {};
-                    final propsDiff = <String, dynamic>{};
-                    for (final key in newProps.keys) {
-                      if (!oldProps.containsKey(key) || oldProps[key] != newProps[key]) {
-                        propsDiff[key] = newProps[key];
+                  // CRITICAL: Check if both components render to the same element type
+                  // This prevents unnecessary native view recreation when components differ but rendered elements match
+                  DCFElement? oldRendered;
+                  DCFElement? newRendered;
+                  
+                  if (oldChild is DCFStatefulComponent || oldChild is DCFStatelessComponent) {
+                    oldRendered = oldChild.renderedNode as DCFElement?;
+                  } else if (oldChild is DCFElement) {
+                    oldRendered = oldChild;
+                  }
+                  
+                  if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+                    newRendered = newChild.renderedNode as DCFElement?;
+                  } else if (newChild is DCFElement) {
+                    newRendered = newChild;
+                  }
+                  
+                  // If both render to the same element type, reconcile instead of replacing
+                  final renderedTypesMatch = oldRendered != null && newRendered != null && oldRendered.type == newRendered.type;
+                  final directTypesMatch = oldChild is DCFElement && newChild is DCFElement && oldChild.type == newChild.type;
+                  
+                  if (renderedTypesMatch || directTypesMatch) {
+                    final typeStr = renderedTypesMatch 
+                        ? 'rendered: ${oldRendered!.type}' 
+                        : (oldChild is DCFElement ? oldChild.type : 'direct match');
+                    print('✅ ISOLATES: Types match ($typeStr), reconciling instead of replacing');
+                    
+                    // For components that render to the same element type, reconcile their rendered nodes directly
+                    // This bypasses component type checks and prevents unnecessary replacements
+                    if (renderedTypesMatch && oldRendered != null && newRendered != null) {
+                      print('🔍 ISOLATES: Reconciling rendered nodes directly (bypassing component type check)');
+                      // Transfer view IDs from old component to new component
+                      if (oldChild.effectiveNativeViewId != null) {
+                        if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+                          newChild.nativeViewId = oldChild.effectiveNativeViewId;
+                          newChild.contentViewId = oldChild.contentViewId;
+                        }
                       }
-                    }
-                    if (propsDiff.isNotEmpty) {
-                      print('🔍 ISOLATES: Updating ${propsDiff.length} props: ${propsDiff.keys}');
-                      for (final entry in propsDiff.entries) {
-                        newChild.elementProps[entry.key] = entry.value;
+                      // Update new component's renderedNode to point to the new rendered element
+                      if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+                        newChild.renderedNode = newRendered;
                       }
-                      await _updateElementProps(newChild);
-                    } else {
-                      print('ℹ️ ISOLATES: No prop changes, skipping update');
+                      // CRITICAL: Transfer viewId from oldRendered to newRendered BEFORE reconciling
+                      // This ensures _reconcileElement recognizes them as the same element
+                      if (oldRendered.nativeViewId != null) {
+                        newRendered.nativeViewId = oldRendered.nativeViewId;
+                        newRendered.contentViewId = oldRendered.contentViewId;
+                      }
+                      // CRITICAL: Set parent on newRendered to match oldRendered's parent
+                      // This ensures the reconciliation context is correct
+                      newRendered.parent = oldRendered.parent;
+                      // Reconcile the rendered elements directly using _reconcileElement
+                      // This bypasses _reconcile's component type checks
+                      final wasConcurrentEnabled = _concurrentEnabled;
+                      _concurrentEnabled = false;
+                      try {
+                        await _reconcileElement(oldRendered, newRendered);
+                      } finally {
+                        _concurrentEnabled = wasConcurrentEnabled;
+                      }
+                    } else if (oldChild is DCFStatelessComponent || oldChild is DCFStatefulComponent || 
+                        newChild is DCFStatelessComponent || newChild is DCFStatefulComponent) {
+                      print('🔍 ISOLATES: Reconciling component - using regular reconciliation');
+                      final wasConcurrentEnabled = _concurrentEnabled;
+                      _concurrentEnabled = false;
+                      try {
+                        await _reconcile(oldChild, newChild);
+                      } finally {
+                        _concurrentEnabled = wasConcurrentEnabled;
+                      }
+                    } else if (newChild is DCFElement && oldChild is DCFElement) {
+                      // Direct element match - update props if changed
+                      final newElement = newChild as DCFElement;
+                      final oldProps = oldData['props'] as Map<String, dynamic>? ?? {};
+                      final newProps = newData['props'] as Map<String, dynamic>? ?? {};
+                      final propsDiff = <String, dynamic>{};
+                      for (final key in newProps.keys) {
+                        if (!oldProps.containsKey(key) || oldProps[key] != newProps[key]) {
+                          propsDiff[key] = newProps[key];
+                        }
+                      }
+                      if (propsDiff.isNotEmpty) {
+                        print('🔍 ISOLATES: Updating ${propsDiff.length} props: ${propsDiff.keys}');
+                        for (final entry in propsDiff.entries) {
+                          newElement.elementProps[entry.key] = entry.value;
+                        }
+                        await _updateElementProps(newElement);
+                      } else {
+                        print('ℹ️ ISOLATES: No prop changes, skipping update');
+                      }
                     }
                   } else {
                     print('⚠️ ISOLATES: Types differ, performing actual replace');
@@ -2686,15 +2754,35 @@ class DCFEngine {
                   
                   print('🔍 ISOLATES: replaceChild at index $childIndex - oldChild type: ${oldChild is DCFElement ? oldChild.type : oldChild.runtimeType}, newChild type: ${newChild is DCFElement ? newChild.type : newChild.runtimeType}');
                   
-                  // CRITICAL: If types match, update props instead of replacing
-                  // This prevents unnecessary native view recreation
-                  // Check both element types and component runtime types
-                  final typesMatch = (oldChild is DCFElement && newChild is DCFElement && oldChild.type == newChild.type) ||
-                                    (oldChild.runtimeType == newChild.runtimeType);
+                  // CRITICAL: Check if both components render to the same element type
+                  // This prevents unnecessary native view recreation when components differ but rendered elements match
+                  DCFElement? oldRendered;
+                  DCFElement? newRendered;
                   
-                  if (typesMatch) {
-                    final typeStr = oldChild is DCFElement ? oldChild.type : oldChild.runtimeType.toString();
-                    print('✅ ISOLATES: Types match ($typeStr), updating props instead of replacing');
+                  if (oldChild is DCFStatefulComponent || oldChild is DCFStatelessComponent) {
+                    oldRendered = oldChild.renderedNode as DCFElement?;
+                  } else if (oldChild is DCFElement) {
+                    oldRendered = oldChild;
+                  }
+                  
+                  if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+                    newRendered = newChild.renderedNode as DCFElement?;
+                  } else if (newChild is DCFElement) {
+                    newRendered = newChild;
+                  }
+                  
+                  // If both render to the same element type, reconcile instead of replacing
+                  final renderedTypesMatch = oldRendered != null && newRendered != null && oldRendered.type == newRendered.type;
+                  
+                  // Also check direct element/component type matches
+                  final directTypesMatch = (oldChild is DCFElement && newChild is DCFElement && oldChild.type == newChild.type) ||
+                                         (oldChild.runtimeType == newChild.runtimeType);
+                  
+                  if (renderedTypesMatch || directTypesMatch) {
+                    final typeStr = renderedTypesMatch 
+                        ? 'rendered: ${oldRendered!.type}' 
+                        : (oldChild is DCFElement ? oldChild.type : oldChild.runtimeType.toString());
+                    print('✅ ISOLATES: Types match ($typeStr), reconciling instead of replacing');
                     // Same type - just update props, don't replace
                     final oldProps = oldChildData['props'] as Map<String, dynamic>? ?? {};
                     final newProps = newChildData['props'] as Map<String, dynamic>? ?? {};
@@ -2704,9 +2792,40 @@ class DCFEngine {
                         propsDiff[key] = newProps[key];
                       }
                     }
-                    // For components, always reconcile (children might have changed even if props haven't)
-                    // For elements, only update if props changed
-                    if (newChild is DCFStatelessComponent || newChild is DCFStatefulComponent) {
+                    // For components that render to the same element type, reconcile their rendered nodes directly
+                    // This bypasses component type checks and prevents unnecessary replacements
+                    if (renderedTypesMatch && oldRendered != null && newRendered != null) {
+                      print('🔍 ISOLATES: Reconciling rendered nodes directly (bypassing component type check)');
+                      // Transfer view IDs from old component to new component
+                      if (oldChild.effectiveNativeViewId != null) {
+                        if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+                          newChild.nativeViewId = oldChild.effectiveNativeViewId;
+                          newChild.contentViewId = oldChild.contentViewId;
+                        }
+                      }
+                      // Update new component's renderedNode to point to the new rendered element
+                      if (newChild is DCFStatefulComponent || newChild is DCFStatelessComponent) {
+                        newChild.renderedNode = newRendered;
+                      }
+                      // CRITICAL: Transfer viewId from oldRendered to newRendered BEFORE reconciling
+                      // This ensures _reconcileElement recognizes them as the same element
+                      if (oldRendered.nativeViewId != null) {
+                        newRendered.nativeViewId = oldRendered.nativeViewId;
+                        newRendered.contentViewId = oldRendered.contentViewId;
+                      }
+                      // CRITICAL: Set parent on newRendered to match oldRendered's parent
+                      // This ensures the reconciliation context is correct
+                      newRendered.parent = oldRendered.parent;
+                      // Reconcile the rendered elements directly using _reconcileElement
+                      // This bypasses _reconcile's component type checks
+                      final wasConcurrentEnabled = _concurrentEnabled;
+                      _concurrentEnabled = false;
+                      try {
+                        await _reconcileElement(oldRendered, newRendered);
+                      } finally {
+                        _concurrentEnabled = wasConcurrentEnabled;
+                      }
+                    } else if (newChild is DCFStatelessComponent || newChild is DCFStatefulComponent) {
                       // Components need reconciliation to update their rendered children
                       // CRITICAL: Use regular reconciliation (not isolate) to avoid nested isolate issues
                       // and ensure we actually detect and apply changes
@@ -2719,14 +2838,15 @@ class DCFEngine {
                       } finally {
                         _concurrentEnabled = wasConcurrentEnabled;
                       }
-                    } else if (newChild is DCFElement) {
+                    } else if (newChild is DCFElement && oldChild is DCFElement) {
                       // Elements only need prop updates if props changed
+                      final newElement = newChild as DCFElement;
                       if (propsDiff.isNotEmpty) {
                         print('🔍 ISOLATES: Updating ${propsDiff.length} props: ${propsDiff.keys}');
                         for (final entry in propsDiff.entries) {
-                          newChild.elementProps[entry.key] = entry.value;
+                          newElement.elementProps[entry.key] = entry.value;
                         }
-                        await _updateElementProps(newChild);
+                        await _updateElementProps(newElement);
                       } else {
                         print('ℹ️ ISOLATES: No prop changes for element, skipping update');
                       }
@@ -2791,11 +2911,9 @@ class DCFEngine {
   /// O(tree depth + disposal complexity) - Replace a node entirely
   Future<void> _replaceNode(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
-    // Add deletion effect for old node
-    _effectList.addEffect(Effect(
-      node: oldNode,
-      type: EffectType.deletion,
-    ));
+    // 🔧 FIX: Don't add deletion effect - we call deleteView directly
+    // Adding both causes duplicate delete operations in the batch
+    // The deletion effect would be processed by _commitEffects, causing a duplicate
     
     // Add placement effect for new node
     _effectList.addEffect(Effect(
@@ -2974,12 +3092,16 @@ class DCFEngine {
         await _nativeBridge.startBatchUpdate();
       }
       
-      // CRITICAL: Create the new view BEFORE deleting the old one to prevent white screen
-      // This ensures there's always a view visible during the transition
-      final newViewId = await renderToNative(newNode,
-          parentViewId: parentViewId, index: index);
+      // 🔧 FIX: Queue delete FIRST (before renderToNative) so batch processes deletes before creates
+      // This prevents both old and new views from being in the layout tree simultaneously
+      // which causes the "imaginary margin" / layout shift issue
+      // The delete is queued, so the old view stays in hierarchy until batch commit
+      // but it will be removed from layout tree BEFORE new views are created
+      print('🔍 REPLACE: Queuing delete FIRST for viewId=$oldViewId (before creating new view)');
+      EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
+      await _nativeBridge.deleteView(oldViewId);
       
-      // 🔧 FIX: Collect all child view IDs before deleting parent
+      // 🔧 FIX: Collect all child view IDs before creating new view
       // This ensures we can clean up _nodesByViewId after Android deletes the views
       final childViewIds = <int>[];
       void collectChildViewIds(DCFComponentNode node) {
@@ -3004,9 +3126,12 @@ class DCFEngine {
           'Collected ${childViewIds.length} child view IDs for cleanup',
           extra: {'ChildViewIds': childViewIds});
       
-      // Only delete the old view after the new one is created and attached
-      EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
-      await _nativeBridge.deleteView(oldViewId);
+      // Create the new view - delete is already queued, so batch will process delete first
+      // This ensures old view is removed from layout tree before new view is added
+      print('🔍 REPLACE: Creating new view at parentViewId=$parentViewId, index=$index (delete already queued)');
+      final newViewId = await renderToNative(newNode,
+          parentViewId: parentViewId, index: index);
+      print('🔍 REPLACE: New view created with viewId=$newViewId');
       
       // 🔧 FIX: Clean up child view IDs from _nodesByViewId after parent is deleted
       // Android's deleteView will handle recursive deletion of native views,
@@ -3471,6 +3596,8 @@ class DCFEngine {
     final effects = _effectList.getEffects();
     
     // Process deletions first
+    // Note: Deletion effects from _replaceNode are skipped because _replaceNode calls deleteView directly
+    // This prevents duplicate delete operations
     for (final effect in effects) {
       if (effect.type == EffectType.deletion) {
         await _commitDeletion(effect);

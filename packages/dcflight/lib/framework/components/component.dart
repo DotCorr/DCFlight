@@ -44,9 +44,13 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
         _renderedNode = DCFElement(
           type: 'View',
           elementProps: {
+            'display': 'flex',
+            'flexDirection': 'column',
+            'alignItems': 'stretch',
+            'justifyContent': 'flex-start',
+            'flex': 1,
             'height': '100%',
             'width': '100%',
-            'flex': 1,
           },
           children: [rawRendered],
         );
