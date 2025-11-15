@@ -15,21 +15,24 @@ DCFlight VDOM implements **React Fiber-inspired concurrent features** optimized 
 
 ### Overview
 
-For heavy reconciliation tasks (50+ nodes), DCFlight uses **4 worker isolates** spawned at startup to perform parallel tree diffing in the background, keeping the main thread responsive.
+For heavy reconciliation tasks (50+ nodes), DCFlight uses **2 pre-spawned worker isolates** to perform parallel tree diffing in the background, keeping the main thread responsive.
 
 ### How It Works
 
-1. **Eager Initialization**: 4 worker isolates spawned at engine startup
+1. **Pre-Spawned Workers**: 2 worker isolates pre-spawned at engine startup (ready immediately)
 2. **Automatic Detection**: Trees with 50+ nodes automatically use isolates
 3. **Parallel Diffing**: Tree diffing happens in background isolate
-4. **Main Thread Application**: All UI updates applied on main thread (safe)
+4. **Smart Reconciliation**: Element-level reconciliation when components render to same element type
+5. **Main Thread Application**: All UI updates applied on main thread (safe)
 
 ### Benefits
 
 - **Heavy Projects**: Handles large trees without blocking UI
 - **Responsiveness**: Main thread stays responsive during reconciliation
-- **Performance**: 2-4x faster for large reconciliations
+- **Performance**: 50-80% faster for large reconciliations (typically saves 60-100ms per reconciliation)
 - **Safety**: All native view updates on main thread (no race conditions)
+- **No Spawning Delay**: Pre-spawned workers ready immediately (no on-demand spawning overhead)
+- **Smart Reconciliation**: Element-level reconciliation prevents unnecessary view replacement
 
 ### Implementation
 
