@@ -324,6 +324,7 @@ import Foundation
     /// - Returns: `true` if all operations succeeded, `false` otherwise
     @objc func commitBatchUpdate(updates: [[String: Any]]) -> Bool {
         // Separate pre-serialized JSON operations from legacy Map operations
+        var deleteOps: [Int] = []
         var createOps: [(viewId: Int, viewType: String, propsJson: String)] = []
         var updateOps: [(viewId: Int, propsJson: String)] = []
         var attachOps: [(childId: Int, parentId: Int, index: Int)] = []
@@ -336,6 +337,23 @@ import Foundation
             }
             
             switch operationType {
+            case "deleteView":
+                let viewId: Int?
+                if let viewIdInt = operation["viewId"] as? Int {
+                    viewId = viewIdInt
+                } else if let viewIdNum = operation["viewId"] as? NSNumber {
+                    viewId = viewIdNum.intValue
+                } else if let viewIdStr = operation["viewId"] as? String {
+                    viewId = Int(viewIdStr)
+                } else {
+                    viewId = nil
+                }
+                
+                if let viewId = viewId {
+                    print("🗑️ iOS_BATCH: Parsed deleteView operation for viewId: \(viewId)")
+                    deleteOps.append(viewId)
+                }
+                
             case "createView":
                 let viewId: Int?
                 if let viewIdInt = operation["viewId"] as? Int {
@@ -443,10 +461,83 @@ import Foundation
         
         // Execute phase - process all operations with minimal overhead
         do {
+            print("📊 iOS_BATCH: Processing batch - deletes: \(deleteOps.count), creates: \(createOps.count), updates: \(updateOps.count), attaches: \(attachOps.count)")
+            
             let startTime = CFAbsoluteTimeGetCurrent()
+            
+            // 🔧 FIX: Delete phase - remove from layout tree FIRST, before creating new views
+            // This prevents both old and new views from being in the layout tree simultaneously,
+            // which causes the "imaginary margin" / layout shift issue
+            if !deleteOps.isEmpty {
+                let deleteStartTime = CFAbsoluteTimeGetCurrent()
+                var viewsToRemove: [UIView] = []
+                
+                // Collect all views to remove (parent + children) without removing from superview yet
+                func collectViewsToRemove(parentId: Int) {
+                    if let view = views[parentId] {
+                        viewsToRemove.append(view)
+                    }
+                    let parentIdStr = String(parentId)
+                    if let children = viewHierarchy[parentIdStr] {
+                        for childIdStr in children {
+                            if let childId = Int(childIdStr) {
+                                collectViewsToRemove(parentId: childId)
+                            }
+                        }
+                    }
+                }
+                
+                for viewId in deleteOps {
+                    print("🗑️ iOS_BATCH: Processing delete for viewId=\(viewId)")
+                    collectViewsToRemove(parentId: viewId)
+                    
+                    // 🔧 CRITICAL: Remove from layout tree FIRST (before creates)
+                    // This ensures old view is not in layout tree when new view is added
+                    print("🗑️ iOS_BATCH: Removing viewId=\(viewId) from layout tree (BEFORE creates)")
+                    YogaShadowTree.shared.removeNode(nodeId: String(viewId))
+                    
+                    // Remove from registry (but keep in hierarchy for now)
+                    if !DCFViewManager.shared.deleteView(viewId: viewId) {
+                        print("❌ Failed to delete view \(viewId)")
+                        return false
+                    }
+                    
+                    // Clean up tracking recursively
+                    func cleanupTrackingRecursively(parentId: Int) {
+                        let parentIdStr = String(parentId)
+                        if let children = viewHierarchy[parentIdStr] {
+                            for childIdStr in children {
+                                if let childId = Int(childIdStr) {
+                                    // Remove child from layout tree too
+                                    YogaShadowTree.shared.removeNode(nodeId: childIdStr)
+                                    ViewRegistry.shared.removeView(id: childId)
+                                    DCFLayoutManager.shared.unregisterView(withId: childId)
+                                    cleanupTrackingRecursively(parentId: childId)
+                                }
+                            }
+                        }
+                        viewHierarchy[parentIdStr] = []
+                    }
+                    cleanupTrackingRecursively(parentId: viewId)
+                    views.removeValue(forKey: viewId)
+                    cleanupHierarchyReferences(viewId: viewId)
+                }
+                
+                let deleteTime = (CFAbsoluteTimeGetCurrent() - deleteStartTime) * 1000
+                print("🗑️ iOS_BATCH_TIMING: Delete phase completed in \(String(format: "%.2f", deleteTime))ms (\(deleteOps.count) views)")
+                
+                // Store viewsToRemove for later removal from superview
+                // We'll remove them after creates are done
+                for view in viewsToRemove {
+                    view.removeFromSuperview()
+                }
+                print("✅ iOS_BATCH: All \(viewsToRemove.count) old views removed from superview")
+            }
+            
             let createStartTime = CFAbsoluteTimeGetCurrent()
             
             // Create all views (props are already JSON strings - no serialization needed!)
+            // Old views are already removed from layout tree, so layout will only calculate with new views
             for op in createOps {
                 if !createView(viewId: op.viewId, viewType: op.viewType, propsJson: op.propsJson) {
                     print("❌ Failed to create view \(op.viewId)")

@@ -547,12 +547,19 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
             
-            // Delete phase - remove from registry and layout tree, but NOT from parent yet
+            // 🔧 FIX: Delete phase - remove from layout tree FIRST, before creating new views
+            // This prevents both old and new views from being in the layout tree simultaneously,
+            // which causes the "imaginary margin" / layout shift issue
             deleteOps.forEach { op ->
                 Log.d(TAG, "🗑️ ANDROID_BATCH: Processing delete for viewId=${op.viewId}")
                 collectViewsToRemove(op.viewId)
                 
-                // Remove from registry and layout tree only (not from parent yet)
+                // 🔧 CRITICAL: Remove from layout tree FIRST (before creates)
+                // This ensures old view is not in layout tree when new view is added
+                Log.d(TAG, "🗑️ ANDROID_BATCH: Removing viewId=${op.viewId} from layout tree (BEFORE creates)")
+                YogaShadowTree.shared.removeNode(op.viewId.toString())
+                
+                // Remove from registry (but keep in hierarchy for now)
                 ViewRegistry.shared.removeView(op.viewId)
                 DCFLayoutManager.shared.unregisterView(op.viewId)
                 views.remove(op.viewId)
@@ -564,6 +571,8 @@ class DCMauiBridgeImpl private constructor() {
                     children.forEach { childIdStr ->
                         val childId = childIdStr.toIntOrNull()
                         if (childId != null) {
+                            // Remove child from layout tree too
+                            YogaShadowTree.shared.removeNode(childIdStr)
                             ViewRegistry.shared.removeView(childId)
                             DCFLayoutManager.shared.unregisterView(childId)
                             cleanupTrackingRecursively(childId)
@@ -576,10 +585,11 @@ class DCMauiBridgeImpl private constructor() {
             }
             
             if (deleteOps.isNotEmpty()) {
-                Log.d(TAG, "🗑️ ANDROID_BATCH: Delete phase completed (${deleteOps.size} views removed from registry)")
+                Log.d(TAG, "🗑️ ANDROID_BATCH: Delete phase completed - ${deleteOps.size} views removed from layout tree and registry")
             }
             
             // Execute phase - process all operations
+            // Now create new views - old views are already removed from layout tree
             createOps.forEach { op ->
                 createView(op.viewId, op.viewType, op.propsJson)
             }
@@ -590,13 +600,6 @@ class DCMauiBridgeImpl private constructor() {
             
             attachOps.forEach { op ->
                 attachView(op.childId, op.parentId, op.index)
-            }
-            
-            // 🔧 FIX: Now remove old views from layout tree AFTER new views are attached
-            // This prevents layout recalculation between delete and create
-            deleteOps.forEach { op ->
-                Log.d(TAG, "🗑️ ANDROID_BATCH: Removing viewId=${op.viewId} from layout tree (after attach)")
-                YogaShadowTree.shared.removeNode(op.viewId.toString())
             }
             
             // 🔧 FIX: Finally remove ALL old views from parent AFTER layout tree removal
