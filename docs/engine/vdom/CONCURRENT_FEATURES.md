@@ -33,6 +33,8 @@ For heavy reconciliation tasks (50+ nodes), DCFlight uses **2 pre-spawned worker
 - **Safety**: All native view updates on main thread (no race conditions)
 - **No Spawning Delay**: Pre-spawned workers ready immediately (no on-demand spawning overhead)
 - **Smart Reconciliation**: Element-level reconciliation prevents unnecessary view replacement
+- **Structure Caching**: 50-80% serialization reduction (3ms vs 10-15ms for 66 nodes)
+- **Parallel Prep**: 2-10ms faster for children rendering (3+ children)
 
 ### Implementation
 

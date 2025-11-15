@@ -29,6 +29,23 @@ import 'package:dcflight/framework/components/dcf_element.dart';
 import 'package:dcflight/framework/components/component_node.dart';
 import 'package:dcflight/framework/components/fragment.dart';
 
+/// Result of preparing a node for rendering (prep work without native calls)
+class _NodePrepResult {
+  final DCFComponentNode node;
+  final int? viewId;
+  final Map<String, dynamic>? props;
+  final List<String>? eventTypes;
+  final String? elementType;
+  
+  _NodePrepResult({
+    required this.node,
+    this.viewId,
+    this.props,
+    this.eventTypes,
+    this.elementType,
+  });
+}
+
 /// Enhanced Virtual DOM with priority-based update scheduling
 class DCFEngine {
   /// Native bridge for UI operations
@@ -1599,6 +1616,156 @@ class DCFEngine {
     };
   }
 
+  /// Prep work for rendering a node (without native calls)
+  /// This can be parallelized for multiple children
+  Future<_NodePrepResult?> _prepareNodeForRender(DCFComponentNode node,
+      {int? parentViewId, int? index}) async {
+    try {
+      // Generate viewId if needed
+      int? viewId;
+      if (node is DCFElement) {
+        viewId = node.nativeViewId ?? _generateViewId();
+        node.nativeViewId = viewId;
+        _nodesByViewId[viewId] = node;
+      }
+      
+      // For components, render them (this is the expensive part)
+      DCFComponentNode? nodeToRender = node;
+      if (node is DCFStatefulComponent) {
+        // Render the component to get its rendered node
+        final renderedNode = node.render();
+        if (renderedNode != null) {
+          node.renderedNode = renderedNode;
+          nodeToRender = renderedNode;
+          // Recursively prepare rendered node
+          if (renderedNode is DCFElement) {
+            final renderedViewId = renderedNode.nativeViewId ?? _generateViewId();
+            renderedNode.nativeViewId = renderedViewId;
+            _nodesByViewId[renderedViewId] = renderedNode;
+            viewId = renderedViewId;
+          }
+        }
+      } else if (node is DCFStatelessComponent) {
+        // Render the component to get its rendered node
+        final renderedNode = node.render();
+        if (renderedNode != null) {
+          node.renderedNode = renderedNode;
+          nodeToRender = renderedNode;
+          // Recursively prepare rendered node
+          if (renderedNode is DCFElement) {
+            final renderedViewId = renderedNode.nativeViewId ?? _generateViewId();
+            renderedNode.nativeViewId = renderedViewId;
+            _nodesByViewId[renderedViewId] = renderedNode;
+            viewId = renderedViewId;
+          }
+        }
+      }
+      
+      // Prepare props and event types (no native calls yet)
+      Map<String, dynamic>? props;
+      List<String>? eventTypes;
+      if (nodeToRender is DCFElement) {
+        props = nodeToRender.elementProps;
+        eventTypes = nodeToRender.eventTypes;
+      }
+      
+      return _NodePrepResult(
+        node: nodeToRender,
+        viewId: viewId,
+        props: props,
+        eventTypes: eventTypes,
+        elementType: nodeToRender is DCFElement ? nodeToRender.type : null,
+      );
+    } catch (e) {
+      // If prep fails, return null (will fallback to normal render)
+      return null;
+    }
+  }
+  
+  /// Render a prepared node (native calls only)
+  /// This must be sequential to maintain correct order
+  Future<int?> _renderPreparedNode(_NodePrepResult prepResult,
+      {int? parentViewId, int? index}) async {
+    if (prepResult.node is! DCFElement || prepResult.viewId == null) {
+      // Not an element or no viewId, render normally
+      return await renderToNative(prepResult.node, parentViewId: parentViewId, index: index);
+    }
+    
+    final element = prepResult.node as DCFElement;
+    final viewId = prepResult.viewId!;
+    
+    // Native calls (must be sequential)
+    EngineDebugLogger.logBridge('CREATE_VIEW', viewId, data: {
+      'ElementType': prepResult.elementType ?? element.type,
+      'Props': prepResult.props?.keys.toList() ?? element.elementProps.keys.toList()
+    });
+    final success = await _nativeBridge.createView(
+        viewId, prepResult.elementType ?? element.type, prepResult.props ?? element.elementProps);
+    if (!success) {
+      return null;
+    }
+    
+    if (parentViewId != null) {
+      EngineDebugLogger.logBridge('ATTACH_VIEW', viewId,
+          data: {'ParentViewId': parentViewId, 'Index': index ?? 0});
+      await _nativeBridge.attachView(viewId, parentViewId, index ?? 0);
+    }
+    
+    if (prepResult.eventTypes != null && prepResult.eventTypes!.isNotEmpty) {
+      EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', viewId,
+          data: {'EventTypes': prepResult.eventTypes});
+      await _nativeBridge.addEventListeners(viewId, prepResult.eventTypes!);
+    }
+    
+    // Render children (with parallel prep if applicable)
+    final childIds = <int>[];
+    if (element.children.length >= 3) {
+      // Parallel prep for children
+      final childPrepResults = await Future.wait(
+        element.children.asMap().entries.map((entry) async {
+          final childIndex = entry.key;
+          final child = entry.value;
+          return _prepareNodeForRender(child, parentViewId: viewId, index: childIndex);
+        }),
+      );
+      
+      // Sequential native calls for children
+      for (var i = 0; i < childPrepResults.length; i++) {
+        final childPrep = childPrepResults[i];
+        if (childPrep != null) {
+          final childId = await _renderPreparedNode(childPrep, parentViewId: viewId, index: i);
+          if (childId != null) {
+            childIds.add(childId);
+          }
+        } else {
+          // Fallback
+          final childId = await renderToNative(element.children[i],
+              parentViewId: viewId, index: i);
+          if (childId != null) {
+            childIds.add(childId);
+          }
+        }
+      }
+    } else {
+      // Sequential for small number of children
+      for (var i = 0; i < element.children.length; i++) {
+        final childId = await renderToNative(element.children[i],
+            parentViewId: viewId, index: i);
+        if (childId != null) {
+          childIds.add(childId);
+        }
+      }
+    }
+    
+    if (childIds.isNotEmpty) {
+      EngineDebugLogger.logBridge('SET_CHILDREN', viewId,
+          data: {'ChildIds': childIds});
+      await _nativeBridge.setChildren(viewId, childIds);
+    }
+    
+    return viewId;
+  }
+  
   /// O(children count + event types count) - Render an element to native UI
   Future<int?> _renderElementToNative(DCFElement element,
       {int? parentViewId, int? index}) async {
@@ -1666,11 +1833,44 @@ class DCFEngine {
     EngineDebugLogger.log('ELEMENT_CHILDREN_START',
         'Rendering ${element.children.length} children');
 
-    for (var i = 0; i < element.children.length; i++) {
-      final childId = await renderToNative(element.children[i],
-          parentViewId: viewId, index: i);
-      if (childId != null) {
-        childIds.add(childId);
+    // 🚀 OPTIMIZATION: Parallel prep for multiple children (3+ children)
+    // Prep work (viewId generation, component rendering, props prep) can be parallelized
+    // Native calls remain sequential to maintain correct order
+    if (element.children.length >= 3) {
+      // Prepare all children in parallel (prep work only, no native calls)
+      final prepResults = await Future.wait(
+        element.children.asMap().entries.map((entry) async {
+          final index = entry.key;
+          final child = entry.value;
+          return _prepareNodeForRender(child, parentViewId: viewId, index: index);
+        }),
+      );
+      
+      // Now render sequentially (native calls must be in order)
+      for (var i = 0; i < prepResults.length; i++) {
+        final prepResult = prepResults[i];
+        if (prepResult != null) {
+          final childId = await _renderPreparedNode(prepResult, parentViewId: viewId, index: i);
+          if (childId != null) {
+            childIds.add(childId);
+          }
+        } else {
+          // Fallback: render normally if prep failed
+          final childId = await renderToNative(element.children[i],
+              parentViewId: viewId, index: i);
+          if (childId != null) {
+            childIds.add(childId);
+          }
+        }
+      }
+    } else {
+      // Small number of children: sequential is fine (no overhead)
+      for (var i = 0; i < element.children.length; i++) {
+        final childId = await renderToNative(element.children[i],
+            parentViewId: viewId, index: i);
+        if (childId != null) {
+          childIds.add(childId);
+        }
       }
     }
 
