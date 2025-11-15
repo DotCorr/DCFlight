@@ -152,6 +152,18 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - Returns: `true` if the view was deleted successfully, `false` otherwise
   @override
   Future<bool> deleteView(int viewId) async {
+    // 🔧 FIX: Queue delete operation if batch update is in progress
+    // This ensures delete is processed BEFORE create in the batch commit,
+    // preventing both old and new views from being in the layout tree simultaneously
+    if (_batchUpdateInProgress) {
+      print('🗑️ QUEUE_DELETE: Queuing deleteView($viewId) for batch commit');
+      _pendingBatchUpdates.add({
+        'operation': 'deleteView',
+        'viewId': viewId,
+      });
+      return true;
+    }
+    
     try {
       final result = await bridgeChannel.invokeMethod<bool>('deleteView', {
         'viewId': viewId,
