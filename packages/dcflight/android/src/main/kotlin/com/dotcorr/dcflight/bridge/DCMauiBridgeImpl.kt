@@ -450,7 +450,9 @@ class DCMauiBridgeImpl private constructor() {
         data class UpdateOp(val viewId: Int, val propsJson: String)
         data class AttachOp(val childId: Int, val parentId: Int, val index: Int)
         data class AddEventListenersOp(val viewId: Int, val eventTypes: List<String>)
+        data class DeleteOp(val viewId: Int)
         
+        val deleteOps = mutableListOf<DeleteOp>()
         val createOps = mutableListOf<CreateOp>()
         val updateOps = mutableListOf<UpdateOp>()
         val attachOps = mutableListOf<AttachOp>()
@@ -462,6 +464,14 @@ class DCMauiBridgeImpl private constructor() {
             val operationType = operation["operation"] as? String
             
             when (operationType) {
+                "deleteView" -> {
+                    val viewId = (operation["viewId"] as? Number)?.toInt() ?: (operation["viewId"] as? Int)
+                    if (viewId != null) {
+                        Log.d(TAG, "🗑️ ANDROID_BATCH: Parsed deleteView operation for viewId: $viewId")
+                        deleteOps.add(DeleteOp(viewId))
+                    }
+                }
+                
                 "createView" -> {
                     val viewId = (operation["viewId"] as? Number)?.toInt() ?: (operation["viewId"] as? Int)
                     val viewType = operation["viewType"] as? String
@@ -515,6 +525,60 @@ class DCMauiBridgeImpl private constructor() {
         }
         
         try {
+            Log.d(TAG, "📊 ANDROID_BATCH: Processing batch - deletes: ${deleteOps.size}, creates: ${createOps.size}, updates: ${updateOps.size}, attaches: ${attachOps.size}")
+            
+            // 🔧 FIX: Delete views FIRST but defer view removal from parent to prevent layout shifts
+            // We remove from registry/layout tree but keep views in hierarchy until creates are done
+            val viewsToRemove = mutableListOf<android.view.View>()
+            
+            // Collect all views to remove (parent + children) without removing from parent yet
+            fun collectViewsToRemove(parentId: Int) {
+                val view = ViewRegistry.shared.getView(parentId)
+                if (view != null) {
+                    viewsToRemove.add(view)
+                }
+                val parentIdStr = parentId.toString()
+                val children = viewHierarchy[parentIdStr] ?: return
+                children.forEach { childIdStr ->
+                    val childId = childIdStr.toIntOrNull()
+                    if (childId != null) {
+                        collectViewsToRemove(childId)
+                    }
+                }
+            }
+            
+            // Delete phase - remove from registry and layout tree, but NOT from parent yet
+            deleteOps.forEach { op ->
+                Log.d(TAG, "🗑️ ANDROID_BATCH: Processing delete for viewId=${op.viewId}")
+                collectViewsToRemove(op.viewId)
+                
+                // Remove from registry and layout tree only (not from parent yet)
+                ViewRegistry.shared.removeView(op.viewId)
+                DCFLayoutManager.shared.unregisterView(op.viewId)
+                views.remove(op.viewId)
+                
+                // Clean up tracking recursively
+                fun cleanupTrackingRecursively(parentId: Int) {
+                    val parentIdStr = parentId.toString()
+                    val children = viewHierarchy[parentIdStr] ?: return
+                    children.forEach { childIdStr ->
+                        val childId = childIdStr.toIntOrNull()
+                        if (childId != null) {
+                            ViewRegistry.shared.removeView(childId)
+                            DCFLayoutManager.shared.unregisterView(childId)
+                            cleanupTrackingRecursively(childId)
+                        }
+                    }
+                    viewHierarchy[parentIdStr]?.clear()
+                }
+                cleanupTrackingRecursively(op.viewId)
+                cleanupHierarchyReferences(op.viewId.toString())
+            }
+            
+            if (deleteOps.isNotEmpty()) {
+                Log.d(TAG, "🗑️ ANDROID_BATCH: Delete phase completed (${deleteOps.size} views removed from registry)")
+            }
+            
             // Execute phase - process all operations
             createOps.forEach { op ->
                 createView(op.viewId, op.viewType, op.propsJson)
@@ -526,6 +590,25 @@ class DCMauiBridgeImpl private constructor() {
             
             attachOps.forEach { op ->
                 attachView(op.childId, op.parentId, op.index)
+            }
+            
+            // 🔧 FIX: Now remove old views from layout tree AFTER new views are attached
+            // This prevents layout recalculation between delete and create
+            deleteOps.forEach { op ->
+                Log.d(TAG, "🗑️ ANDROID_BATCH: Removing viewId=${op.viewId} from layout tree (after attach)")
+                YogaShadowTree.shared.removeNode(op.viewId.toString())
+            }
+            
+            // 🔧 FIX: Finally remove ALL old views from parent AFTER layout tree removal
+            // This ensures layout is stable before removing from hierarchy
+            if (viewsToRemove.isNotEmpty()) {
+                Log.d(TAG, "🗑️ ANDROID_BATCH: Removing ${viewsToRemove.size} old views from parent (after layout tree removal)")
+                viewsToRemove.forEach { view ->
+                    val parentView = view.parent as? android.view.ViewGroup
+                    parentView?.removeView(view)
+                    Log.d(TAG, "✅ ANDROID_BATCH: View removed from parent")
+                }
+                Log.d(TAG, "✅ ANDROID_BATCH: All ${viewsToRemove.size} old views removed from parent")
             }
             
             eventOps.forEach { op ->
