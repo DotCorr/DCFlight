@@ -10,6 +10,7 @@ package com.dotcorr.dcflight.components
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import com.dotcorr.dcflight.extensions.applyStyles
 
 /**
  * DCFComponent - Base class for all DCFlight components
@@ -30,20 +31,19 @@ abstract class DCFComponent {
 
     /**
      * Updates an existing view with new props
-     * Framework-level implementation: Automatically merges props (React Native pattern)
-     * Components MUST override updateViewInternal for their specific update logic
-     * 
-     * This method is final to ensure all components use the framework's props merging
+     * Matches iOS: func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool
+     * Framework handles prop merging at bridge level - components just update with props
+     * Components override this directly - no updateViewInternal complexity needed
      */
-    fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val existingProps = getStoredProps(view)
-        val mergedProps = mergeProps(existingProps, props)
-        storeProps(view, mergedProps)
+    open fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        // Framework handles prop merging and null filtering at bridge level
+        // Components just receive final props and update, like iOS
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        storeProps(view, props)
         
-        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
-        val nonNullExistingProps = existingProps.filterValues { it != null }.mapValues { it.value!! }
-        
-        return updateViewInternal(view, nonNullProps, nonNullExistingProps)
+        // Default: just apply styles like iOS
+        view.applyStyles(nonNullProps)
+        return true
     }
     
     /**
@@ -96,80 +96,6 @@ abstract class DCFComponent {
      */
     abstract fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any?
     
-    /**
-     * Protected helper method for components to implement their update logic
-     * Components MUST override this to handle prop updates
-     * Props are already merged and null-filtered by updateView()
-     * 
-     * This is called by updateView() after props merging
-     * 
-     * CRITICAL PATTERN FOR STATE PRESERVATION:
-     * When only semantic colors change (theme toggle), read current state from view, not props.
-     * Example: Slider reads from seekBar.progress, SegmentedControl reads from button text color.
-     * Use onlySemanticColorsChanged() helper to detect this case.
-     * 
-     * @param view The view to update
-     * @param props The merged new props (non-null filtered)
-     * @param existingProps The previous props (non-null filtered) - use hasPropChanged() to compare
-     */
-    protected abstract fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean
-    
-    /**
-     * Check if a specific prop changed between existing and new props
-     * Use this in updateViewInternal to only update/reload if the prop actually changed
-     */
-    protected fun hasPropChanged(key: String, existing: Map<String, Any>, new: Map<String, Any>): Boolean {
-        val existingValue = existing[key]
-        val newValue = new[key]
-        return existingValue != newValue
-    }
-    
-    /**
-     * Check if only semantic colors changed (no state props changed)
-     * Use this to preserve component state when only theme/colors change
-     * 
-     * When only colors change, read current state from view (not props)
-     * This prevents components from resetting when theme toggles
-     * 
-     * @param existingProps Previous props (from getStoredProps)
-     * @param props New props (merged)
-     * @param stateProps List of prop keys that represent component state (e.g., ["selectedIndex", "value", "checked"])
-     *                   Common state props like "enabled", "disabled" are automatically included.
-     * @return true if only semantic colors changed, false if state props also changed
-     */
-    protected fun onlySemanticColorsChanged(
-        existingProps: Map<String, Any>,
-        props: Map<String, Any>,
-        stateProps: List<String> = emptyList()
-    ): Boolean {
-        val allStateProps = stateProps + DCFPropConstants.COMMON_STATE_PROPS + listOf("segments")
-        
-        val stateChanged = allStateProps.any { hasPropChanged(it, existingProps, props) }
-        if (stateChanged) return false
-        
-        val colorChanged = DCFPropConstants.SEMANTIC_COLOR_PROPS.any { hasPropChanged(it, existingProps, props) }
-        
-        return colorChanged
-    }
-    
-    /**
-     * Check if layout props changed between existing and new props.
-     * 
-     * This is a framework-level utility to avoid duplicating layout prop detection logic.
-     * Components should use this instead of manually checking layout props.
-     * 
-     * Uses DCFPropConstants.LAYOUT_PROPS to ensure consistency with bridge-level layout prop extraction.
-     * 
-     * @param existingProps Previous props (from getStoredProps)
-     * @param props New props (merged)
-     * @return true if any layout props changed, false otherwise
-     */
-    protected fun hasLayoutPropsChanged(
-        existingProps: Map<String, Any>,
-        props: Map<String, Any>
-    ): Boolean {
-        return DCFPropConstants.LAYOUT_PROPS.any { hasPropChanged(it, existingProps, props) }
-    }
     
     /**
      * Calculate intrinsic size for the component - MATCH iOS getIntrinsicSize

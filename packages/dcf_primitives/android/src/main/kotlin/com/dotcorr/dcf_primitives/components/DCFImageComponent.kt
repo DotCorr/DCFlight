@@ -52,50 +52,39 @@ class DCFImageComponent : DCFComponent() {
         return imageView
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val imageView = view as? ImageView ?: return false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        Log.d(TAG, "Updating image view with props: $props")
-
-        if (hasPropChanged("source", existingProps, props)) {
-            props["source"]?.let { sourceAny ->
-            val source: String
-            
-            source = when (sourceAny) {
+        props["source"]?.let { sourceAny ->
+            val source: String = when (sourceAny) {
                 is String -> sourceAny
                 is Number -> sourceAny.toString()
                 else -> {
                     propagateEvent(imageView, "onError", mapOf("error" to "Invalid source type"))
-                    return false
+                    imageView.applyStyles(nonNullProps)
+                    return true
                 }
             }
             
-            if (source.isEmpty()) {
-                propagateEvent(imageView, "onError", mapOf("error" to "Empty source"))
-                return false
+            if (source.isNotEmpty()) {
+                loadImageFromSource(imageView, source)
             }
-            
-            loadImageFromSource(imageView, source)
-        }
         }
 
-        if (hasPropChanged("resizeMode", existingProps, props)) {
-            props["resizeMode"]?.let { mode ->
+        props["resizeMode"]?.let { mode ->
             val scaleType = when (mode.toString()) {
-                "cover" -> ImageView.ScaleType.CENTER_CROP  // scaleAspectFill
-                "contain" -> ImageView.ScaleType.FIT_CENTER // scaleAspectFit
-                "stretch" -> ImageView.ScaleType.FIT_XY     // scaleToFill
-                "repeat" -> ImageView.ScaleType.CENTER      // scaleAspectFit with tiling
-                "center" -> ImageView.ScaleType.CENTER      // center
+                "cover" -> ImageView.ScaleType.CENTER_CROP
+                "contain" -> ImageView.ScaleType.FIT_CENTER
+                "stretch" -> ImageView.ScaleType.FIT_XY
+                "repeat" -> ImageView.ScaleType.CENTER
+                "center" -> ImageView.ScaleType.CENTER
                 else -> ImageView.ScaleType.FIT_CENTER
             }
             imageView.scaleType = scaleType
-            Log.d(TAG, "Set resize mode: $mode")
-        }
         }
 
-        imageView.applyStyles(props)
-
+        imageView.applyStyles(nonNullProps)
         return true
     }
 

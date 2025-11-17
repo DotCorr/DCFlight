@@ -456,16 +456,14 @@ class TouchableView: UIView {
 
 ### Android: Touch Event Handling
 
-For components that need to receive touches even when children are present:
+**Framework automatically handles touch setup!** No manual glue code needed:
 
 ```kotlin
 override fun createView(context: Context, props: Map<String, Any?>): View {
     val frameLayout = FrameLayout(context)
     
-    // CRITICAL: Make clickable to receive touches
-    frameLayout.isClickable = true
-    frameLayout.isFocusable = true
-    frameLayout.isFocusableInTouchMode = true
+    // Framework automatically enables isClickable/isFocusable when event listeners are registered
+    // Just set up your touch listener - framework handles the rest!
     
     frameLayout.setOnTouchListener { view, event ->
         // Handle touches
@@ -475,6 +473,11 @@ override fun createView(context: Context, props: Map<String, Any?>): View {
     return frameLayout
 }
 ```
+
+**Framework automatically:**
+- Enables `isClickable`, `isFocusable`, and `isFocusableInTouchMode` when event listeners are registered
+- Skips `opacity` prop for components that manage their own alpha (TouchableOpacity, GestureDetector)
+- Handles all Android-specific optimizations uniformly
 
 ## Next Steps
 

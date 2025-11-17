@@ -61,11 +61,11 @@ class DCFWebViewComponent : DCFComponent() {
         return webView
     }
 
-    override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val webView = view as? WebView ?: return false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        if (hasPropChanged("source", existingProps, props)) {
-            val newSource = props["source"]
+        props["source"]?.let { newSource ->
             when (newSource) {
                 is String -> {
                     webView.loadUrl(newSource)
@@ -180,7 +180,7 @@ class DCFWebViewComponent : DCFComponent() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                props["onNavigationStateChange"]?.let { onChange ->
+                nonNullProps["onNavigationStateChange"]?.let { onChange ->
                     webView.setTag(DCFTags.EVENT_CALLBACK_KEY, onChange)
                 }
                 return false
@@ -190,7 +190,7 @@ class DCFWebViewComponent : DCFComponent() {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 super.onProgressChanged(view, newProgress)
-                props["onLoadProgress"]?.let { onProgress ->
+                nonNullProps["onLoadProgress"]?.let { onProgress ->
                     webView.setTag(DCFPrimitiveTags.WEBVIEW_PROGRESS_KEY, newProgress / 100f)
                     webView.setTag(DCFTags.EVENT_CALLBACK_KEY, onProgress)
                 }
@@ -204,14 +204,7 @@ class DCFWebViewComponent : DCFComponent() {
             webView.evaluateJavascript(script.toString(), null)
         }
 
-        props["accessibilityLabel"]?.let { label ->
-            webView.contentDescription = label.toString()
-        }
-
-        props["testID"]?.let { testId ->
-            webView.setTag(DCFPrimitiveTags.TEST_ID_KEY, testId)
-        }
-
+        webView.applyStyles(nonNullProps)
         return true
     }
 

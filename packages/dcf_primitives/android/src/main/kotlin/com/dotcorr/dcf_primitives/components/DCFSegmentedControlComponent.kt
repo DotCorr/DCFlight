@@ -67,22 +67,22 @@ class DCFSegmentedControlComponent : DCFComponent() {
         return container
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val container = view as? LinearLayout ?: return false
-        var hasUpdates = false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        if (hasPropChanged("segments", existingProps, props)) {
-            val segments = parseSegments(props)
-            val selectedIndex = getSelectedIndex(props, segments.size)
+        props["segments"]?.let {
+            val segments = parseSegments(nonNullProps)
+            val selectedIndex = getSelectedIndex(nonNullProps, segments.size)
             
             container.removeAllViews()
             segments.forEachIndexed { index, segmentTitle ->
-                val button = createSegmentButton(container.context, segmentTitle, index == selectedIndex, index, segments.size, props)
+                val button = createSegmentButton(container.context, segmentTitle, index == selectedIndex, index, segments.size, nonNullProps)
                 button.setOnClickListener {
                     val currentSegments = parseSegments(getStoredProps(container))
                     val title = currentSegments.getOrNull(index) ?: ""
                     
-                    updateSelectedButton(container, index, props)
+                    updateSelectedButton(container, index, nonNullProps)
                     
                     propagateEvent(container, "onSelectionChange", mapOf(
                         "selectedIndex" to index,
@@ -91,43 +91,30 @@ class DCFSegmentedControlComponent : DCFComponent() {
                 }
                 container.addView(button)
             }
-            updateButtonColors(container, selectedIndex, props)
-            hasUpdates = true
+            updateButtonColors(container, selectedIndex, nonNullProps)
         }
 
-        if (hasPropChanged("selectedIndex", existingProps, props)) {
-            val selectedIndex = getSelectedIndex(props, container.childCount)
-            updateSelectedButton(container, selectedIndex, props)
-            hasUpdates = true
+        props["selectedIndex"]?.let {
+            val selectedIndex = getSelectedIndex(nonNullProps, container.childCount)
+            updateSelectedButton(container, selectedIndex, nonNullProps)
         }
 
-        if (onlySemanticColorsChanged(existingProps, props, listOf("selectedIndex"))) {
-            val selectedIndex = getCurrentSelectedIndex(container)
-            updateButtonColors(container, selectedIndex, props)
-            hasUpdates = true
-        } else if (hasPropChanged("selectedBackgroundColor", existingProps, props) ||
-            hasPropChanged("tintColor", existingProps, props) ||
-            DCFPropConstants.SEMANTIC_COLOR_PROPS.any { hasPropChanged(it, existingProps, props) }) {
-            val selectedIndex = getSelectedIndex(props, container.childCount)
-            updateButtonColors(container, selectedIndex, props)
-            hasUpdates = true
-        }
+        val selectedIndex = getCurrentSelectedIndex(container)
+        updateButtonColors(container, selectedIndex, nonNullProps)
 
-        if (hasPropChanged("enabled", existingProps, props)) {
-            val enabled = when (val en = props["enabled"]) {
-                is Boolean -> en
-                is String -> en.toBoolean()
+        props["enabled"]?.let {
+            val enabled = when (it) {
+                is Boolean -> it
+                is String -> it.toBoolean()
                 else -> true
             }
             for (i in 0 until container.childCount) {
                 container.getChildAt(i).isEnabled = enabled
             }
-            hasUpdates = true
         }
         
-        container.applyStyles(props)
-
-        return hasUpdates
+        container.applyStyles(nonNullProps)
+        return true
     }
 
     private fun parseSegments(props: Map<String, Any?>): List<String> {

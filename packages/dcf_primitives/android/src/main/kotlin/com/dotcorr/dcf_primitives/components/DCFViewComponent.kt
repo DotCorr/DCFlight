@@ -27,22 +27,14 @@ class DCFViewComponent : DCFComponent() {
 
         view.setTag(DCFTags.COMPONENT_TYPE_KEY, "View")
 
-        // Use updateView (not updateViewInternal) to ensure props are stored for merging
         updateView(view, props)
-        
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        view.applyStyles(nonNullProps)
 
         return view
     }
 
-    // Remove override - let base class handle props merging
-
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        Log.d(TAG, "Updating view component with props: $props")
-
-        view.applyStyles(props)
-        
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        view.applyStyles(nonNullProps)
         return true
     }
 

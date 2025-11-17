@@ -60,50 +60,47 @@ class DCFToggleComponent : DCFComponent() {
         return switchControl
     }
 
-    override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val switchControl = view as? SwitchCompat ?: return false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        if (hasPropChanged("value", existingProps, props)) {
-            props["value"]?.let { value ->
-                val isOn = value as? Boolean ?: false
-                val animated = props["animated"] as? Boolean ?: true
+        props["value"]?.let { value ->
+            val isOn = value as? Boolean ?: false
+            val animated = props["animated"] as? Boolean ?: true
 
-                if (animated) {
-                    switchControl.isChecked = isOn
-                } else {
-                    switchControl.jumpDrawablesToCurrentState()
-                    switchControl.isChecked = isOn
-                }
+            if (animated) {
+                switchControl.isChecked = isOn
+            } else {
+                switchControl.jumpDrawablesToCurrentState()
+                switchControl.isChecked = isOn
             }
         }
 
-        if (hasPropChanged("disabled", existingProps, props)) {
-            props["disabled"]?.let { disabled ->
-                val isDisabled = disabled as? Boolean ?: false
-                switchControl.isEnabled = !isDisabled
-                switchControl.alpha = if (isDisabled) 0.5f else 1.0f
-            }
+        props["disabled"]?.let { disabled ->
+            val isDisabled = disabled as? Boolean ?: false
+            switchControl.isEnabled = !isDisabled
+            switchControl.alpha = if (isDisabled) 0.5f else 1.0f
         }
 
-            val states = arrayOf(
-                intArrayOf(android.R.attr.state_checked),
-                intArrayOf()
-            )
-            
-            val activeTrackColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
-                ?: props["primaryColor"]?.let { parseColor(it as String) }
-            val inactiveTrackColor = ColorUtilities.getColor("inactiveColor", "secondaryColor", props)
-                ?: props["secondaryColor"]?.let { parseColor(it as String) }
-            val activeThumbColor = ColorUtilities.getColor("activeColor", "primaryColor", props)
-                ?: props["primaryColor"]?.let { parseColor(it as String) }
-            val inactiveThumbColor = props["tertiaryColor"]?.let { parseColor(it as String) }
-            
-            if (activeTrackColor != null && inactiveTrackColor != null) {
-                switchControl.trackTintList = ColorStateList(states, intArrayOf(activeTrackColor, inactiveTrackColor))
-            }
-            
-            if (activeThumbColor != null && inactiveThumbColor != null) {
-                switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
+        val states = arrayOf(
+            intArrayOf(android.R.attr.state_checked),
+            intArrayOf()
+        )
+        
+        val activeTrackColor = ColorUtilities.getColor("activeColor", "primaryColor", nonNullProps)
+            ?: nonNullProps["primaryColor"]?.let { parseColor(it.toString()) }
+        val inactiveTrackColor = ColorUtilities.getColor("inactiveColor", "secondaryColor", nonNullProps)
+            ?: nonNullProps["secondaryColor"]?.let { parseColor(it.toString()) }
+        val activeThumbColor = ColorUtilities.getColor("activeColor", "primaryColor", nonNullProps)
+            ?: nonNullProps["primaryColor"]?.let { parseColor(it.toString()) }
+        val inactiveThumbColor = nonNullProps["tertiaryColor"]?.let { parseColor(it.toString()) }
+        
+        if (activeTrackColor != null && inactiveTrackColor != null) {
+            switchControl.trackTintList = ColorStateList(states, intArrayOf(activeTrackColor, inactiveTrackColor))
+        }
+        
+        if (activeThumbColor != null && inactiveThumbColor != null) {
+            switchControl.thumbTintList = ColorStateList(states, intArrayOf(activeThumbColor, inactiveThumbColor))
         }
 
         props["onValueChange"]?.let { 
@@ -115,14 +112,7 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-        props["accessibilityLabel"]?.let { label ->
-            switchControl.contentDescription = label.toString()
-        }
-
-        props["testID"]?.let { testId ->
-            switchControl.setTag(DCFPrimitiveTags.TEST_ID_KEY, testId)
-        }
-
+        view.applyStyles(nonNullProps)
         return true
     }
 

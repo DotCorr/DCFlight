@@ -629,18 +629,12 @@ For components that need to handle touches with children:
 class DCFTouchableOpacityComponent : DCFComponent() {
     
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val frameLayout = object : FrameLayout(context) {
-            override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
-                return false
-            }
-        }
-        
-        // CRITICAL: Make clickable to receive touches even with children
-        frameLayout.isClickable = true
-        frameLayout.isFocusable = true
-        frameLayout.isFocusableInTouchMode = true
+        val frameLayout = FrameLayout(context)
         
         frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "TouchableOpacity")
+        
+        // Framework automatically enables touch handling when event listeners are registered
+        // No manual isClickable/isFocusable settings needed!
         
         frameLayout.setOnTouchListener { view, event ->
             when (event.action) {
@@ -678,9 +672,10 @@ class DCFTouchableOpacityComponent : DCFComponent() {
 ```
 
 **Key Pattern for Touchable Components:**
-- ✅ Make view `clickable`, `focusable`, and `focusableInTouchMode` to receive touches
+- ✅ Framework automatically enables `isClickable`, `isFocusable`, and `isFocusableInTouchMode` when event listeners are registered
 - ✅ Use `setOnTouchListener` for touch handling
 - ✅ Include `timestamp` (milliseconds) and `fromUser` in event data
+- ✅ Framework automatically skips `opacity` prop for components that manage their own alpha (TouchableOpacity, GestureDetector)
 
 ### Android Example (Compose Component)
 

@@ -56,64 +56,49 @@ class DCFCheckboxComponent : DCFComponent() {
         return checkBox
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val checkBox = view as CheckBox
-        var hasUpdates = false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        if (hasPropChanged("checked", existingProps, props)) {
-            props["checked"]?.let {
-                val checked = when (it) {
-                    is Boolean -> it
-                    is String -> it.toBoolean()
-                    else -> false
-                }
-                if (checkBox.isChecked != checked) {
-                    checkBox.isChecked = checked
-                    hasUpdates = true
-                }
+        props["checked"]?.let {
+            val checked = when (it) {
+                is Boolean -> it
+                is String -> it.toBoolean()
+                else -> false
             }
+            checkBox.isChecked = checked
         }
 
-        if (hasPropChanged("disabled", existingProps, props)) {
-            props["disabled"]?.let {
-                val disabled = when (it) {
-                    is Boolean -> it
-                    is String -> it.toBoolean()
-                    else -> false
-                }
-                if (checkBox.isEnabled == disabled) {
-                    checkBox.isEnabled = !disabled
-                    hasUpdates = true
-                }
+        props["disabled"]?.let {
+            val disabled = when (it) {
+                is Boolean -> it
+                is String -> it.toBoolean()
+                else -> false
             }
+            checkBox.isEnabled = !disabled
         }
 
-            val activeColor = ColorUtilities.getColor("checkedColor", "primaryColor", props)
-                ?: props["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-            val inactiveColor = ColorUtilities.getColor("uncheckedColor", "secondaryColor", props)
-                ?: props["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-            val checkmarkColor = ColorUtilities.getColor("checkmarkColor", "primaryColor", props)
-                ?: props["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
-            
-            if (activeColor != null && inactiveColor != null) {
-                val states = arrayOf(
-                    intArrayOf(android.R.attr.state_checked),
-                    intArrayOf(-android.R.attr.state_checked)
-                )
-                checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
-            }
-            
-            checkmarkColor?.let {
-                checkBox.setTextColor(it)
-            }
+        val activeColor = ColorUtilities.getColor("checkedColor", "primaryColor", nonNullProps)
+            ?: nonNullProps["primaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        val inactiveColor = ColorUtilities.getColor("uncheckedColor", "secondaryColor", nonNullProps)
+            ?: nonNullProps["secondaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
+        val checkmarkColor = ColorUtilities.getColor("checkmarkColor", "primaryColor", nonNullProps)
+            ?: nonNullProps["tertiaryColor"]?.let { ColorUtilities.parseColor(it.toString()) }
         
-        if (activeColor != null || inactiveColor != null || checkmarkColor != null) {
-            hasUpdates = true
+        if (activeColor != null && inactiveColor != null) {
+            val states = arrayOf(
+                intArrayOf(android.R.attr.state_checked),
+                intArrayOf(-android.R.attr.state_checked)
+            )
+            checkBox.buttonTintList = ColorStateList(states, intArrayOf(activeColor, inactiveColor))
+        }
+        
+        checkmarkColor?.let {
+            checkBox.setTextColor(it)
         }
 
-        view.applyStyles(props)
-
-        return hasUpdates
+        view.applyStyles(nonNullProps)
+        return true
     }
 
 

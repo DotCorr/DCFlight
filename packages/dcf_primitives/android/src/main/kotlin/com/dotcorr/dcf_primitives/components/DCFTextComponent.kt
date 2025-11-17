@@ -55,29 +55,13 @@ class DCFTextComponent : DCFComponent() {
         return wrapper
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val wrapper = view as? DCFComposeWrapper ?: return false
         val composeView = wrapper.composeView
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         
-        val contentChanged = props["content"]?.toString() != existingProps["content"]?.toString()
-        val textColorChanged = ColorUtilities.getColor("textColor", "primaryColor", props) != 
-                               ColorUtilities.getColor("textColor", "primaryColor", existingProps)
-        val fontSizeChanged = (props["fontSize"] as? Number)?.toFloat() != 
-                             (existingProps["fontSize"] as? Number)?.toFloat()
-        val fontWeightChanged = props["fontWeight"]?.toString() != existingProps["fontWeight"]?.toString()
-        val textAlignChanged = props["textAlign"]?.toString() != existingProps["textAlign"]?.toString()
-        val maxLinesChanged = (props["numberOfLines"] as? Number)?.toInt() != 
-                             (existingProps["numberOfLines"] as? Number)?.toInt()
-        
-        wrapper.setAllowLayoutRequests(hasLayoutPropsChanged(existingProps, props))
-        wrapper.applyStyles(props)
-        
-        if (contentChanged || textColorChanged || fontSizeChanged || fontWeightChanged || 
-            textAlignChanged || maxLinesChanged) {
-            // CRITICAL: For content changes during reconciliation, ensure composition completes
-            // before view becomes visible again (handled by framework in applyLayoutDirectly)
-            updateComposeContent(composeView, props)
-        }
+        wrapper.applyStyles(nonNullProps)
+        updateComposeContent(composeView, nonNullProps)
 
         return true
     }

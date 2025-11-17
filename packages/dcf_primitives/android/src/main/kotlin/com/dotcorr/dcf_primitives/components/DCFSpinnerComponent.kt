@@ -35,50 +35,42 @@ class DCFSpinnerComponent : DCFComponent() {
         return progressBar
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val progressBar = view as? ProgressBar ?: return false
-        var hasUpdates = false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        if (hasPropChanged("animating", existingProps, props) || hasPropChanged("hidesWhenStopped", existingProps, props)) {
-            val isAnimating = props["animating"] as? Boolean ?: true
-            val hidesWhenStopped = props["hidesWhenStopped"] as? Boolean ?: true
+        val isAnimating = props["animating"] as? Boolean ?: true
+        val hidesWhenStopped = props["hidesWhenStopped"] as? Boolean ?: true
 
-            if (hidesWhenStopped) {
-                progressBar.visibility = if (isAnimating) View.VISIBLE else View.GONE
-            } else {
-                progressBar.visibility = View.VISIBLE
-            }
-            hasUpdates = true
+        if (hidesWhenStopped) {
+            progressBar.visibility = if (isAnimating) View.VISIBLE else View.GONE
+        } else {
+            progressBar.visibility = View.VISIBLE
         }
 
-            ColorUtilities.getColor("spinnerColor", "primaryColor", props)?.let { colorInt ->
-                progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
-                hasUpdates = true
+        ColorUtilities.getColor("spinnerColor", "primaryColor", nonNullProps)?.let { colorInt ->
+            progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
         }
 
-        if (hasPropChanged("size", existingProps, props)) {
-            props["size"]?.let { size ->
-                when (size) {
-                    "small", "medium" -> {
-                        progressBar.scaleX = 0.7f
-                        progressBar.scaleY = 0.7f
-                    }
-                    "large" -> {
-                        progressBar.scaleX = 1.2f
-                        progressBar.scaleY = 1.2f
-                    }
-                    else -> {
-                        progressBar.scaleX = 1.0f
-                        progressBar.scaleY = 1.0f
-                    }
+        props["size"]?.let { size ->
+            when (size) {
+                "small", "medium" -> {
+                    progressBar.scaleX = 0.7f
+                    progressBar.scaleY = 0.7f
                 }
-                hasUpdates = true
+                "large" -> {
+                    progressBar.scaleX = 1.2f
+                    progressBar.scaleY = 1.2f
+                }
+                else -> {
+                    progressBar.scaleX = 1.0f
+                    progressBar.scaleY = 1.0f
+                }
             }
         }
 
-        view.applyStyles(props)
-
-        return hasUpdates
+        view.applyStyles(nonNullProps)
+        return true
     }
 
 

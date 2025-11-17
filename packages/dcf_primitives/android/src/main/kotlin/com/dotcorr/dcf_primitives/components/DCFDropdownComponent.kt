@@ -51,12 +51,11 @@ class DCFDropdownComponent : DCFComponent() {
         return spinner
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val spinner = view as Spinner
-        var hasUpdates = false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        if (hasPropChanged("items", existingProps, props)) {
-            props["items"]?.let { items ->
+        props["items"]?.let { items ->
             when (items) {
                 is List<*> -> {
                     val itemStrings = items.mapNotNull { item ->
@@ -75,51 +74,33 @@ class DCFDropdownComponent : DCFComponent() {
                     )
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                     spinner.adapter = adapter
-                    
-                    applyPlaceholderColor(spinner, props)
-                    
-                    hasUpdates = true
+                    applyPlaceholderColor(spinner, nonNullProps)
                 }
             }
         }
-        }
         
-        if (hasPropChanged("placeholderColor", existingProps, props) || hasPropChanged("secondaryColor", existingProps, props)) {
-            applyPlaceholderColor(spinner, props)
-            hasUpdates = true
-        }
+        applyPlaceholderColor(spinner, nonNullProps)
 
-        if (hasPropChanged("selectedIndex", existingProps, props)) {
-            props["selectedIndex"]?.let {
+        props["selectedIndex"]?.let {
             val index = when (it) {
                 is Number -> it.toInt()
                 is String -> it.toIntOrNull() ?: 0
                 else -> 0
             }
-            if (spinner.selectedItemPosition != index) {
-                spinner.setSelection(index)
-                hasUpdates = true
+            spinner.setSelection(index)
+        }
+
+        props["enabled"]?.let {
+            val enabled = when (it) {
+                is Boolean -> it
+                is String -> it.toBoolean()
+                else -> true
             }
-        }
-        }
-
-        if (hasPropChanged("enabled", existingProps, props)) {
-            props["enabled"]?.let {
-                val enabled = when (it) {
-                    is Boolean -> it
-                    is String -> it.toBoolean()
-                    else -> true
-                }
-                if (spinner.isEnabled != enabled) {
-                    spinner.isEnabled = enabled
-                    hasUpdates = true
-                }
-            }
+            spinner.isEnabled = enabled
         }
 
-        view.applyStyles(props)
-
-        return hasUpdates
+        view.applyStyles(nonNullProps)
+        return true
     }
     
     private fun applyPlaceholderColor(spinner: Spinner, props: Map<String, Any>) {

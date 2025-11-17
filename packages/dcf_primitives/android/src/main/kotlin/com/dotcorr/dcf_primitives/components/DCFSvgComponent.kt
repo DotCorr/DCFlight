@@ -33,57 +33,29 @@ class DCFSvgComponent : DCFComponent() {
         return imageView
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val imageView = view as ImageView
-        var hasUpdates = false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        if (hasPropChanged("source", existingProps, props)) {
-            props["source"]?.let { source ->
-                when (source) {
-                    is String -> {
-                        loadSvgFromSource(imageView, source)
-                        hasUpdates = true
-                    }
-                    is Map<*, *> -> {
-                        (source["uri"] as? String)?.let { uri ->
-                            loadSvgFromSource(imageView, uri)
-                            hasUpdates = true
-                        }
+        props["source"]?.let { source ->
+            when (source) {
+                is String -> {
+                    loadSvgFromSource(imageView, source)
+                }
+                is Map<*, *> -> {
+                    (source["uri"] as? String)?.let { uri ->
+                        loadSvgFromSource(imageView, uri)
                     }
                 }
             }
         }
 
-        if (hasPropChanged("width", existingProps, props)) {
-            props["width"]?.let {
-                val width = when (it) {
-                    is Number -> it.toInt()
-                    is String -> it.toIntOrNull() ?: 100
-                    else -> 100
-                }
-                hasUpdates = true
-            }
+        ColorUtilities.getColor("tintColor", "primaryColor", nonNullProps)?.let { colorInt ->
+            imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
         }
 
-        if (hasPropChanged("height", existingProps, props)) {
-            props["height"]?.let {
-                val height = when (it) {
-                    is Number -> it.toInt()
-                    is String -> it.toIntOrNull() ?: 100
-                    else -> 100
-                }
-                hasUpdates = true
-            }
-        }
-
-            ColorUtilities.getColor("tintColor", "primaryColor", props)?.let { colorInt ->
-                imageView.setColorFilter(colorInt, android.graphics.PorterDuff.Mode.SRC_IN)
-                hasUpdates = true
-        }
-
-        view.applyStyles(props)
-
-        return hasUpdates
+        view.applyStyles(nonNullProps)
+        return true
     }
 
     private fun loadSvgFromSource(imageView: ImageView, source: String) {

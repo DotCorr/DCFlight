@@ -34,20 +34,15 @@ class DCFIconComponent : DCFComponent() {
         return imageView
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val imageView = view as ImageView
-        var hasUpdates = false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
 
-        if (hasPropChanged("name", existingProps, props)) {
-            props["name"]?.let { name ->
-                val iconName = name.toString()
-                loadIcon(imageView, iconName)
-                hasUpdates = true
-            }
+        props["name"]?.let { name ->
+            loadIcon(imageView, name.toString())
         }
 
-        if (hasPropChanged("size", existingProps, props)) {
-            props["size"]?.let {
+        props["size"]?.let {
             val size = when (it) {
                 is Number -> it.toInt()
                 is String -> it.toIntOrNull() ?: 24
@@ -57,18 +52,14 @@ class DCFIconComponent : DCFComponent() {
             layoutParams.width = size
             layoutParams.height = size
             imageView.layoutParams = layoutParams
-            hasUpdates = true
-        }
         }
 
-            ColorUtilities.getColor("iconColor", "primaryColor", props)?.let { colorInt ->
-                imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
-                hasUpdates = true
+        ColorUtilities.getColor("iconColor", "primaryColor", nonNullProps)?.let { colorInt ->
+            imageView.setColorFilter(colorInt, PorterDuff.Mode.SRC_IN)
         }
 
-        view.applyStyles(props)
-
-        return hasUpdates
+        view.applyStyles(nonNullProps)
+        return true
     }
 
     private fun loadIcon(imageView: ImageView, iconName: String) {

@@ -63,36 +63,33 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
          return editText
      }
  
-     override protected fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
          val editText = view as? AppCompatEditText ?: return false
- 
-         if (hasPropChanged("value", existingProps, props)) {
-             props["value"]?.let { value ->
-                 val currentText = editText.text?.toString() ?: ""
-                 val newText = value.toString()
-                 if (currentText != newText) {
-                     editText.setText(newText)
-                     editText.setSelection(newText.length)
-                 }
+         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+
+         props["value"]?.let { value ->
+             val currentText = editText.text?.toString() ?: ""
+             val newText = value.toString()
+             if (currentText != newText) {
+                 editText.setText(newText)
+                 editText.setSelection(newText.length)
              }
          }
- 
-         if (hasPropChanged("placeholder", existingProps, props)) {
-             props["placeholder"]?.let { placeholder ->
-                 editText.hint = placeholder.toString()
-             }
+
+         props["placeholder"]?.let { placeholder ->
+             editText.hint = placeholder.toString()
          }
- 
-             ColorUtilities.getColor("textColor", "primaryColor", props)?.let { colorInt ->
-                 editText.setTextColor(colorInt)
+
+         ColorUtilities.getColor("textColor", "primaryColor", nonNullProps)?.let { colorInt ->
+             editText.setTextColor(colorInt)
          }
- 
-             ColorUtilities.getColor("placeholderColor", "secondaryColor", props)?.let { colorInt ->
-                 editText.setHintTextColor(colorInt)
+
+         ColorUtilities.getColor("placeholderColor", "secondaryColor", nonNullProps)?.let { colorInt ->
+             editText.setHintTextColor(colorInt)
          }
- 
-             ColorUtilities.getColor("selectionColor", "accentColor", props)?.let { colorInt ->
-                 editText.setHighlightColor(colorInt)
+
+         ColorUtilities.getColor("selectionColor", "accentColor", nonNullProps)?.let { colorInt ->
+             editText.setHighlightColor(colorInt)
          }
  
          props["fontSize"]?.let { size ->
@@ -312,9 +309,10 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
          props["testID"]?.let { testId ->
              editText.setTag(DCFPrimitiveTags.TEST_ID_KEY, testId)
          }
- 
+
          editText.setTag(DCFPrimitiveTags.TEXT_INPUT_PLACEHOLDER_KEY, props["placeholder"])
- 
+         editText.applyStyles(nonNullProps)
+
          return true
      }
  
