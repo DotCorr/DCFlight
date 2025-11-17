@@ -202,7 +202,7 @@ class MyApp extends DCFStatefulComponent {
             DCFView(
               styleSheet: DCFStyleSheet(
                 backgroundColor: DCFTheme.surfaceColor,
-                borderRadius: 10,
+                borderRadius: 10, 
                 borderColor: DCFTheme.surfaceColor,
                 borderWidth: 1,
               ),
@@ -213,7 +213,14 @@ class MyApp extends DCFStatefulComponent {
               ),
               children: [
                 DCFButton(
-                  buttonProps: DCFButtonProps(title: "Count: ${count.state}"),
+                  children: [
+                    DCFText(
+                      content: "Count: ${count.state}",
+                      styleSheet: DCFStyleSheet(
+                        primaryColor: DCFColors.white,
+                      ),
+                    ),
+                  ],
                   onPress: (data) {
                     final newCount = count.state + 1;
                     count.setState(newCount);
@@ -223,10 +230,17 @@ class MyApp extends DCFStatefulComponent {
                       'MyApp',
                     );
                   },
-                  layout: DCFLayout(marginTop: 20),
+                  layout: DCFLayout(height: 45, marginBottom: 10),
                 ),
                 DCFButton(
-                  buttonProps: DCFButtonProps(title: "Toggle Theme"),
+                  children: [
+                    DCFText(
+                      content: "Toggle Theme",
+                      styleSheet: DCFStyleSheet(
+                        primaryColor: DCFColors.white,
+                      ),
+                    ),
+                  ],
                   onPress: (data) {
                     final newDarkMode = !isDarkMode.state;
                     isDarkMode.setState(newDarkMode);
@@ -242,16 +256,23 @@ class MyApp extends DCFStatefulComponent {
                       'MyApp',
                     );
                   },
-                  layout: DCFLayout(marginTop: 10, height: 50),
+                  layout: DCFLayout(height: 50, marginBottom: 10),
                 ),
 
                 DCFButton(
-                  buttonProps: DCFButtonProps(title: "Benchmark"),
+                  children: [
+                    DCFText(
+                      content: "Benchmark",
+                      styleSheet: DCFStyleSheet(
+                        primaryColor: DCFColors.white,
+                      ),
+                    ),
+                  ],
                   onPress: (DCFButtonPressData data) {
                     DCFLogger.info('Benchmark button pressed', 'MyApp');
                     benchmarkTest.setState(true);
                   },
-                  layout: DCFLayout(marginTop: 10, height: 50),
+                  layout: DCFLayout(height: 50),
                 ),
               ],
             ),

@@ -30,9 +30,21 @@ class DCFTouchableOpacityComponent : DCFComponent() {
     private var originalAlpha: Float = 1.0f
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val frameLayout = FrameLayout(context)
+        val frameLayout = object : FrameLayout(context) {
+            // Override to intercept touch events before children consume them
+            override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+                // Intercept touch events so parent can handle opacity animation
+                // Children will still receive events, but parent gets them first
+                return false // Don't intercept, just ensure we can receive events
+            }
+        }
         
         frameLayout.setBackgroundColor(Color.TRANSPARENT)
+        
+        // CRITICAL: Make clickable and focusable to receive touch events even with children
+        frameLayout.isClickable = true
+        frameLayout.isFocusable = true
+        frameLayout.isFocusableInTouchMode = true
         
         frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "TouchableOpacity")
         
@@ -44,7 +56,8 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                     Log.d(TAG, "Touch down on TouchableOpacity")
                     
                     propagateEvent(view, "onPressIn", mapOf(
-                        "timestamp" to System.currentTimeMillis() / 1000.0
+                        "timestamp" to System.currentTimeMillis(),
+                        "fromUser" to true
                     ))
                     
                     view.animate()
@@ -58,7 +71,8 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                     Log.d(TAG, "Touch up on TouchableOpacity")
                     
                     propagateEvent(view, "onPressOut", mapOf(
-                        "timestamp" to System.currentTimeMillis() / 1000.0
+                        "timestamp" to System.currentTimeMillis(),
+                        "fromUser" to true
                     ))
                     
                     view.animate()
@@ -72,7 +86,8 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                         Log.d(TAG, "TouchableOpacity pressed")
                         
                         propagateEvent(view, "onPress", mapOf(
-                            "timestamp" to System.currentTimeMillis() / 1000.0
+                            "timestamp" to System.currentTimeMillis(),
+                            "fromUser" to true
                         ))
                     }
                     true
@@ -82,7 +97,8 @@ class DCFTouchableOpacityComponent : DCFComponent() {
                     Log.d(TAG, "Touch cancelled on TouchableOpacity")
                     
                     propagateEvent(view, "onPressOut", mapOf(
-                        "timestamp" to System.currentTimeMillis() / 1000.0
+                        "timestamp" to System.currentTimeMillis(),
+                        "fromUser" to true
                     ))
                     
                     view.animate()
@@ -100,7 +116,8 @@ class DCFTouchableOpacityComponent : DCFComponent() {
             Log.d(TAG, "Long press on TouchableOpacity")
             
             propagateEvent(view, "onLongPress", mapOf(
-                "timestamp" to System.currentTimeMillis() / 1000.0
+                "timestamp" to System.currentTimeMillis(),
+                "fromUser" to true
             ))
             true
         }
@@ -130,6 +147,18 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         }
 
         originalAlpha = view.alpha
+
+        // Check if disabled prop is set
+        val disabled = when (val disabledProp = props["disabled"]) {
+            is Boolean -> disabledProp
+            is String -> disabledProp.toBoolean()
+            else -> false
+        }
+
+        // Ensure view remains clickable after style updates
+        view.isClickable = !disabled
+        view.isFocusable = !disabled
+        view.isFocusableInTouchMode = !disabled
 
         view.applyStyles(props)
         

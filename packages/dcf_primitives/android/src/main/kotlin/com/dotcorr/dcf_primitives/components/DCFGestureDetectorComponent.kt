@@ -21,8 +21,18 @@ import com.dotcorr.dcflight.extensions.applyStyles
 class DCFGestureDetectorComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val frameLayout = FrameLayout(context)
+        val frameLayout = object : FrameLayout(context) {
+            // Override to ensure touch events reach gesture detector even with children
+            override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+                // Don't intercept, but ensure we can receive events
+                return false
+            }
+        }
         
+        // CRITICAL: Make clickable and focusable to receive touch events even with children
+        frameLayout.isClickable = true
+        frameLayout.isFocusable = true
+        frameLayout.isFocusableInTouchMode = true
         
         frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "GestureDetector")
         
@@ -30,7 +40,9 @@ class DCFGestureDetectorComponent : DCFComponent() {
             override fun onSingleTapUp(e: MotionEvent): Boolean {
                 propagateEvent(frameLayout, "onTap", mapOf(
                     "x" to e.x.toDouble(),
-                    "y" to e.y.toDouble()
+                    "y" to e.y.toDouble(),
+                    "timestamp" to System.currentTimeMillis(),
+                    "fromUser" to true
                 ))
                 return true
             }
@@ -38,7 +50,9 @@ class DCFGestureDetectorComponent : DCFComponent() {
             override fun onLongPress(e: MotionEvent) {
                 propagateEvent(frameLayout, "onLongPress", mapOf(
                     "x" to e.x.toDouble(),
-                    "y" to e.y.toDouble()
+                    "y" to e.y.toDouble(),
+                    "timestamp" to System.currentTimeMillis(),
+                    "fromUser" to true
                 ))
             }
             
@@ -51,34 +65,52 @@ class DCFGestureDetectorComponent : DCFComponent() {
                 val deltaX = (e2.x - (e1?.x ?: 0f))
                 val deltaY = (e2.y - (e1?.y ?: 0f))
                 
-                when {
-                    Math.abs(deltaX) > Math.abs(deltaY) -> {
-                        if (deltaX > 0) {
-                            propagateEvent(frameLayout, "onSwipeRight", mapOf(
-                                "velocityX" to velocityX.toDouble(),
-                                "velocityY" to velocityY.toDouble()
-                            ))
-                        } else {
-                            propagateEvent(frameLayout, "onSwipeLeft", mapOf(
-                                "velocityX" to velocityX.toDouble(),
-                                "velocityY" to velocityY.toDouble()
-                            ))
+                    val velocity = kotlin.math.sqrt((velocityX * velocityX + velocityY * velocityY).toDouble())
+                    val direction = when {
+                        Math.abs(deltaX) > Math.abs(deltaY) -> {
+                            if (deltaX > 0) "right" else "left"
+                        }
+                        else -> {
+                            if (deltaY > 0) "down" else "up"
                         }
                     }
-                    else -> {
-                        if (deltaY > 0) {
-                            propagateEvent(frameLayout, "onSwipeDown", mapOf(
-                                "velocityX" to velocityX.toDouble(),
-                                "velocityY" to velocityY.toDouble()
-                            ))
-                        } else {
-                            propagateEvent(frameLayout, "onSwipeUp", mapOf(
-                                "velocityX" to velocityX.toDouble(),
-                                "velocityY" to velocityY.toDouble()
-                            ))
+                    
+                    when {
+                        Math.abs(deltaX) > Math.abs(deltaY) -> {
+                            if (deltaX > 0) {
+                                propagateEvent(frameLayout, "onSwipeRight", mapOf(
+                                    "direction" to "right",
+                                    "velocity" to velocity,
+                                    "timestamp" to System.currentTimeMillis(),
+                                    "fromUser" to true
+                                ))
+                            } else {
+                                propagateEvent(frameLayout, "onSwipeLeft", mapOf(
+                                    "direction" to "left",
+                                    "velocity" to velocity,
+                                    "timestamp" to System.currentTimeMillis(),
+                                    "fromUser" to true
+                                ))
+                            }
+                        }
+                        else -> {
+                            if (deltaY > 0) {
+                                propagateEvent(frameLayout, "onSwipeDown", mapOf(
+                                    "direction" to "down",
+                                    "velocity" to velocity,
+                                    "timestamp" to System.currentTimeMillis(),
+                                    "fromUser" to true
+                                ))
+                            } else {
+                                propagateEvent(frameLayout, "onSwipeUp", mapOf(
+                                    "direction" to "up",
+                                    "velocity" to velocity,
+                                    "timestamp" to System.currentTimeMillis(),
+                                    "fromUser" to true
+                                ))
+                            }
                         }
                     }
-                }
                 return true
             }
         })
@@ -103,9 +135,17 @@ class DCFGestureDetectorComponent : DCFComponent() {
                 }
                 if (view.isEnabled == disabled) {
                     view.isEnabled = !disabled
+                    view.isClickable = !disabled
+                    view.isFocusable = !disabled
+                    view.isFocusableInTouchMode = !disabled
                     hasUpdates = true
                 }
             }
+        } else {
+            // Ensure view remains clickable even if disabled prop not changed
+            view.isClickable = true
+            view.isFocusable = true
+            view.isFocusableInTouchMode = true
         }
 
         view.applyStyles(props)
