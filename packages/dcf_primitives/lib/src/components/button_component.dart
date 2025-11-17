@@ -174,6 +174,17 @@ class DCFButton extends DCFStatelessComponent {
     final longPressDelay = buttonProps?.longPressDelay ?? 500;
     final disabled = buttonProps?.disabled ?? false;
 
+    // Merge default Button layout with user-provided layout
+    final defaultButtonLayout = const DCFLayout(
+      width: "100%", 
+      padding: 0,
+      margin: 0,
+      alignItems: DCFAlign.center, 
+      justifyContent: DCFJustifyContent.center, 
+      height: 45,
+    );
+    final mergedLayout = defaultButtonLayout.merge(layout);
+
     // Based on buttonStyle, choose the underlying primitive
     // For now, we use TouchableOpacity for all styles (pressable and none can be added later)
     // Users can opt out and use raw TouchableOpacity/GestureDetector if they need more control
@@ -188,7 +199,7 @@ class DCFButton extends DCFStatelessComponent {
           activeOpacity: buttonStyle == DCFButtonStyle.none ? 1.0 : activeOpacity,
           disabled: disabled,
           longPressDelay: longPressDelay,
-          layout: layout,
+          layout: mergedLayout,
           styleSheet: styleSheet,
           onPress: onPress != null
               ? (DCFTouchableOpacityPressData data) {
