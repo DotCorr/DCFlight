@@ -91,37 +91,77 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
     
     @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
         if let view = recognizer.view {
-            propagateEvent(on: view, eventName: "onTap", data: [:])
+            let location = recognizer.location(in: view)
+            propagateEvent(on: view, eventName: "onTap", data: [
+                "x": location.x,
+                "y": location.y,
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "fromUser": true
+            ])
         }
     }
     
     @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
         if recognizer.state == .began, let view = recognizer.view {
-            propagateEvent(on: view, eventName: "onLongPress", data: [:])
+            let location = recognizer.location(in: view)
+            propagateEvent(on: view, eventName: "onLongPress", data: [
+                "x": location.x,
+                "y": location.y,
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "fromUser": true
+            ])
         }
     }
     
     @objc func handleSwipeLeft(_ recognizer: UISwipeGestureRecognizer) {
         if let view = recognizer.view {
-            propagateEvent(on: view, eventName: "onSwipeLeft", data: [:])
+            let location = recognizer.location(in: view)
+            // UISwipeGestureRecognizer doesn't provide velocity, use a default value
+            propagateEvent(on: view, eventName: "onSwipeLeft", data: [
+                "direction": "left",
+                "velocity": 0.0,
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "fromUser": true
+            ])
         }
     }
     
     @objc func handleSwipeRight(_ recognizer: UISwipeGestureRecognizer) {
         if let view = recognizer.view {
-            propagateEvent(on: view, eventName: "onSwipeRight", data: [:])
+            let location = recognizer.location(in: view)
+            // UISwipeGestureRecognizer doesn't provide velocity, use a default value
+            propagateEvent(on: view, eventName: "onSwipeRight", data: [
+                "direction": "right",
+                "velocity": 0.0,
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "fromUser": true
+            ])
         }
     }
     
     @objc func handleSwipeUp(_ recognizer: UISwipeGestureRecognizer) {
         if let view = recognizer.view {
-            propagateEvent(on: view, eventName: "onSwipeUp", data: [:])
+            let location = recognizer.location(in: view)
+            // UISwipeGestureRecognizer doesn't provide velocity, use a default value
+            propagateEvent(on: view, eventName: "onSwipeUp", data: [
+                "direction": "up",
+                "velocity": 0.0,
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "fromUser": true
+            ])
         }
     }
     
     @objc func handleSwipeDown(_ recognizer: UISwipeGestureRecognizer) {
         if let view = recognizer.view {
-            propagateEvent(on: view, eventName: "onSwipeDown", data: [:])
+            let location = recognizer.location(in: view)
+            // UISwipeGestureRecognizer doesn't provide velocity, use a default value
+            propagateEvent(on: view, eventName: "onSwipeDown", data: [
+                "direction": "down",
+                "velocity": 0.0,
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "fromUser": true
+            ])
         }
     }
     
@@ -132,12 +172,16 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
         let velocity = recognizer.velocity(in: view)
         
         var eventType = "onPan"
+        let location = recognizer.location(in: view)
         var eventData: [String: Any] = [
+            "x": location.x,
+            "y": location.y,
             "translationX": translation.x,
             "translationY": translation.y,
             "velocityX": velocity.x,
             "velocityY": velocity.y,
-            "timestamp": Date().timeIntervalSince1970
+            "timestamp": Date().timeIntervalSince1970,
+            "fromUser": true
         ]
         
         switch recognizer.state {

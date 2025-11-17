@@ -157,7 +157,14 @@ class BenchmarkResultsApp extends DCFStatefulComponent {
           ),
           DCFView(layout: DCFLayout(height: 30)),
           DCFButton(
-            buttonProps: DCFButtonProps(title: "Back"),
+            children: [
+              DCFText(
+                content: "Back",
+                styleSheet: DCFStyleSheet(
+                  primaryColor: DCFColors.white,
+                ),
+              ),
+            ],
             onPress: (data) {
               onBack?.call();
             },
