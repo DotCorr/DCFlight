@@ -153,11 +153,15 @@ class DCFText extends DCFStatelessComponent
 
   @override
   DCFComponentNode render() {
+    // Merge user-provided styleSheet with default (transparent background)
+    final defaultTextStyleSheet = const DCFStyleSheet(backgroundColor: DCFColors.transparent);
+    final mergedStyleSheet = defaultTextStyleSheet.merge(styleSheet);
+    
     Map<String, dynamic> props = {
       'content': content,
       ...textProps.toMap(),
       ...layout.toMap(),
-      ...styleSheet.toMap(),
+      ...mergedStyleSheet.toMap(),
       if (textColor != null) 'textColor': DCFColors.toNativeString(textColor!),
       ...(events ?? {}),
     };
