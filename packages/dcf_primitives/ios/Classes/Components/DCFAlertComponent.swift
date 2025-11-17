@@ -15,6 +15,7 @@ private struct AssociatedKeys {
 
 class DCFAlertComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFAlertComponent()
+    private static var presentedAlerts = NSMapTable<UIView, UIAlertController>(keyOptions: .weakMemory, valueOptions: .strongMemory)
     
     required override init() {
         super.init()
@@ -30,8 +31,18 @@ class DCFAlertComponent: NSObject, DCFComponent {
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        if let visible = props["visible"] as? Bool, visible {
-            presentAlert(from: view, props: props)
+        let visible = props["visible"] as? Bool ?? false
+        
+        if visible {
+            if DCFAlertComponent.presentedAlerts.object(forKey: view) == nil {
+                presentAlert(from: view, props: props)
+            }
+        } else {
+            if let existingAlert = DCFAlertComponent.presentedAlerts.object(forKey: view) {
+                existingAlert.dismiss(animated: true) {
+                    DCFAlertComponent.presentedAlerts.removeObject(forKey: view)
+                }
+            }
         }
         
         view.applyStyles(props: props)
@@ -52,8 +63,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
     
     
     private func presentAlert(from view: UIView, props: [String: Any]) {
-        debugProps(props)
-        
         var title: String?
         var message: String?
         
@@ -62,9 +71,15 @@ class DCFAlertComponent: NSObject, DCFComponent {
             message = alertContent["message"] as? String
         }
         
+        if title == nil {
+            title = props["title"] as? String
+        }
+        if message == nil {
+            message = props["message"] as? String
+        }
+        
         let alertStyle = parseAlertStyle(props["style"] as? String)
         let dismissible = props["dismissible"] as? Bool ?? true
-        
         
         let alertController = UIAlertController(title: title, message: message, preferredStyle: alertStyle)
         
@@ -108,6 +123,17 @@ class DCFAlertComponent: NSObject, DCFComponent {
         }
         
         if let topViewController = getTopViewController() {
+            DCFAlertComponent.presentedAlerts.setObject(alertController, forKey: view)
+            
+            let dismissHandler: (() -> Void) = {
+                DCFAlertComponent.presentedAlerts.removeObject(forKey: view)
+                propagateEvent(on: view, eventName: "onDismiss", data: [:])
+            }
+            
+            if #available(iOS 13.0, *) {
+                alertController.presentationController?.delegate = AlertPresentationDelegate(dismissHandler: dismissHandler)
+            }
+            
             topViewController.present(alertController, animated: true) {
                 propagateEvent(on: view, eventName: "onShow", data: [:])
             }
@@ -393,6 +419,7 @@ class DCFAlertComponent: NSObject, DCFComponent {
     }
     
     private func handleActionPress(on view: UIView, handler: String, buttonIndex: Int, title: String, textFields: [UITextField]?) {
+        DCFAlertComponent.presentedAlerts.removeObject(forKey: view)
         var eventData: [String: Any] = [
             "handler": handler,
             "action": handler,
@@ -765,11 +792,20 @@ extension DCFAlertComponent {
     }
     
     
-    private func debugProps(_ props: [String: Any]) {
-        for (key, value) in props.sorted(by: { $0.key < $1.key }) {
-        }
-    }
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
         return nil
+    }
+}
+
+@available(iOS 13.0, *)
+private class AlertPresentationDelegate: NSObject, UIAdaptivePresentationControllerDelegate {
+    let dismissHandler: () -> Void
+    
+    init(dismissHandler: @escaping () -> Void) {
+        self.dismissHandler = dismissHandler
+    }
+    
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        dismissHandler()
     }
 }
