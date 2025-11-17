@@ -8,7 +8,6 @@
 package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PointF
 import android.util.Log
 import android.view.MotionEvent
@@ -30,25 +29,11 @@ class DCFTouchableOpacityComponent : DCFComponent() {
     private var originalAlpha: Float = 1.0f
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val frameLayout = object : FrameLayout(context) {
-            // Override to intercept touch events before children consume them
-            override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
-                // Intercept touch events so parent can handle opacity animation
-                // Children will still receive events, but parent gets them first
-                return false // Don't intercept, just ensure we can receive events
-            }
-        }
-        
-        frameLayout.setBackgroundColor(Color.TRANSPARENT)
-        
-        // CRITICAL: Make clickable and focusable to receive touch events even with children
-        frameLayout.isClickable = true
-        frameLayout.isFocusable = true
-        frameLayout.isFocusableInTouchMode = true
+        val frameLayout = FrameLayout(context)
         
         frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "TouchableOpacity")
         
-        originalAlpha = frameLayout.alpha
+        originalAlpha = 1.0f
         
         frameLayout.setOnTouchListener { view, event ->
             when (event.action) {
@@ -124,43 +109,27 @@ class DCFTouchableOpacityComponent : DCFComponent() {
         
         updateView(frameLayout, props)
         
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        frameLayout.applyStyles(nonNullProps)
-        
-        Log.d(TAG, "Created TouchableOpacity component")
-        
         return frameLayout
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        Log.d(TAG, "Updating TouchableOpacity with props: $props")
-
-        if (hasPropChanged("activeOpacity", existingProps, props)) {
-            props["activeOpacity"]?.let { opacity ->
-                activeOpacity = when (opacity) {
-                    is Number -> opacity.toFloat()
-                    is String -> opacity.toFloatOrNull() ?: DEFAULT_ACTIVE_OPACITY
-                    else -> DEFAULT_ACTIVE_OPACITY
-                }
-                Log.d(TAG, "Set activeOpacity: $activeOpacity")
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        val frameLayout = view as? FrameLayout ?: return false
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        props["activeOpacity"]?.let { opacity ->
+            activeOpacity = when (opacity) {
+                is Number -> opacity.toFloat()
+                is String -> opacity.toFloatOrNull() ?: DEFAULT_ACTIVE_OPACITY
+                else -> DEFAULT_ACTIVE_OPACITY
             }
         }
-
-        originalAlpha = view.alpha
-
-        // Check if disabled prop is set
-        val disabled = when (val disabledProp = props["disabled"]) {
-            is Boolean -> disabledProp
-            is String -> disabledProp.toBoolean()
-            else -> false
-        }
-
-        // Ensure view remains clickable after style updates
-        view.isClickable = !disabled
-        view.isFocusable = !disabled
-        view.isFocusableInTouchMode = !disabled
-
-        view.applyStyles(props)
+        
+        originalAlpha = 1.0f
+        
+        view.applyStyles(nonNullProps)
+        
+        // Ensure alpha is 1.0 after styles (framework won't override for TouchableOpacity)
+        view.alpha = 1.0f
         
         return true
     }

@@ -130,7 +130,7 @@ class DCFAlertComponent: NSObject, DCFComponent {
                 propagateEvent(on: view, eventName: "onDismiss", data: [:])
             }
             
-            if #available(iOS 13.0, *) {
+            if #available(iOS 13.0, *), alertStyle == .actionSheet {
                 alertController.presentationController?.delegate = AlertPresentationDelegate(dismissHandler: dismissHandler)
             }
             
@@ -419,7 +419,6 @@ class DCFAlertComponent: NSObject, DCFComponent {
     }
     
     private func handleActionPress(on view: UIView, handler: String, buttonIndex: Int, title: String, textFields: [UITextField]?) {
-        DCFAlertComponent.presentedAlerts.removeObject(forKey: view)
         var eventData: [String: Any] = [
             "handler": handler,
             "action": handler,
@@ -430,6 +429,10 @@ class DCFAlertComponent: NSObject, DCFComponent {
         if let textFields = textFields, !textFields.isEmpty {
             let textFieldValues = textFields.map { $0.text ?? "" }
             eventData["textFieldValues"] = textFieldValues
+        }
+        
+        DispatchQueue.main.async {
+            DCFAlertComponent.presentedAlerts.removeObject(forKey: view)
         }
         
         propagateEvent(on: view, eventName: "onActionPress", data: eventData)

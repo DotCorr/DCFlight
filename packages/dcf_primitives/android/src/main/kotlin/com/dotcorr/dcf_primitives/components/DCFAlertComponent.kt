@@ -33,41 +33,27 @@ class DCFAlertComponent : DCFComponent() {
         return frameLayout
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        var hasUpdates = false
-
-        if (hasPropChanged("visible", existingProps, props)) {
-            props["visible"]?.let {
-                val visible = when (it) {
-                    is Boolean -> it
-                    is String -> it.toBoolean()
-                    else -> false
-                }
-                
-                val existingVisible = existingProps["visible"]?.let { existing ->
-                    when (existing) {
-                        is Boolean -> existing
-                        is String -> existing.toBoolean()
-                        else -> false
-                    }
-                } ?: false
-                
-                val alertDialog = getAlertDialog(view)
-                
-                if (visible && !existingVisible && alertDialog == null) {
-                    showAlert(view, props)
-                    hasUpdates = true
-                } 
-                else if (!visible && existingVisible && alertDialog != null) {
-                    hideAlert(view)
-                    hasUpdates = true
-                }
-            }
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        val visible = when (val v = props["visible"]) {
+            is Boolean -> v
+            is String -> v.toBoolean()
+            else -> false
+        }
+        
+        val alertDialog = getAlertDialog(view)
+        
+        if (visible && alertDialog == null) {
+            showAlert(view, props.filterValues { it != null }.mapValues { it.value!! })
+        } else if (!visible && alertDialog != null) {
+            hideAlert(view)
+        } else if (visible && alertDialog != null) {
+            alertDialog.dismiss()
+            setAlertDialog(view, null)
+            showAlert(view, props.filterValues { it != null }.mapValues { it.value!! })
         }
 
-        view.applyStyles(props)
-
-        return hasUpdates
+        view.applyStyles(props.filterValues { it != null }.mapValues { it.value!! })
+        return true
     }
     
     private fun getAlertDialog(view: View): AlertDialog? {

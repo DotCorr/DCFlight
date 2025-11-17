@@ -246,6 +246,22 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
         }
         view.setTag(com.dotcorr.dcflight.components.DCFTags.EVENT_CALLBACK_KEY, eventCallback)
 
+        // FRAMEWORK: Automatically enable touch handling for components with event handlers
+        // This ensures 1:1 parity with iOS - no manual component-level glue code needed
+        if (eventTypes.isNotEmpty()) {
+            val hasTouchEvents = eventTypes.any { it.contains("Press", ignoreCase = true) || 
+                                                   it.contains("Tap", ignoreCase = true) ||
+                                                   it.contains("LongPress", ignoreCase = true) ||
+                                                   it.contains("Swipe", ignoreCase = true) ||
+                                                   it.contains("Pan", ignoreCase = true) ||
+                                                   it.contains("Gesture", ignoreCase = true) }
+            if (hasTouchEvents) {
+                view.isClickable = true
+                view.isFocusable = true
+                view.isFocusableInTouchMode = true
+            }
+        }
+
         Log.d(TAG, "Event listeners registered for view $viewId: $eventTypes")
         return true
     }

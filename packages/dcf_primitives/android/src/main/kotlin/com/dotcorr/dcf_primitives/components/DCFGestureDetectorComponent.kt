@@ -21,18 +21,7 @@ import com.dotcorr.dcflight.extensions.applyStyles
 class DCFGestureDetectorComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val frameLayout = object : FrameLayout(context) {
-            // Override to ensure touch events reach gesture detector even with children
-            override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
-                // Don't intercept, but ensure we can receive events
-                return false
-            }
-        }
-        
-        // CRITICAL: Make clickable and focusable to receive touch events even with children
-        frameLayout.isClickable = true
-        frameLayout.isFocusable = true
-        frameLayout.isFocusableInTouchMode = true
+        val frameLayout = FrameLayout(context)
         
         frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "GestureDetector")
         
@@ -123,34 +112,21 @@ class DCFGestureDetectorComponent : DCFComponent() {
         return frameLayout
     }
 
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        var hasUpdates = false
-
-        if (hasPropChanged("disabled", existingProps, props)) {
-            props["disabled"]?.let {
-                val disabled = when (it) {
-                    is Boolean -> it
-                    is String -> it.toBoolean()
-                    else -> false
-                }
-                if (view.isEnabled == disabled) {
-                    view.isEnabled = !disabled
-                    view.isClickable = !disabled
-                    view.isFocusable = !disabled
-                    view.isFocusableInTouchMode = !disabled
-                    hasUpdates = true
-                }
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        props["disabled"]?.let {
+            val disabled = when (it) {
+                is Boolean -> it
+                is String -> it.toBoolean()
+                else -> false
             }
-        } else {
-            // Ensure view remains clickable even if disabled prop not changed
-            view.isClickable = true
-            view.isFocusable = true
-            view.isFocusableInTouchMode = true
+            view.isEnabled = !disabled
         }
 
-        view.applyStyles(props)
+        view.applyStyles(nonNullProps)
 
-        return hasUpdates
+        return true
     }
 
 

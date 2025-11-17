@@ -107,10 +107,18 @@ fun View.applyStyles(props: Map<String, Any>) {
         }
     }
 
-    props["opacity"]?.let { opacity ->
-        this.alpha = when (opacity) {
-            is Number -> opacity.toFloat()
-            else -> 1f
+    // FRAMEWORK: Only apply opacity prop if component doesn't manage its own alpha
+    // TouchableOpacity and similar components manage alpha through animations
+    // Don't override their alpha management
+    val componentType = this.getTag(DCFTags.COMPONENT_TYPE_KEY) as? String
+    val shouldApplyOpacity = componentType != "TouchableOpacity" && componentType != "GestureDetector"
+    
+    if (shouldApplyOpacity) {
+        props["opacity"]?.let { opacity ->
+            this.alpha = when (opacity) {
+                is Number -> opacity.toFloat()
+                else -> 1f
+            }
         }
     }
 
