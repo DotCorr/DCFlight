@@ -329,6 +329,15 @@ Before submitting a component, verify:
 - [ ] Uses `onlySemanticColorsChanged()` for theme changes
 - [ ] Reads state from view when only colors change
 
+### Component References (iOS)
+- [ ] Uses strong component references (not weak) for touchable components
+- [ ] Stores component instances in `NSMapTable` if needed
+- [ ] Restores component reference in `updateView` if lost
+
+### Touch Handling (Android)
+- [ ] Makes views `clickable`, `focusable`, and `focusableInTouchMode` if needed
+- [ ] Uses `setOnTouchListener` for touch handling with children
+
 ### Error Handling
 - [ ] Graceful degradation (no crashes)
 - [ ] Returns `false` on errors
@@ -412,10 +421,65 @@ override fun updateViewInternal(view: View, props: Map<String, Any>, existingPro
 
 ---
 
+## Component Reference Patterns
+
+### iOS: Strong Component References
+
+For components that need to maintain references (especially touchable components with children):
+
+```swift
+class DCFTouchableOpacityComponent: NSObject, DCFComponent {
+    // Store component instances per view
+    private static var componentInstances = NSMapTable<UIView, DCFTouchableOpacityComponent>(
+        keyOptions: .weakMemory, 
+        valueOptions: .strongMemory
+    )
+    
+    func createView(props: [String: Any]) -> UIView {
+        let view = TouchableView()
+        
+        // Create and store component instance
+        let componentInstance = DCFTouchableOpacityComponent()
+        view.component = componentInstance  // Strong reference, not weak!
+        DCFTouchableOpacityComponent.componentInstances.setObject(componentInstance, forKey: view)
+        
+        return view
+    }
+}
+
+class TouchableView: UIView {
+    var component: DCFTouchableOpacityComponent?  // Strong, not weak!
+}
+```
+
+**Why:** Weak references can be deallocated, causing touch handlers to fail. Strong references ensure the component persists.
+
+### Android: Touch Event Handling
+
+For components that need to receive touches even when children are present:
+
+```kotlin
+override fun createView(context: Context, props: Map<String, Any?>): View {
+    val frameLayout = FrameLayout(context)
+    
+    // CRITICAL: Make clickable to receive touches
+    frameLayout.isClickable = true
+    frameLayout.isFocusable = true
+    frameLayout.isFocusableInTouchMode = true
+    
+    frameLayout.setOnTouchListener { view, event ->
+        // Handle touches
+        true
+    }
+    
+    return frameLayout
+}
+```
+
 ## Next Steps
 
 - [Component Protocol](./COMPONENT_PROTOCOL.md) - Detailed protocol explanation
 - [Registry System](./REGISTRY_SYSTEM.md) - How to register components
-- [Event System](./EVENT_SYSTEM.md) - How events work
+- [Event System](./EVENT_SYSTEM.md) - How events work with type-safe callbacks
 - [Tunnel System](./TUNNEL_SYSTEM.md) - Direct method calls
 

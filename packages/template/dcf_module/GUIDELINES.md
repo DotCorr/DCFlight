@@ -83,6 +83,8 @@ class YourComponent : DCFComponent() {
 - **R Import**: Use `com.dotcorr.{module_name}.R` for resource IDs
 - **Props Handling**: Use `hasPropChanged()` to check if a prop changed
 - **View Updates**: Always check view type with `as?` before casting
+- **Touch Handling**: For touchable components with children, make views `clickable`, `focusable`, and `focusableInTouchMode` to receive touches
+- **Event Data**: Include `timestamp` (milliseconds) and `fromUser` in event data for type-safe callbacks
 
 ---
 
@@ -178,6 +180,7 @@ class YourComponent: NSObject, DCFComponent {
 - **Props Merging**: Use `mergeProps()` to merge existing and new props
 - **Style Application**: Always call `applyStyles()` to apply layout and style props
 - **View Type Checking**: Always use `guard let` to safely cast views
+- **Component References**: For touchable components with children, use **strong** component references (not weak) and store in `NSMapTable` to prevent deallocation
 
 ---
 

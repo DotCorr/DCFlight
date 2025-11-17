@@ -116,7 +116,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
     @objc func handleSwipeLeft(_ recognizer: UISwipeGestureRecognizer) {
         if let view = recognizer.view {
             let location = recognizer.location(in: view)
-            // UISwipeGestureRecognizer doesn't provide velocity, use a default value
             propagateEvent(on: view, eventName: "onSwipeLeft", data: [
                 "direction": "left",
                 "velocity": 0.0,
@@ -129,7 +128,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
     @objc func handleSwipeRight(_ recognizer: UISwipeGestureRecognizer) {
         if let view = recognizer.view {
             let location = recognizer.location(in: view)
-            // UISwipeGestureRecognizer doesn't provide velocity, use a default value
             propagateEvent(on: view, eventName: "onSwipeRight", data: [
                 "direction": "right",
                 "velocity": 0.0,
@@ -142,7 +140,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
     @objc func handleSwipeUp(_ recognizer: UISwipeGestureRecognizer) {
         if let view = recognizer.view {
             let location = recognizer.location(in: view)
-            // UISwipeGestureRecognizer doesn't provide velocity, use a default value
             propagateEvent(on: view, eventName: "onSwipeUp", data: [
                 "direction": "up",
                 "velocity": 0.0,
@@ -155,7 +152,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
     @objc func handleSwipeDown(_ recognizer: UISwipeGestureRecognizer) {
         if let view = recognizer.view {
             let location = recognizer.location(in: view)
-            // UISwipeGestureRecognizer doesn't provide velocity, use a default value
             propagateEvent(on: view, eventName: "onSwipeDown", data: [
                 "direction": "down",
                 "velocity": 0.0,
@@ -180,7 +176,7 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
             "translationY": translation.y,
             "velocityX": velocity.x,
             "velocityY": velocity.y,
-            "timestamp": Date().timeIntervalSince1970,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
             "fromUser": true
         ]
         
@@ -199,7 +195,6 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // GestureDetector is a container, delegate to child if exists
         if let child = view.subviews.first {
             let size = child.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
             return CGSize(width: max(1, size.width), height: max(1, size.height))
@@ -223,9 +218,7 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
     }
 }
 
-/// Custom view class for gesture detection with debug capabilities
 class GestureView: UIView {
-    var _debugMode = false
     
     override init(frame: CGRect) {
         super.init(frame: frame)

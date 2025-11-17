@@ -493,7 +493,10 @@ func createView(props: [String: Any]) -> UIView {
 }
 
 @objc private func handlePress(_ sender: UIButton) {
-    propagateEvent(on: sender, eventName: "onPress", data: ["pressed": true])
+    propagateEvent(on: sender, eventName: "onPress", data: [
+        "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+        "fromUser": true
+    ])
 }
 ```
 
@@ -504,7 +507,10 @@ override fun createView(context: Context, props: Map<String, Any?>): View {
     
     // Set up event listener
     button.setOnClickListener {
-        propagateEvent(button, "onPress", mapOf("pressed" to true))
+        propagateEvent(button, "onPress", mapOf(
+            "timestamp" to System.currentTimeMillis(),
+            "fromUser" to true
+        ))
     }
     
     return button
@@ -514,116 +520,167 @@ override fun createView(context: Context, props: Map<String, Any?>): View {
 **Key Points:**
 - ✅ Use `propagateEvent()` to send events to Dart
 - ✅ Event names must match Dart handlers (e.g., `onPress`)
-- ✅ Event data is optional but recommended
+- ✅ Include `timestamp` (milliseconds) and `fromUser` in event data for type-safe callbacks
+- ✅ Timestamp format: iOS uses `Int64(Date().timeIntervalSince1970 * 1000)`, Android uses `System.currentTimeMillis()`
 
 ---
 
 ## Complete Component Example
 
-### iOS Example
+### iOS Example (TouchableOpacity Pattern)
+
+For components that need to handle touches with children (like TouchableOpacity):
 
 ```swift
-class DCFButtonComponent: NSObject, DCFComponent {
+class DCFTouchableOpacityComponent: NSObject, DCFComponent {
+    private static var componentInstances = NSMapTable<UIView, DCFTouchableOpacityComponent>(keyOptions: .weakMemory, valueOptions: .strongMemory)
+    
     required override init() {
         super.init()
     }
     
     func createView(props: [String: Any]) -> UIView {
-        let button = UIButton(type: .system)
+        let touchableView = TouchableView()
         
-        // Apply semantic colors (MUST)
-        if let primaryColor = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColor) {
-                button.setTitleColor(color, for: .normal)
-            }
-        }
+        // CRITICAL: Create component instance per view and store strongly
+        let componentInstance = DCFTouchableOpacityComponent()
+        touchableView.component = componentInstance
+        DCFTouchableOpacityComponent.componentInstances.setObject(componentInstance, forKey: touchableView)
         
-        // Apply title
-        if let title = props["title"] as? String {
-            button.setTitle(title, for: .normal)
-        }
+        touchableView.isUserInteractionEnabled = true
         
-        // Set up events
-        button.addTarget(self, action: #selector(handlePress(_:)), for: .touchUpInside)
+        // Use gesture recognizer for touch tracking
+        let touchTrackingGesture = TouchTrackingGestureRecognizer(target: touchableView, action: #selector(TouchableView.handleTouchTracking(_:)))
+        touchTrackingGesture.cancelsTouchesInView = false
+        touchTrackingGesture.delegate = touchableView
+        touchableView.addGestureRecognizer(touchTrackingGesture)
         
-        // Store props
-        storeProps(props.mapValues { $0 as Any? }, in: button)
+        updateView(touchableView, withProps: props)
+        touchableView.applyStyles(props: props)
         
-        return button
+        return touchableView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let button = view as? UIButton else { return false }
+        guard let touchableView = view as? TouchableView else { return false }
         
-        // Update title
-        if let title = props["title"] as? String {
-            button.setTitle(title, for: .normal)
-        }
-        
-        // Update semantic colors (MUST)
-        if let primaryColor = props["primaryColor"] as? String {
-            if let color = ColorUtilities.color(fromHexString: primaryColor) {
-                button.setTitleColor(color, for: .normal)
+        // Restore component reference if lost
+        if touchableView.component == nil {
+            if let existingComponent = DCFTouchableOpacityComponent.componentInstances.object(forKey: touchableView) {
+                touchableView.component = existingComponent
+            } else {
+                let newComponent = DCFTouchableOpacityComponent()
+                touchableView.component = newComponent
+                DCFTouchableOpacityComponent.componentInstances.setObject(newComponent, forKey: touchableView)
             }
         }
         
+        // Update props...
         return true
     }
     
-    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+    func handleTouchDown(_ view: TouchableView) {
+        UIView.animate(withDuration: 0.1) {
+            view.alpha = view.activeOpacity
+        }
+        
+        propagateEvent(on: view, eventName: "onPressIn", data: [
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "fromUser": true
+        ])
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        guard let button = view as? UIButton else { return CGSize.zero }
-        let size = button.intrinsicContentSize
-        return CGSize(width: max(1, size.width), height: max(1, size.height))
+    // ... other methods
+}
+
+class TouchableView: UIView, UIGestureRecognizerDelegate {
+    var component: DCFTouchableOpacityComponent?  // Strong reference, not weak!
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
     
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Store nodeId if needed
-    }
-    
-    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
-        return nil  // No tunnel methods needed
-    }
-    
-    @objc private func handlePress(_ sender: UIButton) {
-        propagateEvent(on: sender, eventName: "onPress", data: ["pressed": true])
+    @objc func handleTouchTracking(_ gesture: TouchTrackingGestureRecognizer) {
+        guard let comp = component else { return }
+        
+        switch gesture.state {
+        case .began:
+            comp.handleTouchDown(self)
+        case .ended:
+            comp.handleTouchUp(self, inside: bounds.contains(gesture.location(in: self)))
+        default:
+            break
+        }
     }
 }
 ```
 
-### Android Example (Traditional View)
+**Key Pattern for Touchable Components:**
+- ✅ Use **strong** component reference (not weak) to prevent deallocation
+- ✅ Store component instances in `NSMapTable` with weak keys and strong values
+- ✅ Use gesture recognizers for touch handling when children are present
+- ✅ Implement `UIGestureRecognizerDelegate` for simultaneous recognition
+
+### Android Example (TouchableOpacity Pattern)
+
+For components that need to handle touches with children:
 
 ```kotlin
-class DCFButtonComponent : DCFComponent() {
+class DCFTouchableOpacityComponent : DCFComponent() {
     
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val button = Button(context)
-        
-        // Apply semantic colors (MUST)
-        props["primaryColor"]?.let { color ->
-            val colorInt = ColorUtilities.parseColor(color.toString())
-            if (colorInt != null) {
-                button.setTextColor(colorInt)
+        val frameLayout = object : FrameLayout(context) {
+            override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+                return false
             }
         }
         
-        // Apply title
-        props["title"]?.let { button.text = it.toString() }
+        // CRITICAL: Make clickable to receive touches even with children
+        frameLayout.isClickable = true
+        frameLayout.isFocusable = true
+        frameLayout.isFocusableInTouchMode = true
         
-        // Set up events
-        button.setOnClickListener {
-            propagateEvent(button, "onPress", mapOf("pressed" to true))
+        frameLayout.setTag(DCFTags.COMPONENT_TYPE_KEY, "TouchableOpacity")
+        
+        frameLayout.setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    propagateEvent(view, "onPressIn", mapOf(
+                        "timestamp" to System.currentTimeMillis(),
+                        "fromUser" to true
+                    ))
+                    view.animate().alpha(activeOpacity).setDuration(100).start()
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    propagateEvent(view, "onPressOut", mapOf(
+                        "timestamp" to System.currentTimeMillis(),
+                        "fromUser" to true
+                    ))
+                    view.animate().alpha(1.0f).setDuration(100).start()
+                    
+                    if (event.x >= 0 && event.x <= view.width && event.y >= 0 && event.y <= view.height) {
+                        propagateEvent(view, "onPress", mapOf(
+                            "timestamp" to System.currentTimeMillis(),
+                            "fromUser" to true
+                        ))
+                    }
+                    true
+                }
+                else -> false
+            }
         }
         
-        // Framework handles props storage via updateView
-        updateView(button, props)
-        
-        return button
+        updateView(frameLayout, props)
+        return frameLayout
     }
+}
 ```
+
+**Key Pattern for Touchable Components:**
+- ✅ Make view `clickable`, `focusable`, and `focusableInTouchMode` to receive touches
+- ✅ Use `setOnTouchListener` for touch handling
+- ✅ Include `timestamp` (milliseconds) and `fromUser` in event data
 
 ### Android Example (Compose Component)
 

@@ -187,12 +187,12 @@ The framework normalizes event names for matching:
 **Touch Events:**
 ```dart
 {
-  "timestamp": 1234567890.0,
-  "pressed": true,
-  "x": 100.0,
-  "y": 200.0
+  "timestamp": 1234567890000,  // Milliseconds since epoch
+  "fromUser": true
 }
 ```
+
+**Note:** Modern components use type-safe callbacks. See component documentation for specific event data structures.
 
 **Value Change Events:**
 ```dart
@@ -234,35 +234,62 @@ propagateEvent(view, "onCustomEvent", mapOf(
 
 ## Dart Side: Receiving Events
 
-### Event Handler Signature
+### Type-Safe Event Handlers
+
+Modern components use type-safe callbacks instead of raw maps:
+
+```dart
+// Type-safe handler (recommended)
+DCFButton(
+  children: [DCFText(content: "Click me")],
+  onPress: (DCFButtonPressData data) {
+    print("Button pressed at: ${data.timestamp}");
+    print("From user: ${data.fromUser}");
+  },
+)
+
+// TouchableOpacity with type-safe handlers
+DCFTouchableOpacity(
+  children: [...],
+  onPress: (DCFTouchableOpacityPressData data) {
+    print("Pressed at: ${data.timestamp}");
+  },
+  onPressIn: (DCFTouchableOpacityPressInData data) {
+    print("Press started");
+  },
+  onPressOut: (DCFTouchableOpacityPressOutData data) {
+    print("Press ended");
+  },
+)
+
+// GestureDetector with type-safe handlers
+DCFGestureDetector(
+  children: [...],
+  onTap: (DCFGestureTapData data) {
+    print("Tapped at: ${data.x}, ${data.y}");
+  },
+  onSwipeLeft: (DCFGestureSwipeData data) {
+    print("Swiped left with velocity: ${data.velocity}");
+  },
+)
+```
+
+### Legacy Handler Signature (Still Supported)
 
 ```dart
 // Simple handler (no data)
 onPress: () => print("Pressed!")
 
-// Handler with data
+// Handler with data map (legacy, but still works)
 onPress: (data) {
   print("Pressed at: ${data['timestamp']}");
-  print("Position: ${data['x']}, ${data['y']}");
 }
 ```
 
-### Example: Button Component
-
-```dart
-DCFButton(
-  buttonProps: DCFButtonProps(
-    title: "Click me",
-    onPress: (data) {
-      print("Button pressed!");
-      print("Data: $data");
-    },
-    onLongPress: (data) {
-      print("Button long pressed!");
-    },
-  ),
-)
-```
+**Key Points:**
+- ✅ Use type-safe callbacks when available (prevents errors)
+- ✅ Type-safe callbacks include `timestamp` (DateTime) and `fromUser` (bool)
+- ✅ Legacy map-based handlers still work for backward compatibility
 
 ### Example: Slider Component
 

@@ -12,7 +12,6 @@ import dcflight
 class DCFTouchableOpacityComponent: NSObject, DCFComponent {
     private static let sharedInstance = DCFTouchableOpacityComponent()
     
-    // CRITICAL FIX: Store strong references to component instances per view
     private static var componentInstances = NSMapTable<UIView, DCFTouchableOpacityComponent>(keyOptions: .weakMemory, valueOptions: .strongMemory)
     
     required override init() {
@@ -22,16 +21,11 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let touchableView = TouchableView()
         
-        // CRITICAL FIX: Create a new component instance and store it strongly
         let componentInstance = DCFTouchableOpacityComponent()
         touchableView.component = componentInstance
         DCFTouchableOpacityComponent.componentInstances.setObject(componentInstance, forKey: touchableView)
         
-        print("✅ Created TouchableView with component instance: \(ObjectIdentifier(componentInstance))")
-        
         touchableView.isUserInteractionEnabled = true
-        
-        // Use a custom touch tracking gesture that recognizes immediately
         let touchTrackingGesture = TouchTrackingGestureRecognizer(target: touchableView, action: #selector(TouchableView.handleTouchTracking(_:)))
         touchTrackingGesture.cancelsTouchesInView = false
         touchTrackingGesture.delaysTouchesBegan = false
@@ -48,16 +42,13 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let touchableView = view as? TouchableView else { return false }
         
-        // CRITICAL FIX: Restore component reference if it was lost
         if touchableView.component == nil {
             if let existingComponent = DCFTouchableOpacityComponent.componentInstances.object(forKey: touchableView) {
                 touchableView.component = existingComponent
-                print("⚠️ Restored component reference from map")
             } else {
                 let newComponent = DCFTouchableOpacityComponent()
                 touchableView.component = newComponent
                 DCFTouchableOpacityComponent.componentInstances.setObject(newComponent, forKey: touchableView)
-                print("⚠️ Created new component instance in updateView")
             }
         }
         
@@ -82,8 +73,6 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
     }
     
     func handleTouchDown(_ view: TouchableView) {
-        print("🟡 DCFTouchableOpacity: handleTouchDown - activeOpacity: \(view.activeOpacity)")
-        
         UIView.animate(withDuration: 0.1) {
             view.alpha = view.activeOpacity
         }
@@ -97,7 +86,6 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
     }
     
     func handleTouchUp(_ view: TouchableView, inside: Bool) {
-        print("🟡 DCFTouchableOpacity: handleTouchUp - inside: \(inside)")
         view.cancelLongPressTimer()
         
         UIView.animate(withDuration: 0.1) {
@@ -110,7 +98,6 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
         ])
         
         if inside {
-            print("🟡 DCFTouchableOpacity: Firing onPress event")
             propagateEvent(on: view, eventName: "onPress", data: [
                 "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
                 "fromUser": true
@@ -149,9 +136,7 @@ class DCFTouchableOpacityComponent: NSObject, DCFComponent {
     }
 }
 
-/// Custom view class for touchable opacity
 class TouchableView: UIView, UIGestureRecognizerDelegate {
-    // CRITICAL FIX: Changed from weak to strong (but still optional)
     var component: DCFTouchableOpacityComponent?
     
     var activeOpacity: CGFloat = 0.2
@@ -201,20 +186,14 @@ class TouchableView: UIView, UIGestureRecognizerDelegate {
         let location = gesture.location(in: self)
         let inside = bounds.contains(location)
         
-        guard let comp = component else {
-            print("❌ ERROR: component is nil in handleTouchTracking! View: \(self)")
-            return
-        }
+        guard let comp = component else { return }
         
         switch gesture.state {
         case .began:
-            print("🔵 TouchTrackingGesture: began")
             comp.handleTouchDown(self)
         case .ended:
-            print("🔵 TouchTrackingGesture: ended, inside: \(inside)")
             comp.handleTouchUp(self, inside: inside)
         case .cancelled, .failed:
-            print("🔵 TouchTrackingGesture: cancelled/failed")
             comp.handleTouchUp(self, inside: false)
         default:
             break
@@ -235,14 +214,8 @@ class TouchableView: UIView, UIGestureRecognizerDelegate {
         longPressTimer = nil
     }
     
-    // Fallback touch handlers (in case gesture recognizer doesn't fire)
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        print("🟢 TouchableView touchesBegan - component exists: \(component != nil)")
-        if let comp = component {
-            comp.handleTouchDown(self)
-        } else {
-            print("❌ ERROR: component is nil in touchesBegan!")
-        }
+        component?.handleTouchDown(self)
         super.touchesBegan(touches, with: event)
     }
     
@@ -266,7 +239,6 @@ class TouchableView: UIView, UIGestureRecognizerDelegate {
     }
 }
 
-/// Custom gesture recognizer that recognizes touches immediately
 class TouchTrackingGestureRecognizer: UIGestureRecognizer {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
         if self.state == .possible {
