@@ -19,8 +19,6 @@ import dcflight
         DCFSvgComponent.initializeSVGKit()
 
         DCFComponentRegistry.shared.registerComponent("View", componentClass: DCFViewComponent.self)
-        DCFComponentRegistry.shared.registerComponent(
-            "Button", componentClass: DCFButtonComponent.self)
         DCFComponentRegistry.shared.registerComponent("Text", componentClass: DCFTextComponent.self)
         DCFComponentRegistry.shared.registerComponent(
             "Image", componentClass: DCFImageComponent.self)

@@ -28,7 +28,6 @@ object PrimitivesComponentsReg {
         registry.registerComponent("Text", DCFTextComponent::class.java)
         registry.registerComponent("Image", DCFImageComponent::class.java)
         registry.registerComponent("TextInput", DCFTextInputComponent::class.java)
-        registry.registerComponent("Button", DCFButtonComponent::class.java)
         registry.registerComponent("Toggle", DCFToggleComponent::class.java)
         registry.registerComponent("Slider", DCFSliderComponent::class.java)
         registry.registerComponent("Checkbox", DCFCheckboxComponent::class.java)

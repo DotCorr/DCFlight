@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'touchable_opacity_component.dart';
 
 /// Button press callback data
 class DCFButtonPressData {
@@ -55,36 +56,62 @@ class DCFButtonLongPressData {
   }
 }
 
+/// Button style enum - determines the underlying primitive behavior
+enum DCFButtonStyle {
+  /// Uses TouchableOpacity with opacity feedback
+  touchableOpacity,
+  
+  /// Uses Pressable with press feedback (if available, falls back to touchableOpacity)
+  pressable,
+  
+  /// No visual feedback, just gesture detection
+  none,
+}
+
 /// Button properties
 class DCFButtonProps implements ComponentPriorityInterface {
   @override
   ComponentPriority get priority => ComponentPriority.high;
 
-  /// The title text of the button
-  final String title;
-
   /// Disabled state
   final bool disabled;
 
+  /// Button style - determines underlying primitive behavior
+  final DCFButtonStyle buttonStyle;
+
+  /// Active opacity for touchableOpacity style (0.0 to 1.0)
+  final double activeOpacity;
+
+  /// Long press delay in milliseconds
+  final int longPressDelay;
+
   /// Create button props
   const DCFButtonProps({
-    required this.title,
     this.disabled = false,
+    this.buttonStyle = DCFButtonStyle.touchableOpacity,
+    this.activeOpacity = 0.2,
+    this.longPressDelay = 500,
   });
 
   /// Convert to props map
   Map<String, dynamic> toMap() {
     return {
-      'title': title,
       'disabled': disabled,
+      'buttonStyle': buttonStyle.name,
+      'activeOpacity': activeOpacity,
+      'longPressDelay': longPressDelay,
     };
   }
 }
 
-/// A button component implementation using StatelessComponent
+/// A button component implementation using TouchableOpacity as the underlying primitive
+/// Button now accepts children instead of title, giving users full control over button content
 class DCFButton extends DCFStatelessComponent {
   /// The button properties
   final DCFButtonProps? buttonProps;
+
+  /// Child nodes - Button now accepts children instead of title
+  final List<DCFComponentNode> children;
 
   /// The layout properties
   final DCFLayout layout;
@@ -107,8 +134,16 @@ class DCFButton extends DCFStatelessComponent {
 
   /// Create a button component
   DCFButton({
-     this.buttonProps = const DCFButtonProps(title: "Button"),
-    this.layout = const DCFLayout(),
+    this.buttonProps,
+    this.children = const [],
+    this.layout = const DCFLayout(
+      width: "100%", 
+      padding: 0,
+      margin: 0,
+      alignItems: DCFAlign.center, 
+      justifyContent: DCFJustifyContent.center, 
+      height: 45,
+    ),
     this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.blueAccent, borderRadius: 10),
     this.textColor,
     this.onPress,
@@ -121,6 +156,7 @@ class DCFButton extends DCFStatelessComponent {
   DCFComponentNode render() {
     Map<String, dynamic> eventMap = events ?? {};
 
+    // Map button events to touchable opacity events
     if (onPress != null) {
       eventMap['onPress'] = (Map<dynamic, dynamic> data) {
         onPress!(DCFButtonPressData.fromMap(data));
@@ -133,25 +169,45 @@ class DCFButton extends DCFStatelessComponent {
       };
     }
 
-    Map<String, dynamic> props = {
-      ...?buttonProps?.toMap(),
-      ...layout.toMap(),
-      ...const DCFLayout(
-        width: "100%", 
-        padding: 0,
-        margin: 0,
-        alignItems: DCFAlign.center, 
-        justifyContent: DCFJustifyContent.center, 
-        height: 45,
-      ).toMap(),
-      ...styleSheet.toMap(),
-      if (textColor != null) 'textColor': DCFColors.toNativeString(textColor!),
-      ...eventMap,
-    };
-    return DCFElement(
-      type: 'Button',
-      elementProps: props,
-      children: [],
-    );
+    final buttonStyle = buttonProps?.buttonStyle ?? DCFButtonStyle.touchableOpacity;
+    final activeOpacity = buttonProps?.activeOpacity ?? 0.2;
+    final longPressDelay = buttonProps?.longPressDelay ?? 500;
+    final disabled = buttonProps?.disabled ?? false;
+
+    // Based on buttonStyle, choose the underlying primitive
+    // For now, we use TouchableOpacity for all styles (pressable and none can be added later)
+    // Users can opt out and use raw TouchableOpacity/GestureDetector if they need more control
+    switch (buttonStyle) {
+      case DCFButtonStyle.touchableOpacity:
+      case DCFButtonStyle.pressable:
+      case DCFButtonStyle.none:
+        // All styles use TouchableOpacity as the underlying primitive
+        // The buttonStyle is passed through for potential future use
+        return DCFTouchableOpacity(
+          children: children,
+          activeOpacity: buttonStyle == DCFButtonStyle.none ? 1.0 : activeOpacity,
+          disabled: disabled,
+          longPressDelay: longPressDelay,
+          layout: layout,
+          styleSheet: styleSheet,
+          onPress: onPress != null
+              ? (DCFTouchableOpacityPressData data) {
+                  onPress!(DCFButtonPressData(
+                    fromUser: data.fromUser,
+                    timestamp: data.timestamp,
+                  ));
+                }
+              : null,
+          onLongPress: onLongPress != null
+              ? (DCFTouchableOpacityLongPressData data) {
+                  onLongPress!(DCFButtonLongPressData(
+                    fromUser: data.fromUser,
+                    timestamp: data.timestamp,
+                  ));
+                }
+              : null,
+          events: eventMap,
+        ).render();
+    }
   }
 }
