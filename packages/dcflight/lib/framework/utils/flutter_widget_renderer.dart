@@ -85,6 +85,9 @@ class FlutterWidgetRenderer {
               _viewFrames[viewId] = _ViewFrame(x: x, y: y, width: width, height: height);
               print('🎨 FlutterWidgetRenderer: Updated frame for view $viewId: ($x, $y, $width, $height)');
               
+              // Update FlutterView position/size to match union of all widget frames
+              _updateFlutterViewFrame();
+              
               // Mark overlay entry as needing rebuild to update position
               final entry = _overlayEntries[viewId];
               if (entry != null) {
@@ -138,6 +141,8 @@ class FlutterWidgetRenderer {
       // Update frame if provided
       if (x != null && y != null && width != null && height != null && width > 0 && height > 0) {
         _viewFrames[viewId] = _ViewFrame(x: x, y: y, width: width, height: height);
+        // Update FlutterView position/size to match union of all widget frames
+        _updateFlutterViewFrame();
         // Mark overlay entry for rebuild
         final entry = _overlayEntries[viewId];
         entry?.markNeedsBuild();
@@ -155,6 +160,8 @@ class FlutterWidgetRenderer {
       if (width > 0 && height > 0) {
         _viewFrames[viewId] = _ViewFrame(x: x, y: y, width: width, height: height);
         print('🎨 FlutterWidgetRenderer: Stored frame for view $viewId: ($x, $y, $width, $height)');
+        // Update FlutterView position/size to match union of all widget frames
+        _updateFlutterViewFrame();
       } else {
         // Frame is invalid (0x0), check if we have a stored frame
         final storedFrame = _viewFrames[viewId];
@@ -415,6 +422,9 @@ class FlutterWidgetRenderer {
     // Remove frame information
     _viewFrames.remove(viewId);
     
+    // Update FlutterView position/size after disposing widget
+    _updateFlutterViewFrame();
+    
     // Remove widgetId mapping
     _widgetIdToViewId.removeWhere((_, vId) => vId == viewId);
     
@@ -423,6 +433,57 @@ class FlutterWidgetRenderer {
   
   /// Mark widget for rebuild when state changes
   /// Called by WidgetToDCFAdaptor when widget is updated in registry
+  /// Calculate union of all widget frames and update FlutterView position/size
+  void _updateFlutterViewFrame() {
+    if (_viewFrames.isEmpty) {
+      // No widgets, hide FlutterView or set to zero size
+      _channel.invokeMethod('updateFlutterViewFrame', {
+        'x': 0.0,
+        'y': 0.0,
+        'width': 0.0,
+        'height': 0.0,
+      }).catchError((error) {
+        print('⚠️ FlutterWidgetRenderer: Failed to update FlutterView frame: $error');
+      });
+      return;
+    }
+    
+    // Calculate union of all frames (bounding box)
+    double minX = double.infinity;
+    double minY = double.infinity;
+    double maxX = double.negativeInfinity;
+    double maxY = double.negativeInfinity;
+    
+    for (final frame in _viewFrames.values) {
+      if (frame.width > 0 && frame.height > 0) {
+        minX = minX < frame.x ? minX : frame.x;
+        minY = minY < frame.y ? minY : frame.y;
+        final frameRight = frame.x + frame.width;
+        final frameBottom = frame.y + frame.height;
+        maxX = maxX > frameRight ? maxX : frameRight;
+        maxY = maxY > frameBottom ? maxY : frameBottom;
+      }
+    }
+    
+    if (minX.isFinite && minY.isFinite && maxX.isFinite && maxY.isFinite) {
+      final unionX = minX;
+      final unionY = minY;
+      final unionWidth = maxX - minX;
+      final unionHeight = maxY - minY;
+      
+      print('🎨 FlutterWidgetRenderer: Updating FlutterView frame to union: ($unionX, $unionY, $unionWidth, $unionHeight)');
+      
+      _channel.invokeMethod('updateFlutterViewFrame', {
+        'x': unionX,
+        'y': unionY,
+        'width': unionWidth,
+        'height': unionHeight,
+      }).catchError((error) {
+        print('⚠️ FlutterWidgetRenderer: Failed to update FlutterView frame: $error');
+      });
+    }
+  }
+  
   void markWidgetForRebuild(String widgetId) {
     final viewId = _widgetIdToViewId[widgetId];
     if (viewId != null) {

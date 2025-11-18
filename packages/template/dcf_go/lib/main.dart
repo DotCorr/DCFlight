@@ -91,7 +91,8 @@ class CanvasDemoApp extends DCFStatefulComponent {
             // Repaint toggle
             DCFView(
               layout: DCFLayout(
-                width: "70%",
+                marginHorizontal: 10,
+                width: "100%",
                 flexDirection: DCFFlexDirection.row,
                 justifyContent: DCFJustifyContent.spaceBetween,
                 alignItems: DCFAlign.center,

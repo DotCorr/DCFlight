@@ -37,8 +37,9 @@ import Flutter
                 // Add FlutterView to window if not already added
                 if flutterVC.view.superview == nil {
                     window.addSubview(flutterVC.view)
-                    flutterVC.view.frame = window.bounds
-                    flutterVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                    // Initially set to zero size - will be updated when widgets are rendered
+                    flutterVC.view.frame = CGRect.zero
+                    flutterVC.view.autoresizingMask = [] // No autoresizing - we control size manually
                 }
                 
                 // Make FlutterView visible, transparent, and non-interactive
@@ -50,6 +51,28 @@ import Flutter
                 window.bringSubviewToFront(flutterVC.view)
                 
                 print("✅ DCDivergerUtil: FlutterView enabled for rendering (transparent, non-interactive)")
+                result(true)
+            } else if call.method == "updateFlutterViewFrame" {
+                // Update FlutterView frame to match union of all widget frames
+                guard let args = call.arguments as? [String: Any],
+                      let x = args["x"] as? Double,
+                      let y = args["y"] as? Double,
+                      let width = args["width"] as? Double,
+                      let height = args["height"] as? Double else {
+                    result(FlutterError(code: "INVALID_ARGS", message: "Invalid frame parameters", details: nil))
+                    return
+                }
+                
+                guard let window = UIApplication.shared.windows.first else {
+                    result(FlutterError(code: "NO_WINDOW", message: "No window available", details: nil))
+                    return
+                }
+                
+                // Update FlutterView frame to match the union of all widget frames
+                let newFrame = CGRect(x: x, y: y, width: width, height: height)
+                flutterVC.view.frame = newFrame
+                
+                print("✅ DCDivergerUtil: Updated FlutterView frame to: \(newFrame)")
                 result(true)
             } else {
                 result(FlutterMethodNotImplemented)
