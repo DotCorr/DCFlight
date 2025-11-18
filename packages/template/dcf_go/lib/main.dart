@@ -45,25 +45,31 @@ class CanvasDemoApp extends DCFStatefulComponent {
                     ? constraints.maxHeight 
                     : 614.0; // Use actual screen height as fallback
                 
-                return SizedBox(
-                  width: width,
-                  height: height,
-                  child: CustomPaint(
+            return SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
+                children: [
+                  // Background color layer
+                  Container(
+                    color: backgroundColor.state,
+                    width: width,
+                    height: height,
+                  ),
+                  // CustomPaint on top
+                  CustomPaint(
                     size: Size(width, height),
                     painter: _DemoPainter(
                       animationValue: animationValue.state,
                       repaintOnFrame: repaintOnFrame.state,
                     ),
-                    child: Container(
-                      color: backgroundColor.state,
-                      width: width,
-                      height: height,
-                    ),
                   ),
-                );
-              },
+                ],
+              ),
             );
           },
+        );
+      },
           layout: DCFLayout(
             flex: 1,
             width: "100%",
@@ -100,6 +106,7 @@ class CanvasDemoApp extends DCFStatefulComponent {
             // Repaint toggle
             DCFView(
               layout: DCFLayout(
+                width: "70%",
                 flexDirection: DCFFlexDirection.row,
                 justifyContent: DCFJustifyContent.spaceBetween,
                 alignItems: DCFAlign.center,
@@ -211,6 +218,8 @@ class _DemoPainter extends CustomPainter {
   
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
+    print('🎨 _DemoPainter: paint() called with size: ${size.width}x${size.height}');
+    
     // Direct drawing using Flutter's Canvas API (Impeller/Skia)
     final paint = ui.Paint()
       ..color = DCFColors.blue
