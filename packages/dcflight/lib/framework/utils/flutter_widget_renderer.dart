@@ -360,7 +360,9 @@ class FlutterWidgetRenderer {
     
     // Enable FlutterView rendering on native side before calling runApp
     // This ensures the FlutterView is visible and ready to render
-    _channel.invokeMethod('enableFlutterViewRendering').catchError((error) {
+    _channel.invokeMethod('enableFlutterViewRendering').then((result) {
+      print('✅ FlutterWidgetRenderer: enableFlutterViewRendering succeeded: $result');
+    }).catchError((error) {
       print('⚠️ FlutterWidgetRenderer: Failed to enable FlutterView rendering: $error');
       // Continue anyway - runApp might still work
     });

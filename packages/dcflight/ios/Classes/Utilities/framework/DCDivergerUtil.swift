@@ -52,6 +52,10 @@ import Flutter
                 window.bringSubviewToFront(flutterVC.view)
                 
                 print("✅ DCDivergerUtil: FlutterView enabled for rendering (transparent, non-interactive)")
+                print("   FlutterView frame: \(flutterVC.view.frame)")
+                print("   FlutterView isHidden: \(flutterVC.view.isHidden)")
+                print("   FlutterView backgroundColor: \(flutterVC.view.backgroundColor?.description ?? "nil")")
+                print("   FlutterView superview: \(flutterVC.view.superview != nil ? "exists" : "nil")")
                 result(true)
             } else if call.method == "updateFlutterViewFrame" {
                 // Update FlutterView frame to match union of all widget frames
@@ -73,8 +77,11 @@ import Flutter
                 // Update FlutterView frame to match the union of all widget frames
                 let newFrame = CGRect(x: x, y: y, width: width, height: height)
                 flutterVC.view.frame = newFrame
+                flutterVC.view.isHidden = false // Ensure it's visible when frame is set
                 
                 print("✅ DCDivergerUtil: Updated FlutterView frame to: \(newFrame)")
+                print("   FlutterView isHidden: \(flutterVC.view.isHidden)")
+                print("   FlutterView superview: \(flutterVC.view.superview != nil ? "exists" : "nil")")
                 result(true)
             } else {
                 result(FlutterMethodNotImplemented)
