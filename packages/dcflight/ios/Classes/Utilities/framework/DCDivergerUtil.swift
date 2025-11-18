@@ -17,6 +17,19 @@ import Flutter
             flutterEngine.run(withEntrypoint: "main", libraryURI: nil)
         }
         
+        // CRITICAL: Register all plugins with our custom engine
+        // GeneratedPluginRegistrant.register(with: self) is called in AppDelegate,
+        // but we need to ensure plugins are registered with our custom engine, not default
+        // Use Objective-C runtime to call GeneratedPluginRegistrant.registerWithRegistry: with our engine
+        if let registrantClass = NSClassFromString("GeneratedPluginRegistrant") as? NSObject.Type {
+            if registrantClass.responds(to: Selector("registerWithRegistry:")) {
+                registrantClass.perform(Selector("registerWithRegistry:"), with: flutterEngine)
+                print("✅ DCDivergerUtil: Registered all plugins with custom FlutterEngine")
+            }
+        } else {
+            print("⚠️ DCDivergerUtil: GeneratedPluginRegistrant not found (plugins may already be registered)")
+        }
+        
         let flutterVC = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
         flutterEngine.viewController = flutterVC
         sharedFlutterViewController = flutterVC

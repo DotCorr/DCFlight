@@ -210,7 +210,7 @@ class FlutterWidgetRenderer {
     // We do the same but create a composite tree for all FlutterViews
     
     // Ensure binding is initialized (already done by DCFlight.init, but safe to call)
-    WidgetsFlutterBinding.ensureInitialized();
+     WidgetsFlutterBinding.ensureInitialized();
     
     // Store the widget for this viewId
     final host = _hosts[viewId];
@@ -358,23 +358,34 @@ class FlutterWidgetRenderer {
     
     print('🎨 FlutterWidgetRenderer: Creating root widget tree with Overlay...');
     
-    // Enable FlutterView rendering on native side before calling runApp
-    // This ensures the FlutterView is visible and ready to render
+    // CRITICAL: Enable FlutterView rendering BEFORE calling runApp
+    // WebView and other platform channel plugins need the FlutterView to be
+    // attached to the engine and in the view hierarchy before they can initialize
     _channel.invokeMethod('enableFlutterViewRendering').then((result) {
       print('✅ FlutterWidgetRenderer: enableFlutterViewRendering succeeded: $result');
+      
+      // Wait a microtask to ensure FlutterView is fully attached before runApp
+      // This gives native side time to attach the view to the engine
+      Future.microtask(() {
+        // Create a completely transparent, non-interactive root widget
+        // This provides an OverlayState without blocking DCF UI
+        runApp(_FlutterWidgetRoot(
+          onOverlayReady: (overlayState) {
+            print('✅ FlutterWidgetRenderer: OverlayState ready from root widget tree');
+            setOverlayState(overlayState);
+          },
+        ));
+      });
     }).catchError((error) {
       print('⚠️ FlutterWidgetRenderer: Failed to enable FlutterView rendering: $error');
-      // Continue anyway - runApp might still work
+      // Continue anyway - runApp might still work, but plugins may fail
+      runApp(_FlutterWidgetRoot(
+        onOverlayReady: (overlayState) {
+          print('✅ FlutterWidgetRenderer: OverlayState ready from root widget tree');
+          setOverlayState(overlayState);
+        },
+      ));
     });
-    
-    // Create a completely transparent, non-interactive root widget
-    // This provides an OverlayState without blocking DCF UI
-    runApp(_FlutterWidgetRoot(
-      onOverlayReady: (overlayState) {
-        print('✅ FlutterWidgetRenderer: OverlayState ready from root widget tree');
-        setOverlayState(overlayState);
-      },
-    ));
     
     print('✅ FlutterWidgetRenderer: Root widget tree created');
   }

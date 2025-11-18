@@ -56,6 +56,18 @@ object DCDivergerUtil {
 
         flutterEngine = engine
 
+        // CRITICAL: Register all plugins with our custom engine
+        // This ensures WebView and other platform channel plugins can establish channels
+        // This is essential for WebView and other plugins that use platform channels
+        try {
+            val registrantClass = Class.forName("io.flutter.plugins.GeneratedPluginRegistrant")
+            val registerMethod = registrantClass.getMethod("registerWith", FlutterEngine::class.java)
+            registerMethod.invoke(null, flutterEngine)
+            Log.d(TAG, "✅ DCDivergerUtil: Registered all plugins with custom FlutterEngine")
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ DCDivergerUtil: Could not register plugins (may already be registered): ${e.message}")
+        }
+
         flutterView = FlutterView(activity).apply {
             visibility = View.GONE
         }
