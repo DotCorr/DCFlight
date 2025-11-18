@@ -200,6 +200,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
   /// - Returns: `true` if the view was attached successfully, `false` otherwise
   @override
   Future<bool> attachView(int childId, int parentId, int index) async {
+    print('🔥 attachView: childId=$childId, parentId=$parentId, _batchUpdateInProgress=$_batchUpdateInProgress');
     if (_batchUpdateInProgress) {
       // No props serialization needed for attachView - just metadata
       _pendingBatchUpdates.add({
@@ -208,6 +209,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
         'parentId': parentId,
         'index': index,
       });
+      print('🔥 attachView: Queued attach operation (total queued: ${_pendingBatchUpdates.length})');
       return true;
     }
 
@@ -329,11 +331,18 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   Future<bool> commitBatchUpdate() async {
     if (!_batchUpdateInProgress) {
+      print('⚠️ commitBatchUpdate: No batch update in progress');
       return false;
     }
     
     try {
       final paramKey = Platform.isIOS ? 'updates' : 'operations';
+      final attachCount = _pendingBatchUpdates.where((op) => op['operation'] == 'attachView').length;
+      final createCount = _pendingBatchUpdates.where((op) => op['operation'] == 'createView').length;
+      print('🔥 commitBatchUpdate: Sending ${_pendingBatchUpdates.length} operations (${createCount} creates, ${attachCount} attaches)');
+      if (attachCount > 0) {
+        print('🔥 commitBatchUpdate: Attach operations: ${_pendingBatchUpdates.where((op) => op['operation'] == 'attachView').map((op) => '${op['childId']}->${op['parentId']}').join(', ')}');
+      }
       final success =
           await bridgeChannel.invokeMethod<bool>('commitBatchUpdate', {
         paramKey: _pendingBatchUpdates,

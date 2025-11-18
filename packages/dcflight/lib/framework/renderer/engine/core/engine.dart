@@ -1338,6 +1338,7 @@ class DCFEngine {
       {int? parentViewId, int? index}) async {
     await isReady;
 
+    print('🔥🔥🔥 Engine.renderToNative: START - node=${node.runtimeType}, parentViewId=$parentViewId, index=$index');
     EngineDebugLogger.logRender('START', node,
         viewId: node.effectiveNativeViewId, parentId: parentViewId);
 
@@ -1629,19 +1630,37 @@ class DCFEngine {
       'ElementType': element.type,
       'Props': element.elementProps.keys.toList()
     });
-    final success = await _nativeBridge.createView(
-        viewId, element.type, element.elementProps);
-    if (!success) {
-      EngineDebugLogger.log(
-          'ELEMENT_CREATE_FAILED', 'Failed to create native view',
-          extra: {'ViewId': viewId, 'ElementType': element.type});
+    print('🔥 Engine.renderToNative: Calling createView for viewId=$viewId, type=${element.type}');
+    try {
+      final success = await _nativeBridge.createView(
+          viewId, element.type, element.elementProps).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('❌ Engine.renderToNative: createView TIMEOUT for viewId=$viewId, type=${element.type}');
+          return false;
+        },
+      );
+      print('🔥 Engine.renderToNative: createView completed for viewId=$viewId, success=$success');
+      if (!success) {
+        EngineDebugLogger.log(
+            'ELEMENT_CREATE_FAILED', 'Failed to create native view',
+            extra: {'ViewId': viewId, 'ElementType': element.type});
+        return null;
+      }
+    } catch (e, stackTrace) {
+      print('❌ Engine.renderToNative: ERROR in createView for viewId=$viewId: $e');
+      print('❌ Stack trace: $stackTrace');
       return null;
     }
 
     if (parentViewId != null) {
+      print('🔥 Engine.renderToNative: Attaching viewId=$viewId to parent=$parentViewId');
       EngineDebugLogger.logBridge('ATTACH_VIEW', viewId,
           data: {'ParentViewId': parentViewId, 'Index': index ?? 0});
-      await _nativeBridge.attachView(viewId, parentViewId, index ?? 0);
+      final attachResult = await _nativeBridge.attachView(viewId, parentViewId, index ?? 0);
+      print('🔥 Engine.renderToNative: attachView result=$attachResult');
+    } else {
+      print('⚠️ Engine.renderToNative: No parentViewId for viewId=$viewId (this is the root)');
     }
 
     final eventTypes = element.eventTypes;
@@ -1657,23 +1676,38 @@ class DCFEngine {
     }
 
     final childIds = <int>[];
+    print('🔥 Engine.renderToNative: Rendering ${element.children.length} children for viewId=$viewId');
     EngineDebugLogger.log('ELEMENT_CHILDREN_START',
         'Rendering ${element.children.length} children');
 
     for (var i = 0; i < element.children.length; i++) {
-      final childId = await renderToNative(element.children[i],
-          parentViewId: viewId, index: i);
-      if (childId != null) {
-        childIds.add(childId);
+      print('🔥 Engine.renderToNative: Rendering child $i of ${element.children.length} for parent=$viewId');
+      try {
+        final childId = await renderToNative(element.children[i],
+            parentViewId: viewId, index: i);
+        if (childId != null) {
+          childIds.add(childId);
+          print('🔥 Engine.renderToNative: Child $i rendered with viewId=$childId');
+        } else {
+          print('⚠️ Engine.renderToNative: Child $i returned null viewId');
+        }
+      } catch (e, stackTrace) {
+        print('❌ Engine.renderToNative: ERROR rendering child $i: $e');
+        print('❌ Stack trace: $stackTrace');
+        rethrow;
       }
     }
 
+    print('🔥 Engine.renderToNative: Finished rendering children for viewId=$viewId (${childIds.length} children)');
     if (childIds.isNotEmpty) {
+      print('🔥 Engine.renderToNative: Calling setChildren for viewId=$viewId with ${childIds.length} children');
       EngineDebugLogger.logBridge('SET_CHILDREN', viewId,
           data: {'ChildIds': childIds});
       await _nativeBridge.setChildren(viewId, childIds);
+      print('🔥 Engine.renderToNative: setChildren completed for viewId=$viewId');
     }
 
+    print('🔥 Engine.renderToNative: Element render completed for viewId=$viewId, returning viewId');
     EngineDebugLogger.log('ELEMENT_RENDER_SUCCESS', 'Element render completed',
         extra: {'ViewId': viewId, 'ChildCount': childIds.length});
     return viewId;
@@ -3542,9 +3576,13 @@ class DCFEngine {
           'CREATE_ROOT_FIRST', 'Creating first root component');
       rootComponent = component;
 
+      print('🔥 Engine.createRoot: Starting batch update...');
       await _nativeBridge.startBatchUpdate();
+      print('🔥 Engine.createRoot: Batch update started, rendering root component...');
       final viewId = await renderToNative(component, parentViewId: 0);
+      print('🔥 Engine.createRoot: Root component rendered, viewId=$viewId, committing batch...');
       await _nativeBridge.commitBatchUpdate();
+      print('🔥 Engine.createRoot: Batch committed');
       
       setRootComponent(component);
 
@@ -3576,6 +3614,7 @@ class DCFEngine {
   Future<void> commitBatchUpdate() async {
     await isReady;
     if (_batchUpdateInProgress) {
+      print('🔥 Engine.commitBatchUpdate: Starting commit...');
       _batchUpdateInProgress = false;
       
       // Commit phase: Process all effects
@@ -3587,7 +3626,11 @@ class DCFEngine {
         _workInProgressTree = null;
       }
       
+      print('🔥 Engine.commitBatchUpdate: Calling native bridge commitBatchUpdate...');
       await _nativeBridge.commitBatchUpdate();
+      print('🔥 Engine.commitBatchUpdate: Native bridge commitBatchUpdate completed');
+    } else {
+      print('⚠️ Engine.commitBatchUpdate: No batch update in progress');
     }
   }
   

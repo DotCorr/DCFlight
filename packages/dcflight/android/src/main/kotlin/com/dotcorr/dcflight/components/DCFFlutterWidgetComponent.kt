@@ -14,11 +14,9 @@ import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import io.flutter.embedding.android.FlutterView
+import com.dotcorr.dcflight.DCDivergerUtil
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.platform.PlatformView
-import io.flutter.plugin.platform.PlatformViewFactory
 
 /**
  * DCFlutterWidgetComponent - Embeds Flutter widgets directly into native components
@@ -38,11 +36,11 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         container.setTag(DCFTags.COMPONENT_TYPE_KEY, "FlutterWidget")
         container.setTag(DCFTags.STORED_PROPS_KEY, props.toMutableMap())
         
-        // Get widget type from props
-        val widgetType = props["widgetType"] as? String ?: "Unknown"
+        // Get widgetId from props
+        val widgetId = props["widgetId"] as? String
+        container.widgetId = widgetId
         
         // The Flutter widget will be rendered directly by Flutter's engine
-        // We create a FlutterView that embeds the widget
         updateView(container, props)
         val nonNullStyleProps = props.filterValues { it != null }.mapValues { it.value!! }
         container.applyStyles(nonNullStyleProps)
@@ -53,6 +51,12 @@ class DCFFlutterWidgetComponent : DCFComponent() {
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val container = view as? FlutterWidgetContainer ?: return false
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // Update widgetId if changed
+        val widgetId = props["widgetId"] as? String
+        if (widgetId != null) {
+            container.widgetId = widgetId
+        }
         
         container.setTag(DCFTags.STORED_PROPS_KEY, props.toMutableMap())
         container.applyStyles(nonNullProps)
@@ -71,34 +75,132 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         container?.onReady()
     }
 
+    override fun applyLayout(view: View, layout: DCFNodeLayout) {
+        // Apply Yoga layout to the container
+        view.layout(
+            layout.left.toInt(),
+            layout.top.toInt(),
+            (layout.left + layout.width).toInt(),
+            (layout.top + layout.height).toInt()
+        )
+        
+        // Update Flutter widget frame when layout changes
+        if (view is FlutterWidgetContainer) {
+            view.updateFlutterWidgetFrame()
+        }
+    }
+
+    override fun prepareForRecycle(view: View) {
+        // Cleanup if needed
+        if (view is FlutterWidgetContainer) {
+            view.dispose()
+        }
+    }
+
     /**
      * Container that hosts Flutter widgets directly using Flutter's rendering pipeline
      */
     private class FlutterWidgetContainer(context: Context) : ViewGroup(context) {
         
-        private var flutterView: FlutterView? = null
+        var widgetId: String? = null
+        private var methodChannel: MethodChannel? = null
+        
+        init {
+            setupMethodChannel()
+        }
+        
+        private fun setupMethodChannel() {
+            // Get Flutter engine and create method channel
+            val engine = DCDivergerUtil.getFlutterEngine() ?: run {
+                android.util.Log.w(TAG, "⚠️ FlutterEngine not available")
+                return
+            }
+            
+            methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "dcflight/flutter_widget")
+        }
         
         fun onReady() {
-            // Get Flutter engine and create FlutterView
-            // The widget will be rendered by Flutter's engine directly
-            propagateEvent(this, "onReady", mapOf(
+            // Request widget rendering from Dart side
+            val currentWidgetId = widgetId ?: run {
+                android.util.Log.w(TAG, "⚠️ No widgetId available")
+                return
+            }
+            
+            // Get viewId from tag (id)
+            val viewId = id.toString()
+            
+            // Convert frame to window coordinates
+            val location = IntArray(2)
+            getLocationInWindow(location)
+            
+            val x = location[0].toDouble()
+            val y = location[1].toDouble()
+            val width = width.toDouble()
+            val height = height.toDouble()
+            
+            android.util.Log.d(TAG, "🎨 Requesting widget render - widgetId: $currentWidgetId, viewId: $viewId, frame: ($x, $y, $width, $height)")
+            
+            // Call Dart method channel to render widget
+            methodChannel?.invokeMethod("renderWidget", mapOf(
+                "widgetId" to currentWidgetId,
+                "viewId" to viewId,
+                "x" to x,
+                "y" to y,
+                "width" to width,
+                "height" to height
+            ))
+        }
+        
+        fun updateFlutterWidgetFrame() {
+            if (width <= 0 || height <= 0) return
+            
+            // Get viewId from tag (id)
+            val viewId = id.toString()
+            
+            // Convert frame to window coordinates
+            val location = IntArray(2)
+            getLocationInWindow(location)
+            
+            val x = location[0].toDouble()
+            val y = location[1].toDouble()
+            val width = width.toDouble()
+            val height = height.toDouble()
+            
+            android.util.Log.d(TAG, "🎨 Updating widget frame - viewId: $viewId, frame: ($x, $y, $width, $height)")
+            
+            // Call Dart method channel to update frame
+            methodChannel?.invokeMethod("updateWidgetFrame", mapOf(
+                "viewId" to viewId,
+                "x" to x,
+                "y" to y,
                 "width" to width,
                 "height" to height
             ))
         }
         
         override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-            // Layout FlutterView to fill container
-            flutterView?.layout(l, t, r, b)
+            // No children to layout
         }
         
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
             super.onSizeChanged(w, h, oldw, oldh)
-            propagateEvent(this, "onSizeChanged", mapOf(
-                "width" to w,
-                "height" to h
+            
+            // Update Flutter widget frame when size changes
+            if (w > 0 && h > 0) {
+                updateFlutterWidgetFrame()
+            }
+        }
+        
+        fun dispose() {
+            // Get viewId from tag (id)
+            val viewId = id.toString()
+            
+            android.util.Log.d(TAG, "🎨 Disposing widget - viewId: $viewId")
+            
+            // Call Dart method channel to dispose widget
+            methodChannel?.invokeMethod("disposeWidget", mapOf(
+                "viewId" to viewId
             ))
         }
     }
 }
-
