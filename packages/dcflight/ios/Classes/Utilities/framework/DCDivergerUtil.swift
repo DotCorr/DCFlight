@@ -56,15 +56,17 @@ import Flutter
                     flutterVC.view.autoresizingMask = [] // No autoresizing - we control size manually
                 }
                 
-                // Make FlutterView visible, transparent, and non-interactive
+                // Make FlutterView visible, transparent, and interactive
+                // Flutter's hit-testing will handle touches - interactive widgets consume touches,
+                // non-interactive areas allow touches to pass through to DCF components
                 flutterVC.view.isHidden = false
                 flutterVC.view.backgroundColor = .clear
-                flutterVC.view.isUserInteractionEnabled = false // Let touches pass through to DCF views
+                flutterVC.view.isUserInteractionEnabled = true // Enable interaction for Flutter widgets
                 
-                // Ensure FlutterView is on top but non-interactive
+                // Ensure FlutterView is on top for proper rendering and hit-testing
                 window.bringSubviewToFront(flutterVC.view)
                 
-                print("✅ DCDivergerUtil: FlutterView enabled for rendering (transparent, non-interactive)")
+                print("✅ DCDivergerUtil: FlutterView enabled for rendering (transparent, interactive)")
                 print("   FlutterView frame: \(flutterVC.view.frame)")
                 print("   FlutterView isHidden: \(flutterVC.view.isHidden)")
                 print("   FlutterView backgroundColor: \(flutterVC.view.backgroundColor?.description ?? "nil")")
@@ -122,7 +124,7 @@ import Flutter
             flutterVC.view.frame = CGRect.zero
             flutterVC.view.isHidden = true // Hidden until enableFlutterViewRendering is called
             flutterVC.view.backgroundColor = .clear
-            flutterVC.view.isUserInteractionEnabled = false
+            flutterVC.view.isUserInteractionEnabled = true // Enable interaction for Flutter widgets
             flutterVC.view.autoresizingMask = [] // No autoresizing - we control size manually
             print("✅ DCDivergerUtil: FlutterView pre-added to window (hidden, will be enabled when widgets render)")
         }

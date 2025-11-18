@@ -71,6 +71,7 @@ class DCFFlutterWidgetComponent : DCFComponent() {
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        android.util.Log.d(TAG, "🎨 viewRegisteredWithShadowTree - nodeId: $nodeId")
         val container = view as? FlutterWidgetContainer
         container?.onReady(nodeId)
     }
@@ -83,6 +84,8 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             (layout.left + layout.width).toInt(),
             (layout.top + layout.height).toInt()
         )
+        
+        android.util.Log.d(TAG, "🎨 applyLayout - view: ${view.javaClass.simpleName}, layout: (${layout.left}, ${layout.top}, ${layout.width}, ${layout.height})")
         
         // Update Flutter widget frame when layout changes
         if (view is FlutterWidgetContainer) {
@@ -125,6 +128,8 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         }
         
         fun onReady(nodeId: String) {
+            android.util.Log.d(TAG, "🎨 onReady called - nodeId: $nodeId, widgetId: $widgetId")
+            
             // Store the nodeId for later use (this is the actual viewId)
             this.nodeId = nodeId
             
@@ -137,40 +142,64 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             // Use stored nodeId (actual viewId), not id
             val viewId = nodeId
             
-            // Convert frame to window coordinates
-            val location = IntArray(2)
-            getLocationInWindow(location)
-            
-            val x = location[0].toDouble()
-            val y = location[1].toDouble()
-            val width = width.toDouble()
-            val height = height.toDouble()
-            
-            // Only call renderWidget if we have valid dimensions
-            // If frame is invalid, updateWidgetFrame will be called later with correct frame
-            if (width > 0 && height > 0) {
-                android.util.Log.d(TAG, "🎨 Requesting widget render - widgetId: $currentWidgetId, viewId: $viewId, frame: ($x, $y, $width, $height)")
+            // Post to main thread to ensure view is laid out
+            post {
+                // Convert frame to window coordinates
+                val location = IntArray(2)
+                getLocationInWindow(location)
                 
-                // Call Dart method channel to render widget
-                methodChannel?.invokeMethod("renderWidget", mapOf(
-                    "widgetId" to currentWidgetId,
-                    "viewId" to viewId,
-                    "x" to x,
-                    "y" to y,
-                    "width" to width,
-                    "height" to height
-                ))
-            } else {
-                android.util.Log.w(TAG, "⚠️ Invalid frame ($width x $height), will wait for updateWidgetFrame")
+                val x = location[0].toDouble()
+                val y = location[1].toDouble()
+                val width = width.toDouble()
+                val height = height.toDouble()
+                
+                android.util.Log.d(TAG, "🎨 onReady - frame: ($x, $y, $width, $height)")
+                
+                // Only call renderWidget if we have valid dimensions
+                // If frame is invalid, updateWidgetFrame will be called later with correct frame
+                if (width > 0 && height > 0) {
+                    android.util.Log.d(TAG, "🎨 Requesting widget render - widgetId: $currentWidgetId, viewId: $viewId, frame: ($x, $y, $width, $height)")
+                    
+                    // Call Dart method channel to render widget
+                    methodChannel?.invokeMethod("renderWidget", mapOf(
+                        "widgetId" to currentWidgetId,
+                        "viewId" to viewId,
+                        "x" to x,
+                        "y" to y,
+                        "width" to width,
+                        "height" to height
+                    ), object : MethodChannel.Result {
+                        override fun success(result: Any?) {
+                            android.util.Log.d(TAG, "✅ renderWidget succeeded")
+                        }
+                        override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+                            android.util.Log.e(TAG, "❌ renderWidget error: $errorCode - $errorMessage")
+                        }
+                        override fun notImplemented() {
+                            android.util.Log.w(TAG, "⚠️ renderWidget not implemented")
+                        }
+                    })
+                } else {
+                    android.util.Log.w(TAG, "⚠️ Invalid frame ($width x $height), will wait for updateWidgetFrame")
+                }
             }
         }
         
         fun updateFlutterWidgetFrame() {
-            if (width <= 0 || height <= 0) return
+            if (width <= 0 || height <= 0) {
+                android.util.Log.d(TAG, "⚠️ updateFlutterWidgetFrame: Invalid dimensions ($width x $height), skipping")
+                return
+            }
             
-            val currentWidgetId = widgetId ?: return
+            val currentWidgetId = widgetId ?: run {
+                android.util.Log.w(TAG, "⚠️ updateFlutterWidgetFrame: No widgetId")
+                return
+            }
             // Use stored nodeId (actual viewId), not id
-            val viewId = nodeId ?: return
+            val viewId = nodeId ?: run {
+                android.util.Log.w(TAG, "⚠️ updateFlutterWidgetFrame: No nodeId")
+                return
+            }
             
             // Convert frame to window coordinates
             val location = IntArray(2)
@@ -190,7 +219,17 @@ class DCFFlutterWidgetComponent : DCFComponent() {
                 "y" to y,
                 "width" to width,
                 "height" to height
-            ))
+            ), object : MethodChannel.Result {
+                override fun success(result: Any?) {
+                    android.util.Log.d(TAG, "✅ updateWidgetFrame succeeded")
+                }
+                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+                    android.util.Log.e(TAG, "❌ updateWidgetFrame error: $errorCode - $errorMessage")
+                }
+                override fun notImplemented() {
+                    android.util.Log.w(TAG, "⚠️ updateWidgetFrame not implemented")
+                }
+            })
             
             // If renderWidget hasn't been called yet (widget not in hosts), call it now
             // This handles the case where onReady was called with invalid frame
@@ -202,11 +241,15 @@ class DCFFlutterWidgetComponent : DCFComponent() {
                 "width" to width,
                 "height" to height
             ), object : MethodChannel.Result {
-                override fun success(result: Any?) {}
-                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                    android.util.Log.w(TAG, "⚠️ renderWidget error: $errorCode - $errorMessage")
+                override fun success(result: Any?) {
+                    android.util.Log.d(TAG, "✅ renderWidget (from updateFlutterWidgetFrame) succeeded")
                 }
-                override fun notImplemented() {}
+                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+                    android.util.Log.w(TAG, "⚠️ renderWidget (from updateFlutterWidgetFrame) error: $errorCode - $errorMessage")
+                }
+                override fun notImplemented() {
+                    android.util.Log.w(TAG, "⚠️ renderWidget (from updateFlutterWidgetFrame) not implemented")
+                }
             })
         }
         

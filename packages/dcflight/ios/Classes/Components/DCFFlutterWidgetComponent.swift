@@ -149,7 +149,10 @@ private class FlutterWidgetContainer: UIView {
             return
         }
         
-        let windowFrame = convert(bounds, to: window)
+        // Use frame (full container area) for FlutterView position
+        // The widget inside will be positioned at (0, 0) within the FlutterView
+        // LayoutBuilder already accounts for padding in constraints, so widget size is correct
+        let windowFrame = convert(frame, to: window)
         
         // Only call renderWidget if we have valid dimensions
         // If frame is invalid, updateWidgetFrame will be called later with correct frame
@@ -178,7 +181,10 @@ private class FlutterWidgetContainer: UIView {
         // Convert frame to window coordinates
         guard let window = window else { return }
         
-        let windowFrame = convert(bounds, to: window)
+        // Use frame (full container area) for FlutterView position
+        // The widget inside will be positioned at (0, 0) within the FlutterView
+        // LayoutBuilder already accounts for padding in constraints, so widget size is correct
+        let windowFrame = convert(frame, to: window)
         
         print("🎨 FlutterWidgetContainer: Updating widget frame - viewId: \(viewId), frame: \(windowFrame)")
         

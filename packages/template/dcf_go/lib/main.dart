@@ -40,14 +40,14 @@ class GlobeDemoApp extends DCFStatefulComponent {
     
     return DCFView(
       layout: DCFLayout(
+        paddingTop: 100,
         flex: 1,
       ),
       styleSheet: DCFStyleSheet(
         backgroundColor: DCFColors.black,
       ),
       children: [
-        // Globe using WidgetToDCFAdaptor - directly embeds Flutter's rendering pipeline
-        // Just provide your widget - LayoutBuilder and constraints are handled automatically!
+       
         WidgetToDCFAdaptor.builder(
           widgetBuilder: () {
             final controller = controllerRef.current;
@@ -67,64 +67,20 @@ class GlobeDemoApp extends DCFStatefulComponent {
             
             print('✅ O3D: Controller exists, rendering O3D with network model');
             
-            // O3D uses WebView internally, which requires platform channels
-            // Note: WebView may not work in Overlay context due to platform channel limitations
+            // O3D uses WebView internally - plugins are now registered with our custom engine
             // The widget will rebuild when isRotationEnabled changes (ValueKey ensures this)
-            return Theme(
-              data: ThemeData.dark(),
-              child: Material(
-                color: DCFColors.black,
-                child: Container(
+            return 
+              Container(
                   color: DCFColors.black,
                   width: double.infinity,
                   height: double.infinity,
-                  child: Stack(
-                    children: [
-                      // O3D widget - may fail to initialize due to WebView platform channel issues
-                      Builder(
-                        builder: (context) {
-                          // Use a key that changes when autoRotate changes to force rebuild
-                          return O3D.network(
-                            key: ValueKey('o3d_${isRotationEnabled.state}'),
-                            src: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-                            controller: controller,
-                            autoRotate: isRotationEnabled.state,
-                            autoPlay: true,
-                            backgroundColor: DCFColors.black,
-                          );
-                        },
-                      ),
-                      // Fallback message if WebView fails (will show on top if WebView doesn't render)
-                      // This is just for debugging - remove in production
-                      Center(
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: DCFColors.black.withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(DCFColors.white),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Loading 3D Model...\n(WebView may not work in Overlay context)',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: DCFColors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                  child: O3D.network(
+                    key: ValueKey('o3d_${isRotationEnabled.state}'),
+                    src: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                    controller: controller,
+                    autoRotate: isRotationEnabled.state,
+                    autoPlay: true,
+                    backgroundColor: DCFColors.black,
               ),
             );
           },

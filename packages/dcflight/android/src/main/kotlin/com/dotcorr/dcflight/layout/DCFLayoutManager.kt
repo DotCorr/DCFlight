@@ -479,6 +479,7 @@ class DCFLayoutManager private constructor() {
         val nodeIdInt = nodeId.toIntOrNull() ?: return
         registerView(view, nodeIdInt)
 
+        Log.d(TAG, "🎨 registerView: Calling viewRegisteredWithShadowTree for nodeId: $nodeId, componentType: $componentType")
         componentInstance.viewRegisteredWithShadowTree(view, nodeId)
 
         if (nodeIdInt == 0) {

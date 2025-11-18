@@ -102,6 +102,24 @@ object DCDivergerUtil {
         initializeDCFlightSystems(activity, flutterEngine!!.dartExecutor.binaryMessenger)
 
         registerComponents()
+        
+        // Pre-add FlutterView to rootView (hidden initially) so it's ready when widgets render
+        // This ensures the FlutterView is available before enableFlutterViewRendering is called
+        flutterView?.let { view ->
+            rootView?.let { root ->
+                if (view.parent == null) {
+                    root.addView(view)
+                    // Initially set to zero size - will be updated when widgets are rendered
+                    view.layoutParams = FrameLayout.LayoutParams(0, 0)
+                    view.visibility = View.GONE // Hidden until enableFlutterViewRendering is called
+                    view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    view.isClickable = true
+                    view.isFocusable = true
+                    view.isFocusableInTouchMode = true
+                    Log.d(TAG, "✅ DCDivergerUtil: FlutterView pre-added to rootView (hidden, will be enabled when widgets render)")
+                }
+            }
+        }
 
         Log.d(TAG, "DCFlight diverger initialized successfully")
     }
@@ -221,22 +239,31 @@ object DCDivergerUtil {
             view.alpha = 1.0f
             view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
-            view.isClickable = false
-            view.isFocusable = false
-            view.isFocusableInTouchMode = false
+            // Enable interaction for Flutter widgets
+            // Flutter's hit-testing will handle touches - interactive widgets consume touches,
+            // non-interactive areas allow touches to pass through to DCF components
+            view.isClickable = true
+            view.isFocusable = true
+            view.isFocusableInTouchMode = true
 
             if (view.parent == null) {
                 root.addView(view)
                 // Initially set to zero size - will be updated when widgets are rendered
-                view.layoutParams = ViewGroup.LayoutParams(0, 0)
-                Log.d(TAG, "✅ FlutterView added to view hierarchy ON TOP for Flutter widget rendering (touch disabled, touches pass through)")
+                // Use FrameLayout.LayoutParams for proper positioning
+                view.layoutParams = FrameLayout.LayoutParams(0, 0)
+                Log.d(TAG, "✅ FlutterView added to view hierarchy ON TOP for Flutter widget rendering (interactive, Flutter handles hit-testing)")
             } else {
                 (view.parent as? ViewGroup)?.removeView(view)
                 root.addView(view)
-                view.layoutParams = ViewGroup.LayoutParams(0, 0)
+                // Use FrameLayout.LayoutParams for proper positioning
+                view.layoutParams = FrameLayout.LayoutParams(0, 0)
                 view.bringToFront()
                 Log.d(TAG, "✅ FlutterView moved to front and brought to top")
             }
+            
+            // Ensure FlutterView is visible and on top
+            view.visibility = View.VISIBLE
+            view.bringToFront()
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to enable FlutterView rendering", e)
         }
@@ -251,16 +278,30 @@ object DCDivergerUtil {
             Log.d(TAG, "🎨 updateFlutterViewFrame: ($x, $y, $width, $height)")
             
             // Update FlutterView frame to match union of all widget frames
-            val params = view.layoutParams as? ViewGroup.LayoutParams ?: ViewGroup.LayoutParams(0, 0)
+            // Use FrameLayout.LayoutParams for proper positioning with margins
+            val params = if (view.layoutParams is FrameLayout.LayoutParams) {
+                view.layoutParams as FrameLayout.LayoutParams
+            } else {
+                FrameLayout.LayoutParams(width.toInt(), height.toInt())
+            }
+            
             params.width = width.toInt()
             params.height = height.toInt()
-            view.layoutParams = params
+            params.leftMargin = x.toInt()
+            params.topMargin = y.toInt()
+            params.rightMargin = 0
+            params.bottomMargin = 0
             
-            // Set position using translation (or use FrameLayout.LayoutParams with margins)
-            view.translationX = x.toFloat()
-            view.translationY = y.toFloat()
+            // Reset translation (we use margins for positioning now)
+            view.translationX = 0f
+            view.translationY = 0f
+            
+            view.layoutParams = params
+            view.requestLayout() // Request layout to apply new frame
             
             Log.d(TAG, "✅ FlutterView frame updated to: ($x, $y, $width, $height)")
+            Log.d(TAG, "   FlutterView visibility: ${view.visibility}, alpha: ${view.alpha}")
+            Log.d(TAG, "   FlutterView parent: ${view.parent != null}")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to update FlutterView frame", e)
         }
