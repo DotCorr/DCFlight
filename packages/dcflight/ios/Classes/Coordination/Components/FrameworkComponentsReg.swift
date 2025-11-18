@@ -7,6 +7,7 @@
 
 import Flutter
 import UIKit
+import dcflight
 
 @objc public class FrameworkComponentsReg: NSObject {
     @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
@@ -14,5 +15,8 @@ import UIKit
     }
 
     @objc public static func registerComponents() {
+        // Register FlutterWidget component for embedding Flutter widgets
+        DCFComponentRegistry.shared.registerComponent("FlutterWidget", componentClass: DCFFlutterWidgetComponent.self)
+        print("✅ Registered FlutterWidget component")
     }
 }

@@ -1,282 +1,285 @@
-import 'package:dcf_go/benchmark_app.dart';
+import 'dart:ui' as ui;
+import 'dart:math' as math;
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 
 void main() async {
-  // Set log level to see all logs (default is warning)
-  // Options: none, error, warning, info, debug, verbose
   DCFLogger.setLevel(DCFLogLevel.info);
-
-  // Optional: Set identifiers for log isolation
-  // DCFLogger.setProjectId('my-project');
-  // DCFLogger.setInstanceId('instance-1');
-
-  // Log app startup (tag defaults to 'DCFlight' if not provided)
-  DCFLogger.info('Starting DCFlight app...', 'App');
-
-  // Example of all log levels (tag is optional, defaults to 'DCFlight'):
-  // DCFLogger.error('Error message', error: errorObject, stackTrace: stackTrace, tag: 'MyTag');
-  // DCFLogger.warning('Warning message', 'MyTag');
-  // DCFLogger.info('Info message', 'MyTag');
-  // DCFLogger.debug('Debug message', 'MyTag');
-  // DCFLogger.verbose('Verbose message', 'MyTag');
-
-  // Or without tag (uses default 'DCFlight'):
-  // DCFLogger.info('Simple message');
-  // DCFLogger.debug('Debug message');
-
-  await DCFlight.go(app: MyApp());
+  DCFLogger.info('Starting Canvas Demo App...', 'App');
+  
+  await DCFlight.go(app: CanvasDemoApp());
 }
 
-class MyApp extends DCFStatefulComponent {
+class CanvasDemoApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    final count = useState<int>(0);
-    final benchmarkTest = useState<bool>(false);
-    final sliderVal = useState<double>(0.0);
-    final sliderVal2 = useState<double>(0.0);
-
-    final name = useState<String>("");
-    final isDarkMode = useState<bool>(DCFTheme.isDarkMode);
-    final showThemeAlert = useState<bool>(false);
-
-    return benchmarkTest.state
-        ? BenchmarkApp(
-          onBack: () {
-            benchmarkTest.setState(false);
-          },
-        )
-        : DCFView(
+    final animationValue = useState<double>(0.0);
+    final repaintOnFrame = useState<bool>(true);
+    final backgroundColor = useState<Color>(DCFColors.black);
+    
+    // Animation loop
+    if (repaintOnFrame.state) {
+      // Use a timer or animation controller to update animationValue
+      // For now, we'll use a simple counter
+    }
+    
+    return DCFView(
+      layout: DCFLayout(
+        flex: 1,
+      ),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: DCFTheme.current.backgroundColor,
+      ),
+      children: [
+        // Canvas using WidgetToDCFAdaptor - directly embeds Flutter's rendering pipeline
+        WidgetToDCFAdaptor(
+          widget: CustomPaint(
+            painter: _DemoPainter(
+              animationValue: animationValue.state,
+              repaintOnFrame: repaintOnFrame.state,
+            ),
+            child: Container(
+              color: backgroundColor.state,
+            ),
+          ),
+          layout: DCFLayout(
+            flex: 1,
+            width: "100%",
+            height: "100%",
+          ),
+          styleSheet: DCFStyleSheet(),
+        ),
+        
+        // Controls Panel
+        DCFView(
           layout: DCFLayout(
             padding: 20,
-            flex: 1,
-            justifyContent: DCFJustifyContent.center,
-            alignItems: DCFAlign.center,
           ),
-          // Using unified theme system with semantic colors
           styleSheet: DCFStyleSheet(
-            backgroundColor: DCFTheme.current.backgroundColor,
+            backgroundColor: DCFTheme.current.surfaceColor,
+            borderRadius: 20,
+            elevation: 10,
           ),
           children: [
-            DCFSlider(
-              layout: DCFLayout(),
-              value: sliderVal2.state.toDouble(),
-              onValueChange: (DCFSliderValueData data) {
-                sliderVal2.setState(data.value);
-                // Log slider change (using debug level for frequent updates)
-                DCFLogger.debug(
-                  'Slider value changed to: ${data.value}',
-                  'MyApp',
-                );
-              },
-            ),
             DCFText(
-              content: "Hello, Test ${name.state}! ${count.state}",
-              // Using semantic colors from StyleSheet instead of explicit color prop
-              styleSheet: DCFStyleSheet(
-                backgroundColor: DCFColors.amber,
-                borderRadius: 20,
-                elevation: 10,
-                primaryColor:
-                    DCFTheme.textColor, // Semantic color - maps to text color
-              ),
+              content: "Canvas Controls",
               textProps: DCFTextProps(
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: DCFFontWeight.bold,
               ),
-              layout: DCFLayout(
-                height: 100,
-                width: 200,
-                justifyContent: DCFJustifyContent.center,
-                alignItems: DCFAlign.center,
-              ),
-            ),
-            DCFTextInput(
-              onChangeText: (text) {
-                name.setState(text);
-              },
-              layout: DCFLayout(
-                marginTop: 20,
-                marginBottom: 20,
-                width: 200,
-                height: 40,
-                alignItems: DCFAlign.center,
-                justifyContent: DCFJustifyContent.center,
-              ),
               styleSheet: DCFStyleSheet(
-                backgroundColor: DCFTheme.surfaceColor,
-                borderRadius: 10,
-                borderColor: DCFTheme.surfaceColor,
-                borderWidth: 1,
+                primaryColor: DCFTheme.current.textColor,
               ),
-            ),
-
-            DCFWebView(
               layout: DCFLayout(
-                padding: 20,
-                width: "${sliderVal.state * 100}%",
-                height:
-                    "${sliderVal2.state * 100}%", // Now correct direction after fixing rotation
-                alignItems: DCFAlign.center,
-                justifyContent: DCFJustifyContent.center,
-              ),
-              webViewProps: DCFWebViewProps(source: 'https://dotcorr.com'),
-            ),
-
-            DCFSlider(
-              value: sliderVal.state.toDouble(),
-              onValueChange: (data) {
-                sliderVal.setState(data.value);
-                // Log slider change (using debug level for frequent updates)
-                DCFLogger.debug(
-                  'Slider value changed to: ${data.value}',
-                  'MyApp',
-                );
-              },
-            ),
-            DCFSpinner(
-              styleSheet: DCFStyleSheet(
-                backgroundColor: DCFColors.blue100,
-                borderRadius: 10,
-                borderColor: DCFTheme.surfaceColor,
-                borderWidth: 1,
+                marginBottom: 15,
               ),
             ),
-            DCFIcon(iconProps: DCFIconProps(name: DCFIcons.aArrowDown)),
-            DCFSegmentedControl(
-              segmentedControlProps: DCFSegmentedControlProps(
-                selectedIndex: sliderVal.state.toInt(),
-                segments: [
-                  DCFSegmentItem(title: "Item 1"),
-                  DCFSegmentItem(title: "Item 2"),
-                ],
-              ),
-              styleSheet: DCFStyleSheet(primaryColor: DCFColors.red),
-              layout: DCFLayout(
-                width: 200,
-                height: 40,
-                alignItems: DCFAlign.center,
-                justifyContent: DCFJustifyContent.center,
-              ),
-            ),
-            DCFAlert(
-              visible: showThemeAlert.state,
-              title: "Alert",
-              message:
-                  "Theme changed to ${isDarkMode.state ? 'Dark' : 'Light'}",
-              textFields: [DCFAlertTextField(placeholder: "Enter your name")],
-              actions: [
-                DCFAlertAction(
-                  title: "OK",
-                  style: DCFAlertActionStyle.defaultStyle,
-                  handler: "ok",
-                ),
-              ],
-              onActionPress: (data) {
-                showThemeAlert.setState(false);
-                // Log alert action
-                DCFLogger.info('Alert action pressed: ${data['handler']}', 'MyApp');
-              },
-              onDismiss: (data) {
-                showThemeAlert.setState(false);
-              },
-            ),
-            DCFDropdown(
-              dropdownProps: DCFDropdownProps(
-                items: [
-                  DCFDropdownMenuItem(title: "Item 2", value: "item1"),
-                  DCFDropdownMenuItem(title: "Item 2", value: "item2"),
-                ],
-              ),
-            ),
-
-            DCFText(
-              content: "Theme: ${isDarkMode.state ? 'Dark' : 'Light'}",
-              // Using semantic secondaryColor for secondary text
-              styleSheet: DCFStyleSheet(
-                secondaryColor: DCFTheme.current.secondaryTextColor,
-              ),
-              textProps: DCFTextProps(fontSize: 16),
-              layout: DCFLayout(marginTop: 20),
-            ),
+            
+            // Repaint toggle
             DCFView(
-              styleSheet: DCFStyleSheet(
-                backgroundColor: DCFTheme.surfaceColor,
-                borderRadius: 10, 
-                borderColor: DCFTheme.surfaceColor,
-                borderWidth: 1,
-              ),
               layout: DCFLayout(
-                padding: 20,
+                flexDirection: DCFFlexDirection.row,
+                justifyContent: DCFJustifyContent.spaceBetween,
                 alignItems: DCFAlign.center,
-                justifyContent: DCFJustifyContent.center,
+                marginBottom: 15,
               ),
               children: [
-                DCFButton(
-                  children: [
-                    DCFText(
-                      content: "Count: ${count.state}",
-                      styleSheet: DCFStyleSheet(
-                        primaryColor: DCFColors.white,
-                      ),
-                    ),
-                  ],
-                  onPress: (data) {
-                    final newCount = count.state + 1;
-                    count.setState(newCount);
-                    // Log button press
-                    DCFLogger.info(
-                      'Count button pressed, new count: $newCount',
-                      'MyApp',
-                    );
-                  },
-                  layout: DCFLayout(height: 45, marginBottom: 10),
+                DCFText(
+                  content: "Animate: ${repaintOnFrame.state ? 'ON' : 'OFF'}",
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                  ),
+                  styleSheet: DCFStyleSheet(
+                    primaryColor: DCFTheme.current.textColor,
+                  ),
                 ),
-                DCFButton(
-                  children: [
-                    DCFText(
-                      content: "Toggle Theme",
-                      styleSheet: DCFStyleSheet(
-                        primaryColor: DCFColors.white,
-                      ),
-                    ),
-                  ],
-                  onPress: (data) {
-                    final newDarkMode = !isDarkMode.state;
-                    isDarkMode.setState(newDarkMode);
-                    // Actually update the theme
-                    DCFTheme.setTheme(
-                      newDarkMode ? DCFThemeData.dark : DCFThemeData.light,
-                    );
-                    // Show alert after theme change
-                    showThemeAlert.setState(true);
-                    // Log theme change
-                    DCFLogger.info(
-                      'Theme changed to ${newDarkMode ? 'Dark' : 'Light'}',
-                      'MyApp',
-                    );
+                DCFToggle(
+                  value: repaintOnFrame.state,
+                  onValueChange: (DCFToggleValueData data) {
+                    repaintOnFrame.setState(data.value);
                   },
-                  layout: DCFLayout(height: 50, marginBottom: 10),
                 ),
-
-                DCFButton(
+              ],
+            ),
+            
+            // Background color picker
+            DCFView(
+              layout: DCFLayout(
+                marginBottom: 15,
+              ),
+              children: [
+                DCFText(
+                  content: "Background Color",
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                  ),
+                  styleSheet: DCFStyleSheet(
+                    primaryColor: DCFTheme.current.textColor,
+                  ),
+                  layout: DCFLayout(
+                    marginBottom: 8,
+                  ),
+                ),
+                DCFView(
+                  layout: DCFLayout(
+                    flexDirection: DCFFlexDirection.row,
+                    gap: 10,
+                  ),
                   children: [
-                    DCFText(
-                      content: "Benchmark",
-                      styleSheet: DCFStyleSheet(
-                        primaryColor: DCFColors.white,
-                      ),
+                    _ColorButton(
+                      color: DCFColors.black,
+                      label: "Black",
+                      isSelected: backgroundColor.state == DCFColors.black,
+                      onPress: () => backgroundColor.setState(DCFColors.black),
+                    ),
+                    _ColorButton(
+                      color: DCFColors.blue,
+                      label: "Blue",
+                      isSelected: backgroundColor.state == DCFColors.blue,
+                      onPress: () => backgroundColor.setState(DCFColors.blue),
+                    ),
+                    _ColorButton(
+                      color: DCFColors.purple,
+                      label: "Purple",
+                      isSelected: backgroundColor.state == DCFColors.purple,
+                      onPress: () => backgroundColor.setState(DCFColors.purple),
                     ),
                   ],
-                  onPress: (DCFButtonPressData data) {
-                    DCFLogger.info('Benchmark button pressed', 'MyApp');
-                    benchmarkTest.setState(true);
-                  },
-                  layout: DCFLayout(height: 50),
+                ),
+              ],
+            ),
+            
+            // Info
+            DCFView(
+              layout: DCFLayout(
+                padding: 10,
+              ),
+              styleSheet: DCFStyleSheet(
+                backgroundColor: const Color(0x3300FF00),
+                borderRadius: 8,
+              ),
+              children: [
+                DCFText(
+                  content: "Using WidgetToDCFAdaptor\nDirect Flutter rendering pipeline\n(Impeller/Skia via CustomPaint)",
+                  textProps: DCFTextProps(
+                    fontSize: 12,
+                  ),
+                  styleSheet: DCFStyleSheet(
+                    primaryColor: DCFColors.green,
+                  ),
                 ),
               ],
             ),
           ],
-        );
+        ),
+      ],
+    );
+  }
+}
+
+/// Custom painter for the demo - uses Flutter's dart:ui Canvas API directly
+class _DemoPainter extends CustomPainter {
+  final double animationValue;
+  final bool repaintOnFrame;
+  
+  _DemoPainter({
+    required this.animationValue,
+    required this.repaintOnFrame,
+  });
+  
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    // Direct drawing using Flutter's Canvas API (Impeller/Skia)
+    final paint = ui.Paint()
+      ..color = DCFColors.blue
+      ..style = ui.PaintingStyle.fill;
+    
+    final center = ui.Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 3;
+    
+    // Draw animated circle
+    final animatedRadius = radius * (0.5 + 0.5 * math.sin(animationValue));
+    canvas.drawCircle(center, animatedRadius, paint);
+    
+    // Draw rotating lines
+    paint.color = DCFColors.red;
+    paint.strokeWidth = 3;
+    for (int i = 0; i < 8; i++) {
+      final angle = (animationValue + i * math.pi / 4) % (2 * math.pi);
+      final endX = center.dx + math.cos(angle) * radius * 1.5;
+      final endY = center.dy + math.sin(angle) * radius * 1.5;
+      canvas.drawLine(center, ui.Offset(endX, endY), paint);
+    }
+    
+    // Draw text using Flutter's text rendering
+    final textStyle = ui.TextStyle(
+      color: DCFColors.white,
+      fontSize: 24,
+      fontWeight: ui.FontWeight.bold,
+    );
+    
+    final paragraphBuilder = ui.ParagraphBuilder(ui.ParagraphStyle(
+      textAlign: ui.TextAlign.center,
+    ))
+      ..pushStyle(textStyle)
+      ..addText('Flutter Canvas\n(Impeller/Skia)\nvia WidgetToDCFAdaptor');
+    
+    final paragraph = paragraphBuilder.build()
+      ..layout(ui.ParagraphConstraints(width: size.width));
+    
+    canvas.drawParagraph(
+      paragraph,
+      ui.Offset(
+        (size.width - paragraph.maxIntrinsicWidth) / 2,
+        size.height * 0.8,
+      ),
+    );
+  }
+  
+  @override
+  bool shouldRepaint(_DemoPainter oldDelegate) {
+    return repaintOnFrame || oldDelegate.animationValue != animationValue;
+  }
+}
+
+class _ColorButton extends DCFStatelessComponent {
+  final Color color;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPress;
+  
+  _ColorButton({
+    required this.color,
+    required this.label,
+    required this.isSelected,
+    required this.onPress,
+  });
+  
+  @override
+  DCFComponentNode render() {
+    return DCFButton(
+      children: [
+        DCFText(
+          content: label,
+          textProps: DCFTextProps(
+            fontSize: 12,
+          ),
+          styleSheet: DCFStyleSheet(
+            primaryColor: DCFColors.white,
+          ),
+        ),
+      ],
+      onPress: (data) => onPress(),
+      layout: DCFLayout(
+        flex: 1,
+        height: 35,
+      ),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: color,
+        borderRadius: 8,
+        borderWidth: isSelected ? 3 : 1,
+        borderColor: isSelected ? DCFColors.white : DCFColors.transparent,
+      ),
+    );
   }
 }
