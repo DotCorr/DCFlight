@@ -306,10 +306,12 @@ class FlutterWidgetRenderer {
                     top: top,
                     width: widgetWidth,
                     height: widgetHeight,
-                    child: SizedBox(
-                      width: widgetWidth,
-                      height: widgetHeight,
-                      child: host.widget,
+                    child: ClipRect(
+                      child: SizedBox(
+                        width: widgetWidth,
+                        height: widgetHeight,
+                        child: host.widget,
+                      ),
                     ),
                   ),
                 // Don't render anything if frame is invalid - Stack is transparent

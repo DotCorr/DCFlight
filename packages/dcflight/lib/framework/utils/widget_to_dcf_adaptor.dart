@@ -71,11 +71,15 @@ class WidgetToDCFAdaptor extends DCFStatelessComponent {
             ? constraints.maxHeight 
             : screenHeight;
         
-        // Wrap user's widget in SizedBox to ensure it has explicit size
+        // Wrap user's widget in SizedBox with clipping to prevent overflow
+        // This ensures content never spills outside the widget bounds
         return SizedBox(
           width: width,
           height: height,
-          child: userWidget,
+          child: ClipRect(
+            clipBehavior: Clip.hardEdge,
+            child: userWidget,
+          ),
         );
       },
     );

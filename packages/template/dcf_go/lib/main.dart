@@ -37,16 +37,19 @@ class CanvasDemoApp extends DCFStatefulComponent {
           widgetBuilder: () {
             // Your widget automatically gets proper constraints and sizing
             return Stack(
+              fit: StackFit.expand,
               children: [
                 // Background color layer
                 Container(
                   color: backgroundColor.state,
                 ),
-                // CustomPaint on top
-                CustomPaint(
-                  painter: _DemoPainter(
-                    animationValue: animationValue.state,
-                    repaintOnFrame: repaintOnFrame.state,
+                // CustomPaint on top - must fill the space
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _DemoPainter(
+                      animationValue: animationValue.state,
+                      repaintOnFrame: repaintOnFrame.state,
+                    ),
                   ),
                 ),
               ],
@@ -225,9 +228,11 @@ class _DemoPainter extends CustomPainter {
     }
     
     // Draw text using Flutter's text rendering
+    // Use adaptive font size based on available space
+    final fontSize = math.min(24.0, size.height * 0.04);
     final textStyle = ui.TextStyle(
       color: DCFColors.white,
-      fontSize: 24,
+      fontSize: fontSize,
       fontWeight: ui.FontWeight.bold,
     );
     
@@ -240,13 +245,22 @@ class _DemoPainter extends CustomPainter {
     final paragraph = paragraphBuilder.build()
       ..layout(ui.ParagraphConstraints(width: size.width));
     
-    canvas.drawParagraph(
-      paragraph,
-      ui.Offset(
-        (size.width - paragraph.maxIntrinsicWidth) / 2,
-        size.height * 0.8,
-      ),
+    // Position text adaptively - ensure it fits within bounds
+    final textY = math.min(
+      size.height * 0.8,
+      size.height - paragraph.height - 10, // Leave 10px margin from bottom
     );
+    
+    // Only draw text if there's enough space
+    if (textY >= 0 && paragraph.height <= size.height) {
+      canvas.drawParagraph(
+        paragraph,
+        ui.Offset(
+          (size.width - paragraph.maxIntrinsicWidth) / 2,
+          textY,
+        ),
+      );
+    }
   }
   
   @override
