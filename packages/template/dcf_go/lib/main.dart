@@ -1,58 +1,131 @@
-import 'dart:ui' as ui;
-import 'dart:math' as math;
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:o3d/o3d.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show CircularProgressIndicator, AlwaysStoppedAnimation, Color, Material, Theme, ThemeData;
 
 void main() async {
   DCFLogger.setLevel(DCFLogLevel.info);
-  DCFLogger.info('Starting Canvas Demo App...', 'App');
+  DCFLogger.info('Starting Globe Demo App...', 'App');
   
-  await DCFlight.go(app: CanvasDemoApp());
+  await DCFlight.go(app: GlobeDemoApp());
 }
 
-class CanvasDemoApp extends DCFStatefulComponent {
+class GlobeDemoApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    final animationValue = useState<double>(0.0);
-    final repaintOnFrame = useState<bool>(true);
-    final backgroundColor = useState<Color>(DCFColors.black);
+    final isRotationEnabled = useState<bool>(true);
     
-    // Animation loop
-    if (repaintOnFrame.state) {
-      // Use a timer or animation controller to update animationValue
-      // For now, we'll use a simple counter
+    // Use useRef to store the O3D controller - persists across renders
+    final controllerRef = useRef<O3DController?>(null);
+    
+    // Initialize controller synchronously during render if not already initialized
+    if (controllerRef.current == null) {
+      controllerRef.current = O3DController();
+      print('🌍 O3D: Controller initialized');
     }
+    
+    // Update auto-rotate when enabled state changes
+    useEffect(() {
+      if (controllerRef.current != null) {
+        if (isRotationEnabled.state) {
+          // Auto-rotate is handled by O3D's autoRotate property
+          print('🌍 O3D: Auto-rotate enabled');
+        } else {
+          print('🌍 O3D: Auto-rotate disabled');
+        }
+      }
+      return null;
+    }, dependencies: [isRotationEnabled.state]);
     
     return DCFView(
       layout: DCFLayout(
         flex: 1,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFTheme.current.backgroundColor,
+        backgroundColor: DCFColors.black,
       ),
       children: [
-        // Canvas using WidgetToDCFAdaptor - directly embeds Flutter's rendering pipeline
+        // Globe using WidgetToDCFAdaptor - directly embeds Flutter's rendering pipeline
         // Just provide your widget - LayoutBuilder and constraints are handled automatically!
         WidgetToDCFAdaptor.builder(
           widgetBuilder: () {
-            // Your widget automatically gets proper constraints and sizing
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                // Background color layer
-                Container(
-                  color: backgroundColor.state,
-                ),
-                // CustomPaint on top - must fill the space
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _DemoPainter(
-                      animationValue: animationValue.state,
-                      repaintOnFrame: repaintOnFrame.state,
-                    ),
+            final controller = controllerRef.current;
+            print('🌍 O3D widgetBuilder called - controller: ${controller != null ? "exists" : "null"}, autoRotate: ${isRotationEnabled.state}');
+            
+            if (controller == null) {
+              print('⚠️ O3D: Controller is null, showing loading indicator');
+              return Container(
+                color: DCFColors.black,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(DCFColors.white),
                   ),
                 ),
-              ],
+              );
+            }
+            
+            print('✅ O3D: Controller exists, rendering O3D with network model');
+            
+            // O3D uses WebView internally, which requires platform channels
+            // Note: WebView may not work in Overlay context due to platform channel limitations
+            // The widget will rebuild when isRotationEnabled changes (ValueKey ensures this)
+            return Theme(
+              data: ThemeData.dark(),
+              child: Material(
+                color: DCFColors.black,
+                child: Container(
+                  color: DCFColors.black,
+                  width: double.infinity,
+                  height: double.infinity,
+                  child: Stack(
+                    children: [
+                      // O3D widget - may fail to initialize due to WebView platform channel issues
+                      Builder(
+                        builder: (context) {
+                          // Use a key that changes when autoRotate changes to force rebuild
+                          return O3D.network(
+                            key: ValueKey('o3d_${isRotationEnabled.state}'),
+                            src: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                            controller: controller,
+                            autoRotate: isRotationEnabled.state,
+                            autoPlay: true,
+                            backgroundColor: DCFColors.black,
+                          );
+                        },
+                      ),
+                      // Fallback message if WebView fails (will show on top if WebView doesn't render)
+                      // This is just for debugging - remove in production
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: DCFColors.black.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(DCFColors.white),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Loading 3D Model...\n(WebView may not work in Overlay context)',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: DCFColors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             );
           },
           layout: DCFLayout(
@@ -66,6 +139,9 @@ class CanvasDemoApp extends DCFStatefulComponent {
         // Controls Panel
         DCFView(
           layout: DCFLayout(
+            width:'100%',
+                flexWrap: DCFWrap.wrap,
+
             padding: 20,
           ),
           styleSheet: DCFStyleSheet(
@@ -75,7 +151,7 @@ class CanvasDemoApp extends DCFStatefulComponent {
           ),
           children: [
             DCFText(
-              content: "Canvas Controls",
+              content: "3D Model Controls",
               textProps: DCFTextProps(
                 fontSize: 20,
                 fontWeight: DCFFontWeight.bold,
@@ -88,7 +164,7 @@ class CanvasDemoApp extends DCFStatefulComponent {
               ),
             ),
             
-            // Repaint toggle
+            // Auto-rotate toggle
             DCFView(
               layout: DCFLayout(
                 marginHorizontal: 10,
@@ -100,66 +176,20 @@ class CanvasDemoApp extends DCFStatefulComponent {
               ),
               children: [
                 DCFText(
-                  content: "Animate: ${repaintOnFrame.state ? 'ON' : 'OFF'}",
+                  content: "Auto-Rotate:",
                   textProps: DCFTextProps(
-                    fontSize: 14,
+                    fontSize: 16,
                   ),
                   styleSheet: DCFStyleSheet(
                     primaryColor: DCFTheme.current.textColor,
                   ),
+                  layout: DCFLayout(marginRight: 10),
                 ),
                 DCFToggle(
-                  value: repaintOnFrame.state,
+                  value: isRotationEnabled.state,
                   onValueChange: (DCFToggleValueData data) {
-                    repaintOnFrame.setState(data.value);
+                    isRotationEnabled.setState(data.value);
                   },
-                ),
-              ],
-            ),
-            
-            // Background color picker
-            DCFView(
-              layout: DCFLayout(
-                marginBottom: 15,
-              ),
-              children: [
-                DCFText(
-                  content: "Background Color",
-                  textProps: DCFTextProps(
-                    fontSize: 14,
-                  ),
-                  styleSheet: DCFStyleSheet(
-                    primaryColor: DCFTheme.current.textColor,
-                  ),
-                  layout: DCFLayout(
-                    marginBottom: 8,
-                  ),
-                ),
-                DCFView(
-                  layout: DCFLayout(
-                    flexDirection: DCFFlexDirection.row,
-                    gap: 10,
-                  ),
-                  children: [
-                    _ColorButton(
-                      color: DCFColors.black,
-                      label: "Black",
-                      isSelected: backgroundColor.state == DCFColors.black,
-                      onPress: () => backgroundColor.setState(DCFColors.black),
-                    ),
-                    _ColorButton(
-                      color: DCFColors.blue,
-                      label: "Blue",
-                      isSelected: backgroundColor.state == DCFColors.blue,
-                      onPress: () => backgroundColor.setState(DCFColors.blue),
-                    ),
-                    _ColorButton(
-                      color: DCFColors.purple,
-                      label: "Purple",
-                      isSelected: backgroundColor.state == DCFColors.purple,
-                      onPress: () => backgroundColor.setState(DCFColors.purple),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -175,7 +205,7 @@ class CanvasDemoApp extends DCFStatefulComponent {
               ),
               children: [
                 DCFText(
-                  content: "Using WidgetToDCFAdaptor\nDirect Flutter rendering pipeline\n(Impeller/Skia via CustomPaint)",
+                  content: "Using WidgetToDCFAdaptor\nO3D 3D Model Viewer\nInteractive glTF/GLB rendering",
                   textProps: DCFTextProps(
                     fontSize: 12,
                   ),
@@ -188,126 +218,6 @@ class CanvasDemoApp extends DCFStatefulComponent {
           ],
         ),
       ],
-    );
-  }
-}
-
-/// Custom painter for the demo - uses Flutter's dart:ui Canvas API directly
-class _DemoPainter extends CustomPainter {
-  final double animationValue;
-  final bool repaintOnFrame;
-  
-  _DemoPainter({
-    required this.animationValue,
-    required this.repaintOnFrame,
-  });
-  
-  @override
-  void paint(ui.Canvas canvas, ui.Size size) {
-    print('🎨 _DemoPainter: paint() called with size: ${size.width}x${size.height}');
-    
-    // Direct drawing using Flutter's Canvas API (Impeller/Skia)
-    final paint = ui.Paint()
-      ..color = DCFColors.blue
-      ..style = ui.PaintingStyle.fill;
-    
-    final center = ui.Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) / 3;
-    
-    // Draw animated circle
-    final animatedRadius = radius * (0.5 + 0.5 * math.sin(animationValue));
-    canvas.drawCircle(center, animatedRadius, paint);
-    
-    // Draw rotating lines
-    paint.color = DCFColors.red;
-    paint.strokeWidth = 3;
-    for (int i = 0; i < 8; i++) {
-      final angle = (animationValue + i * math.pi / 4) % (2 * math.pi);
-      final endX = center.dx + math.cos(angle) * radius * 1.5;
-      final endY = center.dy + math.sin(angle) * radius * 1.5;
-      canvas.drawLine(center, ui.Offset(endX, endY), paint);
-    }
-    
-    // Draw text using Flutter's text rendering
-    // Use adaptive font size based on available space
-    final fontSize = math.min(24.0, size.height * 0.04);
-    final textStyle = ui.TextStyle(
-      color: DCFColors.white,
-      fontSize: fontSize,
-      fontWeight: ui.FontWeight.bold,
-    );
-    
-    final paragraphBuilder = ui.ParagraphBuilder(ui.ParagraphStyle(
-      textAlign: ui.TextAlign.center,
-    ))
-      ..pushStyle(textStyle)
-      ..addText('Flutter Canvas\n(Impeller/Skia)\nvia WidgetToDCFAdaptor');
-    
-    final paragraph = paragraphBuilder.build()
-      ..layout(ui.ParagraphConstraints(width: size.width));
-    
-    // Position text adaptively - ensure it fits within bounds
-    final textY = math.min(
-      size.height * 0.8,
-      size.height - paragraph.height - 10, // Leave 10px margin from bottom
-    );
-    
-    // Only draw text if there's enough space
-    if (textY >= 0 && paragraph.height <= size.height) {
-      canvas.drawParagraph(
-        paragraph,
-        ui.Offset(
-          (size.width - paragraph.maxIntrinsicWidth) / 2,
-          textY,
-        ),
-      );
-    }
-  }
-  
-  @override
-  bool shouldRepaint(_DemoPainter oldDelegate) {
-    return repaintOnFrame || oldDelegate.animationValue != animationValue;
-  }
-}
-
-class _ColorButton extends DCFStatelessComponent {
-  final Color color;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onPress;
-  
-  _ColorButton({
-    required this.color,
-    required this.label,
-    required this.isSelected,
-    required this.onPress,
-  });
-  
-  @override
-  DCFComponentNode render() {
-    return DCFButton(
-      children: [
-        DCFText(
-          content: label,
-          textProps: DCFTextProps(
-            fontSize: 12,
-          ),
-          styleSheet: DCFStyleSheet(
-            primaryColor: DCFColors.white,
-          ),
-        ),
-      ],
-      onPress: (data) => onPress(),
-      layout: DCFLayout(
-        flex: 1,
-        height: 35,
-      ),
-      styleSheet: DCFStyleSheet(
-        backgroundColor: color,
-        borderRadius: 8,
-        borderWidth: isSelected ? 3 : 1,
-        borderColor: isSelected ? DCFColors.white : DCFColors.darkGray,
-      ),
     );
   }
 }
