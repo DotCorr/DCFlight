@@ -1632,7 +1632,7 @@ class DCFEngine {
     });
     print('🔥 Engine.renderToNative: Calling createView for viewId=$viewId, type=${element.type}');
     try {
-      final success = await _nativeBridge.createView(
+    final success = await _nativeBridge.createView(
           viewId, element.type, element.elementProps).timeout(
         const Duration(seconds: 5),
         onTimeout: () {
@@ -1641,10 +1641,10 @@ class DCFEngine {
         },
       );
       print('🔥 Engine.renderToNative: createView completed for viewId=$viewId, success=$success');
-      if (!success) {
-        EngineDebugLogger.log(
-            'ELEMENT_CREATE_FAILED', 'Failed to create native view',
-            extra: {'ViewId': viewId, 'ElementType': element.type});
+    if (!success) {
+      EngineDebugLogger.log(
+          'ELEMENT_CREATE_FAILED', 'Failed to create native view',
+          extra: {'ViewId': viewId, 'ElementType': element.type});
         return null;
       }
     } catch (e, stackTrace) {
@@ -1683,10 +1683,10 @@ class DCFEngine {
     for (var i = 0; i < element.children.length; i++) {
       print('🔥 Engine.renderToNative: Rendering child $i of ${element.children.length} for parent=$viewId');
       try {
-        final childId = await renderToNative(element.children[i],
-            parentViewId: viewId, index: i);
-        if (childId != null) {
-          childIds.add(childId);
+      final childId = await renderToNative(element.children[i],
+          parentViewId: viewId, index: i);
+      if (childId != null) {
+        childIds.add(childId);
           print('🔥 Engine.renderToNative: Child $i rendered with viewId=$childId');
         } else {
           print('⚠️ Engine.renderToNative: Child $i returned null viewId');

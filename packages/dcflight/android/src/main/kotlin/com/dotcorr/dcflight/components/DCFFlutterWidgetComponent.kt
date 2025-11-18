@@ -96,6 +96,10 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             view.dispose()
         }
     }
+    
+    override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
+        return null
+    }
 
     /**
      * Container that hosts Flutter widgets directly using Flutter's rendering pipeline

@@ -40,26 +40,29 @@ object DCDivergerUtil {
 
     private var rootView: ViewGroup? = null
     private var flutterView: FlutterView? = null
+    private var flutterEngine: FlutterEngine? = null
     private var mainScope = MainScope()
 
     @JvmStatic
     fun divergeToFlight(activity: Activity, pluginBinding: FlutterPlugin.FlutterPluginBinding?) {
         Log.d(TAG, "Starting divergeToFlight")
 
-        val flutterEngine = getOrCreateFlutterEngine(activity, pluginBinding)
+        val engine = getOrCreateFlutterEngine(activity, pluginBinding)
 
-        if (flutterEngine == null) {
+        if (engine == null) {
             Log.e(TAG, "Failed to get or create Flutter engine")
             return
         }
 
+        flutterEngine = engine
+
         flutterView = FlutterView(activity).apply {
             visibility = View.GONE
         }
-        flutterView?.attachToFlutterEngine(flutterEngine)
+        flutterView?.attachToFlutterEngine(flutterEngine!!)
 
             // Set up method channel for Flutter widget rendering
-            val flutterWidgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dcflight/flutter_widget")
+            val flutterWidgetChannel = MethodChannel(flutterEngine!!.dartExecutor.binaryMessenger, "dcflight/flutter_widget")
             flutterWidgetChannel.setMethodCallHandler { call, result ->
                 if (call.method == "enableFlutterViewRendering") {
                     enableFlutterViewRendering()
@@ -84,7 +87,7 @@ object DCDivergerUtil {
 
         setupNativeContainer(activity)
 
-        initializeDCFlightSystems(activity, flutterEngine.dartExecutor.binaryMessenger)
+        initializeDCFlightSystems(activity, flutterEngine!!.dartExecutor.binaryMessenger)
 
         registerComponents()
 
@@ -251,11 +254,17 @@ object DCDivergerUtil {
         }
     }
 
+    @JvmStatic
+    fun getFlutterEngine(): FlutterEngine? {
+        return flutterEngine
+    }
+
     fun cleanup() {
         try {
             mainScope.cancel()
             rootView = null
             flutterView = null
+            flutterEngine = null
             Log.d(TAG, "Cleanup complete")
         } catch (e: Exception) {
             Log.e(TAG, "Error during cleanup", e)

@@ -29,7 +29,8 @@ import Flutter
         flutterWidgetChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
             if call.method == "enableFlutterViewRendering" {
                 // Make FlutterView visible and add to window
-                guard let window = UIApplication.shared.windows.first else {
+                // Use the window from rootViewController (works on all iOS versions)
+                guard let window = self.window ?? UIApplication.shared.windows.first else {
                     result(FlutterError(code: "NO_WINDOW", message: "No window available", details: nil))
                     return
                 }
@@ -63,7 +64,8 @@ import Flutter
                     return
                 }
                 
-                guard let window = UIApplication.shared.windows.first else {
+                // Use the window from rootViewController (works on all iOS versions)
+                guard let window = self.window ?? UIApplication.shared.windows.first else {
                     result(FlutterError(code: "NO_WINDOW", message: "No window available", details: nil))
                     return
                 }
@@ -92,6 +94,18 @@ import Flutter
         }
         window.rootViewController = nativeRootVC
         setupDCF(rootView: nativeRootVC.view, flutterEngine: flutterEngine)
+        
+        // Pre-add FlutterView to window (hidden initially) so it's ready when widgets render
+        // This ensures the FlutterView is available before enableFlutterViewRendering is called
+        if flutterVC.view.superview == nil {
+            window.addSubview(flutterVC.view)
+            flutterVC.view.frame = CGRect.zero
+            flutterVC.view.isHidden = true // Hidden until enableFlutterViewRendering is called
+            flutterVC.view.backgroundColor = .clear
+            flutterVC.view.isUserInteractionEnabled = false
+            flutterVC.view.autoresizingMask = [] // No autoresizing - we control size manually
+            print("✅ DCDivergerUtil: FlutterView pre-added to window (hidden, will be enabled when widgets render)")
+        }
 
         _ = DCFScreenUtilities.shared
     }
