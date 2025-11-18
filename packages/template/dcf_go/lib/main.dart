@@ -32,44 +32,26 @@ class CanvasDemoApp extends DCFStatefulComponent {
       ),
       children: [
         // Canvas using WidgetToDCFAdaptor - directly embeds Flutter's rendering pipeline
-        // Use builder() to ensure widget rebuilds when state changes
+        // Just provide your widget - LayoutBuilder and constraints are handled automatically!
         WidgetToDCFAdaptor.builder(
           widgetBuilder: () {
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                // Ensure we have valid constraints (handle initial 0x0 case)
-                final width = constraints.maxWidth.isFinite && constraints.maxWidth > 0 
-                    ? constraints.maxWidth 
-                    : 402.0; // Use actual screen width as fallback
-                final height = constraints.maxHeight.isFinite && constraints.maxHeight > 0 
-                    ? constraints.maxHeight 
-                    : 614.0; // Use actual screen height as fallback
-                
-            return SizedBox(
-              width: width,
-              height: height,
-              child: Stack(
-                children: [
-                  // Background color layer
-                  Container(
-                    color: backgroundColor.state,
-                    width: width,
-                    height: height,
+            // Your widget automatically gets proper constraints and sizing
+            return Stack(
+              children: [
+                // Background color layer
+                Container(
+                  color: backgroundColor.state,
+                ),
+                // CustomPaint on top
+                CustomPaint(
+                  painter: _DemoPainter(
+                    animationValue: animationValue.state,
+                    repaintOnFrame: repaintOnFrame.state,
                   ),
-                  // CustomPaint on top
-                  CustomPaint(
-                    size: Size(width, height),
-                    painter: _DemoPainter(
-                      animationValue: animationValue.state,
-                      repaintOnFrame: repaintOnFrame.state,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             );
           },
-        );
-      },
           layout: DCFLayout(
             flex: 1,
             width: "100%",

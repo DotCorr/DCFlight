@@ -6,6 +6,7 @@
  */
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show MediaQuery;
 import 'package:dcflight/dcflight.dart';
 import 'package:dcflight/framework/utils/flutter_widget_renderer.dart';
 
@@ -52,7 +53,32 @@ class WidgetToDCFAdaptor extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     // Build fresh widget with current state - this ensures state changes are reflected
-    final widget = widgetBuilder();
+    final userWidget = widgetBuilder();
+    
+    // Automatically wrap user's widget with LayoutBuilder and constraint handling
+    // This ensures the widget receives proper constraints and handles 0x0 initial case
+    final widget = LayoutBuilder(
+      builder: (context, constraints) {
+        // Get screen dimensions as fallback for initial 0x0 constraints
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        
+        // Ensure we have valid constraints (handle initial 0x0 case)
+        final width = constraints.maxWidth.isFinite && constraints.maxWidth > 0 
+            ? constraints.maxWidth 
+            : screenWidth;
+        final height = constraints.maxHeight.isFinite && constraints.maxHeight > 0 
+            ? constraints.maxHeight 
+            : screenHeight;
+        
+        // Wrap user's widget in SizedBox to ensure it has explicit size
+        return SizedBox(
+          width: width,
+          height: height,
+          child: userWidget,
+        );
+      },
+    );
     
     // CRITICAL: DO NOT access renderedNode here - it causes infinite loop!
     // Use contentViewId if available (set after element is rendered), otherwise use instance hashCode
