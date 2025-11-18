@@ -98,6 +98,7 @@ class DCFFlutterWidgetComponent: NSObject, DCFComponent {
 private class FlutterWidgetContainer: UIView {
     var widgetId: String?
     private var methodChannel: FlutterMethodChannel?
+    private var nodeId: String? // Store the actual nodeId from viewRegisteredWithShadowTree
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -126,41 +127,53 @@ private class FlutterWidgetContainer: UIView {
     }
     
     func onReady(nodeId: String) {
+        // Store the nodeId for later use (this is the actual viewId)
+        self.nodeId = nodeId
+        
         // Request widget rendering from Dart side
         guard let widgetId = widgetId else {
             print("⚠️ FlutterWidgetContainer: No widgetId available")
             return
         }
         
-        // Get viewId from tag (nodeId)
-        let viewId = String(tag)
+        // Use stored nodeId (actual viewId), not tag
+        let viewId = nodeId
         
         // Convert frame to window coordinates
         guard let window = window else {
-            print("⚠️ FlutterWidgetContainer: No window available yet")
+            print("⚠️ FlutterWidgetContainer: No window available yet, will retry after layout")
+            // Schedule a retry after layout completes
+            DispatchQueue.main.async { [weak self] in
+                self?.onReady(nodeId: nodeId)
+            }
             return
         }
         
         let windowFrame = convert(bounds, to: window)
         
-        print("🎨 FlutterWidgetContainer: Requesting widget render - widgetId: \(widgetId), viewId: \(viewId), frame: \(windowFrame)")
-        
-        // Call Dart method channel to render widget
-        methodChannel?.invokeMethod("renderWidget", arguments: [
-            "widgetId": widgetId,
-            "viewId": viewId,
-            "x": windowFrame.origin.x,
-            "y": windowFrame.origin.y,
-            "width": windowFrame.width,
-            "height": windowFrame.height
-        ])
+        // Only call renderWidget if we have valid dimensions
+        // If frame is invalid, updateWidgetFrame will be called later with correct frame
+        if windowFrame.width > 0 && windowFrame.height > 0 {
+            print("🎨 FlutterWidgetContainer: Requesting widget render - widgetId: \(widgetId), viewId: \(viewId), frame: \(windowFrame)")
+            
+            // Call Dart method channel to render widget
+            methodChannel?.invokeMethod("renderWidget", arguments: [
+                "widgetId": widgetId,
+                "viewId": viewId,
+                "x": windowFrame.origin.x,
+                "y": windowFrame.origin.y,
+                "width": windowFrame.width,
+                "height": windowFrame.height
+            ])
+        } else {
+            print("⚠️ FlutterWidgetContainer: Invalid frame (\(windowFrame)), will wait for updateWidgetFrame")
+        }
     }
     
     func updateFlutterWidgetFrame() {
-        guard let widgetId = widgetId, frame.width > 0 && frame.height > 0 else { return }
-        
-        // Get viewId from tag
-        let viewId = String(tag)
+        guard let widgetId = widgetId, 
+              let viewId = nodeId,
+              frame.width > 0 && frame.height > 0 else { return }
         
         // Convert frame to window coordinates
         guard let window = window else { return }
@@ -177,6 +190,21 @@ private class FlutterWidgetContainer: UIView {
             "width": windowFrame.width,
             "height": windowFrame.height
         ])
+        
+        // If renderWidget hasn't been called yet (widget not in hosts), call it now
+        // This handles the case where onReady was called with invalid frame
+        methodChannel?.invokeMethod("renderWidget", arguments: [
+            "widgetId": widgetId,
+            "viewId": viewId,
+            "x": windowFrame.origin.x,
+            "y": windowFrame.origin.y,
+            "width": windowFrame.width,
+            "height": windowFrame.height
+        ]) { (result) in
+            if let error = result as? FlutterError {
+                print("⚠️ FlutterWidgetContainer: renderWidget error: \(error)")
+            }
+        }
     }
     
     override func layoutSubviews() {
@@ -189,8 +217,8 @@ private class FlutterWidgetContainer: UIView {
     }
     
     func dispose() {
-        // Get viewId from tag
-        let viewId = String(tag)
+        // Use stored nodeId (actual viewId), not tag
+        guard let viewId = nodeId else { return }
         
         print("🎨 FlutterWidgetContainer: Disposing widget - viewId: \(viewId)")
         

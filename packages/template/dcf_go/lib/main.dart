@@ -32,16 +32,38 @@ class CanvasDemoApp extends DCFStatefulComponent {
       ),
       children: [
         // Canvas using WidgetToDCFAdaptor - directly embeds Flutter's rendering pipeline
-        WidgetToDCFAdaptor(
-          widget: CustomPaint(
-            painter: _DemoPainter(
-              animationValue: animationValue.state,
-              repaintOnFrame: repaintOnFrame.state,
-            ),
-            child: Container(
-              color: backgroundColor.state,
-            ),
-          ),
+        // Use builder() to ensure widget rebuilds when state changes
+        WidgetToDCFAdaptor.builder(
+          widgetBuilder: () {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                // Ensure we have valid constraints (handle initial 0x0 case)
+                final width = constraints.maxWidth.isFinite && constraints.maxWidth > 0 
+                    ? constraints.maxWidth 
+                    : 402.0; // Use actual screen width as fallback
+                final height = constraints.maxHeight.isFinite && constraints.maxHeight > 0 
+                    ? constraints.maxHeight 
+                    : 614.0; // Use actual screen height as fallback
+                
+                return SizedBox(
+                  width: width,
+                  height: height,
+                  child: CustomPaint(
+                    size: Size(width, height),
+                    painter: _DemoPainter(
+                      animationValue: animationValue.state,
+                      repaintOnFrame: repaintOnFrame.state,
+                    ),
+                    child: Container(
+                      color: backgroundColor.state,
+                      width: width,
+                      height: height,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
           layout: DCFLayout(
             flex: 1,
             width: "100%",
@@ -278,7 +300,7 @@ class _ColorButton extends DCFStatelessComponent {
         backgroundColor: color,
         borderRadius: 8,
         borderWidth: isSelected ? 3 : 1,
-        borderColor: isSelected ? DCFColors.white : DCFColors.transparent,
+        borderColor: isSelected ? DCFColors.white : DCFColors.darkGray,
       ),
     );
   }

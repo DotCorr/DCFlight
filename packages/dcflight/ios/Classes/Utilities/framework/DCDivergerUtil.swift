@@ -21,6 +21,41 @@ import Flutter
         flutterEngine.viewController = flutterVC
         sharedFlutterViewController = flutterVC
         
+        // Set up method channel for Flutter widget rendering
+        let flutterWidgetChannel = FlutterMethodChannel(
+            name: "dcflight/flutter_widget",
+            binaryMessenger: flutterEngine.binaryMessenger
+        )
+        flutterWidgetChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
+            if call.method == "enableFlutterViewRendering" {
+                // Make FlutterView visible and add to window
+                guard let window = UIApplication.shared.windows.first else {
+                    result(FlutterError(code: "NO_WINDOW", message: "No window available", details: nil))
+                    return
+                }
+                
+                // Add FlutterView to window if not already added
+                if flutterVC.view.superview == nil {
+                    window.addSubview(flutterVC.view)
+                    flutterVC.view.frame = window.bounds
+                    flutterVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                }
+                
+                // Make FlutterView visible, transparent, and non-interactive
+                flutterVC.view.isHidden = false
+                flutterVC.view.backgroundColor = .clear
+                flutterVC.view.isUserInteractionEnabled = false // Let touches pass through to DCF views
+                
+                // Ensure FlutterView is on top but non-interactive
+                window.bringSubviewToFront(flutterVC.view)
+                
+                print("✅ DCDivergerUtil: FlutterView enabled for rendering (transparent, non-interactive)")
+                result(true)
+            } else {
+                result(FlutterMethodNotImplemented)
+            }
+        }
+        
         DCMauiBridgeMethodChannel.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiEventMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)
         DCMauiLayoutMethodHandler.shared.initialize(with: flutterEngine.binaryMessenger)

@@ -57,6 +57,17 @@ object DCDivergerUtil {
         }
         flutterView?.attachToFlutterEngine(flutterEngine)
 
+        // Set up method channel for Flutter widget rendering
+        val flutterWidgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dcflight/flutter_widget")
+        flutterWidgetChannel.setMethodCallHandler { call, result ->
+            if (call.method == "enableFlutterViewRendering") {
+                enableFlutterViewRendering()
+                result.success(true)
+            } else {
+                result.notImplemented()
+            }
+        }
+
         setupNativeContainer(activity)
 
         initializeDCFlightSystems(activity, flutterEngine.dartExecutor.binaryMessenger)

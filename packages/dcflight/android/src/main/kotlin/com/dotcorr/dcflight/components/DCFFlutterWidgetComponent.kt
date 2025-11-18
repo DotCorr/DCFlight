@@ -70,9 +70,9 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         return PointF(width, height)
     }
 
-    override fun viewRegisteredWithShadowTree(view: View) {
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         val container = view as? FlutterWidgetContainer
-        container?.onReady()
+        container?.onReady(nodeId)
     }
 
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
@@ -104,6 +104,7 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         
         var widgetId: String? = null
         private var methodChannel: MethodChannel? = null
+        private var nodeId: String? = null // Store the actual nodeId from viewRegisteredWithShadowTree
         
         init {
             setupMethodChannel()
@@ -119,15 +120,18 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             methodChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "dcflight/flutter_widget")
         }
         
-        fun onReady() {
+        fun onReady(nodeId: String) {
+            // Store the nodeId for later use (this is the actual viewId)
+            this.nodeId = nodeId
+            
             // Request widget rendering from Dart side
             val currentWidgetId = widgetId ?: run {
                 android.util.Log.w(TAG, "⚠️ No widgetId available")
                 return
             }
             
-            // Get viewId from tag (id)
-            val viewId = id.toString()
+            // Use stored nodeId (actual viewId), not id
+            val viewId = nodeId
             
             // Convert frame to window coordinates
             val location = IntArray(2)
@@ -138,24 +142,31 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             val width = width.toDouble()
             val height = height.toDouble()
             
-            android.util.Log.d(TAG, "🎨 Requesting widget render - widgetId: $currentWidgetId, viewId: $viewId, frame: ($x, $y, $width, $height)")
-            
-            // Call Dart method channel to render widget
-            methodChannel?.invokeMethod("renderWidget", mapOf(
-                "widgetId" to currentWidgetId,
-                "viewId" to viewId,
-                "x" to x,
-                "y" to y,
-                "width" to width,
-                "height" to height
-            ))
+            // Only call renderWidget if we have valid dimensions
+            // If frame is invalid, updateWidgetFrame will be called later with correct frame
+            if (width > 0 && height > 0) {
+                android.util.Log.d(TAG, "🎨 Requesting widget render - widgetId: $currentWidgetId, viewId: $viewId, frame: ($x, $y, $width, $height)")
+                
+                // Call Dart method channel to render widget
+                methodChannel?.invokeMethod("renderWidget", mapOf(
+                    "widgetId" to currentWidgetId,
+                    "viewId" to viewId,
+                    "x" to x,
+                    "y" to y,
+                    "width" to width,
+                    "height" to height
+                ))
+            } else {
+                android.util.Log.w(TAG, "⚠️ Invalid frame ($width x $height), will wait for updateWidgetFrame")
+            }
         }
         
         fun updateFlutterWidgetFrame() {
             if (width <= 0 || height <= 0) return
             
-            // Get viewId from tag (id)
-            val viewId = id.toString()
+            val currentWidgetId = widgetId ?: return
+            // Use stored nodeId (actual viewId), not id
+            val viewId = nodeId ?: return
             
             // Convert frame to window coordinates
             val location = IntArray(2)
@@ -176,6 +187,23 @@ class DCFFlutterWidgetComponent : DCFComponent() {
                 "width" to width,
                 "height" to height
             ))
+            
+            // If renderWidget hasn't been called yet (widget not in hosts), call it now
+            // This handles the case where onReady was called with invalid frame
+            methodChannel?.invokeMethod("renderWidget", mapOf(
+                "widgetId" to currentWidgetId,
+                "viewId" to viewId,
+                "x" to x,
+                "y" to y,
+                "width" to width,
+                "height" to height
+            ), object : MethodChannel.Result {
+                override fun success(result: Any?) {}
+                override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
+                    android.util.Log.w(TAG, "⚠️ renderWidget error: $errorCode - $errorMessage")
+                }
+                override fun notImplemented() {}
+            })
         }
         
         override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
@@ -192,8 +220,8 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         }
         
         fun dispose() {
-            // Get viewId from tag (id)
-            val viewId = id.toString()
+            // Use stored nodeId (actual viewId), not id
+            val viewId = nodeId ?: return
             
             android.util.Log.d(TAG, "🎨 Disposing widget - viewId: $viewId")
             
