@@ -72,7 +72,6 @@ class FlutterWidgetRenderer {
               _renderWidgetIntoView(widget, widgetId, viewId, x, y, width, height);
               return {'status': 'success', 'widgetId': widgetId};
             }
-            print('❌ FlutterWidgetRenderer: Widget not found in registry: $widgetId');
             return {'status': 'error', 'message': 'Widget not found'};
           case 'updateWidgetFrame':
             final args = call.arguments as Map<dynamic, dynamic>;
@@ -322,14 +321,6 @@ class FlutterWidgetRenderer {
                 // Stack should be at least as large as the widget
                 final maxWidth = finalWidth > screenSize.width ? finalWidth : screenSize.width;
                 final maxHeight = finalHeight > screenSize.height ? finalHeight : screenSize.height;
-                
-                print('🔍 DEBUG: Platform: ${isAndroid ? "Android" : "iOS"}');
-                print('🔍 DEBUG: DevicePixelRatio: $devicePixelRatio');
-                print('🔍 DEBUG: Raw pixels: ${widgetWidth}x${widgetHeight}');
-                print('🔍 DEBUG: Final pixels: ${finalWidth}x${finalHeight}');
-                print('🔍 DEBUG: MediaQuery screen: ${screenSize.width}x${screenSize.height}');
-                print('🔍 DEBUG: Stack size: ${maxWidth}x${maxHeight}');
-                print('🔍 DEBUG: Position: ($finalLeft, $finalTop)');
                 
                 return SizedBox(
                   width: maxWidth,
