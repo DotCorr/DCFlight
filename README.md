@@ -113,6 +113,7 @@ See [CLI Guide](docs/cli/CLI_GUIDE.md) for more information.
 - [Framework Overview](docs/FRAMEWORK_OVERVIEW.md) - Architecture and concepts
 - [Component Protocol](docs/COMPONENT_PROTOCOL.md) - Component development guide
 - [Event System](docs/EVENT_SYSTEM.md) - Event handling and propagation
+- [WidgetToDCFAdaptor](docs/WIDGET_TO_DCF_ADAPTOR.md) - Embed Flutter widgets in DCFlight
 
 ### Development Guides
 - [Framework Guidelines](FRAMEWORK_GUIDELINES.md) - Complete development guide

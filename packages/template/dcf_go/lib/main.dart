@@ -6,10 +6,10 @@ void main() async {
   DCFLogger.setLevel(DCFLogLevel.info);
   DCFLogger.info('Starting Flutter Widget Demo App...', 'App');
   
-  await DCFlight.go(app: FlutterWidgetDemoApp());
+  await DCFlight.go(app: PureNativeAndFlutterMixApp());
 }
 
-class FlutterWidgetDemoApp extends DCFStatefulComponent {
+class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     final counter = useState<int>(0);
