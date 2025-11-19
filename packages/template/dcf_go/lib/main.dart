@@ -85,6 +85,7 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
   DCFComponentNode render() {
     final rotationSpeed = useState<double>(0.05);
     final isRotating = useState<bool>(true);
+    final buttonPressCount = useState<int>(0);
     final controllerRef = useRef<FlutterEarthGlobeController?>(null);
     
     if (controllerRef.current == null) {
@@ -137,7 +138,13 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                 fontSize: 20,
                 fontWeight: DCFFontWeight.bold,
               ),
-              styleSheet: _styles['titleText'],
+              styleSheet: DCFStyleSheet(
+                primaryColor: buttonPressCount.state % 3 == 0 
+                  ? DCFColors.white 
+                  : buttonPressCount.state % 3 == 1 
+                    ? DCFColors.green 
+                    : DCFColors.blue,
+              ),
               layout: _layouts['title'],
             ),
             DCFView(
@@ -157,8 +164,16 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                     DCFButton(
                       onPress: (DCFButtonPressData data) {
                         rotationSpeed.setState((rotationSpeed.state - 0.01).clamp(0.0, 0.2));
+                        buttonPressCount.setState(buttonPressCount.state + 1);
                       },
-                      styleSheet: _styles['decrementButton'],
+                      styleSheet: DCFStyleSheet(
+                        backgroundColor: Color.lerp(
+                          const Color(0xFFFF5722),
+                          const Color(0xFF4CAF50),
+                          (rotationSpeed.state / 0.2).clamp(0.0, 1.0),
+                        )!,
+                        borderRadius: 8,
+                      ),
                       layout: _layouts['smallButton'],
                       children: [
                         DCFText(
@@ -174,8 +189,16 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                     DCFButton(
                       onPress: (DCFButtonPressData data) {
                         rotationSpeed.setState((rotationSpeed.state + 0.01).clamp(0.0, 0.2));
+                        buttonPressCount.setState(buttonPressCount.state + 1);
                       },
-                      styleSheet: _styles['incrementButton'],
+                      styleSheet: DCFStyleSheet(
+                        backgroundColor: Color.lerp(
+                          const Color(0xFF4CAF50),
+                          const Color(0xFFFF5722),
+                          (rotationSpeed.state / 0.2).clamp(0.0, 1.0),
+                        )!,
+                        borderRadius: 8,
+                      ),
                       layout: _layouts['smallButton'],
                       children: [
                         DCFText(
@@ -216,10 +239,17 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
             ),
             DCFView(
               layout: _layouts['infoBox'],
-              styleSheet: _styles['infoBox'],
+              styleSheet: DCFStyleSheet(
+                backgroundColor: Color.lerp(
+                  const Color(0x3300FF00),
+                  const Color(0x33FF0000),
+                  (buttonPressCount.state % 10) / 10.0,
+                )!,
+                borderRadius: 8,
+              ),
               children: [
                 DCFText(
-                  content: "Using WidgetToDCFAdaptor\n3D Globe with Flutter\nInteractive & Rotating\nState management working",
+                  content: "Using WidgetToDCFAdaptor\n3D Globe with Flutter\nInteractive & Rotating\nState management working\nButton presses: ${buttonPressCount.state}",
                   textProps: DCFTextProps(
                     fontSize: 12,
                   ),
@@ -240,18 +270,56 @@ Future<ui.Image> _createDefaultSphereImage() async {
   final size = ui.Size(512, 512);
   final center = ui.Offset(size.width / 2, size.height / 2);
   final radius = size.width / 2 - 10;
-  final paint = ui.Paint()
+  
+  // Draw base ocean gradient
+  final oceanPaint = ui.Paint()
     ..shader = ui.Gradient.radial(
       center,
       radius,
       [
-        const ui.Color(0xFF4A90E2), // Ocean blue
-        const ui.Color(0xFF2E5C8A), // Darker blue
+        const ui.Color(0xFF4A90E2),
+        const ui.Color(0xFF2E5C8A),
       ],
       [0.0, 1.0],
     );
+  canvas.drawCircle(center, radius, oceanPaint);
   
-  canvas.drawCircle(center, radius, paint);
+  // Draw continents (simplified landmasses)
+  final landPaint = ui.Paint()..color = const ui.Color(0xFF2D5016);
+  
+  // Draw some continent shapes
+  final path1 = ui.Path()
+    ..addOval(ui.Rect.fromLTWH(150, 100, 120, 80));
+  canvas.drawPath(path1, landPaint);
+  
+  final path2 = ui.Path()
+    ..addOval(ui.Rect.fromLTWH(250, 200, 100, 90));
+  canvas.drawPath(path2, landPaint);
+  
+  final path3 = ui.Path()
+    ..addOval(ui.Rect.fromLTWH(100, 300, 140, 100));
+  canvas.drawPath(path3, landPaint);
+  
+  final path4 = ui.Path()
+    ..addOval(ui.Rect.fromLTWH(300, 350, 110, 70));
+  canvas.drawPath(path4, landPaint);
+  
+  // Add some cloud-like white areas
+  final cloudPaint = ui.Paint()..color = const ui.Color(0x88FFFFFF);
+  final cloudPath1 = ui.Path()
+    ..addOval(ui.Rect.fromLTWH(180, 150, 60, 40));
+  canvas.drawPath(cloudPath1, cloudPaint);
+  
+  final cloudPath2 = ui.Path()
+    ..addOval(ui.Rect.fromLTWH(280, 250, 50, 35));
+  canvas.drawPath(cloudPath2, cloudPaint);
+  
+  // Add atmosphere glow
+  final glowPaint = ui.Paint()
+    ..color = const ui.Color(0x33FFFFFF)
+    ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 20);
+  canvas.drawCircle(center, radius + 5, glowPaint);
+  
   final picture = recorder.endRecording();
   return await picture.toImage(size.width.toInt(), size.height.toInt());
 }
