@@ -37,34 +37,39 @@ class FlutterWidgetDemoApp extends DCFStatefulComponent {
           widgetBuilder: () {
             final currentColor = colors[colorIndex.state % colors.length];
 
-            return Container(
-              color: DCFColors.black,
-              child: CustomPaint(
-                painter: _CounterPainter(
-                  count: counter.state,
-                  color: currentColor,
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '${counter.state}',
-                        style: TextStyle(
-                          fontSize: 72,
-                          fontWeight: FontWeight.bold,
-                          color: currentColor,
+            return GestureDetector(
+              onTap: () {
+                counter.setState(counter.state + 1);
+              },
+              child: Container(
+                color: DCFColors.black,
+                child: CustomPaint(
+                  painter: _CounterPainter(
+                    count: counter.state,
+                    color: currentColor,
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${counter.state}',
+                          style: TextStyle(
+                            fontSize: 72,
+                            fontWeight: FontWeight.bold,
+                            color: currentColor,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Tap to increment',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: DCFColors.white.withOpacity(0.7),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Tap to increment',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: DCFColors.white.withOpacity(0.7),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

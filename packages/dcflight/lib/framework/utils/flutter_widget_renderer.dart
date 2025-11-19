@@ -8,7 +8,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter/material.dart' show runApp, OverlayEntry, OverlayState, MediaQuery, Stack, IgnorePointer, SizedBox, Container, Color;
+import 'package:flutter/material.dart' show runApp, OverlayEntry, OverlayState, MediaQuery, Stack, SizedBox, Container, Color;
 import 'package:dcflight/framework/utils/widget_to_dcf_adaptor.dart' show widgetRegistry;
 
 /// Renders Flutter widgets into FlutterViews using Flutter's embedding API
@@ -298,12 +298,10 @@ class FlutterWidgetRenderer {
           
           // OverlayEntry builder must return widgets that work with Stack
           // Positioned widgets must be direct children of Stack
-          // Use IgnorePointer at the Stack level so touches pass through to native DCF components
           // CRITICAL: On Android, Overlay may provide unbounded constraints
           // Use MediaQuery to get screen size and constrain Stack explicitly
-          return IgnorePointer(
-            ignoring: true, // Let touches pass through to native DCF views
-            child: Builder(
+          // Note: Flutter widgets can receive touches - they handle their own hit testing
+          return Builder(
               builder: (context) {
                 // CRITICAL FIX: Platform-specific pixel conversion
                 // iOS native sends logical pixels (already correct for Flutter)
@@ -352,8 +350,7 @@ class FlutterWidgetRenderer {
                   ),
                 );
               },
-            ),
-          );
+            );
         },
       );
       
