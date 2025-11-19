@@ -37,10 +37,16 @@ class DCFSpinnerComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val progressBar = view as? ProgressBar ?: return false
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        val isAnimating = props["animating"] as? Boolean ?: true
-        val hidesWhenStopped = props["hidesWhenStopped"] as? Boolean ?: true
+        val isAnimating = mergedProps["animating"] as? Boolean ?: true
+        val hidesWhenStopped = mergedProps["hidesWhenStopped"] as? Boolean ?: true
 
         if (hidesWhenStopped) {
             progressBar.visibility = if (isAnimating) View.VISIBLE else View.GONE
@@ -52,7 +58,7 @@ class DCFSpinnerComponent : DCFComponent() {
             progressBar.indeterminateTintList = ColorStateList.valueOf(colorInt)
         }
 
-        props["size"]?.let { size ->
+        mergedProps["size"]?.let { size ->
             when (size) {
                 "small", "medium" -> {
                     progressBar.scaleX = 0.7f

@@ -58,8 +58,17 @@ class DCFTextComponent : DCFComponent() {
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val wrapper = view as? DCFComposeWrapper ?: return false
         val composeView = wrapper.composeView
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
         
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        // Base class handles merging, but we need merged props for Compose content update
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        
+        // Store merged props
+        storeProps(wrapper, mergedProps)
+        
+        // Apply merged props (all properties preserved)
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
         wrapper.applyStyles(nonNullProps)
         updateComposeContent(composeView, nonNullProps)
 

@@ -63,9 +63,15 @@ class DCFWebViewComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val webView = view as? WebView ?: return false
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["source"]?.let { newSource ->
+        mergedProps["source"]?.let { newSource ->
             when (newSource) {
                 is String -> {
                     webView.loadUrl(newSource)
@@ -90,39 +96,39 @@ class DCFWebViewComponent : DCFComponent() {
             }
         }
 
-        props["javaScriptEnabled"]?.let { enabled ->
+        mergedProps["javaScriptEnabled"]?.let { enabled ->
             webView.settings.javaScriptEnabled = enabled as? Boolean ?: true
         }
 
-        props["allowsInlineMediaPlayback"]?.let { allows ->
+        mergedProps["allowsInlineMediaPlayback"]?.let { allows ->
             if (allows as? Boolean == true) {
                 webView.settings.mediaPlaybackRequiresUserGesture = false
             }
         }
 
-        props["mediaPlaybackRequiresUserAction"]?.let { requires ->
+        mergedProps["mediaPlaybackRequiresUserAction"]?.let { requires ->
             webView.settings.mediaPlaybackRequiresUserGesture = requires as? Boolean ?: true
         }
 
-        props["scalesPageToFit"]?.let { scales ->
+        mergedProps["scalesPageToFit"]?.let { scales ->
             val shouldScale = scales as? Boolean ?: false
             webView.settings.loadWithOverviewMode = shouldScale
             webView.settings.useWideViewPort = shouldScale
         }
 
-        props["domStorageEnabled"]?.let { enabled ->
+        mergedProps["domStorageEnabled"]?.let { enabled ->
             webView.settings.domStorageEnabled = enabled as? Boolean ?: false
         }
 
-        props["userAgent"]?.let { userAgent ->
+        mergedProps["userAgent"]?.let { userAgent ->
             webView.settings.userAgentString = userAgent.toString()
         }
 
-        props["allowsBackForwardNavigationGestures"]?.let { allows ->
+        mergedProps["allowsBackForwardNavigationGestures"]?.let { allows ->
             webView.setTag(DCFPrimitiveTags.WEBVIEW_NAVIGATION_GESTURES_KEY, allows)
         }
 
-        props["bounces"]?.let { bounces ->
+        mergedProps["bounces"]?.let { bounces ->
             webView.overScrollMode = if (bounces as? Boolean == true) {
                 View.OVER_SCROLL_ALWAYS
             } else {
@@ -130,13 +136,13 @@ class DCFWebViewComponent : DCFComponent() {
             }
         }
 
-        props["scrollEnabled"]?.let { enabled ->
+        mergedProps["scrollEnabled"]?.let { enabled ->
             val isEnabled = enabled as? Boolean ?: true
             webView.isVerticalScrollBarEnabled = isEnabled
             webView.isHorizontalScrollBarEnabled = isEnabled
         }
 
-        props["showsScrollIndicators"]?.let { shows ->
+        mergedProps["showsScrollIndicators"]?.let { shows ->
             val showIndicators = shows as? Boolean ?: true
             webView.isHorizontalScrollBarEnabled = showIndicators
             webView.isVerticalScrollBarEnabled = showIndicators
@@ -200,7 +206,7 @@ class DCFWebViewComponent : DCFComponent() {
         webView.setTag(DCFPrimitiveTags.WEBVIEW_CLIENT_KEY, webView.webViewClient)
         webView.setTag(DCFPrimitiveTags.WEBVIEW_CHROME_CLIENT_KEY, webView.webChromeClient)
 
-        props["injectedJavaScript"]?.let { script ->
+        mergedProps["injectedJavaScript"]?.let { script ->
             webView.evaluateJavascript(script.toString(), null)
         }
 

@@ -58,9 +58,15 @@ class DCFCheckboxComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val checkBox = view as CheckBox
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["checked"]?.let {
+        mergedProps["checked"]?.let {
             val checked = when (it) {
                 is Boolean -> it
                 is String -> it.toBoolean()
@@ -69,7 +75,7 @@ class DCFCheckboxComponent : DCFComponent() {
             checkBox.isChecked = checked
         }
 
-        props["disabled"]?.let {
+        mergedProps["disabled"]?.let {
             val disabled = when (it) {
                 is Boolean -> it
                 is String -> it.toBoolean()

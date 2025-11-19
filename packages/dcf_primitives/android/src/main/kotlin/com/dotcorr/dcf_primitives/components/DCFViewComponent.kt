@@ -33,7 +33,12 @@ class DCFViewComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
         view.applyStyles(nonNullProps)
         return true
     }

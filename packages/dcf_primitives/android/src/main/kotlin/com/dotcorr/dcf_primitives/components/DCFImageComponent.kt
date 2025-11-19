@@ -54,9 +54,15 @@ class DCFImageComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val imageView = view as? ImageView ?: return false
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["source"]?.let { sourceAny ->
+        mergedProps["source"]?.let { sourceAny ->
             val source: String = when (sourceAny) {
                 is String -> sourceAny
                 is Number -> sourceAny.toString()
@@ -72,7 +78,7 @@ class DCFImageComponent : DCFComponent() {
             }
         }
 
-        props["resizeMode"]?.let { mode ->
+        mergedProps["resizeMode"]?.let { mode ->
             val scaleType = when (mode.toString()) {
                 "cover" -> ImageView.ScaleType.CENTER_CROP
                 "contain" -> ImageView.ScaleType.FIT_CENTER

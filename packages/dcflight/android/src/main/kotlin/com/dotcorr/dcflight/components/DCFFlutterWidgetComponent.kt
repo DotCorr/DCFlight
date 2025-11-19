@@ -50,15 +50,20 @@ class DCFFlutterWidgetComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val container = view as? FlutterWidgetContainer ?: return false
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(container, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
         
         // Update widgetId if changed
-        val widgetId = props["widgetId"] as? String
+        val widgetId = mergedProps["widgetId"] as? String
         if (widgetId != null) {
             container.widgetId = widgetId
         }
         
-        container.setTag(DCFTags.STORED_PROPS_KEY, props.toMutableMap())
         container.applyStyles(nonNullProps)
         return true
     }

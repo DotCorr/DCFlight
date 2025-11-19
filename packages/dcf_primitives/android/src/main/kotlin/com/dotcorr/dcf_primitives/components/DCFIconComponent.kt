@@ -36,13 +36,19 @@ class DCFIconComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val imageView = view as ImageView
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["name"]?.let { name ->
+        mergedProps["name"]?.let { name ->
             loadIcon(imageView, name.toString())
         }
 
-        props["size"]?.let {
+        mergedProps["size"]?.let {
             val size = when (it) {
                 is Number -> it.toInt()
                 is String -> it.toIntOrNull() ?: 24

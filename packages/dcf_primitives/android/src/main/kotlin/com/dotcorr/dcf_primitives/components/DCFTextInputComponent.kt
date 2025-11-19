@@ -65,9 +65,15 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
  
      override fun updateView(view: View, props: Map<String, Any?>): Boolean {
          val editText = view as? AppCompatEditText ?: return false
-         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+         
+         // CRITICAL: Merge new props with existing stored props to preserve all properties
+         val existingProps = getStoredProps(view)
+         val mergedProps = mergeProps(existingProps, props)
+         storeProps(view, mergedProps)
+         
+         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-         props["value"]?.let { value ->
+         mergedProps["value"]?.let { value ->
              val currentText = editText.text?.toString() ?: ""
              val newText = value.toString()
              if (currentText != newText) {
@@ -76,7 +82,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
 
-         props["placeholder"]?.let { placeholder ->
+         mergedProps["placeholder"]?.let { placeholder ->
              editText.hint = placeholder.toString()
          }
 
@@ -92,7 +98,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              editText.setHighlightColor(colorInt)
          }
  
-         props["fontSize"]?.let { size ->
+         mergedProps["fontSize"]?.let { size ->
              when (size) {
                  is Number -> editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, size.toFloat())
                  is String -> {
@@ -103,7 +109,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["keyboardType"]?.let { type ->
+         mergedProps["keyboardType"]?.let { type ->
              editText.inputType = when (type) {
                  "default" -> InputType.TYPE_CLASS_TEXT
                  "number-pad", "numeric" -> InputType.TYPE_CLASS_NUMBER
@@ -116,7 +122,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["secureTextEntry"]?.let { secure ->
+         mergedProps["secureTextEntry"]?.let { secure ->
              when (secure) {
                  is Boolean -> {
                      if (secure) {
@@ -126,7 +132,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["autoCapitalization"]?.let { capitalize ->
+         mergedProps["autoCapitalization"]?.let { capitalize ->
              val currentInputType = editText.inputType
              editText.inputType = when (capitalize) {
                  "none" -> currentInputType and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES.inv() and
@@ -140,7 +146,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["autoCorrect"]?.let { autoCorrect ->
+         mergedProps["autoCorrect"]?.let { autoCorrect ->
              when (autoCorrect) {
                  is Boolean -> {
                      val currentInputType = editText.inputType
@@ -153,7 +159,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["maxLength"]?.let { maxLength ->
+         mergedProps["maxLength"]?.let { maxLength ->
              when (maxLength) {
                  is Number -> {
                      val filters = editText.filters?.toMutableList() ?: mutableListOf()
@@ -164,7 +170,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["multiline"]?.let { multiline ->
+         mergedProps["multiline"]?.let { multiline ->
              when (multiline) {
                  is Boolean -> {
                      if (multiline) {
@@ -179,7 +185,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["numberOfLines"]?.let { lines ->
+         mergedProps["numberOfLines"]?.let { lines ->
              when (lines) {
                  is Number -> {
                      val numLines = lines.toInt()
@@ -191,7 +197,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["editable"]?.let { editable ->
+         mergedProps["editable"]?.let { editable ->
              when (editable) {
                  is Boolean -> {
                      editText.isFocusable = editable
@@ -202,7 +208,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["selection"]?.let { selection ->
+         mergedProps["selection"]?.let { selection ->
              when (selection) {
                  is Map<*, *> -> {
                      val start = (selection["start"] as? Number)?.toInt() ?: 0
@@ -215,7 +221,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["returnKeyType"]?.let { returnKey ->
+         mergedProps["returnKeyType"]?.let { returnKey ->
              editText.imeOptions = when (returnKey) {
                  "done" -> EditorInfo.IME_ACTION_DONE
                  "go" -> EditorInfo.IME_ACTION_GO
@@ -227,7 +233,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["textAlign"]?.let { align ->
+         mergedProps["textAlign"]?.let { align ->
              editText.textAlignment = when (align) {
                  "center" -> View.TEXT_ALIGNMENT_CENTER
                  "right", "end" -> View.TEXT_ALIGNMENT_TEXT_END
@@ -236,7 +242,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["blurOnSubmit"]?.let { blurOnSubmit ->
+         mergedProps["blurOnSubmit"]?.let { blurOnSubmit ->
              when (blurOnSubmit) {
                  is Boolean -> {
                      editText.setTag(DCFPrimitiveTags.TEXT_INPUT_BLUR_ON_SUBMIT_KEY, blurOnSubmit)
@@ -244,7 +250,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["onChangeText"]?.let { onChange ->
+         mergedProps["onChangeText"]?.let { onChange ->
              removeTextWatcher(editText)
  
              val textWatcher = object : TextWatcher {
@@ -264,7 +270,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              editText.setTag(DCFPrimitiveTags.TEXT_INPUT_WATCHER_KEY, textWatcher)
          }
  
-         props["onFocus"]?.let { onFocus ->
+         mergedProps["onFocus"]?.let { onFocus ->
              editText.setOnFocusChangeListener { _, hasFocus ->
                  if (hasFocus) {
                      editText.setTag(DCFPrimitiveTags.TEXT_INPUT_FOCUS_LISTENER_KEY, onFocus)
@@ -272,7 +278,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["onBlur"]?.let { onBlur ->
+         mergedProps["onBlur"]?.let { onBlur ->
              editText.setOnFocusChangeListener { _, hasFocus ->
                  if (!hasFocus) {
                      editText.setTag(DCFPrimitiveTags.TEXT_INPUT_FOCUS_LISTENER_KEY, onBlur)
@@ -280,7 +286,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["onSubmitEditing"]?.let { onSubmit ->
+         mergedProps["onSubmitEditing"]?.let { onSubmit ->
              editText.setOnEditorActionListener { _, actionId, _ ->
                  if (actionId == EditorInfo.IME_ACTION_DONE ||
                      actionId == EditorInfo.IME_ACTION_GO ||
@@ -302,15 +308,15 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
              }
          }
  
-         props["accessibilityLabel"]?.let { label ->
+         mergedProps["accessibilityLabel"]?.let { label ->
              editText.contentDescription = label.toString()
          }
  
-         props["testID"]?.let { testId ->
+         mergedProps["testID"]?.let { testId ->
              editText.setTag(DCFPrimitiveTags.TEST_ID_KEY, testId)
          }
 
-         editText.setTag(DCFPrimitiveTags.TEXT_INPUT_PLACEHOLDER_KEY, props["placeholder"])
+         editText.setTag(DCFPrimitiveTags.TEXT_INPUT_PLACEHOLDER_KEY, mergedProps["placeholder"])
          editText.applyStyles(nonNullProps)
 
          return true

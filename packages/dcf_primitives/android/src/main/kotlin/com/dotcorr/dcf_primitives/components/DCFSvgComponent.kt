@@ -35,9 +35,15 @@ class DCFSvgComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val imageView = view as ImageView
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["source"]?.let { source ->
+        mergedProps["source"]?.let { source ->
             when (source) {
                 is String -> {
                     loadSvgFromSource(imageView, source)

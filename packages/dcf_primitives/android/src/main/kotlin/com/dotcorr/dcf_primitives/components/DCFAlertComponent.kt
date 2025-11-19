@@ -34,7 +34,12 @@ class DCFAlertComponent : DCFComponent() {
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val visible = when (val v = props["visible"]) {
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val visible = when (val v = mergedProps["visible"]) {
             is Boolean -> v
             is String -> v.toBoolean()
             else -> false
@@ -43,16 +48,16 @@ class DCFAlertComponent : DCFComponent() {
         val alertDialog = getAlertDialog(view)
         
         if (visible && alertDialog == null) {
-            showAlert(view, props.filterValues { it != null }.mapValues { it.value!! })
+            showAlert(view, mergedProps.filterValues { it != null }.mapValues { it.value!! })
         } else if (!visible && alertDialog != null) {
             hideAlert(view)
         } else if (visible && alertDialog != null) {
             alertDialog.dismiss()
             setAlertDialog(view, null)
-            showAlert(view, props.filterValues { it != null }.mapValues { it.value!! })
+            showAlert(view, mergedProps.filterValues { it != null }.mapValues { it.value!! })
         }
 
-        view.applyStyles(props.filterValues { it != null }.mapValues { it.value!! })
+        view.applyStyles(mergedProps.filterValues { it != null }.mapValues { it.value!! })
         return true
     }
     

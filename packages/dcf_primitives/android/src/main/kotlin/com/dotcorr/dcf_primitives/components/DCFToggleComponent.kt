@@ -62,11 +62,17 @@ class DCFToggleComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val switchControl = view as? SwitchCompat ?: return false
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["value"]?.let { value ->
+        mergedProps["value"]?.let { value ->
             val isOn = value as? Boolean ?: false
-            val animated = props["animated"] as? Boolean ?: true
+            val animated = mergedProps["animated"] as? Boolean ?: true
 
             if (animated) {
                 switchControl.isChecked = isOn
@@ -76,7 +82,7 @@ class DCFToggleComponent : DCFComponent() {
             }
         }
 
-        props["disabled"]?.let { disabled ->
+        mergedProps["disabled"]?.let { disabled ->
             val isDisabled = disabled as? Boolean ?: false
             switchControl.isEnabled = !isDisabled
             switchControl.alpha = if (isDisabled) 0.5f else 1.0f

@@ -32,16 +32,22 @@ abstract class DCFComponent {
     /**
      * Updates an existing view with new props
      * Matches iOS: func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool
-     * Framework handles prop merging at bridge level - components just update with props
-     * Components override this directly - no updateViewInternal complexity needed
+     * 
+     * CRITICAL: Merges new props with existing stored props to preserve all properties
+     * This ensures components don't lose state (text alignment, font size, etc.) during updates
+     * Framework-level fix - all components benefit automatically
      */
     open fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        // Framework handles prop merging and null filtering at bridge level
-        // Components just receive final props and update, like iOS
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        storeProps(view, props)
+        // CRITICAL FRAMEWORK FIX: Merge new props with existing stored props
+        // This preserves all properties across partial updates
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
         
-        // Default: just apply styles like iOS
+        // Store merged props for next update
+        storeProps(view, mergedProps)
+        
+        // Apply merged props (all properties, not just changed ones)
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
         view.applyStyles(nonNullProps)
         return true
     }

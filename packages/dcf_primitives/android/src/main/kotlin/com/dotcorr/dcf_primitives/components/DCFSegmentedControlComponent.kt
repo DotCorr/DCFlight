@@ -69,9 +69,15 @@ class DCFSegmentedControlComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val container = view as? LinearLayout ?: return false
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["segments"]?.let {
+        mergedProps["segments"]?.let {
             val segments = parseSegments(nonNullProps)
             val selectedIndex = getSelectedIndex(nonNullProps, segments.size)
             
@@ -94,7 +100,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
             updateButtonColors(container, selectedIndex, nonNullProps)
         }
 
-        props["selectedIndex"]?.let {
+        mergedProps["selectedIndex"]?.let {
             val selectedIndex = getSelectedIndex(nonNullProps, container.childCount)
             updateSelectedButton(container, selectedIndex, nonNullProps)
         }
@@ -102,7 +108,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
         val selectedIndex = getCurrentSelectedIndex(container)
         updateButtonColors(container, selectedIndex, nonNullProps)
 
-        props["enabled"]?.let {
+        mergedProps["enabled"]?.let {
             val enabled = when (it) {
                 is Boolean -> it
                 is String -> it.toBoolean()

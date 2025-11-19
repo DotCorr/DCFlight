@@ -53,9 +53,15 @@ class DCFDropdownComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val spinner = view as Spinner
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["items"]?.let { items ->
+        mergedProps["items"]?.let { items ->
             when (items) {
                 is List<*> -> {
                     val itemStrings = items.mapNotNull { item ->
@@ -81,7 +87,7 @@ class DCFDropdownComponent : DCFComponent() {
         
         applyPlaceholderColor(spinner, nonNullProps)
 
-        props["selectedIndex"]?.let {
+        mergedProps["selectedIndex"]?.let {
             val index = when (it) {
                 is Number -> it.toInt()
                 is String -> it.toIntOrNull() ?: 0
@@ -90,7 +96,7 @@ class DCFDropdownComponent : DCFComponent() {
             spinner.setSelection(index)
         }
 
-        props["enabled"]?.let {
+        mergedProps["enabled"]?.let {
             val enabled = when (it) {
                 is Boolean -> it
                 is String -> it.toBoolean()

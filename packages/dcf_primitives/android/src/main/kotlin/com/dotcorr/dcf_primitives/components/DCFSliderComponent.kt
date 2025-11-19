@@ -68,9 +68,15 @@ class DCFSliderComponent : DCFComponent() {
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val seekBar = view as SeekBar
-        val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
+        
+        // CRITICAL: Merge new props with existing stored props to preserve all properties
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
 
-        props["value"]?.let {
+        mergedProps["value"]?.let {
             val value = when (it) {
                 is Number -> it.toFloat()
                 is String -> it.toFloatOrNull() ?: 0f
@@ -79,7 +85,7 @@ class DCFSliderComponent : DCFComponent() {
             seekBar.progress = (value * 100).toInt()
         }
 
-        props["maximumValue"]?.let {
+        mergedProps["maximumValue"]?.let {
             val maxValue = when (it) {
                 is Number -> it.toFloat()
                 is String -> it.toFloatOrNull() ?: 100f
