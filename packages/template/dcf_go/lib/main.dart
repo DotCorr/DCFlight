@@ -1,8 +1,8 @@
 import 'dart:ui' as ui;
+import 'package:dcf_go/style.dart';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' show MaterialApp, Scaffold, Colors;
-import 'package:flutter/painting.dart' show MemoryImage;
 import 'package:flutter_earth_globe/flutter_earth_globe.dart';
 import 'package:flutter_earth_globe/flutter_earth_globe_controller.dart';
 
@@ -10,75 +10,6 @@ void main() async {
   await DCFlight.go(app: PureNativeAndFlutterMixApp());
 }
 
-// Style and layout registries - created once, reused across renders
-// Using StyleSheet.create() for optimal performance (see StyleSheet.create() docs)
-final _styles = DCFStyleSheet.create({
-  'root': DCFStyleSheet(backgroundColor: DCFColors.black),
-  'controlsPanel': DCFStyleSheet(
-    backgroundColor: DCFTheme.current.surfaceColor,
-    borderRadius: 20,
-    elevation: 10,
-  ),
-  'titleText': DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
-  'bodyText': DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
-  'decrementButton': DCFStyleSheet(
-    backgroundColor: const Color(0xFFFF5722),
-    borderRadius: 8,
-  ),
-  'incrementButton': DCFStyleSheet(
-    backgroundColor: const Color(0xFF4CAF50),
-    borderRadius: 8,
-  ),
-  'buttonText': DCFStyleSheet(primaryColor: DCFColors.white),
-  'toggleButton': DCFStyleSheet(
-    backgroundColor: const Color(0xFF757575),
-    borderRadius: 8,
-  ),
-  'toggleButtonActive': DCFStyleSheet(
-    backgroundColor: const Color(0xFF4CAF50),
-    borderRadius: 8,
-  ),
-  'infoBox': DCFStyleSheet(
-    backgroundColor: const Color(0x3300FF00),
-    borderRadius: 8,
-  ),
-  'infoText': DCFStyleSheet(primaryColor: DCFColors.green),
-  'emptyStyle': DCFStyleSheet(),
-});
-
-final _layouts = DCFLayout.create({
-  'root': DCFLayout(flex: 1),
-  'flutterWidget': DCFLayout(
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  ),
-  'controlsPanel': DCFLayout(
-    width: '100%',
-    flexWrap: DCFWrap.wrap,
-    padding: 20,
-  ),
-  'title': DCFLayout(marginBottom: 15),
-  'controlSection': DCFLayout(
-    marginHorizontal: 10,
-    width: "100%",
-    marginBottom: 15,
-  ),
-  'speedText': DCFLayout(marginBottom: 10),
-  'buttonRow': DCFLayout(
-    flexDirection: DCFFlexDirection.row,
-    gap: 10,
-  ),
-  'smallButton': DCFLayout(
-    width: 50,
-    height: 40,
-  ),
-  'fullWidthButton': DCFLayout(
-    width: "100%",
-    height: 40,
-  ),
-  'infoBox': DCFLayout(padding: 10),
-});
 
 class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
   @override
@@ -107,8 +38,8 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
     }
     
     return DCFView(
-      layout: _layouts['root'],
-      styleSheet: _styles['root'],
+      layout: layouts['root'],
+      styleSheet: styles['root'],
       children: [
         WidgetToDCFAdaptor.builder(
           widgetBuilder: () {
@@ -125,12 +56,12 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
               ),
             );
           },
-          layout: _layouts['flutterWidget'],
-          styleSheet: _styles['emptyStyle'],
+          layout: layouts['flutterWidget'],
+          styleSheet: styles['emptyStyle'],
         ),
         DCFView(
-          layout: _layouts['controlsPanel'],
-          styleSheet: _styles['controlsPanel'],
+          layout: layouts['controlsPanel'],
+          styleSheet: styles['controlsPanel'],
           children: [
             DCFText(
               content: "3D Globe Demo",
@@ -145,21 +76,21 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                     ? DCFColors.green 
                     : DCFColors.blue,
               ),
-              layout: _layouts['title'],
+              layout: layouts['title'],
             ),
             DCFView(
-              layout: _layouts['controlSection'],
+              layout: layouts['controlSection'],
               children: [
                 DCFText(
                   content: "Rotation Speed: ${(rotationSpeed.state * 100).toStringAsFixed(0)}%",
                   textProps: DCFTextProps(
                     fontSize: 16,
                   ),
-                  styleSheet: _styles['bodyText'],
-                  layout: _layouts['speedText'],
+                  styleSheet: styles['bodyText'],
+                  layout: layouts['speedText'],
                 ),
                 DCFView(
-                  layout: _layouts['buttonRow'],
+                  layout: layouts['buttonRow'],
                   children: [
                     DCFButton(
                       onPress: (DCFButtonPressData data) {
@@ -174,7 +105,7 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                         )!,
                         borderRadius: 8,
                       ),
-                      layout: _layouts['smallButton'],
+                      layout: layouts['smallButton'],
                       children: [
                         DCFText(
                           content: "-",
@@ -182,7 +113,7 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                             fontSize: 20,
                             fontWeight: DCFFontWeight.bold,
                           ),
-                          styleSheet: _styles['buttonText'],
+                          styleSheet: styles['buttonText'],
                         ),
                       ],
                     ),
@@ -199,7 +130,7 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                         )!,
                         borderRadius: 8,
                       ),
-                      layout: _layouts['smallButton'],
+                      layout: layouts['smallButton'],
                       children: [
                         DCFText(
                           content: "+",
@@ -207,7 +138,7 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                             fontSize: 20,
                             fontWeight: DCFFontWeight.bold,
                           ),
-                          styleSheet: _styles['buttonText'],
+                          styleSheet: styles['buttonText'],
                         ),
                       ],
                     ),
@@ -216,14 +147,14 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
               ],
             ),
             DCFView(
-              layout: _layouts['controlSection'],
+              layout: layouts['controlSection'],
               children: [
                 DCFButton(
                   onPress: (DCFButtonPressData data) {
                     isRotating.setState(!isRotating.state);
                   },
-                  styleSheet: isRotating.state ? _styles['toggleButtonActive'] : _styles['toggleButton'],
-                  layout: _layouts['fullWidthButton'],
+                  styleSheet: isRotating.state ? styles['toggleButtonActive'] : styles['toggleButton'],
+                  layout: layouts['fullWidthButton'],
                   children: [
                     DCFText(
                       content: isRotating.state ? "Pause Rotation" : "Resume Rotation",
@@ -231,14 +162,14 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                         fontSize: 16,
                         fontWeight: DCFFontWeight.bold,
                       ),
-                      styleSheet: _styles['buttonText'],
+                      styleSheet: styles['buttonText'],
                     ),
                   ],
                 ),
               ],
             ),
             DCFView(
-              layout: _layouts['infoBox'],
+              layout: layouts['infoBox'],
               styleSheet: DCFStyleSheet(
                 backgroundColor: Color.lerp(
                   const Color(0x3300FF00),
@@ -253,7 +184,7 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                   textProps: DCFTextProps(
                     fontSize: 12,
                   ),
-                  styleSheet: _styles['infoText'],
+                  styleSheet: styles['infoText'],
                 ),
               ],
             ),
