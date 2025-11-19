@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart' show runApp, OverlayEntry, OverlayState, MediaQuery, Stack, IgnorePointer, SizedBox, Container, Color;
@@ -299,36 +300,58 @@ class FlutterWidgetRenderer {
           // OverlayEntry builder must return widgets that work with Stack
           // Positioned widgets must be direct children of Stack
           // Use IgnorePointer at the Stack level so touches pass through to native DCF components
-          // CRITICAL: On Android, we need to constrain the Stack to prevent unbounded constraints
-          // Use explicit size constraints instead of StackFit.expand to ensure correct sizing
+          // CRITICAL: On Android, Overlay may provide unbounded constraints
+          // Use MediaQuery to get screen size and constrain Stack explicitly
           return IgnorePointer(
             ignoring: true, // Let touches pass through to native DCF views
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Get the maximum available size from constraints
-                final maxWidth = constraints.maxWidth.isFinite ? constraints.maxWidth : widgetWidth;
-                final maxHeight = constraints.maxHeight.isFinite ? constraints.maxHeight : widgetHeight;
+            child: Builder(
+              builder: (context) {
+                // CRITICAL FIX: Platform-specific pixel conversion
+                // iOS native sends logical pixels (already correct for Flutter)
+                // Android native sends physical pixels (need to convert to logical)
+                final screenSize = MediaQuery.of(context).size;
+                final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+                
+                // Only convert on Android - iOS already sends logical pixels
+                final isAndroid = Platform.isAndroid;
+                final finalWidth = isAndroid ? widgetWidth / devicePixelRatio : widgetWidth;
+                final finalHeight = isAndroid ? widgetHeight / devicePixelRatio : widgetHeight;
+                final finalLeft = isAndroid ? left / devicePixelRatio : left;
+                final finalTop = isAndroid ? top / devicePixelRatio : top;
+                
+                // Stack should be at least as large as the widget
+                final maxWidth = finalWidth > screenSize.width ? finalWidth : screenSize.width;
+                final maxHeight = finalHeight > screenSize.height ? finalHeight : screenSize.height;
+                
+                print('🔍 DEBUG: Platform: ${isAndroid ? "Android" : "iOS"}');
+                print('🔍 DEBUG: DevicePixelRatio: $devicePixelRatio');
+                print('🔍 DEBUG: Raw pixels: ${widgetWidth}x${widgetHeight}');
+                print('🔍 DEBUG: Final pixels: ${finalWidth}x${finalHeight}');
+                print('🔍 DEBUG: MediaQuery screen: ${screenSize.width}x${screenSize.height}');
+                print('🔍 DEBUG: Stack size: ${maxWidth}x${maxHeight}');
+                print('🔍 DEBUG: Position: ($finalLeft, $finalTop)');
                 
                 return SizedBox(
                   width: maxWidth,
                   height: maxHeight,
                   child: Stack(
-                    // Don't use StackFit.expand - it can cause unbounded constraints on Android
-                    // The SizedBox above already constrains the Stack
+                    // Don't use StackFit.expand - explicitly constrain with SizedBox above
                     children: [
                       // Only render the widget if we have valid dimensions
                       // This ensures widgets only appear at their specific positions
-                      if (widgetWidth > 0 && widgetHeight > 0)
+                      if (finalWidth > 0 && finalHeight > 0)
                         Positioned(
-                          left: left,
-                          top: top,
-                          width: widgetWidth,
-                          height: widgetHeight,
+                          left: finalLeft,
+                          top: finalTop,
+                          width: finalWidth,
+                          height: finalHeight,
                           child: ClipRect(
                             clipBehavior: Clip.hardEdge,
-                            child: SizedBox(
-                              width: widgetWidth,
-                              height: widgetHeight,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints.tightFor(
+                                width: finalWidth,
+                                height: finalHeight,
+                              ),
                               child: host.widget,
                             ),
                           ),
