@@ -1,20 +1,17 @@
 import 'dart:ui' as ui;
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart' show MaterialApp, Scaffold, Colors;
 import 'package:flutter/painting.dart' show MemoryImage;
 import 'package:flutter_earth_globe/flutter_earth_globe.dart';
 import 'package:flutter_earth_globe/flutter_earth_globe_controller.dart';
 
 void main() async {
-  DCFLogger.setLevel(DCFLogLevel.info);
-  DCFLogger.info('Starting Flutter Widget Demo App...', 'App');
-  
   await DCFlight.go(app: PureNativeAndFlutterMixApp());
 }
 
-// Create style and layout registries outside render() - they don't consume state
+// Style and layout registries - created once, reused across renders
+// Using StyleSheet.create() for optimal performance (see StyleSheet.create() docs)
 final _styles = DCFStyleSheet.create({
   'root': DCFStyleSheet(backgroundColor: DCFColors.black),
   'controlsPanel': DCFStyleSheet(
@@ -90,7 +87,6 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
     final isRotating = useState<bool>(true);
     final controllerRef = useRef<FlutterEarthGlobeController?>(null);
     
-    // Initialize controller once
     if (controllerRef.current == null) {
       controllerRef.current = FlutterEarthGlobeController(
         rotationSpeed: rotationSpeed.state,
@@ -99,16 +95,13 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
       
       controllerRef.current!.onLoaded = () async {
         final surfaceImage = await _createDefaultSphereImage();
-        // Convert ui.Image to bytes and use MemoryImage
         final byteData = await surfaceImage.toByteData(format: ui.ImageByteFormat.png);
         if (byteData != null) {
           final bytes = byteData.buffer.asUint8List();
-          final imageProvider = MemoryImage(bytes);
-          controllerRef.current!.loadSurface(imageProvider);
+          controllerRef.current!.loadSurface(MemoryImage(bytes));
         }
       };
     } else {
-      // Update rotation speed if it changed
       controllerRef.current!.rotationSpeed = rotationSpeed.state;
     }
     
@@ -116,7 +109,6 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
       layout: _layouts['root'],
       styleSheet: _styles['root'],
       children: [
-        // Flutter Widget Adaptor - 3D Globe Example
         WidgetToDCFAdaptor.builder(
           widgetBuilder: () {
             return MaterialApp(
@@ -135,8 +127,6 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
           layout: _layouts['flutterWidget'],
           styleSheet: _styles['emptyStyle'],
         ),
-        
-        // Controls Panel
         DCFView(
           layout: _layouts['controlsPanel'],
           styleSheet: _styles['controlsPanel'],
@@ -150,8 +140,6 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
               styleSheet: _styles['titleText'],
               layout: _layouts['title'],
             ),
-
-            // Rotation Speed Control
             DCFView(
               layout: _layouts['controlSection'],
               children: [
@@ -204,8 +192,6 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                 ),
               ],
             ),
-            
-            // Toggle Rotation Button
             DCFView(
               layout: _layouts['controlSection'],
               children: [
@@ -228,8 +214,6 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                 ),
               ],
             ),
-            
-            // Info
             DCFView(
               layout: _layouts['infoBox'],
               styleSheet: _styles['infoBox'],
@@ -250,21 +234,12 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
   }
 }
 
-/// Creates a default sphere image for the globe
-/// This is a simple programmatic image - in production you'd use an actual Earth texture
 Future<ui.Image> _createDefaultSphereImage() async {
-  // Create a simple colored sphere image
-  // In a real app, you'd load an actual Earth texture image
-  // For now, we'll create a placeholder
   final recorder = ui.PictureRecorder();
   final canvas = ui.Canvas(recorder);
   final size = ui.Size(512, 512);
-  
-  // Draw a simple gradient sphere
   final center = ui.Offset(size.width / 2, size.height / 2);
   final radius = size.width / 2 - 10;
-  
-  // Draw gradient circle (simplified Earth-like appearance)
   final paint = ui.Paint()
     ..shader = ui.Gradient.radial(
       center,
@@ -277,8 +252,6 @@ Future<ui.Image> _createDefaultSphereImage() async {
     );
   
   canvas.drawCircle(center, radius, paint);
-  
-  // Convert to image
   final picture = recorder.endRecording();
   return await picture.toImage(size.width.toInt(), size.height.toInt());
 }

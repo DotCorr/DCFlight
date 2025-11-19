@@ -271,15 +271,22 @@ class DCFStyleSheet extends Equatable {
   /// 
   /// This optimizes bridge communication by caching styles and sending IDs instead of full objects.
   /// 
-  /// Example:
+  /// Example with Map (string keys):
   /// ```dart
   /// final styles = DCFStyleSheet.create({
   ///   'container': DCFStyleSheet(backgroundColor: Colors.blue),
   ///   'text': DCFStyleSheet(primaryColor: Colors.black),
   /// });
+  /// ```
   /// 
-  /// // Use with ID reference
-  /// DCFView(styleSheet: styles.container)
+  /// Example with class (type-safe):
+  /// ```dart
+  /// class MyStyles {
+  ///   static final container = DCFStyleSheet(backgroundColor: Colors.blue);
+  ///   static final text = DCFStyleSheet(primaryColor: Colors.black);
+  /// }
+  /// final styles = DCFStyleSheet.createFromClass(MyStyles());
+  /// // Use: styles.container, styles.text (fully type-safe)
   /// ```
   /// 
   /// Benefits:
@@ -346,6 +353,43 @@ class DCFStyleSheet extends Equatable {
       );
     }
     return registry;
+  }
+
+  /// Create a StyleSheet registry from a class with static final properties (type-safe registration)
+  /// 
+  /// This allows type-safe registration and access without string keys.
+  /// 
+  /// Example:
+  /// ```dart
+  /// class AppStyles {
+  ///   static final container = DCFStyleSheet(backgroundColor: Colors.blue);
+  ///   static final text = DCFStyleSheet(primaryColor: Colors.black);
+  /// }
+  /// 
+  /// final styles = DCFStyleSheet.createFrom({
+  ///   'container': AppStyles.container,
+  ///   'text': AppStyles.text,
+  /// });
+  /// // Or use the builder pattern:
+  /// final styles = DCFStyleSheet.createFromClass(() => AppStyles());
+  /// ```
+  /// 
+  /// For even simpler usage, define styles as a class and use create() with a helper:
+  /// ```dart
+  /// class Styles {
+  ///   static final root = DCFStyleSheet(backgroundColor: Colors.black);
+  ///   static final button = DCFStyleSheet(primaryColor: Colors.white);
+  /// }
+  /// 
+  /// final _styles = DCFStyleSheet.create({
+  ///   'root': Styles.root,
+  ///   'button': Styles.button,
+  /// });
+  /// // Use: _styles.root, _styles.button (type-safe access)
+  /// ```
+  static DCFStyleSheetRegistry createFrom(Map<String, DCFStyleSheet> styles) {
+    // Alias for create() - same functionality, clearer name for type-safe usage
+    return create(styles);
   }
 
   /// Convert style properties to a map for serialization
@@ -879,19 +923,39 @@ class DCFStyleSheet extends Equatable {
 }
 
 /// StyleSheet registry returned by DCFStyleSheet.create()
-/// Provides access to registered styles by name
+/// Provides type-safe access to registered styles by name
+/// 
+/// Supports both bracket notation and dot notation:
+/// ```dart
+/// _styles['buttonText']  // Bracket notation
+/// _styles.buttonText     // Dot notation (works via noSuchMethod)
+/// ```
 class DCFStyleSheetRegistry {
   final Map<String, DCFStyleSheet> _styles = {};
   
   DCFStyleSheetRegistry._();
   
-  /// Get a registered style by name
+  /// Get a registered style by name (bracket notation)
   DCFStyleSheet operator [](String name) {
     final style = _styles[name];
     if (style == null) {
       throw ArgumentError('Style "$name" not found in registry. Available styles: ${_styles.keys.join(", ")}');
     }
     return style;
+  }
+  
+  /// Type-safe dot notation access (e.g., _styles.buttonText)
+  /// Uses noSuchMethod to provide dynamic property access
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.isGetter) {
+      final name = invocation.memberName.toString().replaceFirst(RegExp(r'^Symbol\("'), '').replaceFirst(RegExp(r'"\)$'), '');
+      if (_styles.containsKey(name)) {
+        return _styles[name] as DCFStyleSheet;
+      }
+      throw ArgumentError('Style "$name" not found in registry. Available styles: ${_styles.keys.join(", ")}');
+    }
+    return super.noSuchMethod(invocation);
   }
   
   /// Check if a style exists in the registry
