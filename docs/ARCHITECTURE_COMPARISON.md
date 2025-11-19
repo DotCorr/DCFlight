@@ -443,11 +443,15 @@ class DCFButtonComponent : DCFComponent() {
         return button
     }
     
-    override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-        val button = view as Button
-        if (hasPropChanged("title", existingProps, props)) {
-            props["title"]?.let { button.text = it.toString() }
-        }
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+        val button = view as? Button ?: return false
+        
+        // Framework automatically merges props
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        mergedProps["title"]?.let { button.text = it.toString() }
         return true
     }
 }

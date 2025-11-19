@@ -40,8 +40,13 @@ if let primaryColor = props["primaryColor"] as? String {
 
 **Android:**
 ```kotlin
-// In createView and updateViewInternal
-props["primaryColor"]?.let { color ->
+// In createView and updateView
+// Framework automatically merges props - use mergedProps
+val existingProps = getStoredProps(view)
+val mergedProps = mergeProps(existingProps, props)
+storeProps(view, mergedProps)
+
+mergedProps["primaryColor"]?.let { color ->
     val colorInt = ColorUtilities.parseColor(color.toString())
     if (colorInt != null) {
         // Apply color
@@ -108,13 +113,18 @@ public protocol DCFComponent {
 ```kotlin
 abstract class DCFComponent {
     abstract fun createView(context: Context, props: Map<String, Any?>): View  // ✅ Required
-    fun updateView(view: View, props: Map<String, Any?>): Boolean  // ✅ Final - framework handles
-    protected abstract fun updateViewInternal(...): Boolean  // ✅ Required
+    open fun updateView(view: View, props: Map<String, Any?>): Boolean  // ✅ Override this - framework handles prop merging
     abstract fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF  // ✅ Required
     abstract fun viewRegisteredWithShadowTree(view: View, nodeId: String)  // ✅ Required
     abstract fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any?  // ✅ Required
 }
 ```
+
+**Key Changes:**
+- ✅ `updateView` is now `open` (override it directly)
+- ✅ **No `updateViewInternal`** - Removed, use `updateView` instead
+- ✅ **Automatic prop merging** - Framework merges new props with existing stored props
+- ✅ **All properties preserved** - Text alignment, font size, colors automatically preserved
 
 **Missing any method = Component won't compile!**
 
@@ -218,35 +228,48 @@ iOS UIKit naturally preserves state:
 // No framework intervention needed
 ```
 
-### Android: Use Framework Helpers
+### Android: Automatic Prop Merging
 
-**For stateful components (Slider, SegmentedControl, etc.):**
+**Framework automatically merges props - no glue code needed:**
 
 ```kotlin
-override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-    val seekBar = view as SeekBar
+override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+    val seekBar = view as? SeekBar ?: return false
     
-    // ✅ Use hasPropChanged() to avoid unnecessary updates
-    if (hasPropChanged("value", existingProps, props)) {
-        props["value"]?.let { seekBar.progress = (it as Float * 100).toInt() }
+    // ✅ Framework automatically merges props with existing stored props
+    val existingProps = getStoredProps(view)
+    val mergedProps = mergeProps(existingProps, props)
+    storeProps(view, mergedProps)
+    
+    val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+    
+    // ✅ All properties are preserved automatically - just update directly
+    mergedProps["value"]?.let {
+        val value = when (it) {
+            is Number -> it.toFloat()
+            is String -> it.toFloatOrNull() ?: 0f
+            else -> 0f
+        }
+        seekBar.progress = (value * 100).toInt()
     }
     
-    // ✅ Use onlySemanticColorsChanged() for theme changes
-    if (onlySemanticColorsChanged(existingProps, props)) {
-        // Read state from view (not props - might be stale)
-        val value = seekBar.progress / 100f
-        updateColors(seekBar, props)
-        // State preserved!
+    // ✅ Update semantic colors (MUST support)
+    ColorUtilities.getColor("minimumTrackColor", "primaryColor", nonNullProps)?.let { colorInt ->
+        seekBar.progressTintList = ColorStateList.valueOf(colorInt)
     }
+    
+    // ✅ Apply styles
+    seekBar.applyStyles(nonNullProps)
     
     return true
 }
 ```
 
-**If you don't use these helpers:**
-- ❌ Component might reset on theme change
-- ❌ Unnecessary updates (performance issues)
-- ❌ State loss during updates
+**Key Benefits:**
+- ✅ **No glue code** - No `hasPropChanged()` or `updateViewInternal`
+- ✅ **All properties preserved** - Text alignment, font size, colors automatically preserved
+- ✅ **Simpler code** - Just update properties directly
+- ✅ **Framework-level fix** - Works automatically for all components
 
 ---
 
@@ -284,9 +307,16 @@ func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
 
 **Android:**
 ```kotlin
-override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+override fun updateView(view: View, props: Map<String, Any?>): Boolean {
     val button = view as? Button ?: return false  // ✅ Return false if wrong type
-    // ... update logic
+    
+    // Framework automatically merges props
+    val existingProps = getStoredProps(view)
+    val mergedProps = mergeProps(existingProps, props)
+    storeProps(view, mergedProps)
+    
+    // ... update logic with mergedProps
+    
     return true  // ✅ Return true if updated
 }
 ```
@@ -325,9 +355,9 @@ Before submitting a component, verify:
 - [ ] `propagateEvent()` called correctly
 
 ### State Preservation (Android)
-- [ ] Uses `hasPropChanged()` for conditional updates
-- [ ] Uses `onlySemanticColorsChanged()` for theme changes
-- [ ] Reads state from view when only colors change
+- [ ] Framework automatically merges props - no manual prop comparison needed
+- [ ] All properties are preserved automatically (text alignment, font size, colors, etc.)
+- [ ] Uses `mergedProps` from framework's automatic merging
 
 ### Component References (iOS)
 - [ ] Uses strong component references (not weak) for touchable components
@@ -395,13 +425,13 @@ DCFComponentRegistry.shared.registerComponent("Button", componentClass: DCFButto
 DCFComponentRegistry.shared.registerComponent("Button", DCFButtonComponent::class.java)
 ```
 
-### 3. Missing State Preservation (Android)
+### 3. Missing Prop Merging (Android)
 
 **❌ Wrong:**
 ```kotlin
-override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
+override fun updateView(view: View, props: Map<String, Any?>): Boolean {
     val seekBar = view as SeekBar
-    // Always updates, even if value didn't change
+    // Only uses new props - loses existing properties (text alignment, font size, etc.)
     props["value"]?.let { seekBar.progress = (it as Float * 100).toInt() }
     return true
 }
@@ -409,12 +439,29 @@ override fun updateViewInternal(view: View, props: Map<String, Any>, existingPro
 
 **✅ Correct:**
 ```kotlin
-override fun updateViewInternal(view: View, props: Map<String, Any>, existingProps: Map<String, Any>): Boolean {
-    val seekBar = view as SeekBar
-    // Only update if value changed
-    if (hasPropChanged("value", existingProps, props)) {
-        props["value"]?.let { seekBar.progress = (it as Float * 100).toInt() }
+override fun updateView(view: View, props: Map<String, Any?>): Boolean {
+    val seekBar = view as? SeekBar ?: return false
+    
+    // ✅ Framework automatically merges props with existing stored props
+    val existingProps = getStoredProps(view)
+    val mergedProps = mergeProps(existingProps, props)
+    storeProps(view, mergedProps)
+    
+    val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+    
+    // ✅ All properties preserved - update directly
+    mergedProps["value"]?.let {
+        val value = when (it) {
+            is Number -> it.toFloat()
+            is String -> it.toFloatOrNull() ?: 0f
+            else -> 0f
+        }
+        seekBar.progress = (value * 100).toInt()
     }
+    
+    // ✅ Apply styles (all properties preserved)
+    seekBar.applyStyles(nonNullProps)
+    
     return true
 }
 ```

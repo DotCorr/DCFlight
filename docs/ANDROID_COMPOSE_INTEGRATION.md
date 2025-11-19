@@ -89,19 +89,22 @@ class DCFTextComponent : DCFComponent() {
         return wrapper
     }
     
-    override fun updateViewInternal(
-        view: View, 
-        props: Map<String, Any>, 
-        existingProps: Map<String, Any>
-    ): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val wrapper = view as? DCFComposeWrapper ?: return false
         val composeView = wrapper.composeView
         
-        // Update Compose content
-        updateComposeContent(composeView, props)
+        // CRITICAL: Framework automatically merges props with existing stored props
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(wrapper, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+        
+        // Update Compose content with merged props
+        updateComposeContent(composeView, mergedProps)
         
         // Update styles
-        wrapper.applyStyles(props)
+        wrapper.applyStyles(nonNullProps)
         
         return true
     }
@@ -263,18 +266,22 @@ class DCFTextComponent : DCFComponent() {
         return wrapper
     }
     
-    override fun updateViewInternal(
-        view: View, 
-        props: Map<String, Any>, 
-        existingProps: Map<String, Any>
-    ): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val wrapper = view as? DCFComposeWrapper ?: return false
         val composeView = wrapper.composeView
         
-        // Update Compose content
-        updateComposeContent(composeView, props)
+        // CRITICAL: Framework automatically merges props with existing stored props
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(wrapper, mergedProps)
         
-        wrapper.applyStyles(props)
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+        
+        // Update Compose content with merged props
+        updateComposeContent(composeView, mergedProps)
+        
+        // Update styles
+        wrapper.applyStyles(nonNullProps)
         
         return true
     }
