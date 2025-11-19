@@ -115,7 +115,7 @@ class DCFViewManager private constructor() {
         }
 
         YogaShadowTree.shared.updateNodeLayoutProps(viewId.toString(), props)
-        
+
         // CRITICAL: Call DCFLayoutManager.registerView to trigger viewRegisteredWithShadowTree
         // This notifies the component that the view is registered and ready
         DCFLayoutManager.shared.registerView(view, viewId.toString(), viewType, componentInstance)

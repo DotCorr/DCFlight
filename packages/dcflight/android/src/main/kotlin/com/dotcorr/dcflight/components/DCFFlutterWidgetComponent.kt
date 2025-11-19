@@ -144,16 +144,24 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             
             // Post to main thread to ensure view is laid out
             post {
-                // Convert frame to window coordinates
+                // Replicate iOS behavior: use bounds (content area) converted to window coordinates
+                // On iOS: convert(bounds, to: window) where bounds is (0, 0, width, height) in view's coordinate system
+                // On Android: getLocationInWindow gives position, then use view's actual size
                 val location = IntArray(2)
                 getLocationInWindow(location)
                 
+                // Use bounds (content area) - equivalent to iOS bounds.width/height
+                // Use measured dimensions if available (actual rendered size), otherwise use layout dimensions
+                val boundsWidth = if (measuredWidth > 0) measuredWidth else (right - left)
+                val boundsHeight = if (measuredHeight > 0) measuredHeight else (bottom - top)
+                
+                // Convert bounds to window coordinates (same as iOS convert(bounds, to: window))
                 val x = location[0].toDouble()
                 val y = location[1].toDouble()
-                val width = width.toDouble()
-                val height = height.toDouble()
+                val width = boundsWidth.toDouble()
+                val height = boundsHeight.toDouble()
                 
-                android.util.Log.d(TAG, "🎨 onReady - frame: ($x, $y, $width, $height)")
+                android.util.Log.d(TAG, "🎨 onReady - frame: ($x, $y, $width, $height), bounds: ($boundsWidth x $boundsHeight)")
                 
                 // Only call renderWidget if we have valid dimensions
                 // If frame is invalid, updateWidgetFrame will be called later with correct frame
@@ -186,8 +194,14 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         }
         
         fun updateFlutterWidgetFrame() {
-            if (width <= 0 || height <= 0) {
-                android.util.Log.d(TAG, "⚠️ updateFlutterWidgetFrame: Invalid dimensions ($width x $height), skipping")
+            // Replicate iOS behavior: use bounds (content area) converted to window coordinates
+            // On iOS: convert(bounds, to: window) where bounds is (0, 0, width, height) in view's coordinate system
+            // On Android: getLocationInWindow gives position, then use view's actual size
+            val boundsWidth = if (measuredWidth > 0) measuredWidth else (right - left)
+            val boundsHeight = if (measuredHeight > 0) measuredHeight else (bottom - top)
+            
+            if (boundsWidth <= 0 || boundsHeight <= 0) {
+                android.util.Log.d(TAG, "⚠️ updateFlutterWidgetFrame: Invalid dimensions ($boundsWidth x $boundsHeight), skipping")
                 return
             }
             
@@ -201,16 +215,16 @@ class DCFFlutterWidgetComponent : DCFComponent() {
                 return
             }
             
-            // Convert frame to window coordinates
+            // Convert bounds to window coordinates (same as iOS convert(bounds, to: window))
             val location = IntArray(2)
             getLocationInWindow(location)
             
             val x = location[0].toDouble()
             val y = location[1].toDouble()
-            val width = width.toDouble()
-            val height = height.toDouble()
+            val width = boundsWidth.toDouble()
+            val height = boundsHeight.toDouble()
             
-            android.util.Log.d(TAG, "🎨 Updating widget frame - viewId: $viewId, frame: ($x, $y, $width, $height)")
+            android.util.Log.d(TAG, "🎨 Updating widget frame - viewId: $viewId, frame: ($x, $y, $width, $height), bounds: ($boundsWidth x $boundsHeight)")
             
             // Call Dart method channel to update frame
             methodChannel?.invokeMethod("updateWidgetFrame", mapOf(

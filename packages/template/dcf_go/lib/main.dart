@@ -1,86 +1,72 @@
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:o3d/o3d.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter/material.dart' show CircularProgressIndicator, AlwaysStoppedAnimation, Color, Material, Theme, ThemeData;
 
 void main() async {
   DCFLogger.setLevel(DCFLogLevel.info);
-  DCFLogger.info('Starting Globe Demo App...', 'App');
+  DCFLogger.info('Starting Flutter Widget Demo App...', 'App');
   
-  await DCFlight.go(app: GlobeDemoApp());
+  await DCFlight.go(app: FlutterWidgetDemoApp());
 }
 
-class GlobeDemoApp extends DCFStatefulComponent {
+class FlutterWidgetDemoApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    final isRotationEnabled = useState<bool>(true);
+    final counter = useState<int>(0);
+    final colorIndex = useState<int>(0);
     
-    // Use useRef to store the O3D controller - persists across renders
-    final controllerRef = useRef<O3DController?>(null);
-    
-    // Initialize controller synchronously during render if not already initialized
-    if (controllerRef.current == null) {
-      controllerRef.current = O3DController();
-      print('🌍 O3D: Controller initialized');
-    }
-    
-    // Update auto-rotate when enabled state changes
-    useEffect(() {
-      if (controllerRef.current != null) {
-        if (isRotationEnabled.state) {
-          // Auto-rotate is handled by O3D's autoRotate property
-          print('🌍 O3D: Auto-rotate enabled');
-        } else {
-          print('🌍 O3D: Auto-rotate disabled');
-        }
-      }
-      return null;
-    }, dependencies: [isRotationEnabled.state]);
+    // Color palette that cycles
+    final colors = [
+      const Color(0xFF2196F3), // Blue
+      const Color(0xFF4CAF50), // Green
+      const Color(0xFFFF9800), // Orange
+      const Color(0xFFE91E63), // Pink
+      const Color(0xFF9C27B0), // Purple
+    ];
     
     return DCFView(
       layout: DCFLayout(
-        paddingTop: 100,
         flex: 1,
       ),
       styleSheet: DCFStyleSheet(
         backgroundColor: DCFColors.black,
       ),
       children: [
-       
+        // Flutter Widget Adaptor - Custom Paint Example
         WidgetToDCFAdaptor.builder(
           widgetBuilder: () {
-            final controller = controllerRef.current;
-            print('🌍 O3D widgetBuilder called - controller: ${controller != null ? "exists" : "null"}, autoRotate: ${isRotationEnabled.state}');
-            
-            if (controller == null) {
-              print('⚠️ O3D: Controller is null, showing loading indicator');
-              return Container(
-                color: DCFColors.black,
+            final currentColor = colors[colorIndex.state % colors.length];
+
+            return Container(
+              color: DCFColors.black,
+              child: CustomPaint(
+                painter: _CounterPainter(
+                  count: counter.state,
+                  color: currentColor,
+                ),
                 child: Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(DCFColors.white),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${counter.state}',
+                        style: TextStyle(
+                          fontSize: 72,
+                          fontWeight: FontWeight.bold,
+                          color: currentColor,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Tap to increment',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: DCFColors.white.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              );
-            }
-            
-            print('✅ O3D: Controller exists, rendering O3D with network model');
-            
-            // O3D uses WebView internally - plugins are now registered with our custom engine
-            // The widget will rebuild when isRotationEnabled changes (ValueKey ensures this)
-            return 
-              Container(
-                  color: DCFColors.black,
-                  width: double.infinity,
-                  height: double.infinity,
-                  child: O3D.network(
-                    key: ValueKey('o3d_${isRotationEnabled.state}'),
-                    src: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-                    controller: controller,
-                    autoRotate: isRotationEnabled.state,
-                    autoPlay: true,
-                    backgroundColor: DCFColors.black,
               ),
             );
           },
@@ -95,9 +81,8 @@ class GlobeDemoApp extends DCFStatefulComponent {
         // Controls Panel
         DCFView(
           layout: DCFLayout(
-            width:'100%',
-                flexWrap: DCFWrap.wrap,
-
+            width: '100%',
+            flexWrap: DCFWrap.wrap,
             padding: 20,
           ),
           styleSheet: DCFStyleSheet(
@@ -107,7 +92,7 @@ class GlobeDemoApp extends DCFStatefulComponent {
           ),
           children: [
             DCFText(
-              content: "3D Model Controls",
+              content: "Flutter Widget Demo",
               textProps: DCFTextProps(
                 fontSize: 20,
                 fontWeight: DCFFontWeight.bold,
@@ -119,8 +104,8 @@ class GlobeDemoApp extends DCFStatefulComponent {
                 marginBottom: 15,
               ),
             ),
-            
-            // Auto-rotate toggle
+
+            // Counter Controls
             DCFView(
               layout: DCFLayout(
                 marginHorizontal: 10,
@@ -132,7 +117,7 @@ class GlobeDemoApp extends DCFStatefulComponent {
               ),
               children: [
                 DCFText(
-                  content: "Auto-Rotate:",
+                  content: "Counter:",
                   textProps: DCFTextProps(
                     fontSize: 16,
                   ),
@@ -140,12 +125,100 @@ class GlobeDemoApp extends DCFStatefulComponent {
                     primaryColor: DCFTheme.current.textColor,
                   ),
                   layout: DCFLayout(marginRight: 10),
+            ),
+                DCFView(
+                  layout: DCFLayout(
+                    flexDirection: DCFFlexDirection.row,
+                    gap: 10,
+                  ),
+                  children: [
+                    DCFButton(
+                      onPress: (DCFButtonPressData data) {
+                        counter.setState(counter.state - 1);
+                      },
+                      styleSheet: DCFStyleSheet(
+                        backgroundColor: const Color(0xFFFF5722),
+                        borderRadius: 8,
+                      ),
+                      layout: DCFLayout(
+                        width: 50,
+                        height: 40,
+                      ),
+                      children: [
+                        DCFText(
+                          content: "-",
+                          textProps: DCFTextProps(
+                            fontSize: 20,
+                            fontWeight: DCFFontWeight.bold,
+                          ),
+              styleSheet: DCFStyleSheet(
+                            primaryColor: DCFColors.white,
+              ),
+            ),
+                      ],
+                    ),
+                    DCFButton(
+                      onPress: (DCFButtonPressData data) {
+                        counter.setState(counter.state + 1);
+                      },
+                      styleSheet: DCFStyleSheet(
+                        backgroundColor: const Color(0xFF4CAF50),
+                        borderRadius: 8,
+                      ),
+              layout: DCFLayout(
+                        width: 50,
+                height: 40,
+                      ),
+                      children: [
+                        DCFText(
+                          content: "+",
+                          textProps: DCFTextProps(
+                            fontSize: 20,
+                            fontWeight: DCFFontWeight.bold,
+                          ),
+              styleSheet: DCFStyleSheet(
+                            primaryColor: DCFColors.white,
+              ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                DCFToggle(
-                  value: isRotationEnabled.state,
-                  onValueChange: (DCFToggleValueData data) {
-                    isRotationEnabled.setState(data.value);
+              ],
+            ),
+            
+            // Color Change Button
+            DCFView(
+              layout: DCFLayout(
+                marginHorizontal: 10,
+                width: "100%",
+                marginBottom: 15,
+              ),
+              children: [
+                DCFButton(
+                  onPress: (DCFButtonPressData data) {
+                    colorIndex.setState(colorIndex.state + 1);
                   },
+                      styleSheet: DCFStyleSheet(
+                    backgroundColor: colors[colorIndex.state % colors.length],
+                    borderRadius: 8,
+                  ),
+                  layout: DCFLayout(
+                    width: "100%",
+                    height: 40,
+                ),
+                  children: [
+                    DCFText(
+                      content: "Change Color",
+                      textProps: DCFTextProps(
+                        fontSize: 16,
+                        fontWeight: DCFFontWeight.bold,
+                      ),
+                      styleSheet: DCFStyleSheet(
+                        primaryColor: DCFColors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -158,22 +231,64 @@ class GlobeDemoApp extends DCFStatefulComponent {
               styleSheet: DCFStyleSheet(
                 backgroundColor: const Color(0x3300FF00),
                 borderRadius: 8,
-              ),
-              children: [
-                DCFText(
-                  content: "Using WidgetToDCFAdaptor\nO3D 3D Model Viewer\nInteractive glTF/GLB rendering",
+                ),
+                  children: [
+                    DCFText(
+                  content: "Using WidgetToDCFAdaptor\nCustomPaint with Flutter\nState management working\nInteractive widgets",
                   textProps: DCFTextProps(
                     fontSize: 12,
                   ),
-                  styleSheet: DCFStyleSheet(
+                      styleSheet: DCFStyleSheet(
                     primaryColor: DCFColors.green,
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ],
-        ),
-      ],
-    );
+        );
+  }
+}
+
+class _CounterPainter extends CustomPainter {
+  final int count;
+  final Color color;
+  
+  _CounterPainter({
+    required this.count,
+    required this.color,
+  });
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width < size.height ? size.width : size.height) / 3;
+    
+    // Draw animated circles based on count
+    for (int i = 0; i < count.abs().clamp(0, 20); i++) {
+      final circleRadius = radius * 0.3;
+      final x = center.dx + (radius * 0.7) * (i.isEven ? 1 : -1) * (i % 3 == 0 ? 0.5 : 1.0);
+      final y = center.dy + (radius * 0.7) * (i % 2 == 0 ? 1 : -1) * (i % 3 == 1 ? 0.5 : 1.0);
+      
+      final paint = Paint()
+        ..color = color.withOpacity(0.3 + (i % 3) * 0.2)
+        ..style = PaintingStyle.fill;
+      
+      canvas.drawCircle(Offset(x, y), circleRadius, paint);
+    }
+    
+    // Draw main circle
+    final mainPaint = Paint()
+      ..color = color.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    
+    canvas.drawCircle(center, radius, mainPaint);
+  }
+  
+  @override
+  bool shouldRepaint(_CounterPainter oldDelegate) {
+    return oldDelegate.count != count || oldDelegate.color != color;
   }
 }

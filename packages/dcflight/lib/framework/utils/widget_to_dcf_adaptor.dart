@@ -6,7 +6,6 @@
  */
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter/material.dart' show MediaQuery;
 import 'package:dcflight/dcflight.dart';
 import 'package:dcflight/framework/utils/flutter_widget_renderer.dart';
 
@@ -59,25 +58,13 @@ class WidgetToDCFAdaptor extends DCFStatelessComponent {
     // This ensures the widget receives proper constraints and handles 0x0 initial case
     final widget = LayoutBuilder(
       builder: (context, constraints) {
-        // Get screen dimensions as fallback for initial 0x0 constraints
-        final screenWidth = MediaQuery.of(context).size.width;
-        final screenHeight = MediaQuery.of(context).size.height;
-        
-        // Ensure we have valid constraints (handle initial 0x0 case)
-        final width = constraints.maxWidth.isFinite && constraints.maxWidth > 0 
-            ? constraints.maxWidth 
-            : screenWidth;
-        final height = constraints.maxHeight.isFinite && constraints.maxHeight > 0 
-            ? constraints.maxHeight 
-            : screenHeight;
-        
-        // Wrap user's widget in SizedBox with clipping to prevent overflow
-        // This ensures content never spills outside the widget bounds
-        return SizedBox(
-          width: width,
-          height: height,
-          child: ClipRect(
-            clipBehavior: Clip.hardEdge,
+        // Wrap user's widget in SizedBox.expand to fill available space
+        // This ensures widgets like O3D (WebView) expand to fill the container
+        // The constraints from Positioned widget provide the correct size
+        // ClipRect prevents overflow outside widget bounds
+        return ClipRect(
+          clipBehavior: Clip.hardEdge,
+          child: SizedBox.expand(
             child: userWidget,
           ),
         );

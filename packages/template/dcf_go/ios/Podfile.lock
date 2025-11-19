@@ -17,11 +17,6 @@ PODS:
   - Flutter (1.0.0)
   - SVGKit (3.0.0):
     - CocoaLumberjack (~> 3.0)
-  - url_launcher_ios (0.0.1):
-    - Flutter
-  - webview_flutter_wkwebview (0.0.1):
-    - Flutter
-    - FlutterMacOS
   - Yoga (3.0.4)
 
 DEPENDENCIES:
@@ -30,8 +25,6 @@ DEPENDENCIES:
   - dcf_screens (from `.symlinks/plugins/dcf_screens/ios`)
   - dcflight (from `.symlinks/plugins/dcflight/ios`)
   - Flutter (from `Flutter`)
-  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
-  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
   trunk:
@@ -50,10 +43,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/dcflight/ios"
   Flutter:
     :path: Flutter
-  url_launcher_ios:
-    :path: ".symlinks/plugins/url_launcher_ios/ios"
-  webview_flutter_wkwebview:
-    :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
   CocoaLumberjack: 5644158777912b7de7469fa881f8a3f259c2512a
@@ -63,8 +52,6 @@ SPEC CHECKSUMS:
   dcflight: f75dc1fdfa716b20f5536599081f3d15dd8b81b4
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   SVGKit: 1ad7513f8c74d9652f94ed64ddecda1a23864dea
-  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
-  webview_flutter_wkwebview: 8ebf4fded22593026f7dbff1fbff31ea98573c8d
   Yoga: 0f46dad0c6ef4ea4d9bfa73c3155d84dfdcad0a6
 
 PODFILE CHECKSUM: e7ba086104a4dcba0aede791a6d2271fb254b2fd

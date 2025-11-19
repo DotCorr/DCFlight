@@ -266,11 +266,14 @@ class FlutterWidgetRenderer {
               // Use frame information if available, otherwise fill screen
               double left, top, widgetWidth, widgetHeight;
               if (currentFrame != null && currentFrame.width > 0 && currentFrame.height > 0) {
-                left = currentFrame.x;
-                top = currentFrame.y;
+                // CRITICAL: Position widget at (0, 0) relative to FlutterView, not window coordinates
+                // The FlutterView is already positioned at (currentFrame.x, currentFrame.y) in window coordinates
+                // So the widget inside the FlutterView should be at (0, 0) relative to the FlutterView
+                left = 0;
+                top = 0;
                 widgetWidth = currentFrame.width;
                 widgetHeight = currentFrame.height;
-                print('🎨 FlutterWidgetRenderer: Using CURRENT frame: ($left, $top, $widgetWidth, $widgetHeight)');
+                print('🎨 FlutterWidgetRenderer: Using CURRENT frame: widget at (0, 0) relative to FlutterView, size ($widgetWidth, $widgetHeight), FlutterView at window ($currentFrame.x, $currentFrame.y)');
               } else {
                 // Fallback to screen size
                 try {
@@ -314,9 +317,8 @@ class FlutterWidgetRenderer {
                     width: widgetWidth,
                     height: widgetHeight,
                     child: ClipRect(
-                      child: SizedBox(
-                        width: widgetWidth,
-                        height: widgetHeight,
+                      clipBehavior: Clip.hardEdge,
+                      child: SizedBox.expand(
                         child: host.widget,
                       ),
                     ),
