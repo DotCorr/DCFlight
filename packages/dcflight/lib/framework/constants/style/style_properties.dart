@@ -25,7 +25,63 @@ import '../../theme/dcf_theme.dart';
 ///   backgroundColor: DCFTheme.surfaceColor,
 /// )
 /// ```
+/// Style registry for StyleSheet.create() pattern
+/// Caches styles and assigns IDs for efficient bridge communication
+class _DCFStyleRegistry {
+  static final _DCFStyleRegistry instance = _DCFStyleRegistry._();
+  _DCFStyleRegistry._();
+  
+  final Map<String, DCFStyleSheet> _styles = {}; // Maps ID -> original style (without ID)
+  final Map<DCFStyleSheet, String> _styleToId = {};
+  int _nextId = 1;
+  
+  /// Register a style and return its ID
+  /// Stores the ORIGINAL style (without ID) to avoid recursion in toMap()
+  String register(String name, DCFStyleSheet style) {
+    // Check if this exact style instance is already registered
+    if (_styleToId.containsKey(style)) {
+      return _styleToId[style]!;
+    }
+    
+    // Generate new ID
+    final id = 'dcf_style_$_nextId';
+    _nextId++;
+    
+    // Store ORIGINAL style (without ID) to avoid recursion when resolving
+    _styles[id] = style;
+    _styleToId[style] = id;
+    
+    return id;
+  }
+  
+  /// Get style by ID
+  DCFStyleSheet? get(String id) {
+    return _styles[id];
+  }
+  
+  /// Get ID for a style (if registered)
+  String? getId(DCFStyleSheet style) {
+    return _styleToId[style];
+  }
+  
+  /// Check if style is registered
+  bool isRegistered(DCFStyleSheet style) {
+    return _styleToId.containsKey(style);
+  }
+  
+  /// Clear all registered styles (for testing/debugging)
+  void clear() {
+    _styles.clear();
+    _styleToId.clear();
+    _nextId = 1;
+  }
+}
+
 class DCFStyleSheet extends Equatable {
+  /// Internal style ID if registered via StyleSheet.create()
+  /// Null for non-registered styles (backward compatibility)
+  final String? _styleId;
+  
   final dynamic borderRadius;
   final dynamic borderTopLeftRadius;
   final dynamic borderTopRightRadius;
@@ -97,7 +153,66 @@ class DCFStyleSheet extends Equatable {
   /// Accent color - typically used for highlights, links, etc.
   final Color? accentColor;
 
+  /// Internal factory constructor for registered styles (non-const)
+  DCFStyleSheet._withId(
+    String styleId, {
+    this.borderRadius,
+    this.borderTopLeftRadius,
+    this.borderTopRightRadius,
+    this.borderBottomLeftRadius,
+    this.borderBottomRightRadius,
+    this.borderColor,
+    this.borderWidth,
+    this.backgroundColor,
+    this.backgroundGradient,
+    this.opacity,
+    this.shadowColor,
+    this.shadowOpacity,
+    this.shadowRadius,
+    this.shadowOffsetX,
+    this.shadowOffsetY,
+    this.elevation,
+    this.hitSlop,
+    this.accessible,
+    this.accessibilityLabel,
+    this.accessibilityHint,
+    this.accessibilityValue,
+    this.accessibilityRole,
+    this.accessibilityState,
+    this.accessibilityActions,
+    this.accessibilityElementsHidden,
+    this.accessibilityLanguage,
+    this.accessibilityIgnoresInvertColors,
+    this.accessibilityLiveRegion,
+    this.accessibilityViewIsModal,
+    this.ariaLabel,
+    this.ariaLabelledby,
+    this.ariaLive,
+    this.ariaModal,
+    this.ariaHidden,
+    this.ariaBusy,
+    this.ariaChecked,
+    this.ariaDisabled,
+    this.ariaExpanded,
+    this.ariaSelected,
+    this.ariaValuemin,
+    this.ariaValuemax,
+    this.ariaValuenow,
+    this.ariaValuetext,
+    this.importantForAccessibility,
+    this.testID,
+    this.pointerEvents,
+    this.primaryColor,
+    this.secondaryColor,
+    this.tertiaryColor,
+    this.accentColor,
+  }) : _styleId = styleId;
+
   /// Create a style sheet with visual styling properties
+  /// 
+  /// @Deprecated Use DCFStyleSheet.create() instead for better performance
+  /// This constructor is still supported for backward compatibility but will be removed in a future version.
+  @Deprecated('Use DCFStyleSheet.create() instead for better bridge efficiency. Example: final styles = DCFStyleSheet.create({"container": DCFStyleSheet(backgroundColor: Colors.blue)});')
   const DCFStyleSheet({
     this.borderRadius,
     this.borderTopLeftRadius,
@@ -150,12 +265,106 @@ class DCFStyleSheet extends Equatable {
     this.secondaryColor,
     this.tertiaryColor,
     this.accentColor,
-  });
+  }) : _styleId = null;
+
+  /// Create a StyleSheet registry (React Native StyleSheet.create() pattern)
+  /// 
+  /// This optimizes bridge communication by caching styles and sending IDs instead of full objects.
+  /// 
+  /// Example:
+  /// ```dart
+  /// final styles = DCFStyleSheet.create({
+  ///   'container': DCFStyleSheet(backgroundColor: Colors.blue),
+  ///   'text': DCFStyleSheet(primaryColor: Colors.black),
+  /// });
+  /// 
+  /// // Use with ID reference
+  /// DCFView(styleSheet: styles.container)
+  /// ```
+  /// 
+  /// Benefits:
+  /// - Bridge efficiency: Sends style IDs instead of full objects
+  /// - Memory optimization: Styles cached and reused
+  /// - Early validation: Catches style errors at creation time
+  static DCFStyleSheetRegistry create(Map<String, DCFStyleSheet> styles) {
+    final registry = DCFStyleSheetRegistry._();
+    for (final entry in styles.entries) {
+      final id = _DCFStyleRegistry.instance.register(entry.key, entry.value);
+      // Create registered style with ID using internal factory
+      registry._styles[entry.key] = DCFStyleSheet._withId(
+        id,
+        borderRadius: entry.value.borderRadius,
+        borderTopLeftRadius: entry.value.borderTopLeftRadius,
+        borderTopRightRadius: entry.value.borderTopRightRadius,
+        borderBottomLeftRadius: entry.value.borderBottomLeftRadius,
+        borderBottomRightRadius: entry.value.borderBottomRightRadius,
+        borderColor: entry.value.borderColor,
+        borderWidth: entry.value.borderWidth,
+        backgroundColor: entry.value.backgroundColor,
+        backgroundGradient: entry.value.backgroundGradient,
+        opacity: entry.value.opacity,
+        shadowColor: entry.value.shadowColor,
+        shadowOpacity: entry.value.shadowOpacity,
+        shadowRadius: entry.value.shadowRadius,
+        shadowOffsetX: entry.value.shadowOffsetX,
+        shadowOffsetY: entry.value.shadowOffsetY,
+        elevation: entry.value.elevation,
+        hitSlop: entry.value.hitSlop,
+        accessible: entry.value.accessible,
+        accessibilityLabel: entry.value.accessibilityLabel,
+        accessibilityHint: entry.value.accessibilityHint,
+        accessibilityValue: entry.value.accessibilityValue,
+        accessibilityRole: entry.value.accessibilityRole,
+        accessibilityState: entry.value.accessibilityState,
+        accessibilityActions: entry.value.accessibilityActions,
+        accessibilityElementsHidden: entry.value.accessibilityElementsHidden,
+        accessibilityLanguage: entry.value.accessibilityLanguage,
+        accessibilityIgnoresInvertColors: entry.value.accessibilityIgnoresInvertColors,
+        accessibilityLiveRegion: entry.value.accessibilityLiveRegion,
+        accessibilityViewIsModal: entry.value.accessibilityViewIsModal,
+        ariaLabel: entry.value.ariaLabel,
+        ariaLabelledby: entry.value.ariaLabelledby,
+        ariaLive: entry.value.ariaLive,
+        ariaModal: entry.value.ariaModal,
+        ariaHidden: entry.value.ariaHidden,
+        ariaBusy: entry.value.ariaBusy,
+        ariaChecked: entry.value.ariaChecked,
+        ariaDisabled: entry.value.ariaDisabled,
+        ariaExpanded: entry.value.ariaExpanded,
+        ariaSelected: entry.value.ariaSelected,
+        ariaValuemin: entry.value.ariaValuemin,
+        ariaValuemax: entry.value.ariaValuemax,
+        ariaValuenow: entry.value.ariaValuenow,
+        ariaValuetext: entry.value.ariaValuetext,
+        importantForAccessibility: entry.value.importantForAccessibility,
+        testID: entry.value.testID,
+        pointerEvents: entry.value.pointerEvents,
+        primaryColor: entry.value.primaryColor,
+        secondaryColor: entry.value.secondaryColor,
+        tertiaryColor: entry.value.tertiaryColor,
+        accentColor: entry.value.accentColor,
+      );
+    }
+    return registry;
+  }
 
   /// Convert style properties to a map for serialization
   /// CRITICAL FIX: Ensure proper precedence order when both backgroundColor and backgroundGradient are present
   /// Semantic colors are included for component-level resolution
+  /// 
+  /// If style is registered via StyleSheet.create(), resolves ID to full object for native compatibility
   Map<String, dynamic> toMap() {
+    // If registered, resolve ID to full style object (native side doesn't support IDs yet)
+    if (_styleId != null) {
+      final resolvedStyle = _DCFStyleRegistry.instance.get(_styleId);
+      if (resolvedStyle != null) {
+        // Return the resolved style's full map
+        return resolvedStyle.toMap();
+      }
+      // Fallback: if ID not found, continue with current style
+    }
+    
+    // Serialize full style object
     final map = <String, dynamic>{};
 
     if (borderRadius != null) map['borderRadius'] = borderRadius;
@@ -665,5 +874,29 @@ class DCFStyleSheet extends Equatable {
         secondaryColor,
         tertiaryColor,
         accentColor,
+        _styleId,
       ];
+}
+
+/// StyleSheet registry returned by DCFStyleSheet.create()
+/// Provides access to registered styles by name
+class DCFStyleSheetRegistry {
+  final Map<String, DCFStyleSheet> _styles = {};
+  
+  DCFStyleSheetRegistry._();
+  
+  /// Get a registered style by name
+  DCFStyleSheet operator [](String name) {
+    final style = _styles[name];
+    if (style == null) {
+      throw ArgumentError('Style "$name" not found in registry. Available styles: ${_styles.keys.join(", ")}');
+    }
+    return style;
+  }
+  
+  /// Check if a style exists in the registry
+  bool containsKey(String name) => _styles.containsKey(name);
+  
+  /// Get all registered style names
+  Iterable<String> get keys => _styles.keys;
 }

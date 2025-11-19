@@ -1,6 +1,11 @@
+import 'dart:ui' as ui;
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show MaterialApp, Scaffold, Colors;
+import 'package:flutter/painting.dart' show MemoryImage;
+import 'package:flutter_earth_globe/flutter_earth_globe.dart';
+import 'package:flutter_earth_globe/flutter_earth_globe_controller.dart';
 
 void main() async {
   DCFLogger.setLevel(DCFLogLevel.info);
@@ -9,146 +14,164 @@ void main() async {
   await DCFlight.go(app: PureNativeAndFlutterMixApp());
 }
 
+// Create style and layout registries outside render() - they don't consume state
+final _styles = DCFStyleSheet.create({
+  'root': DCFStyleSheet(backgroundColor: DCFColors.black),
+  'controlsPanel': DCFStyleSheet(
+    backgroundColor: DCFTheme.current.surfaceColor,
+    borderRadius: 20,
+    elevation: 10,
+  ),
+  'titleText': DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+  'bodyText': DCFStyleSheet(primaryColor: DCFTheme.current.textColor),
+  'decrementButton': DCFStyleSheet(
+    backgroundColor: const Color(0xFFFF5722),
+    borderRadius: 8,
+  ),
+  'incrementButton': DCFStyleSheet(
+    backgroundColor: const Color(0xFF4CAF50),
+    borderRadius: 8,
+  ),
+  'buttonText': DCFStyleSheet(primaryColor: DCFColors.white),
+  'toggleButton': DCFStyleSheet(
+    backgroundColor: const Color(0xFF757575),
+    borderRadius: 8,
+  ),
+  'toggleButtonActive': DCFStyleSheet(
+    backgroundColor: const Color(0xFF4CAF50),
+    borderRadius: 8,
+  ),
+  'infoBox': DCFStyleSheet(
+    backgroundColor: const Color(0x3300FF00),
+    borderRadius: 8,
+  ),
+  'infoText': DCFStyleSheet(primaryColor: DCFColors.green),
+  'emptyStyle': DCFStyleSheet(),
+});
+
+final _layouts = DCFLayout.create({
+  'root': DCFLayout(flex: 1),
+  'flutterWidget': DCFLayout(
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  ),
+  'controlsPanel': DCFLayout(
+    width: '100%',
+    flexWrap: DCFWrap.wrap,
+    padding: 20,
+  ),
+  'title': DCFLayout(marginBottom: 15),
+  'controlSection': DCFLayout(
+    marginHorizontal: 10,
+    width: "100%",
+    marginBottom: 15,
+  ),
+  'speedText': DCFLayout(marginBottom: 10),
+  'buttonRow': DCFLayout(
+    flexDirection: DCFFlexDirection.row,
+    gap: 10,
+  ),
+  'smallButton': DCFLayout(
+    width: 50,
+    height: 40,
+  ),
+  'fullWidthButton': DCFLayout(
+    width: "100%",
+    height: 40,
+  ),
+  'infoBox': DCFLayout(padding: 10),
+});
+
 class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    final counter = useState<int>(0);
-    final colorIndex = useState<int>(0);
+    final rotationSpeed = useState<double>(0.05);
+    final isRotating = useState<bool>(true);
+    final controllerRef = useRef<FlutterEarthGlobeController?>(null);
     
-    // Color palette that cycles
-    final colors = [
-      const Color(0xFF2196F3), // Blue
-      const Color(0xFF4CAF50), // Green
-      const Color(0xFFFF9800), // Orange
-      const Color(0xFFE91E63), // Pink
-      const Color(0xFF9C27B0), // Purple
-    ];
+    // Initialize controller once
+    if (controllerRef.current == null) {
+      controllerRef.current = FlutterEarthGlobeController(
+        rotationSpeed: rotationSpeed.state,
+        isBackgroundFollowingSphereRotation: true,
+      );
+      
+      controllerRef.current!.onLoaded = () async {
+        final surfaceImage = await _createDefaultSphereImage();
+        // Convert ui.Image to bytes and use MemoryImage
+        final byteData = await surfaceImage.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData != null) {
+          final bytes = byteData.buffer.asUint8List();
+          final imageProvider = MemoryImage(bytes);
+          controllerRef.current!.loadSurface(imageProvider);
+        }
+      };
+    } else {
+      // Update rotation speed if it changed
+      controllerRef.current!.rotationSpeed = rotationSpeed.state;
+    }
     
     return DCFView(
-      layout: DCFLayout(
-        flex: 1,
-      ),
-      styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.black,
-      ),
+      layout: _layouts['root'],
+      styleSheet: _styles['root'],
       children: [
-        // Flutter Widget Adaptor - Custom Paint Example
+        // Flutter Widget Adaptor - 3D Globe Example
         WidgetToDCFAdaptor.builder(
           widgetBuilder: () {
-            final currentColor = colors[colorIndex.state % colors.length];
-
-            return GestureDetector(
-              onTap: () {
-                counter.setState(counter.state + 1);
-              },
-              child: Container(
-                color: DCFColors.black,
-                child: CustomPaint(
-                  painter: _CounterPainter(
-                    count: counter.state,
-                    color: currentColor,
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '${counter.state}',
-                          style: TextStyle(
-                            fontSize: 72,
-                            fontWeight: FontWeight.bold,
-                            color: currentColor,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Tap to increment',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: DCFColors.white.withOpacity(0.7),
-                          ),
-                        ),
-                      ],
-                    ),
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: Scaffold(
+                backgroundColor: Colors.black,
+                body: Center(
+                  child: FlutterEarthGlobe(
+                    controller: controllerRef.current!,
+                    radius: 150,
                   ),
                 ),
               ),
             );
           },
-          layout: DCFLayout(
-            flex: 1,
-            width: "100%",
-            height: "100%",
-          ),
-          styleSheet: DCFStyleSheet(),
+          layout: _layouts['flutterWidget'],
+          styleSheet: _styles['emptyStyle'],
         ),
         
         // Controls Panel
         DCFView(
-          layout: DCFLayout(
-            width: '100%',
-            flexWrap: DCFWrap.wrap,
-            padding: 20,
-          ),
-          styleSheet: DCFStyleSheet(
-            backgroundColor: DCFTheme.current.surfaceColor,
-            borderRadius: 20,
-            elevation: 10,
-          ),
+          layout: _layouts['controlsPanel'],
+          styleSheet: _styles['controlsPanel'],
           children: [
             DCFText(
-              content: "Flutter Widget Demo",
+              content: "3D Globe Demo",
               textProps: DCFTextProps(
                 fontSize: 20,
                 fontWeight: DCFFontWeight.bold,
               ),
-              styleSheet: DCFStyleSheet(
-                primaryColor: DCFTheme.current.textColor,
-              ),
-              layout: DCFLayout(
-                marginBottom: 15,
-              ),
+              styleSheet: _styles['titleText'],
+              layout: _layouts['title'],
             ),
 
-            // Counter Controls
+            // Rotation Speed Control
             DCFView(
-              layout: DCFLayout(
-                marginHorizontal: 10,
-                width: "100%",
-                flexDirection: DCFFlexDirection.row,
-                justifyContent: DCFJustifyContent.spaceBetween,
-                alignItems: DCFAlign.center,
-                marginBottom: 15,
-              ),
+              layout: _layouts['controlSection'],
               children: [
                 DCFText(
-                  content: "Counter:",
+                  content: "Rotation Speed: ${(rotationSpeed.state * 100).toStringAsFixed(0)}%",
                   textProps: DCFTextProps(
                     fontSize: 16,
                   ),
-                  styleSheet: DCFStyleSheet(
-                    primaryColor: DCFTheme.current.textColor,
-                  ),
-                  layout: DCFLayout(marginRight: 10),
-            ),
+                  styleSheet: _styles['bodyText'],
+                  layout: _layouts['speedText'],
+                ),
                 DCFView(
-                  layout: DCFLayout(
-                    flexDirection: DCFFlexDirection.row,
-                    gap: 10,
-                  ),
+                  layout: _layouts['buttonRow'],
                   children: [
                     DCFButton(
                       onPress: (DCFButtonPressData data) {
-                        counter.setState(counter.state - 1);
+                        rotationSpeed.setState((rotationSpeed.state - 0.01).clamp(0.0, 0.2));
                       },
-                      styleSheet: DCFStyleSheet(
-                        backgroundColor: const Color(0xFFFF5722),
-                        borderRadius: 8,
-                      ),
-                      layout: DCFLayout(
-                        width: 50,
-                        height: 40,
-                      ),
+                      styleSheet: _styles['decrementButton'],
+                      layout: _layouts['smallButton'],
                       children: [
                         DCFText(
                           content: "-",
@@ -156,24 +179,16 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                             fontSize: 20,
                             fontWeight: DCFFontWeight.bold,
                           ),
-              styleSheet: DCFStyleSheet(
-                            primaryColor: DCFColors.white,
-              ),
-            ),
+                          styleSheet: _styles['buttonText'],
+                        ),
                       ],
                     ),
                     DCFButton(
                       onPress: (DCFButtonPressData data) {
-                        counter.setState(counter.state + 1);
+                        rotationSpeed.setState((rotationSpeed.state + 0.01).clamp(0.0, 0.2));
                       },
-                      styleSheet: DCFStyleSheet(
-                        backgroundColor: const Color(0xFF4CAF50),
-                        borderRadius: 8,
-                      ),
-              layout: DCFLayout(
-                        width: 50,
-                height: 40,
-                      ),
+                      styleSheet: _styles['incrementButton'],
+                      layout: _layouts['smallButton'],
                       children: [
                         DCFText(
                           content: "+",
@@ -181,9 +196,7 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
                             fontSize: 20,
                             fontWeight: DCFFontWeight.bold,
                           ),
-              styleSheet: DCFStyleSheet(
-                            primaryColor: DCFColors.white,
-              ),
+                          styleSheet: _styles['buttonText'],
                         ),
                       ],
                     ),
@@ -192,36 +205,24 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
               ],
             ),
             
-            // Color Change Button
+            // Toggle Rotation Button
             DCFView(
-              layout: DCFLayout(
-                marginHorizontal: 10,
-                width: "100%",
-                marginBottom: 15,
-              ),
+              layout: _layouts['controlSection'],
               children: [
                 DCFButton(
                   onPress: (DCFButtonPressData data) {
-                    colorIndex.setState(colorIndex.state + 1);
+                    isRotating.setState(!isRotating.state);
                   },
-                      styleSheet: DCFStyleSheet(
-                    backgroundColor: colors[colorIndex.state % colors.length],
-                    borderRadius: 8,
-                  ),
-                  layout: DCFLayout(
-                    width: "100%",
-                    height: 40,
-                ),
+                  styleSheet: isRotating.state ? _styles['toggleButtonActive'] : _styles['toggleButton'],
+                  layout: _layouts['fullWidthButton'],
                   children: [
                     DCFText(
-                      content: "Change Color",
+                      content: isRotating.state ? "Pause Rotation" : "Resume Rotation",
                       textProps: DCFTextProps(
                         fontSize: 16,
                         fontWeight: DCFFontWeight.bold,
                       ),
-                      styleSheet: DCFStyleSheet(
-                        primaryColor: DCFColors.white,
-                      ),
+                      styleSheet: _styles['buttonText'],
                     ),
                   ],
                 ),
@@ -230,25 +231,18 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
             
             // Info
             DCFView(
-              layout: DCFLayout(
-                padding: 10,
-              ),
-              styleSheet: DCFStyleSheet(
-                backgroundColor: const Color(0x3300FF00),
-                borderRadius: 8,
-                ),
-                  children: [
-                    DCFText(
-                  content: "Using WidgetToDCFAdaptor\nCustomPaint with Flutter\nState management working\nInteractive widgets",
+              layout: _layouts['infoBox'],
+              styleSheet: _styles['infoBox'],
+              children: [
+                DCFText(
+                  content: "Using WidgetToDCFAdaptor\n3D Globe with Flutter\nInteractive & Rotating\nState management working",
                   textProps: DCFTextProps(
                     fontSize: 12,
                   ),
-                      styleSheet: DCFStyleSheet(
-                    primaryColor: DCFColors.green,
-                      ),
-                    ),
-                  ],
+                  styleSheet: _styles['infoText'],
                 ),
+              ],
+            ),
               ],
             ),
           ],
@@ -256,44 +250,36 @@ class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
   }
 }
 
-class _CounterPainter extends CustomPainter {
-  final int count;
-  final Color color;
+/// Creates a default sphere image for the globe
+/// This is a simple programmatic image - in production you'd use an actual Earth texture
+Future<ui.Image> _createDefaultSphereImage() async {
+  // Create a simple colored sphere image
+  // In a real app, you'd load an actual Earth texture image
+  // For now, we'll create a placeholder
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder);
+  final size = ui.Size(512, 512);
   
-  _CounterPainter({
-    required this.count,
-    required this.color,
-  });
+  // Draw a simple gradient sphere
+  final center = ui.Offset(size.width / 2, size.height / 2);
+  final radius = size.width / 2 - 10;
   
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width < size.height ? size.width : size.height) / 3;
-    
-    // Draw animated circles based on count
-    for (int i = 0; i < count.abs().clamp(0, 20); i++) {
-      final circleRadius = radius * 0.3;
-      final x = center.dx + (radius * 0.7) * (i.isEven ? 1 : -1) * (i % 3 == 0 ? 0.5 : 1.0);
-      final y = center.dy + (radius * 0.7) * (i % 2 == 0 ? 1 : -1) * (i % 3 == 1 ? 0.5 : 1.0);
-      
-      final paint = Paint()
-        ..color = color.withOpacity(0.3 + (i % 3) * 0.2)
-        ..style = PaintingStyle.fill;
-      
-      canvas.drawCircle(Offset(x, y), circleRadius, paint);
-    }
-    
-    // Draw main circle
-    final mainPaint = Paint()
-      ..color = color.withOpacity(0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-    
-    canvas.drawCircle(center, radius, mainPaint);
-  }
+  // Draw gradient circle (simplified Earth-like appearance)
+  final paint = ui.Paint()
+    ..shader = ui.Gradient.radial(
+      center,
+      radius,
+      [
+        const ui.Color(0xFF4A90E2), // Ocean blue
+        const ui.Color(0xFF2E5C8A), // Darker blue
+      ],
+      [0.0, 1.0],
+    );
   
-  @override
-  bool shouldRepaint(_CounterPainter oldDelegate) {
-    return oldDelegate.count != count || oldDelegate.color != color;
-  }
+  canvas.drawCircle(center, radius, paint);
+  
+  // Convert to image
+  final picture = recorder.endRecording();
+  return await picture.toImage(size.width.toInt(), size.height.toInt());
 }
+

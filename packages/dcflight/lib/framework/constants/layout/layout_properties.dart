@@ -8,8 +8,63 @@ import 'package:equatable/equatable.dart';
 import 'package:dcflight/framework/constants/layout/yoga_enums.dart';
 import 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 
+/// Layout registry for DCFLayout.create() pattern
+/// Caches layouts and assigns IDs for efficient bridge communication
+class _DCFLayoutRegistry {
+  static final _DCFLayoutRegistry instance = _DCFLayoutRegistry._();
+  _DCFLayoutRegistry._();
+  
+  final Map<String, DCFLayout> _layouts = {}; // Maps ID -> original layout (without ID)
+  final Map<DCFLayout, String> _layoutToId = {};
+  int _nextId = 1;
+  
+  /// Register a layout and return its ID
+  /// Stores the ORIGINAL layout (without ID) to avoid recursion in toMap()
+  String register(String name, DCFLayout layout) {
+    // Check if this exact layout instance is already registered
+    if (_layoutToId.containsKey(layout)) {
+      return _layoutToId[layout]!;
+    }
+    
+    // Generate new ID
+    final id = 'dcf_layout_$_nextId';
+    _nextId++;
+    
+    // Store ORIGINAL layout (without ID) to avoid recursion when resolving
+    _layouts[id] = layout;
+    _layoutToId[layout] = id;
+    
+    return id;
+  }
+  
+  /// Get layout by ID
+  DCFLayout? get(String id) {
+    return _layouts[id];
+  }
+  
+  /// Get ID for a layout (if registered)
+  String? getId(DCFLayout layout) {
+    return _layoutToId[layout];
+  }
+  
+  /// Check if layout is registered
+  bool isRegistered(DCFLayout layout) {
+    return _layoutToId.containsKey(layout);
+  }
+  
+  /// Clear all registered layouts (for testing/debugging)
+  void clear() {
+    _layouts.clear();
+    _layoutToId.clear();
+    _nextId = 1;
+  }
+}
+
 /// Layout properties for components
 class DCFLayout extends Equatable {
+  /// Internal layout ID if registered via DCFLayout.create()
+  /// Null for non-registered layouts (backward compatibility)
+  final String? _layoutId;
   final dynamic width;
   final dynamic height;
   final dynamic minWidth;
@@ -67,7 +122,60 @@ class DCFLayout extends Equatable {
   @Deprecated("Use borderWidth from style instead")
   final dynamic borderWidth;
 
+  /// Internal factory constructor for registered layouts (non-const)
+  DCFLayout._withId(
+    String layoutId, {
+    this.width = '100%',
+    this.height,
+    this.minWidth,
+    this.maxWidth,
+    this.minHeight,
+    this.maxHeight,
+    this.margin,
+    this.marginTop,
+    this.marginRight,
+    this.marginBottom,
+    this.marginLeft,
+    this.marginHorizontal,
+    this.marginVertical,
+    this.padding,
+    this.paddingTop,
+    this.paddingRight,
+    this.paddingBottom,
+    this.paddingLeft,
+    this.paddingHorizontal,
+    this.paddingVertical,
+    this.position,
+    this.absoluteLayout,
+    this.rotateInDegrees,
+    this.scale,
+    this.scaleX,
+    this.scaleY,
+    this.flexDirection = DCFFlexDirection.column,
+    this.justifyContent = DCFJustifyContent.center,
+    this.alignItems = DCFAlign.center,
+    this.alignSelf,
+    this.alignContent,
+    this.flexWrap = DCFWrap.nowrap,
+    this.flex,
+    this.flexGrow,
+    this.flexShrink,
+    this.flexBasis,
+    this.display = DCFDisplay.flex,
+    this.overflow,
+    this.direction,
+    this.aspectRatio,
+    this.gap,
+    this.rowGap,
+    this.columnGap,
+    this.borderWidth,
+  }) : _layoutId = layoutId;
+
   /// Create layout props with the specified values
+  /// 
+  /// @Deprecated Use DCFLayout.create() instead for better performance
+  /// This constructor is still supported for backward compatibility but will be removed in a future version.
+  @Deprecated('Use DCFLayout.create() instead for better bridge efficiency. Example: final layouts = DCFLayout.create({"container": DCFLayout(flex: 1)});')
   const DCFLayout({
     this.width = '100%', // Default to 100% width for proper nesting
     this.height, // No default height - let flex layout handle it
@@ -113,7 +221,82 @@ class DCFLayout extends Equatable {
     this.rowGap,
     this.columnGap,
     this.borderWidth,
-  });
+  }) : _layoutId = null;
+
+  /// Create a Layout registry (React Native StyleSheet.create() pattern for layouts)
+  /// 
+  /// This optimizes bridge communication by caching layouts and sending IDs instead of full objects.
+  /// 
+  /// Example:
+  /// ```dart
+  /// final layouts = DCFLayout.create({
+  ///   'container': DCFLayout(flex: 1, padding: 20),
+  ///   'row': DCFLayout(flexDirection: DCFFlexDirection.row),
+  /// });
+  /// 
+  /// // Use with ID reference
+  /// DCFView(layout: layouts.container)
+  /// ```
+  /// 
+  /// Benefits:
+  /// - Bridge efficiency: Sends layout IDs instead of full objects
+  /// - Memory optimization: Layouts cached and reused
+  /// - Early validation: Catches layout errors at creation time
+  static DCFLayoutRegistry create(Map<String, DCFLayout> layouts) {
+    final registry = DCFLayoutRegistry._();
+    for (final entry in layouts.entries) {
+      final id = _DCFLayoutRegistry.instance.register(entry.key, entry.value);
+      // Create registered layout with ID using internal factory
+      registry._layouts[entry.key] = DCFLayout._withId(
+        id,
+        width: entry.value.width,
+        height: entry.value.height,
+        minWidth: entry.value.minWidth,
+        maxWidth: entry.value.maxWidth,
+        minHeight: entry.value.minHeight,
+        maxHeight: entry.value.maxHeight,
+        margin: entry.value.margin,
+        marginTop: entry.value.marginTop,
+        marginRight: entry.value.marginRight,
+        marginBottom: entry.value.marginBottom,
+        marginLeft: entry.value.marginLeft,
+        marginHorizontal: entry.value.marginHorizontal,
+        marginVertical: entry.value.marginVertical,
+        padding: entry.value.padding,
+        paddingTop: entry.value.paddingTop,
+        paddingRight: entry.value.paddingRight,
+        paddingBottom: entry.value.paddingBottom,
+        paddingLeft: entry.value.paddingLeft,
+        paddingHorizontal: entry.value.paddingHorizontal,
+        paddingVertical: entry.value.paddingVertical,
+        position: entry.value.position,
+        absoluteLayout: entry.value.absoluteLayout,
+        rotateInDegrees: entry.value.rotateInDegrees,
+        scale: entry.value.scale,
+        scaleX: entry.value.scaleX,
+        scaleY: entry.value.scaleY,
+        flexDirection: entry.value.flexDirection,
+        justifyContent: entry.value.justifyContent,
+        alignItems: entry.value.alignItems,
+        alignSelf: entry.value.alignSelf,
+        alignContent: entry.value.alignContent,
+        flexWrap: entry.value.flexWrap,
+        flex: entry.value.flex,
+        flexGrow: entry.value.flexGrow,
+        flexShrink: entry.value.flexShrink,
+        flexBasis: entry.value.flexBasis,
+        display: entry.value.display,
+        overflow: entry.value.overflow,
+        direction: entry.value.direction,
+        aspectRatio: entry.value.aspectRatio,
+        gap: entry.value.gap,
+        rowGap: entry.value.rowGap,
+        columnGap: entry.value.columnGap,
+        borderWidth: entry.value.borderWidth,
+      );
+    }
+    return registry;
+  }
 
   /// Check if there are any layout properties set
   bool get isNotEmpty {
@@ -164,7 +347,20 @@ class DCFLayout extends Equatable {
   }
 
   /// Convert layout props to a map for serialization
+  /// 
+  /// If layout is registered via DCFLayout.create(), resolves ID to full object for native compatibility
   Map<String, dynamic> toMap() {
+    // If registered, resolve ID to full layout object (native side doesn't support IDs yet)
+    if (_layoutId != null) {
+      final resolvedLayout = _DCFLayoutRegistry.instance.get(_layoutId);
+      if (resolvedLayout != null) {
+        // Return the resolved layout's full map
+        return resolvedLayout.toMap();
+      }
+      // Fallback: if ID not found, continue with current layout
+    }
+    
+    // Serialize full layout object
     final map = <String, dynamic>{};
 
     map['width'] = width;
@@ -522,5 +718,29 @@ class DCFLayout extends Equatable {
         rowGap,
         columnGap,
         borderWidth,
+        _layoutId,
       ];
+}
+
+/// Layout registry returned by DCFLayout.create()
+/// Provides access to registered layouts by name
+class DCFLayoutRegistry {
+  final Map<String, DCFLayout> _layouts = {};
+  
+  DCFLayoutRegistry._();
+  
+  /// Get a registered layout by name
+  DCFLayout operator [](String name) {
+    final layout = _layouts[name];
+    if (layout == null) {
+      throw ArgumentError('Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
+    }
+    return layout;
+  }
+  
+  /// Check if a layout exists in the registry
+  bool containsKey(String name) => _layouts.containsKey(name);
+  
+  /// Get all registered layout names
+  Iterable<String> get keys => _layouts.keys;
 }

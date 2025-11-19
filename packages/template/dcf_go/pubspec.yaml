@@ -25,6 +25,7 @@ dependencies:
 
   icons_launcher: ^3.0.1
   equatable: ^2.0.7
+  flutter_earth_globe: ^1.0.7
 
 dev_dependencies:
   flutter_test:
