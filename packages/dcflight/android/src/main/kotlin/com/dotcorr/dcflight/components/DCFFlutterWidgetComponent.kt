@@ -89,6 +89,9 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         
         // Update Flutter widget frame when layout changes
         if (view is FlutterWidgetContainer) {
+            // Store layout dimensions (same as iOS stores in view.frame)
+            // Convert Float to Double to match method signature
+            view.setLayoutDimensions(layout.width.toDouble(), layout.height.toDouble())
             view.updateFlutterWidgetFrame()
         }
     }
@@ -112,9 +115,16 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         var widgetId: String? = null
         private var methodChannel: MethodChannel? = null
         private var nodeId: String? = null // Store the actual nodeId from viewRegisteredWithShadowTree
+        private var layoutWidth: Double = 0.0 // Store layout width from Yoga (same as iOS view.frame.width)
+        private var layoutHeight: Double = 0.0 // Store layout height from Yoga (same as iOS view.frame.height)
         
         init {
             setupMethodChannel()
+        }
+        
+        fun setLayoutDimensions(width: Double, height: Double) {
+            layoutWidth = width
+            layoutHeight = height
         }
         
         private fun setupMethodChannel() {
@@ -144,24 +154,24 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             
             // Post to main thread to ensure view is laid out
             post {
-                // Replicate iOS behavior: use bounds (content area) converted to window coordinates
-                // On iOS: convert(bounds, to: window) where bounds is (0, 0, width, height) in view's coordinate system
-                // On Android: getLocationInWindow gives position, then use view's actual size
+                // Replicate iOS behavior exactly: use bounds (content area) converted to window coordinates
+                // On iOS: convert(bounds, to: window) where bounds is (0, 0, width, height) from view.frame
+                // On Android: getLocationInWindow gives position, use stored layout dimensions (from Yoga)
                 val location = IntArray(2)
                 getLocationInWindow(location)
                 
-                // Use bounds (content area) - equivalent to iOS bounds.width/height
-                // Use measured dimensions if available (actual rendered size), otherwise use layout dimensions
-                val boundsWidth = if (measuredWidth > 0) measuredWidth else (right - left)
-                val boundsHeight = if (measuredHeight > 0) measuredHeight else (bottom - top)
+                // Use stored layout dimensions from Yoga (same as iOS uses view.frame.width/height)
+                // These are the actual calculated dimensions from the layout system
+                val boundsWidth = if (layoutWidth > 0) layoutWidth else (if (measuredWidth > 0) measuredWidth.toDouble() else (right - left).toDouble())
+                val boundsHeight = if (layoutHeight > 0) layoutHeight else (if (measuredHeight > 0) measuredHeight.toDouble() else (bottom - top).toDouble())
                 
                 // Convert bounds to window coordinates (same as iOS convert(bounds, to: window))
                 val x = location[0].toDouble()
                 val y = location[1].toDouble()
-                val width = boundsWidth.toDouble()
-                val height = boundsHeight.toDouble()
+                val width = boundsWidth
+                val height = boundsHeight
                 
-                android.util.Log.d(TAG, "🎨 onReady - frame: ($x, $y, $width, $height), bounds: ($boundsWidth x $boundsHeight)")
+                android.util.Log.d(TAG, "🎨 onReady - frame: ($x, $y, $width, $height), layout: ($layoutWidth x $layoutHeight)")
                 
                 // Only call renderWidget if we have valid dimensions
                 // If frame is invalid, updateWidgetFrame will be called later with correct frame
@@ -194,11 +204,11 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         }
         
         fun updateFlutterWidgetFrame() {
-            // Replicate iOS behavior: use bounds (content area) converted to window coordinates
-            // On iOS: convert(bounds, to: window) where bounds is (0, 0, width, height) in view's coordinate system
-            // On Android: getLocationInWindow gives position, then use view's actual size
-            val boundsWidth = if (measuredWidth > 0) measuredWidth else (right - left)
-            val boundsHeight = if (measuredHeight > 0) measuredHeight else (bottom - top)
+            // Replicate iOS behavior exactly: use bounds (content area) converted to window coordinates
+            // On iOS: convert(bounds, to: window) where bounds is (0, 0, width, height) from view.frame
+            // On Android: getLocationInWindow gives position, use stored layout dimensions (from Yoga)
+            val boundsWidth = if (layoutWidth > 0) layoutWidth else (if (measuredWidth > 0) measuredWidth.toDouble() else (right - left).toDouble())
+            val boundsHeight = if (layoutHeight > 0) layoutHeight else (if (measuredHeight > 0) measuredHeight.toDouble() else (bottom - top).toDouble())
             
             if (boundsWidth <= 0 || boundsHeight <= 0) {
                 android.util.Log.d(TAG, "⚠️ updateFlutterWidgetFrame: Invalid dimensions ($boundsWidth x $boundsHeight), skipping")
@@ -221,10 +231,10 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             
             val x = location[0].toDouble()
             val y = location[1].toDouble()
-            val width = boundsWidth.toDouble()
-            val height = boundsHeight.toDouble()
+            val width = boundsWidth
+            val height = boundsHeight
             
-            android.util.Log.d(TAG, "🎨 Updating widget frame - viewId: $viewId, frame: ($x, $y, $width, $height), bounds: ($boundsWidth x $boundsHeight)")
+            android.util.Log.d(TAG, "🎨 Updating widget frame - viewId: $viewId, frame: ($x, $y, $width, $height), layout: ($layoutWidth x $layoutHeight)")
             
             // Call Dart method channel to update frame
             methodChannel?.invokeMethod("updateWidgetFrame", mapOf(

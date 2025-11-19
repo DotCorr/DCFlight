@@ -54,21 +54,13 @@ class WidgetToDCFAdaptor extends DCFStatelessComponent {
     // Build fresh widget with current state - this ensures state changes are reflected
     final userWidget = widgetBuilder();
     
-    // Automatically wrap user's widget with LayoutBuilder and constraint handling
-    // This ensures the widget receives proper constraints and handles 0x0 initial case
-    final widget = LayoutBuilder(
-      builder: (context, constraints) {
-        // Wrap user's widget in SizedBox.expand to fill available space
-        // This ensures widgets like O3D (WebView) expand to fill the container
-        // The constraints from Positioned widget provide the correct size
-        // ClipRect prevents overflow outside widget bounds
-        return ClipRect(
-          clipBehavior: Clip.hardEdge,
-          child: SizedBox.expand(
-            child: userWidget,
-          ),
-        );
-      },
+    // Just wrap with ClipRect to prevent overflow
+    // The Positioned widget in flutter_widget_renderer.dart already provides exact constraints
+    // SizedBox.expand() in flutter_widget_renderer.dart will fill the Positioned widget's bounds
+    // No need for LayoutBuilder here - it was causing constraint issues on Android
+    final widget = ClipRect(
+      clipBehavior: Clip.hardEdge,
+      child: userWidget,
     );
     
     // CRITICAL: DO NOT access renderedNode here - it causes infinite loop!

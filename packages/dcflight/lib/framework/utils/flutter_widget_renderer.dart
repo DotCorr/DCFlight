@@ -299,32 +299,45 @@ class FlutterWidgetRenderer {
           // OverlayEntry builder must return widgets that work with Stack
           // Positioned widgets must be direct children of Stack
           // Use IgnorePointer at the Stack level so touches pass through to native DCF components
-          // CRITICAL: Stack needs to expand to allow Positioned widgets to work correctly
-          // But the Stack itself is transparent and only renders Positioned children
+          // CRITICAL: On Android, we need to constrain the Stack to prevent unbounded constraints
+          // Use explicit size constraints instead of StackFit.expand to ensure correct sizing
           return IgnorePointer(
             ignoring: true, // Let touches pass through to native DCF views
-            child: Stack(
-              // Expand to fill available space so Positioned widgets can work
-              // The Stack itself is transparent and only renders its children
-              fit: StackFit.expand,
-              children: [
-                // Only render the widget if we have valid dimensions
-                // This ensures widgets only appear at their specific positions
-                if (widgetWidth > 0 && widgetHeight > 0)
-                  Positioned(
-                    left: left,
-                    top: top,
-                    width: widgetWidth,
-                    height: widgetHeight,
-                    child: ClipRect(
-                      clipBehavior: Clip.hardEdge,
-                      child: SizedBox.expand(
-                        child: host.widget,
-                      ),
-                    ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Get the maximum available size from constraints
+                final maxWidth = constraints.maxWidth.isFinite ? constraints.maxWidth : widgetWidth;
+                final maxHeight = constraints.maxHeight.isFinite ? constraints.maxHeight : widgetHeight;
+                
+                return SizedBox(
+                  width: maxWidth,
+                  height: maxHeight,
+                  child: Stack(
+                    // Don't use StackFit.expand - it can cause unbounded constraints on Android
+                    // The SizedBox above already constrains the Stack
+                    children: [
+                      // Only render the widget if we have valid dimensions
+                      // This ensures widgets only appear at their specific positions
+                      if (widgetWidth > 0 && widgetHeight > 0)
+                        Positioned(
+                          left: left,
+                          top: top,
+                          width: widgetWidth,
+                          height: widgetHeight,
+                          child: ClipRect(
+                            clipBehavior: Clip.hardEdge,
+                            child: SizedBox(
+                              width: widgetWidth,
+                              height: widgetHeight,
+                              child: host.widget,
+                            ),
+                          ),
+                        ),
+                      // Don't render anything if frame is invalid - Stack is transparent
+                    ],
                   ),
-                // Don't render anything if frame is invalid - Stack is transparent
-              ],
+                );
+              },
             ),
           );
         },
