@@ -539,6 +539,29 @@ class FlutterWidgetRenderer {
       }
     }
   }
+  
+  /// Clear all Flutter widgets during hot restart
+  /// This ensures Flutter widgets are disposed when native views are cleared
+  void clearAllForHotRestart() {
+    print('🔥 FlutterWidgetRenderer: Clearing all widgets for hot restart');
+    
+    // Dispose all widget trees
+    final viewIds = _hosts.keys.toList();
+    for (final viewId in viewIds) {
+      _disposeWidgetTree(viewId);
+    }
+    
+    // Clear all maps
+    _hosts.clear();
+    _overlayEntries.clear();
+    _viewFrames.clear();
+    _widgetIdToViewId.clear();
+    
+    // Reset overlay state (will be recreated on next render)
+    _overlayState = null;
+    
+    print('✅ FlutterWidgetRenderer: All widgets cleared for hot restart');
+  }
 }
 
 /// Lightweight widget tree host - like a mini app instance

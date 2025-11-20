@@ -28,6 +28,8 @@ import 'package:dcflight/framework/components/error_boundary.dart';
 import 'package:dcflight/framework/components/dcf_element.dart';
 import 'package:dcflight/framework/components/component_node.dart';
 import 'package:dcflight/framework/components/fragment.dart';
+import 'package:dcflight/framework/utils/flutter_widget_renderer.dart';
+import 'package:dcflight/framework/utils/widget_to_dcf_adaptor.dart';
 
 /// Enhanced Virtual DOM with priority-based update scheduling
 class DCFEngine {
@@ -3541,6 +3543,19 @@ class DCFEngine {
       _componentsWaitingForLayout.clear();
       _componentsWaitingForInsertion.clear();
       _isTreeComplete = false;
+      
+      // 🔥 CRITICAL: Clear Flutter widget adaptor state during hot restart
+      // This ensures Flutter widgets are disposed when native views are cleared
+      try {
+        FlutterWidgetRenderer.instance.clearAllForHotRestart();
+        WidgetToDCFAdaptor.clearAllForHotRestart();
+        widgetRegistry.clearAll();
+        EngineDebugLogger.log('HOT_RESTART_FLUTTER_CLEANUP',
+            'Cleared Flutter widget adaptor state');
+      } catch (e) {
+        EngineDebugLogger.log('HOT_RESTART_FLUTTER_CLEANUP_ERROR',
+            'Failed to clear Flutter widget state: $e');
+      }
       
       // 🔥 CRITICAL: Set structural shock flag to force full replacement
       // This prevents position-based matching from incorrectly matching old components

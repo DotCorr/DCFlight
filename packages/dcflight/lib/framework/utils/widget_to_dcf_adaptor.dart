@@ -46,6 +46,13 @@ class WidgetToDCFAdaptor extends DCFStatelessComponent {
   static final Map<int, String> _widgetIdByInstance = {};
   static int _widgetIdCounter = 0;
   
+  /// Clear all widget ID mappings during hot restart
+  static void clearAllForHotRestart() {
+    _widgetIdByViewId.clear();
+    _widgetIdByInstance.clear();
+    _widgetIdCounter = 0;
+  }
+  
   // Instance variable to track the viewId assigned to this component instance
   int? _assignedViewId;
   
@@ -163,6 +170,11 @@ class _WidgetRegistry {
   
   void unregister(String id) {
     _widgets.remove(id);
+  }
+  
+  /// Clear all widgets during hot restart
+  void clearAll() {
+    _widgets.clear();
   }
 }
 
