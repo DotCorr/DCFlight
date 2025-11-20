@@ -1,8 +1,10 @@
-# Skia build source (14GB - don't commit, developers don't need this)
+# Skia build directory (30GB) - IGNORED
+# This contains Skia source code and build artifacts
+# Framework contributors can rebuild by running: ./scripts/setup_skia.sh
+# Regular developers DON'T need this - they use the pre-built library below
 ios/Skia/build/
 
-# Skia compiled library (2GB) and headers ARE committed
-# Developers use the pre-built library - no building needed!
-# ios/Skia/lib/libskia.a - COMMITTED (pre-built binary)
-# ios/Skia/include/ - COMMITTED (headers)
-
+# Skia compiled library and headers ARE COMMITTED (via Git LFS)
+# Regular developers get these automatically - NO BUILDING NEEDED!
+# ios/Skia/lib/libskia.a - COMMITTED (2GB, via Git LFS)
+# ios/Skia/include/ - COMMITTED (headers, regular git)

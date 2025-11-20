@@ -281,30 +281,30 @@ class PureReanimatedView: UIView {
             executeWorklet(elapsed: elapsed, worklet: worklet)
         } else {
             // Execute traditional animations
-            var allAnimationsComplete = true
-            var anyAnimationRepeated = false
+        var allAnimationsComplete = true
+        var anyAnimationRepeated = false
+        
+        // Update all animations
+        for (_, animationState) in currentAnimations {
+            let result = animationState.update(currentTime: currentTime, startTime: animationStartTime)
             
-            // Update all animations
-            for (_, animationState) in currentAnimations {
-                let result = animationState.update(currentTime: currentTime, startTime: animationStartTime)
-                
-                if result.isActive {
-                    allAnimationsComplete = false
-                }
-                if result.didRepeat {
-                    anyAnimationRepeated = true
-                }
+            if result.isActive {
+                allAnimationsComplete = false
             }
-            
-            // Fire repeat event if any animation repeated
-            if anyAnimationRepeated {
-                fireAnimationEvent(eventType: "onAnimationRepeat")
+            if result.didRepeat {
+                anyAnimationRepeated = true
             }
-            
-            // Check if all animations are complete
-            if allAnimationsComplete {
-                stopPureAnimation()
-            }
+        }
+        
+        // Fire repeat event if any animation repeated
+        if anyAnimationRepeated {
+            fireAnimationEvent(eventType: "onAnimationRepeat")
+        }
+        
+        // Check if all animations are complete
+        if allAnimationsComplete {
+            stopPureAnimation()
+        }
         }
     }
     

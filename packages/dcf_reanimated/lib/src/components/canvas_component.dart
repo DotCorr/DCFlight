@@ -19,7 +19,8 @@ typedef DCFCanvasPainter = void Function(SkiaCanvas canvas, Size size);
 /// - Transformations, clipping
 /// - Image rendering
 class SkiaCanvas {
-  final dynamic _nativeCanvas; // Native Skia canvas (C++ object)
+  // ignore: unused_field
+  final dynamic _nativeCanvas; // Native Skia canvas (C++ object) - placeholder for future native integration
   
   SkiaCanvas(this._nativeCanvas);
   
@@ -81,7 +82,8 @@ class SkiaCanvas {
 
 /// Skia Path for drawing shapes
 class SkiaPath {
-  final dynamic _nativePath; // Native Skia path (C++ object)
+  // ignore: unused_field
+  final dynamic _nativePath; // Native Skia path (C++ object) - placeholder for future native integration
   
   SkiaPath() : _nativePath = null; // Will be created natively
   
@@ -109,7 +111,8 @@ class SkiaPath {
 
 /// Skia Paint for styling
 class SkiaPaint {
-  final dynamic _nativePaint; // Native Skia paint (C++ object)
+  // ignore: unused_field
+  final dynamic _nativePaint; // Native Skia paint (C++ object) - placeholder for future native integration
   
   SkiaPaint() : _nativePaint = null; // Will be created natively
   
@@ -138,7 +141,8 @@ enum SkiaPaintStyle {
 
 /// Skia Shader for gradients and effects
 class SkiaShader {
-  final dynamic _nativeShader; // Native Skia shader (C++ object)
+  // ignore: unused_field
+  final dynamic _nativeShader; // Native Skia shader (C++ object) - placeholder for future native integration
   
   SkiaShader(this._nativeShader);
   
@@ -166,7 +170,8 @@ class SkiaShader {
 
 /// Skia Image
 class SkiaImage {
-  final dynamic _nativeImage; // Native Skia image (C++ object)
+  // ignore: unused_field
+  final dynamic _nativeImage; // Native Skia image (C++ object) - placeholder for future native integration
   
   SkiaImage(this._nativeImage);
 }
@@ -196,18 +201,28 @@ class DCFCanvas extends DCFStatelessComponent {
   final Color? backgroundColor;
   
   /// Layout properties
-  final DCFLayout layout;
+  final DCFLayout? layout;
   
   /// Style properties
-  final DCFStyleSheet styleSheet;
+  final DCFStyleSheet? styleSheet;
+  
+  // Default layouts and styles for canvas (registered for bridge efficiency)
+  // ignore: deprecated_member_use - Using DCFLayout()/DCFStyleSheet() inside create() is the correct pattern
+  static final _canvasLayouts = DCFLayout.create({
+    'default': DCFLayout(),
+  });
+  
+  static final _canvasStyles = DCFStyleSheet.create({
+    'default': DCFStyleSheet(),
+  });
   
   /// Create a Skia canvas component
   DCFCanvas({
     this.onPaint,
     this.repaintOnFrame = false,
     this.backgroundColor,
-    this.layout = const DCFLayout(),
-    this.styleSheet = const DCFStyleSheet(),
+    this.layout,
+    this.styleSheet,
     super.key,
   });
 
@@ -217,8 +232,8 @@ class DCFCanvas extends DCFStatelessComponent {
       'onPaint': onPaint != null,
       'repaintOnFrame': repaintOnFrame,
       if (backgroundColor != null) 'backgroundColor': backgroundColor!.value,
-      ...layout.toMap(),
-      ...styleSheet.toMap(),
+      ...(layout ?? _canvasLayouts['default']!).toMap(),
+      ...(styleSheet ?? _canvasStyles['default']!).toMap(),
     };
 
     return DCFElement(

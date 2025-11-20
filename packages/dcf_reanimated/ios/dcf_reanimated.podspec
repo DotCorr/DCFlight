@@ -16,18 +16,18 @@ A crossplatform framework.
   
   # Skia dependency - built and linked automatically
   s.public_header_files = 'Classes/**/*.h'
-  s.private_header_files = 'Classes/**/*-Bridging-Header.h'
-  s.preserve_paths = 'Classes/**/*.h'
+  s.preserve_paths = 'Classes/**/*.h', 'Skia/**/*'
   
   # Include Skia source files
   s.source_files = 'Classes/**/*.{h,m,mm,swift}'
   
   s.swift_version = '5.0'
-  s.static_framework = false
+  s.static_framework = true
   
   # Link Skia library from local Skia directory
+  # Skia headers use #include "include/core/..." so we need both Skia/ and Skia/include/ in search paths
   s.xcconfig = {
-    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_TARGET_SRCROOT)/Skia/include/core" "$(PODS_TARGET_SRCROOT)/Skia/include/gpu" "$(PODS_TARGET_SRCROOT)/Skia/include/gpu/ganesh" "$(PODS_TARGET_SRCROOT)/Skia/include/gpu/ganesh/mtl"',
+    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia/include"',
     'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
     'OTHER_LDFLAGS' => '-lskia -framework Metal -framework MetalKit -framework Foundation',
     'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
@@ -38,11 +38,13 @@ A crossplatform framework.
   s.pod_target_xcconfig = { 
     'DEFINES_MODULE' => 'YES', 
     'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
-    'SWIFT_OBJC_BRIDGING_HEADER' => '$(PODS_TARGET_SRCROOT)/Classes/Skia-Bridging-Header.h',
-    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/include"',
-    'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"'
+    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_TARGET_SRCROOT)/Classes"',
+    'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
+    'SWIFT_OBJC_INTERFACE_HEADER_NAME' => 'dcf_reanimated-Swift.h'
   }
   
   # Ensure Skia library is linked
+  # NOTE: Library must be built with both device (arm64) and simulator (arm64/x64) architectures
+  # Run: ./scripts/setup_skia.sh to rebuild with simulator support
   s.vendored_libraries = 'Skia/lib/libskia.a'
 end

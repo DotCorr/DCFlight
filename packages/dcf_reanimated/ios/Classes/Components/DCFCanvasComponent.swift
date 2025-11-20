@@ -7,6 +7,7 @@
 
 import UIKit
 import dcflight
+// SkiaRenderer is available automatically in the same module
 
 // ============================================================================
 // SKIA CANVAS COMPONENT - GPU-ACCELERATED 2D RENDERING
@@ -79,9 +80,9 @@ class SkiaCanvasView: UIView {
     var repaintOnFrame: Bool = false
     
     // Skia surface and canvas
-    private var skiaSurface: OpaquePointer?
-    private var skiaCanvas: OpaquePointer?
-    private var skiaContext: OpaquePointer?
+    private var skiaSurface: UnsafeMutableRawPointer?
+    private var skiaCanvas: UnsafeMutableRawPointer?
+    private var skiaContext: UnsafeMutableRawPointer?
     private var metalDevice: MTLDevice?
     private var displayLink: CADisplayLink?
     
@@ -145,8 +146,8 @@ class SkiaCanvasView: UIView {
         }
         
         // Create new Skia surface with current size
-        let width = Int(bounds.width * contentScaleFactor)
-        let height = Int(bounds.height * contentScaleFactor)
+        let width = Int32(bounds.width * contentScaleFactor)
+        let height = Int32(bounds.height * contentScaleFactor)
         
         skiaSurface = SkiaRenderer.createSkiaSurface(
             Unmanaged.passUnretained(device).toOpaque(),

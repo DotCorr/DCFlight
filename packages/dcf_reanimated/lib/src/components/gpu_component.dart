@@ -6,7 +6,16 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'canvas_component.dart';
+
+// Default layouts and styles for GPU component (registered for bridge efficiency)
+// ignore: deprecated_member_use - Using DCFLayout()/DCFStyleSheet() inside create() is the correct pattern
+final _gpuLayouts = DCFLayout.create({
+  'default': DCFLayout(),
+});
+
+final _gpuStyles = DCFStyleSheet.create({
+  'default': DCFStyleSheet(),
+});
 
 /// GPU rendering configuration for Skia-based GPU rendering
 class GPUConfig {
@@ -59,16 +68,16 @@ enum GPURenderMode {
 /// Uses Skia for consistent GPU-accelerated rendering on iOS and Android
 class DCFGPU extends DCFStatelessComponent {
   final GPUConfig config;
-  final DCFLayout layout;
-  final DCFStyleSheet styleSheet;
+  final DCFLayout? layout;
+  final DCFStyleSheet? styleSheet;
   final void Function()? onComplete;
   final void Function()? onStart;
   final Map<String, dynamic>? events;
 
-  const DCFGPU({
+  DCFGPU({
     required this.config,
-    this.layout = const DCFLayout(),
-    this.styleSheet = const DCFStyleSheet(),
+    this.layout,
+    this.styleSheet,
     this.onComplete,
     this.onStart,
     this.events,
@@ -87,8 +96,8 @@ class DCFGPU extends DCFStatelessComponent {
 
     Map<String, dynamic> props = {
       'gpuConfig': config.toMap(),
-      ...layout.toMap(),
-      ...styleSheet.toMap(),
+      ...(layout ?? _gpuLayouts['default']!).toMap(),
+      ...(styleSheet ?? _gpuStyles['default']!).toMap(),
       ...eventHandlers,
     };
 

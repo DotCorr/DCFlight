@@ -5,39 +5,28 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#import <Foundation/Foundation.h>
+#import "SkiaParticleRenderer.h"
 #import <Metal/Metal.h>
-#import "include/core/SkCanvas.h"
-#import "include/core/SkPaint.h"
-#import "include/core/SkColor.h"
-#import "include/core/SkPath.h"
+// Skia headers - try both angle brackets and direct paths
+#import "core/SkCanvas.h"
+#import "core/SkPaint.h"
+#import "core/SkColor.h"
+#import "core/SkPath.h"
 
-// Particle data structure
-struct ParticleData {
-    double x;
-    double y;
-    double size;
-    uint32_t color; // ARGB
-};
-
-@interface SkiaParticleRenderer : NSObject
-
-+ (void)drawParticles:(void*)canvas particles:(ParticleData*)particles count:(int)count;
-
-@end
+// ParticleData struct is defined in SkiaParticleRenderer.h
 
 @implementation SkiaParticleRenderer
 
-+ (void)drawParticles:(void*)canvas particles:(ParticleData*)particles count:(int)count {
++ (void)drawParticles:(void*)canvas particles:(const ParticleData*)particles count:(int)count {
     SkCanvas* skCanvas = (SkCanvas*)canvas;
-    if (!skCanvas) return;
+    if (!skCanvas || !particles) return;
     
     SkPaint paint;
     paint.setAntiAlias(true);
     paint.setStyle(SkPaint::kFill_Style);
     
     for (int i = 0; i < count; i++) {
-        ParticleData* p = &particles[i];
+        const ParticleData* p = &particles[i];
         
         // Set color from ARGB
         paint.setColor(SkColorSetARGB(

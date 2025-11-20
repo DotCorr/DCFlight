@@ -66,8 +66,8 @@ class SkiaGPUView: UIView {
     var nodeId: String?
     
     // Skia surface and canvas
-    private var skiaSurface: OpaquePointer?
-    private var skiaCanvas: OpaquePointer?
+    private var skiaSurface: UnsafeMutableRawPointer?
+    private var skiaCanvas: UnsafeMutableRawPointer?
     private var metalDevice: MTLDevice?
     private var displayLink: CADisplayLink?
     
@@ -142,8 +142,8 @@ class SkiaGPUView: UIView {
             skiaCanvas = nil
         }
         
-        let width = Int(bounds.width * contentScaleFactor)
-        let height = Int(bounds.height * contentScaleFactor)
+        let width = Int32(bounds.width * contentScaleFactor)
+        let height = Int32(bounds.height * contentScaleFactor)
         
         skiaSurface = SkiaRenderer.createSkiaSurface(
             Unmanaged.passUnretained(device).toOpaque(),
@@ -319,10 +319,11 @@ class SkiaGPUView: UIView {
         }
         
         // Render particles using Skia
-        particleData.withUnsafeMutableBufferPointer { buffer in
+        particleData.withUnsafeBufferPointer { buffer in
+            guard let baseAddress = buffer.baseAddress else { return }
             SkiaParticleRenderer.drawParticles(
                 canvas,
-                particles: buffer.baseAddress,
+                particles: baseAddress,
                 count: Int32(particles.count)
             )
         }
