@@ -221,10 +221,11 @@ class DCFCanvas extends DCFStatelessComponent {
     this.onPaint,
     this.repaintOnFrame = false,
     this.backgroundColor,
-    this.layout,
-    this.styleSheet,
+    DCFLayout? layout,
+    DCFStyleSheet? styleSheet,
     super.key,
-  });
+  }) : layout = layout,
+       styleSheet = styleSheet;
 
   @override
   DCFComponentNode render() {
@@ -232,8 +233,8 @@ class DCFCanvas extends DCFStatelessComponent {
       'onPaint': onPaint != null,
       'repaintOnFrame': repaintOnFrame,
       if (backgroundColor != null) 'backgroundColor': backgroundColor!.value,
-      ...(layout ?? _canvasLayouts['default']!).toMap(),
-      ...(styleSheet ?? _canvasStyles['default']!).toMap(),
+      ...(layout ?? _canvasLayouts['default'] as DCFLayout).toMap(),
+      ...(styleSheet ?? _canvasStyles['default'] as DCFStyleSheet).toMap(),
     };
 
     return DCFElement(

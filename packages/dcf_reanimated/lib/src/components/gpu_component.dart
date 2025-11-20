@@ -76,13 +76,14 @@ class DCFGPU extends DCFStatelessComponent {
 
   DCFGPU({
     required this.config,
-    this.layout,
-    this.styleSheet,
+    DCFLayout? layout,
+    DCFStyleSheet? styleSheet,
     this.onComplete,
     this.onStart,
     this.events,
     super.key,
-  });
+  }) : layout = layout,
+       styleSheet = styleSheet;
 
   @override
   DCFComponentNode render() {
@@ -96,8 +97,8 @@ class DCFGPU extends DCFStatelessComponent {
 
     Map<String, dynamic> props = {
       'gpuConfig': config.toMap(),
-      ...(layout ?? _gpuLayouts['default']!).toMap(),
-      ...(styleSheet ?? _gpuStyles['default']!).toMap(),
+      ...(layout ?? _gpuLayouts['default'] as DCFLayout).toMap(),
+      ...(styleSheet ?? _gpuStyles['default'] as DCFStyleSheet).toMap(),
       ...eventHandlers,
     };
 

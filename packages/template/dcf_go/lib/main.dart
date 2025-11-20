@@ -1,257 +1,218 @@
-import 'dart:ui' as ui;
 import 'package:dcf_go/style.dart';
-import 'package:dcf_primitives/dcf_primitives.dart';
+import 'package:dcf_primitives/dcf_primitives.dart' hide DCFCanvas;
+import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:flutter/material.dart' show MaterialApp, Scaffold, Colors;
-import 'package:flutter_earth_globe/flutter_earth_globe.dart';
-import 'package:flutter_earth_globe/flutter_earth_globe_controller.dart';
+import 'package:flutter/material.dart' show Colors;
 
 void main() async {
-  await DCFlight.go(app: PureNativeAndFlutterMixApp());
+  await DCFlight.go(app: ReanimatedSkiaGPUDemo());
 }
 
-
-class PureNativeAndFlutterMixApp extends DCFStatefulComponent {
+/// Demo app showcasing Reanimated, Skia Canvas, and GPU rendering
+class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    final rotationSpeed = useState<double>(0.05);
-    final isRotating = useState<bool>(true);
-    final buttonPressCount = useState<int>(0);
-    final controllerRef = useRef<FlutterEarthGlobeController?>(null);
-    
-    if (controllerRef.current == null) {
-      controllerRef.current = FlutterEarthGlobeController(
-        rotationSpeed: rotationSpeed.state,
-        isBackgroundFollowingSphereRotation: true,
-      );
-      
-      controllerRef.current!.onLoaded = () async {
-        final surfaceImage = await _createDefaultSphereImage();
-        final byteData = await surfaceImage.toByteData(format: ui.ImageByteFormat.png);
-        if (byteData != null) {
-          final bytes = byteData.buffer.asUint8List();
-          controllerRef.current!.loadSurface(MemoryImage(bytes));
-        }
-      };
-    } else {
-      controllerRef.current!.rotationSpeed = rotationSpeed.state;
-    }
-    
+    final showConfetti = useState<bool>(false);
+    final canvasAnimation = useState<int>(0);
+    final isAnimating = useState<bool>(false);
+
     return DCFView(
       layout: layouts['root'],
       styleSheet: styles['root'],
       children: [
-        WidgetToDCFAdaptor.builder(
-          widgetBuilder: () {
-            return MaterialApp(
-              debugShowCheckedModeBanner: false,
-              home: Scaffold(
-                backgroundColor: Colors.black,
-                body: Center(
-                  child: FlutterEarthGlobe(
-                    controller: controllerRef.current!,
-                    radius: 150,
-                  ),
-                ),
-              ),
-            );
-          },
-          layout: layouts['flutterWidget'],
-          styleSheet: styles['emptyStyle'],
-        ),
+        // Header
         DCFView(
-          layout: layouts['controlsPanel'],
-          styleSheet: styles['controlsPanel'],
+          layout: layouts['header'],
+          styleSheet: styles['header'],
           children: [
             DCFText(
-              content: "3D Globe Demo",
+              content: "🎨 DCFlight Demo",
               textProps: DCFTextProps(
-                fontSize: 20,
+                fontSize: 28,
                 fontWeight: DCFFontWeight.bold,
               ),
-              styleSheet: DCFStyleSheet(
-                primaryColor: buttonPressCount.state % 3 == 0 
-                  ? DCFColors.white 
-                  : buttonPressCount.state % 3 == 1 
-                    ? DCFColors.green 
-                    : DCFColors.blue,
-              ),
+              styleSheet: styles['titleText'],
               layout: layouts['title'],
             ),
-            DCFView(
-              layout: layouts['controlSection'],
-              children: [
-                DCFText(
-                  content: "Rotation Speed: ${(rotationSpeed.state * 100).toStringAsFixed(0)}%",
-                  textProps: DCFTextProps(
-                    fontSize: 16,
-                  ),
-                  styleSheet: styles['bodyText'],
-                  layout: layouts['speedText'],
-                ),
-                DCFView(
-                  layout: layouts['buttonRow'],
-                  children: [
-                    DCFButton(
-                      onPress: (DCFButtonPressData data) {
-                        rotationSpeed.setState((rotationSpeed.state - 0.01).clamp(0.0, 0.2));
-                        buttonPressCount.setState(buttonPressCount.state + 1);
-                      },
-                      styleSheet: DCFStyleSheet(
-                        backgroundColor: Color.lerp(
-                          const Color(0xFFFF5722),
-                          const Color(0xFF4CAF50),
-                          (rotationSpeed.state / 0.2).clamp(0.0, 1.0),
-                        )!,
-                        borderRadius: 8,
-                      ),
-                      layout: layouts['smallButton'],
-                      children: [
-                        DCFText(
-                          content: "-",
-                          textProps: DCFTextProps(
-                            fontSize: 20,
-                            fontWeight: DCFFontWeight.bold,
-                          ),
-                          styleSheet: styles['buttonText'],
-                        ),
-                      ],
-                    ),
-                    DCFButton(
-                      onPress: (DCFButtonPressData data) {
-                        rotationSpeed.setState((rotationSpeed.state + 0.01).clamp(0.0, 0.2));
-                        buttonPressCount.setState(buttonPressCount.state + 1);
-                      },
-                      styleSheet: DCFStyleSheet(
-                        backgroundColor: Color.lerp(
-                          const Color(0xFF4CAF50),
-                          const Color(0xFFFF5722),
-                          (rotationSpeed.state / 0.2).clamp(0.0, 1.0),
-                        )!,
-                        borderRadius: 8,
-                      ),
-                      layout: layouts['smallButton'],
-                      children: [
-                        DCFText(
-                          content: "+",
-                          textProps: DCFTextProps(
-                            fontSize: 20,
-                            fontWeight: DCFFontWeight.bold,
-                          ),
-                          styleSheet: styles['buttonText'],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+            DCFText(
+              content: "Reanimated • Skia Canvas • GPU Rendering",
+              textProps: DCFTextProps(fontSize: 14),
+              styleSheet: styles['subtitleText'],
             ),
-            DCFView(
-              layout: layouts['controlSection'],
+          ],
+        ),
+
+        // Reanimated Section
+        DCFView(
+          layout: layouts['section'],
+          styleSheet: styles['section'],
+          children: [
+            DCFText(
+              content: "⚡ Reanimated - UI Thread Animations",
+              textProps: DCFTextProps(
+                fontSize: 18,
+                fontWeight: DCFFontWeight.bold,
+              ),
+              styleSheet: styles['sectionTitle'],
+              layout: layouts['sectionTitle'],
+            ),
+            ReanimatedView(
+              animatedStyle: Reanimated.bounce(
+                bounceScale: 1.2,
+                duration: 1000,
+                repeat: true,
+              ),
               children: [
-                DCFButton(
-                  onPress: (DCFButtonPressData data) {
-                    isRotating.setState(!isRotating.state);
-                  },
-                  styleSheet: isRotating.state ? styles['toggleButtonActive'] : styles['toggleButton'],
-                  layout: layouts['fullWidthButton'],
+                DCFView(
+                  layout: layouts['animatedBox'],
+                  styleSheet: styles['animatedBox'],
                   children: [
                     DCFText(
-                      content: isRotating.state ? "Pause Rotation" : "Resume Rotation",
+                      content: "60fps\nPure Native",
                       textProps: DCFTextProps(
                         fontSize: 16,
                         fontWeight: DCFFontWeight.bold,
                       ),
-                      styleSheet: styles['buttonText'],
+                      styleSheet: styles['boxText'],
                     ),
                   ],
                 ),
               ],
             ),
-            DCFView(
-              layout: layouts['infoBox'],
-              styleSheet: DCFStyleSheet(
-                backgroundColor: Color.lerp(
-                  const Color(0x3300FF00),
-                  const Color(0x33FF0000),
-                  (buttonPressCount.state % 10) / 10.0,
-                )!,
-                borderRadius: 8,
-              ),
+            DCFButton(
+              onPress: (DCFButtonPressData data) {
+                isAnimating.setState(!isAnimating.state);
+              },
+              styleSheet: styles['demoButton'],
+              layout: layouts['button'],
               children: [
                 DCFText(
-                  content: "Using WidgetToDCFAdaptor\n3D Globe with Flutter\nInteractive & Rotating\nState management working\nButton presses: ${buttonPressCount.state}",
-                  textProps: DCFTextProps(
-                    fontSize: 12,
-                  ),
-                  styleSheet: styles['infoText'],
+                  content: isAnimating.state ? "Stop Animation" : "Start Animation",
+                  textProps: DCFTextProps(fontSize: 14),
+                  styleSheet: styles['buttonText'],
                 ),
               ],
             ),
+          ],
+        ),
+
+        // Skia Canvas Section
+        DCFView(
+          layout: layouts['section'],
+          styleSheet: styles['section'],
+          children: [
+            DCFText(
+              content: "🎨 Skia Canvas - GPU 2D Drawing",
+              textProps: DCFTextProps(
+                fontSize: 18,
+                fontWeight: DCFFontWeight.bold,
+              ),
+              styleSheet: styles['sectionTitle'],
+              layout: layouts['sectionTitle'],
+            ),
+            DCFCanvas(
+              onPaint: (SkiaCanvas canvas, Size size) {
+                // Native Skia rendering - this callback provides access to Skia Canvas
+                // The native implementation handles the actual drawing
+              },
+              repaintOnFrame: true,
+              backgroundColor: const Color(0xFF1a1a2e),
+              layout: layouts['canvasBox'],
+            ),
+            DCFButton(
+              onPress: (DCFButtonPressData data) {
+                canvasAnimation.setState(canvasAnimation.state + 1);
+              },
+              styleSheet: styles['demoButton'],
+              layout: layouts['button'],
+              children: [
+                DCFText(
+                  content: "Redraw Canvas (Frame: ${canvasAnimation.state})",
+                  textProps: DCFTextProps(fontSize: 14),
+                  styleSheet: styles['buttonText'],
+                ),
               ],
             ),
           ],
-        );
+        ),
+
+        // GPU/Confetti Section
+        DCFView(
+          layout: layouts['section'],
+          styleSheet: styles['section'],
+          children: [
+            DCFText(
+              content: "🚀 GPU Rendering - Particle Effects",
+              textProps: DCFTextProps(
+                fontSize: 18,
+                fontWeight: DCFFontWeight.bold,
+              ),
+              styleSheet: styles['sectionTitle'],
+              layout: layouts['sectionTitle'],
+            ),
+            DCFView(
+              layout: layouts['gpuDemoBox'],
+              styleSheet: styles['gpuDemoBox'],
+              children: [
+                DCFText(
+                  content: "Tap to celebrate!",
+                  textProps: DCFTextProps(fontSize: 16),
+                  styleSheet: styles['boxText'],
+                ),
+              ],
+            ),
+            DCFButton(
+              onPress: (DCFButtonPressData data) {
+                showConfetti.setState(true);
+                // Auto-hide after animation
+                Future.delayed(const Duration(milliseconds: 3000), () {
+                  showConfetti.setState(false);
+                });
+              },
+              styleSheet: styles['demoButton'],
+              layout: layouts['button'],
+              children: [
+                DCFText(
+                  content: "🎉 Launch Confetti",
+                  textProps: DCFTextProps(
+                    fontSize: 16,
+                    fontWeight: DCFFontWeight.bold,
+                  ),
+                  styleSheet: styles['buttonText'],
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // Confetti overlay (absolute positioned)
+        if (showConfetti.state)
+          DCFConfetti(
+            particleCount: 100,
+            duration: 3000,
+            config: const ConfettiConfig(
+              gravity: 9.8,
+              initialVelocity: 80.0,
+              spread: 360.0,
+              colors: [
+                Colors.red,
+                Colors.green,
+                Colors.blue,
+                Colors.yellow,
+                Colors.purple,
+                Colors.cyan,
+                Colors.orange,
+                Colors.pink,
+              ],
+              minSize: 5.0,
+              maxSize: 12.0,
+            ),
+            onComplete: () {
+              showConfetti.setState(false);
+            },
+            layout: layouts['confettiOverlay'],
+          ),
+      ],
+    );
   }
 }
-
-Future<ui.Image> _createDefaultSphereImage() async {
-  final recorder = ui.PictureRecorder();
-  final canvas = ui.Canvas(recorder);
-  final size = ui.Size(512, 512);
-  final center = ui.Offset(size.width / 2, size.height / 2);
-  final radius = size.width / 2 - 10;
-  
-  // Draw base ocean gradient
-  final oceanPaint = ui.Paint()
-    ..shader = ui.Gradient.radial(
-      center,
-      radius,
-      [
-        const ui.Color(0xFF4A90E2),
-        const ui.Color(0xFF2E5C8A),
-      ],
-      [0.0, 1.0],
-    );
-  canvas.drawCircle(center, radius, oceanPaint);
-  
-  // Draw continents (simplified landmasses)
-  final landPaint = ui.Paint()..color = const ui.Color(0xFF2D5016);
-  
-  // Draw some continent shapes
-  final path1 = ui.Path()
-    ..addOval(ui.Rect.fromLTWH(150, 100, 120, 80));
-  canvas.drawPath(path1, landPaint);
-  
-  final path2 = ui.Path()
-    ..addOval(ui.Rect.fromLTWH(250, 200, 100, 90));
-  canvas.drawPath(path2, landPaint);
-  
-  final path3 = ui.Path()
-    ..addOval(ui.Rect.fromLTWH(100, 300, 140, 100));
-  canvas.drawPath(path3, landPaint);
-  
-  final path4 = ui.Path()
-    ..addOval(ui.Rect.fromLTWH(300, 350, 110, 70));
-  canvas.drawPath(path4, landPaint);
-  
-  // Add some cloud-like white areas
-  final cloudPaint = ui.Paint()..color = const ui.Color(0x88FFFFFF);
-  final cloudPath1 = ui.Path()
-    ..addOval(ui.Rect.fromLTWH(180, 150, 60, 40));
-  canvas.drawPath(cloudPath1, cloudPaint);
-  
-  final cloudPath2 = ui.Path()
-    ..addOval(ui.Rect.fromLTWH(280, 250, 50, 35));
-  canvas.drawPath(cloudPath2, cloudPaint);
-  
-  // Add atmosphere glow
-  final glowPaint = ui.Paint()
-    ..color = const ui.Color(0x33FFFFFF)
-    ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 20);
-  canvas.drawCircle(center, radius + 5, glowPaint);
-  
-  final picture = recorder.endRecording();
-  return await picture.toImage(size.width.toInt(), size.height.toInt());
-}
-

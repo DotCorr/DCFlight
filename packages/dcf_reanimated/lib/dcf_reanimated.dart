@@ -19,6 +19,11 @@ export 'src/styles/animated_style.dart';
 // Main animated view component
 export 'src/components/reanimated_view.dart';
 
+// Canvas and GPU components
+export 'src/components/canvas_component.dart';
+export 'src/components/gpu_component.dart';
+export 'src/components/confetti_component.dart';
+
 // Animation hooks for StatefulComponent
 export 'src/hooks/animation_hooks.dart';
 

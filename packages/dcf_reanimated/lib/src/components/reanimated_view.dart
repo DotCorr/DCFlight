@@ -42,10 +42,10 @@ class ReanimatedView extends DCFStatelessComponent {
   final AnimatedStyle? animatedStyle;
 
   /// Layout properties for positioning and sizing
-  final DCFLayout layout;
+  final DCFLayout? layout;
 
   /// Static styling properties (non-animated)
-  final DCFStyleSheet styleSheet;
+  final DCFStyleSheet? styleSheet;
 
   /// Whether to start animation automatically when component mounts
   final bool autoStart;
@@ -69,11 +69,21 @@ class ReanimatedView extends DCFStatelessComponent {
   ///
   /// The [children] parameter is required, all others have sensible defaults.
   /// Animation initialization is handled automatically.
+  // Default layouts and styles for ReanimatedView (registered for bridge efficiency)
+  // ignore: deprecated_member_use - Using DCFLayout()/DCFStyleSheet() inside create() is the correct pattern
+  static final _reanimatedLayouts = DCFLayout.create({
+    'default': DCFLayout(),
+  });
+
+  static final _reanimatedStyles = DCFStyleSheet.create({
+    'default': DCFStyleSheet(),
+  });
+
   ReanimatedView({
     required this.children,
     this.animatedStyle,
-    this.layout = const DCFLayout(),
-    this.styleSheet = const DCFStyleSheet(),
+    this.layout,
+    this.styleSheet,
     this.autoStart = true,
     this.startDelay = 0,
     this.onAnimationStart,
@@ -110,8 +120,8 @@ class ReanimatedView extends DCFStatelessComponent {
       'isPureReanimated': true, // Flag for native to use pure animation mode
 
       // Layout and styling
-      ...layout.toMap(),
-      ...styleSheet.toMap(),
+      ...(layout ?? _reanimatedLayouts['default'] as DCFLayout).toMap(),
+      ...(styleSheet ?? _reanimatedStyles['default'] as DCFStyleSheet).toMap(),
 
       // Event handlers
       ...eventHandlers,

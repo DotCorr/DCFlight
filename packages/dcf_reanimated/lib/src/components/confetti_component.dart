@@ -88,12 +88,12 @@ class DCFConfetti extends DCFStatelessComponent {
     this.particleCount = 50,
     this.duration = 2000,
     this.config,
-    this.layout,
+    DCFLayout? layout,
     this.onComplete,
     this.onStart,
     this.events,
     super.key,
-  });
+  }) : layout = layout;
 
   @override
   DCFComponentNode render() {
@@ -108,7 +108,7 @@ class DCFConfetti extends DCFStatelessComponent {
         autoStart: true,
         parameters: confettiConfig.toMap(),
       ),
-      layout: layout ?? _confettiLayouts['default'],
+      layout: layout ?? _confettiLayouts['default'] as DCFLayout,
       onComplete: onComplete,
       onStart: onStart,
       events: events,
