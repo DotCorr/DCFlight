@@ -43,6 +43,7 @@ A crossplatform framework.
   }
   
   # Ensure Skia library is linked
-  # NOTE: Library must be built with both device (arm64) and simulator (arm64/x64) architectures
+  # NOTE: Library contains all architectures (x86_64 simulator, arm64 device, arm64e device)
+  # Users get this automatically via Git LFS - NO REBUILDING REQUIRED!
   s.vendored_libraries = 'Skia/lib/libskia.a'
 end
