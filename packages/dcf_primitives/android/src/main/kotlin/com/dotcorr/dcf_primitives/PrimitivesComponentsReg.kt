@@ -42,6 +42,9 @@ object PrimitivesComponentsReg {
         
         registry.registerComponent("Svg", DCFSvgComponent::class.java)
         registry.registerComponent("DCFIcon", DCFIconComponent::class.java)
+        
+        registry.registerComponent("GPU", DCFGPUComponent::class.java)
+        
         // Canvas component not needed - using WidgetToDCFAdaptor with CustomPaint directly
         // registry.registerComponent("Canvas", DCFCanvasComponent::class.java)
     }

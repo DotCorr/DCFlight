@@ -25,6 +25,9 @@ export 'src/hooks/animation_hooks.dart';
 // Pre-configured animation presets
 export 'src/presets/animation_presets.dart';
 
+// Worklets are now in framework layer - export from dcflight
+// export 'src/worklets/worklet.dart'; // Moved to framework
+
 // Component dictionary for DCFlight registration
 export 'src/dictionary/components.dart';
 

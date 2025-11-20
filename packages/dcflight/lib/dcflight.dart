@@ -71,6 +71,7 @@ export 'framework/protocol/plugin_protocol.dart';
 export 'framework/components/portal/dcf_portal.dart';
 export 'framework/components/portal/dcf_portal_target.dart';
 export 'framework/utils/widget_to_dcf_adaptor.dart';
+export 'framework/worklets/worklet.dart';
 import 'package:dcflight/framework/components/component_node.dart';
 
 import 'framework/renderer/engine/engine_api.dart';
