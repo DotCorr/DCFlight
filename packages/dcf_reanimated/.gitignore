@@ -1,10 +1,14 @@
-# Skia build directory (30GB) - IGNORED
-# This contains Skia source code and build artifacts
-# Framework contributors can rebuild by running: ./scripts/setup_skia.sh
+# Skia source and build directories - IGNORED
+# This contains Skia source code and build artifacts (~10GB)
+# Framework contributors can rebuild by running: ./scripts/rebuild_skia_simulator.sh
 # Regular developers DON'T need this - they use the pre-built library below
+ios/Skia/source/
 ios/Skia/build/
 
 # Skia compiled library and headers ARE COMMITTED (via Git LFS)
 # Regular developers get these automatically - NO BUILDING NEEDED!
-# ios/Skia/lib/libskia.a - COMMITTED (2GB, via Git LFS)
+# ios/Skia/lib/libskia.a - COMMITTED (2.6GB, via Git LFS) - Contains:
+#   - x86_64 (iOS Simulator)
+#   - arm64 (iOS Device - standard)
+#   - arm64e (iOS Device - newer Apple Silicon)
 # ios/Skia/include/ - COMMITTED (headers, regular git)

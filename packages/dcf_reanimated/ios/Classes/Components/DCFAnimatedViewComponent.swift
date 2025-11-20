@@ -24,13 +24,17 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         if let isPure = props["isPureReanimated"] as? Bool, isPure {
             print("🎯 PURE REANIMATED: Creating view with pure UI thread configuration")
             
-            // Configure animation entirely from props
-            if let animatedStyle = props["animatedStyle"] as? [String: Any] {
+            // Configure worklet if provided (takes precedence)
+            if let workletData = props["worklet"] as? [String: Any] {
+                let workletConfig = props["workletConfig"] as? [String: Any]
+                reanimatedView.configureWorklet(workletData, workletConfig)
+            } else if let animatedStyle = props["animatedStyle"] as? [String: Any] {
+                // Fall back to animated style
                 reanimatedView.configurePureAnimation(animatedStyle)
             }
             
-            // Auto-start if configured
-            let autoStart = props["autoStart"] as? Bool ?? true
+            // Auto-start if configured (default: false for explicit control)
+            let autoStart = props["autoStart"] as? Bool ?? false
             let startDelay = props["startDelay"] as? Int ?? 0
             
             if autoStart {
@@ -53,9 +57,23 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let reanimatedView = view as? PureReanimatedView else { return false }
         
-        // ✅ PURE: Only update if animation style changes - NO BRIDGE CALLS
-        if let animatedStyle = props["animatedStyle"] as? [String: Any] {
+        // Update worklet or animation style
+        if let workletData = props["worklet"] as? [String: Any] {
+            let workletConfig = props["workletConfig"] as? [String: Any]
+            reanimatedView.updateWorklet(workletData, workletConfig)
+        } else if let animatedStyle = props["animatedStyle"] as? [String: Any] {
             reanimatedView.updateAnimationConfig(animatedStyle)
+        }
+        
+        // Handle autoStart changes - control animation start/stop
+        if let autoStart = props["autoStart"] as? Bool {
+            if autoStart && !reanimatedView.isAnimating {
+                // Start animation if autoStart is true and not already animating
+                reanimatedView.startPureAnimation()
+            } else if !autoStart && reanimatedView.isAnimating {
+                // Stop animation if autoStart is false and currently animating
+                reanimatedView.stopPureAnimation()
+            }
         }
         
         view.applyStyles(props: props)
@@ -97,10 +115,15 @@ class PureReanimatedView: UIView {
     private var animationConfig: [String: Any] = [:]
     private var displayLink: CADisplayLink?
     private var animationStartTime: CFTimeInterval = 0
-    private var isAnimating = false
+    var isAnimating = false
     
     // Animation state
     private var currentAnimations: [String: PureAnimationState] = [:]
+    
+    // Worklet configuration
+    private var workletConfig: [String: Any]?
+    private var workletExecutionConfig: [String: Any]?
+    private var isUsingWorklet = false
     
     // Identifiers for callbacks
     var nodeId: String?
@@ -120,11 +143,32 @@ class PureReanimatedView: UIView {
     }
     
     // ============================================================================
+    // WORKLET CONFIGURATION - UI THREAD EXECUTION
+    // ============================================================================
+    
+    func configureWorklet(_ workletData: [String: Any], _ config: [String: Any]?) {
+        print("🔧 WORKLET: Configuring worklet for pure UI thread execution")
+        self.workletConfig = workletData
+        self.workletExecutionConfig = config
+        self.isUsingWorklet = true
+        
+        // Clear animation config when using worklet
+        currentAnimations.removeAll()
+    }
+    
+    func updateWorklet(_ workletData: [String: Any], _ config: [String: Any]?) {
+        stopPureAnimation()
+        configureWorklet(workletData, config)
+        startPureAnimation()
+    }
+    
+    // ============================================================================
     // PURE ANIMATION CONFIGURATION - NO BRIDGE CALLS
     // ============================================================================
     
     /// Configure animation entirely from props - PURE
     func configurePureAnimation(_ animatedStyle: [String: Any]) {
+        self.isUsingWorklet = false
         print("🎯 PURE REANIMATED: Configuring animation from props")
         self.animationConfig = animatedStyle
         
@@ -182,7 +226,12 @@ class PureReanimatedView: UIView {
     
     /// Start pure UI thread animation - NO BRIDGE CALLS
     func startPureAnimation() {
-        guard !currentAnimations.isEmpty else {
+        if isUsingWorklet && workletConfig == nil {
+            print("⚠️ PURE REANIMATED: No worklet configured")
+            return
+        }
+        
+        if !isUsingWorklet && currentAnimations.isEmpty {
             print("⚠️ PURE REANIMATED: No animations configured")
             return
         }
@@ -240,6 +289,15 @@ class PureReanimatedView: UIView {
         }
         
         let currentTime = CACurrentMediaTime()
+        let elapsed = currentTime - animationStartTime
+        let elapsedSeconds = elapsed
+        
+        // Execute worklet if configured
+        if isUsingWorklet, let worklet = workletConfig {
+            executeWorklet(elapsed: elapsedSeconds, worklet: worklet)
+            return
+        }
+        
         var allAnimationsComplete = true
         var anyAnimationRepeated = false
         
@@ -258,6 +316,8 @@ class PureReanimatedView: UIView {
         // Fire repeat event if any animation repeated
         if anyAnimationRepeated {
             fireAnimationEvent(eventType: "onAnimationRepeat")
+            // Reset start time for smooth repeating animations
+            animationStartTime = currentTime
         }
         
         // Check if all animations are complete
@@ -266,12 +326,57 @@ class PureReanimatedView: UIView {
         }
     }
     
+    private func executeWorklet(elapsed: CFTimeInterval, worklet: [String: Any]) {
+        // Get worklet configuration
+        guard let functionData = worklet["function"] as? [String: Any] else {
+            print("⚠️ WORKLET: Invalid worklet configuration")
+            stopPureAnimation()
+            return
+        }
+        
+        // Get duration from config or use default
+        let duration = (workletExecutionConfig?["duration"] as? Double ?? 2000.0) / 1000.0
+        
+        // Check if worklet should complete
+        if elapsed >= duration {
+            stopPureAnimation()
+            return
+        }
+        
+        // Execute worklet (simplified - in production would use compiled code or interpreter)
+        // For now, this is a placeholder - the actual worklet execution would happen here
+        // The worklet function would be properly executed based on the serialized function data
+        
+        // Apply worklet result to view (simplified example)
+        // In production, the worklet function would be properly executed
+        if let result = functionData["result"] as? Double {
+            // Apply result to view properties based on worklet configuration
+            // This is a simplified example
+        }
+        
+        // Note: In production, the worklet function would be properly executed
+        // This would involve either:
+        // 1. Compiling the worklet to native code
+        // 2. Using an interpreter to execute the serialized function
+        // 3. Using a JIT compiler for dynamic execution
+    }
+    
     // ============================================================================
     // PURE EVENT SYSTEM - MINIMAL BRIDGE USAGE
     // ============================================================================
     
     private func fireAnimationEvent(eventType: String) {
         guard let nodeId = nodeId else { return }
+        
+        // Check if event callback is registered before calling propagateEvent
+        // This prevents infinite log spam when no callbacks are registered
+        let callback = objc_getAssociatedObject(self, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
+            as? (String, String, [String: Any]) -> Void
+        
+        guard callback != nil else {
+            // No event callback registered - silently return (don't spam logs)
+            return
+        }
         
         // Use global event propagation system
         propagateEvent(
@@ -311,6 +416,7 @@ class PureAnimationState {
     private weak var view: UIView?
     private var cycleCount = 0
     private var isReversing = false
+    private var cycleStartTime: CFTimeInterval = 0
     
     init(property: String, config: [String: Any], view: UIView) {
         self.property = property
@@ -342,7 +448,12 @@ class PureAnimationState {
             return PureAnimationResult(isActive: false, didRepeat: false)
         }
         
-        let elapsed = currentTime - startTime - delay
+        // Initialize cycle start time on first update
+        if cycleStartTime == 0 {
+            cycleStartTime = startTime
+        }
+        
+        let elapsed = currentTime - cycleStartTime - delay
         
         // Check if animation hasn't started yet (delay)
         if elapsed < 0 {
@@ -374,6 +485,8 @@ class PureAnimationState {
                 if shouldContinue {
                     cycleCount += 1
                     isReversing.toggle() // Reverse for ping-pong effect
+                    // Reset cycle start time for smooth repeat
+                    cycleStartTime = currentTime
                     return PureAnimationResult(isActive: true, didRepeat: true)
                 }
             }

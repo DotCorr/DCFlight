@@ -26,10 +26,11 @@ A crossplatform framework.
   s.xcconfig = {
     'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia/include"',
     'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
-    'OTHER_LDFLAGS' => '-lskia -framework Metal -framework MetalKit -framework Foundation',
+    'OTHER_LDFLAGS' => '-lskia -framework Metal -framework MetalKit -framework Foundation -Wl,-dead_strip -Wl,-no_compact_unwind',
     'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
     'CLANG_CXX_LIBRARY' => 'libc++',
-    'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) SK_METAL=1'
+    'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) SK_METAL=1',
+    'OTHER_CPLUSPLUSFLAGS' => '$(OTHER_CFLAGS) -fno-cxx-modules'
   }
 
   s.pod_target_xcconfig = { 
@@ -37,7 +38,8 @@ A crossplatform framework.
     'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386', # Keep i386 excluded
     'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_TARGET_SRCROOT)/Classes"',
     'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
-    'SWIFT_OBJC_INTERFACE_HEADER_NAME' => 'dcf_reanimated-Swift.h'
+    'SWIFT_OBJC_INTERFACE_HEADER_NAME' => 'dcf_reanimated-Swift.h',
+    'OTHER_LDFLAGS' => '$(inherited) -Wl,-dead_strip -Wl,-no_compact_unwind'
   }
   
   # Ensure Skia library is linked

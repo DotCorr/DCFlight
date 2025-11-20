@@ -15,7 +15,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
     final showConfetti = useState<bool>(false);
     final canvasAnimation = useState<int>(0);
     final isAnimating = useState<bool>(false);
-
+    
     return DCFView(
       layout: layouts['root'],
       styleSheet: styles['root'],
@@ -43,25 +43,26 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
         ),
 
         // Reanimated Section
-        DCFView(
+            DCFView(
           layout: layouts['section'],
           styleSheet: styles['section'],
-          children: [
-            DCFText(
+              children: [
+                DCFText(
               content: "⚡ Reanimated - UI Thread Animations",
-              textProps: DCFTextProps(
+                  textProps: DCFTextProps(
                 fontSize: 18,
                 fontWeight: DCFFontWeight.bold,
-              ),
+                  ),
               styleSheet: styles['sectionTitle'],
               layout: layouts['sectionTitle'],
-            ),
+                ),
             ReanimatedView(
               animatedStyle: Reanimated.bounce(
                 bounceScale: 1.2,
                 duration: 1000,
                 repeat: true,
               ),
+              autoStart: isAnimating.state,
               children: [
                 DCFView(
                   layout: layouts['animatedBox'],
@@ -69,18 +70,18 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                   children: [
                     DCFText(
                       content: "60fps\nPure Native",
-                      textProps: DCFTextProps(
+                          textProps: DCFTextProps(
                         fontSize: 16,
-                        fontWeight: DCFFontWeight.bold,
-                      ),
+                            fontWeight: DCFFontWeight.bold,
+                          ),
                       styleSheet: styles['boxText'],
                     ),
                   ],
-                ),
-              ],
-            ),
-            DCFButton(
-              onPress: (DCFButtonPressData data) {
+                        ),
+                      ],
+                    ),
+                    DCFButton(
+                      onPress: (DCFButtonPressData data) {
                 isAnimating.setState(!isAnimating.state);
               },
               styleSheet: styles['demoButton'],
@@ -100,20 +101,31 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
         DCFView(
           layout: layouts['section'],
           styleSheet: styles['section'],
-          children: [
-            DCFText(
+                      children: [
+                        DCFText(
               content: "🎨 Skia Canvas - GPU 2D Drawing",
-              textProps: DCFTextProps(
+                          textProps: DCFTextProps(
                 fontSize: 18,
-                fontWeight: DCFFontWeight.bold,
-              ),
+                            fontWeight: DCFFontWeight.bold,
+                          ),
               styleSheet: styles['sectionTitle'],
               layout: layouts['sectionTitle'],
             ),
             DCFCanvas(
               onPaint: (SkiaCanvas canvas, Size size) {
-                // Native Skia rendering - this callback provides access to Skia Canvas
-                // The native implementation handles the actual drawing
+                // Draw a simple animated circle to demonstrate Skia rendering
+                final centerX = size.width / 2;
+                final centerY = size.height / 2;
+                final radius = 50.0;
+                
+                // Create paint for the circle
+                final paint = SkiaPaint();
+                paint.color = const Color(0xFF00FF00);
+                paint.style = SkiaPaintStyle.fill;
+                
+                // Draw circle (this is a placeholder - actual Skia drawing would happen natively)
+                // In production, this would call native Skia canvas methods
+                canvas.drawCircle(centerX, centerY, radius, paint);
               },
               repaintOnFrame: true,
               backgroundColor: const Color(0xFF1a1a2e),
@@ -129,12 +141,12 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                 DCFText(
                   content: "Redraw Canvas (Frame: ${canvasAnimation.state})",
                   textProps: DCFTextProps(fontSize: 14),
-                  styleSheet: styles['buttonText'],
+                          styleSheet: styles['buttonText'],
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
 
         // GPU/Confetti Section
         DCFView(
@@ -161,29 +173,29 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                 ),
               ],
             ),
-            DCFButton(
-              onPress: (DCFButtonPressData data) {
+                DCFButton(
+                  onPress: (DCFButtonPressData data) {
                 showConfetti.setState(true);
                 // Auto-hide after animation
                 Future.delayed(const Duration(milliseconds: 3000), () {
                   showConfetti.setState(false);
                 });
-              },
+                  },
               styleSheet: styles['demoButton'],
               layout: layouts['button'],
-              children: [
-                DCFText(
+                  children: [
+                    DCFText(
                   content: "🎉 Launch Confetti",
-                  textProps: DCFTextProps(
-                    fontSize: 16,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                  styleSheet: styles['buttonText'],
+                      textProps: DCFTextProps(
+                        fontSize: 16,
+                        fontWeight: DCFFontWeight.bold,
+                      ),
+                      styleSheet: styles['buttonText'],
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
 
         // Confetti overlay (absolute positioned)
         if (showConfetti.state)
@@ -211,8 +223,8 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               showConfetti.setState(false);
             },
             layout: layouts['confettiOverlay'],
-          ),
-      ],
-    );
+            ),
+          ],
+        );
   }
 }
