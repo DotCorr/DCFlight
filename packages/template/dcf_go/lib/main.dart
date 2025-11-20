@@ -120,8 +120,8 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                 
                 // Create paint for the circle
                 final paint = SkiaPaint();
-                paint.color = const Color(0xFF00FF00);
-                paint.style = SkiaPaintStyle.fill;
+                // paint.color = const Color(0xFF00FF00);
+                // paint.style = SkiaPaintStyle.fill;
                 
                 // Draw circle (this is a placeholder - actual Skia drawing would happen natively)
                 // In production, this would call native Skia canvas methods

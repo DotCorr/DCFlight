@@ -42,8 +42,20 @@ A crossplatform framework.
     'OTHER_LDFLAGS' => '$(inherited) -Wl,-dead_strip -Wl,-no_compact_unwind'
   }
   
-  # Ensure Skia library is linked
-  # NOTE: Library contains all architectures (x86_64 simulator, arm64 device, arm64e device)
-  # Users get this automatically via Git LFS - NO REBUILDING REQUIRED!
+  # Combine architecture-specific libraries into universal binary
+  # Each architecture file is under 2GB (GitHub LFS limit)
+  # Combined automatically during pod install - users don't need to rebuild!
+  s.prepare_command = <<-CMD
+    LIB_DIR="${PODS_TARGET_SRCROOT}/Skia/lib"
+    if [ -f "$LIB_DIR/libskia_x86_64.a" ] && [ -f "$LIB_DIR/libskia_arm64.a" ] && [ -f "$LIB_DIR/libskia_arm64e.a" ]; then
+      echo "🔨 Combining Skia architectures..."
+      lipo -create "$LIB_DIR/libskia_x86_64.a" "$LIB_DIR/libskia_arm64.a" "$LIB_DIR/libskia_arm64e.a" -output "$LIB_DIR/libskia.a"
+      echo "✅ Combined library created: $LIB_DIR/libskia.a"
+    else
+      echo "⚠️  Architecture-specific libraries not found, skipping combination"
+    fi
+  CMD
+  
+  # Link the combined library
   s.vendored_libraries = 'Skia/lib/libskia.a'
 end

@@ -7,8 +7,9 @@ ios/Skia/build/
 
 # Skia compiled library and headers ARE COMMITTED (via Git LFS)
 # Regular developers get these automatically - NO BUILDING NEEDED!
-# ios/Skia/lib/libskia.a - COMMITTED (2.6GB, via Git LFS) - Contains:
-#   - x86_64 (iOS Simulator)
-#   - arm64 (iOS Device - standard)
-#   - arm64e (iOS Device - newer Apple Silicon)
+# Architecture-specific files (each under 2GB GitHub limit):
+#   - ios/Skia/lib/libskia_x86_64.a (619MB) - iOS Simulator
+#   - ios/Skia/lib/libskia_arm64.a (997MB) - iOS Device (standard)
+#   - ios/Skia/lib/libskia_arm64e.a (1.0GB) - iOS Device (newer Apple Silicon)
+# Combined library (libskia.a) is generated automatically during pod install
 # ios/Skia/include/ - COMMITTED (headers, regular git)
