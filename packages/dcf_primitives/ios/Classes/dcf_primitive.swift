@@ -54,8 +54,9 @@ import dcflight
         
         DCFComponentRegistry.shared.registerComponent(
             "WebView", componentClass: DCFWebViewComponent.self)
-        
-        // GPU and Canvas components moved to dcf_reanimated package
+        // Canvas component not needed - using WidgetToDCFAdaptor with CustomPaint directly
+        // DCFComponentRegistry.shared.registerComponent(
+        //     "Canvas", componentClass: DCFCanvasComponent.self)
     }
 }
 

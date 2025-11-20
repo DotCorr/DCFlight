@@ -7,7 +7,4 @@
 
 // Export all DCF Reanimated components for DCFlight registration
 export '../components/reanimated_view.dart';
-export '../components/canvas_component.dart';
-export '../components/gpu_component.dart';
-export '../components/confetti_component.dart';
 export '../helper/prop_differ_extension.dart';

@@ -24,12 +24,8 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         if let isPure = props["isPureReanimated"] as? Bool, isPure {
             print("🎯 PURE REANIMATED: Creating view with pure UI thread configuration")
             
-            // Configure worklet if provided (takes precedence over animatedStyle)
-            if let workletData = props["worklet"] as? [String: Any] {
-                print("🔧 WORKLET: Configuring worklet for UI thread execution")
-                reanimatedView.configureWorklet(workletData, config: props["workletConfig"] as? [String: Any])
-            } else if let animatedStyle = props["animatedStyle"] as? [String: Any] {
-                // Fall back to animated style if no worklet
+            // Configure animation entirely from props
+            if let animatedStyle = props["animatedStyle"] as? [String: Any] {
                 reanimatedView.configurePureAnimation(animatedStyle)
             }
             
@@ -57,10 +53,8 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let reanimatedView = view as? PureReanimatedView else { return false }
         
-        // ✅ PURE: Update worklet or animation style - NO BRIDGE CALLS
-        if let workletData = props["worklet"] as? [String: Any] {
-            reanimatedView.updateWorklet(workletData, config: props["workletConfig"] as? [String: Any])
-        } else if let animatedStyle = props["animatedStyle"] as? [String: Any] {
+        // ✅ PURE: Only update if animation style changes - NO BRIDGE CALLS
+        if let animatedStyle = props["animatedStyle"] as? [String: Any] {
             reanimatedView.updateAnimationConfig(animatedStyle)
         }
         
@@ -108,11 +102,6 @@ class PureReanimatedView: UIView {
     // Animation state
     private var currentAnimations: [String: PureAnimationState] = [:]
     
-    // Worklet configuration
-    private var workletConfig: [String: Any]?
-    private var workletExecutionConfig: [String: Any]?
-    private var isUsingWorklet = false
-    
     // Identifiers for callbacks
     var nodeId: String?
     
@@ -131,28 +120,6 @@ class PureReanimatedView: UIView {
     }
     
     // ============================================================================
-    // WORKLET CONFIGURATION - UI THREAD EXECUTION
-    // ============================================================================
-    
-    /// Configure worklet for UI thread execution
-    func configureWorklet(_ workletData: [String: Any], config: [String: Any]?) {
-        print("🔧 WORKLET: Configuring worklet for pure UI thread execution")
-        self.workletConfig = workletData
-        self.workletExecutionConfig = config
-        self.isUsingWorklet = true
-        
-        // Clear animation config when using worklet
-        currentAnimations.removeAll()
-    }
-    
-    /// Update worklet configuration
-    func updateWorklet(_ workletData: [String: Any], config: [String: Any]?) {
-        stopPureAnimation()
-        configureWorklet(workletData, config: config)
-        startPureAnimation()
-    }
-    
-    // ============================================================================
     // PURE ANIMATION CONFIGURATION - NO BRIDGE CALLS
     // ============================================================================
     
@@ -160,7 +127,6 @@ class PureReanimatedView: UIView {
     func configurePureAnimation(_ animatedStyle: [String: Any]) {
         print("🎯 PURE REANIMATED: Configuring animation from props")
         self.animationConfig = animatedStyle
-        self.isUsingWorklet = false
         
         // Parse animation configurations
         currentAnimations.removeAll()
@@ -274,13 +240,6 @@ class PureReanimatedView: UIView {
         }
         
         let currentTime = CACurrentMediaTime()
-        let elapsed = currentTime - animationStartTime
-        
-        // Execute worklet if configured
-        if isUsingWorklet, let worklet = workletConfig {
-            executeWorklet(elapsed: elapsed, worklet: worklet)
-        } else {
-            // Execute traditional animations
         var allAnimationsComplete = true
         var anyAnimationRepeated = false
         
@@ -305,45 +264,6 @@ class PureReanimatedView: UIView {
         if allAnimationsComplete {
             stopPureAnimation()
         }
-        }
-    }
-    
-    /// Execute worklet function on UI thread
-    private func executeWorklet(elapsed: CFTimeInterval, worklet: [String: Any]) {
-        // Get worklet configuration
-        guard let functionData = worklet["function"] as? [String: Any],
-              let source = functionData["source"] as? String else {
-            print("⚠️ WORKLET: Invalid worklet configuration")
-            stopPureAnimation()
-            return
-        }
-        
-        // Get duration from config (default: 2000ms)
-        let duration = (workletExecutionConfig?["duration"] as? Double ?? 2000.0) / 1000.0
-        
-        // Check if worklet should complete
-        if elapsed >= duration {
-            stopPureAnimation()
-            return
-        }
-        
-        // Execute worklet (simplified - in production would use compiled code or interpreter)
-        // For now, we'll use a simple evaluation approach
-        // In production, this would be compiled to native code or use a proper interpreter
-        
-        // Example: Simple worklet execution
-        // This is a placeholder - real implementation would parse and execute the worklet
-        let progress = elapsed / duration
-        let normalizedTime = progress
-        
-        // Apply worklet result to view (simplified example)
-        // In production, the worklet would return actual values
-        // For now, we'll use a simple transform based on time
-        let scale = 1.0 + sin(normalizedTime * .pi * 2) * 0.1
-        self.transform = CGAffineTransform(scaleX: scale, y: scale)
-        
-        // Note: In production, the worklet function would be properly executed
-        // This is a simplified placeholder that demonstrates the concept
     }
     
     // ============================================================================

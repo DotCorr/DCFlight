@@ -42,8 +42,8 @@ object PrimitivesComponentsReg {
         
         registry.registerComponent("Svg", DCFSvgComponent::class.java)
         registry.registerComponent("DCFIcon", DCFIconComponent::class.java)
-        
-        // GPU and Canvas components moved to dcf_reanimated package
+        // Canvas component not needed - using WidgetToDCFAdaptor with CustomPaint directly
+        // registry.registerComponent("Canvas", DCFCanvasComponent::class.java)
     }
 
 }

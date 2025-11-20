@@ -12,39 +12,13 @@ A crossplatform framework.
   s.source_files = 'Classes/**/*'
   s.platform = :ios, '13.5'
   s.dependency 'dcflight'
-  s.dependency 'SVGKit', '~> 3.0.0'
-  
-  # Skia dependency - built and linked automatically
-  s.public_header_files = 'Classes/**/*.h'
-  s.preserve_paths = 'Classes/**/*.h', 'Skia/**/*'
-  
-  # Include Skia source files
-  s.source_files = 'Classes/**/*.{h,m,mm,swift}'
+  s.dependency 'SVGKit', '~> 3.0.0' 
   
   s.swift_version = '5.0'
-  s.static_framework = true
-  
-  # Link Skia library from local Skia directory
-  # Skia headers use #include "include/core/..." so we need both Skia/ and Skia/include/ in search paths
-  s.xcconfig = {
-    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia/include"',
-    'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
-    'OTHER_LDFLAGS' => '-lskia -framework Metal -framework MetalKit -framework Foundation',
-    'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
-    'CLANG_CXX_LIBRARY' => 'libc++',
-    'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) SK_METAL=1'
-  }
 
-  s.pod_target_xcconfig = { 
-    'DEFINES_MODULE' => 'YES', 
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
-    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_TARGET_SRCROOT)/Classes"',
-    'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
-    'SWIFT_OBJC_INTERFACE_HEADER_NAME' => 'dcf_reanimated-Swift.h'
-  }
-  
-  # Ensure Skia library is linked
-  # NOTE: Library must be built with both device (arm64) and simulator (arm64/x64) architectures
-  # Run: ./scripts/setup_skia.sh to rebuild with simulator support
-  s.vendored_libraries = 'Skia/lib/libskia.a'
+  # CRITICAL CHANGE: Set to false - use dynamic framework instead of static
+  s.static_framework = false
+
+  # Flutter.framework does not contain a i386 slice.
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
 end

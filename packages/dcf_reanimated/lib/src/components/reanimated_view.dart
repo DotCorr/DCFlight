@@ -7,20 +7,9 @@
 
 library;
 
-import 'package:dcflight/dcflight.dart'; // Worklets are now in framework
+import 'package:dcflight/dcflight.dart';
 import '../styles/animated_style.dart';
 import '../helper/init.dart';
-
-// Default layouts and styles for ReanimatedView (registered for bridge efficiency)
-// ignore: deprecated_member_use - Using DCFLayout() inside create() is the correct pattern
-final _reanimatedLayouts = DCFLayout.create({
-  'default': DCFLayout(),
-});
-
-// ignore: deprecated_member_use - Using DCFStyleSheet() inside create() is the correct pattern
-final _reanimatedStyles = DCFStyleSheet.create({
-  'default': DCFStyleSheet(),
-});
 
 /// The main animated view component that runs animations purely on the UI thread.
 ///
@@ -52,32 +41,11 @@ class ReanimatedView extends DCFStatelessComponent {
   /// Animation configuration that runs on UI thread
   final AnimatedStyle? animatedStyle;
 
-  /// Worklet function for custom UI thread execution
-  /// 
-  /// Worklets run entirely on the native UI thread with zero bridge calls.
-  /// Use this for custom animation logic that needs maximum performance.
-  /// 
-  /// Example:
-  /// ```dart
-  /// @Worklet
-  /// double customAnimation(double time) => time * 2;
-  /// 
-  /// ReanimatedView(
-  ///   worklet: customAnimation,
-  ///   workletConfig: {'duration': 2000},
-  ///   children: [...],
-  /// )
-  /// ```
-  final Function? worklet;
-
-  /// Configuration for worklet execution
-  final Map<String, dynamic>? workletConfig;
-
   /// Layout properties for positioning and sizing
-  final DCFLayout? layout;
+  final DCFLayout layout;
 
   /// Static styling properties (non-animated)
-  final DCFStyleSheet? styleSheet;
+  final DCFStyleSheet styleSheet;
 
   /// Whether to start animation automatically when component mounts
   final bool autoStart;
@@ -104,10 +72,8 @@ class ReanimatedView extends DCFStatelessComponent {
   ReanimatedView({
     required this.children,
     this.animatedStyle,
-    this.worklet,
-    this.workletConfig,
-    this.layout,
-    this.styleSheet,
+    this.layout = const DCFLayout(),
+    this.styleSheet = const DCFStyleSheet(),
     this.autoStart = true,
     this.startDelay = 0,
     this.onAnimationStart,
@@ -144,8 +110,8 @@ class ReanimatedView extends DCFStatelessComponent {
       'isPureReanimated': true, // Flag for native to use pure animation mode
 
       // Layout and styling
-      ...(layout ?? _reanimatedLayouts['default']!).toMap(),
-      ...(styleSheet ?? _reanimatedStyles['default']!).toMap(),
+      ...layout.toMap(),
+      ...styleSheet.toMap(),
 
       // Event handlers
       ...eventHandlers,
@@ -154,15 +120,6 @@ class ReanimatedView extends DCFStatelessComponent {
     // Include animation style configuration if provided
     if (animatedStyle != null) {
       props['animatedStyle'] = animatedStyle!.toMap();
-    }
-
-    // Include worklet configuration if provided
-    if (worklet != null) {
-      final serializedWorklet = WorkletExecutor.serialize(worklet!);
-      props['worklet'] = serializedWorklet.toMap();
-      if (this.workletConfig != null) {
-        props['workletConfig'] = this.workletConfig;
-      }
     }
 
     // Create DCF element that will be rendered by native component
