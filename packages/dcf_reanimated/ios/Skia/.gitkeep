@@ -1,0 +1,3 @@
+# This directory will contain Skia headers and libraries after running setup_skia.sh
+# The build directory is ignored by .gitignore
+

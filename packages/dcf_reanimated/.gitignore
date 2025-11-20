@@ -1,0 +1,8 @@
+# Skia build source (14GB - don't commit, developers don't need this)
+ios/Skia/build/
+
+# Skia compiled library (2GB) and headers ARE committed
+# Developers use the pre-built library - no building needed!
+# ios/Skia/lib/libskia.a - COMMITTED (pre-built binary)
+# ios/Skia/include/ - COMMITTED (headers)
+
