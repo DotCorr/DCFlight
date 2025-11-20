@@ -1,8 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
-
 # Git LFS configuration for Skia library
 # Track the compiled Skia library (2GB) with Git LFS
 # Regular developers get this automatically - NO BUILDING NEEDED!
 # Only framework contributors rebuild if they modify Skia
 ios/Skia/lib/*.a filter=lfs diff=lfs merge=lfs -text
+

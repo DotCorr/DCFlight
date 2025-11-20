@@ -41,3 +41,34 @@ class DcfReanimatedPlugin : FlutterPlugin {
         Log.d(TAG, "DcfReanimatedPlugin: onDetachedFromEngine called")
     }
 }
+
+object DcfReanimatedPlugin {
+    private const val TAG = "DcfReanimatedPlugin"
+    
+    fun registerComponents() {
+        try {
+            // Register ReanimatedView
+            DCFComponentRegistry.shared.registerComponent(
+                "ReanimatedView",
+                DCFAnimatedViewComponent::class.java
+            )
+            
+            // Register Skia Canvas component
+            DCFComponentRegistry.shared.registerComponent(
+                "Canvas",
+                DCFCanvasComponent::class.java
+            )
+            
+            // Register Skia GPU component
+            DCFComponentRegistry.shared.registerComponent(
+                "GPU",
+                DCFGPUComponent::class.java
+            )
+            
+            Log.d(TAG, "✅ DCF REANIMATED: Registered components (ReanimatedView, Canvas, GPU)")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ DCF REANIMATED: Failed to register components", e)
+        }
+    }
+}
+
