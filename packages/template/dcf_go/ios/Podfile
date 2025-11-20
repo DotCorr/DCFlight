@@ -40,4 +40,74 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
+  
+  # Combine Skia architecture-specific libraries and add to Xcode project
+  # Find dcf_reanimated - check both sandbox and symlinks
+  dcf_paths = []
+  
+  # Check sandbox first
+  dcf_paths += Dir.glob(File.join(installer.sandbox.root, '**', 'dcf_reanimated')).select { |p| File.directory?(p) }
+  
+  # Also check symlinks (Flutter uses symlinks)
+  symlink_path = File.join(File.dirname(File.realpath(__FILE__)), '.symlinks', 'plugins', 'dcf_reanimated', 'ios')
+  dcf_paths << symlink_path if File.directory?(symlink_path)
+  
+  dcf_paths.uniq.each do |dcf_path|
+    skia_lib_path = File.join(dcf_path, 'Skia', 'lib')
+    
+    if Dir.exist?(skia_lib_path)
+      lib_x86_64 = File.join(skia_lib_path, 'libskia_x86_64.a')
+      lib_arm64 = File.join(skia_lib_path, 'libskia_arm64.a')
+      lib_arm64e = File.join(skia_lib_path, 'libskia_arm64e.a')
+      lib_combined = File.join(skia_lib_path, 'libskia.a')
+      
+      if File.exist?(lib_x86_64) && File.exist?(lib_arm64) && File.exist?(lib_arm64e)
+        unless File.exist?(lib_combined)
+          puts "Combining Skia architectures (x86_64, arm64, arm64e)..."
+          success = system("lipo -create \"#{lib_x86_64}\" \"#{lib_arm64}\" \"#{lib_arm64e}\" -output \"#{lib_combined}\"")
+          if success && File.exist?(lib_combined)
+            puts "Successfully combined Skia library: #{lib_combined}"
+          else
+            puts "Warning: Failed to combine Skia library"
+          end
+        end
+        
+        if File.exist?(lib_combined)
+          # Add the library file directly to the Xcode project and link it
+          installer.pods_project.targets.each do |target|
+            if target.name == 'dcf_reanimated'
+              puts "Adding libskia.a to dcf_reanimated target..."
+              
+              # Get absolute path
+              abs_lib_path = File.expand_path(lib_combined)
+              
+              # Add library file reference to the project
+              lib_file_ref = installer.pods_project.new_file(abs_lib_path)
+              
+              # Add to target's frameworks build phase
+              frameworks_build_phase = target.frameworks_build_phase
+              frameworks_build_phase.add_file_reference(lib_file_ref, true)
+              
+              target.build_configurations.each do |config|
+                # Remove any problematic OTHER_LDFLAGS entries
+                ldflags = config.build_settings['OTHER_LDFLAGS'] || []
+                ldflags = [ldflags] unless ldflags.is_a?(Array)
+                ldflags.reject! { |f| f.to_s.include?('libskia.a') }
+                config.build_settings['OTHER_LDFLAGS'] = ldflags
+                
+                # For simulator builds, exclude device architectures from the library
+                if config.build_settings['PLATFORM_NAME'] == 'iphonesimulator'
+                  config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64 arm64e'
+                  # Use x86_64 slice for simulator (works via Rosetta on Apple Silicon)
+                  config.build_settings['VALID_ARCHS[sdk=iphonesimulator*]'] = 'x86_64'
+                end
+              end
+              
+              puts "Successfully added libskia.a to Xcode project"
+            end
+          end
+        end
+      end
+    end
+  end
 end

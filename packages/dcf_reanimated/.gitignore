@@ -12,4 +12,6 @@ ios/Skia/build/
 #   - ios/Skia/lib/libskia_arm64.a (997MB) - iOS Device (standard)
 #   - ios/Skia/lib/libskia_arm64e.a (1.0GB) - iOS Device (newer Apple Silicon)
 # Combined library (libskia.a) is generated automatically during pod install
+# DO NOT COMMIT - it's created from the split files
+ios/Skia/lib/libskia.a
 # ios/Skia/include/ - COMMITTED (headers, regular git)

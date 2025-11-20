@@ -12,7 +12,7 @@ A crossplatform framework.
   s.source_files = 'Classes/**/*.{h,m,mm,swift}'
   s.platform = :ios, '13.5'
   s.dependency 'dcflight'
-  s.dependency 'SVGKit', '~> 3.0.0'
+  s.dependency 'SVGKit', '~> 3.0.0' 
   
   # Skia dependency - built and linked automatically
   s.public_header_files = 'Classes/**/*.h'
@@ -26,7 +26,7 @@ A crossplatform framework.
   s.xcconfig = {
     'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia/include"',
     'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
-    'OTHER_LDFLAGS' => '-lskia -framework Metal -framework MetalKit -framework Foundation -Wl,-dead_strip -Wl,-no_compact_unwind',
+    'OTHER_LDFLAGS' => '-framework Metal -framework MetalKit -framework Foundation -Wl,-dead_strip -Wl,-no_compact_unwind',
     'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
     'CLANG_CXX_LIBRARY' => 'libc++',
     'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) SK_METAL=1',
@@ -35,27 +35,15 @@ A crossplatform framework.
 
   s.pod_target_xcconfig = { 
     'DEFINES_MODULE' => 'YES', 
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386', # Keep i386 excluded
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386 arm64 arm64e', # Exclude device architectures for simulator
+    'ONLY_ACTIVE_ARCH' => 'YES', # Only build active architecture for faster builds
     'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_TARGET_SRCROOT)/Classes"',
     'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
     'SWIFT_OBJC_INTERFACE_HEADER_NAME' => 'dcf_reanimated-Swift.h',
     'OTHER_LDFLAGS' => '$(inherited) -Wl,-dead_strip -Wl,-no_compact_unwind'
   }
   
-  # Combine architecture-specific libraries into universal binary
-  # Each architecture file is under 2GB (GitHub LFS limit)
-  # Combined automatically during pod install - users don't need to rebuild!
-  s.prepare_command = <<-CMD
-    LIB_DIR="${PODS_TARGET_SRCROOT}/Skia/lib"
-    if [ -f "$LIB_DIR/libskia_x86_64.a" ] && [ -f "$LIB_DIR/libskia_arm64.a" ] && [ -f "$LIB_DIR/libskia_arm64e.a" ]; then
-      echo "🔨 Combining Skia architectures..."
-      lipo -create "$LIB_DIR/libskia_x86_64.a" "$LIB_DIR/libskia_arm64.a" "$LIB_DIR/libskia_arm64e.a" -output "$LIB_DIR/libskia.a"
-      echo "✅ Combined library created: $LIB_DIR/libskia.a"
-    else
-      echo "⚠️  Architecture-specific libraries not found, skipping combination"
-    fi
-  CMD
-  
-  # Link the combined library
-  s.vendored_libraries = 'Skia/lib/libskia.a'
+  # Note: Library is linked via OTHER_LDFLAGS with full path
+  # vendored_libraries can't be used due to CocoaPods 2.6GB file size limit
+  # The library is created in Podfile post_install hook and linked directly
 end
