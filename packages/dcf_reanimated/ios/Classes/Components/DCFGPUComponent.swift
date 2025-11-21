@@ -272,6 +272,7 @@ class SkiaGPUView: UIView {
     }
     
     private func parseColor(_ hex: String) -> UIColor {
+        // Ensure color has full opacity (alpha = 1.0) for visibility
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
         
@@ -360,6 +361,23 @@ class SkiaGPUView: UIView {
     }
     
     private func renderWithSkia() {
+        // Check view visibility
+        guard !isHidden,
+              alpha > 0,
+              superview != nil,
+              bounds.width > 0 && bounds.height > 0 else {
+            if isHidden {
+                print("⚠️ SKIA GPU: View is hidden")
+            }
+            if alpha <= 0 {
+                print("⚠️ SKIA GPU: View alpha is \(alpha)")
+            }
+            if superview == nil {
+                print("⚠️ SKIA GPU: View has no superview")
+            }
+            return
+        }
+        
         guard let surface = skiaSurface,
               renderMode == "particles",
               !particles.isEmpty else {

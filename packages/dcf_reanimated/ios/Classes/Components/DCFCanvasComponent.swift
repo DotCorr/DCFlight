@@ -224,13 +224,11 @@ class SkiaCanvasView: UIView {
         // Don't try to get it here as surface is created lazily
         
         if repaintOnFrame {
-            startDisplayLink()
-            // Also render immediately when surface is created
-            if !hadSurface {
-                DispatchQueue.main.async { [weak self] in
-                    self?.renderWithSkia()
-                }
+            // Only start display link if not already running
+            if displayLink == nil {
+                startDisplayLink()
             }
+            // Don't render immediately - let display link handle it
         } else {
             // Draw once when surface is created (not repainting on frame)
             // Only draw if this is a new surface (not a resize of existing)
@@ -268,13 +266,21 @@ class SkiaCanvasView: UIView {
             return
         }
         
-        // Only render if we have valid surface
-        guard skiaSurface != nil else {
-            print("⚠️ SKIA Canvas: No surface in renderFrame")
+        // Only render if we have valid surface and view is visible
+        guard skiaSurface != nil,
+              !isHidden,
+              alpha > 0,
+              superview != nil else {
+            if skiaSurface == nil {
+                print("⚠️ SKIA Canvas: No surface in renderFrame")
+            }
             return
         }
         
-        // Render using Skia
+        // Render using Skia (only log occasionally to reduce spam)
+        if Int.random(in: 0..<60) == 0 {
+            print("🎨 SKIA Canvas: Rendering frame (repaintOnFrame=true)")
+        }
         renderWithSkia()
     }
     

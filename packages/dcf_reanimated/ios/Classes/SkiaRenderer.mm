@@ -182,12 +182,13 @@
     // Clear canvas with transparent background
     skCanvas->clear(SK_ColorTRANSPARENT);
     
-    // Draw a green circle
+    // Draw a green circle at the center (matching Android behavior)
     SkPaint paint;
     paint.setAntiAlias(true);
     paint.setColor(SK_ColorGREEN);
     paint.setStyle(SkPaint::kFill_Style);
     
+    // Center coordinates (matching Android: width/2, height/2)
     float centerX = width / 2.0f;
     float centerY = height / 2.0f;
     float radius = 50.0f;

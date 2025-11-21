@@ -47,8 +47,8 @@
         skCanvas->drawCircle(p->x, p->y, p->size / 2.0, paint);
         drawnCount++;
         
-        // Log first few particles for debugging
-        if (i < 3) {
+        // Log first few particles for debugging (only occasionally to reduce spam)
+        if (i < 3 && drawnCount < 3) {
             NSLog(@"🎨 Particle %d: x=%.1f y=%.1f size=%.1f color=0x%08X (A=%d R=%d G=%d B=%d)", 
                   i, p->x, p->y, p->size, p->color, a, r, g, b);
         }

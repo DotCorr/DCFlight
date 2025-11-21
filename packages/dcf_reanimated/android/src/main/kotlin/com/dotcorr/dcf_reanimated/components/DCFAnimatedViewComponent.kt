@@ -293,6 +293,23 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         
         Log.d(TAG, "🚀 PURE REANIMATED: Starting pure UI thread animation")
         
+        // 🔥 CRITICAL: Set pivot points BEFORE animation starts to prevent "walking" or "eclipse" effects
+        // This ensures transforms are applied from the center of the view
+        if (width > 0 && height > 0) {
+            pivotX = width / 2f
+            pivotY = height / 2f
+        }
+        
+        // 🔥 CRITICAL: Also set pivot points for all children to prevent text from moving
+        // This is especially important for text views inside the animated container
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (child.width > 0 && child.height > 0) {
+                child.pivotX = child.width / 2f
+                child.pivotY = child.height / 2f
+            }
+        }
+        
         isAnimating = true
         animationStartTime = System.nanoTime()
         
@@ -324,12 +341,21 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
      * Synchronize layout after animation stops to prevent off-center content
      */
     private fun synchronizeLayoutAfterAnimation() {
-        // CRITICAL: When animation stops, ensure pivot point is at center
+        // 🔥 CRITICAL: When animation stops, ensure pivot point is at center
         // This prevents content from appearing off-center when transforms are active
         // The pivot point determines where transforms are applied from
         if (width > 0 && height > 0) {
             pivotX = width / 2f
             pivotY = height / 2f
+        }
+        
+        // 🔥 CRITICAL: Also reset pivot points for children
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (child.width > 0 && child.height > 0) {
+                child.pivotX = child.width / 2f
+                child.pivotY = child.height / 2f
+            }
         }
     }
     
