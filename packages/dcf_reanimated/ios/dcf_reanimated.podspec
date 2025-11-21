@@ -23,8 +23,9 @@ A crossplatform framework.
   
   # Link Skia library from local Skia directory
   # Skia headers use #include "include/core/..." so we need both Skia/ and Skia/include/ in search paths
+  # Also need modules path for skcms
   s.xcconfig = {
-    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia/include"',
+    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_TARGET_SRCROOT)/Skia/include/modules" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia" "$(PODS_ROOT)/Headers/Private/dcf_reanimated/Skia/include"',
     'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
     'OTHER_LDFLAGS' => '-framework Metal -framework MetalKit -framework Foundation -Wl,-dead_strip -Wl,-no_compact_unwind',
     'CLANG_CXX_LANGUAGE_STANDARD' => 'c++17',
@@ -37,7 +38,7 @@ A crossplatform framework.
     'DEFINES_MODULE' => 'YES', 
     'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386 arm64 arm64e', # Exclude device architectures for simulator
     'ONLY_ACTIVE_ARCH' => 'YES', # Only build active architecture for faster builds
-    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_TARGET_SRCROOT)/Classes"',
+    'HEADER_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia" "$(PODS_TARGET_SRCROOT)/Skia/include" "$(PODS_TARGET_SRCROOT)/Skia/include/modules" "$(PODS_TARGET_SRCROOT)/Classes"',
     'LIBRARY_SEARCH_PATHS' => '"$(PODS_TARGET_SRCROOT)/Skia/lib"',
     'SWIFT_OBJC_INTERFACE_HEADER_NAME' => 'dcf_reanimated-Swift.h',
     'OTHER_LDFLAGS' => '$(inherited) -Wl,-dead_strip -Wl,-no_compact_unwind'

@@ -47,7 +47,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   CocoaLumberjack: 5644158777912b7de7469fa881f8a3f259c2512a
   dcf_primitives: d79c4f56cf3943beb0f6f2edd96825eb1f0632f3
-  dcf_reanimated: b2532ecfa125464e79974fa73691987330d87624
+  dcf_reanimated: 23d5b3c679380903c4aa695bc45bbf3ba499ecd1
   dcf_screens: 94ba86b52d3703cba69c068a2ffe6b9d89d8b64e
   dcflight: f75dc1fdfa716b20f5536599081f3d15dd8b81b4
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467

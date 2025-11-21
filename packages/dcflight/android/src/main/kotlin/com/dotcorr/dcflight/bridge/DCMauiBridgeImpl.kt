@@ -480,6 +480,7 @@ class DCMauiBridgeImpl private constructor() {
         data class CreateOp(val viewId: Int, val viewType: String, val propsJson: String)
         data class UpdateOp(val viewId: Int, val propsJson: String)
         data class AttachOp(val childId: Int, val parentId: Int, val index: Int)
+        data class SetChildrenOp(val viewId: Int, val childrenIds: List<Int>)
         data class AddEventListenersOp(val viewId: Int, val eventTypes: List<String>)
         data class DeleteOp(val viewId: Int)
         
@@ -487,6 +488,7 @@ class DCMauiBridgeImpl private constructor() {
         val createOps = mutableListOf<CreateOp>()
         val updateOps = mutableListOf<UpdateOp>()
         val attachOps = mutableListOf<AttachOp>()
+        val setChildrenOps = mutableListOf<SetChildrenOp>()
         val eventOps = mutableListOf<AddEventListenersOp>()
         
         // Parse phase - collect all operations
@@ -552,11 +554,26 @@ class DCMauiBridgeImpl private constructor() {
                         eventOps.add(AddEventListenersOp(viewId, eventTypes))
                     }
                 }
+                    if (viewId != null && eventTypes != null) {
+                        eventOps.add(AddEventListenersOp(viewId, eventTypes))
+                    }
+                }
+
+                "setChildren" -> {
+                    val viewId = (operation["viewId"] as? Number)?.toInt() ?: (operation["viewId"] as? Int)
+                    val childrenIds = (operation["childrenIds"] as? List<*>)?.mapNotNull { 
+                        (it as? Number)?.toInt() ?: (it as? Int)
+                    }
+                    
+                    if (viewId != null && childrenIds != null) {
+                        setChildrenOps.add(SetChildrenOp(viewId, childrenIds))
+                    }
+                }
             }
         }
         
         try {
-            Log.d(TAG, "📊 ANDROID_BATCH: Processing batch - deletes: ${deleteOps.size}, creates: ${createOps.size}, updates: ${updateOps.size}, attaches: ${attachOps.size}")
+            Log.d(TAG, "📊 ANDROID_BATCH: Processing batch - deletes: ${deleteOps.size}, creates: ${createOps.size}, updates: ${updateOps.size}, setChildren: ${setChildrenOps.size}, attaches: ${attachOps.size}")
             
             // 🔧 FIX: Delete views FIRST but defer view removal from parent to prevent layout shifts
             // We remove from registry/layout tree but keep views in hierarchy until creates are done
@@ -627,6 +644,11 @@ class DCMauiBridgeImpl private constructor() {
             
             updateOps.forEach { op ->
                 updateView(op.viewId, op.propsJson)
+            }
+            
+            // Process setChildren before attachView to ensure base hierarchy is correct
+            setChildrenOps.forEach { op ->
+                setChildren(op.viewId, op.childrenIds)
             }
             
             attachOps.forEach { op ->

@@ -17,8 +17,7 @@
 #import "core/SkPaint.h"
 #import "core/SkColor.h"
 #import "core/SkImageInfo.h"
-// Note: We don't import SkColorSpace.h because it has missing dependencies
-// Since we pass nullptr for color space, we don't need the full definition
+#import "core/SkColorSpace.h"
 #import "gpu/ganesh/GrDirectContext.h"
 #import "gpu/ganesh/SkSurfaceGanesh.h"
 #import "gpu/ganesh/mtl/GrMtlBackendContext.h"
@@ -126,12 +125,13 @@
     );
     
     SkColorType colorType = kBGRA_8888_SkColorType;
+    // Pass nullptr for color space - the template should accept it even with forward declaration
     sk_sp<SkSurface> newSurface = SkSurfaces::WrapBackendRenderTarget(
         wrapper.context.get(),
         backendRT,
         kTopLeft_GrSurfaceOrigin,
         colorType,
-        nullptr, // color space
+        nullptr, // color space - nullptr should work
         nullptr  // surface props
     );
     

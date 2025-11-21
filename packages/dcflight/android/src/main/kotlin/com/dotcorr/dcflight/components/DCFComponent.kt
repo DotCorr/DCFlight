@@ -283,7 +283,8 @@ fun propagateEvent(
             val normalizedEventName = normalizeEventNameForPropagation(eventName)
             android.util.Log.d("DCFComponent", "🔥 propagateEvent: normalizedEventName=$normalizedEventName")
             
-            if (eventTypes.contains(normalizedEventName) || eventTypes.contains(eventName)) {
+            if (eventTypes.contains(normalizedEventName) || eventTypes.contains(eventName) ||
+                ((eventName == "onPressIn" || eventName == "onPressOut") && (eventTypes.contains("onPress") || eventTypes.contains("press")))) {
                 android.util.Log.d("DCFComponent", "🚀 FIRING EVENT: $eventName to Flutter!")
                 eventCallback(eventName, data)
             } else {
