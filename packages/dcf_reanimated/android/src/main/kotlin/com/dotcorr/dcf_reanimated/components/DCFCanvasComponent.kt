@@ -135,7 +135,19 @@ class SkiaCanvasView(context: Context) : View(context) {
         // This provides direct access to Skia's 2D graphics API
         // Users can draw using Skia's full API through the canvas
         
-        // The actual drawing will be done through native Skia calls
+        // Temporary: Draw a test circle to verify Canvas is working
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.GREEN
+            style = android.graphics.Paint.Style.FILL
+        }
+        
+        val centerX = width / 2f
+        val centerY = height / 2f
+        val radius = 50f
+        
+        canvas.drawCircle(centerX, centerY, radius, paint)
+        
+        // TODO: The actual drawing will be done through native Skia calls
         // when the onPaint callback is implemented
     }
     

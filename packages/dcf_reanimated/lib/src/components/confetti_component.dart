@@ -80,6 +80,7 @@ class DCFConfetti extends DCFStatelessComponent {
   final int duration;
   final ConfettiConfig? config;
   final DCFLayout? layout;
+  final DCFStyleSheet? styleSheet;
   final void Function()? onComplete;
   final void Function()? onStart;
   final Map<String, dynamic>? events;
@@ -89,11 +90,13 @@ class DCFConfetti extends DCFStatelessComponent {
     this.duration = 2000,
     this.config,
     DCFLayout? layout,
+    DCFStyleSheet? styleSheet,
     this.onComplete,
     this.onStart,
     this.events,
     super.key,
-  }) : layout = layout;
+  }) : layout = layout,
+       styleSheet = styleSheet;
 
   @override
   DCFComponentNode render() {
@@ -109,6 +112,7 @@ class DCFConfetti extends DCFStatelessComponent {
         parameters: confettiConfig.toMap(),
       ),
       layout: layout ?? _confettiLayouts['default'] as DCFLayout,
+      styleSheet: styleSheet,
       onComplete: onComplete,
       onStart: onStart,
       events: events,

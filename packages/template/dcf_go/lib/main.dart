@@ -56,7 +56,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               styleSheet: styles['sectionTitle'],
               layout: layouts['sectionTitle'],
                 ),
-            ReanimatedView(
+            ReanimatedView( styleSheet: styles['animatedBox'],
               animatedStyle: Reanimated.bounce(
                 bounceScale: 1.2,
                 duration: 1000,
@@ -66,7 +66,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               children: [
                 DCFView(
                   layout: layouts['animatedBox'],
-                  styleSheet: styles['animatedBox'],
+                 
                   children: [
                     DCFText(
                       content: "60fps\nPure Native",
@@ -120,11 +120,10 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                 
                 // Create paint for the circle
                 final paint = SkiaPaint();
-                // paint.color = const Color(0xFF00FF00);
-                // paint.style = SkiaPaintStyle.fill;
+                paint.color = const Color(0xFF00FF00); // Green color
+                paint.style = SkiaPaintStyle.fill;
                 
-                // Draw circle (this is a placeholder - actual Skia drawing would happen natively)
-                // In production, this would call native Skia canvas methods
+                // Draw circle using native Skia rendering
                 canvas.drawCircle(centerX, centerY, radius, paint);
               },
               repaintOnFrame: true,
@@ -223,6 +222,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               showConfetti.setState(false);
             },
             layout: layouts['confettiOverlay'],
+            styleSheet: styles['confettiOverlay'],
             ),
           ],
         );

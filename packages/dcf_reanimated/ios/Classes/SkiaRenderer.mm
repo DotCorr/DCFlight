@@ -96,5 +96,25 @@
     }
 }
 
++ (void)drawTestCircle:(void*)canvas width:(float)width height:(float)height {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (!skCanvas) return;
+    
+    // Clear canvas with transparent background
+    skCanvas->clear(SK_ColorTRANSPARENT);
+    
+    // Draw a green circle
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(SK_ColorGREEN);
+    paint.setStyle(SkPaint::kFill_Style);
+    
+    float centerX = width / 2.0f;
+    float centerY = height / 2.0f;
+    float radius = 50.0f;
+    
+    skCanvas->drawCircle(centerX, centerY, radius, paint);
+}
+
 @end
 

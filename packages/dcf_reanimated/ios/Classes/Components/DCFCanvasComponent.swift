@@ -200,10 +200,13 @@ class SkiaCanvasView: UIView {
             return
         }
         
-        // Get SkCanvas from surface and render
-        // Canvas is already available from skiaCanvas pointer
-        // Actual drawing operations will be done via C++ Skia API calls
-        // through the bridging header
+        // Draw test circle to verify Canvas is working
+        // TODO: Replace with actual onPaint callback execution
+        SkiaRenderer.drawTestCircle(
+            canvas,
+            width: Float(bounds.width),
+            height: Float(bounds.height)
+        )
         
         // Flush Skia surface to Metal
         SkiaRenderer.flushSurface(surface)

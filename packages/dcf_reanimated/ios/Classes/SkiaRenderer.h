@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (void* _Nullable)getCanvasFromSurface:(void*)surface;
 + (void)flushSurface:(void*)surface;
 + (void)destroySurface:(void*)surface;
++ (void)drawTestCircle:(void*)canvas width:(float)width height:(float)height;
 
 @end
 

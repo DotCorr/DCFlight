@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:flutter/material.dart' hide Colors;
 
 /// Skia Canvas drawing callback - receives Skia Canvas and Size
 /// This provides direct access to Skia's full 2D graphics API
@@ -114,22 +115,73 @@ class SkiaPaint {
   // ignore: unused_field
   final dynamic _nativePaint; // Native Skia paint (C++ object) - placeholder for future native integration
   
+  Color _color = const Color(0xFF000000); // Default black
+  SkiaPaintStyle _style = SkiaPaintStyle.fill;
+  double _strokeWidth = 1.0;
+  SkiaShader? _shader;
+  int _alpha = 255;
+  
   SkiaPaint() : _nativePaint = null; // Will be created natively
   
+  /// Get or set color
+  Color get color => _color;
+  set color(Color value) {
+    _color = value;
+    setColor(value.value);
+  }
+  
+  /// Get or set style (fill or stroke)
+  SkiaPaintStyle get style => _style;
+  set style(SkiaPaintStyle value) {
+    _style = value;
+    setStyle(value);
+  }
+  
+  /// Get or set stroke width
+  double get strokeWidth => _strokeWidth;
+  set strokeWidth(double value) {
+    _strokeWidth = value;
+    setStrokeWidth(value);
+  }
+  
+  /// Get or set shader
+  SkiaShader? get shader => _shader;
+  set shader(SkiaShader? value) {
+    _shader = value;
+    setShader(value);
+  }
+  
+  /// Get or set alpha (0-255)
+  int get alpha => _alpha;
+  set alpha(int value) {
+    _alpha = value.clamp(0, 255);
+    setAlpha(_alpha);
+  }
+  
   /// Set color (ARGB)
-  void setColor(int color) {}
+  void setColor(int color) {
+    _color = Color(color);
+  }
   
   /// Set stroke width
-  void setStrokeWidth(double width) {}
+  void setStrokeWidth(double width) {
+    _strokeWidth = width;
+  }
   
   /// Set style (fill or stroke)
-  void setStyle(SkiaPaintStyle style) {}
+  void setStyle(SkiaPaintStyle style) {
+    _style = style;
+  }
   
   /// Set shader
-  void setShader(SkiaShader? shader) {}
+  void setShader(SkiaShader? shader) {
+    _shader = shader;
+  }
   
   /// Set alpha
-  void setAlpha(int alpha) {}
+  void setAlpha(int alpha) {
+    _alpha = alpha.clamp(0, 255);
+  }
 }
 
 /// Skia Paint Style
