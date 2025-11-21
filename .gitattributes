@@ -1,3 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 packages/dcf_reanimated/ios/Skia/lib/*.a filter=lfs diff=lfs merge=lfs -text
+packages/dcf_reanimated/ios/Skia/lib/libskia_*.a filter=lfs diff=lfs merge=lfs -text
