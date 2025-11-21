@@ -85,6 +85,9 @@ class SkiaCanvasView: UIView {
     private var skiaContext: UnsafeMutableRawPointer?
     private var metalDevice: MTLDevice?
     private var displayLink: CADisplayLink?
+    private var hasDrawnInitial = false
+    private var lastSurfaceSize: CGSize = .zero
+    private var isRendering = false
     
     override class var layerClass: AnyClass {
         // Use CAMetalLayer for GPU acceleration
@@ -138,11 +141,22 @@ class SkiaCanvasView: UIView {
               let device = metalDevice,
               let metalLayer = self.layer as? CAMetalLayer else { return }
         
+        // Check if size actually changed to prevent infinite loops
+        let currentSize = CGSize(width: bounds.width, height: bounds.height)
+        if lastSurfaceSize == currentSize && skiaSurface != nil {
+            // Size hasn't changed and surface exists, don't recreate
+            return
+        }
+        
+        lastSurfaceSize = currentSize
+        
         // Destroy old surface if exists
+        let hadSurface = skiaSurface != nil
         if let surface = skiaSurface {
             SkiaRenderer.destroySurface(surface)
             skiaSurface = nil
             skiaCanvas = nil
+            hasDrawnInitial = false // Reset flag when surface is destroyed
         }
         
         // Create new Skia surface with current size
@@ -163,6 +177,16 @@ class SkiaCanvasView: UIView {
         
         if repaintOnFrame {
             startDisplayLink()
+        } else {
+            // Draw once when surface is created (not repainting on frame)
+            // Only draw if this is a new surface (not a resize of existing)
+            if !hadSurface && !hasDrawnInitial {
+                hasDrawnInitial = true
+                // Use a small delay to ensure surface is fully ready
+                DispatchQueue.main.async { [weak self] in
+                    self?.renderWithSkia()
+                }
+            }
         }
     }
     
@@ -184,19 +208,39 @@ class SkiaCanvasView: UIView {
             return
         }
         
+        // Only render if we have valid surface and canvas
+        guard skiaSurface != nil && skiaCanvas != nil else {
+            return
+        }
+        
         // Render using Skia
         renderWithSkia()
     }
     
     override func draw(_ rect: CGRect) {
         // Render using Skia canvas
-        renderWithSkia()
+        // Only render if we have a valid surface
+        if skiaSurface != nil && skiaCanvas != nil {
+            renderWithSkia()
+        } else {
+            print("⚠️ SKIA Canvas: Surface not ready in draw(_:)")
+        }
     }
     
     private func renderWithSkia() {
+        // Prevent concurrent rendering calls
+        guard !isRendering else { return }
+        isRendering = true
+        defer { isRendering = false }
+        
         guard let surface = skiaSurface,
               let canvas = skiaCanvas,
               bounds.width > 0 && bounds.height > 0 else {
+            if bounds.width == 0 || bounds.height == 0 {
+                print("⚠️ SKIA Canvas: Bounds are zero: \(bounds)")
+            } else {
+                print("⚠️ SKIA Canvas: Surface or canvas is nil")
+            }
             return
         }
         
@@ -210,6 +254,9 @@ class SkiaCanvasView: UIView {
         
         // Flush Skia surface to Metal
         SkiaRenderer.flushSurface(surface)
+        
+        // For CAMetalLayer, we don't use setNeedsDisplay() as it causes infinite loops
+        // The display link or manual rendering handles updates
     }
     
     deinit {

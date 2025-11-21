@@ -18,16 +18,25 @@ class DCFGPUComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
+        print("🎮 SKIA GPU: Creating GPU view with props: \(props)")
         let gpuView = SkiaGPUView()
         updateView(gpuView, withProps: props)
         return gpuView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let gpuView = view as? SkiaGPUView else { return false }
+        guard let gpuView = view as? SkiaGPUView else {
+            print("⚠️ SKIA GPU: View is not SkiaGPUView")
+            return false
+        }
+        
+        print("🎮 SKIA GPU: Updating GPU view with props: \(props)")
         
         if let gpuConfig = props["gpuConfig"] as? [String: Any] {
+            print("🎮 SKIA GPU: Found gpuConfig in props")
             gpuView.configureGPU(gpuConfig)
+        } else {
+            print("⚠️ SKIA GPU: No gpuConfig found in props")
         }
         
         view.applyStyles(props: props)
@@ -118,15 +127,29 @@ class SkiaGPUView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         
+        print("🎮 SKIA GPU: layoutSubviews called - bounds: \(bounds), renderMode: \(renderMode), particles: \(particles.count)")
+        
         // Create/update Skia surface when laid out
         updateSkiaSurface()
         
         if renderMode == "particles" && particles.isEmpty && bounds.width > 0 && bounds.height > 0 {
+            print("🎮 SKIA GPU: Initializing particles in layoutSubviews")
             initializeParticles()
             
             let autoStart = gpuConfig["autoStart"] as? Bool ?? true
+            print("🎮 SKIA GPU: autoStart=\(autoStart), isRendering=\(isRendering)")
             if (autoStart && !isRendering) {
                 startRendering()
+            }
+        } else {
+            if renderMode != "particles" {
+                print("⚠️ SKIA GPU: renderMode is not 'particles': \(renderMode)")
+            }
+            if particles.isEmpty {
+                print("⚠️ SKIA GPU: Particles already initialized or empty")
+            }
+            if bounds.width == 0 || bounds.height == 0 {
+                print("⚠️ SKIA GPU: Bounds are zero: \(bounds)")
             }
         }
     }
@@ -158,24 +181,30 @@ class SkiaGPUView: UIView {
     }
     
     func configureGPU(_ config: [String: Any]) {
-        print("🎮 SKIA GPU: Configuring GPU rendering")
+        print("🎮 SKIA GPU: Configuring GPU rendering with config: \(config)")
         self.gpuConfig = config
         
         if let mode = config["renderMode"] as? String {
             self.renderMode = mode
+            print("🎮 SKIA GPU: Render mode: \(mode)")
         }
         
         if let count = config["particleCount"] as? Int {
             self.particleCount = count
+            print("🎮 SKIA GPU: Particle count: \(count)")
         }
         
-        if renderMode == "particles" && bounds.width > 0 && bounds.height > 0 {
-            initializeParticles()
-        }
-        
-        let autoStart = config["autoStart"] as? Bool ?? true
-        if autoStart && bounds.width > 0 && bounds.height > 0 {
-            startRendering()
+        // Initialize particles if we have bounds, otherwise wait for layoutSubviews
+        if renderMode == "particles" {
+            if bounds.width > 0 && bounds.height > 0 {
+                initializeParticles()
+                let autoStart = config["autoStart"] as? Bool ?? true
+                if autoStart {
+                    startRendering()
+                }
+            } else {
+                print("⚠️ SKIA GPU: Bounds not ready, will initialize in layoutSubviews")
+            }
         }
     }
     
@@ -185,10 +214,13 @@ class SkiaGPUView: UIView {
         let width = bounds.width > 0 ? bounds.width : 400
         let height = bounds.height > 0 ? bounds.height : 800
         
-        let colors = gpuConfig["parameters"] as? [String: Any]? ?? nil
-        let colorArray = colors?["colors"] as? [String] ?? ["#FF0000", "#00FF00", "#0000FF"]
+        // Get parameters from gpuConfig
+        let parameters = gpuConfig["parameters"] as? [String: Any]
+        let colorArray = parameters?["colors"] as? [String] ?? ["#FF0000", "#00FF00", "#0000FF"]
         
         print("🎨 SKIA GPU: Initializing \(particleCount) particles in \(width)x\(height)")
+        print("🎨 SKIA GPU: Parameters: \(parameters ?? [:])")
+        print("🎨 SKIA GPU: Colors: \(colorArray)")
         
         for i in 0..<particleCount {
             let particle = Particle(
@@ -273,7 +305,8 @@ class SkiaGPUView: UIView {
     private func updateParticles(elapsed: CFTimeInterval) {
         guard renderMode == "particles" else { return }
         
-        let gravity = (gpuConfig["parameters"] as? [String: Any])?["gravity"] as? Double ?? 9.8
+        let parameters = gpuConfig["parameters"] as? [String: Any]
+        let gravity = parameters?["gravity"] as? Double ?? 9.8
         
         for i in 0..<particles.count {
             var particle = particles[i]
@@ -295,7 +328,11 @@ class SkiaGPUView: UIView {
     private func renderWithSkia() {
         guard let surface = skiaSurface,
               let canvas = skiaCanvas,
-              renderMode == "particles" else {
+              renderMode == "particles",
+              !particles.isEmpty else {
+            if particles.isEmpty {
+                print("⚠️ SKIA GPU: No particles to render")
+            }
             return
         }
         
@@ -320,7 +357,10 @@ class SkiaGPUView: UIView {
         
         // Render particles using Skia
         particleData.withUnsafeBufferPointer { buffer in
-            guard let baseAddress = buffer.baseAddress else { return }
+            guard let baseAddress = buffer.baseAddress else {
+                print("⚠️ SKIA GPU: Failed to get buffer address")
+                return
+            }
             SkiaParticleRenderer.drawParticles(
                 canvas,
                 particles: baseAddress,

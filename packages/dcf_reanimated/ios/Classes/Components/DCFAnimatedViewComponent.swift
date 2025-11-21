@@ -88,11 +88,43 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(
+        guard let reanimatedView = view as? PureReanimatedView else {
+            // For non-reanimated views, set frame directly
+            view.frame = CGRect(
+                x: CGFloat(layout.left),
+                y: CGFloat(layout.top),
+                width: CGFloat(layout.width),
+                height: CGFloat(layout.height)
+            )
+            return
+        }
+        
+        // CRITICAL: For ReanimatedView, skip layout updates during state changes to prevent stuttering
+        // Layout updates interfere with transform animations by recalculating anchor points
+        // Only update if size actually changed significantly (more than 5 pixels)
+        let newFrame = CGRect(
             x: CGFloat(layout.left),
             y: CGFloat(layout.top),
             width: CGFloat(layout.width),
             height: CGFloat(layout.height)
+        )
+        
+        // Check if size changed significantly
+        let sizeChanged = abs(newFrame.width - reanimatedView.bounds.width) > 5.0 ||
+                         abs(newFrame.height - reanimatedView.bounds.height) > 5.0
+        
+        // If size hasn't changed significantly, skip layout update entirely
+        // This prevents stuttering caused by frame/bounds updates interfering with transforms
+        if !sizeChanged {
+            return
+        }
+        
+        // Only update if size changed significantly - use bounds/center to preserve transforms
+        // This ensures animations aren't interrupted by layout updates
+        reanimatedView.bounds = CGRect(origin: .zero, size: newFrame.size)
+        reanimatedView.center = CGPoint(
+            x: newFrame.midX,
+            y: newFrame.midY
         )
     }
     

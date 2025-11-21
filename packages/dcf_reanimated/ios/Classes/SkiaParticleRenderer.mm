@@ -7,7 +7,6 @@
 
 #import "SkiaParticleRenderer.h"
 #import <Metal/Metal.h>
-// Skia headers - try both angle brackets and direct paths
 #import "core/SkCanvas.h"
 #import "core/SkPaint.h"
 #import "core/SkColor.h"
@@ -20,6 +19,9 @@
 + (void)drawParticles:(void*)canvas particles:(const ParticleData*)particles count:(int)count {
     SkCanvas* skCanvas = (SkCanvas*)canvas;
     if (!skCanvas || !particles) return;
+    
+    // Clear canvas with transparent background
+    skCanvas->clear(SK_ColorTRANSPARENT);
     
     SkPaint paint;
     paint.setAntiAlias(true);

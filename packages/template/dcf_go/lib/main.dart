@@ -16,7 +16,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
     final canvasAnimation = useState<int>(0);
     final isAnimating = useState<bool>(false);
     
-    return DCFView(
+    return DCFScrollView(
       layout: layouts['root'],
       styleSheet: styles['root'],
       children: [
