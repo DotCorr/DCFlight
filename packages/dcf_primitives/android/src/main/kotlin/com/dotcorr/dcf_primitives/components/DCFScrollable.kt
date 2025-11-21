@@ -41,6 +41,7 @@ class DCFScrollableView @JvmOverloads constructor(
     private var explicitContentSize: Pair<Int, Int>? = null
     private var lastFrameSize: Pair<Int, Int> = Pair(0, 0)
     private var isUpdatingContentSize: Boolean = false // Prevent redundant calculations
+    private var lastSetContentSize: Pair<Int, Int>? = null // Track last set content size
     
     // Content container for children (NestedScrollView can only have one direct child)
     private var contentContainer: FrameLayout? = null
@@ -184,6 +185,9 @@ class DCFScrollableView @JvmOverloads constructor(
      * CRITICAL: Updates the content container's size so ScrollView knows how much to scroll
      */
     private fun setContentSize(width: Int, height: Int) {
+        // Store the content size so we can restore it after layout passes
+        lastSetContentSize = Pair(width, height)
+        
         val contentView = getChildAt(0) as? FrameLayout
         if (contentView != null) {
             val layoutParams = contentView.layoutParams as? android.view.ViewGroup.LayoutParams
@@ -209,7 +213,7 @@ class DCFScrollableView @JvmOverloads constructor(
                     contentView.requestLayout()
                     this@DCFScrollableView.requestLayout()
                     
-                    Log.d(TAG, "✅ setContentSize: Updated container to ${width}x${height}, measured=${contentView.measuredWidth}x${contentView.measuredHeight}")
+                    Log.d(TAG, "✅ setContentSize: Updated container to ${width}x${height}, measured=${contentView.measuredWidth}x${contentView.measuredHeight}, layoutParams=${contentView.layoutParams.width}x${contentView.layoutParams.height}")
                 } else {
                     Log.d(TAG, "⏭️ setContentSize: Size unchanged (${width}x${height}), skipping")
                 }
@@ -258,20 +262,34 @@ class DCFScrollableView @JvmOverloads constructor(
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
         
-        // CRITICAL: If content container has explicit height, ensure it's laid out with that height
+        // CRITICAL: After super.onLayout(), restore container size if we have a stored content size
+        // This ensures the container maintains its correct size across hot restarts and state changes
         val contentView = getChildAt(0) as? FrameLayout
-        if (contentView != null && contentView.layoutParams.height > 0 && 
-            contentView.layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT &&
-            contentView.layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
-            // Container has explicit height - lay it out with that height
+        if (contentView != null && lastSetContentSize != null) {
+            val (targetWidth, targetHeight) = lastSetContentSize!!
+            
+            // Check if container's layoutParams match our stored size
+            val layoutParams = contentView.layoutParams
+            if (layoutParams.width != targetWidth || layoutParams.height != targetHeight) {
+                // Restore layoutParams
+                layoutParams.width = targetWidth
+                layoutParams.height = targetHeight
+                contentView.layoutParams = layoutParams
+                Log.d(TAG, "🔧 onLayout: Restored container layoutParams to ${targetWidth}x${targetHeight}")
+            }
+            
+            // Always ensure container is laid out with the correct size
             val containerWidth = width - paddingLeft - paddingRight
-            val containerHeight = contentView.layoutParams.height
-            contentView.layout(
-                paddingLeft,
-                paddingTop,
-                paddingLeft + containerWidth,
-                paddingTop + containerHeight
-            )
+            val containerHeight = targetHeight
+            if (contentView.width != containerWidth || contentView.height != containerHeight) {
+                contentView.layout(
+                    paddingLeft,
+                    paddingTop,
+                    paddingLeft + containerWidth,
+                    paddingTop + containerHeight
+                )
+                Log.d(TAG, "🔧 onLayout: Forced container layout to ${containerWidth}x${containerHeight} (was ${contentView.width}x${contentView.height})")
+            }
         }
         
         // CRITICAL: NestedScrollView.onLayout() automatically lays out its direct child (the container)
