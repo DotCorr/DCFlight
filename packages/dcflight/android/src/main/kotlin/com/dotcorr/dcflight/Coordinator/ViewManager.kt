@@ -133,15 +133,18 @@ class DCFViewManager private constructor() {
         val view = viewInfo.view
         val type = viewInfo.type
 
-        // CRITICAL FRAMEWORK FIX: Hide view during ANY update to prevent flash
-        // Framework handles this uniformly - no prop-specific edge cases needed
-        // View will be shown again after layout completes in applyLayoutsBatch
+        // CRITICAL FRAMEWORK FIX: REMOVED aggressive view hiding
+        // Previously, we hid the view here to prevent flash, but this causes flickering
+        // for simple updates (like text changes).
+        // Views should remain visible during updates unless explicitly hidden by props.
+        /*
         if (view.visibility == View.VISIBLE && props.isNotEmpty()) {
             view.visibility = View.INVISIBLE
             view.alpha = 0f
             YogaShadowTree.shared.markViewHiddenForUpdate(viewId.toString())
             Log.d(TAG, "Temporarily hid view $viewId during update (framework-level fix)")
         }
+        */
 
         if (!YogaShadowTree.shared.isScreenRoot(viewId.toString())) {
             YogaShadowTree.shared.updateNodeLayoutProps(viewId.toString(), props)
@@ -218,15 +221,17 @@ class DCFViewManager private constructor() {
             (childView.parent as? ViewGroup)?.removeView(childView)
         }
 
-        // CRITICAL FIX: If parent is visible but child is invisible (newly created),
-        // temporarily hide parent to prevent flash when child is attached
-        // Parent will be made visible again after all layouts complete
+        // CRITICAL FIX: REMOVED aggressive parent hiding
+        // Previously, we hid the parent here, but this causes the entire container to flicker
+        // when a new child is added.
+        /*
         if (parentView.visibility == View.VISIBLE && childView.visibility == View.INVISIBLE) {
             parentView.visibility = View.INVISIBLE
             parentView.alpha = 0f
             YogaShadowTree.shared.markViewHiddenForUpdate(parentId.toString())
             Log.d(TAG, "Temporarily hid parent $parentId during child attachment")
         }
+        */
 
         if (index >= 0 && index <= parentViewGroup.childCount) {
             parentViewGroup.addView(childView, index)

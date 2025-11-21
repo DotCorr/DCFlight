@@ -103,8 +103,10 @@ object DCDivergerUtil {
 
         registerComponents()
         
-        // Pre-add FlutterView to rootView (hidden initially) so it's ready when widgets render
-        // This ensures the FlutterView is available before enableFlutterViewRendering is called
+        // REMOVED: Pre-add FlutterView
+        // We now add it only when enableFlutterViewRendering is called to prevent "SurfaceView has no frame" logs
+        // when it's attached but not used.
+        /*
         flutterView?.let { view ->
             rootView?.let { root ->
                 if (view.parent == null) {
@@ -120,6 +122,7 @@ object DCDivergerUtil {
                 }
             }
         }
+        */
 
         Log.d(TAG, "DCFlight diverger initialized successfully")
     }
