@@ -15,6 +15,7 @@ import android.view.View
 import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFLayoutIndependent
+import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
@@ -100,8 +101,9 @@ class DCFAnimatedViewComponent : DCFComponent() {
         return PointF(0f, 0f)
     }
 
-    override fun applyLayout(view: View, layout: com.dotcorr.dcflight.layout.DCFNodeLayout) {
-        val reanimatedView = view as? PureReanimatedView ?: run {
+    override fun applyLayout(view: View, layout: DCFNodeLayout) {
+        val reanimatedView = view as? PureReanimatedView
+        if (reanimatedView == null) {
             // For non-reanimated views, use default layout
             super.applyLayout(view, layout)
             return
@@ -311,7 +313,7 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         frameCallback = Choreographer.FrameCallback { frameTimeNanos ->
             if (!isAnimating) {
                 stopFrameCallback()
-                return
+                return@FrameCallback
             }
             
             val currentTime = TimeUnit.NANOSECONDS.toMillis(frameTimeNanos)
@@ -538,13 +540,13 @@ class PureAnimationState(
         private fun elasticInCurve(t: Float): Float {
             if (t == 0f || t == 1f) return t
             val c4 = (2 * Math.PI / 3).toFloat()
-            return -Math.pow(2.0, (10 * (t - 1)).toDouble()).toFloat() * Math.sin((t - 1) * c4).toFloat()
+            return -Math.pow(2.0, (10.0 * (t - 1.0)).toDouble()).toFloat() * Math.sin(((t - 1.0) * c4).toDouble()).toFloat()
         }
         
         private fun elasticOutCurve(t: Float): Float {
             if (t == 0f || t == 1f) return t
             val c4 = (2 * Math.PI / 3).toFloat()
-            return Math.pow(2.0, (-10 * t).toDouble()).toFloat() * Math.sin((t - 1) * c4).toFloat() + 1
+            return Math.pow(2.0, (-10.0 * t).toDouble()).toFloat() * Math.sin(((t - 1.0) * c4).toDouble()).toFloat() + 1
         }
     }
     

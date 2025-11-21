@@ -70,6 +70,8 @@ class DCFScrollableView @JvmOverloads constructor(
     /**
      * Update content size based on Yoga layout results - React Native VirtualizedList approach
      * Matches iOS updateContentSizeFromYogaLayout() behavior
+     * 
+     * CRITICAL: This calculates the content size from children's actual positions after Yoga layout
      */
     fun updateContentSizeFromYogaLayout() {
         if (isUpdatingContentSize) return
@@ -85,62 +87,68 @@ class DCFScrollableView @JvmOverloads constructor(
             var maxWidth = 0
             var maxHeight = 0
             
-            // Find the content container (usually the first child FrameLayout)
+            // Find the content container (FrameLayout that holds all children)
             val contentView = getChildAt(0) as? FrameLayout
-            if (contentView != null) {
+            if (contentView != null && contentView.childCount > 0) {
+                // Calculate max bounds from all children in content container
                 for (i in 0 until contentView.childCount) {
                     val child = contentView.getChildAt(i)
-                    val right = child.left + child.width
-                    val bottom = child.top + child.height
+                    // Use measured dimensions if layout hasn't happened yet
+                    val childWidth = if (child.width > 0) child.width else child.measuredWidth
+                    val childHeight = if (child.height > 0) child.height else child.measuredHeight
+                    val childLeft = if (child.left > 0) child.left else child.left
+                    val childTop = if (child.top > 0) child.top else child.top
+                    
+                    val right = childLeft + childWidth
+                    val bottom = childTop + childHeight
                     
                     maxWidth = maxOf(maxWidth, right)
                     maxHeight = maxOf(maxHeight, bottom)
                 }
             } else {
-                // Fallback: check all direct children
-                for (i in 0 until childCount) {
-                    val child = getChildAt(i)
-                    val right = child.left + child.width
-                    val bottom = child.top + child.height
-                    
-                    maxWidth = maxOf(maxWidth, right)
-                    maxHeight = maxOf(maxHeight, bottom)
-                }
+                // Fallback: if no content container or no children, use ScrollView's own size
+                maxWidth = width
+                maxHeight = height
             }
             
+            // Handle virtualized content offset (for VirtualizedList)
             if (virtualizedContentOffsetStart > 0 || virtualizedContentPaddingTop > 0) {
                 val extraPadding = maxOf(virtualizedContentOffsetStart, virtualizedContentPaddingTop).toInt()
                 
                 if (isHorizontal) {
                     maxWidth += extraPadding
                     // Adjust child positions
-                    val contentView = getChildAt(0) as? FrameLayout
                     contentView?.let {
                         for (i in 0 until it.childCount) {
                             val child = it.getChildAt(i)
-                            child.x = child.x + extraPadding
+                            child.translationX = child.translationX + extraPadding
                         }
                     }
                 } else {
                     maxHeight += extraPadding
                     // Adjust child positions
-                    val contentView = getChildAt(0) as? FrameLayout
                     contentView?.let {
                         for (i in 0 until it.childCount) {
                             val child = it.getChildAt(i)
-                            child.y = child.y + extraPadding
+                            child.translationY = child.translationY + extraPadding
                         }
                     }
                 }
             }
             
-            val availableWidth = width
-            val availableHeight = height
+            // For vertical scrolling: width = ScrollView width, height = max content height
+            // For horizontal scrolling: width = max content width, height = ScrollView height
+            val availableWidth = if (width > 0) width else measuredWidth
+            val availableHeight = if (height > 0) height else measuredHeight
             
-            val finalWidth = if (isHorizontal) maxWidth else availableWidth
-            val finalHeight = if (isHorizontal) availableHeight else maxHeight
+            val finalWidth = if (isHorizontal) maxWidth else maxOf(availableWidth, maxWidth)
+            val finalHeight = if (isHorizontal) maxOf(availableHeight, maxHeight) else maxHeight
             
-            setContentSize(finalWidth, finalHeight)
+            // Ensure minimum size matches ScrollView bounds
+            val finalContentWidth = maxOf(finalWidth, availableWidth)
+            val finalContentHeight = maxOf(finalHeight, availableHeight)
+            
+            setContentSize(finalContentWidth, finalContentHeight)
         } finally {
             isUpdatingContentSize = false
         }
@@ -157,15 +165,23 @@ class DCFScrollableView @JvmOverloads constructor(
     
     /**
      * Set content size and notify Dart side
+     * CRITICAL: Updates the content container's size so ScrollView knows how much to scroll
      */
     private fun setContentSize(width: Int, height: Int) {
         val contentView = getChildAt(0) as? FrameLayout
         if (contentView != null) {
             val layoutParams = contentView.layoutParams as? android.view.ViewGroup.LayoutParams
             if (layoutParams != null) {
-                layoutParams.width = width
-                layoutParams.height = height
-                contentView.layoutParams = layoutParams
+                // Only update if size actually changed
+                if (layoutParams.width != width || layoutParams.height != height) {
+                    layoutParams.width = width
+                    layoutParams.height = height
+                    contentView.layoutParams = layoutParams
+                    // CRITICAL: Explicitly lay out the container at (0, 0) with new size
+                    contentView.layout(0, 0, width, height)
+                    // Force layout to apply new size
+                    contentView.requestLayout()
+                }
             }
         }
         
@@ -188,6 +204,40 @@ class DCFScrollableView @JvmOverloads constructor(
     
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
+        
+        // CRITICAL: Ensure content container is positioned at (0, 0) and sized correctly
+        val contentContainer = getChildAt(0) as? FrameLayout
+        contentContainer?.let { container ->
+            val scrollWidth = right - left
+            val scrollHeight = bottom - top
+            if (scrollWidth > 0 && scrollHeight > 0) {
+                // Update layout params to match explicit layout
+                val layoutParams = container.layoutParams
+                if (layoutParams != null) {
+                    // For vertical scrolling: width = ScrollView width, height = at least ScrollView height
+                    // For horizontal scrolling: width = at least ScrollView width, height = ScrollView height
+                    if (!isHorizontal) {
+                        layoutParams.width = scrollWidth
+                        // Height will be updated by updateContentSizeFromYogaLayout, but ensure minimum
+                        if (layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.height < scrollHeight) {
+                            layoutParams.height = scrollHeight
+                        }
+                    } else {
+                        // Horizontal scrolling (not fully implemented yet)
+                        if (layoutParams.width == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.width < scrollWidth) {
+                            layoutParams.width = scrollWidth
+                        }
+                        layoutParams.height = scrollHeight
+                    }
+                    container.layoutParams = layoutParams
+                }
+                // Explicitly lay out the container at (0, 0) with current size
+                // Use actual dimensions, not layout params (which might be WRAP_CONTENT constants)
+                val containerWidth = if (layoutParams.width > 0) layoutParams.width else scrollWidth
+                val containerHeight = if (layoutParams.height > 0) layoutParams.height else scrollHeight
+                container.layout(0, 0, containerWidth, containerHeight)
+            }
+        }
         
         val currentWidth = right - left
         val currentHeight = bottom - top

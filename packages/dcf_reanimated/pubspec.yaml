@@ -35,6 +35,9 @@ flutter:
     platforms:
       ios:
         pluginClass: DcfReanimated
+      android:
+        package: com.dotcorr.dcf_reanimated
+        pluginClass: DcfReanimatedPlugin
 
 
 

@@ -32,7 +32,17 @@ class DCFScrollViewComponent : DCFComponent() {
         scrollView.setTag(DCFTags.COMPONENT_TYPE_KEY, "ScrollView")
         
         // Create content container (FrameLayout to hold children)
+        // CRITICAL: Must be WRAP_CONTENT so it can grow beyond ScrollView bounds
         val contentContainer = FrameLayout(context)
+        val containerParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        contentContainer.layoutParams = containerParams
+        // CRITICAL: Ensure content container is visible and can receive children
+        contentContainer.visibility = View.VISIBLE
+        contentContainer.clipToPadding = false
+        contentContainer.clipChildren = false
         scrollView.addView(contentContainer)
         scrollView.setContentContainer(contentContainer) // Register with ScrollView
         
@@ -277,6 +287,7 @@ class DCFScrollViewComponent : DCFComponent() {
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
         val scrollView = view as? DCFScrollableView ?: return
         
+        // Apply layout to ScrollView itself
         scrollView.layout(
             layout.left.toInt(),
             layout.top.toInt(),
@@ -284,11 +295,52 @@ class DCFScrollViewComponent : DCFComponent() {
             (layout.top + layout.height).toInt()
         )
         
+        // CRITICAL: Position content container at (0, 0) inside ScrollView
+        // It will be sized by updateContentSizeFromYogaLayout based on children
+        val contentContainer = scrollView.getChildAt(0) as? FrameLayout
+        contentContainer?.let { container ->
+            val scrollWidth = scrollView.width
+            val scrollHeight = scrollView.height
+            if (scrollWidth > 0 && scrollHeight > 0) {
+                // Update layout params to ensure container has correct size
+                val layoutParams = container.layoutParams
+                if (layoutParams != null) {
+                    // For vertical scrolling: width = ScrollView width, height = at least ScrollView height
+                    if (!scrollView.isHorizontal) {
+                        layoutParams.width = scrollWidth
+                        // Height will be updated by updateContentSizeFromYogaLayout, but ensure minimum
+                        if (layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.height < scrollHeight) {
+                            layoutParams.height = scrollHeight
+                        }
+                    } else {
+                        // Horizontal scrolling
+                        if (layoutParams.width == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.width < scrollWidth) {
+                            layoutParams.width = scrollWidth
+                        }
+                        layoutParams.height = scrollHeight
+                    }
+                    container.layoutParams = layoutParams
+                }
+                // Explicitly lay out the container at (0, 0) with actual dimensions
+                // Use actual dimensions, not layout params (which might be WRAP_CONTENT constants)
+                val containerWidth = if (layoutParams.width > 0) layoutParams.width else scrollWidth
+                val containerHeight = if (layoutParams.height > 0) layoutParams.height else scrollHeight
+                container.layout(0, 0, containerWidth, containerHeight)
+                // Ensure container is visible
+                container.visibility = View.VISIBLE
+            }
+        }
+        
+        // Force layout pass to ensure children are positioned
         scrollView.requestLayout()
         
-        // Update content size after layout (matches iOS behavior)
+        // CRITICAL: Update content size after layout completes
+        // This must happen after all children are laid out by Yoga
         scrollView.post {
-            scrollView.updateContentSizeFromYogaLayout()
+            // Wait one more frame to ensure all children are positioned
+            scrollView.post {
+                scrollView.updateContentSizeFromYogaLayout()
+            }
         }
     }
     

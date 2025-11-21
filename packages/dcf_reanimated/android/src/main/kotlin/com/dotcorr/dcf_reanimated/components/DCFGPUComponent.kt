@@ -105,7 +105,7 @@ class SkiaGPUView(context: Context) : View(context) {
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
         
-        if (renderMode == "particles" && particles.isEmpty && width > 0 && height > 0) {
+        if (renderMode == "particles" && particles.isEmpty() && width > 0 && height > 0) {
             Log.d(TAG, "📐 SKIA GPU: View laid out, initializing particles in ${width}x${height}")
             initializeParticles()
             

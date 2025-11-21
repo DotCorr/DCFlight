@@ -421,15 +421,32 @@ class DCMauiBridgeImpl private constructor() {
                 return true
             }
 
-            // Fallback to default behavior
-            parentViewGroup.removeAllViews()
+            // CRITICAL: Handle DCFContentContainerProvider (like ScrollView)
+            // Children should be attached to the content container, not the parent itself
+            var actualParent: ViewGroup = parentViewGroup
+            if (parentView is DCFContentContainerProvider) {
+                val contentContainer = parentView.getContentContainer()
+                if (contentContainer != null) {
+                    actualParent = contentContainer
+                    Log.d(TAG, "setChildren: Using content container for view '$viewId'")
+                }
+            }
+
+            // Remove existing children from actual parent
+            actualParent.removeAllViews()
             val viewIdStr = viewId.toString()
             viewHierarchy[viewIdStr]?.clear()
 
             registeredChildIds.forEachIndexed { index: Int, childId: Int ->
                 val childView = ViewRegistry.shared.getView(childId)
                 if (childView != null) {
-                    parentViewGroup.addView(childView)
+                    // CRITICAL: Remove child from its current parent before adding
+                    // This prevents "The specified child already has a parent" error
+                    if (childView.parent != null) {
+                        (childView.parent as? ViewGroup)?.removeView(childView)
+                    }
+                    
+                    actualParent.addView(childView)
                     val childIdStr = childId.toString()
                     childToParent[childIdStr] = viewIdStr
                     viewHierarchy.getOrPut(viewIdStr) { mutableListOf() }.add(childIdStr)

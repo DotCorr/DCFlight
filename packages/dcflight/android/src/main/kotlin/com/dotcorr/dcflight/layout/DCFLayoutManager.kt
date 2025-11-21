@@ -16,6 +16,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
+import com.dotcorr.dcflight.components.DCFContentContainerProvider
 import com.dotcorr.dcflight.components.DCFFrameLayout
 import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
@@ -317,6 +318,24 @@ class DCFLayoutManager private constructor() {
                     View.MeasureSpec.makeMeasureSpec(layout.height.toInt(), View.MeasureSpec.EXACTLY)
                     )
                     
+                // CRITICAL: If view is inside a content container (e.g., ScrollView),
+                // ensure the content container is laid out first
+                if (parent != null) {
+                    val grandParent = parent.parent
+                    if (grandParent is DCFContentContainerProvider) {
+                        val contentContainer = grandParent.getContentContainer()
+                        if (contentContainer == parent && contentContainer is ViewGroup) {
+                            // Ensure content container is laid out before children
+                            val scrollView = grandParent as? View
+                            scrollView?.let { sv ->
+                                if (sv.width > 0 && sv.height > 0) {
+                                    contentContainer.layout(0, 0, sv.width, sv.height)
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 // Get component type and instance
                 val componentType = ViewRegistry.shared.getViewType(viewId) 
                     ?: view.getTag(DCFTags.COMPONENT_TYPE_KEY) as? String
