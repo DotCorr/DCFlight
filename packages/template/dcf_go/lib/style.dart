@@ -74,7 +74,7 @@ final layouts = DCFLayout.create({
   ),
   'canvasBox': DCFLayout(
     width: '100%',
-    minHeight: 150,
+    height: 150,
   ),
   'gpuDemoBox': DCFLayout(
     width: '100%',

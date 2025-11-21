@@ -127,16 +127,11 @@ class DCFAnimatedViewComponent : DCFComponent() {
             return
         }
         
-        // CRITICAL: Skip layout entirely when animating to prevent stuttering
-        // This matches iOS behavior where shouldSkipLayout returns true during animation
-        // Layout updates interfere with transform animations by recalculating pivot points
-        if (reanimatedView.shouldSkipLayout) {
-            return
-        }
-        
         // CRITICAL: For ReanimatedView, skip layout updates during state changes to prevent stuttering
         // Layout updates interfere with transform animations by recalculating anchor points
         // Only update if size actually changed significantly (more than 5 pixels)
+        // NOTE: shouldSkipLayout is checked in YogaShadowTree.applyLayoutToView (framework layer)
+        // This matches iOS behavior where the check is only in YogaShadowTree, not in component.applyLayout
         val newFrame = android.graphics.RectF(
             layout.left,
             layout.top,
@@ -492,6 +487,7 @@ class PureAnimationState(
     
     private var cycleCount = 0
     private var isReversing = false
+    private var cycleStartTime: Long = 0 // Track cycle start time for smooth repeats (matches iOS)
     
     private val curve: (Float) -> Float
     
@@ -595,14 +591,22 @@ class PureAnimationState(
     }
     
     fun update(currentTime: Long, elapsed: Double): PureAnimationResult {
-        val elapsedMs = (elapsed * 1000).toLong() - delay
+        // Initialize cycle start time on first update (matches iOS behavior)
+        if (cycleStartTime == 0L) {
+            cycleStartTime = currentTime
+        }
+        
+        // Calculate elapsed time relative to current cycle (not overall animation start)
+        // This ensures smooth repeats by resetting the timer for each cycle
+        val cycleElapsed = currentTime - cycleStartTime
+        val cycleElapsedMs = cycleElapsed - delay
         
         // Check if animation hasn't started yet (delay)
-        if (elapsedMs < 0) {
+        if (cycleElapsedMs < 0) {
             return PureAnimationResult(isActive = true, didRepeat = false)
         }
         
-        val progress = (elapsedMs.toFloat() / duration).coerceIn(0f, 1f)
+        val progress = (cycleElapsedMs.toFloat() / duration).coerceIn(0f, 1f)
         val easedProgress = curve(progress)
         
         // Calculate current value
@@ -621,6 +625,9 @@ class PureAnimationState(
                 if (shouldContinue) {
                     cycleCount++
                     isReversing = !isReversing
+                    // CRITICAL: Reset cycle start time for smooth repeat (matches iOS)
+                    // This prevents the animation from jumping to the end immediately
+                    cycleStartTime = currentTime
                     return PureAnimationResult(isActive = true, didRepeat = true)
                 }
             }

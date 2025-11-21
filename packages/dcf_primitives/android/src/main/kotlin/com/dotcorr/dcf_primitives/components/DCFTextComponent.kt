@@ -106,7 +106,9 @@ class DCFTextComponent : DCFComponent() {
             composeView.setTag(STATE_HOLDER_TAG_KEY, stateHolder)
             
             composeView.setContent {
-                val state = remember { stateHolder }.value
+                // CRITICAL: Use by remember to observe state changes reactively
+                // This ensures textAlign and other properties update correctly
+                val state by remember { stateHolder }
                 Material3Text(
                     text = state.content,
                     color = state.textColor,
