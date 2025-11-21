@@ -52,11 +52,10 @@ class DCFGPUComponent : DCFComponent() {
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
         gpuView.applyStyles(nonNullProps)
         
-        // CRITICAL: Ensure background stays transparent after applying styles
-        // This prevents black overlay when no background color is explicitly set
-        if (!nonNullProps.containsKey("backgroundColor")) {
-            gpuView.setBackgroundColor(Color.TRANSPARENT)
-        }
+        // CRITICAL: GPU surface must always be transparent (Skia, Metal, etc.)
+        // Force transparent background regardless of what applyStyles did
+        gpuView.setBackgroundColor(Color.TRANSPARENT)
+        gpuView.background = null
         
         return true
     }
@@ -106,6 +105,9 @@ class SkiaGPUView(context: Context) : View(context) {
     init {
         setWillNotDraw(false)
         setBackgroundColor(Color.TRANSPARENT)
+        // CRITICAL: Set layer type to hardware for proper transparency support
+        // This ensures the view can be transparent and composited correctly
+        setLayerType(View.LAYER_TYPE_HARDWARE, null)
     }
     
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -253,11 +255,9 @@ class SkiaGPUView(context: Context) : View(context) {
     }
     
     override fun onDraw(canvas: Canvas) {
-        // CRITICAL: Clear canvas with transparent background first to prevent white flash
-        // This ensures the view is transparent before drawing particles
+        // CRITICAL: Don't call super.onDraw() - it might draw an opaque background
+        // Instead, explicitly clear with transparent color
         canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
-        
-        super.onDraw(canvas)
         
         // Canvas is backed by Skia on Android
         // Render particles using Skia's GPU-accelerated rendering

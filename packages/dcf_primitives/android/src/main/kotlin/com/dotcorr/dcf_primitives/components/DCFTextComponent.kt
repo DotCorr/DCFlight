@@ -60,9 +60,19 @@ class DCFTextComponent : DCFComponent() {
         val content = props["content"]?.toString() ?: ""
         textView.text = content
         
+        // CRITICAL: Always set text color - use primaryColor from styleSheet or default
+        // This ensures text is visible even if color isn't explicitly set
         val textColor = ColorUtilities.getColor("textColor", "primaryColor", props)
         if (textColor != null) {
             textView.setTextColor(textColor)
+        } else {
+            // Default to black/white based on theme if no color specified
+            val context = textView.context
+            val isDarkTheme = (context.resources.configuration.uiMode and 
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) == 
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val defaultColor = if (isDarkTheme) android.graphics.Color.WHITE else android.graphics.Color.BLACK
+            textView.setTextColor(defaultColor)
         }
         
         val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: 17f
