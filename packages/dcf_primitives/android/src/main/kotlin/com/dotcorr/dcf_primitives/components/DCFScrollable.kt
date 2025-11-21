@@ -262,33 +262,61 @@ class DCFScrollableView @JvmOverloads constructor(
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
         
-        // CRITICAL: After super.onLayout(), restore container size if we have a stored content size
+        // CRITICAL: After super.onLayout(), restore container size if it has a fixed height
         // This ensures the container maintains its correct size across hot restarts and state changes
         val contentView = getChildAt(0) as? FrameLayout
-        if (contentView != null && lastSetContentSize != null) {
-            val (targetWidth, targetHeight) = lastSetContentSize!!
-            
-            // Check if container's layoutParams match our stored size
+        if (contentView != null) {
             val layoutParams = contentView.layoutParams
-            if (layoutParams.width != targetWidth || layoutParams.height != targetHeight) {
-                // Restore layoutParams
-                layoutParams.width = targetWidth
-                layoutParams.height = targetHeight
-                contentView.layoutParams = layoutParams
-                Log.d(TAG, "🔧 onLayout: Restored container layoutParams to ${targetWidth}x${targetHeight}")
+            val hasFixedHeight = layoutParams.height > 0 && 
+                layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT &&
+                layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT
+            
+            // If we have a stored size, use it; otherwise use layoutParams if it's a fixed value
+            val targetSize = if (lastSetContentSize != null) {
+                lastSetContentSize!!
+            } else if (hasFixedHeight) {
+                Pair(layoutParams.width, layoutParams.height)
+            } else {
+                null
             }
             
-            // Always ensure container is laid out with the correct size
-            val containerWidth = width - paddingLeft - paddingRight
-            val containerHeight = targetHeight
-            if (contentView.width != containerWidth || contentView.height != containerHeight) {
-                contentView.layout(
-                    paddingLeft,
-                    paddingTop,
-                    paddingLeft + containerWidth,
-                    paddingTop + containerHeight
-                )
-                Log.d(TAG, "🔧 onLayout: Forced container layout to ${containerWidth}x${containerHeight} (was ${contentView.width}x${contentView.height})")
+            if (targetSize != null) {
+                val (targetWidth, targetHeight) = targetSize
+                
+                // Check if container's layoutParams match our target size
+                if (layoutParams.width != targetWidth || layoutParams.height != targetHeight) {
+                    // Restore layoutParams
+                    layoutParams.width = targetWidth
+                    layoutParams.height = targetHeight
+                    contentView.layoutParams = layoutParams
+                    Log.d(TAG, "🔧 onLayout: Restored container layoutParams to ${targetWidth}x${targetHeight}")
+                }
+                
+                // Always ensure container is laid out with the correct size
+                val containerWidth = width - paddingLeft - paddingRight
+                val containerHeight = targetHeight
+                if (contentView.width != containerWidth || contentView.height != containerHeight) {
+                    contentView.measure(
+                        View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(containerHeight, View.MeasureSpec.EXACTLY)
+                    )
+                    contentView.layout(
+                        paddingLeft,
+                        paddingTop,
+                        paddingLeft + containerWidth,
+                        paddingTop + containerHeight
+                    )
+                    Log.d(TAG, "🔧 onLayout: Forced container layout to ${containerWidth}x${containerHeight} (was ${contentView.width}x${contentView.height})")
+                }
+            } else if (lastSetContentSize == null && childCount > 0) {
+                // CRITICAL: After hot restart, if we don't have a stored size but have children,
+                // trigger content size update to recalculate and set the size
+                post {
+                    if (lastSetContentSize == null && childCount > 0) {
+                        Log.d(TAG, "🔄 onLayout: No stored size after hot restart, triggering content size update")
+                        updateContentSizeFromYogaLayout()
+                    }
+                }
             }
         }
         

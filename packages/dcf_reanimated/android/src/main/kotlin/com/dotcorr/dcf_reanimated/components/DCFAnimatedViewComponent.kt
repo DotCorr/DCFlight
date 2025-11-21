@@ -53,8 +53,9 @@ class DCFAnimatedViewComponent : DCFComponent() {
                 reanimatedView.configurePureAnimation(animatedStyle)
             }
             
-            // Auto-start if configured
-            val autoStart = props["autoStart"] as? Boolean ?: true
+            // Auto-start only if explicitly configured (default: false)
+            // This prevents animations from starting automatically on initial render
+            val autoStart = props["autoStart"] as? Boolean ?: false
             val startDelay = props["startDelay"] as? Int ?: 0
             
             if (autoStart) {
@@ -81,6 +82,10 @@ class DCFAnimatedViewComponent : DCFComponent() {
         val mergedProps = mergeProps(existingProps, props)
         storeProps(view, mergedProps)
         
+        // Check if autoStart changed
+        val previousAutoStart = existingProps["autoStart"] as? Boolean ?: false
+        val currentAutoStart = mergedProps["autoStart"] as? Boolean ?: false
+        
         // Update worklet or animation style
         if (mergedProps["worklet"] is Map<*, *>) {
             val workletData = mergedProps["worklet"] as Map<String, Any?>
@@ -89,6 +94,19 @@ class DCFAnimatedViewComponent : DCFComponent() {
         } else if (mergedProps["animatedStyle"] is Map<*, *>) {
             val animatedStyle = mergedProps["animatedStyle"] as Map<String, Any?>
             reanimatedView.updateAnimationConfig(animatedStyle)
+        }
+        
+        // CRITICAL: Handle autoStart prop changes
+        // If autoStart changed from false to true, start the animation
+        // If autoStart changed from true to false, stop the animation
+        if (currentAutoStart != previousAutoStart) {
+            if (currentAutoStart && !reanimatedView.isAnimating) {
+                Log.d(TAG, "🎯 PURE REANIMATED: autoStart changed to true, starting animation")
+                reanimatedView.startPureAnimation()
+            } else if (!currentAutoStart && reanimatedView.isAnimating) {
+                Log.d(TAG, "🎯 PURE REANIMATED: autoStart changed to false, stopping animation")
+                reanimatedView.stopPureAnimation()
+            }
         }
         
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
@@ -210,9 +228,14 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     }
     
     fun updateWorklet(workletData: Map<String, Any?>, config: Map<String, Any?>?) {
+        val wasAnimating = isAnimating
         stopPureAnimation()
         configureWorklet(workletData, config)
-        startPureAnimation()
+        // Only restart animation if it was already running
+        // This prevents auto-starting on prop updates
+        if (wasAnimating) {
+            startPureAnimation()
+        }
     }
     
     // ============================================================================
@@ -239,9 +262,14 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     }
     
     fun updateAnimationConfig(animatedStyle: Map<String, Any?>) {
+        val wasAnimating = isAnimating
         stopPureAnimation()
         configurePureAnimation(animatedStyle)
-        startPureAnimation()
+        // Only restart animation if it was already running
+        // This prevents auto-starting on prop updates
+        if (wasAnimating) {
+            startPureAnimation()
+        }
     }
     
     // ============================================================================

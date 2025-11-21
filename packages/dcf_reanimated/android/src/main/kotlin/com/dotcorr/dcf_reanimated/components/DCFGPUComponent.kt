@@ -247,6 +247,10 @@ class SkiaGPUView(context: Context) : View(context) {
     }
     
     override fun onDraw(canvas: Canvas) {
+        // CRITICAL: Clear canvas with transparent background first to prevent white flash
+        // This ensures the view is transparent before drawing particles
+        canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
+        
         super.onDraw(canvas)
         
         // Canvas is backed by Skia on Android
