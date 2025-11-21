@@ -417,11 +417,24 @@ class DCFLayoutManager private constructor() {
                 // This prevents flash during reconciliation (views flash when visible but not yet laid out)
                 // Visibility will be set in batch after all layouts complete
 
+                // Only invalidate if layout actually changed to prevent flicker
+                val currentLeft = view.left.toFloat()
+                val currentTop = view.top.toFloat()
+                val currentWidth = view.width.toFloat()
+                val currentHeight = view.height.toFloat()
+
+                val layoutChanged = kotlin.math.abs(currentLeft - layout.left) > 1 ||
+                                   kotlin.math.abs(currentTop - layout.top) > 1 ||
+                                   kotlin.math.abs(currentWidth - layout.width) > 1 ||
+                                   kotlin.math.abs(currentHeight - layout.height) > 1
+
                 // Framework handles invalidation - components don't need to know
-                        view.invalidate()
-                        (view.parent as? View)?.invalidate()
-                    }
-                } catch (e: Exception) {
+                if (layoutChanged) {
+                    view.invalidate()
+                    (view.parent as? View)?.invalidate()
+                }
+            }
+        } catch (e: Exception) {
             Log.w(TAG, "Error applying layout to view $viewId", e)
             // Fallback to direct layout on error
             try {

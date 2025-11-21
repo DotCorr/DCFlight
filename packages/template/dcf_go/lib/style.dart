@@ -56,6 +56,9 @@ final layouts = DCFLayout.create({
     marginBottom: 8,
     alignItems: DCFAlign.center,
   ),
+  'subtitle': DCFLayout(
+    marginBottom: 20,
+  ),
   'section': DCFLayout(
     width: '100%',
     padding: 16,

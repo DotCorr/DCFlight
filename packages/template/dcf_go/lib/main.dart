@@ -38,6 +38,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               content: "Reanimated • Skia Canvas • GPU Rendering",
               textProps: DCFTextProps(fontSize: 14),
               styleSheet: styles['subtitleText'],
+              layout: layouts['subtitle'],
             ),
           ],
         ),
@@ -114,25 +115,25 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               styleSheet: styles['sectionTitle'],
               layout: layouts['sectionTitle'],
             ),
-            // DCFCanvas(
-            //   onPaint: (SkiaCanvas canvas, Size size) {
-            //     // Draw a simple animated circle to demonstrate Skia rendering
-            //     final centerX = size.width / 2;
-            //     final centerY = size.height / 2;
-            //     final radius = 50.0;
+            DCFCanvas(
+              onPaint: (SkiaCanvas canvas, Size size) {
+                // Draw a simple animated circle to demonstrate Skia rendering
+                final centerX = size.width / 2;
+                final centerY = size.height / 2;
+                final radius = 50.0;
                 
-            //     // Create paint for the circle
-            //     final paint = SkiaPaint();
-            //     paint.color = const Color(0xFF00FF00); // Green color
-            //     paint.style = SkiaPaintStyle.fill;
+                // Create paint for the circle
+                final paint = SkiaPaint();
+                paint.color = const Color(0xFF00FF00); // Green color
+                paint.style = SkiaPaintStyle.fill;
                 
-            //     // Draw circle using native Skia rendering
-            //     canvas.drawCircle(centerX, centerY, radius, paint);
-            //   },
-            //   repaintOnFrame: true,
-            //   backgroundColor: const Color(0xFF1a1a2e),
-            //   layout: layouts['canvasBox'],
-            // ),
+                // Draw circle using native Skia rendering
+                canvas.drawCircle(centerX, centerY, radius, paint);
+              },
+              repaintOnFrame: true,
+              backgroundColor: const Color(0xFF1a1a2e),
+              layout: layouts['canvasBox'],
+            ),
             DCFButton(
               onPress: (DCFButtonPressData data) {
                 canvasAnimation.setState(canvasAnimation.state + 1);
