@@ -4,7 +4,7 @@ import 'package:dcflight/dcflight.dart';
 
 final styles = DCFStyleSheet.create({
   'root': DCFStyleSheet(
-    backgroundColor: DCFColors.beige,
+    backgroundColor: DCFColors.amber,
   ),
   'header': DCFStyleSheet(
     backgroundColor: const Color(0xFF1a1a2e),
@@ -36,7 +36,7 @@ final styles = DCFStyleSheet.create({
   ),
   'buttonText': DCFStyleSheet(primaryColor: DCFColors.white),
   'confettiOverlay': DCFStyleSheet(
-    backgroundColor: DCFColors.transparent, // Explicit transparent background
+    backgroundColor: DCFColors.pink , // Explicit transparent background
   ),
   'emptyStyle': DCFStyleSheet(),
 });
