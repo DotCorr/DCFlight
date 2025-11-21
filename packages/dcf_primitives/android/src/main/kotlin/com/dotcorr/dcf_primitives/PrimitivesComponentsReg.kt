@@ -10,11 +10,6 @@ package com.dotcorr.dcf_primitives
 import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcf_primitives.components.*
 
-/**
- * Registration class for DCF primitive components
- * Following iOS FrameworkComponentsReg pattern
- * All component names must match iOS exactly for cross-platform consistency
- */
 object PrimitivesComponentsReg {
 
     /**
@@ -42,6 +37,7 @@ object PrimitivesComponentsReg {
         
         registry.registerComponent("Svg", DCFSvgComponent::class.java)
         registry.registerComponent("DCFIcon", DCFIconComponent::class.java)
+        registry.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
         // Canvas component not needed - using WidgetToDCFAdaptor with CustomPaint directly
         // registry.registerComponent("Canvas", DCFCanvasComponent::class.java)
     }

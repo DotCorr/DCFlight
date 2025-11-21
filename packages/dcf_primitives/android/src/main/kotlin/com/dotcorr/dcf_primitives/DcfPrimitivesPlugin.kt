@@ -7,43 +7,27 @@
 
 package com.dotcorr.dcf_primitives
 
-import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 
+class DcfPrimitives {
+    companion object {
+        @JvmStatic
+        fun registerComponents() {
+            PrimitivesComponentsReg.registerComponents()
+        }
+    }
+}
+
 /**
- * DcfPrimitivesPlugin
- *
- * This plugin registers all primitive UI components with the DCFlight framework.
- * It serves as the entry point for the dcf_primitives package on Android.
+ * FlutterPlugin wrapper - minimal, just for Flutter discovery
+ * Matches iOS registerWithRegistrar pattern
  */
 class DcfPrimitivesPlugin : FlutterPlugin {
-
-    companion object {
-        private const val TAG = "DcfPrimitivesPlugin"
-        private var isRegistered = false
-    }
-
-    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        Log.d(TAG, "DcfPrimitivesPlugin: onAttachedToEngine called")
-
-        if (!isRegistered) {
-            registerPrimitiveComponents()
-        }
+    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        DcfPrimitives.registerComponents()
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        Log.d(TAG, "DcfPrimitivesPlugin: onDetachedFromEngine called")
-    }
-
-    private fun registerPrimitiveComponents() {
-        Log.d(TAG, "Registering primitive components with DCFlight framework")
-
-        try {
-            PrimitivesComponentsReg.registerComponents()
-            isRegistered = true
-            Log.d(TAG, "✅ DcfPrimitivesPlugin: Successfully registered primitive components")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ DcfPrimitivesPlugin: Failed to register primitive components", e)
-        }
+        // No cleanup needed
     }
 }

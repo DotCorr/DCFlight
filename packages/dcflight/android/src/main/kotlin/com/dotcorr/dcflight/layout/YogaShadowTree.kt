@@ -19,6 +19,7 @@ import com.facebook.yoga.*
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcflight.components.DCFComposeWrapper
+import com.dotcorr.dcflight.components.DCFLayoutIndependent
 import com.dotcorr.dcflight.utils.DCFScreenUtilities
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
@@ -595,12 +596,26 @@ class YogaShadowTree private constructor() {
         // Post to main thread to ensure we're on the UI thread (applyLayoutsBatch may be on background thread)
         if (viewsToMakeVisible.isNotEmpty()) {
             mainHandler.post {
-                // Make views visible immediately after layouts are posted
-                // applyLayout already posts to main thread, so this will run after layouts are applied
+                val layoutAnimationEnabled = DCFLayoutManager.shared.layoutAnimationEnabled
+                val animationDuration = DCFLayoutManager.shared.layoutAnimationDuration
+                
+                // Make views visible with optional fade-in animation
                 for (view in viewsToMakeVisible) {
                     if (view.parent != null) { // Only if still attached
                         view.visibility = View.VISIBLE
-                        view.alpha = 1.0f
+                        
+                        if (layoutAnimationEnabled && animationDuration > 0) {
+                            // Fade in animation for newly created views
+                            view.alpha = 0f
+                            view.animate()
+                                .alpha(1.0f)
+                                .setDuration(animationDuration)
+                                .setInterpolator(DCFLayoutManager.shared.layoutAnimationInterpolator)
+                                .start()
+                        } else {
+                            // No animation - make visible immediately
+                            view.alpha = 1.0f
+                        }
                     }
                 }
                 // Clear the update tracking
@@ -620,6 +635,14 @@ class YogaShadowTree private constructor() {
         val node = nodes[viewId]
         
         if (view == null || node == null) {
+            return
+        }
+        
+        // CRITICAL: Skip layout for views that opt-out via DCFLayoutIndependent interface
+        // This allows modules (like dcf_reanimated) to make views layout-independent
+        // without modifying the framework layer
+        if (view is DCFLayoutIndependent && view.shouldSkipLayout) {
+            // Skip layout update to prevent interference with animations/transforms
             return
         }
         

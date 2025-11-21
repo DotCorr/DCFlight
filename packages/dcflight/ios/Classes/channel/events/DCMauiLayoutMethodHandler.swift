@@ -38,6 +38,12 @@ public class DCMauiLayoutMethodHandler: NSObject {
         case "setUseWebDefaults":
             handleSetUseWebDefaults(call: call, result: result)
             
+        case "setLayoutAnimationEnabled":
+            handleSetLayoutAnimationEnabled(call: call, result: result)
+            
+        case "getLayoutAnimationEnabled":
+            handleGetLayoutAnimationEnabled(result: result)
+            
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -53,6 +59,35 @@ public class DCMauiLayoutMethodHandler: NSObject {
         ]
         
         result(dimensions)
+    }
+    
+    private func handleSetLayoutAnimationEnabled(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let args = call.arguments as? [String: Any],
+              let enabled = args["enabled"] as? Bool else {
+            result(FlutterError(
+                code: "ARGS_ERROR",
+                message: "setLayoutAnimationEnabled requires 'enabled' boolean parameter",
+                details: nil
+            ))
+            return
+        }
+        
+        let duration = (args["duration"] as? NSNumber)?.doubleValue ?? 0.3
+        
+        DispatchQueue.main.async {
+            DCFLayoutManager.shared.layoutAnimationEnabled = enabled
+            if enabled {
+                DCFLayoutManager.shared.layoutAnimationDuration = duration
+            }
+            result(true)
+        }
+    }
+    
+    private func handleGetLayoutAnimationEnabled(result: @escaping FlutterResult) {
+        result([
+            "enabled": DCFLayoutManager.shared.layoutAnimationEnabled,
+            "duration": DCFLayoutManager.shared.layoutAnimationDuration
+        ])
     }
     
     private func handleSetUseWebDefaults(call: FlutterMethodCall, result: @escaping FlutterResult) {

@@ -10,7 +10,7 @@ import UIKit
 import dcflight
 
 /// Component that handles gesture recognition
-class DCFGestureDetectorComponent: NSObject, DCFComponent {
+class DCFGestureDetectorComponent: NSObject, DCFComponent, UIGestureRecognizerDelegate {
     private static let sharedInstance = DCFGestureDetectorComponent()
     
     private static var gestureRecognizers = [UIView: [UIGestureRecognizer]]()
@@ -84,6 +84,30 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
         let panRecognizer = UIPanGestureRecognizer(target: DCFGestureDetectorComponent.sharedInstance, action: #selector(handlePan(_:)))
         view.addGestureRecognizer(panRecognizer)
         recognizers.append(panRecognizer)
+        
+        // Double tap gesture
+        let doubleTapRecognizer = UITapGestureRecognizer(target: DCFGestureDetectorComponent.sharedInstance, action: #selector(handleDoubleTap(_:)))
+        doubleTapRecognizer.numberOfTapsRequired = 2
+        view.addGestureRecognizer(doubleTapRecognizer)
+        recognizers.append(doubleTapRecognizer)
+        
+        // Make single tap require double tap to fail (prevents conflicts)
+        tapRecognizer.require(toFail: doubleTapRecognizer)
+        
+        // Pinch/scale gesture
+        let pinchRecognizer = UIPinchGestureRecognizer(target: DCFGestureDetectorComponent.sharedInstance, action: #selector(handlePinch(_:)))
+        view.addGestureRecognizer(pinchRecognizer)
+        recognizers.append(pinchRecognizer)
+        
+        // Rotation gesture
+        let rotationRecognizer = UIRotationGestureRecognizer(target: DCFGestureDetectorComponent.sharedInstance, action: #selector(handleRotation(_:)))
+        view.addGestureRecognizer(rotationRecognizer)
+        recognizers.append(rotationRecognizer)
+        
+        // Allow simultaneous gestures
+        pinchRecognizer.delegate = DCFGestureDetectorComponent.sharedInstance
+        rotationRecognizer.delegate = DCFGestureDetectorComponent.sharedInstance
+        panRecognizer.delegate = DCFGestureDetectorComponent.sharedInstance
         
         DCFGestureDetectorComponent.gestureRecognizers[view] = recognizers
     }
@@ -194,6 +218,80 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
         propagateEvent(on: view, eventName: eventType, data: eventData)
     }
     
+    @objc func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+        if let view = recognizer.view {
+            let location = recognizer.location(in: view)
+            propagateEvent(on: view, eventName: "onDoubleTap", data: [
+                "x": location.x,
+                "y": location.y,
+                "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+                "fromUser": true
+            ])
+        }
+    }
+    
+    @objc func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
+        guard let view = recognizer.view else { return }
+        
+        let location = recognizer.location(in: view)
+        let scale = recognizer.scale
+        let velocity = recognizer.velocity
+        
+        var eventType = "onPinch"
+        var eventData: [String: Any] = [
+            "x": location.x,
+            "y": location.y,
+            "scale": scale,
+            "velocity": velocity,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "fromUser": true
+        ]
+        
+        switch recognizer.state {
+        case .began:
+            eventType = "onPinchStart"
+        case .changed:
+            eventType = "onPinchUpdate"
+        case .ended, .cancelled:
+            eventType = "onPinchEnd"
+        default:
+            return
+        }
+        
+        propagateEvent(on: view, eventName: eventType, data: eventData)
+    }
+    
+    @objc func handleRotation(_ recognizer: UIRotationGestureRecognizer) {
+        guard let view = recognizer.view else { return }
+        
+        let location = recognizer.location(in: view)
+        let rotation = recognizer.rotation // in radians
+        let velocity = recognizer.velocity // radians per second
+        
+        var eventType = "onRotation"
+        var eventData: [String: Any] = [
+            "x": location.x,
+            "y": location.y,
+            "rotation": rotation,
+            "velocity": velocity,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "fromUser": true
+        ]
+        
+        switch recognizer.state {
+        case .began:
+            eventType = "onRotationStart"
+        case .changed:
+            eventType = "onRotationUpdate"
+        case .ended, .cancelled:
+            eventType = "onRotationEnd"
+        default:
+            return
+        }
+        
+        propagateEvent(on: view, eventName: eventType, data: eventData)
+    }
+    
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         if let child = view.subviews.first {
             let size = child.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
@@ -215,6 +313,17 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent {
 
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
         return nil
+    }
+    
+    // MARK: - UIGestureRecognizerDelegate
+    
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Allow pinch and rotation to work simultaneously
+        if (gestureRecognizer is UIPinchGestureRecognizer && otherGestureRecognizer is UIRotationGestureRecognizer) ||
+           (gestureRecognizer is UIRotationGestureRecognizer && otherGestureRecognizer is UIPinchGestureRecognizer) {
+            return true
+        }
+        return false
     }
 }
 

@@ -15,6 +15,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFContentContainerProvider
 import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcflight.components.DCFPropConstants
 import com.dotcorr.dcflight.Coordinator.DCFViewManager
@@ -268,17 +269,28 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
 
+            // CRITICAL: Some views (like ScrollView) need children attached to a content container
+            // Use DCFContentContainerProvider interface for scalable solution
+            var actualParent: ViewGroup = parentViewGroup
+            if (parentView is DCFContentContainerProvider) {
+                val contentContainer = parentView.getContentContainer()
+                if (contentContainer != null) {
+                    actualParent = contentContainer
+                    Log.d(TAG, "Content container provider detected: attaching to content container")
+                }
+            }
+
             if (childView.parent != null) {
                 (childView.parent as? ViewGroup)?.removeView(childView)
                 Log.d(TAG, "Removed child '$childId' from existing parent")
             }
 
                 try {
-                    if (index >= 0 && index <= parentViewGroup.childCount) {
-                        parentViewGroup.addView(childView, index)
+                    if (index >= 0 && index <= actualParent.childCount) {
+                        actualParent.addView(childView, index)
                         Log.d(TAG, "Attached child '$childId' to parent '$parentId' at index $index")
                     } else {
-                        parentViewGroup.addView(childView)
+                        actualParent.addView(childView)
                         Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
                     }
                     

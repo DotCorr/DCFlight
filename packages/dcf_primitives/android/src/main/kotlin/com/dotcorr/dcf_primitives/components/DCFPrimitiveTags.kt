@@ -11,6 +11,12 @@ object DCFPrimitiveTags {
     const val WEBVIEW_CLIENT = "dcf_webview_client"
     const val WEBVIEW_CHROME_CLIENT = "dcf_webview_chrome_client"
     const val IMAGE_SOURCE = "dcf_image_source"
+    const val SCROLL_INDICATOR_COLOR = "dcf_scroll_indicator_color"
+    const val SCROLL_INDICATOR_SIZE = "dcf_scroll_indicator_size"
+    const val BORDER_RADIUS = "dcf_border_radius"
+    const val BORDER_WIDTH = "dcf_border_width"
+    const val BORDER_COLOR = "dcf_border_color"
+    const val PAGING_ENABLED = "dcf_paging_enabled"
     
     val TEST_ID_KEY = TEST_ID.hashCode()
     val TEXT_INPUT_BLUR_ON_SUBMIT_KEY = TEXT_INPUT_BLUR_ON_SUBMIT.hashCode()
@@ -22,5 +28,11 @@ object DCFPrimitiveTags {
     val WEBVIEW_CLIENT_KEY = WEBVIEW_CLIENT.hashCode()
     val WEBVIEW_CHROME_CLIENT_KEY = WEBVIEW_CHROME_CLIENT.hashCode()
     val IMAGE_SOURCE_KEY = IMAGE_SOURCE.hashCode()
+    val SCROLL_INDICATOR_COLOR_KEY = SCROLL_INDICATOR_COLOR.hashCode()
+    val SCROLL_INDICATOR_SIZE_KEY = SCROLL_INDICATOR_SIZE.hashCode()
+    val BORDER_RADIUS_KEY = BORDER_RADIUS.hashCode()
+    val BORDER_WIDTH_KEY = BORDER_WIDTH.hashCode()
+    val BORDER_COLOR_KEY = BORDER_COLOR.hashCode()
+    val PAGING_ENABLED_KEY = PAGING_ENABLED.hashCode()
 }
 

@@ -221,7 +221,7 @@ object DCDivergerUtil {
     private fun registerComponents() {
         try {
             FrameworkComponentsReg.registerComponents()
-            Log.d(TAG, "Components registered")
+            Log.d(TAG, "Framework components registered")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to register components", e)
         }

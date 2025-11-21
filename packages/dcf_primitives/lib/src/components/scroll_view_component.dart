@@ -26,9 +26,17 @@ class DCFScrollViewScrollData {
 
   /// Create from raw map data
   factory DCFScrollViewScrollData.fromMap(Map<dynamic, dynamic> data) {
+    // iOS sends contentOffset.x/y, Android should match
+    final contentOffset = data['contentOffset'] as Map<dynamic, dynamic>?;
+    final scrollXValue = contentOffset?['x'] ?? data['scrollX'];
+    final scrollYValue = contentOffset?['y'] ?? data['scrollY'];
+    
+    final scrollX = (scrollXValue as num?)?.toDouble() ?? 0.0;
+    final scrollY = (scrollYValue as num?)?.toDouble() ?? 0.0;
+    
     return DCFScrollViewScrollData(
-      scrollX: (data['scrollX'] as num).toDouble(),
-      scrollY: (data['scrollY'] as num).toDouble(),
+      scrollX: scrollX,
+      scrollY: scrollY,
       timestamp: data['timestamp'] != null 
           ? DateTime.fromMillisecondsSinceEpoch(data['timestamp'] as int)
           : DateTime.now(),

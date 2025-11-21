@@ -44,6 +44,9 @@ class DCMauiLayoutMethodHandler : MethodChannel.MethodCallHandler {
             "getUseWebDefaults" -> {
                 handleGetUseWebDefaults(result)
             }
+            "setLayoutAnimationEnabled" -> {
+                handleSetLayoutAnimationEnabled(call.arguments as? Map<String, Any>, result)
+            }
             else -> {
                 result.notImplemented()
             }
@@ -92,6 +95,24 @@ class DCMauiLayoutMethodHandler : MethodChannel.MethodCallHandler {
         Handler(Looper.getMainLooper()).post {
             val enabled = DCFLayoutManager.shared.getUseWebDefaults()
             result.success(enabled)
+        }
+    }
+    
+    private fun handleSetLayoutAnimationEnabled(args: Map<String, Any>?, result: Result) {
+        val enabled = args?.get("enabled") as? Boolean
+        val duration = (args?.get("duration") as? Number)?.toLong() ?: 300L
+
+        if (enabled == null) {
+            result.error("ARGS_ERROR", "Invalid enabled parameter", null)
+            return
+        }
+
+        Handler(Looper.getMainLooper()).post {
+            DCFLayoutManager.shared.layoutAnimationEnabled = enabled
+            if (enabled) {
+                DCFLayoutManager.shared.layoutAnimationDuration = duration
+            }
+            result.success(true)
         }
     }
 }

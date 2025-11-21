@@ -171,8 +171,30 @@ class DCFViewManager private constructor() {
     }
 
     fun deleteView(viewId: Int): Boolean {
-        ViewRegistry.shared.removeView(viewId)
-        DCFLayoutManager.shared.unregisterView(viewId)
+        val view = ViewRegistry.shared.getView(viewId)
+        val layoutAnimationEnabled = DCFLayoutManager.shared.layoutAnimationEnabled
+        val animationDuration = DCFLayoutManager.shared.layoutAnimationDuration
+        
+        if (view != null && layoutAnimationEnabled && animationDuration > 0) {
+            // Fade out animation before removing view
+            view.animate()
+                .alpha(0f)
+                .setDuration(animationDuration)
+                .setInterpolator(DCFLayoutManager.shared.layoutAnimationInterpolator)
+                .withEndAction {
+                    // Remove from registry and layout manager after animation
+                    ViewRegistry.shared.removeView(viewId)
+                    DCFLayoutManager.shared.unregisterView(viewId)
+                    
+                    // Remove from parent if still attached
+                    (view.parent as? ViewGroup)?.removeView(view)
+                }
+                .start()
+        } else {
+            // No animation - remove immediately
+            ViewRegistry.shared.removeView(viewId)
+            DCFLayoutManager.shared.unregisterView(viewId)
+        }
 
         return true
     }

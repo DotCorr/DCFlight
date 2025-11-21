@@ -119,8 +119,28 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
             return
         }
         
-        // Only update if size changed significantly - use bounds/center to preserve transforms
-        // This ensures animations aren't interrupted by layout updates
+        // CRITICAL: Always ensure anchor point is at center for proper transform behavior
+        // This prevents content from appearing off-center when transforms are active
+        if reanimatedView.layer.anchorPoint != CGPoint(x: 0.5, y: 0.5) {
+            // Calculate offset to maintain visual position when changing anchor point
+            let currentFrame = reanimatedView.frame
+            let anchorPointOffset = CGPoint(
+                x: (reanimatedView.layer.anchorPoint.x - 0.5) * reanimatedView.bounds.width,
+                y: (reanimatedView.layer.anchorPoint.y - 0.5) * reanimatedView.bounds.height
+            )
+            
+            // Reset anchor point to center
+            reanimatedView.layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            
+            // Adjust center to maintain visual position
+            reanimatedView.center = CGPoint(
+                x: reanimatedView.center.x + anchorPointOffset.x,
+                y: reanimatedView.center.y + anchorPointOffset.y
+            )
+        }
+        
+        // Always use bounds/center to preserve transforms (both during and after animation)
+        // This ensures content stays centered and animations aren't interrupted
         reanimatedView.bounds = CGRect(origin: .zero, size: newFrame.size)
         reanimatedView.center = CGPoint(
             x: newFrame.midX,
@@ -298,8 +318,54 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         isAnimating = false
         stopDisplayLink()
         
+        // CRITICAL: When animation stops, ensure layout is synchronized
+        // If there's an active transform, we need to ensure the view's frame
+        // accounts for it to prevent off-center content
+        synchronizeLayoutAfterAnimation()
+        
         // Fire animation complete event
         fireAnimationEvent(eventType: "onAnimationComplete")
+    }
+    
+    /// Synchronize layout after animation stops to prevent off-center content
+    private func synchronizeLayoutAfterAnimation() {
+        // CRITICAL: When animation stops, ensure anchor point is at center
+        // This prevents content from appearing off-center when transforms are active
+        // The anchor point determines where transforms are applied from
+        guard bounds.width > 0 && bounds.height > 0 else {
+            // View not laid out yet, skip synchronization
+            return
+        }
+        
+        // Store current visual position before changing anchor point
+        let currentCenter = center
+        let currentBounds = bounds
+        
+        // Calculate offset if anchor point is not centered
+        if layer.anchorPoint != CGPoint(x: 0.5, y: 0.5) {
+            let anchorPointOffset = CGPoint(
+                x: (layer.anchorPoint.x - 0.5) * bounds.width,
+                y: (layer.anchorPoint.y - 0.5) * bounds.height
+            )
+            
+            // Reset anchor point to center
+            layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            
+            // Adjust center to maintain visual position
+            center = CGPoint(
+                x: currentCenter.x + anchorPointOffset.x,
+                y: currentCenter.y + anchorPointOffset.y
+            )
+        } else {
+            // Anchor point is already centered, just ensure bounds origin is zero
+            if bounds.origin != .zero {
+                bounds = CGRect(origin: .zero, size: currentBounds.size)
+            }
+        }
+        
+        // Force layout update to ensure everything is synchronized
+        setNeedsLayout()
+        layoutIfNeeded()
     }
     
     // ============================================================================

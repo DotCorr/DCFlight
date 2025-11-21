@@ -37,8 +37,6 @@ object ReanimatedComponentsReg {
         
         // Register Skia GPU component
         registry.registerComponent("GPU", DCFGPUComponent::class.java)
-        
-        Log.d(TAG, "✅ Registered reanimated components (ReanimatedView, Canvas, GPU)")
     }
 }
 

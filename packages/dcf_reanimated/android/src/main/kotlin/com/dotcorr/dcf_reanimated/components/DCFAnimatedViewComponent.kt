@@ -14,6 +14,7 @@ import android.view.Choreographer
 import android.view.View
 import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFLayoutIndependent
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
@@ -99,6 +100,50 @@ class DCFAnimatedViewComponent : DCFComponent() {
         return PointF(0f, 0f)
     }
 
+    override fun applyLayout(view: View, layout: com.dotcorr.dcflight.layout.DCFNodeLayout) {
+        val reanimatedView = view as? PureReanimatedView ?: run {
+            // For non-reanimated views, use default layout
+            super.applyLayout(view, layout)
+            return
+        }
+        
+        // CRITICAL: For ReanimatedView, skip layout updates during state changes to prevent stuttering
+        // Layout updates interfere with transform animations by recalculating anchor points
+        // Only update if size actually changed significantly (more than 5 pixels)
+        val newFrame = android.graphics.RectF(
+            layout.left,
+            layout.top,
+            layout.left + layout.width,
+            layout.top + layout.height
+        )
+        
+        // Check if size changed significantly
+        val sizeChanged = Math.abs(newFrame.width() - reanimatedView.width) > 5.0f ||
+                         Math.abs(newFrame.height() - reanimatedView.height) > 5.0f
+        
+        // If size hasn't changed significantly, skip layout update entirely
+        // This prevents stuttering caused by frame updates interfering with transforms
+        if (!sizeChanged) {
+            return
+        }
+        
+        // CRITICAL: Always ensure pivot point is at center for proper transform behavior
+        // This prevents content from appearing off-center when transforms are active
+        if (reanimatedView.pivotX != reanimatedView.width / 2f || 
+            reanimatedView.pivotY != reanimatedView.height / 2f) {
+            reanimatedView.pivotX = reanimatedView.width / 2f
+            reanimatedView.pivotY = reanimatedView.height / 2f
+        }
+        
+        // Always use layout() to set position and size (preserves transforms)
+        reanimatedView.layout(
+            newFrame.left.toInt(),
+            newFrame.top.toInt(),
+            newFrame.right.toInt(),
+            newFrame.bottom.toInt()
+        )
+    }
+
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         val reanimatedView = view as? PureReanimatedView ?: return
         reanimatedView.nodeId = nodeId
@@ -115,7 +160,7 @@ class DCFAnimatedViewComponent : DCFComponent() {
  * 
  * Uses Choreographer for 60fps frame updates with zero bridge calls.
  */
-class PureReanimatedView(context: Context) : FrameLayout(context) {
+class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutIndependent {
     
     companion object {
         private const val TAG = "PureReanimatedView"
@@ -124,8 +169,17 @@ class PureReanimatedView(context: Context) : FrameLayout(context) {
     // Choreographer for 60fps rendering
     private val choreographer = Choreographer.getInstance()
     private var frameCallback: Choreographer.FrameCallback? = null
-    private var isAnimating = false
+    var isAnimating = false
     private var animationStartTime = 0L
+    
+    // MARK: - DCFLayoutIndependent Interface
+    
+    /**
+     * Opt-out of layout updates when animating to prevent stuttering
+     * This makes the view layout-independent during animation
+     */
+    override val shouldSkipLayout: Boolean
+        get() = isAnimating
     
     // Animation configuration
     private var animationConfig: Map<String, Any?> = emptyMap()
@@ -225,8 +279,26 @@ class PureReanimatedView(context: Context) : FrameLayout(context) {
         isAnimating = false
         stopFrameCallback()
         
+        // CRITICAL: When animation stops, ensure layout is synchronized
+        // If there's an active transform, we need to ensure the view's frame
+        // accounts for it to prevent off-center content
+        synchronizeLayoutAfterAnimation()
+        
         // Fire animation complete event
         fireAnimationEvent("onAnimationComplete")
+    }
+    
+    /**
+     * Synchronize layout after animation stops to prevent off-center content
+     */
+    private fun synchronizeLayoutAfterAnimation() {
+        // CRITICAL: When animation stops, ensure pivot point is at center
+        // This prevents content from appearing off-center when transforms are active
+        // The pivot point determines where transforms are applied from
+        if (width > 0 && height > 0) {
+            pivotX = width / 2f
+            pivotY = height / 2f
+        }
     }
     
     // ============================================================================
@@ -375,6 +447,8 @@ class PureAnimationState(
     private var cycleCount = 0
     private var isReversing = false
     
+    private val curve: (Float) -> Float
+    
     init {
         fromValue = ((config["from"] as? Number)?.toDouble() ?: 0.0).toFloat()
         toValue = ((config["to"] as? Number)?.toDouble() ?: 1.0).toFloat()
@@ -388,7 +462,90 @@ class PureAnimationState(
         isRepeating = config["repeat"] as? Boolean ?: false
         repeatCount = config["repeatCount"] as? Int
         
-        Log.d("PureAnimationState", "🎯 $property from $fromValue to $toValue over ${duration}ms")
+        // Parse curve - support all curves from iOS
+        val curveString = (config["curve"] as? String ?: "easeInOut").lowercase()
+        curve = getCurveFunction(curveString)
+        
+        Log.d("PureAnimationState", "🎯 $property from $fromValue to $toValue over ${duration}ms with curve $curveString")
+    }
+    
+    companion object {
+        /**
+         * Get easing curve function - matches iOS implementation
+         */
+        fun getCurveFunction(curveString: String): (Float) -> Float {
+            return when (curveString.lowercase()) {
+                "linear" -> { t -> t }
+                "easein" -> { t -> t * t }
+                "easeout" -> { t -> 1 - (1 - t) * (1 - t) }
+                "easeinout" -> { t -> 
+                    if (t < 0.5f) {
+                        2 * t * t
+                    } else {
+                        1 - 2 * (1 - t) * (1 - t)
+                    }
+                }
+                "spring" -> { t -> springCurve(t) }
+                "bouncein" -> { t -> bounceInCurve(t) }
+                "bounceout" -> { t -> bounceOutCurve(t) }
+                "elasticin" -> { t -> elasticInCurve(t) }
+                "elasticout" -> { t -> elasticOutCurve(t) }
+                else -> { t -> 
+                    // Default to easeInOut
+                    if (t < 0.5f) {
+                        2 * t * t
+                    } else {
+                        1 - 2 * (1 - t) * (1 - t)
+                    }
+                }
+            }
+        }
+        
+        private fun springCurve(t: Float): Float {
+            val damping = 0.8f
+            val frequency = 8.0f
+            
+            if (t == 0f || t == 1f) {
+                return t
+            }
+            
+            val omega = frequency * 2 * Math.PI.toFloat()
+            val exponential = Math.pow(2.0, (-damping * t).toDouble()).toFloat()
+            val sine = Math.sin((omega * t + Math.acos(damping.toDouble())).toDouble()).toFloat()
+            
+            return 1 - exponential * sine
+        }
+        
+        private fun bounceInCurve(t: Float): Float {
+            return 1 - bounceOutCurve(1 - t)
+        }
+        
+        private fun bounceOutCurve(t: Float): Float {
+            if (t < 1 / 2.75f) {
+                return 7.5625f * t * t
+            } else if (t < 2 / 2.75f) {
+                val t2 = t - 1.5f / 2.75f
+                return 7.5625f * t2 * t2 + 0.75f
+            } else if (t < 2.5 / 2.75f) {
+                val t2 = t - 2.25f / 2.75f
+                return 7.5625f * t2 * t2 + 0.9375f
+            } else {
+                val t2 = t - 2.625f / 2.75f
+                return 7.5625f * t2 * t2 + 0.984375f
+            }
+        }
+        
+        private fun elasticInCurve(t: Float): Float {
+            if (t == 0f || t == 1f) return t
+            val c4 = (2 * Math.PI / 3).toFloat()
+            return -Math.pow(2.0, (10 * (t - 1)).toDouble()).toFloat() * Math.sin((t - 1) * c4).toFloat()
+        }
+        
+        private fun elasticOutCurve(t: Float): Float {
+            if (t == 0f || t == 1f) return t
+            val c4 = (2 * Math.PI / 3).toFloat()
+            return Math.pow(2.0, (-10 * t).toDouble()).toFloat() * Math.sin((t - 1) * c4).toFloat() + 1
+        }
     }
     
     fun update(currentTime: Long, elapsed: Double): PureAnimationResult {
@@ -400,7 +557,7 @@ class PureAnimationState(
         }
         
         val progress = (elapsedMs.toFloat() / duration).coerceIn(0f, 1f)
-        val easedProgress = easeInOut(progress)
+        val easedProgress = curve(progress)
         
         // Calculate current value
         val currentFromValue = if (isReversing) toValue else fromValue
@@ -440,15 +597,24 @@ class PureAnimationState(
             "translateX" -> view.translationX = value
             "translateY" -> view.translationY = value
             "rotation" -> view.rotation = value
+            "rotationX" -> view.rotationX = value
+            "rotationY" -> view.rotationY = value
+            "backgroundColor" -> {
+                // Convert value (0-1) to hue for color animation
+                val hue = value * 360f
+                view.setBackgroundColor(android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, 1f)))
+            }
+            "width" -> {
+                val layoutParams = view.layoutParams
+                layoutParams.width = value.toInt()
+                view.layoutParams = layoutParams
+            }
+            "height" -> {
+                val layoutParams = view.layoutParams
+                layoutParams.height = value.toInt()
+                view.layoutParams = layoutParams
+            }
             else -> Log.w("PureAnimationState", "⚠️ Unknown animation property: $property")
-        }
-    }
-    
-    private fun easeInOut(t: Float): Float {
-        return if (t < 0.5f) {
-            2 * t * t
-        } else {
-            1 - 2 * (1 - t) * (1 - t)
         }
     }
 }

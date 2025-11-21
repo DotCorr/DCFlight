@@ -13,6 +13,67 @@ import android.view.ViewGroup
 import com.dotcorr.dcflight.extensions.applyStyles
 
 /**
+ * Interface that views can implement to opt-out of layout updates during certain states.
+ * 
+ * This allows modules (like dcf_reanimated) to make views layout-independent
+ * without modifying the framework layer.
+ * 
+ * Example usage:
+ * ```kotlin
+ * class MyAnimatedView(context: Context) : FrameLayout(context), DCFLayoutIndependent {
+ *     override val shouldSkipLayout: Boolean
+ *         get() = isAnimating // Skip layout when animating
+ * }
+ * ```
+ */
+interface DCFLayoutIndependent {
+    /**
+     * Returns true if layout updates should be skipped for this view.
+     * 
+     * When true, Yoga will skip applying layout to this view, making it
+     * layout-independent (similar to React Native Reanimated's approach).
+     * 
+     * This is useful for:
+     * - Animated views that use transforms (prevents anchor point recalculation)
+     * - Views with custom layout logic
+     * - Performance-critical views that don't need layout updates
+     */
+    val shouldSkipLayout: Boolean
+}
+
+/**
+ * Interface that views can implement to specify a content container for children.
+ * 
+ * Some views (like ScrollView) can only have one direct child, but need to host
+ * multiple children. This interface allows components to specify where children
+ * should actually be attached.
+ * 
+ * Example usage:
+ * ```kotlin
+ * class MyScrollView(context: Context) : NestedScrollView(context), DCFContentContainerProvider {
+ *     private val contentContainer = FrameLayout(context)
+ *     
+ *     init {
+ *         addView(contentContainer)
+ *     }
+ *     
+ *     override fun getContentContainer(): ViewGroup = contentContainer
+ * }
+ * ```
+ */
+interface DCFContentContainerProvider {
+    /**
+     * Returns the ViewGroup where children should be attached.
+     * 
+     * If a view implements this interface, the bridge will attach children
+     * to the returned container instead of the view itself.
+     * 
+     * @return The ViewGroup that should receive children, or null to use the view itself
+     */
+    fun getContentContainer(): ViewGroup?
+}
+
+/**
  * DCFComponent - Base class for all DCFlight components
  * Provides the core interface for creating and updating native views
  * 

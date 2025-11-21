@@ -7,68 +7,32 @@
 
 package com.dotcorr.dcf_reanimated
 
-import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 
 /**
- * DcfReanimatedPlugin
- *
- * This plugin registers all reanimated UI components with the DCFlight framework.
- * It serves as the entry point for the dcf_reanimated package on Android.
+ * DcfReanimated - matches iOS pattern exactly
+ * Simple class with registerComponents() - no Flutter dependency in registration logic
  */
-class DcfReanimatedPlugin : FlutterPlugin {
-
+class DcfReanimated {
     companion object {
-        private const val TAG = "DcfReanimatedPlugin"
-        private var isRegistered = false
-    }
-
-    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        Log.d(TAG, "DcfReanimatedPlugin: onAttachedToEngine called")
-
-        if (!isRegistered) {
-            try {
-                ReanimatedComponentsReg.registerComponents()
-                isRegistered = true
-                Log.d(TAG, "✅ DcfReanimatedPlugin: Successfully registered reanimated components")
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ DcfReanimatedPlugin: Failed to register reanimated components", e)
-            }
+        @JvmStatic
+        fun registerComponents() {
+            ReanimatedComponentsReg.registerComponents()
         }
-    }
-
-    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        Log.d(TAG, "DcfReanimatedPlugin: onDetachedFromEngine called")
     }
 }
 
-object DcfReanimatedPlugin {
-    private const val TAG = "DcfReanimatedPlugin"
-    
-    fun registerComponents() {
-        try {
-            // Register ReanimatedView
-            DCFComponentRegistry.shared.registerComponent(
-                "ReanimatedView",
-                DCFAnimatedViewComponent::class.java
-            )
-            
-            // Register Skia Canvas component
-            DCFComponentRegistry.shared.registerComponent(
-                "Canvas",
-                DCFCanvasComponent::class.java
-            )
-            
-            // Register Skia GPU component
-            DCFComponentRegistry.shared.registerComponent(
-                "GPU",
-                DCFGPUComponent::class.java
-            )
-            
-            Log.d(TAG, "✅ DCF REANIMATED: Registered components (ReanimatedView, Canvas, GPU)")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ DCF REANIMATED: Failed to register components", e)
-        }
+/**
+ * FlutterPlugin wrapper - minimal, just for Flutter discovery
+ * Matches iOS registerWithRegistrar pattern
+ */
+class DcfReanimatedPlugin : FlutterPlugin {
+    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        DcfReanimated.registerComponents()
+    }
+
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        // No cleanup needed
     }
 }
 

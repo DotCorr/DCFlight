@@ -28,6 +28,10 @@ public class DCFLayoutManager {
     
     private var useWebDefaults = false
     
+    /// Layout animation configuration
+    public var layoutAnimationEnabled = false
+    public var layoutAnimationDuration: TimeInterval = 0.3
+    
     private init() {}
     
     
@@ -164,9 +168,13 @@ public class DCFLayoutManager {
             height: max(1, height)
         )
         
+        // Use global layout animation settings if duration not specified
+        let effectiveDuration = animationDuration > 0 ? animationDuration : 
+            (layoutAnimationEnabled ? layoutAnimationDuration : 0.0)
+        
         if Thread.isMainThread {
-            if animationDuration > 0 {
-                UIView.animate(withDuration: animationDuration) {
+            if effectiveDuration > 0 {
+                UIView.animate(withDuration: effectiveDuration) {
                     self.applyLayoutDirectly(to: view, frame: frame)
                 }
             } else {
@@ -174,8 +182,8 @@ public class DCFLayoutManager {
             }
         } else {
             DispatchQueue.main.async {
-                if animationDuration > 0 {
-                    UIView.animate(withDuration: animationDuration) {
+                if effectiveDuration > 0 {
+                    UIView.animate(withDuration: effectiveDuration) {
                         self.applyLayoutDirectly(to: view, frame: frame)
                     }
                 } else {
@@ -227,8 +235,11 @@ public class DCFLayoutManager {
                 strongView.isHidden = false
                 strongView.alpha = 1.0
                 
+                // Check if layout animations are enabled
+                // If animationDuration > 0, use UIView.animate (already handled in applyLayout)
+                // Otherwise, disable implicit animations
                 CATransaction.begin()
-                CATransaction.setDisableActions(true) // Disable animations during hot restart
+                CATransaction.setDisableActions(true) // Disable implicit animations
                 
                 strongView.frame = safeFrame
                 

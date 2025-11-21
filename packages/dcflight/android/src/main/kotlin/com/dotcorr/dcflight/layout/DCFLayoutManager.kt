@@ -34,6 +34,7 @@ class DCFLayoutManager private constructor() {
 
     companion object {
         private const val TAG = "DCFLayoutManager"
+        private const val DEFAULT_LAYOUT_ANIMATION_DURATION = 300L // milliseconds
 
         @JvmField
         val shared = DCFLayoutManager()
@@ -45,6 +46,12 @@ class DCFLayoutManager private constructor() {
 
     private val pendingLayouts = ConcurrentHashMap<Int, Rect>()
     private val isLayoutUpdateScheduled = AtomicBoolean(false)
+    
+    // Layout animation configuration
+    var layoutAnimationEnabled = false
+    var layoutAnimationDuration = DEFAULT_LAYOUT_ANIMATION_DURATION
+    var layoutAnimationInterpolator: android.view.animation.Interpolator = 
+        android.view.animation.AccelerateDecelerateInterpolator()
 
     private val needsLayoutCalculation = AtomicBoolean(false)
     private var layoutCalculationTimer: ScheduledExecutorService? = null
@@ -276,6 +283,8 @@ class DCFLayoutManager private constructor() {
     /**
      * Apply layout using component.applyLayout() - MATCH iOS architecture
      * This removes "glue code" and lets components handle their own layout/transforms
+     * 
+     * Supports layout animations when animationDuration > 0
      */
     private fun applyLayoutDirectly(viewId: Int, view: View, layout: DCFNodeLayout, animationDuration: Long) {
         if (view.parent == null && view.rootView == null) {
@@ -314,19 +323,86 @@ class DCFLayoutManager private constructor() {
                     ?: "View"
                 
                 val componentClass = DCFComponentRegistry.shared.getComponentType(componentType)
-                if (componentClass != null) {
-                    // Framework controls everything - components just set frame
-                    // No props needed - framework handles all lifecycle and state
-                    val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-                    componentInstance.applyLayout(view, layout)
+                
+                // Apply layout with animation if duration > 0 and layout animations are enabled
+                val shouldAnimate = animationDuration > 0 && layoutAnimationEnabled
+                
+                if (shouldAnimate) {
+                    // Store current layout for animation
+                    val currentLeft = view.left.toFloat()
+                    val currentTop = view.top.toFloat()
+                    val currentWidth = view.width.toFloat()
+                    val currentHeight = view.height.toFloat()
+                    
+                    val targetLeft = layout.left
+                    val targetTop = layout.top
+                    val targetWidth = layout.width
+                    val targetHeight = layout.height
+                    
+                    // Calculate translation needed (difference between current and target)
+                    val deltaX = targetLeft - currentLeft
+                    val deltaY = targetTop - currentTop
+                    val deltaWidth = targetWidth - currentWidth
+                    val deltaHeight = targetHeight - currentHeight
+                    
+                    // Set initial translation to current position
+                    view.translationX = 0f
+                    view.translationY = 0f
+                    
+                    // Apply target size immediately (size changes are instant for layout)
+                    if (componentClass != null) {
+                        val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                        val sizeLayout = DCFNodeLayout(currentLeft, currentTop, targetWidth, targetHeight)
+                        componentInstance.applyLayout(view, sizeLayout)
+                    } else {
+                        view.layout(
+                            currentLeft.toInt(),
+                            currentTop.toInt(),
+                            (currentLeft + targetWidth).toInt(),
+                            (currentTop + targetHeight).toInt()
+                        )
+                    }
+                    
+                    // Animate translation to target position
+                    view.animate()
+                        .translationX(deltaX)
+                        .translationY(deltaY)
+                        .setDuration(animationDuration)
+                        .setInterpolator(layoutAnimationInterpolator)
+                        .withEndAction {
+                            // Final layout at target position, reset translation
+                            view.translationX = 0f
+                            view.translationY = 0f
+                            
+                            if (componentClass != null) {
+                                val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                                componentInstance.applyLayout(view, layout)
+                            } else {
+                                view.layout(
+                                    layout.left.toInt(),
+                                    layout.top.toInt(),
+                                    (layout.left + layout.width).toInt(),
+                                    (layout.top + layout.height).toInt()
+                                )
+                            }
+                        }
+                        .start()
                 } else {
-                    // Fallback to direct layout if component not found
-                    view.layout(
-                        layout.left.toInt(),
-                        layout.top.toInt(),
-                        (layout.left + layout.width).toInt(),
-                        (layout.top + layout.height).toInt()
-                    )
+                    // No animation - apply layout directly
+                    if (componentClass != null) {
+                        // Framework controls everything - components just set frame
+                        // No props needed - framework handles all lifecycle and state
+                        val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                        componentInstance.applyLayout(view, layout)
+                    } else {
+                        // Fallback to direct layout if component not found
+                        view.layout(
+                            layout.left.toInt(),
+                            layout.top.toInt(),
+                            (layout.left + layout.width).toInt(),
+                            (layout.top + layout.height).toInt()
+                        )
+                    }
                 }
 
                 // CRITICAL FIX: Don't make visible here - batch visibility after ALL layouts are applied
