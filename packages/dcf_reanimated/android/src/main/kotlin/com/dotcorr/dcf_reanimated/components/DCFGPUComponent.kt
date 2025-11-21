@@ -52,6 +52,12 @@ class DCFGPUComponent : DCFComponent() {
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
         gpuView.applyStyles(nonNullProps)
         
+        // CRITICAL: Ensure background stays transparent after applying styles
+        // This prevents black overlay when no background color is explicitly set
+        if (!nonNullProps.containsKey("backgroundColor")) {
+            gpuView.setBackgroundColor(Color.TRANSPARENT)
+        }
+        
         return true
     }
     

@@ -89,7 +89,10 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               children: [
                 DCFText(
                   content: isAnimating.state ? "Stop Animation" : "Start Animation",
-                  textProps: DCFTextProps(fontSize: 14),
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                    textAlign: DCFTextAlign.center,
+                  ),
                   styleSheet: styles['buttonText'],
                 ),
               ],
@@ -188,6 +191,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                       textProps: DCFTextProps(
                         fontSize: 16,
                         fontWeight: DCFFontWeight.bold,
+                        textAlign: DCFTextAlign.center,
                       ),
                       styleSheet: styles['buttonText'],
                     ),

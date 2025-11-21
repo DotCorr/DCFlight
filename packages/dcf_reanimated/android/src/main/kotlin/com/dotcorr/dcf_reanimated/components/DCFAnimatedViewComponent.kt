@@ -127,6 +127,13 @@ class DCFAnimatedViewComponent : DCFComponent() {
             return
         }
         
+        // CRITICAL: Skip layout entirely when animating to prevent stuttering
+        // This matches iOS behavior where shouldSkipLayout returns true during animation
+        // Layout updates interfere with transform animations by recalculating pivot points
+        if (reanimatedView.shouldSkipLayout) {
+            return
+        }
+        
         // CRITICAL: For ReanimatedView, skip layout updates during state changes to prevent stuttering
         // Layout updates interfere with transform animations by recalculating anchor points
         // Only update if size actually changed significantly (more than 5 pixels)

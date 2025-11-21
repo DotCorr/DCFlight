@@ -88,6 +88,7 @@ final layouts = DCFLayout.create({
     padding: 12,
     marginTop: 12,
     alignItems: DCFAlign.center,
+    justifyContent: DCFJustifyContent.center,
   ),
   'confettiOverlay': DCFLayout(
     position: DCFPositionType.absolute,
