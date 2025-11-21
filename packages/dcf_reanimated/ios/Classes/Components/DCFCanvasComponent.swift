@@ -19,17 +19,25 @@ class DCFCanvasComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
+        print("🎨 SKIA Canvas: Creating Canvas view with props: \(props)")
         let canvasView = SkiaCanvasView()
         updateView(canvasView, withProps: props)
         return canvasView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let canvasView = view as? SkiaCanvasView else { return false }
+        guard let canvasView = view as? SkiaCanvasView else { 
+            print("⚠️ SKIA Canvas: View is not SkiaCanvasView")
+            return false 
+        }
+        
+        print("🎨 SKIA Canvas: Updating view with props: \(props)")
+        print("🎨 SKIA Canvas: View bounds: \(view.bounds), frame: \(view.frame)")
         
         // Update canvas configuration
         if let repaintOnFrame = props["repaintOnFrame"] as? Bool {
             canvasView.repaintOnFrame = repaintOnFrame
+            print("🎨 SKIA Canvas: repaintOnFrame=\(repaintOnFrame)")
         }
         
         if let backgroundColor = props["backgroundColor"] as? Int {
@@ -44,6 +52,11 @@ class DCFCanvasComponent: NSObject, DCFComponent {
         }
         
         view.applyStyles(props: props)
+        
+        // Ensure view is visible and trigger layout
+        view.isHidden = false
+        view.setNeedsLayout()
+        
         return true
     }
     
@@ -54,12 +67,20 @@ class DCFCanvasComponent: NSObject, DCFComponent {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(
+        let frame = CGRect(
             x: CGFloat(layout.left),
             y: CGFloat(layout.top),
             width: CGFloat(layout.width),
             height: CGFloat(layout.height)
         )
+        view.frame = frame
+        print("🎨 SKIA Canvas: Applied layout - frame: \(frame)")
+        
+        // Force layout update to trigger layoutSubviews
+        if let canvasView = view as? SkiaCanvasView {
+            canvasView.setNeedsLayout()
+            canvasView.layoutIfNeeded()
+        }
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
@@ -132,14 +153,30 @@ class SkiaCanvasView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         
+        print("🎨 SKIA Canvas: layoutSubviews called - bounds: \(bounds), frame: \(frame)")
+        
         // Update Skia surface size when view is laid out
         updateSkiaSurfaceSize()
+        
+        // If repaintOnFrame is false, render once when we get valid bounds
+        if !repaintOnFrame && bounds.width > 0 && bounds.height > 0 && !hasDrawnInitial {
+            hasDrawnInitial = true
+            print("🎨 SKIA Canvas: Rendering initial frame")
+            DispatchQueue.main.async { [weak self] in
+                self?.renderWithSkia()
+            }
+        }
     }
     
     private func updateSkiaSurfaceSize() {
         guard bounds.width > 0 && bounds.height > 0,
               let device = metalDevice,
-              let metalLayer = self.layer as? CAMetalLayer else { return }
+              let metalLayer = self.layer as? CAMetalLayer else {
+            print("⚠️ SKIA Canvas: Cannot update surface - bounds: \(bounds), device: \(metalDevice != nil), layer: \(type(of: self.layer))")
+            return
+        }
+        
+        print("🎨 SKIA Canvas: Updating surface size - bounds: \(bounds)")
         
         // Update Metal layer drawable size
         metalLayer.drawableSize = CGSize(
@@ -169,6 +206,7 @@ class SkiaCanvasView: UIView {
         let width = Int32(bounds.width * contentScaleFactor)
         let height = Int32(bounds.height * contentScaleFactor)
         
+        print("🎨 SKIA Canvas: Creating surface \(width)x\(height)")
         skiaSurface = SkiaRenderer.createSkiaSurface(
             Unmanaged.passUnretained(device).toOpaque(),
             layer: Unmanaged.passUnretained(metalLayer).toOpaque(),
@@ -176,12 +214,23 @@ class SkiaCanvasView: UIView {
             height: height
         )
         
+        if skiaSurface != nil {
+            print("✅ SKIA Canvas: Surface created successfully")
+        } else {
+            print("❌ SKIA Canvas: Failed to create surface")
+        }
+        
         // Canvas will be available after prepareSurfaceForRender is called
         // Don't try to get it here as surface is created lazily
-        print("🎨 SKIA: Created surface context \(width)x\(height)")
         
         if repaintOnFrame {
             startDisplayLink()
+            // Also render immediately when surface is created
+            if !hadSurface {
+                DispatchQueue.main.async { [weak self] in
+                    self?.renderWithSkia()
+                }
+            }
         } else {
             // Draw once when surface is created (not repainting on frame)
             // Only draw if this is a new surface (not a resize of existing)
@@ -196,10 +245,15 @@ class SkiaCanvasView: UIView {
     }
     
     private func startDisplayLink() {
-        guard displayLink == nil else { return }
+        guard displayLink == nil else { 
+            print("🎨 SKIA Canvas: Display link already running")
+            return 
+        }
         
+        print("🎨 SKIA Canvas: Starting display link for repaintOnFrame")
         displayLink = CADisplayLink(target: self, selector: #selector(renderFrame))
         displayLink?.add(to: .main, forMode: .common)
+        print("✅ SKIA Canvas: Display link started")
     }
     
     private func stopDisplayLink() {
@@ -209,12 +263,14 @@ class SkiaCanvasView: UIView {
     
     @objc private func renderFrame() {
         guard repaintOnFrame else {
+            print("🎨 SKIA Canvas: repaintOnFrame=false, stopping display link")
             stopDisplayLink()
             return
         }
         
-        // Only render if we have valid surface and canvas
-        guard skiaSurface != nil && skiaCanvas != nil else {
+        // Only render if we have valid surface
+        guard skiaSurface != nil else {
+            print("⚠️ SKIA Canvas: No surface in renderFrame")
             return
         }
         
@@ -234,7 +290,10 @@ class SkiaCanvasView: UIView {
     
     private func renderWithSkia() {
         // Prevent concurrent rendering calls
-        guard !isRendering else { return }
+        guard !isRendering else { 
+            print("⚠️ SKIA Canvas: Already rendering, skipping")
+            return 
+        }
         isRendering = true
         defer { isRendering = false }
         
@@ -248,6 +307,8 @@ class SkiaCanvasView: UIView {
             return
         }
         
+        print("🎨 SKIA Canvas: Rendering - bounds: \(bounds)")
+        
         // Prepare surface for rendering (gets new drawable)
         SkiaRenderer.prepareSurface(forRender: surface)
         
@@ -256,6 +317,8 @@ class SkiaCanvasView: UIView {
             print("⚠️ SKIA Canvas: Failed to get canvas after preparing surface")
             return
         }
+        
+        print("🎨 SKIA Canvas: Drawing test circle")
         
         // Draw test circle to verify Canvas is working
         // TODO: Replace with actual onPaint callback execution
@@ -267,6 +330,8 @@ class SkiaCanvasView: UIView {
         
         // Flush Skia surface to Metal
         SkiaRenderer.flushSurface(surface)
+        
+        print("✅ SKIA Canvas: Render completed and flushed")
         
         // For CAMetalLayer, we don't use setNeedsDisplay() as it causes infinite loops
         // The display link or manual rendering handles updates

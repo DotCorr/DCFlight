@@ -103,7 +103,12 @@ class DCFViewManager {
     /// - Returns: `true` if the view was created successfully, `false` otherwise
     func createView(viewId: Int, viewType: String, props: [String: Any]) -> Bool {
         guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
+            print("⚠️ DCFViewManager: Component type '\(viewType)' not found. Registered types: \(DCFComponentRegistry.shared.registeredTypes)")
             return false
+        }
+        
+        if viewType == "GPU" || viewType == "Canvas" {
+            print("✅ DCFViewManager: Creating \(viewType) component - viewId: \(viewId)")
         }
         
         let componentInstance = componentType.init()

@@ -31,15 +31,21 @@ class DCFGPUComponent: NSObject, DCFComponent {
         }
         
         print("🎮 SKIA GPU: Updating GPU view with props: \(props)")
+        print("🎮 SKIA GPU: View bounds: \(view.bounds), frame: \(view.frame)")
         
         if let gpuConfig = props["gpuConfig"] as? [String: Any] {
-            print("🎮 SKIA GPU: Found gpuConfig in props")
+            print("🎮 SKIA GPU: Found gpuConfig in props: \(gpuConfig)")
             gpuView.configureGPU(gpuConfig)
         } else {
-            print("⚠️ SKIA GPU: No gpuConfig found in props")
+            print("⚠️ SKIA GPU: No gpuConfig found in props. Available keys: \(props.keys)")
         }
         
         view.applyStyles(props: props)
+        
+        // Ensure view is visible and trigger layout if needed
+        view.isHidden = false
+        view.setNeedsLayout()
+        
         return true
     }
     
@@ -50,12 +56,20 @@ class DCFGPUComponent: NSObject, DCFComponent {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(
+        let frame = CGRect(
             x: CGFloat(layout.left),
             y: CGFloat(layout.top),
             width: CGFloat(layout.width),
             height: CGFloat(layout.height)
         )
+        view.frame = frame
+        print("🎮 SKIA GPU: Applied layout - frame: \(frame)")
+        
+        // Force layout update to trigger layoutSubviews
+        if let gpuView = view as? SkiaGPUView {
+            gpuView.setNeedsLayout()
+            gpuView.layoutIfNeeded()
+        }
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
@@ -111,7 +125,7 @@ class SkiaGPUView: UIView {
     private func initializeSkiaMetal() {
         guard let device = MTLCreateSystemDefaultDevice(),
               let metalLayer = self.layer as? CAMetalLayer else {
-            print("⚠️ SKIA GPU: Metal not available")
+            print("⚠️ SKIA GPU: Metal not available - device: \(MTLCreateSystemDefaultDevice() != nil), layer: \(type(of: self.layer))")
             return
         }
         
@@ -121,24 +135,29 @@ class SkiaGPUView: UIView {
         metalLayer.framebufferOnly = false
         metalLayer.isOpaque = false
         
-        print("🎮 SKIA GPU: Metal layer configured")
+        print("🎮 SKIA GPU: Metal layer configured - device: \(device), layer: \(metalLayer)")
     }
     
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        print("🎮 SKIA GPU: layoutSubviews called - bounds: \(bounds), renderMode: \(renderMode), particles: \(particles.count)")
+        print("🎮 SKIA GPU: layoutSubviews called - bounds: \(bounds), renderMode: \(renderMode), particles: \(particles.count), gpuConfig: \(gpuConfig)")
         
         // Create/update Skia surface when laid out
         updateSkiaSurface()
         
-        if renderMode == "particles" && particles.isEmpty && bounds.width > 0 && bounds.height > 0 {
-            print("🎮 SKIA GPU: Initializing particles in layoutSubviews")
-            initializeParticles()
+        // Always try to initialize particles if we have bounds and config, even if particles exist
+        // This handles the case where configureGPU was called before layout
+        if renderMode == "particles" && bounds.width > 0 && bounds.height > 0 {
+            if particles.isEmpty {
+                print("🎮 SKIA GPU: Initializing particles in layoutSubviews")
+                initializeParticles()
+            }
             
             let autoStart = gpuConfig["autoStart"] as? Bool ?? true
-            print("🎮 SKIA GPU: autoStart=\(autoStart), isRendering=\(isRendering)")
-            if (autoStart && !isRendering) {
+            print("🎮 SKIA GPU: autoStart=\(autoStart), isRendering=\(isRendering), particles.count=\(particles.count)")
+            if (autoStart && !isRendering && !particles.isEmpty) {
+                print("🎮 SKIA GPU: Starting rendering from layoutSubviews")
                 startRendering()
             }
         } else {
@@ -146,7 +165,7 @@ class SkiaGPUView: UIView {
                 print("⚠️ SKIA GPU: renderMode is not 'particles': \(renderMode)")
             }
             if particles.isEmpty {
-                print("⚠️ SKIA GPU: Particles already initialized or empty")
+                print("⚠️ SKIA GPU: Particles empty - renderMode: \(renderMode), bounds: \(bounds)")
             }
             if bounds.width == 0 || bounds.height == 0 {
                 print("⚠️ SKIA GPU: Bounds are zero: \(bounds)")
@@ -157,7 +176,10 @@ class SkiaGPUView: UIView {
     private func updateSkiaSurface() {
         guard bounds.width > 0 && bounds.height > 0,
               let device = metalDevice,
-              let metalLayer = self.layer as? CAMetalLayer else { return }
+              let metalLayer = self.layer as? CAMetalLayer else {
+            print("⚠️ SKIA GPU: Cannot update surface - bounds: \(bounds), device: \(metalDevice != nil), layer: \(type(of: self.layer))")
+            return
+        }
         
         // Update Metal layer drawable size
         metalLayer.drawableSize = CGSize(
@@ -174,12 +196,19 @@ class SkiaGPUView: UIView {
         let width = Int32(bounds.width * contentScaleFactor)
         let height = Int32(bounds.height * contentScaleFactor)
         
+        print("🎮 SKIA GPU: Creating Skia surface \(width)x\(height)")
         skiaSurface = SkiaRenderer.createSkiaSurface(
             Unmanaged.passUnretained(device).toOpaque(),
             layer: Unmanaged.passUnretained(metalLayer).toOpaque(),
             width: width,
             height: height
         )
+        
+        if skiaSurface != nil {
+            print("✅ SKIA GPU: Surface created successfully")
+        } else {
+            print("❌ SKIA GPU: Failed to create surface")
+        }
         
         // Canvas will be available after prepareSurfaceForRender is called
         // Don't try to get it here as surface is created lazily
@@ -335,7 +364,13 @@ class SkiaGPUView: UIView {
               renderMode == "particles",
               !particles.isEmpty else {
             if particles.isEmpty {
-                print("⚠️ SKIA GPU: No particles to render")
+                print("⚠️ SKIA GPU: No particles to render - count: \(particles.count)")
+            }
+            if skiaSurface == nil {
+                print("⚠️ SKIA GPU: No surface available")
+            }
+            if renderMode != "particles" {
+                print("⚠️ SKIA GPU: Wrong render mode: \(renderMode)")
             }
             return
         }
@@ -348,6 +383,8 @@ class SkiaGPUView: UIView {
             print("⚠️ SKIA GPU: Failed to get canvas after preparing surface")
             return
         }
+        
+        print("🎨 SKIA GPU: Rendering \(particles.count) particles")
         
         // Convert particles to C array for Skia rendering
         var particleData = particles.map { p -> ParticleData in
@@ -374,11 +411,13 @@ class SkiaGPUView: UIView {
                 print("⚠️ SKIA GPU: Failed to get buffer address")
                 return
             }
+            print("🎨 SKIA GPU: Drawing \(particles.count) particles at baseAddress: \(baseAddress)")
             SkiaParticleRenderer.drawParticles(
                 canvas,
                 particles: baseAddress,
                 count: Int32(particles.count)
             )
+            print("✅ SKIA GPU: Particles drawn")
         }
         
         // Flush to Metal

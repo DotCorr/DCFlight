@@ -554,10 +554,6 @@ class DCMauiBridgeImpl private constructor() {
                         eventOps.add(AddEventListenersOp(viewId, eventTypes))
                     }
                 }
-                    if (viewId != null && eventTypes != null) {
-                        eventOps.add(AddEventListenersOp(viewId, eventTypes))
-                    }
-                }
 
                 "setChildren" -> {
                     val viewId = (operation["viewId"] as? Number)?.toInt() ?: (operation["viewId"] as? Int)
