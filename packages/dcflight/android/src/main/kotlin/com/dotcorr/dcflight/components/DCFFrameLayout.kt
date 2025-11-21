@@ -16,7 +16,7 @@ import android.widget.FrameLayout
  * Custom FrameLayout that respects manual layout() calls
  * This matches iOS behavior where frame assignments are respected exactly
  */
-class DCFFrameLayout @JvmOverloads constructor(
+open class DCFFrameLayout @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0

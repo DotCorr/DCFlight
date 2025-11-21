@@ -448,7 +448,7 @@ class YogaShadowTree private constructor() {
             }
             
             val layoutsToApply = mutableListOf<Pair<String, Rect>>()
-            for ((nodeId, _) in nodes) {
+            for ((nodeId, node) in nodes) {
                 val layout = getNodeLayout(nodeId)
                 if (layout != null) {
                     if (isValidLayoutBounds(layout)) {

@@ -308,6 +308,8 @@ class DCFLayoutManager private constructor() {
             try {
                 if (view.parent != null || view.rootView != null) {
                     val parent = view.parent
+                    // CRITICAL: Mark children in DCFFrameLayout (including ScrollContentContainer) as manually positioned
+                    // This prevents the container from resetting their positions when laid out
                     if (parent is DCFFrameLayout) {
                         parent.setChildManuallyPositioned(view, true)
                     }
@@ -318,23 +320,10 @@ class DCFLayoutManager private constructor() {
                     View.MeasureSpec.makeMeasureSpec(layout.height.toInt(), View.MeasureSpec.EXACTLY)
                     )
                     
-                // CRITICAL: If view is inside a content container (e.g., ScrollView),
-                // ensure the content container is laid out first
-                if (parent != null) {
-                    val grandParent = parent.parent
-                    if (grandParent is DCFContentContainerProvider) {
-                        val contentContainer = grandParent.getContentContainer()
-                        if (contentContainer == parent && contentContainer is ViewGroup) {
-                            // Ensure content container is laid out before children
-                            val scrollView = grandParent as? View
-                            scrollView?.let { sv ->
-                                if (sv.width > 0 && sv.height > 0) {
-                                    contentContainer.layout(0, 0, sv.width, sv.height)
-                                }
-                            }
-                        }
-                    }
-                }
+                // CRITICAL: DON'T manually lay out content container here!
+                // It resets all children positions to (0, 0).
+                // The container will be laid out by NestedScrollView.onLayout() automatically.
+                // Yoga calculates positions relative to the container, so children should maintain their positions.
                 
                 // Get component type and instance
                 val componentType = ViewRegistry.shared.getViewType(viewId) 

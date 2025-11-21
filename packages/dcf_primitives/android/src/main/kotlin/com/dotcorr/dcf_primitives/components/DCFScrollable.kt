@@ -9,6 +9,7 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -27,6 +28,10 @@ class DCFScrollableView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : NestedScrollView(context, attrs, defStyleAttr), DCFContentContainerProvider {
+    
+    companion object {
+        private const val TAG = "DCFScrollableView"
+    }
     
     var isHorizontal: Boolean = false
     var virtualizedContentOffsetStart: Float = 0f
@@ -74,12 +79,16 @@ class DCFScrollableView @JvmOverloads constructor(
      * CRITICAL: This calculates the content size from children's actual positions after Yoga layout
      */
     fun updateContentSizeFromYogaLayout() {
-        if (isUpdatingContentSize) return
+        if (isUpdatingContentSize) {
+            Log.d(TAG, "⏭️ updateContentSizeFromYogaLayout: Already updating, skipping")
+            return
+        }
         isUpdatingContentSize = true
         
         try {
             if (explicitContentSize != null) {
                 val (width, height) = explicitContentSize!!
+                Log.d(TAG, "📐 updateContentSizeFromYogaLayout: Using explicit size ${width}x${height}")
                 setContentSize(width, height)
                 return
             }
@@ -89,6 +98,8 @@ class DCFScrollableView @JvmOverloads constructor(
             
             // Find the content container (FrameLayout that holds all children)
             val contentView = getChildAt(0) as? FrameLayout
+            Log.d(TAG, "🔍 updateContentSizeFromYogaLayout: contentView=$contentView, childCount=${contentView?.childCount ?: 0}")
+            
             if (contentView != null && contentView.childCount > 0) {
                 // Calculate max bounds from all children in content container
                 for (i in 0 until contentView.childCount) {
@@ -102,13 +113,17 @@ class DCFScrollableView @JvmOverloads constructor(
                     val right = childLeft + childWidth
                     val bottom = childTop + childHeight
                     
+                    Log.d(TAG, "  Child $i: pos=($childLeft, $childTop), size=${childWidth}x${childHeight}, bounds=($right, $bottom)")
+                    
                     maxWidth = maxOf(maxWidth, right)
                     maxHeight = maxOf(maxHeight, bottom)
                 }
+                Log.d(TAG, "📊 Calculated max bounds: ${maxWidth}x${maxHeight}")
             } else {
                 // Fallback: if no content container or no children, use ScrollView's own size
                 maxWidth = width
                 maxHeight = height
+                Log.d(TAG, "⚠️ No children found, using ScrollView size: ${maxWidth}x${maxHeight}")
             }
             
             // Handle virtualized content offset (for VirtualizedList)
@@ -142,14 +157,13 @@ class DCFScrollableView @JvmOverloads constructor(
             val availableHeight = if (height > 0) height else measuredHeight
             
             // CRITICAL: For vertical scrolling, width must match ScrollView width exactly (fill it)
-            // Height should be at least ScrollView height, but can grow with content
-            val finalWidth = if (isHorizontal) maxOf(availableWidth, maxWidth) else availableWidth
-            val finalHeight = if (isHorizontal) availableHeight else maxOf(availableHeight, maxHeight)
+            // Height should be the max content height (not ScrollView height) to allow scrolling
+            val finalContentWidth = if (isHorizontal) maxOf(availableWidth, maxWidth) else availableWidth
+            // CRITICAL: For vertical scrolling, height MUST be the max content height (maxHeight), not ScrollView height
+            // This ensures all content is scrollable. Content can be shorter or taller than viewport.
+            val finalContentHeight = if (isHorizontal) availableHeight else maxHeight
             
-            // Ensure minimum size matches ScrollView bounds (fill width for vertical, fill height for horizontal)
-            val finalContentWidth = if (isHorizontal) maxOf(finalWidth, availableWidth) else availableWidth
-            val finalContentHeight = if (isHorizontal) availableHeight else maxOf(finalHeight, availableHeight)
-            
+            Log.d(TAG, "✅ Final content size: ${finalContentWidth}x${finalContentHeight} (available=${availableWidth}x${availableHeight}, max=${maxWidth}x${maxHeight})")
             setContentSize(finalContentWidth, finalContentHeight)
         } finally {
             isUpdatingContentSize = false
@@ -174,17 +188,36 @@ class DCFScrollableView @JvmOverloads constructor(
         if (contentView != null) {
             val layoutParams = contentView.layoutParams as? android.view.ViewGroup.LayoutParams
             if (layoutParams != null) {
+                val oldWidth = layoutParams.width
+                val oldHeight = layoutParams.height
                 // Only update if size actually changed
                 if (layoutParams.width != width || layoutParams.height != height) {
+                    Log.d(TAG, "📦 setContentSize: Updating from ${oldWidth}x${oldHeight} to ${width}x${height}")
                     layoutParams.width = width
                     layoutParams.height = height
                     contentView.layoutParams = layoutParams
-                    // CRITICAL: Explicitly lay out the container at (0, 0) with new size
-                    contentView.layout(0, 0, width, height)
-                    // Force layout to apply new size
+                    
+                    // CRITICAL: Force remeasure and relayout of the container
+                    // NestedScrollView needs to remeasure its child when layoutParams change
+                    contentView.measure(
+                        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+                    )
+                    
+                    // CRITICAL: Request layout on both container and ScrollView
+                    // This ensures NestedScrollView re-lays out its child with the new size
                     contentView.requestLayout()
+                    this@DCFScrollableView.requestLayout()
+                    
+                    Log.d(TAG, "✅ setContentSize: Updated container to ${width}x${height}, measured=${contentView.measuredWidth}x${contentView.measuredHeight}")
+                } else {
+                    Log.d(TAG, "⏭️ setContentSize: Size unchanged (${width}x${height}), skipping")
                 }
+            } else {
+                Log.w(TAG, "⚠️ setContentSize: contentView.layoutParams is null")
             }
+        } else {
+            Log.w(TAG, "⚠️ setContentSize: contentView is null")
         }
         
         // Notify Dart side of content size update
@@ -204,59 +237,46 @@ class DCFScrollableView @JvmOverloads constructor(
         ))
     }
     
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        
+        // CRITICAL: If content container has explicit height, ensure it's measured correctly
+        val contentView = getChildAt(0) as? FrameLayout
+        if (contentView != null && contentView.layoutParams.height > 0 && 
+            contentView.layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT &&
+            contentView.layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
+            // Container has explicit height - remeasure it
+            val containerWidth = measuredWidth - paddingLeft - paddingRight
+            val containerHeight = contentView.layoutParams.height
+            contentView.measure(
+                View.MeasureSpec.makeMeasureSpec(containerWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(containerHeight, View.MeasureSpec.EXACTLY)
+            )
+        }
+    }
+    
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
         
-        // CRITICAL: Ensure content container is positioned at (0, 0) and sized correctly
-        val contentContainer = getChildAt(0) as? FrameLayout
-        contentContainer?.let { container ->
-            val scrollWidth = right - left
-            val scrollHeight = bottom - top
-            if (scrollWidth > 0 && scrollHeight > 0) {
-                // Update layout params to match explicit layout
-                val layoutParams = container.layoutParams
-                if (layoutParams != null) {
-                    // For vertical scrolling: width = ScrollView width, height = at least ScrollView height
-                    // For horizontal scrolling: width = at least ScrollView width, height = ScrollView height
-                    if (!isHorizontal) {
-                        layoutParams.width = scrollWidth
-                        // Height should be WRAP_CONTENT to allow content to grow beyond ScrollView
-                        // Only set minimum if not already set by setContentSize
-                        if (layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
-                            // Keep WRAP_CONTENT - will be updated by setContentSize
-                        } else if (layoutParams.height < scrollHeight) {
-                            layoutParams.height = scrollHeight // Minimum height
-                        }
-                    } else {
-                        // Horizontal scrolling (not fully implemented yet)
-                        if (layoutParams.width == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.width < scrollWidth) {
-                            layoutParams.width = scrollWidth
-                        }
-                        layoutParams.height = scrollHeight
-                    }
-                    container.layoutParams = layoutParams
-                }
-                // CRITICAL: Only set width to ScrollView width, height should be from content
-                // Check if container has been sized by setContentSize (has explicit height > scrollHeight)
-                // Otherwise, let it measure itself based on children
-                val containerWidth = scrollWidth // Always match ScrollView width
-                
-                // If container has been explicitly sized by setContentSize, use that height
-                // Otherwise, measure container based on its children
-                val containerHeight = if (container.height > scrollHeight) {
-                    // Container has been sized by setContentSize - use that
-                    container.height
-                } else {
-                    // Container hasn't been sized yet - measure it based on children
-                    container.measure(
-                        View.MeasureSpec.makeMeasureSpec(scrollWidth, View.MeasureSpec.EXACTLY),
-                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED) // Let height be determined by children
-                    )
-                    maxOf(container.measuredHeight, scrollHeight) // Use measured height or minimum
-                }
-                container.layout(0, 0, containerWidth, containerHeight)
-            }
+        // CRITICAL: If content container has explicit height, ensure it's laid out with that height
+        val contentView = getChildAt(0) as? FrameLayout
+        if (contentView != null && contentView.layoutParams.height > 0 && 
+            contentView.layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT &&
+            contentView.layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
+            // Container has explicit height - lay it out with that height
+            val containerWidth = width - paddingLeft - paddingRight
+            val containerHeight = contentView.layoutParams.height
+            contentView.layout(
+                paddingLeft,
+                paddingTop,
+                paddingLeft + containerWidth,
+                paddingTop + containerHeight
+            )
         }
+        
+        // CRITICAL: NestedScrollView.onLayout() automatically lays out its direct child (the container)
+        // We don't need to manually lay it out - that would reset children positions to (0, 0)
+        // Just ensure content size is updated after Yoga has laid out all children
         
         val currentWidth = right - left
         val currentHeight = bottom - top

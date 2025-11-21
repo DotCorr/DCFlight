@@ -19,6 +19,26 @@ import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
+import android.util.AttributeSet
+import com.dotcorr.dcflight.components.DCFFrameLayout
+
+/**
+ * Custom FrameLayout for ScrollView content container
+ * Extends DCFFrameLayout to respect manually positioned children (positioned by Yoga)
+ */
+class ScrollContentContainer @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : DCFFrameLayout(context, attrs, defStyleAttr) {
+    
+    companion object {
+        private const val TAG = "ScrollContentContainer"
+    }
+    
+    // Inherits all functionality from DCFFrameLayout
+    // No need to override onLayout - DCFFrameLayout already handles manually positioned children
+}
 
 /**
  * ScrollView component for Android
@@ -33,7 +53,8 @@ class DCFScrollViewComponent : DCFComponent() {
         
         // Create content container (FrameLayout to hold children)
         // CRITICAL: For vertical scrolling, width should match ScrollView, height grows with content
-        val contentContainer = FrameLayout(context)
+        // Use a custom FrameLayout that doesn't reset manually positioned children
+        val contentContainer = ScrollContentContainer(context)
         val containerParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, // Fill ScrollView width
             ViewGroup.LayoutParams.WRAP_CONTENT  // Grow with content height
@@ -320,13 +341,12 @@ class DCFScrollViewComponent : DCFComponent() {
                     layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
                 }
                 container.layoutParams = layoutParams
-                
-                // CRITICAL: Only position container at (0, 0) with ScrollView width
-                // Height will be set by updateContentSizeFromYogaLayout based on actual content
-                // Use current container height if available, otherwise use a minimum (will be updated)
-                val currentHeight = if (container.height > 0) container.height else scrollHeight
-                container.layout(0, 0, scrollWidth, currentHeight)
                 container.visibility = View.VISIBLE
+                
+                // CRITICAL: DON'T call container.layout() here!
+                // It resets all children positions to (0, 0).
+                // Let Yoga handle layout through the normal layout pass.
+                // The container will be laid out by its parent (ScrollView) automatically.
             }
         }
         
