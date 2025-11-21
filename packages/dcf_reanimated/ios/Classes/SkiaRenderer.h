@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (void* _Nullable)createSkiaSurface:(void*)metalDevice layer:(void*)metalLayer width:(int)width height:(int)height;
 + (void* _Nullable)getCanvasFromSurface:(void*)surface;
++ (void)prepareSurfaceForRender:(void*)surface;
 + (void)flushSurface:(void*)surface;
 + (void)destroySurface:(void*)surface;
 + (void)drawTestCircle:(void*)canvas width:(float)width height:(float)height;

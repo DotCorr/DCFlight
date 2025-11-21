@@ -288,6 +288,9 @@ class DCFLayoutManager private constructor() {
      * Supports layout animations when animationDuration > 0
      */
     private fun applyLayoutDirectly(viewId: Int, view: View, layout: DCFNodeLayout, animationDuration: Long) {
+        // Capture layout request state BEFORE applying layout (which clears the flag)
+        val wasLayoutRequested = view.isLayoutRequested
+
         if (view.parent == null && view.rootView == null) {
             return
         }
@@ -429,9 +432,13 @@ class DCFLayoutManager private constructor() {
                                    kotlin.math.abs(currentHeight - layout.height) > 1
 
                 // Framework handles invalidation - components don't need to know
-                if (layoutChanged) {
+                // Only invalidate if changed or if the view requested layout (e.g. text change)
+                if (layoutChanged || wasLayoutRequested) {
                     view.invalidate()
-                    (view.parent as? View)?.invalidate()
+                    // Only invalidate parent if the layout (bounds) actually changed
+                    if (layoutChanged) {
+                        (view.parent as? View)?.invalidate()
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -628,6 +635,15 @@ class DCFLayoutManager private constructor() {
 
         needsLayoutCalculation.set(true)
         scheduleLayoutCalculation()
+    }
+
+    /**
+     * Mark a node as dirty to force re-measurement.
+     * 
+     * @param nodeId Unique identifier for the node
+     */
+    fun markNodeDirty(nodeId: String) {
+        YogaShadowTree.shared.markDirty(nodeId)
     }
 
     /**

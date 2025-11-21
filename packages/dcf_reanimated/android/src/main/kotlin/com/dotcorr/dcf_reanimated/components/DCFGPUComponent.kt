@@ -108,6 +108,9 @@ class SkiaGPUView(context: Context) : View(context) {
         // CRITICAL: Set layer type to hardware for proper transparency support
         // This ensures the view can be transparent and composited correctly
         setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        // Ensure we don't consume touches unless needed
+        isClickable = false
+        isFocusable = false
     }
     
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -257,7 +260,7 @@ class SkiaGPUView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         // CRITICAL: Don't call super.onDraw() - it might draw an opaque background
         // Instead, explicitly clear with transparent color
-        canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
+        // canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
         
         // Canvas is backed by Skia on Android
         // Render particles using Skia's GPU-accelerated rendering

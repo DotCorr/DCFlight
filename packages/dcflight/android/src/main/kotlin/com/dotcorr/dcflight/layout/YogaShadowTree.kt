@@ -219,6 +219,11 @@ class YogaShadowTree private constructor() {
                             val measuredWidth = view.measuredWidth.toFloat()
                             val measuredHeight = view.measuredHeight.toFloat()
                             
+                            // Log measurement for debugging text truncation
+                            if (nodeTypes[nodeId] == "Text") {
+                                Log.d(TAG, "Measured Text node $nodeId with constraints: ${constraintWidth}x${constraintHeight} -> ${measuredWidth}x${measuredHeight}")
+                            }
+                            
                             // Use measured size if valid, otherwise fall back to intrinsic
                             if (measuredWidth > 0 && measuredHeight > 0) {
                                 return@setMeasureFunction YogaMeasureOutput.make(measuredWidth, measuredHeight)
@@ -538,6 +543,19 @@ class YogaShadowTree private constructor() {
      */
     fun markViewHiddenForUpdate(viewId: String) {
         viewsHiddenForUpdate[viewId] = true
+    }
+
+    /**
+     * Mark a node as dirty to force re-measurement
+     * This is critical for text components where content changes affect size
+     */
+    fun markDirty(nodeId: String) {
+        val node = nodes[nodeId] ?: return
+        if (node.isMeasureDefined) {
+            node.markLayoutSeen() // Reset layout seen flag
+            node.dirty() // Mark as dirty to force re-measure
+            Log.d(TAG, "Marked node $nodeId as dirty")
+        }
     }
 
     fun getNodeLayout(nodeId: String): Rect? {

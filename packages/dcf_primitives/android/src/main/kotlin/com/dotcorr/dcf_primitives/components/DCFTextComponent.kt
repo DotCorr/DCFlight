@@ -30,6 +30,12 @@ class DCFTextComponent : DCFComponent() {
         val textView = TextView(context)
         textView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
         
+        // Ensure TextView has layout params to behave correctly during measurement
+        textView.layoutParams = android.view.ViewGroup.LayoutParams(
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        
         storeProps(textView, props)
         
         updateTextView(textView, props)
@@ -94,6 +100,13 @@ class DCFTextComponent : DCFComponent() {
         
         if (content.isNotEmpty()) {
             Log.d(TAG, "Updated text content: $content, color: ${textColor?.let { ColorUtilities.hexString(it) }}")
+            
+            // CRITICAL FIX: Mark node as dirty to force re-measurement when text changes
+            // This prevents text truncation (e.g. "60fs" instead of "60fps")
+            nodeId?.let { id ->
+                com.dotcorr.dcflight.layout.DCFLayoutManager.shared.markNodeDirty(id)
+                com.dotcorr.dcflight.layout.DCFLayoutManager.shared.triggerLayoutCalculation()
+            }
         }
     }
 
@@ -119,11 +132,15 @@ class DCFTextComponent : DCFComponent() {
         val measuredWidth = textView.measuredWidth.toFloat()
         val measuredHeight = textView.measuredHeight.toFloat()
         
+        Log.d(TAG, "Measured text '$content': ${measuredWidth}x${measuredHeight}")
+        
         return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
     }
 
+    private var nodeId: String? = null
+
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        // TextView is ready immediately, no special handling needed
+        this.nodeId = nodeId
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

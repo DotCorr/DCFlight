@@ -141,6 +141,12 @@ class SkiaCanvasView: UIView {
               let device = metalDevice,
               let metalLayer = self.layer as? CAMetalLayer else { return }
         
+        // Update Metal layer drawable size
+        metalLayer.drawableSize = CGSize(
+            width: bounds.width * contentScaleFactor,
+            height: bounds.height * contentScaleFactor
+        )
+        
         // Check if size actually changed to prevent infinite loops
         let currentSize = CGSize(width: bounds.width, height: bounds.height)
         if lastSurfaceSize == currentSize && skiaSurface != nil {
@@ -170,10 +176,9 @@ class SkiaCanvasView: UIView {
             height: height
         )
         
-        if let surface = skiaSurface {
-            skiaCanvas = SkiaRenderer.getCanvasFromSurface(surface)
-            print("🎨 SKIA: Created surface \(width)x\(height)")
-        }
+        // Canvas will be available after prepareSurfaceForRender is called
+        // Don't try to get it here as surface is created lazily
+        print("🎨 SKIA: Created surface context \(width)x\(height)")
         
         if repaintOnFrame {
             startDisplayLink()
@@ -234,13 +239,21 @@ class SkiaCanvasView: UIView {
         defer { isRendering = false }
         
         guard let surface = skiaSurface,
-              let canvas = skiaCanvas,
               bounds.width > 0 && bounds.height > 0 else {
             if bounds.width == 0 || bounds.height == 0 {
                 print("⚠️ SKIA Canvas: Bounds are zero: \(bounds)")
             } else {
-                print("⚠️ SKIA Canvas: Surface or canvas is nil")
+                print("⚠️ SKIA Canvas: Surface is nil")
             }
+            return
+        }
+        
+        // Prepare surface for rendering (gets new drawable)
+        SkiaRenderer.prepareSurface(forRender: surface)
+        
+        // Get canvas after preparing surface
+        guard let canvas = SkiaRenderer.getCanvasFromSurface(surface) else {
+            print("⚠️ SKIA Canvas: Failed to get canvas after preparing surface")
             return
         }
         

@@ -159,6 +159,12 @@ class SkiaGPUView: UIView {
               let device = metalDevice,
               let metalLayer = self.layer as? CAMetalLayer else { return }
         
+        // Update Metal layer drawable size
+        metalLayer.drawableSize = CGSize(
+            width: bounds.width * contentScaleFactor,
+            height: bounds.height * contentScaleFactor
+        )
+        
         if let surface = skiaSurface {
             SkiaRenderer.destroySurface(surface)
             skiaSurface = nil
@@ -175,9 +181,8 @@ class SkiaGPUView: UIView {
             height: height
         )
         
-        if let surface = skiaSurface {
-            skiaCanvas = SkiaRenderer.getCanvasFromSurface(surface)
-        }
+        // Canvas will be available after prepareSurfaceForRender is called
+        // Don't try to get it here as surface is created lazily
     }
     
     func configureGPU(_ config: [String: Any]) {
@@ -327,12 +332,20 @@ class SkiaGPUView: UIView {
     
     private func renderWithSkia() {
         guard let surface = skiaSurface,
-              let canvas = skiaCanvas,
               renderMode == "particles",
               !particles.isEmpty else {
             if particles.isEmpty {
                 print("⚠️ SKIA GPU: No particles to render")
             }
+            return
+        }
+        
+        // Prepare surface for rendering (gets new drawable)
+        SkiaRenderer.prepareSurface(forRender: surface)
+        
+        // Get canvas after preparing surface
+        guard let canvas = SkiaRenderer.getCanvasFromSurface(surface) else {
+            print("⚠️ SKIA GPU: Failed to get canvas after preparing surface")
             return
         }
         

@@ -106,6 +106,9 @@ class SkiaCanvasView(context: Context) : View(context) {
     init {
         setWillNotDraw(false)
         setBackgroundColor(Color.TRANSPARENT)
+        // CRITICAL: Set layer type to hardware for proper transparency support
+        // This ensures the view can be transparent and composited correctly
+        setLayerType(View.LAYER_TYPE_HARDWARE, null)
         // Prevent stretching by respecting layout constraints
         setMinimumWidth(0)
         setMinimumHeight(0)

@@ -234,8 +234,8 @@ object DCDivergerUtil {
             val root = rootView ?: return
 
             Log.d(TAG, "🎨 enableFlutterViewRendering: Starting...")
-
-            view.visibility = View.VISIBLE
+            
+            // view.visibility = View.VISIBLE // REMOVED: Handled by updateFlutterViewFrame
             view.alpha = 1.0f
             view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
@@ -261,9 +261,11 @@ object DCDivergerUtil {
                 Log.d(TAG, "✅ FlutterView moved to front and brought to top")
             }
             
-            // Ensure FlutterView is visible and on top
-            view.visibility = View.VISIBLE
+            // CRITICAL FIX: Keep FlutterView hidden until updateFlutterViewFrame provides valid dimensions
+            // This prevents "SurfaceView has no frame" logs when the view is attached but has 0x0 size
+            view.visibility = View.GONE
             view.bringToFront()
+            Log.d(TAG, "✅ FlutterView attached and brought to front (hidden until frame update)")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to enable FlutterView rendering", e)
         }
@@ -297,6 +299,21 @@ object DCDivergerUtil {
             view.translationY = 0f
             
             view.layoutParams = params
+            view.layoutParams = params
+            
+            // CRITICAL FIX: Hide FlutterView if dimensions are 0x0 to prevent "SurfaceView has no frame" logs
+            if (width <= 0 || height <= 0) {
+                if (view.visibility != View.GONE) {
+                    view.visibility = View.GONE
+                    Log.d(TAG, "🙈 FlutterView hidden because dimensions are ${width}x${height}")
+                }
+            } else {
+                if (view.visibility != View.VISIBLE) {
+                    view.visibility = View.VISIBLE
+                    Log.d(TAG, "👁️ FlutterView shown because dimensions are ${width}x${height}")
+                }
+            }
+            
             view.requestLayout() // Request layout to apply new frame
             
             Log.d(TAG, "✅ FlutterView frame updated to: ($x, $y, $width, $height)")

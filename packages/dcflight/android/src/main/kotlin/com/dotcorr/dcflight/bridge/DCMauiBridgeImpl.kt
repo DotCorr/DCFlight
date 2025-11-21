@@ -352,7 +352,9 @@ class DCMauiBridgeImpl private constructor() {
             val parentView = ViewRegistry.shared.getView(viewId)
             
             if (parentView == null) {
-                Log.e(TAG, "setChildren: parent view '$viewId' not found in registry")
+                // This is common during batch updates where setChildren is called before the batch creates the view
+                // Log as warning instead of error to reduce noise, as the batch will likely fix it via attachView
+                Log.w(TAG, "setChildren: parent view '$viewId' not found in registry (likely pending batch creation)")
                 return false
             }
             
