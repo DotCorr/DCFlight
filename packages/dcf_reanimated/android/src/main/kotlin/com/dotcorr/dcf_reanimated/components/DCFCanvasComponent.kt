@@ -14,6 +14,7 @@ import android.util.Log
 import android.view.Choreographer
 import android.view.View
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.extensions.applyStyles
 
@@ -63,6 +64,16 @@ class DCFCanvasComponent : DCFComponent() {
         return android.graphics.PointF(0f, 0f)
     }
     
+    override fun applyLayout(view: View, layout: com.dotcorr.dcflight.components.DCFNodeLayout) {
+        // CRITICAL: Apply layout exactly as specified to prevent stretching
+        view.layout(
+            layout.left.toInt(),
+            layout.top.toInt(),
+            (layout.left + layout.width).toInt(),
+            (layout.top + layout.height).toInt()
+        )
+    }
+    
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         val canvasView = view as? SkiaCanvasView ?: return
         canvasView.nodeId = nodeId
@@ -95,6 +106,14 @@ class SkiaCanvasView(context: Context) : View(context) {
     init {
         setWillNotDraw(false)
         setBackgroundColor(Color.TRANSPARENT)
+        // Prevent stretching by respecting layout constraints
+        setMinimumWidth(0)
+        setMinimumHeight(0)
+    }
+    
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        // Respect layout constraints to prevent stretching
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
     
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {

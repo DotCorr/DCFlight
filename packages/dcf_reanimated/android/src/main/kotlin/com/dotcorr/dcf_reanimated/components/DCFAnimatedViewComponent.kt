@@ -342,6 +342,9 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         }
     }
     
+    private var lastRepeatEventTime = 0L
+    private val REPEAT_EVENT_THROTTLE_MS = 100L // Throttle repeat events to once per 100ms
+    
     private fun updateAnimations(currentTime: Long, elapsed: Double) {
         var allAnimationsComplete = true
         var anyAnimationRepeated = false
@@ -357,9 +360,13 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
             }
         }
         
-        // Fire repeat event if any animation repeated
+        // Fire repeat event if any animation repeated (throttled to prevent spam)
         if (anyAnimationRepeated) {
-            fireAnimationEvent("onAnimationRepeat")
+            val now = System.currentTimeMillis()
+            if (now - lastRepeatEventTime >= REPEAT_EVENT_THROTTLE_MS) {
+                fireAnimationEvent("onAnimationRepeat")
+                lastRepeatEventTime = now
+            }
         }
         
         // Check if all animations are complete
@@ -408,7 +415,9 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     // ============================================================================
     
     private fun fireAnimationEvent(eventType: String) {
-        nodeId?.let { id ->
+        // Only fire event if view is registered and has event listeners
+        val viewId = getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
+        if (viewId != null && nodeId != null) {
             propagateEvent(
                 this,
                 eventType,

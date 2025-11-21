@@ -4,7 +4,7 @@ import 'package:dcflight/dcflight.dart';
 
 final styles = DCFStyleSheet.create({
   'root': DCFStyleSheet(
-    backgroundColor: DCFColors.black,
+    backgroundColor: DCFColors.beige,
   ),
   'header': DCFStyleSheet(
     backgroundColor: const Color(0xFF1a1a2e),

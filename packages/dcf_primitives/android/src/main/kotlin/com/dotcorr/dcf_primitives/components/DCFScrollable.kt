@@ -136,17 +136,19 @@ class DCFScrollableView @JvmOverloads constructor(
                 }
             }
             
-            // For vertical scrolling: width = ScrollView width, height = max content height
-            // For horizontal scrolling: width = max content width, height = ScrollView height
+            // For vertical scrolling: width = ScrollView width (fill), height = max content height
+            // For horizontal scrolling: width = max content width, height = ScrollView height (fill)
             val availableWidth = if (width > 0) width else measuredWidth
             val availableHeight = if (height > 0) height else measuredHeight
             
-            val finalWidth = if (isHorizontal) maxWidth else maxOf(availableWidth, maxWidth)
-            val finalHeight = if (isHorizontal) maxOf(availableHeight, maxHeight) else maxHeight
+            // CRITICAL: For vertical scrolling, width must match ScrollView width exactly (fill it)
+            // Height should be at least ScrollView height, but can grow with content
+            val finalWidth = if (isHorizontal) maxOf(availableWidth, maxWidth) else availableWidth
+            val finalHeight = if (isHorizontal) availableHeight else maxOf(availableHeight, maxHeight)
             
-            // Ensure minimum size matches ScrollView bounds
-            val finalContentWidth = maxOf(finalWidth, availableWidth)
-            val finalContentHeight = maxOf(finalHeight, availableHeight)
+            // Ensure minimum size matches ScrollView bounds (fill width for vertical, fill height for horizontal)
+            val finalContentWidth = if (isHorizontal) maxOf(finalWidth, availableWidth) else availableWidth
+            val finalContentHeight = if (isHorizontal) availableHeight else maxOf(finalHeight, availableHeight)
             
             setContentSize(finalContentWidth, finalContentHeight)
         } finally {
@@ -218,9 +220,12 @@ class DCFScrollableView @JvmOverloads constructor(
                     // For horizontal scrolling: width = at least ScrollView width, height = ScrollView height
                     if (!isHorizontal) {
                         layoutParams.width = scrollWidth
-                        // Height will be updated by updateContentSizeFromYogaLayout, but ensure minimum
-                        if (layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.height < scrollHeight) {
-                            layoutParams.height = scrollHeight
+                        // Height should be WRAP_CONTENT to allow content to grow beyond ScrollView
+                        // Only set minimum if not already set by setContentSize
+                        if (layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
+                            // Keep WRAP_CONTENT - will be updated by setContentSize
+                        } else if (layoutParams.height < scrollHeight) {
+                            layoutParams.height = scrollHeight // Minimum height
                         }
                     } else {
                         // Horizontal scrolling (not fully implemented yet)
@@ -231,10 +236,24 @@ class DCFScrollableView @JvmOverloads constructor(
                     }
                     container.layoutParams = layoutParams
                 }
-                // Explicitly lay out the container at (0, 0) with current size
-                // Use actual dimensions, not layout params (which might be WRAP_CONTENT constants)
-                val containerWidth = if (layoutParams.width > 0) layoutParams.width else scrollWidth
-                val containerHeight = if (layoutParams.height > 0) layoutParams.height else scrollHeight
+                // CRITICAL: Only set width to ScrollView width, height should be from content
+                // Check if container has been sized by setContentSize (has explicit height > scrollHeight)
+                // Otherwise, let it measure itself based on children
+                val containerWidth = scrollWidth // Always match ScrollView width
+                
+                // If container has been explicitly sized by setContentSize, use that height
+                // Otherwise, measure container based on its children
+                val containerHeight = if (container.height > scrollHeight) {
+                    // Container has been sized by setContentSize - use that
+                    container.height
+                } else {
+                    // Container hasn't been sized yet - measure it based on children
+                    container.measure(
+                        View.MeasureSpec.makeMeasureSpec(scrollWidth, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED) // Let height be determined by children
+                    )
+                    maxOf(container.measuredHeight, scrollHeight) // Use measured height or minimum
+                }
                 container.layout(0, 0, containerWidth, containerHeight)
             }
         }

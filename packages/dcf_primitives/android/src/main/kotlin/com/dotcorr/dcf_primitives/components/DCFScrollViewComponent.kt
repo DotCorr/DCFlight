@@ -32,11 +32,11 @@ class DCFScrollViewComponent : DCFComponent() {
         scrollView.setTag(DCFTags.COMPONENT_TYPE_KEY, "ScrollView")
         
         // Create content container (FrameLayout to hold children)
-        // CRITICAL: Must be WRAP_CONTENT so it can grow beyond ScrollView bounds
+        // CRITICAL: For vertical scrolling, width should match ScrollView, height grows with content
         val contentContainer = FrameLayout(context)
         val containerParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.MATCH_PARENT, // Fill ScrollView width
+            ViewGroup.LayoutParams.WRAP_CONTENT  // Grow with content height
         )
         contentContainer.layoutParams = containerParams
         // CRITICAL: Ensure content container is visible and can receive children
@@ -296,37 +296,36 @@ class DCFScrollViewComponent : DCFComponent() {
         )
         
         // CRITICAL: Position content container at (0, 0) inside ScrollView
-        // It will be sized by updateContentSizeFromYogaLayout based on children
+        // Container size will be set by updateContentSizeFromYogaLayout based on children
         val contentContainer = scrollView.getChildAt(0) as? FrameLayout
         contentContainer?.let { container ->
             val scrollWidth = scrollView.width
             val scrollHeight = scrollView.height
             if (scrollWidth > 0 && scrollHeight > 0) {
-                // Update layout params to ensure container has correct size
-                val layoutParams = container.layoutParams
-                if (layoutParams != null) {
-                    // For vertical scrolling: width = ScrollView width, height = at least ScrollView height
-                    if (!scrollView.isHorizontal) {
-                        layoutParams.width = scrollWidth
-                        // Height will be updated by updateContentSizeFromYogaLayout, but ensure minimum
-                        if (layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.height < scrollHeight) {
-                            layoutParams.height = scrollHeight
-                        }
-                    } else {
-                        // Horizontal scrolling
-                        if (layoutParams.width == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.width < scrollWidth) {
-                            layoutParams.width = scrollWidth
-                        }
-                        layoutParams.height = scrollHeight
-                    }
-                    container.layoutParams = layoutParams
+                // Ensure container layout params allow it to fill ScrollView width and grow height
+                val layoutParams = container.layoutParams ?: ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                
+                // For vertical scrolling: width = MATCH_PARENT (fills ScrollView), height = WRAP_CONTENT (grows with content)
+                // For horizontal scrolling: width = WRAP_CONTENT (grows with content), height = MATCH_PARENT (fills ScrollView)
+                if (!scrollView.isHorizontal) {
+                    // Vertical: fill width, growing height
+                    layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+                    layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                } else {
+                    // Horizontal: growing width, fill height
+                    layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
+                    layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
                 }
-                // Explicitly lay out the container at (0, 0) with actual dimensions
-                // Use actual dimensions, not layout params (which might be WRAP_CONTENT constants)
-                val containerWidth = if (layoutParams.width > 0) layoutParams.width else scrollWidth
-                val containerHeight = if (layoutParams.height > 0) layoutParams.height else scrollHeight
-                container.layout(0, 0, containerWidth, containerHeight)
-                // Ensure container is visible
+                container.layoutParams = layoutParams
+                
+                // CRITICAL: Only position container at (0, 0) with ScrollView width
+                // Height will be set by updateContentSizeFromYogaLayout based on actual content
+                // Use current container height if available, otherwise use a minimum (will be updated)
+                val currentHeight = if (container.height > 0) container.height else scrollHeight
+                container.layout(0, 0, scrollWidth, currentHeight)
                 container.visibility = View.VISIBLE
             }
         }
