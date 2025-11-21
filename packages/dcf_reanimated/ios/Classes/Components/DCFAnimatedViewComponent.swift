@@ -141,13 +141,21 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
 // PURE REANIMATED VIEW - SELF-CONTAINED UI THREAD ANIMATION
 // ============================================================================
 
-class PureReanimatedView: UIView {
+class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     // Animation configuration
     private var animationConfig: [String: Any] = [:]
     private var displayLink: CADisplayLink?
     private var animationStartTime: CFTimeInterval = 0
     var isAnimating = false
+    
+    // MARK: - DCFLayoutIndependent Protocol
+    
+    /// Opt-out of layout updates when animating to prevent stuttering
+    /// This makes the view layout-independent during animation
+    var shouldSkipLayout: Bool {
+        return isAnimating
+    }
     
     // Animation state
     private var currentAnimations: [String: PureAnimationState] = [:]

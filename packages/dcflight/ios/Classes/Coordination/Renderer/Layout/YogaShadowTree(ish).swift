@@ -831,18 +831,13 @@ class YogaShadowTree {
                     return
                 }
                 
-                // CRITICAL: Skip layout for ReanimatedView when animating (React Native Reanimated pattern)
-                // React Native Reanimated makes animated views layout-independent to prevent stuttering
-                let viewClassName = String(describing: type(of: view))
-                if viewClassName.contains("PureReanimatedView") || viewClassName.contains("ReanimatedView") {
-                    // Check if view is animating using Mirror reflection
-                    let mirror = Mirror(reflecting: view)
-                    if let isAnimating = mirror.children.first(where: { $0.label == "isAnimating" })?.value as? Bool,
-                       isAnimating {
-                        // Skip layout update for animating ReanimatedView to prevent stuttering
-                        // This matches React Native Reanimated's approach of making animated views layout-independent
-                        return
-                    }
+                // CRITICAL: Skip layout for views that opt-out via DCFLayoutIndependent protocol
+                // This allows modules (like dcf_reanimated) to make views layout-independent
+                // without modifying the framework layer 
+                if let layoutIndependent = view as? DCFLayoutIndependent,
+                   layoutIndependent.shouldSkipLayout {
+                    // Skip layout update to prevent interference with animations/transforms
+                    return
                 }
                 
                 var finalFrame = frame

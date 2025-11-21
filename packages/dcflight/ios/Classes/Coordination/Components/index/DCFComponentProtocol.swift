@@ -8,6 +8,32 @@
 import UIKit
 import yoga
 
+/// Protocol that views can conform to to opt-out of layout updates during certain states.
+/// 
+/// This allows modules (like dcf_reanimated) to make views layout-independent
+/// without modifying the framework layer.
+/// 
+/// Example usage:
+/// ```swift
+/// class MyAnimatedView: UIView, DCFLayoutIndependent {
+///     var shouldSkipLayout: Bool {
+///         return isAnimating // Skip layout when animating
+///     }
+/// }
+/// ```
+public protocol DCFLayoutIndependent {
+    /// Returns true if layout updates should be skipped for this view.
+    /// 
+    /// When true, Yoga will skip applying layout to this view, making it
+    /// layout-independent (similar to React Native Reanimated's approach).
+    /// 
+    /// This is useful for:
+    /// - Animated views that use transforms (prevents anchor point recalculation)
+    /// - Views with custom layout logic
+    /// - Performance-critical views that don't need layout updates
+    var shouldSkipLayout: Bool { get }
+}
+
 /// Protocol that all DCMAUI components must implement
 public protocol DCFComponent {
     /// Initialize the component
