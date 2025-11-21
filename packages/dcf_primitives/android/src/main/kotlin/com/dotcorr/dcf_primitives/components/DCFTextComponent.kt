@@ -9,22 +9,16 @@ package com.dotcorr.dcf_primitives.components
 
 import android.content.Context
 import android.graphics.PointF
+import android.graphics.Typeface
+import android.text.TextUtils
 import android.util.Log
+import android.view.Gravity
 import android.view.View
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.sp
+import android.widget.TextView
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFTags
-import com.dotcorr.dcflight.components.DCFComposeWrapper
 import com.dotcorr.dcflight.extensions.applyStyles
 import com.dotcorr.dcflight.utils.ColorUtilities
-import androidx.compose.ui.platform.ComposeView
 
 class DCFTextComponent : DCFComponent() {
 
@@ -33,127 +27,68 @@ class DCFTextComponent : DCFComponent() {
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
-        val composeView = ComposeView(context)
-        val wrapper = DCFComposeWrapper(context, composeView)
-        wrapper.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
+        val textView = TextView(context)
+        textView.setTag(DCFTags.COMPONENT_TYPE_KEY, "Text")
         
-        // Framework controls visibility - don't set here!
-        // We'll ensure composition happens before layout instead
+        storeProps(textView, props)
         
-        storeProps(wrapper, props)
+        updateTextView(textView, props)
         
-        // CRITICAL: Set content BEFORE measuring to prevent flash
-        // Framework calls getIntrinsicSize during layout calculation
-        // ComposeView must have content composed before measurement
-        updateComposeContent(composeView, props)
-
         val nonNullProps = props.filterValues { it != null }.mapValues { it.value!! }
-        wrapper.applyStyles(nonNullProps)
+        textView.applyStyles(nonNullProps)
         
-        Log.d(TAG, "Created Compose-based Text component")
-
-        return wrapper
+        Log.d(TAG, "Created TextView-based Text component")
+        
+        return textView
     }
 
     override fun updateView(view: View, props: Map<String, Any?>): Boolean {
-        val wrapper = view as? DCFComposeWrapper ?: return false
-        val composeView = wrapper.composeView
+        val textView = view as? TextView ?: return false
         
-        // CRITICAL: Merge new props with existing stored props to preserve all properties
-        // Base class handles merging, but we need merged props for Compose content update
         val existingProps = getStoredProps(view)
         val mergedProps = mergeProps(existingProps, props)
+        storeProps(textView, mergedProps)
         
-        // Store merged props
-        storeProps(wrapper, mergedProps)
-        
-        // Apply merged props (all properties preserved)
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
-        wrapper.applyStyles(nonNullProps)
-        updateComposeContent(composeView, nonNullProps)
-
+        updateTextView(textView, nonNullProps)
+        textView.applyStyles(nonNullProps)
+        
         return true
     }
-
-    private fun updateComposeContent(composeView: ComposeView, props: Map<String, Any?>) {
+    
+    private fun updateTextView(textView: TextView, props: Map<String, Any?>) {
         val content = props["content"]?.toString() ?: ""
+        textView.text = content
+        
         val textColor = ColorUtilities.getColor("textColor", "primaryColor", props)
+        if (textColor != null) {
+            textView.setTextColor(textColor)
+        }
+        
         val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: 17f
-        val fontWeight = fontWeightFromString(props["fontWeight"]?.toString() ?: "regular")
-        val textAlign = textAlignFromString(props["textAlign"]?.toString() ?: "start")
-        val maxLines = (props["numberOfLines"] as? Number)?.toInt() ?: Int.MAX_VALUE
+        textView.textSize = fontSize
         
-        val context = composeView.context
-        val isDarkTheme = (context.resources.configuration.uiMode and 
-            android.content.res.Configuration.UI_MODE_NIGHT_MASK) == 
-            android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val defaultColor = if (isDarkTheme) android.graphics.Color.WHITE else android.graphics.Color.BLACK
-        val finalColor = textColor ?: defaultColor
+        val fontWeight = props["fontWeight"]?.toString() ?: "regular"
+        textView.setTypeface(null, fontWeightToTypefaceStyle(fontWeight))
         
-        val STATE_HOLDER_TAG_KEY = "DCFTextStateHolder".hashCode()
-        @Suppress("UNCHECKED_CAST")
-        var stateHolder = composeView.getTag(STATE_HOLDER_TAG_KEY) as? androidx.compose.runtime.MutableState<TextState>
-        if (stateHolder == null) {
-            val initialState = TextState(
-                content = content,
-                textColor = finalColor,
-                fontSize = fontSize,
-                fontWeight = fontWeight,
-                textAlign = textAlign,
-                maxLines = if (maxLines == 0) Int.MAX_VALUE else maxLines
-            )
-            stateHolder = mutableStateOf(initialState)
-            composeView.setTag(STATE_HOLDER_TAG_KEY, stateHolder)
-            
-            composeView.setContent {
-                // CRITICAL: Use by remember to observe state changes reactively
-                // This ensures textAlign and other properties update correctly
-                val state by remember { stateHolder }
-                Material3Text(
-                    text = state.content,
-                    color = state.textColor,
-                    fontSize = state.fontSize,
-                    fontWeight = state.fontWeight,
-                    textAlign = state.textAlign,
-                    maxLines = state.maxLines
-                )
-            }
-            
-            // Mark composition as ready after setContent
-            // Note: setContent is async, but we'll verify in getIntrinsicSize
-            val wrapper = composeView.parent as? DCFComposeWrapper
-            wrapper?.markCompositionReady()
+        val textAlign = props["textAlign"]?.toString() ?: "start"
+        textView.gravity = textAlignToGravity(textAlign)
+        
+        val numberOfLines = (props["numberOfLines"] as? Number)?.toInt() ?: 0
+        if (numberOfLines > 0) {
+            textView.maxLines = numberOfLines
+            textView.ellipsize = TextUtils.TruncateAt.END
         } else {
-            stateHolder.value = TextState(
-                content = content,
-                textColor = finalColor,
-                fontSize = fontSize,
-                fontWeight = fontWeight,
-                textAlign = textAlign,
-                maxLines = if (maxLines == 0) Int.MAX_VALUE else maxLines
-            )
+            textView.maxLines = Int.MAX_VALUE
         }
         
         if (content.isNotEmpty()) {
-            Log.d(TAG, "Updated text content: $content, color: ${ColorUtilities.hexString(finalColor)}")
+            Log.d(TAG, "Updated text content: $content, color: ${textColor?.let { ColorUtilities.hexString(it) }}")
         }
     }
-    
-    private data class TextState(
-        val content: String,
-        val textColor: Int,
-        val fontSize: Float,
-        val fontWeight: FontWeight,
-        val textAlign: TextAlign,
-        val maxLines: Int
-    )
 
     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
-        val composeView = wrapper.composeView
-        
-        // Match iOS: Use actual measurement, not estimate
-        // iOS: label.sizeThatFits(maxSize) - we do the same with ComposeView
+        val textView = view as? TextView ?: return PointF(0f, 0f)
         
         val storedProps = getStoredProps(view)
         val allProps = if (props.isEmpty()) storedProps else props
@@ -162,112 +97,51 @@ class DCFTextComponent : DCFComponent() {
         if (content.isEmpty()) {
             return PointF(0f, 0f)
         }
-
-        // CRITICAL: Ensure ComposeView is composed before measuring
-        // ComposeView.setContent is async, so we need to ensure composition is ready
-        // This prevents flash on reconciliation (new views need accurate size immediately)
         
-        // Force composition if not already composed
-        val STATE_HOLDER_TAG_KEY = "DCFTextStateHolder".hashCode()
-        @Suppress("UNCHECKED_CAST")
-        val stateHolder = composeView.getTag(STATE_HOLDER_TAG_KEY) as? androidx.compose.runtime.MutableState<*>
-        if (stateHolder == null) {
-            // Not composed yet - ensure it's composed now
-            updateComposeContent(composeView, allProps)
-        }
-        
-        // CRITICAL: Ensure composition is ready before measuring
-        // This forces ComposeView to compose synchronously if possible
-        wrapper.ensureCompositionReady()
-        
-        // Measure the actual ComposeView (like iOS measures UILabel)
-        // Use a reasonable width constraint for measurement (like iOS maxSize)
+        // Match iOS: Use actual measurement, not estimate
+        // iOS: label.sizeThatFits(maxSize) - we do the same with TextView
         val maxWidth = 10000 // Large but finite width for measurement
-        composeView.measure(
+        textView.measure(
             View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
         
-        val measuredWidth = composeView.measuredWidth.toFloat()
-        val measuredHeight = composeView.measuredHeight.toFloat()
-        
-        // If measurement returns 0 (Compose not composed yet), use improved fallback
-        // This should be rare - we ensure composition above
-        if (measuredWidth == 0f || measuredHeight == 0f) {
-        val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
-            // Improved estimate: account for multi-line text and actual character width
-            val lines = content.split("\n")
-            val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
-            val estimatedWidth = maxLineLength * fontSize * 0.6f
-            val estimatedHeight = lines.size * fontSize * 1.2f
-            return PointF(estimatedWidth.coerceAtLeast(1f), estimatedHeight.coerceAtLeast(1f))
-        }
+        val measuredWidth = textView.measuredWidth.toFloat()
+        val measuredHeight = textView.measuredHeight.toFloat()
         
         return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        val wrapper = view as? DCFComposeWrapper ?: return
-        val composeView = wrapper.composeView
-        val storedProps = getStoredProps(view)
-        
-        // CRITICAL: Ensure ComposeView is composed before layout calculation
-        // This prevents flash because getIntrinsicSize will get accurate measurement
-        // Framework calls this before layout calculation, so we ensure composition is ready
-        updateComposeContent(composeView, storedProps)
-        
-        // CRITICAL: Force composition to be ready before layout calculation
-        // This ensures measurement in getIntrinsicSize is accurate
-        if (view.parent != null) {
-            wrapper.ensureCompositionReady()
-        }
+        // TextView is ready immediately, no special handling needed
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
         return null
     }
     
-    private fun fontWeightFromString(weight: String): FontWeight {
+    private fun fontWeightToTypefaceStyle(weight: String): Int {
         return when (weight.lowercase()) {
-            "thin", "100" -> FontWeight.Thin
-            "ultralight", "200" -> FontWeight.ExtraLight
-            "light", "300" -> FontWeight.Light
-            "regular", "normal", "400" -> FontWeight.Normal
-            "medium", "500" -> FontWeight.Medium
-            "semibold", "600" -> FontWeight.SemiBold
-            "bold", "700" -> FontWeight.Bold
-            "heavy", "800" -> FontWeight.ExtraBold
-            "black", "900" -> FontWeight.Black
-            else -> FontWeight.Normal
+            "thin", "100" -> Typeface.NORMAL
+            "ultralight", "200" -> Typeface.NORMAL
+            "light", "300" -> Typeface.NORMAL
+            "regular", "normal", "400" -> Typeface.NORMAL
+            "medium", "500" -> Typeface.NORMAL
+            "semibold", "600" -> Typeface.BOLD
+            "bold", "700" -> Typeface.BOLD
+            "heavy", "800" -> Typeface.BOLD
+            "black", "900" -> Typeface.BOLD
+            else -> Typeface.NORMAL
         }
     }
     
-    private fun textAlignFromString(align: String): TextAlign {
+    private fun textAlignToGravity(align: String): Int {
         return when (align.lowercase()) {
-            "center" -> TextAlign.Center
-            "right", "end" -> TextAlign.Right
-            "left", "start" -> TextAlign.Left
-            "justify" -> TextAlign.Justify
-            else -> TextAlign.Start
+            "center" -> Gravity.CENTER
+            "right", "end" -> Gravity.END or Gravity.CENTER_VERTICAL
+            "left", "start" -> Gravity.START or Gravity.CENTER_VERTICAL
+            "justify" -> Gravity.START or Gravity.CENTER_VERTICAL
+            else -> Gravity.START or Gravity.CENTER_VERTICAL
         }
     }
-}
-
-@Composable
-private fun Material3Text(
-    text: String,
-    color: Int,
-    fontSize: Float,
-    fontWeight: FontWeight,
-    textAlign: TextAlign,
-    maxLines: Int
-) {
-    Text(
-        text = text,
-        color = Color(color),
-        fontSize = fontSize.sp,
-        fontWeight = fontWeight,
-        textAlign = textAlign,
-        maxLines = maxLines
-    )
 }
