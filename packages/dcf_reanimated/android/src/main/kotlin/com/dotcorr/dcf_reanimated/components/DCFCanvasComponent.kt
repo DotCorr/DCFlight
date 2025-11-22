@@ -8,12 +8,11 @@
 package com.dotcorr.dcf_reanimated.components
 
 import android.content.Context
+import android.graphics.PointF
 import android.graphics.SurfaceTexture
 import android.view.TextureView
 import android.view.View
 import com.dotcorr.dcflight.components.DCFComponent
-import io.flutter.view.TextureRegistry
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentHashMap
 
 class DCFCanvasComponent : DCFComponent() {
@@ -25,10 +24,23 @@ class DCFCanvasComponent : DCFComponent() {
         return canvasView!!
     }
 
-    override fun updateView(view: View, props: Map<String, Any?>) {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         if (view is DCFCanvasView) {
             view.update(props)
+            return true
         }
+        return false
+    }
+    
+    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
+        // Canvas size is determined by layout or props, not intrinsic content
+        val width = (props["width"] as? Number)?.toFloat() ?: 0f
+        val height = (props["height"] as? Number)?.toFloat() ?: 0f
+        return PointF(width, height)
+    }
+    
+    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+        // No special handling needed for canvas registration
     }
 
     // Handle tunnel methods from Dart
@@ -106,7 +118,6 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
     }
 
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
-        surfaceTextureEntry?.release()
         return true
     }
 

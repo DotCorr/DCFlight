@@ -77,12 +77,17 @@ class DCFCanvasView: UIView, FlutterTexture {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
+        // DEBUG: Set red background to verify view is in hierarchy
+        self.backgroundColor = UIColor.red.withAlphaComponent(0.3)
+        NSLog("DCFCanvasView: init frame: \(frame)")
         setupLayer()
         registerTexture()
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
+        self.backgroundColor = UIColor.red.withAlphaComponent(0.3)
+        NSLog("DCFCanvasView: init coder")
         setupLayer()
         registerTexture()
     }
@@ -95,9 +100,9 @@ class DCFCanvasView: UIView, FlutterTexture {
     override func layoutSubviews() {
         super.layoutSubviews()
         contentLayer.frame = bounds
-        // We don't resize buffer here automatically anymore, we wait for Dart to send size
+        NSLog("DCFCanvasView: layoutSubviews bounds: \(bounds)")
     }
-    
+
     private func registerTexture() {
         // Get the Flutter engine from the registry/delegate
         if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
@@ -131,14 +136,18 @@ class DCFCanvasView: UIView, FlutterTexture {
         // Trigger a redraw
         drawFrame()
     }
-    
+
     func updateTexture(pixels: Data, width: Int, height: Int) {
+        NSLog("DCFCanvasView: updateTexture width: \(width) height: \(height) bytes: \(pixels.count)")
         // Create or resize buffer if needed
         if pixelBuffer == nil || CVPixelBufferGetWidth(pixelBuffer!) != width || CVPixelBufferGetHeight(pixelBuffer!) != height {
             createBuffer(width: width, height: height)
         }
         
-        guard let buffer = pixelBuffer else { return }
+        guard let buffer = pixelBuffer else { 
+            NSLog("DCFCanvasView: Failed to create buffer")
+            return 
+        }
         
         CVPixelBufferLockBaseAddress(buffer, [])
         defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
@@ -147,13 +156,8 @@ class DCFCanvasView: UIView, FlutterTexture {
             let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
             let destination = baseAddress
             
-            // Copy pixel data
-            // Note: Dart sends RGBA, CVPixelBuffer is BGRA usually. 
-            // We might need swizzling here or configure Dart to send BGRA.
-            // For now assuming direct copy works or colors might be swapped.
             pixels.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) in
                 if let sourceAddress = rawBuffer.baseAddress {
-                    // Copy row by row to handle padding
                     for y in 0..<height {
                         let srcRow = sourceAddress.advanced(by: y * width * 4)
                         let dstRow = destination.advanced(by: y * bytesPerRow)
@@ -163,25 +167,25 @@ class DCFCanvasView: UIView, FlutterTexture {
             }
         }
         
-        // Notify Flutter that texture is updated
         if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
            let registrar = appDelegate.pluginRegistrant as? FlutterPluginRegistrar {
             registrar.textures().textureFrameAvailable(textureId)
         }
         
-        // Also update local layer for immediate feedback if not using FlutterTexture widget
-        // (Since we are a native view, we display it ourselves)
-        drawFrame()
+        DispatchQueue.main.async {
+            self.drawFrame()
+        }
     }
     
     private func createBuffer(width: Int, height: Int) {
+        NSLog("DCFCanvasView: createBuffer \(width)x\(height)")
         let options: [String: Any] = [
             kCVPixelBufferCGImageCompatibilityKey as String: true,
             kCVPixelBufferCGBitmapContextCompatibilityKey as String: true,
             kCVPixelBufferIOSurfacePropertiesKey as String: [:]
         ]
         
-        CVPixelBufferCreate(
+        let status = CVPixelBufferCreate(
             kCFAllocatorDefault,
             width,
             height,
@@ -189,8 +193,12 @@ class DCFCanvasView: UIView, FlutterTexture {
             options as CFDictionary,
             &pixelBuffer
         )
+        
+        if status != kCVReturnSuccess {
+            NSLog("DCFCanvasView: CVPixelBufferCreate failed: \(status)")
+        }
     }
-    
+
     // MARK: - FlutterTexture Protocol
     
     func copyPixelBuffer() -> Unmanaged<CVPixelBuffer>? {
@@ -214,18 +222,25 @@ class DCFCanvasView: UIView, FlutterTexture {
     @objc private func onDisplayLink() {
         drawFrame()
     }
-    
+
     private func drawFrame() {
         if let buffer = pixelBuffer {
             if let image = createCGImage(from: buffer) {
                 contentLayer.contents = image
+                // Remove debug background if we have content
+                self.backgroundColor = .clear
+            } else {
+                NSLog("DCFCanvasView: Failed to create CGImage")
             }
         }
     }
     
     private func createCGImage(from buffer: CVPixelBuffer) -> CGImage? {
         var cgImage: CGImage?
-        VTCreateCGImageFromCVPixelBuffer(buffer, options: nil, imageOut: &cgImage)
+        let status = VTCreateCGImageFromCVPixelBuffer(buffer, options: nil, imageOut: &cgImage)
+        if status != noErr {
+            NSLog("DCFCanvasView: VTCreateCGImageFromCVPixelBuffer failed: \(status)")
+        }
         return cgImage
     }
     

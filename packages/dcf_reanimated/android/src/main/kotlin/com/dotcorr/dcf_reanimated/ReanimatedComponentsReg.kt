@@ -10,6 +10,7 @@ package com.dotcorr.dcf_reanimated
 import android.util.Log
 import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcf_reanimated.components.DCFAnimatedViewComponent
+import com.dotcorr.dcf_reanimated.components.DCFCanvasComponent
 
 /**
  * Registration class for DCF reanimated components

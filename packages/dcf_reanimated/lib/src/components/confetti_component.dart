@@ -199,6 +199,7 @@ class DCFConfetti extends DCFStatefulComponent {
 
     // Use DCFCanvas with onPaint callback
     return DCFCanvas(
+      size: const Size(1080, 2400), // Full screen canvas
       repaintOnFrame: true,
       layout: layout ?? _confettiLayouts['default'],
       styleSheet: styleSheet,
