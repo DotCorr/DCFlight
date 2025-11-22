@@ -79,6 +79,9 @@ class DCFScrollViewComponent : DCFComponent() {
             val scrollY = scrollView.scrollY
             val contentView = scrollView.getChildAt(0)
             
+            // Only propagate event if there are registered listeners
+            val eventTypes = scrollView.getTag(DCFTags.EVENT_TYPES_KEY) as? Set<String>
+            if (eventTypes != null && (eventTypes.contains("onScroll") || eventTypes.contains("scroll"))) {
                 // Match iOS event format exactly
                 propagateEvent(scrollView, "onScroll", mapOf(
                     "contentOffset" to mapOf(
@@ -94,6 +97,7 @@ class DCFScrollViewComponent : DCFComponent() {
                         "height" to scrollView.height.toDouble()
                     )
                 ))
+            }
         }
         
         // Handle scroll begin/end drag events

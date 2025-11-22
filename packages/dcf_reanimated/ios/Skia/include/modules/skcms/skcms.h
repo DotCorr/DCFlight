@@ -29,6 +29,39 @@ typedef struct skcms_ICCProfile {
     unsigned char data[1]; // Placeholder
 } skcms_ICCProfile;
 
+// Pixel format enum - used by SkCodec
+typedef enum {
+    skcms_PixelFormat_RGBA_8888,
+    skcms_PixelFormat_BGRA_8888,
+    skcms_PixelFormat_RGB_565,
+    skcms_PixelFormat_RGBA_1010102,
+    skcms_PixelFormat_RGB_101010x,
+    skcms_PixelFormat_Gray_8,
+    skcms_PixelFormat_RGBA_F16,
+    skcms_PixelFormat_RGBA_F32,
+    skcms_PixelFormat_RGBA_F16Norm,
+    skcms_PixelFormat_RGBA_F32Norm,
+    skcms_PixelFormat_RGB_888,
+    skcms_PixelFormat_RGBA_8888_sRGB,
+    skcms_PixelFormat_BGRA_8888_sRGB,
+    skcms_PixelFormat_RGBA_1010102_sRGB,
+    skcms_PixelFormat_BGRA_1010102,
+    skcms_PixelFormat_BGRA_1010102_sRGB,
+    skcms_PixelFormat_RGB_101010x_sRGB,
+    skcms_PixelFormat_BGR_101010x,
+    skcms_PixelFormat_BGR_101010x_sRGB,
+    skcms_PixelFormat_BGR_888,
+    skcms_PixelFormat_RGBA_8888_Palette8,
+    skcms_PixelFormat_BGRA_8888_Palette8,
+} skcms_PixelFormat;
+
+// Alpha format enum - used by SkCodec
+typedef enum {
+    skcms_AlphaFormat_Opaque,
+    skcms_AlphaFormat_Unpremul,
+    skcms_AlphaFormat_PremulAsEncoded,
+} skcms_AlphaFormat;
+
 #ifdef __cplusplus
 }
 #endif

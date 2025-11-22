@@ -64,6 +64,8 @@ class DCFCanvasComponent : DCFComponent() {
         if (mergedProps["shapes"] is List<*>) {
             @Suppress("UNCHECKED_CAST")
             canvasView.shapes = mergedProps["shapes"] as List<Map<String, Any?>>
+        } else {
+            canvasView.shapes = emptyList()
         }
         
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
@@ -172,19 +174,29 @@ class SkiaCanvasView(context: Context) : View(context) {
             renderShapes(canvas)
         } else if (hasOnPaint) {
             // onPaint callback will be called via method channel when implemented
-            // For now, do nothing (empty canvas)
+            // For now, draw a test circle to show the canvas is working
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.GREEN
+                style = android.graphics.Paint.Style.FILL
+            }
+            
+            val centerX = width / 2f
+            val centerY = height / 2f
+            val radius = 50f
+            
+            canvas.drawCircle(centerX, centerY, radius, paint)
         } else {
             // Draw test circle to verify Canvas is working (centered)
-        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.GREEN
-            style = android.graphics.Paint.Style.FILL
-        }
-        
-        val centerX = width / 2f
-        val centerY = height / 2f
-        val radius = 50f
-        
-        canvas.drawCircle(centerX, centerY, radius, paint)
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.GREEN
+                style = android.graphics.Paint.Style.FILL
+            }
+            
+            val centerX = width / 2f
+            val centerY = height / 2f
+            val radius = 50f
+            
+            canvas.drawCircle(centerX, centerY, radius, paint)
         }
     }
     

@@ -7,7 +7,10 @@
 
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import 'dart:async';
 import 'canvas_component.dart';
+import 'skia_shapes.dart';
 
 // Default layouts for confetti (registered for bridge efficiency)
 // ignore: deprecated_member_use - Using DCFLayout() inside create() is the correct pattern
@@ -27,22 +30,22 @@ final _confettiLayouts = DCFLayout.create({
 class ConfettiConfig {
   /// Gravity force applied to particles (default: 9.8 m/s²)
   final double gravity;
-  
+
   /// Initial velocity of particles in pixels per second (default: 50.0)
   final double initialVelocity;
-  
+
   /// Spread angle in degrees (0-360, default: 360.0 for full circle)
   final double spread;
-  
+
   /// Colors for confetti particles
   final List<Color> colors;
-  
+
   /// Minimum particle size in pixels (default: 4.0)
   final double minSize;
-  
+
   /// Maximum particle size in pixels (default: 8.0)
   final double maxSize;
-  
+
   const ConfettiConfig({
     this.gravity = 9.8,
     this.initialVelocity = 50.0,
@@ -58,29 +61,50 @@ class ConfettiConfig {
     this.minSize = 4.0,
     this.maxSize = 8.0,
   });
-  
+
   /// Convert to map for GPU parameters
   Map<String, dynamic> toMap() => {
-    'gravity': gravity,
-    'initialVelocity': initialVelocity,
-    'spread': spread,
-    'colors': colors.map((c) {
-      // Convert Color to hex string (RRGGBB format)
-      final hex = c.value.toRadixString(16).padLeft(8, '0');
-      return '#${hex.substring(2)}'; // Skip alpha channel
-    }).toList(),
-    'minSize': minSize,
-    'maxSize': maxSize,
-  };
+        'gravity': gravity,
+        'initialVelocity': initialVelocity,
+        'spread': spread,
+        'colors': colors.map((c) {
+          // Convert Color to hex string (RRGGBB format)
+          final hex = c.value.toRadixString(16).padLeft(8, '0');
+          return '#${hex.substring(2)}'; // Skip alpha channel
+        }).toList(),
+        'minSize': minSize,
+        'maxSize': maxSize,
+      };
 }
 
-/// Confetti animation using Skia Canvas API
-/// 
+/// Particle data for confetti animation
+class _ConfettiParticle {
+  double x;
+  double y;
+  double vx; // velocity x
+  double vy; // velocity y
+  double rotation;
+  double rotationSpeed;
+  final double size;
+  final int color;
+
+  _ConfettiParticle({
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.rotation,
+    required this.rotationSpeed,
+    required this.size,
+    required this.color,
+  });
+}
+
+/// Confetti animation using Skia Canvas API with physics simulation
+///
 /// Built on top of DCFCanvas using the canvas drawing API.
-/// This component uses the pure Skia canvas API to draw confetti particles.
-/// 
-/// TODO: Implement particle system using canvas.drawCircle() when canvas API is fully implemented
-class DCFConfetti extends DCFStatelessComponent {
+/// Particles fall with gravity and spread out in all directions.
+class DCFConfetti extends DCFStatefulComponent {
   final int particleCount;
   final int duration;
   final ConfettiConfig? config;
@@ -100,21 +124,104 @@ class DCFConfetti extends DCFStatelessComponent {
     this.onStart,
     this.events,
     super.key,
-  }) : layout = layout,
-       styleSheet = styleSheet;
+  })  : layout = layout,
+        styleSheet = styleSheet;
 
   @override
   DCFComponentNode render() {
-    return DCFCanvas(
-      repaintOnFrame: true,
-      onPaint: (canvas, size) {
-        // Confetti rendering is handled natively via parameters
-        // The native component will use the particle system to render confetti
+    // Initialize particles on first render
+    final cfg = config ?? const ConfettiConfig();
+    final colors = cfg.colors;
+    final random = math.Random();
+    final particleList = <_ConfettiParticle>[];
+
+    // Start from center of screen
+    const centerX = 540.0; // Half of 1080 (typical width)
+    const centerY = 400.0; // Start from top-ish
+
+    for (int i = 0; i < particleCount; i++) {
+      // Random angle for spread
+      final angle = random.nextDouble() * cfg.spread * (math.pi / 180);
+      final speed =
+          cfg.initialVelocity + random.nextDouble() * cfg.initialVelocity;
+
+      particleList.add(_ConfettiParticle(
+        x: centerX,
+        y: centerY,
+        vx: math.cos(angle) * speed,
+        vy: math.sin(angle) * speed - 100, // Initial upward velocity
+        rotation: random.nextDouble() * 360,
+        rotationSpeed:
+            (random.nextDouble() - 0.5) * 10, // Random rotation speed
+        size: cfg.minSize + random.nextDouble() * (cfg.maxSize - cfg.minSize),
+        color: colors[random.nextInt(colors.length)].value,
+      ));
+    }
+
+    final particles = useState<List<_ConfettiParticle>>(particleList);
+    final startTime = useState<int>(DateTime.now().millisecondsSinceEpoch);
+    final isComplete = useState<bool>(false);
+
+    // Update particle positions on each frame
+    useEffect(() {
+      if (isComplete.state) return null;
+
+      final timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+        final elapsed = DateTime.now().millisecondsSinceEpoch - startTime.state;
+
+        if (elapsed >= duration) {
+          timer.cancel();
+          isComplete.setState(true);
+          onComplete?.call();
+          return;
+        }
+
+        // Update each particle
+        final updatedParticles = particles.state.map((p) {
+          // Apply gravity
+          p.vy += cfg.gravity;
+
+          // Update position
+          p.x += p.vx * 0.016; // 16ms frame time
+          p.y += p.vy * 0.016;
+
+          // Update rotation
+          p.rotation += p.rotationSpeed;
+
+          return p;
+        }).toList();
+
+        particles.setState(updatedParticles);
+      });
+
+      // Cleanup
+      return () => timer.cancel();
+    }, dependencies: []);
+
+    // Convert particles to shape data
+    final shapeData = particles.state
+        .map((p) => {
+              '_type': 'SkiaCircle',
+              'cx': p.x,
+              'cy': p.y,
+              'r': p.size / 2,
+              'color': p.color,
+            })
+        .toList();
+
+    // Create a single canvas element with all particles as shape data
+    final canvasLayout = layout ?? _confettiLayouts['default'];
+    final canvasStyle = styleSheet ?? DCFStyleSheet();
+
+    return DCFElement(
+      type: 'Canvas',
+      elementProps: {
+        'repaintOnFrame': true,
+        'shapes': shapeData, // Pass all particles as shape data
+        ...canvasLayout.toMap(),
+        ...canvasStyle.toMap(),
       },
-      layout: layout ?? _confettiLayouts['default'],
-      styleSheet: styleSheet,
-      // Confetti now uses shapes - can be implemented using SkiaCircle with animations
-    ).render();
+      children: const [], // No children - all rendering done via shapes data
+    );
   }
 }
-

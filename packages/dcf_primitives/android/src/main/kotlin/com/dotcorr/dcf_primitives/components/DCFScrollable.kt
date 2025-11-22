@@ -15,6 +15,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.core.widget.NestedScrollView
 import com.dotcorr.dcflight.components.DCFContentContainerProvider
+import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 
 /**
@@ -233,12 +234,16 @@ class DCFScrollableView @JvmOverloads constructor(
      * Matches iOS notifyContentSizeUpdate() behavior
      */
     private fun notifyContentSizeUpdate(width: Int, height: Int) {
-        propagateEvent(this, "onContentSizeChange", mapOf(
-            "contentSize" to mapOf(
-                "width" to width.toDouble(),
-                "height" to height.toDouble()
-            )
-        ))
+        // Only propagate event if there are registered listeners
+        val eventTypes = getTag(DCFTags.EVENT_TYPES_KEY) as? Set<String>
+        if (eventTypes != null && (eventTypes.contains("onContentSizeChange") || eventTypes.contains("contentSizeChange"))) {
+            propagateEvent(this, "onContentSizeChange", mapOf(
+                "contentSize" to mapOf(
+                    "width" to width.toDouble(),
+                    "height" to height.toDouble()
+                )
+            ))
+        }
     }
     
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

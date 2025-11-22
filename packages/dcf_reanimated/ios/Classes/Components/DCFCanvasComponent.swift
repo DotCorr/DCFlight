@@ -309,7 +309,12 @@ class SkiaCanvasView: UIView {
             renderShapes(canvas: canvas)
         } else if hasOnPaint {
             // onPaint callback will be called via method channel when implemented
-            // For now, do nothing (empty canvas)
+            // For now, draw a test circle to show the canvas is working
+            SkiaRenderer.drawTestCircle(
+                canvas,
+                width: surfaceWidth,
+                height: surfaceHeight
+            )
         } else {
             // Draw test circle to verify Canvas is working (centered)
             SkiaRenderer.drawTestCircle(
@@ -561,8 +566,7 @@ class SkiaCanvasView: UIView {
                     let fontWeight = shape["fontWeight"] as? Int ?? 4 // Normal
                     let fontStyle = shape["fontStyle"] as? Int ?? 0 // Normal
                     
-                    let font = SkiaRenderer.createFont(fontFamily ?? "System", size: fontSize, weight: Int32(fontWeight), style: Int32(fontStyle))
-                    if font != nil {
+                    if let font = SkiaRenderer.createFont(fontFamily ?? "System", size: fontSize, weight: Int32(fontWeight), style: Int32(fontStyle)) {
                         defer { SkiaRenderer.destroyFont(font) }
                         SkiaRenderer.drawText(canvas, text: text, x: Float(x), y: Float(y), font: font, paint: paint)
                     }
@@ -613,7 +617,8 @@ class SkiaCanvasView: UIView {
             if let matrix = filterData["matrix"] as? [Double], matrix.count == 20 {
                 var floatMatrix = matrix.map { Float($0) }
                 return floatMatrix.withUnsafeMutableBufferPointer { buffer in
-                    return SkiaRenderer.createColorFilterMatrix(buffer.baseAddress)
+                    guard let baseAddress = buffer.baseAddress else { return nil }
+                    return SkiaRenderer.createColorFilterMatrix(baseAddress)
                 }
             }
             
@@ -647,7 +652,8 @@ class SkiaCanvasView: UIView {
                 var floatIntervals = intervals.map { Float($0) }
                 let phase = Float(effectData["phase"] as? Double ?? 0)
                 return floatIntervals.withUnsafeMutableBufferPointer { buffer in
-                    return SkiaRenderer.createDashPathEffect(buffer.baseAddress, count: Int32(intervals.count), phase: phase)
+                    guard let baseAddress = buffer.baseAddress else { return nil }
+                    return SkiaRenderer.createDashPathEffect(baseAddress, count: Int32(intervals.count), phase: phase)
                 }
             }
             
@@ -677,7 +683,8 @@ class SkiaCanvasView: UIView {
             if let matrix = filterData["matrix"] as? [Double], matrix.count == 20 {
                 var floatMatrix = matrix.map { Float($0) }
                 return floatMatrix.withUnsafeMutableBufferPointer { buffer in
-                    return SkiaRenderer.createColorMatrixFilter(buffer.baseAddress)
+                    guard let baseAddress = buffer.baseAddress else { return nil }
+                    return SkiaRenderer.createColorMatrixFilter(baseAddress)
                 }
             }
             
@@ -720,13 +727,15 @@ class SkiaCanvasView: UIView {
                let y1 = shaderData["y1"] as? Double,
                let colors = shaderData["colors"] as? [Any] {
                 let stops = shaderData["stops"] as? [Double]
+                let nsColors = NSArray(array: colors)
+                let nsStops = stops != nil ? NSArray(array: stops!) : NSArray()
                 return SkiaRenderer.createLinearGradient(
                     Float(x0),
                     y0: Float(y0),
                     x1: Float(x1),
                     y1: Float(y1),
-                    colors: colors as! NSArray,
-                    stops: stops != nil ? stops as NSArray : nil
+                    colors: Array(nsColors),
+                    stops: Array(nsStops)
                 )
             }
             
@@ -736,14 +745,14 @@ class SkiaCanvasView: UIView {
                let r = shaderData["r"] as? Double,
                let colors = shaderData["colors"] as? [Any] {
                 let stops = shaderData["stops"] as? [Double]
-                let nsColors = colors.map { $0 as Any } as NSArray
-                let nsStops = stops != nil ? stops!.map { $0 as Any } as NSArray : nil
+                let nsColors = NSArray(array: colors)
+                let nsStops = stops != nil ? NSArray(array: stops!) : NSArray()
                 return SkiaRenderer.createRadialGradient(
                     Float(cx),
                     cy: Float(cy),
                     r: Float(r),
-                    colors: nsColors,
-                    stops: nsStops
+                    colors: Array(nsColors),
+                    stops: Array(nsStops)
                 )
             }
             
@@ -753,14 +762,14 @@ class SkiaCanvasView: UIView {
                let colors = shaderData["colors"] as? [Any] {
                 let startAngle = (shaderData["startAngle"] as? Double) ?? 0
                 let stops = shaderData["stops"] as? [Double]
-                let nsColors = colors.map { $0 as Any } as NSArray
-                let nsStops = stops != nil ? stops!.map { $0 as Any } as NSArray : nil
+                let nsColors = NSArray(array: colors)
+                let nsStops = stops != nil ? NSArray(array: stops!) : NSArray()
                 return SkiaRenderer.createConicGradient(
                     Float(cx),
                     cy: Float(cy),
                     startAngle: Float(startAngle),
-                    colors: nsColors,
-                    stops: nsStops
+                    colors: Array(nsColors),
+                    stops: Array(nsStops)
                 )
             }
             

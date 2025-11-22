@@ -33,15 +33,11 @@
 #import "effects/SkDiscretePathEffect.h"
 #import "effects/SkDashPathEffect.h"
 #import "effects/SkCornerPathEffect.h"
-#import "effects/SkPath1DPathEffect.h"
-#import "effects/SkPath2DPathEffect.h"
-#import "effects/SkLine2DPathEffect.h"
 #import "effects/SkImageFilters.h"
 #import "effects/SkColorMatrix.h"
 #import "core/SkMaskFilter.h"
 #import "core/SkColorFilter.h"
 #import "effects/SkRuntimeEffect.h"
-#import "effects/SkRuntimeShaderBuilder.h"
 #import <UIKit/UIKit.h>
 #import "gpu/ganesh/GrDirectContext.h"
 #import "gpu/ganesh/SkSurfaceGanesh.h"
@@ -875,8 +871,8 @@
         return nullptr;
     }
     
-    sk_sp<SkRuntimeShaderBuilder> builder = std::make_unique<SkRuntimeShaderBuilder>(effect);
-    sk_sp<SkShader> shader = builder->makeShader();
+    SkRuntimeEffectBuilder builder(effect);
+    sk_sp<SkShader> shader = builder.makeShader(nullptr, false);
     
     return shader.release();
 }
