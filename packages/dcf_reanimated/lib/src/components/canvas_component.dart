@@ -9,6 +9,7 @@ import 'dart:ui' as ui;
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
 import 'package:flutter/services.dart';
+import 'dart:async';
 
 /// Canvas component that renders using dart:ui via Flutter's CustomPaint
 /// Users can use Flutter's Canvas APIs directly (Paint, Path, Shader, etc.)
@@ -61,10 +62,42 @@ class DCFCanvas extends DCFStatefulComponent {
 
     // If we have an onPaint callback, we need to render it to an image
     // and send the pixels to the native side.
-    // We use a post-frame callback to do this rendering to avoid blocking the build.
     if (onPaint != null) {
-      // Schedule rendering after layout
-      _renderToNative(canvasId);
+      if (repaintOnFrame) {
+        // For animations, set up continuous rendering on every frame (~60fps)
+        useEffect(() {
+          print('🎨 DCFCanvas: Setting up continuous rendering for canvasId: $canvasId');
+          Timer? frameTimer;
+          void renderFrame() {
+            _renderToNative(canvasId);
+          }
+          
+          // Start periodic rendering at ~60fps (16ms per frame)
+          frameTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+            renderFrame();
+          });
+          
+          // Also render immediately after a short delay to ensure view is registered
+          Future.delayed(const Duration(milliseconds: 100), () {
+            renderFrame();
+          });
+          
+          // Cleanup
+          return () {
+            frameTimer?.cancel();
+          };
+        }, dependencies: [canvasId, repaintOnFrame]);
+      } else {
+        // For static rendering, render once after layout
+        useEffect(() {
+          print('🎨 DCFCanvas: Setting up static rendering for canvasId: $canvasId');
+          // Use a small delay to ensure the native view is registered
+          Future.delayed(const Duration(milliseconds: 100), () {
+            _renderToNative(canvasId);
+          });
+          return null;
+        }, dependencies: [canvasId]);
+      }
     }
 
     // Create DCF element that will be rendered by native component
@@ -76,35 +109,49 @@ class DCFCanvas extends DCFStatefulComponent {
   }
 
   void _renderToNative(String canvasId) async {
-    if (onPaint == null) return;
-
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-
-    // Draw background
-    if (backgroundColor != null) {
-      canvas.drawRect(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-        Paint()..color = backgroundColor!,
-      );
+    if (onPaint == null) {
+      print('⚠️ DCFCanvas: _renderToNative called but onPaint is null');
+      return;
     }
 
-    // Call user's paint function
-    onPaint!(canvas, size);
+    try {
+      print('🎨 DCFCanvas: Starting render for canvasId: $canvasId, size: ${size.width}x${size.height}');
+      
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
 
-    final picture = recorder.endRecording();
-    final image =
-        await picture.toImage(size.width.toInt(), size.height.toInt());
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      // Draw background
+      if (backgroundColor != null) {
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, size.width, size.height),
+          Paint()..color = backgroundColor!,
+        );
+      }
 
-    if (byteData != null) {
-      // Send pixels to native via Tunnel
-      await FrameworkTunnel.call('Canvas', 'updateTexture', {
-        'canvasId': canvasId,
-        'pixels': byteData.buffer.asUint8List(),
-        'width': size.width.toInt(),
-        'height': size.height.toInt(),
-      });
+      // Call user's paint function
+      onPaint!(canvas, size);
+
+      final picture = recorder.endRecording();
+      final image =
+          await picture.toImage(size.width.toInt(), size.height.toInt());
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+
+      if (byteData != null) {
+        print('🎨 DCFCanvas: Rendered image, sending ${byteData.lengthInBytes} bytes to native');
+        // Send pixels to native via Tunnel
+        final result = await FrameworkTunnel.call('Canvas', 'updateTexture', {
+          'canvasId': canvasId,
+          'pixels': byteData.buffer.asUint8List(),
+          'width': size.width.toInt(),
+          'height': size.height.toInt(),
+        });
+        print('🎨 DCFCanvas: Tunnel call result: $result');
+      } else {
+        print('⚠️ DCFCanvas: Failed to get byteData from image');
+      }
+    } catch (e, stackTrace) {
+      print('❌ DCFCanvas: Error rendering: $e');
+      print('❌ DCFCanvas: Stack trace: $stackTrace');
     }
   }
 }
