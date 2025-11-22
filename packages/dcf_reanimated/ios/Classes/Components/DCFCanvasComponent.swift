@@ -17,7 +17,9 @@ class DCFCanvasComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        return DCFCanvasView()
+        let view = DCFCanvasView()
+        view.update(props: props)
+        return view
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
@@ -28,17 +30,23 @@ class DCFCanvasComponent: NSObject, DCFComponent {
     
     // Handle tunnel methods from Dart
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        print("DCFCanvasComponent: handleTunnelMethod \(method)")
         if method == "updateTexture" {
             guard let canvasId = params["canvasId"] as? String,
                   let pixels = params["pixels"] as? FlutterStandardTypedData,
                   let width = params["width"] as? Int,
                   let height = params["height"] as? Int else {
+                print("DCFCanvasComponent: Invalid params for updateTexture")
                 return nil
             }
+            
+            print("DCFCanvasComponent: updateTexture for canvasId: \(canvasId). Registered views: \(DCFCanvasView.canvasViews.keys)")
             
             if let view = DCFCanvasView.canvasViews[canvasId] {
                 view.updateTexture(pixels: pixels.data, width: width, height: height)
                 return true
+            } else {
+                print("DCFCanvasComponent: View not found for canvasId: \(canvasId)")
             }
         }
         return nil

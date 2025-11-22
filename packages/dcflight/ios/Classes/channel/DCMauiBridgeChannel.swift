@@ -129,13 +129,18 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         DispatchQueue.main.async {
             guard let componentClass = DCFComponentRegistry.shared.getComponent(componentType) else {
+                print("❌ iOS Bridge: Component \(componentType) not registered")
                 result(FlutterError(code: "COMPONENT_NOT_FOUND", message: "Component \(componentType) not registered", details: nil))
                 return
             }
             
+            print("✅ iOS Bridge: Found component class \(componentClass) for \(componentType). Dispatching \(method)...")
+            
             if let response = componentClass.handleTunnelMethod(method, params: params) {
+                print("✅ iOS Bridge: \(method) handled successfully")
                 result(response)
             } else {
+                print("⚠️ iOS Bridge: Method \(method) not handled by \(componentType)")
                 result(FlutterError(code: "METHOD_NOT_FOUND", message: "Method \(method) not found on \(componentType)", details: nil))
             }
         }
