@@ -26,11 +26,5 @@ import dcflight
             "Canvas",
             componentClass: DCFCanvasComponent.self
         )
-        
-        // Register GPU component
-        DCFComponentRegistry.shared.registerComponent(
-            "GPU",
-            componentClass: DCFGPUComponent.self
-        )
     }
 }

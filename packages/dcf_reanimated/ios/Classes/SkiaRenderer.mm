@@ -18,6 +18,31 @@
 #import "core/SkColor.h"
 #import "core/SkImageInfo.h"
 #import "core/SkColorSpace.h"
+#import "core/SkPath.h"
+#import "core/SkRRect.h"
+#import "pathops/SkPathOps.h"
+#import "effects/SkGradientShader.h"
+#import "core/SkBlendMode.h"
+#import "core/SkImage.h"
+#import "codec/SkCodec.h"
+#import "codec/SkPngDecoder.h"
+#import "codec/SkJpegDecoder.h"
+#import "core/SkTypeface.h"
+#import "core/SkFont.h"
+#import "core/SkFontMgr.h"
+#import "effects/SkDiscretePathEffect.h"
+#import "effects/SkDashPathEffect.h"
+#import "effects/SkCornerPathEffect.h"
+#import "effects/SkPath1DPathEffect.h"
+#import "effects/SkPath2DPathEffect.h"
+#import "effects/SkLine2DPathEffect.h"
+#import "effects/SkImageFilters.h"
+#import "effects/SkColorMatrix.h"
+#import "core/SkMaskFilter.h"
+#import "core/SkColorFilter.h"
+#import "effects/SkRuntimeEffect.h"
+#import "effects/SkRuntimeShaderBuilder.h"
+#import <UIKit/UIKit.h>
 #import "gpu/ganesh/GrDirectContext.h"
 #import "gpu/ganesh/SkSurfaceGanesh.h"
 #import "gpu/ganesh/mtl/GrMtlBackendContext.h"
@@ -194,6 +219,690 @@
     float radius = 50.0f;
     
     skCanvas->drawCircle(centerX, centerY, radius, paint);
+}
+
+// MARK: - Shape Rendering
+
++ (void*)createPaint {
+    SkPaint* paint = new SkPaint();
+    paint->setAntiAlias(true);
+    return (void*)paint;
+}
+
++ (void)setPaintColor:(void*)paint color:(uint32_t)color {
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (skPaint) {
+        skPaint->setColor(color);
+    }
+}
+
++ (void)setPaintStyle:(void*)paint style:(int)style {
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (skPaint) {
+        skPaint->setStyle(style == 0 ? SkPaint::kFill_Style : SkPaint::kStroke_Style);
+    }
+}
+
++ (void)setPaintStrokeWidth:(void*)paint width:(float)width {
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (skPaint) {
+        skPaint->setStrokeWidth(width);
+    }
+}
+
++ (void)setPaintOpacity:(void*)paint opacity:(float)opacity {
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (skPaint) {
+        uint8_t alpha = (uint8_t)(opacity * 255.0f);
+        skPaint->setAlpha(alpha);
+    }
+}
+
++ (void)setPaintBlendMode:(void*)paint blendMode:(int)blendMode {
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (skPaint) {
+        // Map blend mode enum to SkBlendMode
+        SkBlendMode mode = SkBlendMode::kSrcOver; // default
+        switch (blendMode) {
+            case 0: mode = SkBlendMode::kClear; break;
+            case 1: mode = SkBlendMode::kSrc; break;
+            case 2: mode = SkBlendMode::kDst; break;
+            case 3: mode = SkBlendMode::kSrcOver; break;
+            case 4: mode = SkBlendMode::kDstOver; break;
+            case 5: mode = SkBlendMode::kSrcIn; break;
+            case 6: mode = SkBlendMode::kDstIn; break;
+            case 7: mode = SkBlendMode::kSrcOut; break;
+            case 8: mode = SkBlendMode::kDstOut; break;
+            case 9: mode = SkBlendMode::kSrcATop; break;
+            case 10: mode = SkBlendMode::kDstATop; break;
+            case 11: mode = SkBlendMode::kXor; break;
+            case 12: mode = SkBlendMode::kPlus; break;
+            case 13: mode = SkBlendMode::kModulate; break;
+            case 14: mode = SkBlendMode::kScreen; break;
+            case 15: mode = SkBlendMode::kOverlay; break;
+            case 16: mode = SkBlendMode::kDarken; break;
+            case 17: mode = SkBlendMode::kLighten; break;
+            case 18: mode = SkBlendMode::kColorDodge; break;
+            case 19: mode = SkBlendMode::kColorBurn; break;
+            case 20: mode = SkBlendMode::kHardLight; break;
+            case 21: mode = SkBlendMode::kSoftLight; break;
+            case 22: mode = SkBlendMode::kDifference; break;
+            case 23: mode = SkBlendMode::kExclusion; break;
+            case 24: mode = SkBlendMode::kMultiply; break;
+            case 25: mode = SkBlendMode::kHue; break;
+            case 26: mode = SkBlendMode::kSaturation; break;
+            case 27: mode = SkBlendMode::kColor; break;
+            case 28: mode = SkBlendMode::kLuminosity; break;
+        }
+        skPaint->setBlendMode(mode);
+    }
+}
+
++ (void)setPaintShader:(void*)paint shader:(void*)shader {
+    SkPaint* skPaint = (SkPaint*)paint;
+    sk_sp<SkShader> skShader = sk_sp<SkShader>((SkShader*)shader);
+    if (skPaint && skShader) {
+        skPaint->setShader(skShader);
+    }
+}
+
++ (void)destroyPaint:(void*)paint {
+    if (paint) {
+        delete (SkPaint*)paint;
+    }
+}
+
++ (void)drawRect:(void*)canvas x:(float)x y:(float)y width:(float)width height:(float)height paint:(void*)paint {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (!skCanvas || !skPaint) return;
+    
+    SkRect rect = SkRect::MakeXYWH(x, y, width, height);
+    skCanvas->drawRect(rect, *skPaint);
+}
+
++ (void)drawRoundedRect:(void*)canvas x:(float)x y:(float)y width:(float)width height:(float)height r:(float)r paint:(void*)paint {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (!skCanvas || !skPaint) return;
+    
+    SkRect rect = SkRect::MakeXYWH(x, y, width, height);
+    SkRRect rrect = SkRRect::MakeRectXY(rect, r, r);
+    skCanvas->drawRRect(rrect, *skPaint);
+}
+
++ (void)drawCircle:(void*)canvas cx:(float)cx cy:(float)cy r:(float)r paint:(void*)paint {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (!skCanvas || !skPaint) return;
+    
+    skCanvas->drawCircle(cx, cy, r, *skPaint);
+}
+
++ (void)drawOval:(void*)canvas x:(float)x y:(float)y width:(float)width height:(float)height paint:(void*)paint {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (!skCanvas || !skPaint) return;
+    
+    SkRect rect = SkRect::MakeXYWH(x, y, width, height);
+    skCanvas->drawOval(rect, *skPaint);
+}
+
++ (void)drawLine:(void*)canvas x1:(float)x1 y1:(float)y1 x2:(float)x2 y2:(float)y2 paint:(void*)paint {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (!skCanvas || !skPaint) return;
+    
+    skCanvas->drawLine(x1, y1, x2, y2, *skPaint);
+}
+
++ (void)drawPath:(void*)canvas pathString:(NSString*)pathString paint:(void*)paint {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (!skCanvas || !skPaint || !pathString) return;
+    
+    // Parse SVG path string
+    const char* svgPath = [pathString UTF8String];
+    SkPath path;
+    if (path.parseSVGString(svgPath)) {
+        skCanvas->drawPath(path, *skPaint);
+    }
+}
+
+// MARK: - Canvas Transformations
+
++ (void)saveCanvas:(void*)canvas {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        skCanvas->save();
+    }
+}
+
++ (void)restoreCanvas:(void*)canvas {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        skCanvas->restore();
+    }
+}
+
++ (void)translateCanvas:(void*)canvas dx:(float)dx dy:(float)dy {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        skCanvas->translate(dx, dy);
+    }
+}
+
++ (void)rotateCanvas:(void*)canvas degrees:(float)degrees {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        float radians = degrees * M_PI / 180.0f;
+        skCanvas->rotate(radians);
+    }
+}
+
++ (void)scaleCanvas:(void*)canvas sx:(float)sx sy:(float)sy {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        skCanvas->scale(sx, sy);
+    }
+}
+
++ (void)skewCanvas:(void*)canvas sx:(float)sx sy:(float)sy {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        skCanvas->skew(sx, sy);
+    }
+}
+
+// MARK: - Canvas Clipping
+
++ (void)clipRect:(void*)canvas x:(float)x y:(float)y width:(float)width height:(float)height {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        SkRect rect = SkRect::MakeXYWH(x, y, width, height);
+        skCanvas->clipRect(rect);
+    }
+}
+
++ (void)clipRRect:(void*)canvas x:(float)x y:(float)y width:(float)width height:(float)height r:(float)r {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        SkRect rect = SkRect::MakeXYWH(x, y, width, height);
+        SkRRect rrect = SkRRect::MakeRectXY(rect, r, r);
+        skCanvas->clipRRect(rrect);
+    }
+}
+
++ (void)clipPath:(void*)canvas pathString:(NSString*)pathString {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (!skCanvas || !pathString) return;
+    
+    const char* svgPath = [pathString UTF8String];
+    SkPath path;
+    if (path.parseSVGString(svgPath)) {
+        skCanvas->clipPath(path);
+    }
+}
+
+// MARK: - Shader Creation
+
++ (void*)createLinearGradient:(float)x0 y0:(float)y0 x1:(float)x1 y1:(float)y1 colors:(NSArray*)colors stops:(NSArray*)stops {
+    if (!colors || colors.count == 0) return nullptr;
+    
+    std::vector<SkColor> skColors;
+    std::vector<SkScalar> skStops;
+    
+    for (id color in colors) {
+        uint32_t colorValue = 0;
+        if ([color isKindOfClass:[NSNumber class]]) {
+            colorValue = [(NSNumber*)color unsignedIntValue];
+        } else if ([color isKindOfClass:[NSString class]]) {
+            // Parse hex color string
+            NSString* hex = (NSString*)color;
+            hex = [hex stringByReplacingOccurrencesOfString:@"#" withString:@""];
+            NSScanner* scanner = [NSScanner scannerWithString:hex];
+            unsigned int rgb = 0;
+            [scanner scanHexInt:&rgb];
+            uint8_t r = (rgb >> 16) & 0xFF;
+            uint8_t g = (rgb >> 8) & 0xFF;
+            uint8_t b = rgb & 0xFF;
+            colorValue = SkColorSetARGB(0xFF, r, g, b);
+        }
+        skColors.push_back(colorValue);
+    }
+    
+    if (stops && stops.count == colors.count) {
+        for (NSNumber* stop in stops) {
+            skStops.push_back([stop floatValue]);
+        }
+    }
+    
+    SkPoint points[2] = {SkPoint::Make(x0, y0), SkPoint::Make(x1, y1)};
+    sk_sp<SkShader> shader = SkGradientShader::MakeLinear(
+        points,
+        skColors.data(),
+        skStops.empty() ? nullptr : skStops.data(),
+        (int)skColors.size(),
+        SkTileMode::kClamp
+    );
+    
+    return shader.release();
+}
+
++ (void*)createRadialGradient:(float)cx cy:(float)cy r:(float)r colors:(NSArray*)colors stops:(NSArray*)stops {
+    if (!colors || colors.count == 0) return nullptr;
+    
+    std::vector<SkColor> skColors;
+    std::vector<SkScalar> skStops;
+    
+    for (id color in colors) {
+        uint32_t colorValue = 0;
+        if ([color isKindOfClass:[NSNumber class]]) {
+            colorValue = [(NSNumber*)color unsignedIntValue];
+        } else if ([color isKindOfClass:[NSString class]]) {
+            NSString* hex = (NSString*)color;
+            hex = [hex stringByReplacingOccurrencesOfString:@"#" withString:@""];
+            NSScanner* scanner = [NSScanner scannerWithString:hex];
+            unsigned int rgb = 0;
+            [scanner scanHexInt:&rgb];
+            uint8_t r = (rgb >> 16) & 0xFF;
+            uint8_t g = (rgb >> 8) & 0xFF;
+            uint8_t b = rgb & 0xFF;
+            colorValue = SkColorSetARGB(0xFF, r, g, b);
+        }
+        skColors.push_back(colorValue);
+    }
+    
+    if (stops && stops.count == colors.count) {
+        for (NSNumber* stop in stops) {
+            skStops.push_back([stop floatValue]);
+        }
+    }
+    
+    sk_sp<SkShader> shader = SkGradientShader::MakeRadial(
+        SkPoint::Make(cx, cy),
+        r,
+        skColors.data(),
+        skStops.empty() ? nullptr : skStops.data(),
+        (int)skColors.size(),
+        SkTileMode::kClamp
+    );
+    
+    return shader.release();
+}
+
++ (void*)createConicGradient:(float)cx cy:(float)cy startAngle:(float)startAngle colors:(NSArray*)colors stops:(NSArray*)stops {
+    if (!colors || colors.count == 0) return nullptr;
+    
+    std::vector<SkColor> skColors;
+    std::vector<SkScalar> skStops;
+    
+    for (id color in colors) {
+        uint32_t colorValue = 0;
+        if ([color isKindOfClass:[NSNumber class]]) {
+            colorValue = [(NSNumber*)color unsignedIntValue];
+        } else if ([color isKindOfClass:[NSString class]]) {
+            NSString* hex = (NSString*)color;
+            hex = [hex stringByReplacingOccurrencesOfString:@"#" withString:@""];
+            NSScanner* scanner = [NSScanner scannerWithString:hex];
+            unsigned int rgb = 0;
+            [scanner scanHexInt:&rgb];
+            uint8_t r = (rgb >> 16) & 0xFF;
+            uint8_t g = (rgb >> 8) & 0xFF;
+            uint8_t b = rgb & 0xFF;
+            colorValue = SkColorSetARGB(0xFF, r, g, b);
+        }
+        skColors.push_back(colorValue);
+    }
+    
+    if (stops && stops.count == colors.count) {
+        for (NSNumber* stop in stops) {
+            skStops.push_back([stop floatValue]);
+        }
+    }
+    
+    float startRadians = startAngle * M_PI / 180.0f;
+    sk_sp<SkShader> shader = SkGradientShader::MakeSweep(
+        cx, cy,
+        skColors.data(),
+        skStops.empty() ? nullptr : skStops.data(),
+        (int)skColors.size(),
+        SkTileMode::kClamp,
+        startRadians,
+        0.0f
+    );
+    
+    return shader.release();
+}
+
++ (void)destroyShader:(void*)shader {
+    if (shader) {
+        SkShader* skShader = (SkShader*)shader;
+        skShader->unref();
+    }
+}
+
+// MARK: - Image Rendering
+
++ (void*)loadImageFromPath:(NSString*)path {
+    NSData* data = [NSData dataWithContentsOfFile:path];
+    if (!data) return nullptr;
+    
+    sk_sp<SkData> skData = SkData::MakeWithCopy(data.bytes, data.length);
+    sk_sp<SkImage> image = SkImages::DeferredFromEncodedData(skData);
+    if (!image) return nullptr;
+    
+    return image.release();
+}
+
++ (void*)loadImageFromData:(NSData*)data {
+    if (!data) return nullptr;
+    
+    sk_sp<SkData> skData = SkData::MakeWithCopy(data.bytes, data.length);
+    sk_sp<SkImage> image = SkImages::DeferredFromEncodedData(skData);
+    if (!image) return nullptr;
+    
+    return image.release();
+}
+
++ (void)drawImage:(void*)canvas image:(void*)image x:(float)x y:(float)y width:(float)width height:(float)height fit:(NSString*)fit paint:(void*)paint {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    SkImage* skImage = (SkImage*)image;
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (!skCanvas || !skImage) return;
+    
+    SkRect dstRect = SkRect::MakeXYWH(x, y, width, height);
+    SkRect srcRect = SkRect::MakeWH(skImage->width(), skImage->height());
+    
+    // Apply fit mode
+    if ([fit isEqualToString:@"cover"]) {
+        // Scale to cover
+        float scale = fmaxf(width / skImage->width(), height / skImage->height());
+        float scaledWidth = skImage->width() * scale;
+        float scaledHeight = skImage->height() * scale;
+        srcRect = SkRect::MakeXYWH(
+            (skImage->width() - scaledWidth) / 2,
+            (skImage->height() - scaledHeight) / 2,
+            scaledWidth,
+            scaledHeight
+        );
+    } else if ([fit isEqualToString:@"contain"]) {
+        // Scale to contain
+        float scale = fminf(width / skImage->width(), height / skImage->height());
+        float scaledWidth = skImage->width() * scale;
+        float scaledHeight = skImage->height() * scale;
+        dstRect = SkRect::MakeXYWH(
+            x + (width - scaledWidth) / 2,
+            y + (height - scaledHeight) / 2,
+            scaledWidth,
+            scaledHeight
+        );
+    }
+    
+    if (skPaint) {
+        skCanvas->drawImageRect(skImage, srcRect, dstRect, SkSamplingOptions(), skPaint, SkCanvas::kStrict_SrcRectConstraint);
+    } else {
+        skCanvas->drawImageRect(skImage, srcRect, dstRect, SkSamplingOptions());
+    }
+}
+
++ (void)destroyImage:(void*)image {
+    if (image) {
+        SkImage* skImage = (SkImage*)image;
+        skImage->unref();
+    }
+}
+
+// MARK: - Text Rendering
+
++ (void*)createFont:(NSString*)fontFamily size:(float)size weight:(int)weight style:(int)style {
+    sk_sp<SkTypeface> typeface;
+    
+    if (fontFamily && fontFamily.length > 0) {
+        // Try to load custom font
+        SkFontMgr* fontMgr = SkFontMgr::RefDefault();
+        typeface = fontMgr->matchFamilyStyle([fontFamily UTF8String], SkFontStyle(weight, SkFontStyle::kNormal_Width, (SkFontStyle::Slant)style));
+    }
+    
+    if (!typeface) {
+        // Fallback to system font
+        typeface = SkTypeface::MakeDefault();
+    }
+    
+    SkFont* font = new SkFont(typeface, size);
+    return (void*)font;
+}
+
++ (void)drawText:(void*)canvas text:(NSString*)text x:(float)x y:(float)y font:(void*)font paint:(void*)paint {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    SkFont* skFont = (SkFont*)font;
+    SkPaint* skPaint = (SkPaint*)paint;
+    if (!skCanvas || !text || !skFont) return;
+    
+    const char* utf8 = [text UTF8String];
+    size_t byteLength = strlen(utf8);
+    
+    if (skPaint) {
+        skCanvas->drawSimpleText(utf8, byteLength, SkTextEncoding::kUTF8, x, y, *skFont, *skPaint);
+    } else {
+        SkPaint defaultPaint;
+        defaultPaint.setAntiAlias(true);
+        skCanvas->drawSimpleText(utf8, byteLength, SkTextEncoding::kUTF8, x, y, *skFont, defaultPaint);
+    }
+}
+
++ (void)destroyFont:(void*)font {
+    if (font) {
+        delete (SkFont*)font;
+    }
+}
+
+// MARK: - Path Effects
+
++ (void*)createDiscretePathEffect:(float)length deviation:(float)deviation seed:(float)seed {
+    sk_sp<SkPathEffect> effect = SkDiscretePathEffect::Make(length, deviation, (uint32_t)seed);
+    return effect.release();
+}
+
++ (void*)createDashPathEffect:(float*)intervals count:(int)count phase:(float)phase {
+    if (!intervals || count <= 0) return nullptr;
+    sk_sp<SkPathEffect> effect = SkDashPathEffect::Make(intervals, count, phase);
+    return effect.release();
+}
+
++ (void*)createCornerPathEffect:(float)r {
+    sk_sp<SkPathEffect> effect = SkCornerPathEffect::Make(r);
+    return effect.release();
+}
+
++ (void)destroyPathEffect:(void*)pathEffect {
+    if (pathEffect) {
+        SkPathEffect* effect = (SkPathEffect*)pathEffect;
+        effect->unref();
+    }
+}
+
++ (void)setPaintPathEffect:(void*)paint pathEffect:(void*)pathEffect {
+    SkPaint* skPaint = (SkPaint*)paint;
+    sk_sp<SkPathEffect> effect = sk_sp<SkPathEffect>((SkPathEffect*)pathEffect);
+    if (skPaint && effect) {
+        skPaint->setPathEffect(effect);
+    }
+}
+
+// MARK: - Image Filters
+
++ (void*)createBlurFilter:(float)blurX blurY:(float)blurY mode:(int)tileMode {
+    SkTileMode skTileMode = (SkTileMode)tileMode;
+    sk_sp<SkImageFilter> filter = SkImageFilters::Blur(blurX, blurY, skTileMode, nullptr);
+    return filter.release();
+}
+
++ (void*)createColorMatrixFilter:(float*)matrix {
+    if (!matrix) return nullptr;
+    SkColorMatrix colorMatrix;
+    // Copy 20 values (5x4 matrix)
+    for (int i = 0; i < 20; i++) {
+        colorMatrix.fMat[i] = matrix[i];
+    }
+    sk_sp<SkColorFilter> colorFilter = SkColorFilters::Matrix(colorMatrix);
+    sk_sp<SkImageFilter> filter = SkImageFilters::ColorFilter(colorFilter, nullptr);
+    return filter.release();
+}
+
++ (void*)createDropShadowFilter:(float)dx dy:(float)dy blurX:(float)blurX blurY:(float)blurY color:(uint32_t)color {
+    SkColor skColor = color;
+    sk_sp<SkImageFilter> filter = SkImageFilters::DropShadow(dx, dy, blurX, blurY, skColor, nullptr);
+    return filter.release();
+}
+
++ (void*)createOffsetFilter:(float)x y:(float)y {
+    sk_sp<SkImageFilter> filter = SkImageFilters::Offset(x, y, nullptr);
+    return filter.release();
+}
+
++ (void*)createMorphologyFilter:(int)opValue radiusX:(float)radiusX radiusY:(float)radiusY {
+    SkImageFilters::MorphologyOp op = opValue == 0 ? SkImageFilters::MorphologyOp::kErode : SkImageFilters::MorphologyOp::kDilate;
+    sk_sp<SkImageFilter> filter = SkImageFilters::Morphology(op, radiusX, radiusY, nullptr);
+    return filter.release();
+}
+
++ (void)destroyImageFilter:(void*)filter {
+    if (filter) {
+        SkImageFilter* skFilter = (SkImageFilter*)filter;
+        skFilter->unref();
+    }
+}
+
++ (void)setPaintImageFilter:(void*)paint filter:(void*)filter {
+    SkPaint* skPaint = (SkPaint*)paint;
+    sk_sp<SkImageFilter> skFilter = sk_sp<SkImageFilter>((SkImageFilter*)filter);
+    if (skPaint && skFilter) {
+        skPaint->setImageFilter(skFilter);
+    }
+}
+
+// MARK: - Color Filters
+
++ (void*)createColorFilterMatrix:(float*)matrix {
+    if (!matrix) return nullptr;
+    SkColorMatrix colorMatrix;
+    for (int i = 0; i < 20; i++) {
+        colorMatrix.fMat[i] = matrix[i];
+    }
+    sk_sp<SkColorFilter> filter = SkColorFilters::Matrix(colorMatrix);
+    return filter.release();
+}
+
++ (void*)createColorFilterBlend:(uint32_t)color mode:(int)blendMode {
+    SkColor skColor = color;
+    SkBlendMode skBlendMode = (SkBlendMode)blendMode;
+    sk_sp<SkColorFilter> filter = SkColorFilters::Blend(skColor, skBlendMode);
+    return filter.release();
+}
+
++ (void)destroyColorFilter:(void*)filter {
+    if (filter) {
+        SkColorFilter* skFilter = (SkColorFilter*)filter;
+        skFilter->unref();
+    }
+}
+
++ (void)setPaintColorFilter:(void*)paint filter:(void*)filter {
+    SkPaint* skPaint = (SkPaint*)paint;
+    sk_sp<SkColorFilter> skFilter = sk_sp<SkColorFilter>((SkColorFilter*)filter);
+    if (skPaint && skFilter) {
+        skPaint->setColorFilter(skFilter);
+    }
+}
+
+// MARK: - Backdrop Filters
+
++ (void*)createBackdropBlurFilter:(float)blurX blurY:(float)blurY {
+    sk_sp<SkImageFilter> filter = SkImageFilters::Blur(blurX, blurY, SkTileMode::kClamp, nullptr);
+    return filter.release();
+}
+
++ (void*)createBackdropColorMatrixFilter:(float*)matrix {
+    if (!matrix) return nullptr;
+    SkColorMatrix colorMatrix;
+    for (int i = 0; i < 20; i++) {
+        colorMatrix.fMat[i] = matrix[i];
+    }
+    sk_sp<SkColorFilter> colorFilter = SkColorFilters::Matrix(colorMatrix);
+    sk_sp<SkImageFilter> filter = SkImageFilters::ColorFilter(colorFilter, nullptr);
+    return filter.release();
+}
+
++ (void)destroyBackdropFilter:(void*)filter {
+    if (filter) {
+        SkImageFilter* skFilter = (SkImageFilter*)filter;
+        skFilter->unref();
+    }
+}
+
+// MARK: - Mask
+
++ (void)beginMask:(void*)canvas mode:(int)mode {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        skCanvas->saveLayer(nullptr, nullptr);
+        // Mode: 0=alpha, 1=luminance
+        // Alpha mode uses alpha channel, luminance uses RGB values
+    }
+}
+
++ (void)endMask:(void*)canvas clip:(BOOL)clip {
+    SkCanvas* skCanvas = (SkCanvas*)canvas;
+    if (skCanvas) {
+        // Apply mask using blend mode
+        SkPaint maskPaint;
+        maskPaint.setBlendMode(SkBlendMode::kDstIn); // Use alpha channel as mask
+        skCanvas->restore();
+    }
+}
+
+// MARK: - Custom Shaders (GLSL)
+
++ (void*)createRuntimeShader:(NSString*)source {
+    if (!source) return nullptr;
+    
+    const char* glslSource = [source UTF8String];
+    auto [effect, error] = SkRuntimeEffect::MakeForShader(SkString(glslSource));
+    
+    if (!effect) {
+        NSLog(@"⚠️ SKIA: Failed to create runtime shader: %s", error.c_str());
+        return nullptr;
+    }
+    
+    sk_sp<SkRuntimeShaderBuilder> builder = std::make_unique<SkRuntimeShaderBuilder>(effect);
+    sk_sp<SkShader> shader = builder->makeShader();
+    
+    return shader.release();
+}
+
++ (void)setRuntimeShaderUniform:(void*)shader name:(NSString*)name value:(float)value {
+    // Note: This requires keeping a reference to the builder
+    // For now, this is a placeholder - full implementation would require builder storage
+}
+
++ (void)setRuntimeShaderUniformVec2:(void*)shader name:(NSString*)name x:(float)x y:(float)y {
+    // Placeholder
+}
+
++ (void)setRuntimeShaderUniformVec3:(void*)shader name:(NSString*)name x:(float)x y:(float)y z:(float)z {
+    // Placeholder
+}
+
++ (void)setRuntimeShaderUniformVec4:(void*)shader name:(NSString*)name x:(float)x y:(float)y z:(float)z w:(float)w {
+    // Placeholder
+}
+
++ (void)destroyRuntimeShader:(void*)shader {
+    if (shader) {
+        SkShader* skShader = (SkShader*)shader;
+        skShader->unref();
+    }
 }
 
 @end

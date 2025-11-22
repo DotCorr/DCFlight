@@ -8,6 +8,9 @@
 #ifndef Skia_Bridging_Header_h
 #define Skia_Bridging_Header_h
 
+// Objective-C headers for Swift interop
+#import "SkiaParticleRenderer.h"
+
 // Skia C++ headers
 // These will be available to Swift via bridging header
 #ifdef __cplusplus

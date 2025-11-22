@@ -7,6 +7,8 @@
 
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
+import 'skia_shapes.dart' show SkiaPaintStyle, SkiaPath;
+import 'skia_image.dart' show SkiaImage;
 
 /// Skia Canvas drawing callback - receives Skia Canvas and Size
 /// This provides direct access to Skia's full 2D graphics API
@@ -79,35 +81,6 @@ class SkiaCanvas {
   void clipPath(SkiaPath path) {
     // Native call to Skia canvas clipPath
   }
-}
-
-/// Skia Path for drawing shapes
-class SkiaPath {
-  // ignore: unused_field
-  final dynamic _nativePath; // Native Skia path (C++ object) - placeholder for future native integration
-  
-  SkiaPath() : _nativePath = null; // Will be created natively
-  
-  /// Move to point
-  void moveTo(double x, double y) {}
-  
-  /// Line to point
-  void lineTo(double x, double y) {}
-  
-  /// Quadratic bezier curve
-  void quadTo(double x1, double y1, double x2, double y2) {}
-  
-  /// Cubic bezier curve
-  void cubicTo(double x1, double y1, double x2, double y2, double x3, double y3) {}
-  
-  /// Close path
-  void close() {}
-  
-  /// Add rectangle
-  void addRect(double left, double top, double right, double bottom) {}
-  
-  /// Add circle
-  void addCircle(double x, double y, double radius) {}
 }
 
 /// Skia Paint for styling
@@ -184,13 +157,6 @@ class SkiaPaint {
   }
 }
 
-/// Skia Paint Style
-enum SkiaPaintStyle {
-  fill,
-  stroke,
-  strokeAndFill,
-}
-
 /// Skia Shader for gradients and effects
 class SkiaShader {
   // ignore: unused_field
@@ -218,14 +184,6 @@ class SkiaShader {
     // Native call to create radial gradient
     return SkiaShader(null);
   }
-}
-
-/// Skia Image
-class SkiaImage {
-  // ignore: unused_field
-  final dynamic _nativeImage; // Native Skia image (C++ object) - placeholder for future native integration
-  
-  SkiaImage(this._nativeImage);
 }
 
 /// Canvas size
@@ -258,6 +216,7 @@ class DCFCanvas extends DCFStatelessComponent {
   /// Style properties
   final DCFStyleSheet? styleSheet;
   
+  
   // Default layouts and styles for canvas (registered for bridge efficiency)
   // ignore: deprecated_member_use - Using DCFLayout()/DCFStyleSheet() inside create() is the correct pattern
   static final _canvasLayouts = DCFLayout.create({
@@ -268,6 +227,9 @@ class DCFCanvas extends DCFStatelessComponent {
     'default': DCFStyleSheet(),
   });
   
+  /// Children components to render (Rect, Circle, Path, etc.)
+  final List<DCFComponentNode> children;
+  
   /// Create a Skia canvas component
   DCFCanvas({
     this.onPaint,
@@ -275,16 +237,21 @@ class DCFCanvas extends DCFStatelessComponent {
     this.backgroundColor,
     DCFLayout? layout,
     DCFStyleSheet? styleSheet,
+    this.children = const [],
     super.key,
   }) : layout = layout,
        styleSheet = styleSheet;
 
   @override
   DCFComponentNode render() {
+    // Collect shape data from children
+    final shapeData = _collectShapeData(children);
+    
     Map<String, dynamic> props = {
       'onPaint': onPaint != null,
       'repaintOnFrame': repaintOnFrame,
       if (backgroundColor != null) 'backgroundColor': backgroundColor!.value,
+      if (shapeData.isNotEmpty) 'shapes': shapeData,
       ...(layout ?? _canvasLayouts['default'] as DCFLayout).toMap(),
       ...(styleSheet ?? _canvasStyles['default'] as DCFStyleSheet).toMap(),
     };
@@ -292,8 +259,110 @@ class DCFCanvas extends DCFStatelessComponent {
     return DCFElement(
       type: 'Canvas', // Native Skia canvas component
       elementProps: props,
-      children: const [],
+      children: children,
     );
+  }
+  
+  /// Collect shape data from children recursively, preserving group hierarchy
+  List<Map<String, dynamic>> _collectShapeData(List<DCFComponentNode> children) {
+    final shapes = <Map<String, dynamic>>[];
+    
+    for (final child in children) {
+      if (child is DCFElement) {
+        final type = child.type;
+        
+        if (type == 'SkiaGroup') {
+          // Handle Group - collect its children and add group metadata
+          final groupData = Map<String, dynamic>.from(child.elementProps);
+          groupData['_type'] = type;
+          
+          // Collect children shapes
+          final groupChildren = _collectShapeData(child.children);
+          if (groupChildren.isNotEmpty) {
+            groupData['_children'] = groupChildren;
+          }
+          
+          shapes.add(groupData);
+        } else if (type == 'SkiaMask') {
+          // Mask component - first child is mask, rest are content
+          final maskData = Map<String, dynamic>.from(child.elementProps);
+          maskData['_type'] = 'SkiaGroup';
+          maskData['_maskMode'] = maskData['mode'] ?? 'alpha';
+          maskData['_maskClip'] = maskData['clip'] ?? false;
+          
+          final allChildren = child.children;
+          if (allChildren.isNotEmpty) {
+            // First child is the mask
+            maskData['_maskContent'] = _collectShapeData([allChildren[0]]);
+            // Rest are content to be masked
+            if (allChildren.length > 1) {
+              maskData['_children'] = _collectShapeData(allChildren.sublist(1));
+            }
+          }
+          
+          shapes.add(maskData);
+        } else if (type.startsWith('Skia')) {
+          // Regular shape
+          final shapeData = Map<String, dynamic>.from(child.elementProps);
+          shapeData['_type'] = type;
+          
+          // Check if shape has shader/filter children
+          final shaderChildren = child.children.where((c) => 
+            c is DCFElement && c.type.startsWith('Skia') && 
+            (c.type.contains('Gradient') || c.type.contains('Shader'))
+          ).toList();
+          
+          if (shaderChildren.isNotEmpty) {
+            shapeData['_shader'] = _collectShapeData(shaderChildren).firstOrNull;
+          }
+          
+          final filterChildren = child.children.where((c) => 
+            c is DCFElement && c.type.startsWith('Skia') && 
+            (c.type.contains('Filter') || c.type.contains('Blur') || c.type.contains('Shadow'))
+          ).toList();
+          
+          if (filterChildren.isNotEmpty) {
+            shapeData['_filters'] = _collectShapeData(filterChildren);
+          }
+          
+          final pathEffectChildren = child.children.where((c) => 
+            c is DCFElement && c.type.startsWith('Skia') && 
+            c.type.contains('PathEffect')
+          ).toList();
+          
+          if (pathEffectChildren.isNotEmpty) {
+            shapeData['_pathEffect'] = _collectShapeData(pathEffectChildren).firstOrNull;
+          }
+          
+          final colorFilterChildren = child.children.where((c) => 
+            c is DCFElement && c.type.startsWith('Skia') && 
+            (c.type.contains('ColorFilter') || c.type.contains('ColorMatrix') || c.type.contains('BlendColor'))
+          ).toList();
+          
+          if (colorFilterChildren.isNotEmpty) {
+            shapeData['_colorFilter'] = _collectShapeData(colorFilterChildren).firstOrNull;
+          }
+          
+          final backdropFilterChildren = child.children.where((c) => 
+            c is DCFElement && c.type.startsWith('Skia') && 
+            c.type.contains('Backdrop')
+          ).toList();
+          
+          if (backdropFilterChildren.isNotEmpty) {
+            shapeData['_backdropFilters'] = _collectShapeData(backdropFilterChildren);
+          }
+          
+          shapes.add(shapeData);
+        } else {
+          // Recursively collect from nested children
+          if (child.children.isNotEmpty) {
+            shapes.addAll(_collectShapeData(child.children));
+          }
+        }
+      }
+    }
+    
+    return shapes;
   }
 }
 
