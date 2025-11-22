@@ -439,6 +439,9 @@ class DCFEngine {
   /// the mapping to point to the rendered element.
   void _handleNativeEvent(
       int viewId, String eventType, Map<dynamic, dynamic> eventData) {
+    print(
+        '🦁 DCFEngine: _handleNativeEvent called for view $viewId, event $eventType');
+
     EngineDebugLogger.log(
         'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
         extra: {
@@ -449,6 +452,7 @@ class DCFEngine {
 
     final node = _nodesByViewId[viewId]; // O(1) lookup
     if (node == null) {
+      print('🦁 DCFEngine: ❌ No node found for view ID: $viewId');
       EngineDebugLogger.log(
           'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId',
           extra: {
@@ -457,6 +461,7 @@ class DCFEngine {
           });
       return;
     }
+    print('🦁 DCFEngine: ✅ Found node for view $viewId: ${node.runtimeType}');
 
     EngineDebugLogger.log('NATIVE_EVENT_NODE_FOUND', 'Found node for view ID',
         extra: {

@@ -192,7 +192,9 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
     
     guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
             as? (String, String, [String: Any]) -> Void else {
-        print("⚠️ propagateEvent: No event callback found for view \(view)")
+        if eventName != "onContentSizeChange" && eventName != "onScroll" {
+            print("⚠️ propagateEvent: No event callback found for view \(view) (event: \(eventName))")
+        }
         return
     }
     

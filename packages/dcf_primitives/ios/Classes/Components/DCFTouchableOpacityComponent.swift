@@ -192,14 +192,19 @@ class TouchableView: UIView, UIGestureRecognizerDelegate {
         let location = gesture.location(in: self)
         let inside = bounds.contains(location)
         
+        // print("👆 TouchableView: handleTouchTracking state=\(gesture.state.rawValue) inside=\(inside)")
+        
         guard let comp = component else { return }
         
         switch gesture.state {
         case .began:
+            print("👆 TouchableView: Touch BEGAN")
             comp.handleTouchDown(self)
         case .ended:
+            print("👆 TouchableView: Touch ENDED inside=\(inside)")
             comp.handleTouchUp(self, inside: inside)
         case .cancelled, .failed:
+            print("👆 TouchableView: Touch CANCELLED/FAILED")
             comp.handleTouchUp(self, inside: false)
         default:
             break

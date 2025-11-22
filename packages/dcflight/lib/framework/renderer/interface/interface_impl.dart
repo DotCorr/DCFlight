@@ -37,18 +37,25 @@ class PlatformInterfaceImpl implements PlatformInterface {
   void _setupMethodChannelEventHandling() {
     eventChannel.setMethodCallHandler((call) async {
       if (call.method == 'onEvent') {
+        print('🎯 Dart Bridge: Received onEvent');
         final Map<dynamic, dynamic> args = call.arguments;
+        print('🎯 Dart Bridge: args = $args');
+
         final int viewId = args['viewId'] is int
             ? args['viewId']
             : int.parse(args['viewId'].toString());
         final String eventType = args['eventType'];
         final Map<dynamic, dynamic> eventData = args['eventData'] ?? {};
 
+        print('🎯 Dart Bridge: Processing event $eventType for view $viewId');
+
         final typedEventData = eventData.map<String, dynamic>(
           (key, value) => MapEntry(key.toString(), value),
         );
 
         handleNativeEvent(viewId, eventType, typedEventData);
+      } else {
+        print('⚠️ Dart Bridge: Unknown method ${call.method}');
       }
       return null;
     });
@@ -405,8 +412,13 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   void handleNativeEvent(
       int viewId, String eventType, Map<String, dynamic> eventData) {
+    print(
+        '🎯 PlatformInterface: handleNativeEvent called for view $viewId, event $eventType');
+
     final callback = _eventCallbacks[viewId]?[eventType];
     if (callback != null) {
+      print(
+          '🎯 PlatformInterface: Found specific callback for view $viewId, executing...');
       try {
         final Function func = callback;
         if (func is Function()) {
@@ -418,16 +430,24 @@ class PlatformInterfaceImpl implements PlatformInterface {
         }
         return;
       } catch (e) {
+        print('⚠️ PlatformInterface: Error in specific callback: $e');
         // Error in callback - fall through to global handler
       }
+    } else {
+      print(
+          '🎯 PlatformInterface: No specific callback found for view $viewId');
     }
 
     if (_eventHandler != null) {
+      print('🎯 PlatformInterface: Delegating to global event handler');
       try {
         _eventHandler!(viewId, eventType, eventData);
       } catch (e) {
+        print('⚠️ PlatformInterface: Error in global handler: $e');
         // Error in global handler - silently fail
       }
+    } else {
+      print('⚠️ PlatformInterface: Global event handler is null!');
     }
   }
 
