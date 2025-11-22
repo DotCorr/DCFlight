@@ -819,7 +819,8 @@ class SkiaCanvasView: UIView {
         guard let color = color else { return nil }
         
         if let colorInt = color as? Int {
-            return UInt32(bitPattern: Int32(colorInt))
+            // Flutter Color.value is a signed Int, convert safely to UInt32
+            return UInt32(truncatingIfNeeded: colorInt)
         }
         
         if let colorStr = color as? String {
