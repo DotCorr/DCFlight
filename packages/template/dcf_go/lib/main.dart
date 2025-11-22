@@ -118,23 +118,21 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               layout: layouts['sectionTitle'],
             ),
             DCFCanvas(
-              onPaint: (SkiaCanvas canvas, Size size) {
-                // Draw a simple animated circle to demonstrate Skia rendering
-                final centerX = size.width / 2;
-                final centerY = size.height / 2;
-                final radius = 50.0;
-
-                // Create paint for the circle
-                final paint = SkiaPaint();
-                paint.color = const Color(0xFF00FF00); // Green color
-                paint.style = SkiaPaintStyle.fill;
-
-                // Draw circle using native Skia rendering
-                canvas.drawCircle(centerX, centerY, radius, paint);
-              },
-              repaintOnFrame: true,
               backgroundColor: const Color(0xFF1a1a2e),
               layout: layouts['canvasBox'],
+              size: const Size(300, 300),
+              onPaint: (canvas, size) {
+                // Draw a green circle using Flutter's Canvas API
+                final paint =
+                    Paint()
+                      ..color = const Color(0xFF00FF00)
+                      ..style = PaintingStyle.fill;
+                canvas.drawCircle(
+                  Offset(size.width / 2, size.height / 2),
+                  50,
+                  paint,
+                );
+              },
             ),
             DCFButton(
               onPress: (DCFButtonPressData data) {

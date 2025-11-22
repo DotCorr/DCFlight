@@ -10,7 +10,6 @@ package com.dotcorr.dcf_reanimated
 import android.util.Log
 import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcf_reanimated.components.DCFAnimatedViewComponent
-import com.dotcorr.dcf_reanimated.components.DCFCanvasComponent
 
 /**
  * Registration class for DCF reanimated components
@@ -31,7 +30,7 @@ object ReanimatedComponentsReg {
         // Register ReanimatedView
         registry.registerComponent("ReanimatedView", DCFAnimatedViewComponent::class.java)
         
-        // Register Skia Canvas component
+        // Register Canvas component
         registry.registerComponent("Canvas", DCFCanvasComponent::class.java)
     }
 }

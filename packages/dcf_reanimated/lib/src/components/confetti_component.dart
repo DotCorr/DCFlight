@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:async';
 import 'canvas_component.dart';
-import 'skia_shapes.dart';
 
 // Default layouts for confetti (registered for bridge efficiency)
 // ignore: deprecated_member_use - Using DCFLayout() inside create() is the correct pattern
@@ -198,30 +197,23 @@ class DCFConfetti extends DCFStatefulComponent {
       return () => timer.cancel();
     }, dependencies: []);
 
-    // Convert particles to shape data
-    final shapeData = particles.state
-        .map((p) => {
-              '_type': 'SkiaCircle',
-              'cx': p.x,
-              'cy': p.y,
-              'r': p.size / 2,
-              'color': p.color,
-            })
-        .toList();
+    // Use DCFCanvas with onPaint callback
+    return DCFCanvas(
+      repaintOnFrame: true,
+      layout: layout ?? _confettiLayouts['default'],
+      styleSheet: styleSheet,
+      onPaint: (canvas, size) {
+        final paint = Paint()..style = PaintingStyle.fill;
 
-    // Create a single canvas element with all particles as shape data
-    final canvasLayout = layout ?? _confettiLayouts['default'];
-    final canvasStyle = styleSheet ?? DCFStyleSheet();
-
-    return DCFElement(
-      type: 'Canvas',
-      elementProps: {
-        'repaintOnFrame': true,
-        'shapes': shapeData, // Pass all particles as shape data
-        ...canvasLayout.toMap(),
-        ...canvasStyle.toMap(),
+        for (final p in particles.state) {
+          paint.color = Color(p.color);
+          canvas.save();
+          canvas.translate(p.x, p.y);
+          canvas.rotate(p.rotation * math.pi / 180);
+          canvas.drawCircle(Offset.zero, p.size / 2, paint);
+          canvas.restore();
+        }
       },
-      children: const [], // No children - all rendering done via shapes data
     );
   }
 }
