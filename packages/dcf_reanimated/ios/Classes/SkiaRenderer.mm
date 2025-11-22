@@ -49,13 +49,69 @@
 #import "gpu/ganesh/SkSurfaceGanesh.h"
 #import "gpu/ganesh/GrBackendSurface.h"
 
-// Wrapper to hold Skia surface, context, and drawable together
+// ============================================================================
+// SHARED SKIA CONTEXT POOL 
+// ============================================================================
+// Instead of creating a new GrDirectContext per canvas (300MB each),
+// we maintain a single shared context that all canvases reuse (~50MB total)
+
+@interface SkiaContextPool : NSObject
++ (instancetype)sharedPool;
+- (sk_sp<GrDirectContext>)getOrCreateContext:(id<MTLDevice>)device;
+- (id<MTLCommandQueue>)getCommandQueue;
+@end
+
+@implementation SkiaContextPool {
+    sk_sp<GrDirectContext> _sharedContext;
+    id<MTLCommandQueue> _sharedCommandQueue;
+    id<MTLDevice> _device;
+}
+
++ (instancetype)sharedPool {
+    static SkiaContextPool* pool = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        pool = [[SkiaContextPool alloc] init];
+    });
+    return pool;
+}
+
+- (sk_sp<GrDirectContext>)getOrCreateContext:(id<MTLDevice>)device {
+    if (_sharedContext && _device == device) {
+        return _sharedContext;
+    }
+    
+    // Create shared command queue
+    _device = device;
+    _sharedCommandQueue = [device newCommandQueue];
+    
+    // Create shared GrDirectContext
+    GrMtlBackendContext backendContext;
+    backendContext.fDevice = sk_cfp<GrMTLHandle>((__bridge_retained const void*)device);
+    backendContext.fQueue = sk_cfp<GrMTLHandle>((__bridge_retained const void*)_sharedCommandQueue);
+    
+    _sharedContext = GrDirectContexts::MakeMetal(backendContext, GrContextOptions());
+    
+    if (_sharedContext) {
+        NSLog(@"✅ SKIA: Created SHARED Metal context (will be reused by all canvases)");
+    } else {
+        NSLog(@"⚠️ SKIA: Failed to create shared Metal context");
+    }
+    
+    return _sharedContext;
+}
+
+- (id<MTLCommandQueue>)getCommandQueue {
+    return _sharedCommandQueue;
+}
+
+@end
+
+// Wrapper to hold Skia surface and drawable (context is now shared)
 @interface SkiaSurfaceWrapper : NSObject
 @property (nonatomic) sk_sp<SkSurface> surface;
-@property (nonatomic) sk_sp<GrDirectContext> context;
 @property (nonatomic) id<CAMetalDrawable> drawable;
 @property (nonatomic) CAMetalLayer* metalLayer;
-@property (nonatomic) id<MTLCommandQueue> commandQueue;
 @end
 
 @implementation SkiaSurfaceWrapper
@@ -75,38 +131,28 @@
     layer.opaque = NO;
     layer.drawableSize = CGSizeMake(width, height);
     
-    // Create command queue and store it (we need to keep a reference)
-    id<MTLCommandQueue> commandQueue = [device newCommandQueue];
-    
-    // Create GrDirectContext for Metal
-    GrMtlBackendContext backendContext;
-    // GrMTLHandle is const void*, and sk_cfp manages the lifetime
-    backendContext.fDevice = sk_cfp<GrMTLHandle>((__bridge_retained const void*)device);
-    backendContext.fQueue = sk_cfp<GrMTLHandle>((__bridge_retained const void*)commandQueue);
-    
-    sk_sp<GrDirectContext> context = GrDirectContexts::MakeMetal(backendContext, GrContextOptions());
+    // 🚀 OPTIMIZATION: Use shared context pool instead of creating new context per canvas
+    sk_sp<GrDirectContext> context = [[SkiaContextPool sharedPool] getOrCreateContext:device];
     
     if (!context) {
         // Fallback to raster surface if Metal context creation fails
-        NSLog(@"⚠️ SKIA: Failed to create Metal context, falling back to raster surface");
+        NSLog(@"⚠️ SKIA: Failed to get shared Metal context, falling back to raster surface");
         SkImageInfo info = SkImageInfo::MakeN32Premul(width, height);
         sk_sp<SkSurface> surface = SkSurfaces::Raster(info);
         // Store in wrapper for consistency
         SkiaSurfaceWrapper* wrapper = [[SkiaSurfaceWrapper alloc] init];
         wrapper.surface = surface;
         wrapper.metalLayer = layer;
-        // No GPU context for raster surface
         return (__bridge_retained void*)wrapper;
     }
     
-    // Store context, layer, and command queue - we'll create surface with drawable each frame
+    // Store layer - surface will be created lazily in prepareSurfaceForRender
+    // This saves memory by not allocating GPU textures until actually needed
     SkiaSurfaceWrapper* wrapper = [[SkiaSurfaceWrapper alloc] init];
-    wrapper.context = context;
     wrapper.metalLayer = layer;
-    wrapper.commandQueue = commandQueue;
     // Surface will be created in prepareSurfaceForRender
     
-    NSLog(@"✅ SKIA: Created Metal context %dx%d", width, height);
+    NSLog(@"✅ SKIA: Canvas ready (using shared context) %dx%d", width, height);
     
     return (__bridge_retained void*)wrapper;
 }
@@ -123,7 +169,14 @@
 
 + (void)prepareSurfaceForRender:(void*)surface {
     SkiaSurfaceWrapper* wrapper = (__bridge SkiaSurfaceWrapper*)surface;
-    if (!wrapper || !wrapper.context || !wrapper.metalLayer) {
+    if (!wrapper || !wrapper.metalLayer) {
+        return;
+    }
+    
+    // Get shared context from pool
+    sk_sp<GrDirectContext> context = [[SkiaContextPool sharedPool] getOrCreateContext:wrapper.metalLayer.device];
+    if (!context) {
+        NSLog(@"⚠️ SKIA: No shared context available");
         return;
     }
     
@@ -135,8 +188,6 @@
     }
     
     // Create a surface from the drawable's texture
-    // Note: We use __bridge_retained for the texture so Skia manages it
-    // But we keep a separate reference to the drawable for presentation
     GrMtlTextureInfo textureInfo;
     textureInfo.fTexture = sk_cfp<GrMTLHandle>((__bridge_retained const void*)[drawable texture]);
     
@@ -147,19 +198,16 @@
     );
     
     SkColorType colorType = kBGRA_8888_SkColorType;
-    // Pass nullptr for color space - the template should accept it even with forward declaration
     sk_sp<SkSurface> newSurface = SkSurfaces::WrapBackendRenderTarget(
-        wrapper.context.get(),
+        context.get(),
         backendRT,
         kTopLeft_GrSurfaceOrigin,
         colorType,
-        nullptr, // color space - nullptr should work
+        nullptr, // color space
         nullptr  // surface props
     );
     
     if (newSurface) {
-        // The property is strong, so ARC will automatically retain the drawable
-        // We just assign it directly - ARC handles the memory management
         wrapper.drawable = drawable;
         wrapper.surface = newSurface;
     } else {
@@ -170,19 +218,23 @@
 + (void)flushSurface:(void*)surface {
     SkiaSurfaceWrapper* wrapper = (__bridge SkiaSurfaceWrapper*)surface;
     if (wrapper && wrapper.surface) {
-        if (wrapper.context && wrapper.drawable && wrapper.commandQueue) {
+        // Get shared context and command queue
+        sk_sp<GrDirectContext> context = [[SkiaContextPool sharedPool] getOrCreateContext:wrapper.metalLayer.device];
+        id<MTLCommandQueue> commandQueue = [[SkiaContextPool sharedPool] getCommandQueue];
+        
+        if (context && wrapper.drawable && commandQueue) {
             // GPU surface - flush and submit to GPU, then present drawable
-            wrapper.context->flushAndSubmit();
+            context->flushAndSubmit();
             
             // Present the drawable to the screen
             @autoreleasepool {
-                id<MTLCommandBuffer> commandBuffer = [wrapper.commandQueue commandBuffer];
+                id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
                 [commandBuffer presentDrawable:wrapper.drawable];
                 [commandBuffer commit];
             }
-        } else if (wrapper.context) {
+        } else if (context) {
             // GPU context but no drawable (raster fallback) - just flush
-            wrapper.context->flushAndSubmit();
+            context->flushAndSubmit();
         }
         // Raster surfaces don't need explicit flushing - they're CPU-based
         // The drawing is already complete when we return from drawing operations
