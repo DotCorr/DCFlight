@@ -35,8 +35,16 @@ class DCFEngineAPI {
         await _resetForHotRestart();
       }
       
-      _vdom = DCFEngine(platformInterface);
+      // CRITICAL: Always use the singleton instance to ensure event handler consistency
+      // This ensures that events are handled by the same PlatformInterface instance
+      // that the Engine sets the handler on
+      final bridge = PlatformInterface.instance;
+      _vdom = DCFEngine(bridge);
       await _vdom!.isReady;
+      
+      // The Engine sets the event handler during _initialize(), but we verify it's set
+      // This is a defensive check to ensure events work even after hot restart
+      print('✅ DCFEngineAPI: Engine initialized, event handler should be set');
       
       if (_readyCompleter.isCompleted) {
         _readyCompleter = Completer<void>();

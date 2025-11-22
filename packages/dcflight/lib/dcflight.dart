@@ -99,7 +99,8 @@ class DCFlight {
   static Future<bool> _initialize() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    final bridge = NativeBridgeFactory.create();
+    // Use singleton instance to ensure event handler is set on the same instance
+    final bridge = PlatformInterface.instance;
     await bridge.initialize();
 
     ScreenUtilities.instance.refreshDimensions();

@@ -172,6 +172,7 @@ class DCFEngine {
       }
 
       _nativeBridge.setEventHandler(_handleNativeEvent);
+      print('✅ DCFEngine: Event handler registered with PlatformInterface');
 
       // Initialize concurrent processing (non-blocking - just sets up listener)
       // This doesn't spawn isolates, so it's fast and won't block initialization

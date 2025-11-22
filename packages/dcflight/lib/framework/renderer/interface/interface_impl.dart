@@ -9,7 +9,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:dcflight/framework/renderer/interface/interface_util.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'interface.dart';
 
@@ -321,6 +320,7 @@ class PlatformInterfaceImpl implements PlatformInterface {
       Function(int viewId, String eventType, Map<String, dynamic> eventData)
           handler) {
     _eventHandler = handler;
+    print('✅ PlatformInterface: Event handler set successfully');
   }
 
   /// Starts a batch update operation.
@@ -448,6 +448,9 @@ class PlatformInterfaceImpl implements PlatformInterface {
       }
     } else {
       print('⚠️ PlatformInterface: Global event handler is null!');
+      print('⚠️ PlatformInterface: Event handler was not set. Events will not be processed.');
+      print('⚠️ PlatformInterface: This usually means the Engine was not properly initialized or the handler was cleared.');
+      print('⚠️ PlatformInterface: Check that DCFEngine._initialize() completed successfully.');
     }
   }
 
