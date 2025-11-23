@@ -494,22 +494,19 @@ class DCFConfetti extends DCFStatefulComponent {
       return () => timer.cancel();
     }, dependencies: []);
     
-    // Wrap canvas in a DCFView to show background color from styleSheet
+    // Wrap canvas in a DCFView - use provided layout and styleSheet directly
     // The canvas itself is transparent so the background shows through
-    // Use explicit width/height for absolute positioning (works better in ScrollView)
-    final overlayLayout = layout ?? DCFLayout(
-      position: DCFPositionType.absolute,
-      width: containerWidth,
-      height: containerHeight,
-      absoluteLayout: AbsoluteLayout(
-        top: 0,
-        left: 0,
-      ),
-    );
-    
     return DCFView(
-      layout: overlayLayout,
-      styleSheet: styleSheet ?? const DCFStyleSheet(),
+      layout: layout ?? DCFLayout(
+        position: DCFPositionType.absolute,
+        width: containerWidth,
+        height: containerHeight,
+        absoluteLayout: AbsoluteLayout(
+          top: 0,
+          left: 0,
+        ),
+      ),
+      styleSheet: styleSheet ?? const DCFStyleSheet(backgroundColor: DCFColors.transparent),
       children: [
         DCFCanvas(
           key: 'confetti-canvas',

@@ -19,6 +19,37 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
     return DCFView(
       layout: layouts['root'],
       children: [
+          // Confetti overlay (absolute positioned - MUST be sibling of ScrollView, not child)
+        if (showConfetti.state)
+          DCFConfetti(
+            config: ConfettiConfig(
+              particleCount: 100,
+              angle: 90,
+              spread: 360.0,
+              startVelocity: 80.0,
+              decay: 0.9,
+              gravity: 1,
+              drift: 0,
+              ticks: 10,
+              
+              colors: [
+                Colors.red,
+                Colors.green,
+                Colors.blue,
+                Colors.yellow,
+                Colors.purple,
+                Colors.cyan,
+                Colors.orange,
+                Colors.pink,
+              ],
+              scalar: 2.5, // Increased from 1.0 to make particles bigger
+            ),
+            onComplete: () {
+              showConfetti.setState(false);
+            },
+            layout: layouts['confettiOverlay'],
+            styleSheet: styles['confettiOverlay'],
+          ),
         DCFScrollView(
           layout: layouts['root'],
           styleSheet: styles['root'],
@@ -207,36 +238,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
         ],
       ),
 
-        // Confetti overlay (absolute positioned - MUST be sibling of ScrollView, not child)
-        if (showConfetti.state)
-          DCFConfetti(
-            config: ConfettiConfig(
-              particleCount: 100,
-              angle: 90,
-              spread: 360.0,
-              startVelocity: 80.0,
-              decay: 0.9,
-              gravity: 1,
-              drift: 0,
-              ticks: 200,
-              colors: [
-                Colors.red,
-                Colors.green,
-                Colors.blue,
-                Colors.yellow,
-                Colors.purple,
-                Colors.cyan,
-                Colors.orange,
-                Colors.pink,
-              ],
-              scalar: 2.5, // Increased from 1.0 to make particles bigger
-            ),
-            onComplete: () {
-              showConfetti.setState(false);
-            },
-            layout: layouts['confettiOverlay'],
-            styleSheet: styles['confettiOverlay'],
-          ),
+      
       ],
     );
   }
