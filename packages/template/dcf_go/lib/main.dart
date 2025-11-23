@@ -23,13 +23,12 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
         if (showConfetti.state)
           DCFConfetti(
             config: ConfettiConfig(
-              particleCount: 1000,
+              particleCount: 100,
               angle: 90,
-              spread: 500.0,
-              startVelocity: 50.0,
+              spread: 50.0,
+              startVelocity: 100.0,
               decay: 0.9,
               gravity: 1,
-              flat: true,
               drift: 5,
               ticks: 200,
               

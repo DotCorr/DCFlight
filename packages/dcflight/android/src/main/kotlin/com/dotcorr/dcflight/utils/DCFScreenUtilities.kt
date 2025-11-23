@@ -160,8 +160,8 @@ object DCFScreenUtilities {
      */
     fun getScreenDimensions(): Map<String, Any> {
         return mapOf(
-            "width" to screenWidth.toDouble(),
-            "height" to screenHeight.toDouble(),
+            "width" to convertPxToDp(screenWidth).toDouble(),
+            "height" to convertPxToDp(screenHeight).toDouble(),
             "widthDp" to convertPxToDp(screenWidth),
             "heightDp" to convertPxToDp(screenHeight),
             "scale" to density.toDouble(),
