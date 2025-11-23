@@ -36,7 +36,7 @@ final styles = DCFStyleSheet.create({
   ),
   'buttonText': DCFStyleSheet(primaryColor: DCFColors.white),
   'confettiOverlay': DCFStyleSheet(
-    backgroundColor: DCFColors.transparent, // Explicit transparent background
+    backgroundColor: DCFColors.black.withOpacity(0.5), // Explicit transparent background
   ),
   'emptyStyle': DCFStyleSheet(),
 });
