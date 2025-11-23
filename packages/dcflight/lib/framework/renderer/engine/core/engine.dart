@@ -4937,6 +4937,7 @@ class DCFEngine {
     int oldIndex = 0;
     int newIndex = 0;
     final processedOldIndices = <int>{};
+    final processedNewIndices = <int>{};
 
     while (oldIndex < oldChildren.length && newIndex < newChildren.length) {
       final oldChild = oldChildren[oldIndex];
@@ -4973,8 +4974,85 @@ class DCFEngine {
         }
       }
 
-      // If props differ significantly OR types don't match, replace immediately (don't try position matching)
-      if (propsDifferSignificantly || typesDontMatch) {
+      // Check if current positions match (only if props are similar)
+      final positionsMatch = !_shouldReplaceAtSamePosition(oldChild, newChild);
+
+      // CRITICAL: Look ahead to detect insertions/removals BEFORE replacing
+      // This allows the framework to handle conditional rendering without requiring explicit keys
+      // We MUST check for insertions/removals even when types don't match at the same position
+      int? matchingNewIndex;
+      int? matchingOldIndex;
+
+      // Look ahead if positions don't match (types/keys differ at current position)
+      // AND we haven't processed this old child yet
+      // This handles conditional children being inserted/removed
+      if (!positionsMatch && !processedOldIndices.contains(oldIndex)) {
+        // Look ahead to find where oldChild appears in newChildren (if at all)
+        // This handles multiple consecutive insertions correctly, including at the beginning
+        for (int lookAhead = newIndex + 1;
+            lookAhead < newChildren.length;
+            lookAhead++) {
+          final lookAheadChild = newChildren[lookAhead];
+          // Skip if already processed
+          if (lookAhead < newIndex) continue;
+          
+          // Check props similarity before matching
+          bool canMatch = true;
+          if (oldChild is DCFElement && lookAheadChild is DCFElement) {
+            final lookAheadPropsSimilarity = _computePropsSimilarity(
+                oldChild.elementProps, lookAheadChild.elementProps);
+            if (lookAheadPropsSimilarity < 0.5) {
+              canMatch = false;
+            }
+          }
+          // CRITICAL: Only match if types match AND props are similar
+          // This prevents matching different components just because they're similar
+          if (canMatch &&
+              oldChild.runtimeType == lookAheadChild.runtimeType &&
+              !_shouldReplaceAtSamePosition(oldChild, lookAheadChild)) {
+            matchingNewIndex = lookAhead;
+            break;
+          }
+        }
+
+        // Look ahead to find where newChild appears in oldChildren (if at all)
+        // This handles multiple consecutive removals correctly
+        for (int lookAhead = oldIndex + 1;
+            lookAhead < oldChildren.length;
+            lookAhead++) {
+          final lookAheadChild = oldChildren[lookAhead];
+          // Skip if already processed
+          if (processedOldIndices.contains(lookAhead)) {
+            continue;
+          }
+          // Check props similarity before matching
+          bool canMatch = true;
+          if (newChild is DCFElement && lookAheadChild is DCFElement) {
+            final lookAheadPropsSimilarity = _computePropsSimilarity(
+                newChild.elementProps, lookAheadChild.elementProps);
+            if (lookAheadPropsSimilarity < 0.5) {
+              canMatch = false;
+            }
+          }
+          // CRITICAL: Only match if types match AND props are similar
+          // This prevents matching different components just because they're similar
+          if (canMatch &&
+              newChild.runtimeType == lookAheadChild.runtimeType &&
+              !_shouldReplaceAtSamePosition(lookAheadChild, newChild)) {
+            matchingOldIndex = lookAhead;
+            break;
+          }
+        }
+      }
+
+      final isInsertion = matchingNewIndex != null && !positionsMatch;
+      final isRemoval = matchingOldIndex != null && !positionsMatch;
+
+      // If we found a match via look-ahead, handle insertion/removal instead of replacement
+      if (isInsertion || isRemoval) {
+        // Skip the immediate replacement logic below - we'll handle it in the insertion/removal branches
+      } else if (propsDifferSignificantly || typesDontMatch) {
+        // No match found via look-ahead, and types/props don't match - replace immediately
         hasReplacements = true;
         replacementCount++;
         hasStructuralChanges = true;
@@ -4982,8 +5060,8 @@ class DCFEngine {
         EngineDebugLogger.log(
             'RECONCILE_SIMPLE_REPLACE_IMMEDIATE',
             typesDontMatch
-                ? 'Replacing child immediately due to type mismatch'
-                : 'Replacing child immediately due to props mismatch',
+                ? 'Replacing child immediately due to type mismatch (no look-ahead match)'
+                : 'Replacing child immediately due to props mismatch (no look-ahead match)',
             extra: {
               'OldIndex': oldIndex,
               'NewIndex': newIndex,
@@ -5020,82 +5098,6 @@ class DCFEngine {
         continue;
       }
 
-      // Check if current positions match (only if props are similar)
-      final positionsMatch = !_shouldReplaceAtSamePosition(oldChild, newChild);
-
-      // CRITICAL: Only look ahead if positions DON'T match AND we're sure there's an insertion/removal
-      // If positions match, we should reconcile at current position, not look for "better" matches
-      // This prevents incorrect matching when identical components are at the same position
-      int? matchingNewIndex;
-      int? matchingOldIndex;
-
-      // Only look ahead if:
-      // 1. Positions don't match (types/keys differ at current position)
-      // 2. Props don't differ significantly (so we can potentially match)
-      // 3. We haven't already processed the old child at this position
-      if (!positionsMatch &&
-          !propsDifferSignificantly &&
-          !processedOldIndices.contains(oldIndex)) {
-        // Look ahead to find where oldChild appears in newChildren (if at all)
-        // This handles multiple consecutive insertions correctly
-        // BUT: Only if the old child doesn't match the new child at current position
-        for (int lookAhead = newIndex + 1;
-            lookAhead < newChildren.length;
-            lookAhead++) {
-          final lookAheadChild = newChildren[lookAhead];
-          // Check props similarity before matching
-          bool canMatch = true;
-          if (oldChild is DCFElement && lookAheadChild is DCFElement) {
-            final lookAheadPropsSimilarity = _computePropsSimilarity(
-                oldChild.elementProps, lookAheadChild.elementProps);
-            if (lookAheadPropsSimilarity < 0.5) {
-              canMatch = false;
-            }
-          }
-          // CRITICAL: Only match if types match AND props are similar
-          // This prevents matching different components just because they're similar
-          if (canMatch &&
-              oldChild.runtimeType == lookAheadChild.runtimeType &&
-              !_shouldReplaceAtSamePosition(oldChild, lookAheadChild)) {
-            matchingNewIndex = lookAhead;
-            break;
-          }
-        }
-
-        // Look ahead to find where newChild appears in oldChildren (if at all)
-        // This handles multiple consecutive removals correctly
-        // BUT: Only if the new child doesn't match the old child at current position
-        for (int lookAhead = oldIndex + 1;
-            lookAhead < oldChildren.length;
-            lookAhead++) {
-          final lookAheadChild = oldChildren[lookAhead];
-          // Skip if already processed
-          if (processedOldIndices.contains(lookAhead)) {
-            continue;
-          }
-          // Check props similarity before matching
-          bool canMatch = true;
-          if (newChild is DCFElement && lookAheadChild is DCFElement) {
-            final lookAheadPropsSimilarity = _computePropsSimilarity(
-                newChild.elementProps, lookAheadChild.elementProps);
-            if (lookAheadPropsSimilarity < 0.5) {
-              canMatch = false;
-            }
-          }
-          // CRITICAL: Only match if types match AND props are similar
-          // This prevents matching different components just because they're similar
-          if (canMatch &&
-              newChild.runtimeType == lookAheadChild.runtimeType &&
-              !_shouldReplaceAtSamePosition(lookAheadChild, newChild)) {
-            matchingOldIndex = lookAhead;
-            break;
-          }
-        }
-      }
-
-      final isInsertion = matchingNewIndex != null && !positionsMatch;
-      final isRemoval = matchingOldIndex != null && !positionsMatch;
-
       EngineDebugLogger.log('RECONCILE_SIMPLE_UPDATE', 'Processing children',
           extra: {
             'OldIndex': oldIndex,
@@ -5114,8 +5116,12 @@ class DCFEngine {
         hasStructuralChanges = true;
         EngineDebugLogger.log(
             'RECONCILE_SIMPLE_INSERT', 'Inserting new child at index $newIndex',
-            extra: {'NewType': newChild.runtimeType.toString()});
+            extra: {
+              'NewType': newChild.runtimeType.toString(),
+              'OldChildWillMatchAt': matchingNewIndex,
+            });
 
+        // Insert the new child
         childViewId = await renderToNative(newChild,
             parentViewId: parentViewId, index: newIndex);
 
@@ -5126,7 +5132,34 @@ class DCFEngine {
               extra: {'ViewId': childViewId, 'Index': newIndex});
         }
 
-        newIndex++; // Move to next new child, keep old index
+        // Now reconcile the old child with the matched new child at matchingNewIndex
+        if (matchingNewIndex != null && matchingNewIndex < newChildren.length) {
+          final matchedNewChild = newChildren[matchingNewIndex];
+          EngineDebugLogger.log('RECONCILE_SIMPLE_MATCH_AFTER_INSERT',
+              'Reconciling old child with matched new child',
+              extra: {
+                'OldIndex': oldIndex,
+                'MatchedNewIndex': matchingNewIndex,
+                'OldType': oldChild.runtimeType.toString(),
+                'NewType': matchedNewChild.runtimeType.toString(),
+              });
+
+          await _reconcile(oldChild, matchedNewChild);
+          final matchedViewId =
+              matchedNewChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
+          if (matchedViewId != null) {
+            updatedChildIds[matchingNewIndex] = matchedViewId;
+            EngineDebugLogger.log('RECONCILE_SIMPLE_MATCHED_VIEW_ID',
+                'Added matched view ID to updatedChildIds',
+                extra: {'ViewId': matchedViewId, 'Index': matchingNewIndex});
+          }
+
+          processedOldIndices.add(oldIndex);
+          oldIndex++; // Move to next old child
+          newIndex = matchingNewIndex + 1; // Move past the matched new child
+        } else {
+          newIndex++; // Move to next new child, keep old index
+        }
         continue;
       } else if (isRemoval && !positionsMatch) {
         // Old child is removed - unmount it
