@@ -4994,7 +4994,7 @@ class DCFEngine {
             lookAhead++) {
           final lookAheadChild = newChildren[lookAhead];
           // Skip if already processed
-          if (lookAhead < newIndex) continue;
+          if (lookAhead < newIndex || processedNewIndices.contains(lookAhead)) continue;
           
           // Check props similarity before matching
           bool canMatch = true;
@@ -5131,6 +5131,7 @@ class DCFEngine {
               'Added view ID to updatedChildIds at index $newIndex',
               extra: {'ViewId': childViewId, 'Index': newIndex});
         }
+        processedNewIndices.add(newIndex);
 
         // Now reconcile the old child with the matched new child at matchingNewIndex
         if (matchingNewIndex != null && matchingNewIndex < newChildren.length) {
@@ -5155,6 +5156,7 @@ class DCFEngine {
           }
 
           processedOldIndices.add(oldIndex);
+          processedNewIndices.add(matchingNewIndex);
           oldIndex++; // Move to next old child
           newIndex = matchingNewIndex + 1; // Move past the matched new child
         } else {
