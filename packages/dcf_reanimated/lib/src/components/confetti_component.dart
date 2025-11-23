@@ -499,12 +499,7 @@ class DCFConfetti extends DCFStatefulComponent {
     return DCFView(
       layout: layout ?? DCFLayout(
         position: DCFPositionType.absolute,
-        width: containerWidth,
-        height: containerHeight,
-        absoluteLayout: AbsoluteLayout(
-          top: 0,
-          left: 0,
-        ),
+        absoluteLayout: AbsoluteLayout.fullScreen(),
       ),
       styleSheet: styleSheet ?? const DCFStyleSheet(backgroundColor: DCFColors.transparent),
       children: [

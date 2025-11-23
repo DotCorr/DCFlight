@@ -533,6 +533,151 @@ DCFCanvas(
 
 For complete documentation, see [Canvas API Documentation](./CANVAS_API.md).
 
+## Confetti Component
+
+DCF Reanimated includes `DCFConfetti`, a particle effects component for celebration animations.
+
+### Overview
+
+`DCFConfetti` provides physics-based particle animations using the `dart:ui` Canvas API with GPU-accelerated rendering via Flutter's texture registry.
+
+### Quick Start
+
+```dart
+final showConfetti = useState<bool>(false);
+
+return DCFView(
+  layout: layouts['root'],
+  children: [
+    // Your content here
+    DCFButton(
+      onPress: (_) => showConfetti.setState(true),
+      children: [DCFText(content: "🎉 Launch Confetti")],
+    ),
+    
+    // Confetti overlay (must be sibling of content, not child)
+    if (showConfetti.state)
+      DCFConfetti(
+        config: ConfettiConfig(
+          particleCount: 100,
+          angle: 90,
+          spread: 360.0,
+          startVelocity: 80.0,
+          ticks: 200, // Animation duration in frames (~3.3s at 60fps)
+        ),
+        onComplete: () => showConfetti.setState(false),
+        layout: layouts['confettiOverlay'], // Full screen overlay
+      ),
+  ],
+);
+```
+
+### Full Screen Overlay Setup
+
+For full screen confetti, use absolute positioning:
+
+```dart
+// In your style.dart
+'confettiOverlay': DCFLayout(
+  position: DCFPositionType.absolute,
+  absoluteLayout: AbsoluteLayout(
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  ),
+),
+```
+
+**Important**: The confetti overlay must be a **sibling** of your main content (like `DCFScrollView`), not a child. This ensures it's positioned relative to the full screen container.
+
+### ConfettiConfig
+
+```dart
+ConfettiConfig({
+  int particleCount = 50,        // Number of particles
+  double angle = 90,             // Launch angle (degrees, 90 = straight up)
+  double spread = 45,            // Spread range (degrees)
+  double startVelocity = 45,     // Initial velocity (pixels)
+  double decay = 0.9,            // Velocity decay (0-1, lower = faster slowdown)
+  double gravity = 1,            // Gravity strength (1 = full gravity)
+  double drift = 0,              // Horizontal drift (negative = left, positive = right)
+  bool flat = false,             // Disable 3D tilt/wobble
+  double scalar = 1,             // Particle size scale
+  double x = 0.5,                // Launch X position (0-1, 0.5 = center)
+  double y = 0.5,                // Launch Y position (0-1, 0.5 = center)
+  int ticks = 200,                // Animation duration in frames
+  List<Color> colors = [...],     // Particle colors
+})
+```
+
+### Duration Control
+
+The confetti duration is controlled by:
+
+1. **`ticks`** - Number of animation frames (at 60fps: `ticks: 200` ≈ 3.3 seconds)
+2. **`onComplete` callback** - Called when all particles finish animating
+
+```dart
+DCFConfetti(
+  config: ConfettiConfig(
+    ticks: 300, // ~5 seconds at 60fps
+  ),
+  onComplete: () {
+    // Auto-hide when animation completes
+    showConfetti.setState(false);
+  },
+)
+```
+
+### Custom Particle Shapes
+
+```dart
+DCFConfetti(
+  config: ConfettiConfig(...),
+  particleBuilder: (int index) {
+    // Return custom particle shape
+    return _CircleParticle(); // or _SquareParticle(), _TriangleParticle(), _StarParticle()
+  },
+)
+```
+
+### Examples
+
+#### Burst from Center
+
+```dart
+DCFConfetti(
+  config: ConfettiConfig(
+    particleCount: 100,
+    angle: 90,
+    spread: 360.0, // Full circle
+    startVelocity: 80.0,
+    x: 0.5, // Center X
+    y: 0.5, // Center Y
+    ticks: 200,
+  ),
+  onComplete: () => showConfetti.setState(false),
+)
+```
+
+#### Rain from Top
+
+```dart
+DCFConfetti(
+  config: ConfettiConfig(
+    particleCount: 50,
+    angle: 90, // Straight down
+    spread: 10, // Narrow spread
+    startVelocity: 30.0,
+    gravity: 0.5, // Lighter gravity
+    x: 0.5,
+    y: 0.0, // Top of screen
+    ticks: 300,
+  ),
+)
+```
+
 ---
 
 ## Examples

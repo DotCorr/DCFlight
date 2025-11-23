@@ -54,6 +54,16 @@ class AbsoluteLayout {
        translateX = null,
        translateY = "-50%";
 
+  /// Helper constructor for full-screen overlay
+  /// Positions element to cover entire parent container using top/left/right/bottom: 0
+  const AbsoluteLayout.fullScreen()
+      : top = 0,
+        left = 0,
+        right = 0,
+        bottom = 0,
+        translateX = null,
+        translateY = null;
+
   /// Convert to map for serialization
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{};
