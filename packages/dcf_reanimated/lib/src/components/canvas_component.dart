@@ -45,8 +45,17 @@ class DCFCanvas extends DCFStatefulComponent {
 
   @override
   DCFComponentNode render() {
-    // Generate a unique ID for this canvas instance to allow pixel transfer
-    final canvasId = useMemo(() => UniqueKey().toString(), dependencies: []);
+    // Generate a stable unique ID for this canvas instance
+    // Use useRef to ensure it persists across reconciliation without triggering re-renders
+    final canvasIdRef = useRef<String?>(null);
+    if (canvasIdRef.current == null) {
+      // Initialize once - use key if available, otherwise generate a new one
+      final id = key != null && key is ValueKey
+          ? (key as ValueKey).value.toString()
+          : UniqueKey().toString();
+      canvasIdRef.current = id;
+    }
+    final canvasId = canvasIdRef.current!;
 
     // Build props map for native component
     final props = <String, dynamic>{
@@ -68,18 +77,29 @@ class DCFCanvas extends DCFStatefulComponent {
         useEffect(() {
           print('🎨 DCFCanvas: Setting up continuous rendering for canvasId: $canvasId');
           Timer? frameTimer;
+          bool isViewReady = false;
+          
           void renderFrame() {
-            _renderToNative(canvasId);
+            if (!isViewReady) {
+              // Try to render, and if successful, mark view as ready
+              _renderToNative(canvasId).then((success) {
+                if (success == true) {
+                  isViewReady = true;
+                }
+              });
+            } else {
+              // View is ready, render normally
+              _renderToNative(canvasId);
+            }
           }
           
-          // Start periodic rendering at ~60fps (16ms per frame)
-          frameTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+          // Wait longer initially to ensure view is registered
+          Future.delayed(const Duration(milliseconds: 200), () {
             renderFrame();
-          });
-          
-          // Also render immediately after a short delay to ensure view is registered
-          Future.delayed(const Duration(milliseconds: 100), () {
-            renderFrame();
+            // Start periodic rendering at ~60fps (16ms per frame) after initial render
+            frameTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+              renderFrame();
+            });
           });
           
           // Cleanup
@@ -91,9 +111,15 @@ class DCFCanvas extends DCFStatefulComponent {
         // For static rendering, render once after layout
         useEffect(() {
           print('🎨 DCFCanvas: Setting up static rendering for canvasId: $canvasId');
-          // Use a small delay to ensure the native view is registered
-          Future.delayed(const Duration(milliseconds: 100), () {
-            _renderToNative(canvasId);
+          // Use a delay to ensure the native view is registered
+          Future.delayed(const Duration(milliseconds: 200), () async {
+            final success = await _renderToNative(canvasId);
+            if (success != true) {
+              // Retry once more if view wasn't ready
+              Future.delayed(const Duration(milliseconds: 100), () {
+                _renderToNative(canvasId);
+              });
+            }
           });
           return null;
         }, dependencies: [canvasId]);
@@ -108,15 +134,13 @@ class DCFCanvas extends DCFStatefulComponent {
     );
   }
 
-  void _renderToNative(String canvasId) async {
+  Future<bool?> _renderToNative(String canvasId) async {
     if (onPaint == null) {
       print('⚠️ DCFCanvas: _renderToNative called but onPaint is null');
-      return;
+      return false;
     }
 
     try {
-      print('🎨 DCFCanvas: Starting render for canvasId: $canvasId, size: ${size.width}x${size.height}');
-      
       final recorder = ui.PictureRecorder();
       final canvas = ui.Canvas(recorder);
 
@@ -137,7 +161,6 @@ class DCFCanvas extends DCFStatefulComponent {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
 
       if (byteData != null) {
-        print('🎨 DCFCanvas: Rendered image, sending ${byteData.lengthInBytes} bytes to native');
         // Send pixels to native via Tunnel
         // Note: Native side will convert RGBA to BGRA (iOS) or ARGB (Android)
         final result = await FrameworkTunnel.call('Canvas', 'updateTexture', {
@@ -146,13 +169,17 @@ class DCFCanvas extends DCFStatefulComponent {
           'width': size.width.toInt(),
           'height': size.height.toInt(),
         });
-        print('🎨 DCFCanvas: Tunnel call result: $result');
+        
+        // Return result: true = success, false = view not ready, null = error
+        return result == true ? true : (result == false ? false : null);
       } else {
         print('⚠️ DCFCanvas: Failed to get byteData from image');
+        return false;
       }
     } catch (e, stackTrace) {
       print('❌ DCFCanvas: Error rendering: $e');
       print('❌ DCFCanvas: Stack trace: $stackTrace');
+      return false;
     }
   }
 }

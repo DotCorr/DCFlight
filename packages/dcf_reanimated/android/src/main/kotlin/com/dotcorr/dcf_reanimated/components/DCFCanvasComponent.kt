@@ -20,6 +20,15 @@ class DCFCanvasComponent : DCFComponent() {
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
         canvasView = DCFCanvasView(context)
+        
+        // Set initial size from props if available
+        val width = (props["width"] as? Number)?.toInt() ?: 0
+        val height = (props["height"] as? Number)?.toInt() ?: 0
+        if (width > 0 && height > 0) {
+            val layoutParams = android.view.ViewGroup.LayoutParams(width, height)
+            canvasView!!.layoutParams = layoutParams
+        }
+        
         updateView(canvasView!!, props)
         return canvasView!!
     }
@@ -54,8 +63,13 @@ class DCFCanvasComponent : DCFComponent() {
 
             if (canvasId != null && pixels != null && width != null && height != null) {
                 val view = DCFCanvasView.canvasViews[canvasId]
-                view?.updateTexture(pixels, width, height)
-                return true
+                if (view != null) {
+                    view.updateTexture(pixels, width, height)
+                    return true
+                } else {
+                    android.util.Log.w("DCFCanvasComponent", "View not found for canvasId: $canvasId - view may not be registered yet")
+                    return false  // Return false instead of null to indicate view not ready
+                }
             }
         }
         return null
@@ -72,6 +86,11 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
 
     init {
         surfaceTextureListener = this
+        // Transparent background - canvas content comes from texture
+        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        // Allow touches to pass through to views behind the canvas
+        isClickable = false
+        isFocusable = false
     }
 
     fun update(props: Map<String, Any?>) {
@@ -83,6 +102,23 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
             }
             canvasId = id
             canvasViews[id!!] = this
+        }
+        
+        // Ensure view fills its container
+        val width = (props["width"] as? Number)?.toInt()
+        val height = (props["height"] as? Number)?.toInt()
+        if (width != null && height != null) {
+            // Set layout params to fill space
+            val layoutParams = this.layoutParams
+            if (layoutParams != null) {
+                layoutParams.width = width
+                layoutParams.height = height
+                this.layoutParams = layoutParams
+            } else {
+                // Create new layout params if none exist
+                val newParams = android.view.ViewGroup.LayoutParams(width, height)
+                this.layoutParams = newParams
+            }
         }
     }
 
@@ -96,24 +132,32 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
         
         try {
             // Convert RGBA to ARGB (Android Bitmap expects ARGB_8888)
-            val argbPixels = ByteArray(pixels.size)
-            for (i in pixels.indices step 4) {
-                if (i + 3 < pixels.size) {
-                    // RGBA: R, G, B, A
-                    // ARGB: A, R, G, B
-                    argbPixels[i] = pixels[i + 3]     // A
-                    argbPixels[i + 1] = pixels[i]     // R
-                    argbPixels[i + 2] = pixels[i + 1] // G
-                    argbPixels[i + 3] = pixels[i + 2] // B
+            // Use IntArray for setPixels which is more reliable than ByteBuffer
+            val argbPixels = IntArray(width * height)
+            for (y in 0 until height) {
+                for (x in 0 until width) {
+                    val srcIndex = (y * width + x) * 4
+                    if (srcIndex + 3 < pixels.size) {
+                        // RGBA: R, G, B, A (from Dart)
+                        // ARGB: A, R, G, B (for Android Bitmap)
+                        val r = pixels[srcIndex].toInt() and 0xFF
+                        val g = pixels[srcIndex + 1].toInt() and 0xFF
+                        val b = pixels[srcIndex + 2].toInt() and 0xFF
+                        val a = pixels[srcIndex + 3].toInt() and 0xFF
+                        
+                        // Pack into ARGB int: (A << 24) | (R << 16) | (G << 8) | B
+                        argbPixels[y * width + x] = (a shl 24) or (r shl 16) or (g shl 8) or b
+                    }
                 }
             }
             
             val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
-            val buffer = java.nio.ByteBuffer.wrap(argbPixels)
-            bitmap.copyPixelsFromBuffer(buffer)
+            bitmap.setPixels(argbPixels, 0, width, 0, 0, width, height)
             
             val canvas = lockCanvas()
             if (canvas != null) {
+                // Clear canvas first to avoid artifacts
+                canvas.drawColor(android.graphics.Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
                 canvas.drawBitmap(bitmap, 0f, 0f, null)
                 unlockCanvasAndPost(canvas)
             }

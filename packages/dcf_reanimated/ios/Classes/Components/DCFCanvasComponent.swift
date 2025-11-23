@@ -46,7 +46,8 @@ class DCFCanvasComponent: NSObject, DCFComponent {
                 view.updateTexture(pixels: pixels.data, width: width, height: height)
                 return true
             } else {
-                print("DCFCanvasComponent: View not found for canvasId: \(canvasId)")
+                print("DCFCanvasComponent: View not found for canvasId: \(canvasId) - view may not be registered yet")
+                return false  // Return false instead of nil to indicate view not ready
             }
         }
         return nil
@@ -85,8 +86,10 @@ class DCFCanvasView: UIView, FlutterTexture {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        // DEBUG: Set red background to verify view is in hierarchy
-        self.backgroundColor = UIColor.red.withAlphaComponent(0.3)
+        // Transparent background - canvas content comes from texture
+        self.backgroundColor = .clear
+        // Allow touches to pass through to views behind the canvas
+        self.isUserInteractionEnabled = false
         NSLog("DCFCanvasView: init frame: \(frame)")
         setupLayer()
         registerTexture()
@@ -94,7 +97,10 @@ class DCFCanvasView: UIView, FlutterTexture {
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        self.backgroundColor = UIColor.red.withAlphaComponent(0.3)
+        // Transparent background - canvas content comes from texture
+        self.backgroundColor = .clear
+        // Allow touches to pass through to views behind the canvas
+        self.isUserInteractionEnabled = false
         NSLog("DCFCanvasView: init coder")
         setupLayer()
         registerTexture()
@@ -122,14 +128,17 @@ class DCFCanvasView: UIView, FlutterTexture {
     func update(props: [String: Any]) {
         // Register this view if canvasId is provided
         if let id = props["canvasId"] as? String {
+            // Always register, even if ID is the same (in case view was recreated)
             if canvasId != id {
                 // Unregister old ID if changed
                 if let oldId = canvasId {
                     DCFCanvasView.canvasViews.removeValue(forKey: oldId)
+                    NSLog("DCFCanvasView: Unregistered old canvasId: \(oldId)")
                 }
-                canvasId = id
-                DCFCanvasView.canvasViews[id] = self
             }
+            canvasId = id
+            DCFCanvasView.canvasViews[id] = self
+            NSLog("DCFCanvasView: Registered canvasId: \(id), total views: \(DCFCanvasView.canvasViews.count)")
         }
 
         if let repaint = props["repaintOnFrame"] as? Bool {

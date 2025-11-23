@@ -118,6 +118,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               layout: layouts['sectionTitle'],
             ),
             DCFCanvas(
+              key: 'static-canvas',
               backgroundColor: const Color(0xFF1a1a2e),
               layout: layouts['canvasBox'],
               size: const Size(300, 300),

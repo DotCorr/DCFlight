@@ -95,11 +95,12 @@ post_install do |installer|
                 ldflags.reject! { |f| f.to_s.include?('libskia.a') }
                 config.build_settings['OTHER_LDFLAGS'] = ldflags
                 
-                # For simulator builds, exclude device architectures from the library
+                # For simulator builds, allow both x86_64 (Intel) and arm64 (Apple Silicon)
+                # Flutter will automatically choose the right architecture
                 if config.build_settings['PLATFORM_NAME'] == 'iphonesimulator'
-                  config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64 arm64e'
-                  # Use x86_64 slice for simulator (works via Rosetta on Apple Silicon)
-                  config.build_settings['VALID_ARCHS[sdk=iphonesimulator*]'] = 'x86_64'
+                  # Don't force x86_64 - let Flutter/Xcode choose based on Mac architecture
+                  # This allows native arm64 simulator on Apple Silicon (faster)
+                  # and x86_64 on Intel Macs
                 end
               end
               

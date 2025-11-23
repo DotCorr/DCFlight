@@ -15,9 +15,10 @@
 8. [Hooks](#hooks)
 9. [Presets](#presets)
 10. [Simplified API](#simplified-api)
-11. [Examples](#examples)
-12. [Performance](#performance)
-13. [Migration Guide](#migration-guide)
+11. [Canvas API](#canvas-api)
+12. [Examples](#examples)
+13. [Performance](#performance)
+14. [Migration Guide](#migration-guide)
 
 ## Overview
 
@@ -468,6 +469,71 @@ final animatedStyle = useAnimatedStyle(() {
     .widthValue(sharedValue.state * 300);
 }, dependencies: [sharedValue.state]);
 ```
+
+## Canvas API
+
+DCF Reanimated includes `DCFCanvas`, a GPU-accelerated canvas component that uses Flutter's texture registry for native rendering.
+
+### Overview
+
+`DCFCanvas` provides 2D canvas rendering using Flutter framework internals (texture registry) instead of just the Dart runtime. This enables:
+
+- **GPU Acceleration**: Native platform GPU rendering
+- **60fps Performance**: Smooth animations with native display link
+- **Flutter Canvas API**: Familiar `dart:ui` Canvas API
+- **Cross-Platform**: iOS and Android with platform-optimized rendering
+
+### Quick Start
+
+```dart
+DCFCanvas(
+  size: const Size(300, 300),
+  backgroundColor: const Color(0xFF1a1a2e),
+  onPaint: (canvas, size) {
+    final paint = Paint()
+      ..color = Colors.green
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      50,
+      paint,
+    );
+  },
+)
+```
+
+### Animated Canvas
+
+```dart
+DCFCanvas(
+  size: const Size(300, 300),
+  repaintOnFrame: true,  // Enable 60fps rendering
+  onPaint: (canvas, size) {
+    // Draw animated content
+    final paint = Paint()..color = Colors.blue;
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      animationValue * 50,
+      paint,
+    );
+  },
+)
+```
+
+### Architecture
+
+`DCFCanvas` uses Flutter's texture registry system:
+
+1. **Dart Side**: Uses `dart:ui` Canvas API to draw
+2. **Rendering**: Converts drawing to pixel data (RGBA)
+3. **Transfer**: Sends pixels via FrameworkTunnel to native
+4. **Native Side**: Converts to platform format (BGRA on iOS, ARGB on Android)
+5. **Display**: Uses Flutter texture registry for GPU rendering
+
+For complete documentation, see [Canvas API Documentation](./CANVAS_API.md).
+
+---
 
 ## Examples
 
