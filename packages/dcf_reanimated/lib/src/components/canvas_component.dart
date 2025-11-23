@@ -50,8 +50,10 @@ class DCFCanvas extends DCFStatefulComponent {
     final canvasIdRef = useRef<String?>(null);
     if (canvasIdRef.current == null) {
       // Initialize once - use key if available, otherwise generate a new one
-      final id = key != null && key is ValueKey
-          ? (key as ValueKey).value.toString()
+      final id = key != null
+          ? (key is ValueKey
+              ? (key as ValueKey).value.toString()
+              : key.toString())
           : UniqueKey().toString();
       canvasIdRef.current = id;
     }
@@ -74,6 +76,7 @@ class DCFCanvas extends DCFStatefulComponent {
     if (onPaint != null) {
       if (repaintOnFrame) {
         // For animations, set up continuous rendering on every frame (~60fps)
+        // Include onPaint in dependencies to ensure timer uses latest callback
         useEffect(() {
           print('🎨 DCFCanvas: Setting up continuous rendering for canvasId: $canvasId');
           Timer? frameTimer;

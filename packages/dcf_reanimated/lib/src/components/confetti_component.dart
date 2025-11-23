@@ -104,6 +104,19 @@ class _ConfettiParticle {
 ///
 /// Built on top of DCFCanvas using the canvas drawing API.
 /// Particles fall with gravity and spread out in all directions.
+///
+/// **Performance Note**: This implementation currently uses `Timer.periodic` on the Dart thread,
+/// which causes 60+ bridge calls per second (one per frame). This is inefficient compared to
+/// using worklets for native UI-thread execution.
+///
+/// **Future Improvement**: Should be refactored to use a native particle system component
+/// that uses worklets/CADisplayLink/Choreographer for zero bridge calls during animation:
+/// - Accept particle config via props (one-time bridge call)
+/// - Use native UI thread animation (CADisplayLink on iOS, Choreographer on Android)
+/// - Render particles directly using native graphics APIs
+/// - Zero bridge calls during animation execution
+///
+/// See `docs/guides/WORKLETS.md` for worklet architecture details.
 class DCFConfetti extends DCFStatefulComponent {
   final int particleCount;
   final int duration;
@@ -129,39 +142,54 @@ class DCFConfetti extends DCFStatefulComponent {
 
   @override
   DCFComponentNode render() {
-    // Initialize particles on first render
+    // Initialize particles only once using useRef to track initialization
     final cfg = config ?? const ConfettiConfig();
     final colors = cfg.colors;
-    final random = math.Random();
-    final particleList = <_ConfettiParticle>[];
-
+    final particlesInitialized = useRef<bool>(false);
+    
     // Get screen dimensions for proper centering
     final screenWidth = ScreenUtilities.instance.screenWidth;
     final screenHeight = ScreenUtilities.instance.screenHeight;
     final centerX = screenWidth > 0 ? screenWidth / 2 : 200.0;
     final centerY = screenHeight > 0 ? screenHeight * 0.2 : 200.0; // Start from top-ish
 
-    for (int i = 0; i < particleCount; i++) {
-      // Random angle for spread
-      final angle = random.nextDouble() * cfg.spread * (math.pi / 180);
-      final speed =
-          cfg.initialVelocity + random.nextDouble() * cfg.initialVelocity;
+    // Initialize particles only on first render
+    final particles = useState<List<_ConfettiParticle>>([]);
+    if (particlesInitialized.current != true) {
+      final random = math.Random();
+      final particleList = <_ConfettiParticle>[];
 
-      particleList.add(_ConfettiParticle(
-        x: centerX,
-        y: centerY,
-        vx: math.cos(angle) * speed,
-        vy: math.sin(angle) * speed - 100, // Initial upward velocity
-        rotation: random.nextDouble() * 360,
-        rotationSpeed:
-            (random.nextDouble() - 0.5) * 10, // Random rotation speed
-        size: cfg.minSize + random.nextDouble() * (cfg.maxSize - cfg.minSize),
-        color: colors[random.nextInt(colors.length)].value,
-      ));
+      for (int i = 0; i < particleCount; i++) {
+        // Random angle for spread
+        final angle = random.nextDouble() * cfg.spread * (math.pi / 180);
+        final speed =
+            cfg.initialVelocity + random.nextDouble() * cfg.initialVelocity;
+
+        particleList.add(_ConfettiParticle(
+          x: centerX,
+          y: centerY,
+          vx: math.cos(angle) * speed,
+          vy: math.sin(angle) * speed - 100, // Initial upward velocity
+          rotation: random.nextDouble() * 360,
+          rotationSpeed:
+              (random.nextDouble() - 0.5) * 10, // Random rotation speed
+          size: cfg.minSize + random.nextDouble() * (cfg.maxSize - cfg.minSize),
+          color: colors[random.nextInt(colors.length)].value,
+        ));
+      }
+      
+      particles.setState(particleList);
+      particlesInitialized.current = true;
+      print('🎉 DCFConfetti: Initialized ${particleList.length} particles at ($centerX, $centerY)');
     }
 
-    final particles = useState<List<_ConfettiParticle>>(particleList);
-    final startTime = useState<int>(DateTime.now().millisecondsSinceEpoch);
+    // Initialize startTime only once
+    final startTimeRef = useRef<int?>(null);
+    if (startTimeRef.current == null) {
+      startTimeRef.current = DateTime.now().millisecondsSinceEpoch;
+    }
+    final startTime = startTimeRef.current!;
+    
     final isComplete = useState<bool>(false);
 
     // Update particle positions on each frame
@@ -169,7 +197,7 @@ class DCFConfetti extends DCFStatefulComponent {
       if (isComplete.state) return null;
 
       final timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
-        final elapsed = DateTime.now().millisecondsSinceEpoch - startTime.state;
+        final elapsed = DateTime.now().millisecondsSinceEpoch - startTime;
 
         if (elapsed >= duration) {
           timer.cancel();
@@ -178,22 +206,27 @@ class DCFConfetti extends DCFStatefulComponent {
           return;
         }
 
-        // Update each particle
+        // Update each particle - create new instances to avoid mutation issues
         final updatedParticles = particles.state.map((p) {
-          // Apply gravity
-          p.vy += cfg.gravity;
-
-          // Update position
-          p.x += p.vx * 0.016; // 16ms frame time
-          p.y += p.vy * 0.016;
-
-          // Update rotation
-          p.rotation += p.rotationSpeed;
-
-          return p;
+          // Create a new particle with updated values
+          return _ConfettiParticle(
+            x: p.x + p.vx * 0.016, // 16ms frame time
+            y: p.y + (p.vy + cfg.gravity) * 0.016,
+            vx: p.vx,
+            vy: p.vy + cfg.gravity,
+            rotation: p.rotation + p.rotationSpeed,
+            rotationSpeed: p.rotationSpeed,
+            size: p.size,
+            color: p.color,
+          );
         }).toList();
 
         particles.setState(updatedParticles);
+        // Debug: log updates occasionally
+        if (updatedParticles.isNotEmpty && updatedParticles.length % 50 == 0) {
+          final firstParticle = updatedParticles.first;
+          print('🎉 DCFConfetti: Updated particles, first at (${firstParticle.x.toStringAsFixed(1)}, ${firstParticle.y.toStringAsFixed(1)})');
+        }
       });
 
       // Cleanup
@@ -205,15 +238,31 @@ class DCFConfetti extends DCFStatefulComponent {
     final canvasHeight = screenHeight > 0 ? screenHeight : 800.0;
     
     // Use DCFCanvas with onPaint callback
+    // Use a stable key to ensure the canvas persists across re-renders
+    // Store particles in a ref so the callback always reads the latest state
+    final particlesRef = useRef<List<_ConfettiParticle>>(particles.state);
+    particlesRef.current = particles.state; // Update ref on every render
+    
     return DCFCanvas(
+      key: 'confetti-canvas',
       size: Size(canvasWidth, canvasHeight),
       repaintOnFrame: true,
+      backgroundColor: Colors.transparent, // Ensure transparent background
       layout: layout ?? _confettiLayouts['default'],
       styleSheet: styleSheet,
       onPaint: (canvas, size) {
         final paint = Paint()..style = PaintingStyle.fill;
+        // Always read from ref to get the latest particles, even if callback was created earlier
+        final currentParticles = particlesRef.current ?? <_ConfettiParticle>[];
 
-        for (final p in particles.state) {
+        // Debug: log particle count and positions occasionally
+        if (currentParticles.isNotEmpty) {
+          final firstParticle = currentParticles.first;
+          print('🎉 DCFConfetti: Rendering ${currentParticles.length} particles, first at (${firstParticle.x.toStringAsFixed(1)}, ${firstParticle.y.toStringAsFixed(1)}), canvas size: ${size.width}x${size.height}');
+        }
+
+        // Draw all particles (bounds check is optional, but helps performance)
+        for (final p in currentParticles) {
           paint.color = Color(p.color);
           canvas.save();
           canvas.translate(p.x, p.y);
