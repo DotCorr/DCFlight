@@ -16,10 +16,13 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
     final canvasAnimation = useState<int>(0);
     final isAnimating = useState<bool>(false);
 
-    return DCFScrollView(
+    return DCFView(
       layout: layouts['root'],
-      styleSheet: styles['root'],
       children: [
+        DCFScrollView(
+          layout: layouts['root'],
+          styleSheet: styles['root'],
+          children: [
         // Header
         DCFView(
           layout: layouts['header'],
@@ -199,10 +202,12 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                 ),
               ],
             ),
-          ],
-        ),
+            ],
+          ),
+        ],
+      ),
 
-        // Confetti overlay (absolute positioned)
+        // Confetti overlay (absolute positioned - MUST be sibling of ScrollView, not child)
         if (showConfetti.state)
           DCFConfetti(
             config: ConfettiConfig(

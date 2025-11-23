@@ -7,7 +7,7 @@
 
 import 'dart:ui' as ui;
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/utils/screen_utilities.dart';
+import 'package:dcf_primitives/dcf_primitives.dart' hide DCFCanvas;
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:async';
@@ -17,6 +17,7 @@ import 'canvas_component.dart';
 // ignore: deprecated_member_use - Using DCFLayout() inside create() is the correct pattern
 final _confettiLayouts = DCFLayout.create({
   'default': DCFLayout(
+    // No flex needed with absolute positioning - top/left/right/bottom handle sizing
     position: DCFPositionType.absolute,
     absoluteLayout: AbsoluteLayout(
       top: 0,
@@ -24,6 +25,12 @@ final _confettiLayouts = DCFLayout.create({
       right: 0,
       bottom: 0,
     ),
+  ),
+  'canvasFill': DCFLayout(
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    // No absolute positioning - just fill parent
   ),
 });
 
@@ -487,33 +494,61 @@ class DCFConfetti extends DCFStatefulComponent {
       return () => timer.cancel();
     }, dependencies: []);
     
-    // Use DCFCanvas for layout/positioning (goes through VDOM)
-    // But all pixel updates go directly via tunnel (bypasses VDOM)
-    return DCFCanvas(
-      key: 'confetti-canvas',
-      size: Size(containerWidth, containerHeight),
-      repaintOnFrame: true,
-      backgroundColor: Colors.transparent,
-      layout: layout ?? _confettiLayouts['default'],
-      styleSheet: styleSheet,
-      onPaint: (canvas, size) {
-        // This onPaint callback renders to dart:ui Canvas
-        // Then _renderToNative converts to pixels and sends via tunnel
-        // Tunnel updates bypass VDOM completely - direct to native texture
-        // Always read from ref to get latest particles (ref is stable, value changes)
-        final currentParticles = particlesRef.current;
-        if (currentParticles == null || currentParticles.isEmpty) {
-          return; // No particles to render yet
-        }
+    // Wrap canvas in a DCFView to show background color from styleSheet
+    // The canvas itself is transparent so the background shows through
+    // Use explicit width/height for absolute positioning (works better in ScrollView)
+    final overlayLayout = layout ?? DCFLayout(
+      position: DCFPositionType.absolute,
+      width: containerWidth,
+      height: containerHeight,
+      absoluteLayout: AbsoluteLayout(
+        top: 0,
+        left: 0,
+      ),
+    );
+    
+    return DCFView(
+      layout: overlayLayout,
+      styleSheet: styleSheet ?? const DCFStyleSheet(),
+      children: [
+        DCFCanvas(
+          key: 'confetti-canvas',
+          size: Size(containerWidth, containerHeight),
+          repaintOnFrame: true,
+          backgroundColor: Colors.transparent,
+          layout: _confettiLayouts['canvasFill'], // Canvas fills the container (no absolute positioning)
+          onPaint: (canvas, size) {
+            // This onPaint callback renders to dart:ui Canvas
+            // Then _renderToNative converts to pixels and sends via tunnel
+            // Tunnel updates bypass VDOM completely - direct to native texture
+            // Always read from ref to get latest particles (ref is stable, value changes)
+            final currentParticles = particlesRef.current;
+            if (currentParticles == null || currentParticles.isEmpty) {
+              return; // No particles to render yet
+            }
 
-        // Draw all particles
-        for (final glue in currentParticles) {
-          final physics = glue.physics;
-          if (!physics.finished) {
-            glue.particle.paint(physics: physics, canvas: canvas);
-          }
-        }
-      },
+            // Count active particles
+            int activeCount = 0;
+            for (final glue in currentParticles) {
+              if (!glue.physics.finished) {
+                activeCount++;
+              }
+            }
+
+            if (activeCount == 0) {
+              return; // All particles finished
+            }
+
+            // Draw all particles
+            for (final glue in currentParticles) {
+              final physics = glue.physics;
+              if (!physics.finished) {
+                glue.particle.paint(physics: physics, canvas: canvas);
+              }
+            }
+          },
+        ),
+      ],
     );
   }
 }

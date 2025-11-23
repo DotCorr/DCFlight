@@ -53,13 +53,22 @@ class DCFCanvasComponent: NSObject, DCFComponent {
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        // Notify canvas view of layout size change so it can update rendering
+        if let canvasView = view as? DCFCanvasView {
+            canvasView.onLayoutApplied(width: layout.width, height: layout.height)
+        }
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
         // Canvas size is determined by layout or props, not intrinsic content
+        // If layout has explicit width/height, use that; otherwise use props
         if let width = props["width"] as? Double, let height = props["height"] as? Double {
-            return CGSize(width: width, height: height)
+            // Ensure size is valid (> 0)
+            if width > 0 && height > 0 {
+                return CGSize(width: width, height: height)
+            }
         }
+        // Return zero if size is invalid - Yoga will use layout constraints instead
         return .zero
     }
     
@@ -158,7 +167,26 @@ class DCFCanvasView: UIView, FlutterTexture {
     override func layoutSubviews() {
         super.layoutSubviews()
         contentLayer.frame = bounds
-        NSLog("DCFCanvasView: layoutSubviews bounds: \(bounds)")
+        NSLog("DCFCanvasView: layoutSubviews bounds: \(bounds), canvasId: \(canvasId ?? "nil")")
+        // If we have a valid size and canvasId, ensure we're registered
+        if bounds.width > 0 && bounds.height > 0, let id = canvasId {
+            DCFCanvasView.setCanvasView(self, forId: id)
+        }
+    }
+    
+    func onLayoutApplied(width: CGFloat, height: CGFloat) {
+        NSLog("DCFCanvasView: onLayoutApplied width: \(width) height: \(height), canvasId: \(canvasId ?? "nil"), bounds: \(bounds)")
+        // Store the actual layout size for rendering
+        // The view frame will be set by applyLayout, but we can use this to validate
+        if width > 0 && height > 0, let id = canvasId {
+            // Ensure we're registered with the correct size
+            DCFCanvasView.setCanvasView(self, forId: id)
+            // If we have a valid size and the view is ready, we can trigger a render
+            // This helps with hot restart scenarios where the view is recreated
+            if bounds.width > 0 && bounds.height > 0 {
+                NSLog("DCFCanvasView: Layout applied with valid size, view is ready for rendering")
+            }
+        }
     }
 
     private func registerTexture() {

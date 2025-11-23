@@ -54,6 +54,20 @@ class DCFCanvasComponent : DCFComponent() {
         return PointF(width, height)
     }
     
+    override fun applyLayout(view: View, layout: DCFNodeLayout) {
+        // Apply Yoga layout to the view
+        view.layout(
+            layout.left.toInt(),
+            layout.top.toInt(),
+            (layout.left + layout.width).toInt(),
+            (layout.top + layout.height).toInt()
+        )
+        // Notify canvas view of layout size change
+        if (view is DCFCanvasView) {
+            view.onLayoutApplied(layout.width, layout.height)
+        }
+    }
+    
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         // No special handling needed for canvas registration
     }
@@ -108,23 +122,18 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
             }
             canvasId = id
             canvasViews[id!!] = this
+            android.util.Log.d("DCFCanvasView", "Registered canvasId: $id")
         }
         
-        // Ensure view fills its container
-        val width = (props["width"] as? Number)?.toInt()
-        val height = (props["height"] as? Number)?.toInt()
-        if (width != null && height != null) {
-            // Set layout params to fill space
-            val layoutParams = this.layoutParams
-            if (layoutParams != null) {
-                layoutParams.width = width
-                layoutParams.height = height
-                this.layoutParams = layoutParams
-            } else {
-                // Create new layout params if none exist
-                val newParams = android.view.ViewGroup.LayoutParams(width, height)
-                this.layoutParams = newParams
-            }
+        // Note: Size is now handled by Yoga layout via applyLayout
+        // We don't set layoutParams here anymore - Yoga handles it
+    }
+    
+    fun onLayoutApplied(width: Float, height: Float) {
+        android.util.Log.d("DCFCanvasView", "onLayoutApplied width: $width height: $height, canvasId: $canvasId")
+        // Ensure we're registered if we have a valid size
+        if (width > 0 && height > 0 && canvasId != null) {
+            canvasViews[canvasId!!] = this
         }
     }
     fun updateTexture(pixels: ByteArray, width: Int, height: Int) {

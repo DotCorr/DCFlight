@@ -71,19 +71,25 @@ class DirectCanvas {
       final picture = recorder.endRecording();
       final image = await picture.toImage(size.width.toInt(), size.height.toInt());
       final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-
-      if (byteData != null) {
-        // Send pixels directly to native via tunnel (bypasses VDOM)
-        return await updatePixels(
-          canvasId: canvasId,
-          pixels: byteData.buffer.asUint8List(),
-          width: size.width.toInt(),
-          height: size.height.toInt(),
-        );
-      } else {
-        print('⚠️ DirectCanvas: Failed to get byteData from image');
+      
+      if (byteData == null) {
+        print('⚠️ DirectCanvas: Failed to get byteData from image (size: ${size.width}x${size.height})');
         return false;
       }
+      
+      final expectedBytes = size.width.toInt() * size.height.toInt() * 4;
+      if (byteData.lengthInBytes != expectedBytes) {
+        print('⚠️ DirectCanvas: ByteData size mismatch - expected $expectedBytes, got ${byteData.lengthInBytes}');
+        return false;
+      }
+      
+      // Send pixels directly to native via tunnel (bypasses VDOM)
+      return await updatePixels(
+        canvasId: canvasId,
+        pixels: byteData.buffer.asUint8List(),
+        width: size.width.toInt(),
+        height: size.height.toInt(),
+      );
     } catch (e, stackTrace) {
       print('❌ DirectCanvas: Error rendering: $e');
       print('❌ DirectCanvas: Stack trace: $stackTrace');

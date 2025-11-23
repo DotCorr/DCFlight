@@ -36,7 +36,7 @@ final styles = DCFStyleSheet.create({
   ),
   'buttonText': DCFStyleSheet(primaryColor: DCFColors.white),
   'confettiOverlay': DCFStyleSheet(
-    backgroundColor: DCFColors.transparent, // Explicit transparent background
+    backgroundColor: DCFColors.red, // Explicit transparent background
   ),
   'emptyStyle': DCFStyleSheet(),
 });
@@ -96,6 +96,7 @@ final layouts = DCFLayout.create({
     justifyContent: DCFJustifyContent.center,
   ),
   'confettiOverlay': DCFLayout(
+    // No flex/width/height needed with absolute positioning - top/left/right/bottom handle sizing
     position: DCFPositionType.absolute,
     absoluteLayout: AbsoluteLayout(
       top: 0,
