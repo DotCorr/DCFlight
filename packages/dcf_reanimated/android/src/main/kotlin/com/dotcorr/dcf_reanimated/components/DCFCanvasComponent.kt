@@ -16,6 +16,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFNodeLayout
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.sqrt
 import kotlin.math.cos
@@ -89,6 +90,24 @@ class DCFCanvasComponent : DCFComponent() {
                 } else {
                     android.util.Log.w("DCFCanvasComponent", "View not found for canvasId: $canvasId - view may not be registered yet")
                     return false  // Return false instead of null to indicate view not ready
+                }
+            }
+        } else if (method == "updateCommands") {
+            // NEW: Command-based rendering (Phase 3) - best performance
+            val canvasId = arguments["canvasId"] as? String
+            @Suppress("UNCHECKED_CAST")
+            val commands = arguments["commands"] as? List<Map<String, Any>>
+            val width = (arguments["width"] as? Number)?.toInt()
+            val height = (arguments["height"] as? Number)?.toInt()
+
+            if (canvasId != null && commands != null && width != null && height != null) {
+                val view = DCFCanvasView.canvasViews[canvasId]
+                if (view != null) {
+                    view.updateCommands(commands, width, height)
+                    return true
+                } else {
+                    android.util.Log.w("DCFCanvasComponent", "View not found for canvasId: $canvasId - view may not be registered yet")
+                    return false
                 }
             }
         }
@@ -177,6 +196,167 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
             }
         } catch (e: Exception) {
             android.util.Log.e("DCFCanvasView", "Error updating texture", e)
+        }
+    }
+    
+    // NEW: Command-based rendering (Phase 3) - executes Skia commands directly
+    fun updateCommands(commands: List<Map<String, Any>>, width: Int, height: Int) {
+        android.util.Log.d("DCFCanvasView", "updateCommands width: $width height: $height commands: ${commands.size}")
+        
+        val canvas = lockCanvas()
+        if (canvas == null) {
+            android.util.Log.w("DCFCanvasView", "Failed to lock canvas")
+            return
+        }
+        
+        try {
+            // Clear canvas
+            canvas.drawColor(android.graphics.Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
+            
+            // Execute each command on Android Canvas (which uses Skia under the hood)
+            executeCommands(commands, canvas, width, height)
+            
+            unlockCanvasAndPost(canvas)
+        } catch (e: Exception) {
+            android.util.Log.e("DCFCanvasView", "Error executing commands", e)
+            unlockCanvasAndPost(canvas)
+        }
+    }
+    
+    // Execute drawing commands on Android Canvas (Skia)
+    private fun executeCommands(commands: List<Map<String, Any>>, canvas: Canvas, width: Int, height: Int) {
+        val paint = Paint().apply {
+            isAntiAlias = true
+        }
+        
+        for (command in commands) {
+            val type = command["type"] as? String ?: continue
+            @Suppress("UNCHECKED_CAST")
+            val params = command["params"] as? Map<String, Any> ?: continue
+            
+            when (type) {
+                "drawRect" -> {
+                    val rect = params["rect"] as? List<Double>
+                    val paintData = params["paint"] as? Map<String, Any>
+                    if (rect != null && rect.size == 4 && paintData != null) {
+                        applyPaint(paint, paintData)
+                        canvas.drawRect(
+                            rect[0].toFloat(), rect[1].toFloat(),
+                            rect[2].toFloat(), rect[3].toFloat(),
+                            paint
+                        )
+                    }
+                }
+                "drawCircle" -> {
+                    val center = params["center"] as? List<Double>
+                    val radius = (params["radius"] as? Number)?.toFloat()
+                    val paintData = params["paint"] as? Map<String, Any>
+                    if (center != null && center.size == 2 && radius != null && paintData != null) {
+                        applyPaint(paint, paintData)
+                        canvas.drawCircle(center[0].toFloat(), center[1].toFloat(), radius, paint)
+                    }
+                }
+                "drawLine" -> {
+                    val p1 = params["p1"] as? List<Double>
+                    val p2 = params["p2"] as? List<Double>
+                    val paintData = params["paint"] as? Map<String, Any>
+                    if (p1 != null && p1.size == 2 && p2 != null && p2.size == 2 && paintData != null) {
+                        applyPaint(paint, paintData)
+                        canvas.drawLine(p1[0].toFloat(), p1[1].toFloat(), p2[0].toFloat(), p2[1].toFloat(), paint)
+                    }
+                }
+                "drawOval" -> {
+                    val rect = params["rect"] as? List<Double>
+                    val paintData = params["paint"] as? Map<String, Any>
+                    if (rect != null && rect.size == 4 && paintData != null) {
+                        applyPaint(paint, paintData)
+                        canvas.drawOval(
+                            android.graphics.RectF(
+                                rect[0].toFloat(), rect[1].toFloat(),
+                                rect[2].toFloat(), rect[3].toFloat()
+                            ),
+                            paint
+                        )
+                    }
+                }
+                "drawArc" -> {
+                    val rect = params["rect"] as? List<Double>
+                    val startAngle = (params["startAngle"] as? Number)?.toFloat()
+                    val sweepAngle = (params["sweepAngle"] as? Number)?.toFloat()
+                    val useCenter = params["useCenter"] as? Boolean ?: false
+                    val paintData = params["paint"] as? Map<String, Any>
+                    if (rect != null && rect.size == 4 && startAngle != null && sweepAngle != null && paintData != null) {
+                        applyPaint(paint, paintData)
+                        canvas.drawArc(
+                            android.graphics.RectF(
+                                rect[0].toFloat(), rect[1].toFloat(),
+                                rect[2].toFloat(), rect[3].toFloat()
+                            ),
+                            Math.toDegrees(startAngle.toDouble()).toFloat(),
+                            Math.toDegrees(sweepAngle.toDouble()).toFloat(),
+                            useCenter,
+                            paint
+                        )
+                    }
+                }
+                "translate" -> {
+                    val dx = (params["dx"] as? Number)?.toFloat()
+                    val dy = (params["dy"] as? Number)?.toFloat()
+                    if (dx != null && dy != null) {
+                        canvas.translate(dx, dy)
+                    }
+                }
+                "rotate" -> {
+                    val radians = (params["radians"] as? Number)?.toDouble()
+                    if (radians != null) {
+                        canvas.rotate(Math.toDegrees(radians).toFloat())
+                    }
+                }
+                "scale" -> {
+                    val sx = (params["sx"] as? Number)?.toFloat()
+                    val sy = (params["sy"] as? Number)?.toFloat()
+                    if (sx != null && sy != null) {
+                        canvas.scale(sx, sy)
+                    }
+                }
+                "save" -> {
+                    canvas.save()
+                }
+                "restore" -> {
+                    canvas.restore()
+                }
+                // Add more command types as needed
+                else -> {
+                    android.util.Log.d("DCFCanvasView", "Unsupported command type: $type")
+                }
+            }
+        }
+    }
+    
+    private fun applyPaint(paint: Paint, paintData: Map<String, Any>) {
+        val color = (paintData["color"] as? Number)?.toInt()
+        if (color != null) {
+            // ARGB format from Dart
+            paint.color = color
+        }
+        
+        val style = (paintData["style"] as? Number)?.toInt()
+        if (style != null) {
+            paint.style = when (style) {
+                0 -> Paint.Style.FILL
+                1 -> Paint.Style.STROKE
+                else -> Paint.Style.FILL
+            }
+        }
+        
+        val strokeWidth = (paintData["strokeWidth"] as? Number)?.toFloat()
+        if (strokeWidth != null) {
+            paint.strokeWidth = strokeWidth
+        }
+        
+        val isAntiAlias = paintData["isAntiAlias"] as? Boolean
+        if (isAntiAlias != null) {
+            paint.isAntiAlias = isAntiAlias
         }
     }
 

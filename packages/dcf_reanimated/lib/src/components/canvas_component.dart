@@ -195,8 +195,9 @@ class DCFCanvas extends DCFStatefulComponent {
       return false;
     }
 
-    // Use DirectCanvas for rendering - bypasses VDOM, direct pixel manipulation
-    final success = await DirectCanvas.renderAndUpdate(
+    // Use DirectCanvas for rendering with COMMAND EXTRACTION (best performance)
+    // Commands are much smaller than pixels and can be executed on native Skia directly
+    final success = await DirectCanvas.renderAndUpdateWithCommands(
       canvasId: canvasId,
       onPaint: onPaint!,
       size: size,

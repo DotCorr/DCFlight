@@ -47,6 +47,23 @@ class DCFCanvasComponent: NSObject, DCFComponent {
                 print("DCFCanvasComponent: View not found for canvasId: \(canvasId) - view may not be registered yet")
                 return false  // Return false instead of nil to indicate view not ready
             }
+        } else if method == "updateCommands" {
+            // NEW: Command-based rendering (Phase 3) - best performance
+            guard let canvasId = params["canvasId"] as? String,
+                  let commands = params["commands"] as? [[String: Any]],
+                  let width = params["width"] as? Int,
+                  let height = params["height"] as? Int else {
+                print("DCFCanvasComponent: Invalid params for updateCommands")
+                return nil
+            }
+            
+            if let view = DCFCanvasView.getCanvasView(forId: canvasId) {
+                view.updateCommands(commands: commands, width: width, height: height)
+                return true
+            } else {
+                print("DCFCanvasComponent: View not found for canvasId: \(canvasId) - view may not be registered yet")
+                return false
+            }
         }
         return nil
     }
@@ -339,6 +356,134 @@ class DCFCanvasView: UIView, FlutterTexture {
         DispatchQueue.main.async {
             self.drawFrame()
         }
+    }
+    
+    // NEW: Command-based rendering (Phase 3) - executes Skia commands directly
+    func updateCommands(commands: [[String: Any]], width: Int, height: Int) {
+        NSLog("DCFCanvasView: updateCommands width: \(width) height: \(height) commands: \(commands.count)")
+        
+        // Create or resize buffer if needed
+        if pixelBuffer == nil || CVPixelBufferGetWidth(pixelBuffer!) != width || CVPixelBufferGetHeight(pixelBuffer!) != height {
+            createBuffer(width: width, height: height)
+        }
+        
+        guard let buffer = pixelBuffer else {
+            NSLog("DCFCanvasView: Failed to create buffer")
+            return
+        }
+        
+        // Lock buffer for drawing
+        CVPixelBufferLockBaseAddress(buffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
+        
+        guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else {
+            NSLog("DCFCanvasView: Failed to get base address")
+            return
+        }
+        
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+        let context = CGContext(
+            data: baseAddress,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue).rawValue
+        )
+        
+        guard let cgContext = context else {
+            NSLog("DCFCanvasView: Failed to create CGContext")
+            return
+        }
+        
+        // Execute commands on native Skia/CoreGraphics
+        executeCommands(commands: commands, context: cgContext, width: width, height: height)
+        
+        // Notify Flutter texture system
+        if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
+           let registrar = appDelegate.pluginRegistrant as? FlutterPluginRegistrar {
+            registrar.textures().textureFrameAvailable(textureId)
+        }
+        
+        DispatchQueue.main.async {
+            self.drawFrame()
+        }
+    }
+    
+    // Execute drawing commands on CoreGraphics context
+    private func executeCommands(commands: [[String: Any]], context: CGContext, width: Int, height: Int) {
+        // Clear canvas
+        context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        
+        // Execute each command
+        for command in commands {
+            guard let type = command["type"] as? String,
+                  let params = command["params"] as? [String: Any] else {
+                continue
+            }
+            
+            switch type {
+            case "drawRect":
+                if let rect = params["rect"] as? [Double], rect.count == 4,
+                   let paint = params["paint"] as? [String: Any] {
+                    let color = extractColor(from: paint)
+                    context.setFillColor(color)
+                    context.fill(CGRect(x: rect[0], y: rect[1], width: rect[2] - rect[0], height: rect[3] - rect[1]))
+                }
+            case "drawCircle":
+                if let center = params["center"] as? [Double], center.count == 2,
+                   let radius = params["radius"] as? Double,
+                   let paint = params["paint"] as? [String: Any] {
+                    let color = extractColor(from: paint)
+                    context.setFillColor(color)
+                    context.fillEllipse(in: CGRect(x: center[0] - radius, y: center[1] - radius, width: radius * 2, height: radius * 2))
+                }
+            case "drawLine":
+                if let p1 = params["p1"] as? [Double], p1.count == 2,
+                   let p2 = params["p2"] as? [Double], p2.count == 2,
+                   let paint = params["paint"] as? [String: Any] {
+                    let color = extractColor(from: paint)
+                    context.setStrokeColor(color)
+                    if let strokeWidth = paint["strokeWidth"] as? Double {
+                        context.setLineWidth(CGFloat(strokeWidth))
+                    }
+                    context.move(to: CGPoint(x: p1[0], y: p1[1]))
+                    context.addLine(to: CGPoint(x: p2[0], y: p2[1]))
+                    context.strokePath()
+                }
+            case "translate":
+                if let dx = params["dx"] as? Double, let dy = params["dy"] as? Double {
+                    context.translateBy(x: CGFloat(dx), y: CGFloat(dy))
+                }
+            case "rotate":
+                if let radians = params["radians"] as? Double {
+                    context.rotate(by: CGFloat(radians))
+                }
+            case "scale":
+                if let sx = params["sx"] as? Double, let sy = params["sy"] as? Double {
+                    context.scaleBy(x: CGFloat(sx), y: CGFloat(sy))
+                }
+            case "save":
+                context.saveGState()
+            case "restore":
+                context.restoreGState()
+            default:
+                NSLog("DCFCanvasView: Unsupported command type: \(type)")
+            }
+        }
+    }
+    
+    private func extractColor(from paint: [String: Any]) -> CGColor {
+        if let colorValue = paint["color"] as? Int {
+            let a = CGFloat((colorValue >> 24) & 0xFF) / 255.0
+            let r = CGFloat((colorValue >> 16) & 0xFF) / 255.0
+            let g = CGFloat((colorValue >> 8) & 0xFF) / 255.0
+            let b = CGFloat(colorValue & 0xFF) / 255.0
+            return CGColor(red: r, green: g, blue: b, alpha: a)
+        }
+        return CGColor(red: 0, green: 0, blue: 0, alpha: 1)
     }
     
     private func createBuffer(width: Int, height: Int) {
