@@ -43,11 +43,10 @@ class DCFCanvas extends DCFStatefulComponent {
     this.repaintOnFrame = false,
     this.backgroundColor,
     this.size = const Size(300, 300),
-    DCFLayout? layout,
-    DCFStyleSheet? styleSheet,
+    this.layout,
+    this.styleSheet,
     super.key,
-  })  : layout = layout,
-        styleSheet = styleSheet;
+  });
 
   @override
   DCFComponentNode render() {

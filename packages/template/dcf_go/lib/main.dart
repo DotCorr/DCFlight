@@ -205,12 +205,15 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
         // Confetti overlay (absolute positioned)
         if (showConfetti.state)
           DCFConfetti(
-            particleCount: 100,
-            duration: 3000,
-            config: const ConfettiConfig(
-              gravity: 9.8,
-              initialVelocity: 80.0,
+            config: ConfettiConfig(
+              particleCount: 100,
+              angle: 90,
               spread: 360.0,
+              startVelocity: 80.0,
+              decay: 0.9,
+              gravity: 1,
+              drift: 0,
+              ticks: 200,
               colors: [
                 Colors.red,
                 Colors.green,
@@ -221,8 +224,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                 Colors.orange,
                 Colors.pink,
               ],
-              minSize: 5.0,
-              maxSize: 12.0,
+              scalar: 1.0,
             ),
             onComplete: () {
               showConfetti.setState(false);

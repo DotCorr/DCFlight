@@ -12,7 +12,6 @@ import android.graphics.PointF
 import android.graphics.SurfaceTexture
 import android.view.TextureView
 import android.view.View
-import android.view.Choreographer
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color
@@ -83,18 +82,6 @@ class DCFCanvasComponent : DCFComponent() {
     }
 }
 
-// Particle data class for native rendering
-data class Particle(
-    var x: Double,
-    var y: Double,
-    var vx: Double,
-    var vy: Double,
-    var rotation: Double,
-    var rotationSpeed: Double,
-    val size: Double,
-    val color: Int // ARGB
-)
-
 class DCFCanvasView(context: Context) : TextureView(context), TextureView.SurfaceTextureListener {
     companion object {
         val canvasViews = ConcurrentHashMap<String, DCFCanvasView>()
@@ -102,25 +89,6 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
 
     private var canvasId: String? = null
     private var surfaceTexture: SurfaceTexture? = null
-    
-    // Native particle system
-    private var particles: MutableList<Particle> = mutableListOf()
-    private var particleConfig: Map<String, Any?>? = null
-    private var animationStartTime: Long = 0
-    private var animationDuration: Long = 0
-    private var gravity: Double = 9.8
-    private var canvasWidth: Double = 0.0
-    private var canvasHeight: Double = 0.0
-    private var isAnimating: Boolean = false
-    private var choreographer: Choreographer? = null
-    private val frameCallback = object : Choreographer.FrameCallback {
-        override fun doFrame(frameTimeNanos: Long) {
-            if (isAnimating) {
-                updateAndRenderParticles()
-                choreographer?.postFrameCallback(this)
-            }
-        }
-    }
 
     init {
         surfaceTextureListener = this
@@ -129,7 +97,6 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
         // Allow touches to pass through to views behind the canvas
         isClickable = false
         isFocusable = false
-        choreographer = Choreographer.getInstance()
     }
 
     fun update(props: Map<String, Any?>) {
@@ -141,15 +108,6 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
             }
             canvasId = id
             canvasViews[id!!] = this
-        }
-        
-        // Check for particle config (native rendering mode)
-        if (props.containsKey("particleConfig")) {
-            val config = props["particleConfig"] as? Map<String, Any?>
-            if (config != null) {
-                configureParticles(config)
-                return // Native rendering handles everything
-            }
         }
         
         // Ensure view fills its container
@@ -169,115 +127,6 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
             }
         }
     }
-    
-    private fun configureParticles(config: Map<String, Any?>) {
-        android.util.Log.d("DCFCanvasView", "🎉 Configuring native particle system")
-        particleConfig = config
-        
-        val particlesData = config["particles"] as? List<Map<String, Any?>>
-        val width = (config["width"] as? Number)?.toDouble()
-        val height = (config["height"] as? Number)?.toDouble()
-        val duration = (config["duration"] as? Number)?.toLong()
-        val gravityValue = (config["gravity"] as? Number)?.toDouble()
-        
-        if (particlesData == null || width == null || height == null || duration == null || gravityValue == null) {
-            android.util.Log.w("DCFCanvasView", "⚠️ Invalid particle config")
-            return
-        }
-        
-        canvasWidth = width
-        canvasHeight = height
-        animationDuration = duration
-        gravity = gravityValue
-        
-        // Initialize particles
-        particles.clear()
-        for (particleData in particlesData) {
-            val x = (particleData["x"] as? Number)?.toDouble() ?: 0.0
-            val y = (particleData["y"] as? Number)?.toDouble() ?: 0.0
-            val vx = (particleData["vx"] as? Number)?.toDouble() ?: 0.0
-            val vy = (particleData["vy"] as? Number)?.toDouble() ?: 0.0
-            val rotation = (particleData["rotation"] as? Number)?.toDouble() ?: 0.0
-            val rotationSpeed = (particleData["rotationSpeed"] as? Number)?.toDouble() ?: 0.0
-            val size = (particleData["size"] as? Number)?.toDouble() ?: 0.0
-            val color = (particleData["color"] as? Number)?.toInt() ?: 0
-            
-            particles.add(Particle(x, y, vx, vy, rotation, rotationSpeed, size, color))
-        }
-        
-        android.util.Log.d("DCFCanvasView", "🎉 Initialized ${particles.size} particles")
-        
-        // Start animation
-        animationStartTime = System.currentTimeMillis()
-        isAnimating = true
-        choreographer?.postFrameCallback(frameCallback)
-    }
-    
-    private fun updateAndRenderParticles() {
-        val currentTime = System.currentTimeMillis()
-        val elapsed = currentTime - animationStartTime
-        
-        // Check if animation is complete
-        if (elapsed >= animationDuration) {
-            isAnimating = false
-            choreographer?.removeFrameCallback(frameCallback)
-            android.util.Log.d("DCFCanvasView", "🎉 Particle animation complete")
-            // TODO: Fire onComplete callback
-            return
-        }
-        
-        // Update particles
-        val deltaTime = 1.0 / 60.0 // Assume 60fps
-        for (i in particles.indices) {
-            val p = particles[i]
-            p.x += p.vx * deltaTime
-            p.y += (p.vy + gravity) * deltaTime
-            p.vy += gravity * deltaTime
-            p.rotation += p.rotationSpeed * deltaTime
-        }
-        
-        // Render particles
-        renderParticles()
-    }
-    
-    private fun renderParticles() {
-        val surface = surfaceTexture ?: return
-        val canvas = lockCanvas() ?: return
-        
-        try {
-            // Clear canvas
-            canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
-            
-            // Render each particle
-            val paint = Paint().apply {
-                style = Paint.Style.FILL
-                isAntiAlias = true
-            }
-            
-            for (particle in particles) {
-                val x = particle.x.toFloat()
-                val y = particle.y.toFloat()
-                
-                // Skip if out of bounds
-                if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight) {
-                    continue
-                }
-                
-                paint.color = particle.color
-                val radius = (particle.size / 2.0).toFloat()
-                
-                // Draw circle
-                canvas.save()
-                canvas.translate(x, y)
-                canvas.rotate(particle.rotation.toFloat())
-                canvas.drawCircle(0f, 0f, radius, paint)
-                canvas.restore()
-            }
-        } finally {
-            unlockCanvasAndPost(canvas)
-        }
-    }
-
     fun updateTexture(pixels: ByteArray, width: Int, height: Int) {
         val surface = surfaceTexture ?: return
         // In a real implementation, we would update the SurfaceTexture here.
