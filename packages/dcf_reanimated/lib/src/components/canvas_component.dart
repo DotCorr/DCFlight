@@ -10,9 +10,14 @@ import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'direct_canvas.dart';
 
 /// Canvas component that renders using dart:ui via Flutter's CustomPaint
 /// Users can use Flutter's Canvas APIs directly (Paint, Path, Shader, etc.)
+/// 
+/// Also supports native particle system rendering via particleConfig prop.
+/// When particleConfig is provided, native side handles all rendering
+/// with zero bridge calls during animation.
 class DCFCanvas extends DCFStatefulComponent {
   /// Paint callback - users draw using Flutter's Canvas
   final void Function(ui.Canvas canvas, Size size)? onPaint;
@@ -22,6 +27,7 @@ class DCFCanvas extends DCFStatefulComponent {
 
   /// Background color
   final Color? backgroundColor;
+
 
   /// Layout properties
   final DCFLayout? layout;
@@ -72,7 +78,7 @@ class DCFCanvas extends DCFStatefulComponent {
     };
 
     // If we have an onPaint callback, we need to render it to an image
-    // and send the pixels to the native side.
+    // and send the pixels to the native side via Flutter's texture registry.
     if (onPaint != null) {
       if (repaintOnFrame) {
         // For animations, set up continuous rendering on every frame (~60fps)
@@ -137,52 +143,25 @@ class DCFCanvas extends DCFStatefulComponent {
     );
   }
 
+  /// Render to native using DirectCanvas - bypasses VDOM completely
+  /// 
+  /// Uses DirectCanvas.renderAndUpdate internally, which handles all
+  /// the pixel conversion and tunnel communication. Zero VDOM overhead.
   Future<bool?> _renderToNative(String canvasId) async {
     if (onPaint == null) {
       print('⚠️ DCFCanvas: _renderToNative called but onPaint is null');
       return false;
     }
 
-    try {
-      final recorder = ui.PictureRecorder();
-      final canvas = ui.Canvas(recorder);
-
-      // Draw background
-      if (backgroundColor != null) {
-        canvas.drawRect(
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          Paint()..color = backgroundColor!,
-        );
-      }
-
-      // Call user's paint function
-      onPaint!(canvas, size);
-
-      final picture = recorder.endRecording();
-      final image =
-          await picture.toImage(size.width.toInt(), size.height.toInt());
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
-
-      if (byteData != null) {
-        // Send pixels to native via Tunnel
-        // Note: Native side will convert RGBA to BGRA (iOS) or ARGB (Android)
-        final result = await FrameworkTunnel.call('Canvas', 'updateTexture', {
-          'canvasId': canvasId,
-          'pixels': byteData.buffer.asUint8List(),
-          'width': size.width.toInt(),
-          'height': size.height.toInt(),
-        });
-        
-        // Return result: true = success, false = view not ready, null = error
-        return result == true ? true : (result == false ? false : null);
-      } else {
-        print('⚠️ DCFCanvas: Failed to get byteData from image');
-        return false;
-      }
-    } catch (e, stackTrace) {
-      print('❌ DCFCanvas: Error rendering: $e');
-      print('❌ DCFCanvas: Stack trace: $stackTrace');
-      return false;
-    }
+    // Use DirectCanvas for rendering - bypasses VDOM, direct pixel manipulation
+    final success = await DirectCanvas.renderAndUpdate(
+      canvasId: canvasId,
+      onPaint: onPaint!,
+      size: size,
+      backgroundColor: backgroundColor,
+    );
+    
+    // Return result: true = success, false = view not ready, null = error
+    return success ? true : false;
   }
 }

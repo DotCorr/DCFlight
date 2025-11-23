@@ -40,9 +40,7 @@ class DCFCanvasComponent: NSObject, DCFComponent {
                 return nil
             }
             
-            print("DCFCanvasComponent: updateTexture for canvasId: \(canvasId). Registered views: \(DCFCanvasView.canvasViews.keys)")
-            
-            if let view = DCFCanvasView.canvasViews[canvasId] {
+            if let view = DCFCanvasView.getCanvasView(forId: canvasId) {
                 view.updateTexture(pixels: pixels.data, width: width, height: height)
                 return true
             } else {
@@ -70,9 +68,45 @@ class DCFCanvasComponent: NSObject, DCFComponent {
     }
 }
 
+// Particle data structure for native rendering
+struct Particle {
+    var x: Double
+    var y: Double
+    var vx: Double
+    var vy: Double
+    var rotation: Double
+    var rotationSpeed: Double
+    let size: Double
+    let color: UInt32 // ARGB
+}
+
 class DCFCanvasView: UIView, FlutterTexture {
     // Static registry to track active canvas views by ID
-    static var canvasViews: [String: DCFCanvasView] = [:]
+    // Use a serial queue to synchronize access and prevent race conditions
+    private static let accessQueue = DispatchQueue(label: "com.dotcorr.dcfcanvas.views", attributes: .concurrent)
+    private static var _canvasViews: [String: DCFCanvasView] = [:]
+    
+    static var canvasViews: [String: DCFCanvasView] {
+        get {
+            return accessQueue.sync { _canvasViews }
+        }
+    }
+    
+    static func setCanvasView(_ view: DCFCanvasView?, forId id: String) {
+        accessQueue.async(flags: .barrier) {
+            if let view = view {
+                _canvasViews[id] = view
+            } else {
+                _canvasViews.removeValue(forKey: id)
+            }
+        }
+    }
+    
+    static func getCanvasView(forId id: String) -> DCFCanvasView? {
+        return accessQueue.sync {
+            return _canvasViews[id]
+        }
+    }
     
     private var canvasId: String?
     private var textureId: Int64 = -1
@@ -80,6 +114,16 @@ class DCFCanvasView: UIView, FlutterTexture {
     private var displayLink: CADisplayLink?
     private var repaintOnFrame: Bool = false
     private var onPaintCallback: FlutterCallbackInformation?
+    
+    // Native particle system
+    private var particles: [Particle] = []
+    private var particleConfig: [String: Any]?
+    private var animationStartTime: CFTimeInterval = 0
+    private var animationDuration: Double = 0
+    private var gravity: Double = 9.8
+    private var canvasWidth: Double = 0
+    private var canvasHeight: Double = 0
+    private var isAnimating: Bool = false
     
     // Layer to display the pixel buffer
     private var contentLayer: CALayer = CALayer()
@@ -132,13 +176,19 @@ class DCFCanvasView: UIView, FlutterTexture {
             if canvasId != id {
                 // Unregister old ID if changed
                 if let oldId = canvasId {
-                    DCFCanvasView.canvasViews.removeValue(forKey: oldId)
+                    DCFCanvasView.setCanvasView(nil, forId: oldId)
                     NSLog("DCFCanvasView: Unregistered old canvasId: \(oldId)")
                 }
             }
             canvasId = id
-            DCFCanvasView.canvasViews[id] = self
-            NSLog("DCFCanvasView: Registered canvasId: \(id), total views: \(DCFCanvasView.canvasViews.count)")
+            DCFCanvasView.setCanvasView(self, forId: id)
+            NSLog("DCFCanvasView: Registered canvasId: \(id)")
+        }
+
+        // Check for particle config (native rendering mode)
+        if let config = props["particleConfig"] as? [String: Any] {
+            configureParticles(config: config)
+            return // Native rendering handles everything
         }
 
         if let repaint = props["repaintOnFrame"] as? Bool {
@@ -152,6 +202,60 @@ class DCFCanvasView: UIView, FlutterTexture {
         
         // Trigger a redraw
         drawFrame()
+    }
+    
+    private func configureParticles(config: [String: Any]) {
+        NSLog("🎉 DCFCanvasView: Configuring native particle system")
+        particleConfig = config
+        
+        guard let particlesData = config["particles"] as? [[String: Any]],
+              let width = config["width"] as? Double,
+              let height = config["height"] as? Double,
+              let duration = config["duration"] as? Int,
+              let gravityValue = config["gravity"] as? Double else {
+            NSLog("⚠️ DCFCanvasView: Invalid particle config")
+            return
+        }
+        
+        canvasWidth = width
+        canvasHeight = height
+        animationDuration = Double(duration) / 1000.0 // Convert ms to seconds
+        gravity = gravityValue
+        
+        // Initialize particles
+        particles = particlesData.compactMap { particleData in
+            guard let x = particleData["x"] as? Double,
+                  let y = particleData["y"] as? Double,
+                  let vx = particleData["vx"] as? Double,
+                  let vy = particleData["vy"] as? Double,
+                  let rotation = particleData["rotation"] as? Double,
+                  let rotationSpeed = particleData["rotationSpeed"] as? Double,
+                  let size = particleData["size"] as? Double,
+                  let colorValue = particleData["color"] as? Int else {
+                return nil
+            }
+            
+            return Particle(
+                x: x,
+                y: y,
+                vx: vx,
+                vy: vy,
+                rotation: rotation,
+                rotationSpeed: rotationSpeed,
+                size: size,
+                color: UInt32(colorValue)
+            )
+        }
+        
+        NSLog("🎉 DCFCanvasView: Initialized \(particles.count) particles")
+        
+        // Create buffer for rendering
+        createBuffer(width: Int(width), height: Int(height))
+        
+        // Start animation
+        animationStartTime = CACurrentMediaTime()
+        isAnimating = true
+        startDisplayLink()
     }
 
     func updateTexture(pixels: Data, width: Int, height: Int) {
@@ -252,7 +356,104 @@ class DCFCanvasView: UIView, FlutterTexture {
     }
     
     @objc private func onDisplayLink() {
-        drawFrame()
+        if isAnimating {
+            updateAndRenderParticles()
+        } else {
+            drawFrame()
+        }
+    }
+    
+    private func updateAndRenderParticles() {
+        guard let buffer = pixelBuffer else { return }
+        
+        let currentTime = CACurrentMediaTime()
+        let elapsed = currentTime - animationStartTime
+        
+        // Check if animation is complete
+        if elapsed >= animationDuration {
+            isAnimating = false
+            stopDisplayLink()
+            NSLog("🎉 DCFCanvasView: Particle animation complete")
+            // TODO: Fire onComplete callback
+            return
+        }
+        
+        // Update particles
+        let deltaTime = 1.0 / 60.0 // Assume 60fps
+        for i in 0..<particles.count {
+            particles[i].x += particles[i].vx * deltaTime
+            particles[i].y += (particles[i].vy + gravity) * deltaTime
+            particles[i].vy += gravity * deltaTime
+            particles[i].rotation += particles[i].rotationSpeed * deltaTime
+        }
+        
+        // Render particles to pixel buffer
+        renderParticlesToBuffer(buffer)
+        
+        // Notify Flutter that frame is available
+        if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
+           let registrar = appDelegate.pluginRegistrant as? FlutterPluginRegistrar {
+            registrar.textures().textureFrameAvailable(textureId)
+        }
+        
+        DispatchQueue.main.async {
+            self.drawFrame()
+        }
+    }
+    
+    private func renderParticlesToBuffer(_ buffer: CVPixelBuffer) {
+        CVPixelBufferLockBaseAddress(buffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
+        
+        guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else { return }
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+        let width = CVPixelBufferGetWidth(buffer)
+        let height = CVPixelBufferGetHeight(buffer)
+        
+        // Clear buffer (transparent)
+        let destination = baseAddress.assumingMemoryBound(to: UInt8.self)
+        memset(destination, 0, bytesPerRow * height)
+        
+        // Render each particle
+        for particle in particles {
+            let x = Int(particle.x)
+            let y = Int(particle.y)
+            
+            // Skip if out of bounds
+            if x < 0 || x >= width || y < 0 || y >= height {
+                continue
+            }
+            
+            let radius = Int(particle.size / 2.0)
+            let color = particle.color
+            
+            // Extract ARGB components
+            let a = UInt8((color >> 24) & 0xFF)
+            let r = UInt8((color >> 16) & 0xFF)
+            let g = UInt8((color >> 8) & 0xFF)
+            let b = UInt8(color & 0xFF)
+            
+            // Draw circle (simplified - just draw a filled circle)
+            for dy in -radius...radius {
+                for dx in -radius...radius {
+                    let px = x + dx
+                    let py = y + dy
+                    
+                    if px >= 0 && px < width && py >= 0 && py < height {
+                        let distance = sqrt(Double(dx * dx + dy * dy))
+                        if distance <= Double(radius) {
+                            let pixelOffset = py * bytesPerRow + px * 4
+                            
+                            // Convert ARGB to BGRA for iOS
+                            destination[pixelOffset + 0] = b
+                            destination[pixelOffset + 1] = g
+                            destination[pixelOffset + 2] = r
+                            destination[pixelOffset + 3] = a
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func drawFrame() {
@@ -277,8 +478,9 @@ class DCFCanvasView: UIView, FlutterTexture {
     }
     
     deinit {
+        // Safely remove from registry using the synchronized method
         if let id = canvasId {
-            DCFCanvasView.canvasViews.removeValue(forKey: id)
+            DCFCanvasView.setCanvasView(nil, forId: id)
         }
         if textureId != -1 {
             if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
