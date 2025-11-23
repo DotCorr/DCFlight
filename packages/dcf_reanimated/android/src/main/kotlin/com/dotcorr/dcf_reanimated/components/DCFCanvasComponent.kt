@@ -95,8 +95,21 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
         // Draw the pixels to a Bitmap and then to the Surface.
         
         try {
+            // Convert RGBA to ARGB (Android Bitmap expects ARGB_8888)
+            val argbPixels = ByteArray(pixels.size)
+            for (i in pixels.indices step 4) {
+                if (i + 3 < pixels.size) {
+                    // RGBA: R, G, B, A
+                    // ARGB: A, R, G, B
+                    argbPixels[i] = pixels[i + 3]     // A
+                    argbPixels[i + 1] = pixels[i]     // R
+                    argbPixels[i + 2] = pixels[i + 1] // G
+                    argbPixels[i + 3] = pixels[i + 2] // B
+                }
+            }
+            
             val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
-            val buffer = java.nio.ByteBuffer.wrap(pixels)
+            val buffer = java.nio.ByteBuffer.wrap(argbPixels)
             bitmap.copyPixelsFromBuffer(buffer)
             
             val canvas = lockCanvas()

@@ -139,6 +139,7 @@ class DCFCanvas extends DCFStatefulComponent {
       if (byteData != null) {
         print('🎨 DCFCanvas: Rendered image, sending ${byteData.lengthInBytes} bytes to native');
         // Send pixels to native via Tunnel
+        // Note: Native side will convert RGBA to BGRA (iOS) or ARGB (Android)
         final result = await FrameworkTunnel.call('Canvas', 'updateTexture', {
           'canvasId': canvasId,
           'pixels': byteData.buffer.asUint8List(),

@@ -77,7 +77,9 @@ final layouts = DCFLayout.create({
   ),
   'canvasBox': DCFLayout(
     width: '100%',
-    height: 150,
+    height: 300,
+    alignItems: DCFAlign.center,
+    justifyContent: DCFJustifyContent.center,
   ),
   'gpuDemoBox': DCFLayout(
     width: '100%',

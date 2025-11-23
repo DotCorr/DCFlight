@@ -162,14 +162,29 @@ class DCFCanvasView: UIView, FlutterTexture {
         
         if let baseAddress = CVPixelBufferGetBaseAddress(buffer) {
             let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
-            let destination = baseAddress
+            let destination = baseAddress.assumingMemoryBound(to: UInt8.self)
             
             pixels.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) in
                 if let sourceAddress = rawBuffer.baseAddress {
+                    let source = sourceAddress.assumingMemoryBound(to: UInt8.self)
+                    
+                    // Convert RGBA to BGRA (iOS expects BGRA format)
                     for y in 0..<height {
-                        let srcRow = sourceAddress.advanced(by: y * width * 4)
-                        let dstRow = destination.advanced(by: y * bytesPerRow)
-                        memcpy(dstRow, srcRow, width * 4)
+                        let srcRowOffset = y * width * 4
+                        let dstRowOffset = y * bytesPerRow
+                        
+                        // Convert RGBA to BGRA pixel by pixel
+                        for x in 0..<width {
+                            let srcPixelOffset = srcRowOffset + (x * 4)
+                            let dstPixelOffset = dstRowOffset + (x * 4)
+                            
+                            // RGBA: R, G, B, A
+                            // BGRA: B, G, R, A
+                            destination[dstPixelOffset + 0] = source[srcPixelOffset + 2] // B
+                            destination[dstPixelOffset + 1] = source[srcPixelOffset + 1] // G
+                            destination[dstPixelOffset + 2] = source[srcPixelOffset + 0] // R
+                            destination[dstPixelOffset + 3] = source[srcPixelOffset + 3] // A
+                        }
                     }
                 }
             }

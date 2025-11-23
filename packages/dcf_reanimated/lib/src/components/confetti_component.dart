@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/utils/screen_utilities.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:async';
@@ -134,9 +135,11 @@ class DCFConfetti extends DCFStatefulComponent {
     final random = math.Random();
     final particleList = <_ConfettiParticle>[];
 
-    // Start from center of screen
-    const centerX = 540.0; // Half of 1080 (typical width)
-    const centerY = 400.0; // Start from top-ish
+    // Get screen dimensions for proper centering
+    final screenWidth = ScreenUtilities.instance.screenWidth;
+    final screenHeight = ScreenUtilities.instance.screenHeight;
+    final centerX = screenWidth > 0 ? screenWidth / 2 : 200.0;
+    final centerY = screenHeight > 0 ? screenHeight * 0.2 : 200.0; // Start from top-ish
 
     for (int i = 0; i < particleCount; i++) {
       // Random angle for spread
@@ -197,9 +200,13 @@ class DCFConfetti extends DCFStatefulComponent {
       return () => timer.cancel();
     }, dependencies: []);
 
+    // Use actual screen size for canvas, but cap at reasonable maximum to prevent OOM
+    final canvasWidth = screenWidth > 0 ? screenWidth : 400.0;
+    final canvasHeight = screenHeight > 0 ? screenHeight : 800.0;
+    
     // Use DCFCanvas with onPaint callback
     return DCFCanvas(
-      size: const Size(1080, 2400), // Full screen canvas
+      size: Size(canvasWidth, canvasHeight),
       repaintOnFrame: true,
       layout: layout ?? _confettiLayouts['default'],
       styleSheet: styleSheet,
