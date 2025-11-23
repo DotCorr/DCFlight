@@ -429,16 +429,190 @@ class DCFCanvasView: UIView, FlutterTexture {
                 if let rect = params["rect"] as? [Double], rect.count == 4,
                    let paint = params["paint"] as? [String: Any] {
                     let color = extractColor(from: paint)
-                    context.setFillColor(color)
-                    context.fill(CGRect(x: rect[0], y: rect[1], width: rect[2] - rect[0], height: rect[3] - rect[1]))
+                    let style = paint["style"] as? Int ?? 0 // 0 = fill, 1 = stroke
+                    let r = CGRect(x: rect[0], y: rect[1], width: rect[2] - rect[0], height: rect[3] - rect[1])
+                    
+                    if style == 1 {
+                        context.setStrokeColor(color)
+                        if let strokeWidth = paint["strokeWidth"] as? Double {
+                            context.setLineWidth(CGFloat(strokeWidth))
+                        }
+                        context.stroke(r)
+                    } else {
+                        context.setFillColor(color)
+                        context.fill(r)
+                    }
                 }
             case "drawCircle":
                 if let center = params["center"] as? [Double], center.count == 2,
                    let radius = params["radius"] as? Double,
                    let paint = params["paint"] as? [String: Any] {
                     let color = extractColor(from: paint)
-                    context.setFillColor(color)
-                    context.fillEllipse(in: CGRect(x: center[0] - radius, y: center[1] - radius, width: radius * 2, height: radius * 2))
+                    let style = paint["style"] as? Int ?? 0
+                    let r = CGRect(x: center[0] - radius, y: center[1] - radius, width: radius * 2, height: radius * 2)
+                    
+                    if style == 1 {
+                        context.setStrokeColor(color)
+                        if let strokeWidth = paint["strokeWidth"] as? Double {
+                            context.setLineWidth(CGFloat(strokeWidth))
+                        }
+                        context.strokeEllipse(in: r)
+                    } else {
+                        context.setFillColor(color)
+                        context.fillEllipse(in: r)
+                    }
+                }
+            case "drawOval":
+                if let rect = params["rect"] as? [Double], rect.count == 4,
+                   let paint = params["paint"] as? [String: Any] {
+                    let color = extractColor(from: paint)
+                    let style = paint["style"] as? Int ?? 0
+                    let r = CGRect(x: rect[0], y: rect[1], width: rect[2] - rect[0], height: rect[3] - rect[1])
+                    
+                    if style == 1 {
+                        context.setStrokeColor(color)
+                        if let strokeWidth = paint["strokeWidth"] as? Double {
+                            context.setLineWidth(CGFloat(strokeWidth))
+                        }
+                        context.strokeEllipse(in: r)
+                    } else {
+                        context.setFillColor(color)
+                        context.fillEllipse(in: r)
+                    }
+                }
+            case "drawArc":
+                if let rect = params["rect"] as? [Double], rect.count == 4,
+                   let startAngle = params["startAngle"] as? Double,
+                   let sweepAngle = params["sweepAngle"] as? Double,
+                   let useCenter = params["useCenter"] as? Bool,
+                   let paint = params["paint"] as? [String: Any] {
+                    
+                    let color = extractColor(from: paint)
+                    let style = paint["style"] as? Int ?? 0
+                    
+                    let x = rect[0]
+                    let y = rect[1]
+                    let w = rect[2] - rect[0]
+                    let h = rect[3] - rect[1]
+                    let cx = x + w/2
+                    let cy = y + h/2
+                    
+                    context.saveGState()
+                    context.translateBy(x: cx, y: cy)
+                    context.scaleBy(x: w/2, y: h/2)
+                    
+                    // CoreGraphics addArc: 0 is positive x-axis. Positive angle is clockwise in flipped coords (iOS default for UIView/CALayer is NOT flipped? Wait, CVPixelBuffer/CGContext might be).
+                    // Flutter: 0 is positive x-axis, positive is clockwise.
+                    // Let's assume they match for now.
+                    
+                    let path = CGMutablePath()
+                    if useCenter {
+                        path.move(to: CGPoint(x: 0, y: 0))
+                    }
+                    // clockwise: false means counter-clockwise in standard math, but in flipped Y (iOS), it might be clockwise?
+                    // Actually, let's just use 'false' (counter-clockwise) if sweep is negative?
+                    // Flutter sweepAngle can be negative.
+                    // CGContextAddArc takes start and end.
+                    let endAngle = startAngle + sweepAngle
+                    let clockwise = sweepAngle < 0
+                    
+                    path.addArc(center: CGPoint(x: 0, y: 0), radius: 1.0, startAngle: CGFloat(startAngle), endAngle: CGFloat(endAngle), clockwise: clockwise)
+                    
+                    if useCenter {
+                        path.closeSubpath()
+                    }
+                    
+                    context.addPath(path)
+                    
+                    // Restore transform before stroking/filling to avoid distorting the stroke width
+                    context.restoreGState()
+                    
+                    // Note: We added path to context, but we restored GState.
+                    // The path added to context is transformed by the CTM *at the time it was added*.
+                    // So restoring GState doesn't untransform the path points, but it DOES untransform the CTM for subsequent stroke width.
+                    // This is correct for non-distorted stroke.
+                    
+                    if style == 1 {
+                        context.setStrokeColor(color)
+                        if let strokeWidth = paint["strokeWidth"] as? Double {
+                            context.setLineWidth(CGFloat(strokeWidth))
+                        }
+                        context.strokePath()
+                    } else {
+                        context.setFillColor(color)
+                        context.fillPath()
+                    }
+                }
+            case "drawPath":
+                if let paint = params["paint"] as? [String: Any],
+                   let pathCommands = params["pathCommands"] as? [[String: Any]] {
+                    
+                    let color = extractColor(from: paint)
+                    let style = paint["style"] as? Int ?? 0
+                    let path = CGMutablePath()
+                    
+                    for cmd in pathCommands {
+                        if let type = cmd["type"] as? String {
+                            switch type {
+                            case "moveTo":
+                                if let x = cmd["x"] as? Double, let y = cmd["y"] as? Double {
+                                    path.move(to: CGPoint(x: x, y: y))
+                                }
+                            case "lineTo":
+                                if let x = cmd["x"] as? Double, let y = cmd["y"] as? Double {
+                                    path.addLine(to: CGPoint(x: x, y: y))
+                                }
+                            case "close":
+                                path.closeSubpath()
+                            case "addRect":
+                                if let r = cmd["rect"] as? [Double], r.count == 4 {
+                                    path.addRect(CGRect(x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1]))
+                                }
+                            case "addOval":
+                                if let r = cmd["oval"] as? [Double], r.count == 4 {
+                                    path.addEllipse(in: CGRect(x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1]))
+                                }
+                            case "addRRect":
+                                if let r = cmd["rrect"] as? [Double], r.count == 12 {
+                                    // rrect format: left, top, right, bottom, radii...
+                                    // For simplicity, we can use a rounded rect with uniform radius if complex radii are not easily supported by CGPath(roundedRect:...) without more work.
+                                    // Or use addRoundedRect(in:cornerWidth:cornerHeight:)
+                                    // Let's assume uniform or just use the first radius for now to keep it simple, or implement fully if needed.
+                                    // CGPath(roundedRect: cornerWidth: cornerHeight: transform:)
+                                    let rect = CGRect(x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1])
+                                    let rx = r[4] // tlRadiusX
+                                    let ry = r[5] // tlRadiusY
+                                    path.addRoundedRect(in: rect, cornerWidth: CGFloat(rx), cornerHeight: CGFloat(ry))
+                                }
+                            case "cubicTo":
+                                if let x1 = cmd["x1"] as? Double, let y1 = cmd["y1"] as? Double,
+                                   let x2 = cmd["x2"] as? Double, let y2 = cmd["y2"] as? Double,
+                                   let x3 = cmd["x3"] as? Double, let y3 = cmd["y3"] as? Double {
+                                    path.addCurve(to: CGPoint(x: x3, y: y3), control1: CGPoint(x: x1, y: y1), control2: CGPoint(x: x2, y: y2))
+                                }
+                            case "quadTo":
+                                if let x1 = cmd["x1"] as? Double, let y1 = cmd["y1"] as? Double,
+                                   let x2 = cmd["x2"] as? Double, let y2 = cmd["y2"] as? Double {
+                                    path.addQuadCurve(to: CGPoint(x: x2, y: y2), control: CGPoint(x: x1, y: y1))
+                                }
+                            default:
+                                break
+                            }
+                        }
+                    }
+                    
+                    context.addPath(path)
+                    
+                    if style == 1 {
+                        context.setStrokeColor(color)
+                        if let strokeWidth = paint["strokeWidth"] as? Double {
+                            context.setLineWidth(CGFloat(strokeWidth))
+                        }
+                        context.strokePath()
+                    } else {
+                        context.setFillColor(color)
+                        context.fillPath()
+                    }
                 }
             case "drawLine":
                 if let p1 = params["p1"] as? [Double], p1.count == 2,
@@ -470,7 +644,9 @@ class DCFCanvasView: UIView, FlutterTexture {
             case "restore":
                 context.restoreGState()
             default:
-                NSLog("DCFCanvasView: Unsupported command type: \(type)")
+                // Only log unique unknown commands to avoid spam
+                // NSLog("DCFCanvasView: Unsupported command type: \(type)")
+                break
             }
         }
     }

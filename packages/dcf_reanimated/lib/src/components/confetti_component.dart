@@ -13,6 +13,8 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'canvas_component.dart';
 
+import 'command_canvas.dart';
+
 // Default layouts for confetti (registered for bridge efficiency)
 // ignore: deprecated_member_use - Using DCFLayout() inside create() is the correct pattern
 final _confettiLayouts = DCFLayout.create({
@@ -104,8 +106,8 @@ class ConfettiConfig {
       Color(0xFFffa62d),
       Color(0xFFff36ff),
     ],
-  }) : assert(decay >= 0 && decay <= 1),
-       assert(ticks > 0);
+  })  : assert(decay >= 0 && decay <= 1),
+        assert(ticks > 0);
 
   ConfettiConfig copyWith({
     int? particleCount,
@@ -207,7 +209,8 @@ class _ConfettiPhysics {
     return _ConfettiPhysics(
       wobble: random.nextDouble() * 10,
       wobbleSpeed: math.min(0.11, random.nextDouble() * 0.1 + 0.05),
-      velocity: options.startVelocity * 0.5 + random.nextDouble() * options.startVelocity,
+      velocity: options.startVelocity * 0.5 +
+          random.nextDouble() * options.startVelocity,
       angle2D: -radAngle + (0.5 * radSpread - random.nextDouble() * radSpread),
       tiltAngle: (random.nextDouble() * (0.75 - 0.25) + 0.25) * math.pi,
       color: color,
@@ -223,7 +226,9 @@ class _ConfettiPhysics {
       scalar: options.scalar,
       flat: options.flat,
       totalTicks: options.ticks,
-    )..x = startX..y = startY;
+    )
+      ..x = startX
+      ..y = startY;
   }
 
   void update() {
@@ -307,11 +312,13 @@ class _SquareParticle extends _ConfettiParticle {
     required ui.Canvas canvas,
   }) {
     canvas.save();
-    final path = Path()
+    // Use RecordingPath for serialization support
+    final path = RecordingPath()
       ..moveTo(physics.x.floor().toDouble(), physics.y.floor().toDouble());
     path.lineTo(physics.wobbleX, physics.y1.floor().toDouble());
     path.lineTo(physics.x2.floor().toDouble(), physics.y2.floor().toDouble());
-    path.lineTo(physics.x1.floor().toDouble(), physics.wobbleY.floor().toDouble());
+    path.lineTo(
+        physics.x1.floor().toDouble(), physics.wobbleY.floor().toDouble());
     path.close();
 
     final paint = Paint()
@@ -329,7 +336,8 @@ class _TriangleParticle extends _ConfettiParticle {
     required ui.Canvas canvas,
   }) {
     canvas.save();
-    final path = Path()
+    // Use RecordingPath for serialization support
+    final path = RecordingPath()
       ..moveTo(physics.x.floor().toDouble(), physics.y.floor().toDouble())
       ..lineTo(physics.wobbleX.ceil().toDouble(), physics.y1.floor().toDouble())
       ..lineTo(physics.x2.floor().toDouble(), physics.wobbleY.ceil().toDouble())
@@ -358,7 +366,8 @@ class _StarParticle extends _ConfettiParticle {
     int spikes = 5;
     final step = math.pi / spikes;
 
-    final path = Path()..moveTo(x, y);
+    // Use RecordingPath for serialization support
+    final path = RecordingPath()..moveTo(x, y);
     while (spikes-- >= 0) {
       x = physics.x + math.cos(rot) * outerRadius;
       y = physics.y + math.sin(rot) * outerRadius;
@@ -401,7 +410,7 @@ class DCFConfetti extends DCFStatefulComponent {
   final void Function()? onComplete;
   final void Function()? onStart;
   final Map<String, dynamic>? events;
-  
+
   /// Builder function to create custom particle shapes
   /// If not provided, defaults to Circle and Square
   final _ConfettiParticle Function(int index)? particleBuilder;
@@ -424,29 +433,35 @@ class DCFConfetti extends DCFStatefulComponent {
     final colors = cfg.colors;
     final colorsCount = colors.length;
     final particlesInitialized = useRef<bool>(false);
-    
+
     // Get screen dimensions for proper positioning
     final screenWidth = ScreenUtilities.instance.screenWidth;
     final screenHeight = ScreenUtilities.instance.screenHeight;
     final containerWidth = screenWidth > 0 ? screenWidth : 400.0;
     final containerHeight = screenHeight > 0 ? screenHeight : 800.0;
-    
+
     final startX = cfg.x * containerWidth;
     final startY = cfg.y * containerHeight;
 
     // Use refs for everything - no state updates = no VDOM reconciliation
     final particlesRef = useRef<List<_ParticleGlue>>([]);
     final isCompleteRef = useRef<bool>(false);
-    
+
     // Initialize particles only once
     if (particlesInitialized.current != true) {
       final random = math.Random();
       final particleList = <_ParticleGlue>[];
 
       // Default particle builder (Circle and Square)
-      final defaultParticleBuilder = particleBuilder ?? (int index) {
-        return [_CircleParticle(), _SquareParticle(), _TriangleParticle(), _StarParticle()][random.nextInt(4)];
-      };
+      final defaultParticleBuilder = particleBuilder ??
+          (int index) {
+            return [
+              _CircleParticle(),
+              _SquareParticle(),
+              _TriangleParticle(),
+              _StarParticle()
+            ][random.nextInt(4)];
+          };
 
       for (int i = 0; i < cfg.particleCount; i++) {
         final color = colors[i % colorsCount];
@@ -459,11 +474,12 @@ class DCFConfetti extends DCFStatefulComponent {
         final particle = defaultParticleBuilder(i);
         particleList.add(_ParticleGlue(particle: particle, physics: physics));
       }
-      
+
       particlesRef.current = particleList;
       particlesInitialized.current = true;
       onStart?.call();
-      print('🎉 DCFConfetti: Initialized ${particleList.length} particles at ($startX, $startY)');
+      print(
+          '🎉 DCFConfetti: Initialized ${particleList.length} particles at ($startX, $startY)');
     }
 
     // Update particles directly in ref - no state = no VDOM reconciliation
@@ -493,25 +509,26 @@ class DCFConfetti extends DCFStatefulComponent {
 
       return () => timer.cancel();
     }, dependencies: []);
-    
+
     // Wrap canvas in a DCFView - use provided layout and styleSheet directly
     // The canvas itself is transparent so the background shows through
     // Automatically handle full-screen sizing when AbsoluteLayout.fullScreen() is used
     // This allows users to use normal layout patterns without worrying about screen dimensions
-    final baseLayout = layout ?? DCFLayout(
-      position: DCFPositionType.absolute,
-      absoluteLayout: AbsoluteLayout.fullScreen(),
-    );
-    
+    final baseLayout = layout ??
+        DCFLayout(
+          position: DCFPositionType.absolute,
+          absoluteLayout: AbsoluteLayout.fullScreen(),
+        );
+
     // Check if this is a full-screen layout (using fullScreen() helper)
     // fullScreen() sets top/left/right/bottom all to 0
     final absLayout = baseLayout.absoluteLayout;
     final isFullScreen = absLayout != null &&
-                        absLayout.top == 0 &&
-                        absLayout.left == 0 &&
-                        absLayout.right == 0 &&
-                        absLayout.bottom == 0;
-    
+        absLayout.top == 0 &&
+        absLayout.left == 0 &&
+        absLayout.right == 0 &&
+        absLayout.bottom == 0;
+
     // If full-screen, always merge screen dimensions to ensure true full-screen coverage
     // This overrides any default width/height from DCFLayout constructor
     final finalLayout = isFullScreen
@@ -520,17 +537,19 @@ class DCFConfetti extends DCFStatefulComponent {
             height: containerHeight,
           ))
         : baseLayout;
-    
+
     return DCFView(
       layout: finalLayout,
-      styleSheet: styleSheet ?? const DCFStyleSheet(backgroundColor: DCFColors.transparent),
+      styleSheet: styleSheet ??
+          const DCFStyleSheet(backgroundColor: DCFColors.transparent),
       children: [
         DCFCanvas(
           key: 'confetti-canvas',
           size: Size(containerWidth, containerHeight),
           repaintOnFrame: true,
           backgroundColor: Colors.transparent,
-          layout: _confettiLayouts['canvasFill'], // Canvas fills the container (no absolute positioning)
+          layout: _confettiLayouts[
+              'canvasFill'], // Canvas fills the container (no absolute positioning)
           onPaint: (canvas, size) {
             // This onPaint callback renders to dart:ui Canvas
             // Then _renderToNative converts to pixels and sends via tunnel

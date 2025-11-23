@@ -126,7 +126,7 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
     init {
         surfaceTextureListener = this
         // Transparent background - canvas content comes from texture
-        setBackgroundColor(Color.TRANSPARENT)
+        isOpaque = false
         // Allow touches to pass through to views behind the canvas
         isClickable = false
         isFocusable = false
@@ -324,6 +324,69 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
                 }
                 "restore" -> {
                     canvas.restore()
+                }
+                "drawPath" -> {
+                    val pathCommands = params["pathCommands"] as? List<Map<String, Any>>
+                    val paintData = params["paint"] as? Map<String, Any>
+                    
+                    if (pathCommands != null && paintData != null) {
+                        val path = android.graphics.Path()
+                        
+                        for (cmd in pathCommands) {
+                            val cmdType = cmd["type"] as? String ?: continue
+                            
+                            when (cmdType) {
+                                "moveTo" -> {
+                                    val x = (cmd["x"] as? Number)?.toFloat()
+                                    val y = (cmd["y"] as? Number)?.toFloat()
+                                    if (x != null && y != null) path.moveTo(x, y)
+                                }
+                                "lineTo" -> {
+                                    val x = (cmd["x"] as? Number)?.toFloat()
+                                    val y = (cmd["y"] as? Number)?.toFloat()
+                                    if (x != null && y != null) path.lineTo(x, y)
+                                }
+                                "cubicTo" -> {
+                                    val x1 = (cmd["x1"] as? Number)?.toFloat()
+                                    val y1 = (cmd["y1"] as? Number)?.toFloat()
+                                    val x2 = (cmd["x2"] as? Number)?.toFloat()
+                                    val y2 = (cmd["y2"] as? Number)?.toFloat()
+                                    val x3 = (cmd["x3"] as? Number)?.toFloat()
+                                    val y3 = (cmd["y3"] as? Number)?.toFloat()
+                                    if (x1 != null && y1 != null && x2 != null && y2 != null && x3 != null && y3 != null) {
+                                        path.cubicTo(x1, y1, x2, y2, x3, y3)
+                                    }
+                                }
+                                "quadTo" -> {
+                                    val x1 = (cmd["x1"] as? Number)?.toFloat()
+                                    val y1 = (cmd["y1"] as? Number)?.toFloat()
+                                    val x2 = (cmd["x2"] as? Number)?.toFloat()
+                                    val y2 = (cmd["y2"] as? Number)?.toFloat()
+                                    if (x1 != null && y1 != null && x2 != null && y2 != null) {
+                                        path.quadTo(x1, y1, x2, y2)
+                                    }
+                                }
+                                "close" -> {
+                                    path.close()
+                                }
+                                "addRect" -> {
+                                    val r = cmd["rect"] as? List<Double>
+                                    if (r != null && r.size == 4) {
+                                        path.addRect(r[0].toFloat(), r[1].toFloat(), r[2].toFloat(), r[3].toFloat(), android.graphics.Path.Direction.CW)
+                                    }
+                                }
+                                "addOval" -> {
+                                    val r = cmd["oval"] as? List<Double>
+                                    if (r != null && r.size == 4) {
+                                        path.addOval(r[0].toFloat(), r[1].toFloat(), r[2].toFloat(), r[3].toFloat(), android.graphics.Path.Direction.CW)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        applyPaint(paint, paintData)
+                        canvas.drawPath(path, paint)
+                    }
                 }
                 // Add more command types as needed
                 else -> {
