@@ -29,8 +29,9 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               startVelocity: 50.0,
               decay: 0.9,
               gravity: 1,
+              flat: true,
               drift: 5,
-              ticks: 1400,
+              ticks: 200,
               
               colors: [
                 Colors.red,

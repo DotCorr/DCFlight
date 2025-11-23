@@ -496,11 +496,33 @@ class DCFConfetti extends DCFStatefulComponent {
     
     // Wrap canvas in a DCFView - use provided layout and styleSheet directly
     // The canvas itself is transparent so the background shows through
+    // Automatically handle full-screen sizing when AbsoluteLayout.fullScreen() is used
+    // This allows users to use normal layout patterns without worrying about screen dimensions
+    final baseLayout = layout ?? DCFLayout(
+      position: DCFPositionType.absolute,
+      absoluteLayout: AbsoluteLayout.fullScreen(),
+    );
+    
+    // Check if this is a full-screen layout (using fullScreen() helper)
+    // fullScreen() sets top/left/right/bottom all to 0
+    final absLayout = baseLayout.absoluteLayout;
+    final isFullScreen = absLayout != null &&
+                        absLayout.top == 0 &&
+                        absLayout.left == 0 &&
+                        absLayout.right == 0 &&
+                        absLayout.bottom == 0;
+    
+    // If full-screen, always merge screen dimensions to ensure true full-screen coverage
+    // This overrides any default width/height from DCFLayout constructor
+    final finalLayout = isFullScreen
+        ? baseLayout.merge(DCFLayout(
+            width: containerWidth,
+            height: containerHeight,
+          ))
+        : baseLayout;
+    
     return DCFView(
-      layout: layout ?? DCFLayout(
-        position: DCFPositionType.absolute,
-        absoluteLayout: AbsoluteLayout.fullScreen(),
-      ),
+      layout: finalLayout,
       styleSheet: styleSheet ?? const DCFStyleSheet(backgroundColor: DCFColors.transparent),
       children: [
         DCFCanvas(
