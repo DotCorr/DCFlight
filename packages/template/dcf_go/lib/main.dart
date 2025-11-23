@@ -22,7 +22,6 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
           // Confetti overlay (absolute positioned - MUST be sibling of ScrollView, not child)
         if (showConfetti.state)
           DCFConfetti(
-            key: 'confetti-overlay',
             config: ConfettiConfig(
               particleCount: 100,
               angle: 90,
@@ -52,7 +51,6 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
             styleSheet: styles['confettiOverlay'],
           ),
         DCFScrollView(
-          key: 'main-scroll-view',
           layout: layouts['root'],
           styleSheet: styles['root'],
           children: [
