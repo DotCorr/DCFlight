@@ -229,7 +229,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                 Colors.orange,
                 Colors.pink,
               ],
-              scalar: 1.0,
+              scalar: 2.5, // Increased from 1.0 to make particles bigger
             ),
             onComplete: () {
               showConfetti.setState(false);
