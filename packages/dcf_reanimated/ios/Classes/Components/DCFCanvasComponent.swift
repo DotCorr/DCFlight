@@ -9,122 +9,81 @@ import UIKit
 import Flutter
 import dcflight
 
-/// Particle structure for confetti animation
-struct CanvasParticle {
-    let initialX: Double
-    let initialY: Double
-    let vx: Double
-    let vy: Double
-    let color: UIColor
-    let radius: Double
-    let life: Int
-    
-    var currentX: Double = 0
-    var currentY: Double = 0
-    var currentVX: Double = 0
-    var currentVY: Double = 0
-    var currentLife: Int = 0
-}
-
-/// Lightweight UIView that renders particle animations at 60fps
+/// Pure Canvas view - displays Flutter/Skia textures
+/// All rendering (particles, shaders, paths, etc.) happens in Skia-land
+/// Native side is just a texture container - no hardcoded primitives
 class DCFCanvasView: UIView {
-    var particles: [CanvasParticle] = []
-    var gravity: Double = 1.0
-    var decay: Double = 0.9
-    var displayLink: CADisplayLink?
-    var isAnimating = false
+    // Flutter texture display - renders whatever Skia draws
+    private var imageView: UIImageView?
+    
+    // Metadata
     var nodeId: String?
-    var onComplete: (() -> Void)?
+    var canvasId: String?
     
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear
         isOpaque = false
+        
+        // Create image view for Flutter/Skia texture display
+        imageView = UIImageView()
+        imageView?.contentMode = .scaleToFill
+        if let imageView = imageView {
+            addSubview(imageView)
+        }
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        imageView?.frame = bounds
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
-    override func draw(_ rect: CGRect) {
-        guard let context = UIGraphicsGetCurrentContext() else { return }
+    /// Update Flutter/Skia texture
+    /// Everything is rendered in Skia-land: particles, shaders, paths, animations, etc.
+    /// Native just displays the texture - no hardcoded primitives
+    func updateTexture(with imageData: Data, width: Int, height: Int) {
+        guard let image = createImage(from: imageData, width: width, height: height) else {
+            return
+        }
         
-        context.clear(rect)
-        
-        // Draw all particles
-        for particle in particles where particle.currentLife > 0 {
-            context.setFillColor(particle.color.cgColor)
-            context.fillEllipse(in: CGRect(
-                x: particle.currentX - particle.radius,
-                y: particle.currentY - particle.radius,
-                width: particle.radius * 2,
-                height: particle.radius * 2
-            ))
+        DispatchQueue.main.async { [weak self] in
+            self?.imageView?.image = image
         }
     }
     
-    func startAnimation() {
-        guard !isAnimating else { return }
-        isAnimating = true
+    private func createImage(from data: Data, width: Int, height: Int) -> UIImage? {
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
         
-        // Initialize particle positions
-        let centerX = bounds.width / 2
-        let centerY = bounds.height / 2
-        
-        for i in 0..<particles.count {
-            particles[i].currentX = centerX
-            particles[i].currentY = centerY
-            particles[i].currentVX = particles[i].vx
-            particles[i].currentVY = particles[i].vy
-            particles[i].currentLife = particles[i].life
+        guard let provider = CGDataProvider(data: data as CFData),
+              let cgImage = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: bytesPerPixel * 8,
+                bytesPerRow: bytesPerRow,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            return nil
         }
         
-        displayLink = CADisplayLink(target: self, selector: #selector(updateFrame))
-        displayLink?.add(to: .main, forMode: .common)
-    }
-    
-    @objc private func updateFrame() {
-        var activeCount = 0
-        
-        // Update all particles with physics
-        for i in 0..<particles.count {
-            if particles[i].currentLife > 0 {
-                particles[i].currentVY += gravity
-                particles[i].currentX += particles[i].currentVX
-                particles[i].currentY += particles[i].currentVY
-                particles[i].currentVX *= decay
-                particles[i].currentVY *= decay
-                particles[i].currentLife -= 1
-                activeCount += 1
-            }
-        }
-        
-        // Trigger redraw
-        setNeedsDisplay()
-        
-        // Check if animation complete
-        if activeCount == 0 {
-            stopAnimation()
-            fireCompleteEvent()
-        }
-    }
-    
-    func stopAnimation() {
-        displayLink?.invalidate()
-        displayLink = nil
-        isAnimating = false
-    }
-    
-    private func fireCompleteEvent() {
-        propagateEvent(on: self, eventName: "onAnimationComplete", data: [:])
-    }
-    
-    deinit {
-        stopAnimation()
+        return UIImage(cgImage: cgImage)
     }
 }
 
 class DCFCanvasComponent: NSObject, DCFComponent {
+    
+    // Track all canvas views by canvasId for tunnel method routing
+    private static var canvasViews: [String: DCFCanvasView] = [:]
     
     override required init() { super.init() }
     
@@ -136,88 +95,19 @@ class DCFCanvasComponent: NSObject, DCFComponent {
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let canvasView = view as? DCFCanvasView else { return false }
-        
-        // Handle commands first (for user interaction during animation)
-        handleCommand(canvasView: canvasView, props: props)
-        
-        // Then update configuration if needed
         configureView(canvasView, with: props)
         return true
     }
     
-    /// Handle commands for user interaction during animation
-    private func handleCommand(canvasView: DCFCanvasView, props: [String: Any]) {
-        guard let commandData = props["command"] as? [String: Any] else {
-            return
-        }
-        
-        // Stop animation command
-        if let stop = commandData["stop"] as? Bool, stop {
-            canvasView.stopAnimation()
-        }
-        
-        // Pause/resume animation command
-        if let pause = commandData["pause"] as? Bool {
-            canvasView.displayLink?.isPaused = pause
-        }
-        
-        // Update physics parameters mid-flight
-        if let updatePhysics = commandData["updatePhysics"] as? [String: Any] {
-            if let gravity = updatePhysics["gravity"] as? Double {
-                canvasView.gravity = gravity
-            }
-            if let decay = updatePhysics["decay"] as? Double {
-                canvasView.decay = decay
-            }
-        }
-    }
-    
     private func configureView(_ view: DCFCanvasView, with props: [String: Any]) {
-        // Handle confetti animation
-        if let animationType = props["animationType"] as? String, animationType == "confetti" {
-            guard let particlesData = props["particles"] as? [[String: Any]],
-                  let physics = props["physics"] as? [String: Any] else {
-                return
-            }
-            
-            view.gravity = physics["gravity"] as? Double ?? 1.0
-            view.decay = physics["decay"] as? Double ?? 0.9
-            
-            // Parse particle descriptions
-            view.particles = particlesData.compactMap { data in
-                guard let initialX = data["initialX"] as? Double,
-                      let initialY = data["initialY"] as? Double,
-                      let vx = data["vx"] as? Double,
-                      let vy = data["vy"] as? Double,
-                      let colorInt = data["color"] as? Int,
-                      let radius = data["radius"] as? Double,
-                      let life = data["life"] as? Int else {
-                    return nil
-                }
-                
-                let color = UIColor(
-                    red: CGFloat((colorInt >> 16) & 0xFF) / 255.0,
-                    green: CGFloat((colorInt >> 8) & 0xFF) / 255.0,
-                    blue: CGFloat(colorInt & 0xFF) / 255.0,
-                    alpha: CGFloat((colorInt >> 24) & 0xFF) / 255.0
-                )
-                
-                return CanvasParticle(
-                    initialX: initialX,
-                    initialY: initialY,
-                    vx: vx,
-                    vy: vy,
-                    color: color,
-                    radius: radius,
-                    life: life
-                )
-            }
-            
-            // Auto-start if configured
-            if let autoStart = props["autoStart"] as? Bool, autoStart {
-                view.startAnimation()
-            }
+        // Register canvas by ID for tunnel method routing
+        if let canvasId = props["canvasId"] as? String {
+            view.canvasId = canvasId
+            DCFCanvasComponent.canvasViews[canvasId] = view
         }
+        
+        // Everything else is handled in Skia-land via texture updates
+        // No hardcoded native primitives (particles, shaders, etc.)
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
@@ -247,14 +137,31 @@ class DCFCanvasComponent: NSObject, DCFComponent {
     
     func prepareForRecycle(_ view: UIView) {
         if let canvasView = view as? DCFCanvasView {
-            canvasView.stopAnimation()
-            canvasView.particles = []
             canvasView.nodeId = nil
+            
+            // Unregister from tracking
+            if let canvasId = canvasView.canvasId {
+                DCFCanvasComponent.canvasViews.removeValue(forKey: canvasId)
+            }
         }
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
-        // No tunnel methods needed for Canvas - all done via props/commands
+        // Handle updatePixels tunnel for Flutter/Skia texture rendering
+        if method == "updatePixels" {
+            guard let canvasId = params["canvasId"] as? String,
+                  let canvasView = canvasViews[canvasId],
+                  let pixels = params["pixels"] as? FlutterStandardTypedData,
+                  let width = params["width"] as? Int,
+                  let height = params["height"] as? Int else {
+                print("❌ Canvas: Missing required params for updatePixels")
+                return false
+            }
+            
+            canvasView.updateTexture(with: pixels.data, width: width, height: height)
+            return true
+        }
+        
         return nil
     }
 }
