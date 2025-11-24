@@ -132,16 +132,7 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
         // Handle Command Pattern
         val command = props["canvasCommand"] as? Map<String, Any>
         if (command != null) {
-            val name = command["name"] as? String
-            if (name == "startAnimation") {
-                @Suppress("UNCHECKED_CAST")
-                val config = command["config"] as? Map<String, Any>
-                if (config != null) {
-                    startAnimation(config)
-                }
-            } else if (name == "stopAnimation") {
-                stopAnimation()
-            }
+            handleCommand(command)
         }
         
         // Note: Size is now handled by Yoga layout via applyLayout
@@ -294,18 +285,25 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
         }
     }
 
-    fun stopAnimation() {
-        animationManager = null
-        android.view.Choreographer.getInstance().removeFrameCallback(frameCallback)
-    }
+    // Old startAnimation and stopAnimation for animationManager are removed.
+    // The new animation system uses ConfettiView directly.
 
-    override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        // Stop existing
-        stopAnimation()
+    private var confettiView: ConfettiView? = null
 
-        // Create new HW accelerated view
-        confettiView = ConfettiView(context, config)
-        addView(confettiView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    fun handleCommand(command: Map<String, Any>) {
+        val type = command["type"] as? String ?: return
+        
+        when (type) {
+            "confetti" -> {
+                stopAnimation()
+                // Create new HW accelerated view
+                // Command map IS the config now
+                confettiView = ConfettiView(context, command)
+                addView(confettiView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+            }
+            "clear" -> stopAnimation()
+            // Future: "drawShape" -> ...
+        }
     }
 
     fun stopAnimation() {

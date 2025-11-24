@@ -75,9 +75,28 @@ class DCFCanvasView: UIView {
 
     // --- Animation Control ---
     
+    // --- Generic Command System ---
+    
     private var emitterLayer: CAEmitterLayer?
     
-    func startAnimation(config: [String: Any]) {
+    /// Execute a GPU-accelerated command
+    func handleCommand(_ command: [String: Any]) {
+        guard let type = command["type"] as? String else { return }
+        
+        switch type {
+        case "confetti":
+            runConfetti(config: command)
+        case "clear":
+            stopAnimation()
+        // Future extensions:
+        // case "drawShape": drawShape(command)
+        // case "animate": animateItem(command)
+        default:
+            print("Unknown command type: \(type)")
+        }
+    }
+    
+    private func runConfetti(config: [String: Any]) {
         // Stop any existing animation
         stopAnimation()
         
@@ -117,10 +136,9 @@ class DCFCanvasView: UIView {
         layer.addSublayer(emitter)
         self.emitterLayer = emitter
         
-        // Auto-stop after a burst (optional, or let it run)
-        // For "Confetti", usually it's a burst. Let's burst for 0.5s then stop emitting
+        // Auto-stop after a burst
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            emitter.birthRate = 0 // Stop emitting, existing particles fall naturally
+            emitter.birthRate = 0
         }
     }
     
@@ -200,16 +218,11 @@ class DCFCanvasComponent: NSObject, DCFComponent {
         }
         
         // Handle Command Pattern
+        // Handle Command Pattern
         if let command = props["canvasCommand"] as? [String: Any] {
-            if let name = command["name"] as? String {
-                if name == "startAnimation" {
-                    if let config = command["config"] as? [String: Any] {
-                        view.startAnimation(config: config)
-                    }
-                } else if name == "stopAnimation" {
-                    view.stopAnimation()
-                }
-            }
+            // Pass the entire command object to the view
+            // The view decides what to do based on "type"
+            view.handleCommand(command)
         }
         
         // Everything else is handled in Skia-land via texture updates

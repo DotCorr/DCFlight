@@ -68,13 +68,13 @@ class DCFCanvas extends DCFStatefulComponent {
     if (this is DCFCanvasWithAnimation) {
       final config = (this as DCFCanvasWithAnimation).animationConfig;
       if (config != null) {
-        props['canvasCommand'] = {
-          'name': 'startAnimation',
-          'config': config,
-        };
+        // Pass the config directly as the command
+        // It already contains 'type' (e.g. 'confetti')
+        props['canvasCommand'] = config;
       } else {
+        // Send a clear/stop command
         props['canvasCommand'] = {
-          'name': 'stopAnimation',
+          'type': 'clear',
         };
       }
     }

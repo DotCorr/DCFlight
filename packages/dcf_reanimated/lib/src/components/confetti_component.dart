@@ -6,7 +6,6 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:flutter/material.dart' hide Colors;
 import 'package:flutter/material.dart' as material show Colors;
 import 'canvas_component.dart';
 
@@ -66,19 +65,20 @@ class DCFConfetti extends DCFCanvasWithAnimation {
         );
 
   @override
-  Map<String, dynamic>? get animationConfig => {
-        'type': 'confetti',
-        'particleCount': config.particleCount,
-        'startVelocity': config.startVelocity,
-        'spread': config.spread,
-        'angle': config.angle,
-        'gravity': config.gravity,
-        'drift': config.drift,
-        'decay': config.decay,
-        'duration': config.duration,
-        'colors': config.colors.map((c) => c.value).toList(),
-        'scalar': config.scalar,
-      };
+  Map<String, dynamic>? get animationConfig {
+    // Send generic command to native
+    // Native side now handles "type" dispatch
+    return {
+      'type': 'confetti', // Command Type
+      'scalar': config.scalar,
+      'spread': config.spread,
+      'startVelocity': config.startVelocity,
+      'colors': config.colors
+          .map((c) => '#${c.value.toRadixString(16).padLeft(8, '0')}')
+          .toList(),
+      'elementCount': config.particleCount,
+    };
+  }
 
   @override
   DCFComponentNode render() {
