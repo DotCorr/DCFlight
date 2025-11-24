@@ -1832,10 +1832,6 @@ class DCFEngine {
     EngineDebugLogger.log('ELEMENT_RENDER_SUCCESS', 'Element render completed',
         extra: {'ViewId': viewId, 'ChildCount': childIds.length});
     return viewId;
-    } finally {
-      // Always remove from rendering set when done
-      _nodesBeingRendered.remove(nodeIdentity);
-    }
   }
 
   /// O(tree size) - Reconcile two nodes by efficiently updating only what changed
