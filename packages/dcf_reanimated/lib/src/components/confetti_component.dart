@@ -13,7 +13,7 @@ import 'dart:math' as math;
 import 'package:flutter/scheduler.dart';
 import 'canvas_component.dart';
 
-import 'command_canvas.dart';
+import '../rendering/command_canvas.dart';
 
 // Default layouts for confetti (registered for bridge efficiency)
 // ignore: deprecated_member_use - Using DCFLayout() inside create() is the correct pattern

@@ -18,7 +18,7 @@ export '../../components/dcf_element.dart';
 
 export '../../components/error_boundary.dart';
 
-export '../../components/hooks/store.dart';
-export '../../components/hooks/memo_hook.dart';
-export '../../components/hooks/state_hook.dart';
+export '../../hooks/store.dart';
+export '../../hooks/memo_hook.dart';
+export '../../hooks/state_hook.dart';
 export 'core/mutator/prop_diff_interceptor.dart';

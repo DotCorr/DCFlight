@@ -169,6 +169,4 @@ class ReanimatedView extends DCFStatelessComponent {
       children: children,
     );
   }
-
-  /// Properties for equality comparison (used by EquatableMixin)
 }

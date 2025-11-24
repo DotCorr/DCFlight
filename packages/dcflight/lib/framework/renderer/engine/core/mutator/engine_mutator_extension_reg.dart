@@ -7,7 +7,7 @@
 
 import 'package:dcflight/framework/components/component_node.dart';
 import 'package:dcflight/framework/components/component.dart';
-import 'package:dcflight/framework/components/hooks/state_hook.dart';
+import 'package:dcflight/framework/hooks/state_hook.dart';
 import 'package:dcflight/framework/renderer/engine/core/mutator/prop_diff_interceptor.dart';
 
 /// VDOM Extension Registry - allows module devs to hook into VDOM internals

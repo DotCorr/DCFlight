@@ -6,11 +6,11 @@
  */
 
 import 'dart:ui' as ui;
+import 'package:dcf_reanimated/src/rendering/rendering.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
 import 'package:flutter/services.dart';
 import 'dart:async';
-import 'direct_canvas.dart';
 
 /// Canvas component that renders using dart:ui via Flutter's CustomPaint
 /// Users can use Flutter's Canvas APIs directly (Paint, Path, Shader, etc.)

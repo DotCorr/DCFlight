@@ -7,7 +7,6 @@
 
 import 'dart:async';
 import 'dart:isolate';
-import 'package:dcflight/framework/components/component_node.dart';
 
 /// Reconciliation diff result from isolate
 class ReconciliationDiff {
