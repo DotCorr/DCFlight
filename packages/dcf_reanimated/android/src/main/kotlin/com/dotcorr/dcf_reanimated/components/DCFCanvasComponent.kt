@@ -74,43 +74,29 @@ class DCFCanvasComponent : DCFComponent() {
     }
 
     // Handle tunnel methods from Dart
-    // Note: This is called on a cached factory instance, so we must use the static registry
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
-        if (method == "updateTexture") {
-            val canvasId = arguments["canvasId"] as? String
-            val pixels = arguments["pixels"] as? ByteArray
-            val width = (arguments["width"] as? Number)?.toInt()
-            val height = (arguments["height"] as? Number)?.toInt()
+        return when (method) {
+            "updatePixels" -> {
+                // Dart sends: canvasId, pixels (ByteArray), width, height
+                val canvasId = arguments["canvasId"] as? String
+                val pixels = arguments["pixels"] as? ByteArray
+                val width = (arguments["width"] as? Number)?.toInt()
+                val height = (arguments["height"] as? Number)?.toInt()
 
-            if (canvasId != null && pixels != null && width != null && height != null) {
-                val view = DCFCanvasView.canvasViews[canvasId]
-                if (view != null) {
-                    view.updateTexture(pixels, width, height)
-                    return true
+                if (canvasId != null && pixels != null && width != null && height != null) {
+                    val view = DCFCanvasView.canvasViews[canvasId]
+                    if (view != null) {
+                        view.updatePixels(pixels, width, height)
+                        true
+                    } else {
+                        false  // View not ready yet (retry later)
+                    }
                 } else {
-                    android.util.Log.w("DCFCanvasComponent", "View not found for canvasId: $canvasId - view may not be registered yet")
-                    return false  // Return false instead of null to indicate view not ready
+                    null  // Invalid params
                 }
             }
-        } else if (method == "updateCommands") {
-            // NEW: Command-based rendering (Phase 3) - best performance
-            val canvasId = arguments["canvasId"] as? String
-            @Suppress("UNCHECKED_CAST")
-            val commands = arguments["commands"] as? List<Map<String, Any>>
-            val width = (arguments["width"] as? Number)?.toInt()
-            val height = (arguments["height"] as? Number)?.toInt()
-
-            if (canvasId != null && commands != null && width != null && height != null) {
-                val view = DCFCanvasView.canvasViews[canvasId]
-                if (view != null) {
-                    return view.updateCommands(commands, width, height)
-                } else {
-                    android.util.Log.w("DCFCanvasComponent", "View not found for canvasId: $canvasId - view may not be registered yet")
-                    return false
-                }
-            }
+            else -> null  // Method not supported
         }
-        return null
     }
 }
 
@@ -154,7 +140,7 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
             canvasViews[canvasId!!] = this
         }
     }
-    fun updateTexture(pixels: ByteArray, width: Int, height: Int) {
+    fun updatePixels(pixels: ByteArray, width: Int, height: Int) {
         val surface = surfaceTexture ?: return
         // In a real implementation, we would update the SurfaceTexture here.
         // Since SurfaceTexture requires an OpenGL texture ID, we would typically
@@ -445,3 +431,4 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
         // Frame available
     }
 }
+

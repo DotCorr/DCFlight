@@ -66,11 +66,11 @@ await FrameworkTunnel.call('AnimationManager', 'executeGroupCommand', {
 });
 ```
 
-### Example: Canvas Texture Updates
+### Example: Canvas Pixel Updates
 
 ```dart
-// Update canvas texture with pixel data
-final result = await FrameworkTunnel.call('Canvas', 'updateTexture', {
+// Update canvas with pixel data
+final result = await FrameworkTunnel.call('Canvas', 'updatePixels', {
   'canvasId': canvasId,
   'pixels': byteData.buffer.asUint8List(),
   'width': 300,
@@ -78,10 +78,16 @@ final result = await FrameworkTunnel.call('Canvas', 'updateTexture', {
 });
 
 // Result will be:
-// - true: Success, texture was updated
+// - true: Success, pixels were rendered
 // - false: View not registered yet (retry later)
 // - null: Error or method not found
 ```
+
+**Performance Note:** The tunnel approach is more efficient than method channels because:
+- ✅ No serialization overhead for multiple channel calls
+- ✅ Direct component lookup via static registry
+- ✅ Single native call instead of channel roundtrip
+- ✅ Synchronous return value (no Future overhead for status checks)
 
 ---
 
@@ -100,37 +106,27 @@ public protocol DCFComponent {
 ### Implementation Example
 
 ```swift
-class DCFTextInputComponent: NSObject, DCFComponent {
+class DCFCanvasComponent: NSObject, DCFComponent {
+    // Static registry for fast canvasId -> viewId lookup
+    private static var canvasRegistry: [String: Int] = [:]
+    
     // ... other methods
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
         switch method {
-        case "focus":
-            // Focus the input field
-            // Note: Static method, so we need to find the view
-            if let viewId = params["viewId"] as? String,
-               let view = ViewRegistry.shared.getView(id: viewId) as? UITextField {
-                view.becomeFirstResponder()
-                return true
+        case "updatePixels":
+            // Fast path: Use static registry instead of ViewRegistry lookup
+            guard let canvasId = params["canvasId"] as? String,
+                  let viewId = canvasRegistry[canvasId],
+                  let canvasView = ViewRegistry.shared.getView(id: viewId) as? DCFCanvasView,
+                  let pixelsData = params["pixels"] as? FlutterStandardTypedData,
+                  let width = params["width"] as? Int,
+                  let height = params["height"] as? Int else {
+                return false // View not ready or invalid params
             }
-            return false
             
-        case "blur":
-            // Blur the input field
-            if let viewId = params["viewId"] as? String,
-               let view = ViewRegistry.shared.getView(id: viewId) as? UITextField {
-                view.resignFirstResponder()
-                return true
-            }
-            return false
-            
-        case "getText":
-            // Get current text
-            if let viewId = params["viewId"] as? String,
-               let view = ViewRegistry.shared.getView(id: viewId) as? UITextField {
-                return view.text
-            }
-            return nil
+            canvasView.updatePixels(data: pixelsData.data, width: width, height: height)
+            return true
             
         default:
             return nil  // Method not supported
@@ -141,9 +137,9 @@ class DCFTextInputComponent: NSObject, DCFComponent {
 
 **Key Points:**
 - ✅ Static method (called on class, not instance)
-- ✅ Must look up view from ViewRegistry using viewId
-- ✅ Return result or `nil` if method not supported
-- ✅ Return `false` if view not found (indicates view not ready yet)
+- ✅ Use component-specific registry for fast lookup (avoids ViewRegistry overhead)
+- ✅ Return `true` on success, `false` if view not ready, `nil` if method unknown
+- ✅ Single guard statement for all validations (cleaner code)
 
 ---
 
@@ -162,45 +158,142 @@ abstract class DCFComponent {
 ### Implementation Example
 
 ```kotlin
-class DCFTextInputComponent : DCFComponent() {
+class DCFCanvasComponent : DCFComponent() {
+    
     // ... other methods
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
         return when (method) {
-            "focus" -> {
-                // Focus the input field
-                val viewId = arguments["viewId"] as? String
-                val view = ViewRegistry.shared.getView(viewId) as? EditText
-                view?.requestFocus()
-                view != null
+            "updatePixels" -> {
+                // Fast path: Use companion object registry
+                val canvasId = arguments["canvasId"] as? String
+                val pixels = arguments["pixels"] as? ByteArray
+                val width = (arguments["width"] as? Number)?.toInt()
+                val height = (arguments["height"] as? Number)?.toInt()
+
+                if (canvasId != null && pixels != null && width != null && height != null) {
+                    val view = DCFCanvasView.canvasViews[canvasId]
+                    if (view != null) {
+                        view.updatePixels(pixels, width, height)
+                        true  // Success
+                    } else {
+                        false  // View not ready yet
+                    }
+                } else {
+                    null  // Invalid params
+                }
             }
-            
-            "blur" -> {
-                // Blur the input field
-                val viewId = arguments["viewId"] as? String
-                val view = ViewRegistry.shared.getView(viewId) as? EditText
-                view?.clearFocus()
-                view != null
-            }
-            
-            "getText" -> {
-                // Get current text
-                val viewId = arguments["viewId"] as? String
-                val view = ViewRegistry.shared.getView(viewId) as? EditText
-                view?.text?.toString()
-            }
-            
             else -> null  // Method not supported
         }
     }
+}
+
+// Companion object for fast lookup
+class DCFCanvasView(context: Context) : TextureView(context) {
+    companion object {
+        val canvasViews = ConcurrentHashMap<String, DCFCanvasView>()
+    }
+    // ...
 }
 ```
 
 **Key Points:**
 - ✅ Instance method (called on component instance)
-- ✅ Must look up view from ViewRegistry using viewId
-- ✅ Return result or `null` if method not supported
-- ✅ Return `false` if view not found (indicates view not ready yet)
+- ✅ Use companion object static registry for fast lookup
+- ✅ Return `true` on success, `false` if not ready, `null` if invalid
+- ✅ Use `when` expression for cleaner code
+
+---
+
+## Performance Best Practices
+
+### ✅ DO: Use Component-Specific Registries
+
+**Why:** Avoids ViewRegistry lookup overhead (hash map lookup + type casting)
+
+```swift
+// GOOD: Direct registry lookup
+private static var canvasRegistry: [String: Int] = [:]
+
+static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+    guard let canvasId = params["canvasId"] as? String,
+          let viewId = canvasRegistry[canvasId],
+          let view = ViewRegistry.shared.getView(id: viewId) as? DCFCanvasView else {
+        return false
+    }
+    // Process...
+}
+```
+
+```kotlin
+// GOOD: Companion object registry
+companion object {
+    val canvasViews = ConcurrentHashMap<String, DCFCanvasView>()
+}
+
+override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
+    val view = DCFCanvasView.canvasViews[canvasId]
+    // Process...
+}
+```
+
+### ✅ DO: Use Guard Statements (iOS) / Early Returns (Android)
+
+**Why:** Cleaner code, single validation point, avoids nested ifs
+
+```swift
+// GOOD: Single guard with all validations
+guard let canvasId = params["canvasId"] as? String,
+      let viewId = canvasRegistry[canvasId],
+      let pixels = params["pixels"] as? FlutterStandardTypedData,
+      let width = params["width"] as? Int,
+      let height = params["height"] as? Int else {
+    return false
+}
+```
+
+```kotlin
+// GOOD: Early null checks with elvis operator
+val view = DCFCanvasView.canvasViews[canvasId] ?: return false
+val pixels = arguments["pixels"] as? ByteArray ?: return null
+```
+
+### ✅ DO: Return Meaningful Values
+
+- `true` = Success, operation completed
+- `false` = View not ready yet, caller should retry
+- `nil`/`null` = Method not found or invalid parameters
+
+**Why:** Caller can distinguish between "retry later" vs "give up"
+
+### ❌ DON'T: Use ViewRegistry for Every Call
+
+**Why:** Each lookup is a hash map operation + type casting overhead
+
+```swift
+// BAD: ViewRegistry lookup for every tunnel call
+static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+    if let viewId = params["viewId"] as? String,
+       let view = ViewRegistry.shared.getView(id: viewId) as? MyView {
+        // This is slower than component registry
+    }
+}
+```
+
+### ❌ DON'T: Use Method Channels for High-Frequency Updates
+
+**Why:** Method channels have serialization/deserialization overhead
+
+```dart
+// BAD: Method channel for every frame
+final channel = MethodChannel('my.channel');
+await channel.invokeMethod('update', pixels);  // Slow!
+
+// GOOD: Tunnel for high-frequency updates
+final result = await FrameworkTunnel.call('Canvas', 'updatePixels', {
+  'pixels': pixels  // Direct native call, minimal overhead
+});
+```
 
 ---
 
@@ -941,3 +1034,4 @@ static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? 
 - [Event System](./EVENT_SYSTEM.md) - When to use events vs tunnel
 - [Component Conventions](./COMPONENT_CONVENTIONS.md) - Best practices
 - [Canvas API Documentation](./CANVAS_API.md) - Canvas rendering with Flutter textures
+
