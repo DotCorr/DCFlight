@@ -95,33 +95,6 @@ class DCFCanvasComponent : DCFComponent() {
                     null  // Invalid params
                 }
             }
-            "startAnimation" -> {
-                val canvasId = arguments["canvasId"] as? String
-                @Suppress("UNCHECKED_CAST")
-                val config = arguments["config"] as? Map<String, Any>
-                
-                if (canvasId != null && config != null) {
-                    val view = DCFCanvasView.canvasViews[canvasId]
-                    if (view != null) {
-                        view.startAnimation(config)
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    null
-                }
-            }
-            "stopAnimation" -> {
-                val canvasId = arguments["canvasId"] as? String
-                if (canvasId != null) {
-                    val view = DCFCanvasView.canvasViews[canvasId]
-                    view?.stopAnimation()
-                    true
-                } else {
-                    null
-                }
-            }
             else -> null  // Method not supported
         }
     }
@@ -154,6 +127,21 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
             canvasId = id
             canvasViews[id!!] = this
             android.util.Log.d("DCFCanvasView", "Registered canvasId: $id")
+        }
+        
+        // Handle Command Pattern
+        val command = props["canvasCommand"] as? Map<String, Any>
+        if (command != null) {
+            val name = command["name"] as? String
+            if (name == "startAnimation") {
+                @Suppress("UNCHECKED_CAST")
+                val config = command["config"] as? Map<String, Any>
+                if (config != null) {
+                    startAnimation(config)
+                }
+            } else if (name == "stopAnimation") {
+                stopAnimation()
+            }
         }
         
         // Note: Size is now handled by Yoga layout via applyLayout

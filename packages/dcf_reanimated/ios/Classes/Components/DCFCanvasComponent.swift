@@ -257,6 +257,19 @@ class DCFCanvasComponent: NSObject, DCFComponent {
             DCFCanvasComponent.canvasViews[canvasId] = view
         }
         
+        // Handle Command Pattern
+        if let command = props["canvasCommand"] as? [String: Any] {
+            if let name = command["name"] as? String {
+                if name == "startAnimation" {
+                    if let config = command["config"] as? [String: Any] {
+                        view.startAnimation(config: config)
+                    }
+                } else if name == "stopAnimation" {
+                    view.stopAnimation()
+                }
+            }
+        }
+        
         // Everything else is handled in Skia-land via texture updates
         // No hardcoded native primitives (particles, shaders, etc.)
     }
@@ -311,25 +324,6 @@ class DCFCanvasComponent: NSObject, DCFComponent {
             }
             
             canvasView.updateTexture(with: pixels.data, width: width, height: height)
-            return true
-        }
-        
-        if method == "startAnimation" {
-            guard let canvasId = params["canvasId"] as? String,
-                  let canvasView = canvasViews[canvasId],
-                  let config = params["config"] as? [String: Any] else {
-                return false
-            }
-            canvasView.startAnimation(config: config)
-            return true
-        }
-        
-        if method == "stopAnimation" {
-            guard let canvasId = params["canvasId"] as? String,
-                  let canvasView = canvasViews[canvasId] else {
-                return false
-            }
-            canvasView.stopAnimation()
             return true
         }
         

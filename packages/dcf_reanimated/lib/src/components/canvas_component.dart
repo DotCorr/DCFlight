@@ -64,6 +64,21 @@ class DCFCanvas extends DCFStatefulComponent {
       ...?styleSheet?.toMap(),
     };
 
+    // Command Pattern: Send animation config via prop
+    if (this is DCFCanvasWithAnimation) {
+      final config = (this as DCFCanvasWithAnimation).animationConfig;
+      if (config != null) {
+        props['canvasCommand'] = {
+          'name': 'startAnimation',
+          'config': config,
+        };
+      } else {
+        props['canvasCommand'] = {
+          'name': 'stopAnimation',
+        };
+      }
+    }
+
     return DCFElement(
       type: 'Canvas',
       elementProps: props,
@@ -94,11 +109,11 @@ class _CanvasManager {
 
   Future<void> _renderCanvas(String canvasId, Size size) async {
     final canvasComponent = _canvases[canvasId];
-    // If we have an animation config, we don't render static content from Dart
-    // We delegate to native animation loop
+
+    // If we have an animation config, we assume native side handles it via props
+    // so we don't need to do anything here for animation.
     if (canvasComponent is DCFCanvasWithAnimation &&
         canvasComponent.animationConfig != null) {
-      await _startNativeAnimation(canvasId, canvasComponent.animationConfig!);
       return;
     }
 
@@ -116,15 +131,6 @@ class _CanvasManager {
     canvasComponent.onPaint!(canvas, size);
 
     await _sendPixelsToNative(canvasId, recorder, size);
-  }
-
-  Future<void> _startNativeAnimation(
-      String canvasId, Map<String, dynamic> config) async {
-    // Send animation config to native
-    await FrameworkTunnel.call('Canvas', 'startAnimation', {
-      'canvasId': canvasId,
-      'config': config,
-    });
   }
 
   Future<void> _sendPixelsToNative(
@@ -158,11 +164,6 @@ class _CanvasManager {
     _renderTimers[id]?.cancel();
     _renderTimers.remove(id);
     _canvases.remove(id);
-
-    // Stop native animation if running
-    FrameworkTunnel.call('Canvas', 'stopAnimation', {
-      'canvasId': id,
-    });
   }
 }
 
