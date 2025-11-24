@@ -9,8 +9,8 @@ import 'dart:math';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
 import 'package:flutter/material.dart' as material show Colors;
-import 'canvas_component.dart';
 
+/// Configuration for confetti particle animation
 class ConfettiConfig {
   final int particleCount;
   final double startVelocity;
@@ -19,7 +19,7 @@ class ConfettiConfig {
   final double gravity;
   final double drift;
   final double decay;
-  final int ticks;
+  final int duration; // in milliseconds
   final List<Color> colors;
   final double scalar;
 
@@ -31,13 +31,56 @@ class ConfettiConfig {
     this.gravity = 1,
     this.drift = 0,
     this.decay = 0.9,
-    this.ticks = 200,
-    this.colors = const [material.Colors.red, material.Colors.blue, material.Colors.green],
+    this.duration = 3000,
+    this.colors = const [
+      material.Colors.red,
+      material.Colors.blue,
+      material.Colors.green,
+      material.Colors.yellow,
+      material.Colors.purple,
+    ],
     this.scalar = 1,
   });
 }
 
-class DCFConfetti extends DCFStatefulComponent {
+/// Particle data structure for confetti
+class _ConfettiParticle {
+  final double initialX;
+  final double initialY;
+  final double vx;
+  final double vy;
+  final int color;
+  final double radius;
+  final int life; // total frames
+
+  _ConfettiParticle({
+    required this.initialX,
+    required this.initialY,
+    required this.vx,
+    required this.vy,
+    required this.color,
+    required this.radius,
+    required this.life,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'initialX': initialX,
+      'initialY': initialY,
+      'vx': vx,
+      'vy': vy,
+      'color': color,
+      'radius': radius,
+      'life': life,
+    };
+  }
+}
+
+/// Confetti component using declarative Canvas API
+/// 
+/// Describes particle configurations in Dart, native renders at 60fps.
+/// Uses AnimatedValue for time-based animations on UI thread.
+class DCFConfetti extends DCFStatelessComponent {
   final ConfettiConfig config;
   final VoidCallback? onComplete;
   final DCFLayout? layout;
@@ -53,41 +96,48 @@ class DCFConfetti extends DCFStatefulComponent {
 
   @override
   DCFComponentNode render() {
-    // We need a way to animate. Since DCFCanvas is now purely driven by Native requests
-    // or manual updates, we need to trigger repaints.
-    // However, the current DCFCanvas implementation only repaints when Native asks (init/resize).
-    // We need to add a way to force repaint from Dart.
-    
-    // For now, we'll just render a static frame or rely on a timer if we update DCFCanvas.
-    // But wait, DCFCanvas takes onPaint. If we want animation, we need to re-render DCFCanvas
-    // with a new onPaint closure? No, onPaint is called by the manager.
-    // The manager needs to be told to repaint.
-    
-    // Since I can't easily change DCFCanvas API right now without breaking the pattern,
-    // I'll implement a simple version that draws one frame.
-    // To do proper animation, we'd need a Ticker in Dart that calls _CanvasManager.renderCanvas.
-    
-    return DCFCanvas(
-      layout: layout,
-      styleSheet: styleSheet,
-      size: const Size(400, 800), // Full screen-ish
-      backgroundColor: material.Colors.transparent,
-      onPaint: (canvas, size) {
-        final paint = Paint()..style = PaintingStyle.fill;
-        final random = Random();
-        
-        for (int i = 0; i < config.particleCount; i++) {
-          paint.color = config.colors[random.nextInt(config.colors.length)];
-          canvas.drawCircle(
-            Offset(
-              size.width / 2 + (random.nextDouble() - 0.5) * size.width,
-              size.height / 2 + (random.nextDouble() - 0.5) * size.height,
-            ),
-            5 * config.scalar,
-            paint,
-          );
-        }
+    // Generate particle configurations (static descriptions)
+    final random = Random();
+    final particles = List.generate(config.particleCount, (i) {
+      final angleRad = (config.angle - config.spread / 2 + random.nextDouble() * config.spread) * (pi / 180);
+      final speed = config.startVelocity * (0.5 + random.nextDouble() * 0.5);
+
+      return _ConfettiParticle(
+        initialX: 0.5, // Normalized center (0-1)
+        initialY: 0.5,
+        vx: cos(angleRad) * speed + (random.nextDouble() - 0.5) * config.drift,
+        vy: -sin(angleRad) * speed,
+        color: config.colors[random.nextInt(config.colors.length)].value,
+        radius: (3 + random.nextDouble() * 4) * config.scalar,
+        life: (config.duration / 16).toInt(), // Convert ms to frames
+      );
+    });
+
+    // Build props with particle descriptions and physics config
+    final props = <String, dynamic>{
+      'animationType': 'confetti',
+      'autoStart': true,
+      'particles': particles.map((p) => p.toMap()).toList(),
+      'physics': {
+        'gravity': config.gravity,
+        'decay': config.decay,
       },
+      'duration': config.duration,
+      ...?layout?.toMap(),
+      ...?styleSheet?.toMap(),
+    };
+
+    // Add event handler if provided
+    if (onComplete != null) {
+      props['onAnimationComplete'] = (dynamic data) => onComplete?.call();
+    }
+
+    // Send to Canvas component - native will render particles at 60fps
+    // using the descriptions with physics simulation
+    return DCFElement(
+      type: 'Canvas',
+      elementProps: props,
+      children: const [],
     );
   }
 }

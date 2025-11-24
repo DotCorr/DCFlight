@@ -30,7 +30,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
               gravity: 0.3, // Downward acceleration per tick
               drift: 0.1, // Horizontal drift per tick
               decay: 0.97, // Velocity retained per tick (97%)
-              ticks: 300, // Lifetime in ticks (5 seconds at 60fps)
+              // ticks: 300, // Lifetime in ticks (5 seconds at 60fps)
 
               colors: [
                 Colors.red,
