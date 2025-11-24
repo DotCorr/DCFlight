@@ -13,11 +13,12 @@ import 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 class _DCFLayoutRegistry {
   static final _DCFLayoutRegistry instance = _DCFLayoutRegistry._();
   _DCFLayoutRegistry._();
-  
-  final Map<String, DCFLayout> _layouts = {}; // Maps ID -> original layout (without ID)
+
+  final Map<String, DCFLayout> _layouts =
+      {}; // Maps ID -> original layout (without ID)
   final Map<DCFLayout, String> _layoutToId = {};
   int _nextId = 1;
-  
+
   /// Register a layout and return its ID
   /// Stores the ORIGINAL layout (without ID) to avoid recursion in toMap()
   String register(String name, DCFLayout layout) {
@@ -25,33 +26,33 @@ class _DCFLayoutRegistry {
     if (_layoutToId.containsKey(layout)) {
       return _layoutToId[layout]!;
     }
-    
+
     // Generate new ID
     final id = 'dcf_layout_$_nextId';
     _nextId++;
-    
+
     // Store ORIGINAL layout (without ID) to avoid recursion when resolving
     _layouts[id] = layout;
     _layoutToId[layout] = id;
-    
+
     return id;
   }
-  
+
   /// Get layout by ID
   DCFLayout? get(String id) {
     return _layouts[id];
   }
-  
+
   /// Get ID for a layout (if registered)
   String? getId(DCFLayout layout) {
     return _layoutToId[layout];
   }
-  
+
   /// Check if layout is registered
   bool isRegistered(DCFLayout layout) {
     return _layoutToId.containsKey(layout);
   }
-  
+
   /// Clear all registered layouts (for testing/debugging)
   void clear() {
     _layouts.clear();
@@ -172,10 +173,10 @@ class DCFLayout extends Equatable {
   }) : _layoutId = layoutId;
 
   /// Create layout props with the specified values
-  /// 
+  ///
   /// @Deprecated Use DCFLayout.create() instead for better performance
   /// This constructor is still supported for backward compatibility but will be removed in a future version.
-  @Deprecated('Use DCFLayout.create() instead for better bridge efficiency. Example: final layouts = DCFLayout.create({"container": DCFLayout(flex: 1)});')
+  // @Deprecated('Use DCFLayout.create() instead for better bridge efficiency. Example: final layouts = DCFLayout.create({"container": DCFLayout(flex: 1)});')
   const DCFLayout({
     this.width = '100%', // Default to 100% width for proper nesting
     this.height, // No default height - let flex layout handle it
@@ -204,8 +205,9 @@ class DCFLayout extends Equatable {
     this.scaleX,
     this.scaleY,
     this.flexDirection = DCFFlexDirection.column,
-    this.justifyContent = DCFJustifyContent.center, // Default to center like iOS
-    this.alignItems = DCFAlign.center, // Default to center like iOS 
+    this.justifyContent =
+        DCFJustifyContent.center, // Default to center like iOS
+    this.alignItems = DCFAlign.center, // Default to center like iOS
     this.alignSelf,
     this.alignContent, // No default - let parent control content alignment
     this.flexWrap = DCFWrap.nowrap,
@@ -224,7 +226,7 @@ class DCFLayout extends Equatable {
   }) : _layoutId = null;
 
   /// Create a Layout registry (React Native StyleSheet.create() pattern)
-  /// 
+  ///
   /// **Performance Benefits:**
   /// - **Bridge Efficiency**: Registered layouts are cached and assigned unique IDs.
   ///   Instead of sending full layout objects over the Flutter-native bridge on every render,
@@ -233,7 +235,7 @@ class DCFLayout extends Equatable {
   ///   reducing object allocation and garbage collection pressure.
   /// - **Early Validation**: Layout properties are validated at creation time,
   ///   catching errors early rather than at render time.
-  /// 
+  ///
   /// **Usage:**
   /// ```dart
   /// // Define layouts once (outside render method)
@@ -241,11 +243,11 @@ class DCFLayout extends Equatable {
   ///   'container': DCFLayout(flex: 1, padding: 20),
   ///   'row': DCFLayout(flexDirection: DCFFlexDirection.row),
   /// });
-  /// 
+  ///
   /// // In render():
   /// DCFView(layout: layouts['container'])
   /// ```
-  /// 
+  ///
   /// **See Also:** [StyleSheet.create() Documentation](../../docs/STYLESHEET_API.md)
   static DCFLayoutRegistry create(Map<String, DCFLayout> layouts) {
     final registry = DCFLayoutRegistry._();
@@ -352,7 +354,7 @@ class DCFLayout extends Equatable {
   }
 
   /// Convert layout props to a map for serialization
-  /// 
+  ///
   /// If layout is registered via DCFLayout.create(), resolves ID to full object for native compatibility
   Map<String, dynamic> toMap() {
     // If registered, resolve ID to full layout object (native side doesn't support IDs yet)
@@ -364,7 +366,7 @@ class DCFLayout extends Equatable {
       }
       // Fallback: if ID not found, continue with current layout
     }
-    
+
     // Serialize full layout object
     final map = <String, dynamic>{};
 
@@ -729,7 +731,7 @@ class DCFLayout extends Equatable {
 
 /// Layout registry returned by DCFLayout.create()
 /// Provides type-safe access to registered layouts by name
-/// 
+///
 /// Supports both bracket notation and dot notation:
 /// ```dart
 /// _layouts['buttonRow']  // Bracket notation
@@ -737,35 +739,40 @@ class DCFLayout extends Equatable {
 /// ```
 class DCFLayoutRegistry {
   final Map<String, DCFLayout> _layouts = {};
-  
+
   DCFLayoutRegistry._();
-  
+
   /// Get a registered layout by name (bracket notation)
   DCFLayout operator [](String name) {
     final layout = _layouts[name];
     if (layout == null) {
-      throw ArgumentError('Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
+      throw ArgumentError(
+          'Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
     }
     return layout;
   }
-  
+
   /// Type-safe dot notation access (e.g., _layouts.buttonRow)
   /// Uses noSuchMethod to provide dynamic property access
   @override
   dynamic noSuchMethod(Invocation invocation) {
     if (invocation.isGetter) {
-      final name = invocation.memberName.toString().replaceFirst(RegExp(r'^Symbol\("'), '').replaceFirst(RegExp(r'"\)$'), '');
+      final name = invocation.memberName
+          .toString()
+          .replaceFirst(RegExp(r'^Symbol\("'), '')
+          .replaceFirst(RegExp(r'"\)$'), '');
       if (_layouts.containsKey(name)) {
         return _layouts[name] as DCFLayout;
       }
-      throw ArgumentError('Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
+      throw ArgumentError(
+          'Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
     }
     return super.noSuchMethod(invocation);
   }
-  
+
   /// Check if a layout exists in the registry
   bool containsKey(String name) => _layouts.containsKey(name);
-  
+
   /// Get all registered layout names
   Iterable<String> get keys => _layouts.keys;
 }

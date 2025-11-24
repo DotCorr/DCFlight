@@ -28,12 +28,13 @@ class SupportedLayoutsProps {
     ]
 }
 
-typealias ViewTypeInfo = (view: UIView, type: String)
+public typealias ViewTypeInfo = (view: UIView, type: String)
 
 /// Registry for storing and managing view references.
-class ViewRegistry {
-    static let shared = ViewRegistry()
+public class ViewRegistry {
+    public static let shared = ViewRegistry()
     
+    public var registry = [Int: ViewTypeInfo]()
     public var registry = [Int: ViewTypeInfo]()
     
     private init() {}
@@ -44,7 +45,7 @@ class ViewRegistry {
     ///   - view: The view to register
     ///   - id: Unique identifier for the view
     ///   - type: Component type (e.g., "View", "Text")
-    func registerView(_ view: UIView, id: Int, type: String) {
+    public func registerView(_ view: UIView, id: Int, type: String) {
         registry[id] = (view, type)
         
         DCFLayoutManager.shared.registerView(view, withId: id)
@@ -54,7 +55,7 @@ class ViewRegistry {
     /// 
     /// - Parameter id: Unique identifier for the view
     /// - Returns: Tuple containing the view and type, or `nil` if not found
-    func getViewInfo(id: Int) -> ViewTypeInfo? {
+    public func getViewInfo(id: Int) -> ViewTypeInfo? {
         return registry[id]
     }
     
@@ -62,7 +63,7 @@ class ViewRegistry {
     /// 
     /// - Parameter id: Unique identifier for the view
     /// - Returns: The view, or `nil` if not found
-    func getView(id: Int) -> UIView? {
+    public func getView(id: Int) -> UIView? {
         return registry[id]?.view
     }
     
@@ -306,3 +307,4 @@ class DCFViewManager {
         return props.filter { SupportedLayoutsProps.supportedLayoutProps.contains($0.key) }
     }
 }
+

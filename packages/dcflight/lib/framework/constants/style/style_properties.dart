@@ -12,11 +12,11 @@ import 'hit_slop.dart';
 import '../../theme/dcf_theme.dart';
 
 /// StyleSheet for visual styling properties
-/// 
+///
 /// **Semantic Color System:**
 /// Use semantic colors (primaryColor, secondaryColor, etc.) instead of explicit colors
 /// for better cross-platform consistency and theme support.
-/// 
+///
 /// Example:
 /// ```dart
 /// DCFStyleSheet(
@@ -30,11 +30,12 @@ import '../../theme/dcf_theme.dart';
 class _DCFStyleRegistry {
   static final _DCFStyleRegistry instance = _DCFStyleRegistry._();
   _DCFStyleRegistry._();
-  
-  final Map<String, DCFStyleSheet> _styles = {}; // Maps ID -> original style (without ID)
+
+  final Map<String, DCFStyleSheet> _styles =
+      {}; // Maps ID -> original style (without ID)
   final Map<DCFStyleSheet, String> _styleToId = {};
   int _nextId = 1;
-  
+
   /// Register a style and return its ID
   /// Stores the ORIGINAL style (without ID) to avoid recursion in toMap()
   String register(String name, DCFStyleSheet style) {
@@ -42,33 +43,33 @@ class _DCFStyleRegistry {
     if (_styleToId.containsKey(style)) {
       return _styleToId[style]!;
     }
-    
+
     // Generate new ID
     final id = 'dcf_style_$_nextId';
     _nextId++;
-    
+
     // Store ORIGINAL style (without ID) to avoid recursion when resolving
     _styles[id] = style;
     _styleToId[style] = id;
-    
+
     return id;
   }
-  
+
   /// Get style by ID
   DCFStyleSheet? get(String id) {
     return _styles[id];
   }
-  
+
   /// Get ID for a style (if registered)
   String? getId(DCFStyleSheet style) {
     return _styleToId[style];
   }
-  
+
   /// Check if style is registered
   bool isRegistered(DCFStyleSheet style) {
     return _styleToId.containsKey(style);
   }
-  
+
   /// Clear all registered styles (for testing/debugging)
   void clear() {
     _styles.clear();
@@ -81,7 +82,7 @@ class DCFStyleSheet extends Equatable {
   /// Internal style ID if registered via StyleSheet.create()
   /// Null for non-registered styles (backward compatibility)
   final String? _styleId;
-  
+
   final dynamic borderRadius;
   final dynamic borderTopLeftRadius;
   final dynamic borderTopRightRadius;
@@ -135,21 +136,21 @@ class DCFStyleSheet extends Equatable {
 
   /// **Semantic Colors** - Use these instead of explicit color props in components
   /// These map to theme colors automatically and ensure cross-platform consistency
-  
+
   /// Primary color - typically used for main text, primary actions, etc.
   /// For Text: main text color
   /// For Button: text color
   /// For TextInput: text color
   final Color? primaryColor;
-  
+
   /// Secondary color - typically used for secondary text, placeholders, etc.
   /// For Text: secondary text color
   /// For TextInput: placeholder color
   final Color? secondaryColor;
-  
+
   /// Tertiary color - typically used for tertiary text, hints, etc.
   final Color? tertiaryColor;
-  
+
   /// Accent color - typically used for highlights, links, etc.
   final Color? accentColor;
 
@@ -209,10 +210,10 @@ class DCFStyleSheet extends Equatable {
   }) : _styleId = styleId;
 
   /// Create a style sheet with visual styling properties
-  /// 
+  ///
   /// @Deprecated Use DCFStyleSheet.create() instead for better performance
   /// This constructor is still supported for backward compatibility but will be removed in a future version.
-  @Deprecated('Use DCFStyleSheet.create() instead for better bridge efficiency. Example: final styles = DCFStyleSheet.create({"container": DCFStyleSheet(backgroundColor: Colors.blue)});')
+  // @Deprecated('Use DCFStyleSheet.create() instead for better bridge efficiency. Example: final styles = DCFStyleSheet.create({"container": DCFStyleSheet(backgroundColor: Colors.blue)});')
   const DCFStyleSheet({
     this.borderRadius,
     this.borderTopLeftRadius,
@@ -268,9 +269,9 @@ class DCFStyleSheet extends Equatable {
   }) : _styleId = null;
 
   /// Create a StyleSheet registry (React Native StyleSheet.create() pattern)
-  /// 
+  ///
   /// This optimizes bridge communication by caching styles and sending IDs instead of full objects.
-  /// 
+  ///
   /// Example with Map (string keys):
   /// ```dart
   /// final styles = DCFStyleSheet.create({
@@ -278,7 +279,7 @@ class DCFStyleSheet extends Equatable {
   ///   'text': DCFStyleSheet(primaryColor: Colors.black),
   /// });
   /// ```
-  /// 
+  ///
   /// Example with class (type-safe):
   /// ```dart
   /// class MyStyles {
@@ -288,7 +289,7 @@ class DCFStyleSheet extends Equatable {
   /// final styles = DCFStyleSheet.createFromClass(MyStyles());
   /// // Use: styles.container, styles.text (fully type-safe)
   /// ```
-  /// 
+  ///
   /// Benefits:
   /// - Bridge efficiency: Sends style IDs instead of full objects
   /// - Memory optimization: Styles cached and reused
@@ -326,7 +327,8 @@ class DCFStyleSheet extends Equatable {
         accessibilityActions: entry.value.accessibilityActions,
         accessibilityElementsHidden: entry.value.accessibilityElementsHidden,
         accessibilityLanguage: entry.value.accessibilityLanguage,
-        accessibilityIgnoresInvertColors: entry.value.accessibilityIgnoresInvertColors,
+        accessibilityIgnoresInvertColors:
+            entry.value.accessibilityIgnoresInvertColors,
         accessibilityLiveRegion: entry.value.accessibilityLiveRegion,
         accessibilityViewIsModal: entry.value.accessibilityViewIsModal,
         ariaLabel: entry.value.ariaLabel,
@@ -356,16 +358,16 @@ class DCFStyleSheet extends Equatable {
   }
 
   /// Create a StyleSheet registry from a class with static final properties (type-safe registration)
-  /// 
+  ///
   /// This allows type-safe registration and access without string keys.
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// class AppStyles {
   ///   static final container = DCFStyleSheet(backgroundColor: Colors.blue);
   ///   static final text = DCFStyleSheet(primaryColor: Colors.black);
   /// }
-  /// 
+  ///
   /// final styles = DCFStyleSheet.createFrom({
   ///   'container': AppStyles.container,
   ///   'text': AppStyles.text,
@@ -373,14 +375,14 @@ class DCFStyleSheet extends Equatable {
   /// // Or use the builder pattern:
   /// final styles = DCFStyleSheet.createFromClass(() => AppStyles());
   /// ```
-  /// 
+  ///
   /// For even simpler usage, define styles as a class and use create() with a helper:
   /// ```dart
   /// class Styles {
   ///   static final root = DCFStyleSheet(backgroundColor: Colors.black);
   ///   static final button = DCFStyleSheet(primaryColor: Colors.white);
   /// }
-  /// 
+  ///
   /// final _styles = DCFStyleSheet.create({
   ///   'root': Styles.root,
   ///   'button': Styles.button,
@@ -395,7 +397,7 @@ class DCFStyleSheet extends Equatable {
   /// Convert style properties to a map for serialization
   /// CRITICAL FIX: Ensure proper precedence order when both backgroundColor and backgroundGradient are present
   /// Semantic colors are included for component-level resolution
-  /// 
+  ///
   /// If style is registered via StyleSheet.create(), resolves ID to full object for native compatibility
   Map<String, dynamic> toMap() {
     // If registered, resolve ID to full style object (native side doesn't support IDs yet)
@@ -407,7 +409,7 @@ class DCFStyleSheet extends Equatable {
       }
       // Fallback: if ID not found, continue with current style
     }
-    
+
     // Serialize full style object
     final map = <String, dynamic>{};
 
@@ -476,7 +478,8 @@ class DCFStyleSheet extends Equatable {
       map['accessibilityLanguage'] = accessibilityLanguage;
     }
     if (accessibilityIgnoresInvertColors != null) {
-      map['accessibilityIgnoresInvertColors'] = accessibilityIgnoresInvertColors;
+      map['accessibilityIgnoresInvertColors'] =
+          accessibilityIgnoresInvertColors;
     }
     if (accessibilityLiveRegion != null) {
       map['accessibilityLiveRegion'] = accessibilityLiveRegion;
@@ -507,12 +510,13 @@ class DCFStyleSheet extends Equatable {
     // Semantic colors - ALWAYS provide values (use DCFTheme fallbacks if not specified)
     // This ensures native components always receive explicit colors - NO native fallbacks needed
     final finalPrimaryColor = primaryColor ?? DCFTheme.textColor;
-    final finalSecondaryColor = secondaryColor ?? DCFTheme.current.secondaryTextColor;
-    final finalTertiaryColor = tertiaryColor ?? DCFTheme.current.secondaryTextColor;
+    final finalSecondaryColor =
+        secondaryColor ?? DCFTheme.current.secondaryTextColor;
+    final finalTertiaryColor =
+        tertiaryColor ?? DCFTheme.current.secondaryTextColor;
     final finalAccentColor = accentColor ?? DCFTheme.accentColor;
     final finalBackgroundColor = backgroundColor ?? DCFTheme.backgroundColor;
 
-    
     map['primaryColor'] = _colorToString(finalPrimaryColor);
     map['secondaryColor'] = _colorToString(finalSecondaryColor);
     map['tertiaryColor'] = _colorToString(finalTertiaryColor);
@@ -525,17 +529,17 @@ class DCFStyleSheet extends Equatable {
   /// Uses "dcf:" prefix to distinguish black from transparent on native platforms
   String _colorToString(Color color) {
     final alpha = (color.a * 255.0).round() & 0xff;
-    
+
     // Transparent - explicitly marked
     if (alpha == 0) {
       return 'dcf:transparent';
     }
-    
+
     // Black - explicitly marked to distinguish from transparent
     if (color.value == 0xFF000000) {
       return 'dcf:black';
     }
-    
+
     // Other colors - use dcf: prefix with hex
     if (alpha == 255) {
       final hexValue = color.toARGB32() & 0xFFFFFF;
@@ -576,11 +580,17 @@ class DCFStyleSheet extends Equatable {
       accessibilityRole: other.accessibilityRole ?? accessibilityRole,
       accessibilityState: other.accessibilityState ?? accessibilityState,
       accessibilityActions: other.accessibilityActions ?? accessibilityActions,
-      accessibilityElementsHidden: other.accessibilityElementsHidden ?? accessibilityElementsHidden,
-      accessibilityLanguage: other.accessibilityLanguage ?? accessibilityLanguage,
-      accessibilityIgnoresInvertColors: other.accessibilityIgnoresInvertColors ?? accessibilityIgnoresInvertColors,
-      accessibilityLiveRegion: other.accessibilityLiveRegion ?? accessibilityLiveRegion,
-      accessibilityViewIsModal: other.accessibilityViewIsModal ?? accessibilityViewIsModal,
+      accessibilityElementsHidden:
+          other.accessibilityElementsHidden ?? accessibilityElementsHidden,
+      accessibilityLanguage:
+          other.accessibilityLanguage ?? accessibilityLanguage,
+      accessibilityIgnoresInvertColors:
+          other.accessibilityIgnoresInvertColors ??
+              accessibilityIgnoresInvertColors,
+      accessibilityLiveRegion:
+          other.accessibilityLiveRegion ?? accessibilityLiveRegion,
+      accessibilityViewIsModal:
+          other.accessibilityViewIsModal ?? accessibilityViewIsModal,
       ariaLabel: other.ariaLabel ?? ariaLabel,
       ariaLabelledby: other.ariaLabelledby ?? ariaLabelledby,
       ariaLive: other.ariaLive ?? ariaLive,
@@ -595,7 +605,8 @@ class DCFStyleSheet extends Equatable {
       ariaValuemax: other.ariaValuemax ?? ariaValuemax,
       ariaValuenow: other.ariaValuenow ?? ariaValuenow,
       ariaValuetext: other.ariaValuetext ?? ariaValuetext,
-      importantForAccessibility: other.importantForAccessibility ?? importantForAccessibility,
+      importantForAccessibility:
+          other.importantForAccessibility ?? importantForAccessibility,
       testID: other.testID ?? testID,
       pointerEvents: other.pointerEvents ?? pointerEvents,
       // Semantic colors
@@ -687,11 +698,16 @@ class DCFStyleSheet extends Equatable {
       accessibilityRole: accessibilityRole ?? this.accessibilityRole,
       accessibilityState: accessibilityState ?? this.accessibilityState,
       accessibilityActions: accessibilityActions ?? this.accessibilityActions,
-      accessibilityElementsHidden: accessibilityElementsHidden ?? this.accessibilityElementsHidden,
-      accessibilityLanguage: accessibilityLanguage ?? this.accessibilityLanguage,
-      accessibilityIgnoresInvertColors: accessibilityIgnoresInvertColors ?? this.accessibilityIgnoresInvertColors,
-      accessibilityLiveRegion: accessibilityLiveRegion ?? this.accessibilityLiveRegion,
-      accessibilityViewIsModal: accessibilityViewIsModal ?? this.accessibilityViewIsModal,
+      accessibilityElementsHidden:
+          accessibilityElementsHidden ?? this.accessibilityElementsHidden,
+      accessibilityLanguage:
+          accessibilityLanguage ?? this.accessibilityLanguage,
+      accessibilityIgnoresInvertColors: accessibilityIgnoresInvertColors ??
+          this.accessibilityIgnoresInvertColors,
+      accessibilityLiveRegion:
+          accessibilityLiveRegion ?? this.accessibilityLiveRegion,
+      accessibilityViewIsModal:
+          accessibilityViewIsModal ?? this.accessibilityViewIsModal,
       ariaLabel: ariaLabel ?? this.ariaLabel,
       ariaLabelledby: ariaLabelledby ?? this.ariaLabelledby,
       ariaLive: ariaLive ?? this.ariaLive,
@@ -706,7 +722,8 @@ class DCFStyleSheet extends Equatable {
       ariaValuemax: ariaValuemax ?? this.ariaValuemax,
       ariaValuenow: ariaValuenow ?? this.ariaValuenow,
       ariaValuetext: ariaValuetext ?? this.ariaValuetext,
-      importantForAccessibility: importantForAccessibility ?? this.importantForAccessibility,
+      importantForAccessibility:
+          importantForAccessibility ?? this.importantForAccessibility,
       testID: testID ?? this.testID,
       pointerEvents: pointerEvents ?? this.pointerEvents,
       // Semantic colors
@@ -924,7 +941,7 @@ class DCFStyleSheet extends Equatable {
 
 /// StyleSheet registry returned by DCFStyleSheet.create()
 /// Provides type-safe access to registered styles by name
-/// 
+///
 /// Supports both bracket notation and dot notation:
 /// ```dart
 /// _styles['buttonText']  // Bracket notation
@@ -932,35 +949,40 @@ class DCFStyleSheet extends Equatable {
 /// ```
 class DCFStyleSheetRegistry {
   final Map<String, DCFStyleSheet> _styles = {};
-  
+
   DCFStyleSheetRegistry._();
-  
+
   /// Get a registered style by name (bracket notation)
   DCFStyleSheet operator [](String name) {
     final style = _styles[name];
     if (style == null) {
-      throw ArgumentError('Style "$name" not found in registry. Available styles: ${_styles.keys.join(", ")}');
+      throw ArgumentError(
+          'Style "$name" not found in registry. Available styles: ${_styles.keys.join(", ")}');
     }
     return style;
   }
-  
+
   /// Type-safe dot notation access (e.g., _styles.buttonText)
   /// Uses noSuchMethod to provide dynamic property access
   @override
   dynamic noSuchMethod(Invocation invocation) {
     if (invocation.isGetter) {
-      final name = invocation.memberName.toString().replaceFirst(RegExp(r'^Symbol\("'), '').replaceFirst(RegExp(r'"\)$'), '');
+      final name = invocation.memberName
+          .toString()
+          .replaceFirst(RegExp(r'^Symbol\("'), '')
+          .replaceFirst(RegExp(r'"\)$'), '');
       if (_styles.containsKey(name)) {
         return _styles[name] as DCFStyleSheet;
       }
-      throw ArgumentError('Style "$name" not found in registry. Available styles: ${_styles.keys.join(", ")}');
+      throw ArgumentError(
+          'Style "$name" not found in registry. Available styles: ${_styles.keys.join(", ")}');
     }
     return super.noSuchMethod(invocation);
   }
-  
+
   /// Check if a style exists in the registry
   bool containsKey(String name) => _styles.containsKey(name);
-  
+
   /// Get all registered style names
   Iterable<String> get keys => _styles.keys;
 }

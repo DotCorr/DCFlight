@@ -5,25 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import 'dart:async';
 import 'dart:ui' as ui;
-import 'package:dcf_reanimated/src/rendering/rendering.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
-import 'package:flutter/services.dart';
-import 'dart:async';
 
-/// Canvas component that renders using dart:ui via Flutter's CustomPaint
-/// Users can use Flutter's Canvas APIs directly (Paint, Path, Shader, etc.)
-///
-/// Also supports native particle system rendering via particleConfig prop.
-/// When particleConfig is provided, native side handles all rendering
-/// with zero bridge calls during animation.
+/// Canvas component that renders using dart:ui and sends pixels to Native via tunnels
 class DCFCanvas extends DCFStatefulComponent {
   /// Paint callback - users draw using Flutter's Canvas
   final void Function(ui.Canvas canvas, Size size)? onPaint;
-
-  /// Whether to repaint on every frame (for animations)
-  final bool repaintOnFrame;
 
   /// Background color
   final Color? backgroundColor;
@@ -37,171 +27,102 @@ class DCFCanvas extends DCFStatefulComponent {
   /// Canvas size
   final Size size;
 
-  /// Callback that provides an invalidate function to trigger repaints
-  final void Function(VoidCallback invalidate)? onInvalidate;
-
   DCFCanvas({
     this.onPaint,
-    this.repaintOnFrame = false,
     this.backgroundColor,
     this.size = const Size(300, 300),
     this.layout,
     this.styleSheet,
-    this.onInvalidate,
     super.key,
   });
 
   @override
   DCFComponentNode render() {
-    // Generate a stable unique ID for this canvas instance
-    // Use useRef to ensure it persists across reconciliation without triggering re-renders
-    final canvasIdRef = useRef<String?>(null);
-    if (canvasIdRef.current == null) {
-      // Initialize once - use key if available, otherwise generate a new one
-      final id = key != null
-          ? (key is ValueKey
-              ? (key as ValueKey).value.toString()
-              : key.toString())
-          : UniqueKey().toString();
-      canvasIdRef.current = id;
-    }
-    final canvasId = canvasIdRef.current!;
-
+    // Use a unique ID based on key
+    final canvasId = key?.toString() ?? UniqueKey().toString();
+    
+    // Register with manager and trigger initial render after first frame
+    _CanvasManager.instance.registerCanvas(canvasId, this);
+    
     // Build props map for native component
     final props = <String, dynamic>{
       'canvasId': canvasId,
-      'repaintOnFrame': repaintOnFrame,
       'width': size.width,
       'height': size.height,
-      'hasOnPaint': onPaint != null,
       if (backgroundColor != null) 'backgroundColor': backgroundColor!.value,
       ...?layout?.toMap(),
       ...?styleSheet?.toMap(),
     };
 
-    // If we have an onPaint callback, we need to render it to an image
-    // and send the pixels to the native side via Flutter's texture registry.
-    if (onPaint != null) {
-      if (repaintOnFrame) {
-        // For animations, use Timer.periodic for reliable continuous rendering
-        useEffect(() {
-          print(
-              '🎨 DCFCanvas: Setting up continuous rendering for canvasId: $canvasId, size: ${size.width}x${size.height}');
-          Timer? frameTimer;
-          bool isViewReady = false;
-          int retryCount = 0;
-          const maxRetries = 10;
-
-          void renderFrame() {
-            if (size.width <= 0 || size.height <= 0) {
-              if (retryCount < maxRetries) {
-                retryCount++;
-                return;
-              } else {
-                frameTimer?.cancel();
-                return;
-              }
-            }
-
-            if (!isViewReady) {
-              _renderToNative(canvasId, silent: true).then((success) {
-                if (success == true) {
-                  isViewReady = true;
-                  retryCount = 0;
-                }
-              });
-            } else {
-              _renderToNative(canvasId);
-            }
-          }
-
-          Future.delayed(const Duration(milliseconds: 300), () {
-            renderFrame();
-            frameTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
-              renderFrame();
-            });
-          });
-
-          return () {
-            frameTimer?.cancel();
-          };
-        }, dependencies: [canvasId, size.width, size.height]);
-      } else {
-        // For static rendering, render once after layout
-        useEffect(() {
-          print(
-              '🎨 DCFCanvas: Setting up static rendering for canvasId: $canvasId, size: ${size.width}x${size.height}');
-          // Use a delay to ensure the native view is registered and laid out by Yoga
-          Future.delayed(const Duration(milliseconds: 300), () async {
-            // Validate size before rendering
-            if (size.width <= 0 || size.height <= 0) {
-              print(
-                  '⚠️ DCFCanvas: Invalid size ${size.width}x${size.height}, retrying...');
-              // Retry after Yoga layout completes
-              Future.delayed(const Duration(milliseconds: 200), () async {
-                final success = await _renderToNative(canvasId);
-                if (success != true) {
-                  print(
-                      '⚠️ DCFCanvas: Static render failed, view may not be ready');
-                }
-              });
-              return;
-            }
-
-            final success = await _renderToNative(canvasId);
-            if (success != true) {
-              // Retry once more if view wasn't ready
-              Future.delayed(const Duration(milliseconds: 200), () async {
-                await _renderToNative(canvasId);
-              });
-            }
-          });
-          return null;
-        }, dependencies: [canvasId, size.width, size.height]);
-      }
-    }
-
-    // Create DCF element that will be rendered by native component
     return DCFElement(
       type: 'Canvas',
       elementProps: props,
       children: const [],
     );
   }
+}
 
-  /// Render to native using DirectCanvas - bypasses VDOM completely
-  ///
-  /// Uses DirectCanvas.renderAndUpdate internally, which handles all
-  /// the pixel conversion and tunnel communication. Zero VDOM overhead.
-  Future<bool?> _renderToNative(String canvasId, {bool silent = false}) async {
-    if (onPaint == null) {
-      print('⚠️ DCFCanvas: _renderToNative called but onPaint is null');
-      return false;
+/// Manages Canvas rendering and communication with Native via tunnels
+class _CanvasManager {
+  static final _CanvasManager instance = _CanvasManager._();
+  
+  final Map<String, DCFCanvas> _canvases = {};
+  final Map<String, Timer?> _renderTimers = {};
+
+  _CanvasManager._();
+
+  void registerCanvas(String id, DCFCanvas canvas) {
+    _canvases[id] = canvas;
+    
+    // Schedule initial render after frame is built
+    _renderTimers[id]?.cancel();
+    _renderTimers[id] = Timer(const Duration(milliseconds: 100), () {
+      _renderCanvas(id, canvas.size);
+    });
+  }
+
+  Future<void> _renderCanvas(String canvasId, Size size) async {
+    final canvasComponent = _canvases[canvasId];
+    if (canvasComponent?.onPaint == null) return;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = ui.Canvas(recorder);
+    
+    // Draw background if needed
+    if (canvasComponent!.backgroundColor != null) {
+      canvas.drawColor(canvasComponent.backgroundColor!, ui.BlendMode.src);
     }
 
-    // Validate size - must be > 0
-    if (size.width <= 0 || size.height <= 0) {
-      print(
-          '⚠️ DCFCanvas: Invalid size ${size.width}x${size.height}, skipping render');
-      return false;
+    // User drawing
+    canvasComponent.onPaint!(canvas, size);
+    
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(size.width.toInt(), size.height.toInt());
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
+    
+    if (byteData != null) {
+      // Use tunnel to send pixels to native
+      final result = await FrameworkTunnel.call('Canvas', 'updatePixels', {
+        'canvasId': canvasId,
+        'pixels': byteData.buffer.asUint8List(),
+        'width': size.width.toInt(),
+        'height': size.height.toInt(),
+      });
+      
+      if (result == false) {
+        // View not ready yet, retry
+        print('🎨 DCFCanvas: View not ready for $canvasId, retrying...');
+        Timer(const Duration(milliseconds: 100), () {
+          _renderCanvas(canvasId, size);
+        });
+      }
     }
+  }
 
-    // Use DirectCanvas for rendering with COMMAND EXTRACTION (best performance)
-    // Commands are much smaller than pixels and can be executed on native Skia directly
-    final success = await DirectCanvas.renderAndUpdateWithCommands(
-      canvasId: canvasId,
-      onPaint: onPaint!,
-      size: size,
-      backgroundColor: backgroundColor,
-    );
-
-    // Only log failures if not silent
-    if (!success && !silent) {
-      print(
-          '⚠️ DCFCanvas: Failed to render to native for canvasId: $canvasId (view may not be ready)');
-    }
-
-    // Return result: true = success, false = view not ready, null = error
-    return success ? true : false;
+  void unregisterCanvas(String id) {
+    _renderTimers[id]?.cancel();
+    _renderTimers.remove(id);
+    _canvases.remove(id);
   }
 }
+

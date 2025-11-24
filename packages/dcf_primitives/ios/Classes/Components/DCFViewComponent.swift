@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
 import UIKit
 import dcflight
 
@@ -16,7 +15,6 @@ class DCFViewComponent: NSObject, DCFComponent {
     
     func createView(props: [String: Any]) -> UIView {
         let view = UIView()
-        
         
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
         }

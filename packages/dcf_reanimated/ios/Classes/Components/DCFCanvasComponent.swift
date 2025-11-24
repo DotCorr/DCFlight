@@ -8,837 +8,133 @@
 import UIKit
 import Flutter
 import dcflight
-import VideoToolbox
 
-class DCFCanvasComponent: NSObject, DCFComponent {
-    
-    required override init() {
-        super.init()
-    }
-    
-    func createView(props: [String: Any]) -> UIView {
-        let view = DCFCanvasView()
-        view.update(props: props)
-        return view
-    }
-    
-    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let canvasView = view as? DCFCanvasView else { return false }
-        canvasView.update(props: props)
-        return true
-    }
-    
-    // Handle tunnel methods from Dart
-    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
-        print("DCFCanvasComponent: handleTunnelMethod \(method)")
-        if method == "updateTexture" {
-            guard let canvasId = params["canvasId"] as? String,
-                  let pixels = params["pixels"] as? FlutterStandardTypedData,
-                  let width = params["width"] as? Int,
-                  let height = params["height"] as? Int else {
-                print("DCFCanvasComponent: Invalid params for updateTexture")
-                return nil
-            }
-            
-            if let view = DCFCanvasView.getCanvasView(forId: canvasId) {
-                view.updateTexture(pixels: pixels.data, width: width, height: height)
-                return true
-            } else {
-                print("DCFCanvasComponent: View not found for canvasId: \(canvasId) - view may not be registered yet")
-                return false  // Return false instead of nil to indicate view not ready
-            }
-        } else if method == "updateCommands" {
-            // NEW: Command-based rendering (Phase 3) - best performance
-            guard let canvasId = params["canvasId"] as? String,
-                  let commands = params["commands"] as? [[String: Any]],
-                  let width = params["width"] as? Int,
-                  let height = params["height"] as? Int else {
-                print("DCFCanvasComponent: Invalid params for updateCommands")
-                return nil
-            }
-            
-            if let view = DCFCanvasView.getCanvasView(forId: canvasId) {
-                view.updateCommands(commands: commands, width: width, height: height)
-                return true
-            } else {
-                print("DCFCanvasComponent: View not found for canvasId: \(canvasId) - view may not be registered yet")
-                return false
-            }
-        }
-        return nil
-    }
-    
-    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
-        // Notify canvas view of layout size change so it can update rendering
-        if let canvasView = view as? DCFCanvasView {
-            canvasView.onLayoutApplied(width: layout.width, height: layout.height)
-        }
-    }
-    
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // Canvas size is determined by layout or props, not intrinsic content
-        // If layout has explicit width/height, use that; otherwise use props
-        if let width = props["width"] as? Double, let height = props["height"] as? Double {
-            // Ensure size is valid (> 0)
-            if width > 0 && height > 0 {
-                return CGSize(width: width, height: height)
-            }
-        }
-        // Return zero if size is invalid - Yoga will use layout constraints instead
-        return .zero
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // No-op for canvas
-    }
-}
-
-// Particle data structure for native rendering
-struct Particle {
-    var x: Double
-    var y: Double
-    var vx: Double
-    var vy: Double
-    var rotation: Double
-    var rotationSpeed: Double
-    let size: Double
-    let color: UInt32 // ARGB
-}
-
-class DCFCanvasView: UIView, FlutterTexture {
-    // Static registry to track active canvas views by ID
-    // Use a serial queue to synchronize access and prevent race conditions
-    private static let accessQueue = DispatchQueue(label: "com.dotcorr.dcfcanvas.views", attributes: .concurrent)
-    private static var _canvasViews: [String: DCFCanvasView] = [:]
-    
-    static var canvasViews: [String: DCFCanvasView] {
-        get {
-            return accessQueue.sync { _canvasViews }
-        }
-    }
-    
-    static func setCanvasView(_ view: DCFCanvasView?, forId id: String) {
-        accessQueue.async(flags: .barrier) {
-            if let view = view {
-                _canvasViews[id] = view
-            } else {
-                _canvasViews.removeValue(forKey: id)
-            }
-        }
-    }
-    
-    static func getCanvasView(forId id: String) -> DCFCanvasView? {
-        return accessQueue.sync {
-            return _canvasViews[id]
-        }
-    }
-    
-    private var canvasId: String?
-    private var textureId: Int64 = -1
-    private var pixelBuffer: CVPixelBuffer?
-    private var displayLink: CADisplayLink?
-    private var repaintOnFrame: Bool = false
-    private var onPaintCallback: FlutterCallbackInformation?
-    
-    // Native particle system
-    private var particles: [Particle] = []
-    private var particleConfig: [String: Any]?
-    private var animationStartTime: CFTimeInterval = 0
-    private var animationDuration: Double = 0
-    private var gravity: Double = 9.8
-    private var canvasWidth: Double = 0
-    private var canvasHeight: Double = 0
-    private var isAnimating: Bool = false
-    
-    // Layer to display the pixel buffer
-    private var contentLayer: CALayer = CALayer()
+/// Lightweight UIView that displays pixel data received from Dart via tunnel
+class DCFCanvasView: UIView {
+    var imageLayer: CALayer?
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        // Transparent background - canvas content comes from texture
-        self.backgroundColor = .clear
-        // Allow touches to pass through to views behind the canvas
-        self.isUserInteractionEnabled = false
-        NSLog("DCFCanvasView: init frame: \(frame)")
-        setupLayer()
-        registerTexture()
+        imageLayer = CALayer()
+        if let imageLayer = imageLayer {
+            layer.addSublayer(imageLayer)
+        }
     }
     
     required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        // Transparent background - canvas content comes from texture
-        self.backgroundColor = .clear
-        // Allow touches to pass through to views behind the canvas
-        self.isUserInteractionEnabled = false
-        NSLog("DCFCanvasView: init coder")
-        setupLayer()
-        registerTexture()
-    }
-    
-    private func setupLayer() {
-        layer.addSublayer(contentLayer)
-        contentLayer.contentsGravity = .resizeAspect
+        fatalError("init(coder:) has not been implemented")
     }
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        contentLayer.frame = bounds
-        NSLog("DCFCanvasView: layoutSubviews bounds: \(bounds), canvasId: \(canvasId ?? "nil")")
-        // If we have a valid size and canvasId, ensure we're registered
-        if bounds.width > 0 && bounds.height > 0, let id = canvasId {
-            DCFCanvasView.setCanvasView(self, forId: id)
-        }
+        imageLayer?.frame = bounds
     }
     
-    func onLayoutApplied(width: CGFloat, height: CGFloat) {
-        NSLog("DCFCanvasView: onLayoutApplied width: \(width) height: \(height), canvasId: \(canvasId ?? "nil"), bounds: \(bounds)")
-        // Store the actual layout size for rendering
-        // The view frame will be set by applyLayout, but we can use this to validate
-        if width > 0 && height > 0, let id = canvasId {
-            // Ensure we're registered with the correct size
-            DCFCanvasView.setCanvasView(self, forId: id)
-            // If we have a valid size and the view is ready, we can trigger a render
-            // This helps with hot restart scenarios where the view is recreated
-            if bounds.width > 0 && bounds.height > 0 {
-                NSLog("DCFCanvasView: Layout applied with valid size, view is ready for rendering")
-            }
-        }
-    }
-
-    private func registerTexture() {
-        // Get the Flutter engine from the registry/delegate
-        if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
-           let registrar = appDelegate.pluginRegistrant as? FlutterPluginRegistrar {
-             textureId = registrar.textures().register(self)
-        }
-    }
-    
-    func update(props: [String: Any]) {
-        // Register this view if canvasId is provided
-        if let id = props["canvasId"] as? String {
-            // Always register, even if ID is the same (in case view was recreated)
-            if canvasId != id {
-                // Unregister old ID if changed
-                if let oldId = canvasId {
-                    DCFCanvasView.setCanvasView(nil, forId: oldId)
-                    NSLog("DCFCanvasView: Unregistered old canvasId: \(oldId)")
-                }
-            }
-            canvasId = id
-            DCFCanvasView.setCanvasView(self, forId: id)
-            NSLog("DCFCanvasView: Registered canvasId: \(id)")
-        }
-
-        // Check for particle config (native rendering mode)
-        if let config = props["particleConfig"] as? [String: Any] {
-            configureParticles(config: config)
-            return // Native rendering handles everything
-        }
-
-        if let repaint = props["repaintOnFrame"] as? Bool {
-            self.repaintOnFrame = repaint
-            if repaint {
-                startDisplayLink()
-            } else {
-                stopDisplayLink()
-            }
-        }
-        
-        // Trigger a redraw
-        drawFrame()
-    }
-    
-    private func configureParticles(config: [String: Any]) {
-        NSLog("🎉 DCFCanvasView: Configuring native particle system")
-        particleConfig = config
-        
-        guard let particlesData = config["particles"] as? [[String: Any]],
-              let width = config["width"] as? Double,
-              let height = config["height"] as? Double,
-              let duration = config["duration"] as? Int,
-              let gravityValue = config["gravity"] as? Double else {
-            NSLog("⚠️ DCFCanvasView: Invalid particle config")
+    func updatePixels(data: Data, width: Int, height: Int) {
+        guard let provider = CGDataProvider(data: data as CFData),
+              let cgImage = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: width * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            print("⚠️ DCFCanvasView: Failed to create CGImage from pixel data")
             return
         }
         
-        canvasWidth = width
-        canvasHeight = height
-        animationDuration = Double(duration) / 1000.0 // Convert ms to seconds
-        gravity = gravityValue
-        
-        // Initialize particles
-        particles = particlesData.compactMap { particleData in
-            guard let x = particleData["x"] as? Double,
-                  let y = particleData["y"] as? Double,
-                  let vx = particleData["vx"] as? Double,
-                  let vy = particleData["vy"] as? Double,
-                  let rotation = particleData["rotation"] as? Double,
-                  let rotationSpeed = particleData["rotationSpeed"] as? Double,
-                  let size = particleData["size"] as? Double,
-                  let colorValue = particleData["color"] as? Int else {
-                return nil
-            }
-            
-            return Particle(
-                x: x,
-                y: y,
-                vx: vx,
-                vy: vy,
-                rotation: rotation,
-                rotationSpeed: rotationSpeed,
-                size: size,
-                color: UInt32(colorValue)
-            )
-        }
-        
-        NSLog("🎉 DCFCanvasView: Initialized \(particles.count) particles")
-        
-        // Create buffer for rendering
-        createBuffer(width: Int(width), height: Int(height))
-        
-        // Start animation
-        animationStartTime = CACurrentMediaTime()
-        isAnimating = true
-        startDisplayLink()
-    }
-
-    func updateTexture(pixels: Data, width: Int, height: Int) {
-        NSLog("DCFCanvasView: updateTexture width: \(width) height: \(height) bytes: \(pixels.count)")
-        // Create or resize buffer if needed
-        if pixelBuffer == nil || CVPixelBufferGetWidth(pixelBuffer!) != width || CVPixelBufferGetHeight(pixelBuffer!) != height {
-            createBuffer(width: width, height: height)
-        }
-        
-        guard let buffer = pixelBuffer else { 
-            NSLog("DCFCanvasView: Failed to create buffer")
-            return 
-        }
-        
-        CVPixelBufferLockBaseAddress(buffer, [])
-        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
-        
-        if let baseAddress = CVPixelBufferGetBaseAddress(buffer) {
-            let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
-            let destination = baseAddress.assumingMemoryBound(to: UInt8.self)
-            
-            pixels.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) in
-                if let sourceAddress = rawBuffer.baseAddress {
-                    let source = sourceAddress.assumingMemoryBound(to: UInt8.self)
-                    
-                    // Convert RGBA to BGRA (iOS expects BGRA format)
-                    for y in 0..<height {
-                        let srcRowOffset = y * width * 4
-                        let dstRowOffset = y * bytesPerRow
-                        
-                        // Convert RGBA to BGRA pixel by pixel
-                        for x in 0..<width {
-                            let srcPixelOffset = srcRowOffset + (x * 4)
-                            let dstPixelOffset = dstRowOffset + (x * 4)
-                            
-                            // RGBA: R, G, B, A
-                            // BGRA: B, G, R, A
-                            destination[dstPixelOffset + 0] = source[srcPixelOffset + 2] // B
-                            destination[dstPixelOffset + 1] = source[srcPixelOffset + 1] // G
-                            destination[dstPixelOffset + 2] = source[srcPixelOffset + 0] // R
-                            destination[dstPixelOffset + 3] = source[srcPixelOffset + 3] // A
-                        }
-                    }
-                }
-            }
-        }
-        
-        if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
-           let registrar = appDelegate.pluginRegistrant as? FlutterPluginRegistrar {
-            registrar.textures().textureFrameAvailable(textureId)
-        }
-        
-        DispatchQueue.main.async {
-            self.drawFrame()
-        }
-    }
-    
-    // NEW: Command-based rendering (Phase 3) - executes Skia commands directly
-    func updateCommands(commands: [[String: Any]], width: Int, height: Int) {
-        NSLog("🎨 DCFCanvasView: updateCommands width: \(width) height: \(height) commands: \(commands.count)")
-        if commands.count > 0 {
-             if let first = commands.first, let type = first["type"] as? String {
-                 NSLog("🎨 DCFCanvasView: First command type: \(type)")
-             }
-             // Print all command types to debug
-             let cmdTypes = commands.compactMap { $0["type"] as? String }
-             NSLog("🎨 DCFCanvasView: Command types: \(cmdTypes.prefix(10).joined(separator: ", "))")
-        }
-        
-        // Create or resize buffer if needed
-        if pixelBuffer == nil || CVPixelBufferGetWidth(pixelBuffer!) != width || CVPixelBufferGetHeight(pixelBuffer!) != height {
-            createBuffer(width: width, height: height)
-        }
-        
-        guard let buffer = pixelBuffer else {
-            NSLog("DCFCanvasView: Failed to create buffer")
-            return
-        }
-        
-        // Lock buffer for drawing
-        CVPixelBufferLockBaseAddress(buffer, [])
-        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
-        
-        guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else {
-            NSLog("DCFCanvasView: Failed to get base address")
-            return
-        }
-        
-        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
-        let context = CGContext(
-            data: baseAddress,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue).rawValue
-        )
-        
-        guard let cgContext = context else {
-            NSLog("DCFCanvasView: Failed to create CGContext")
-            return
-        }
-        
-        // Execute commands on native Skia/CoreGraphics
-        executeCommands(commands: commands, context: cgContext, width: width, height: height)
-        
-        // Notify Flutter texture system
-        if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
-           let registrar = appDelegate.pluginRegistrant as? FlutterPluginRegistrar {
-            registrar.textures().textureFrameAvailable(textureId)
-        }
-        
-        DispatchQueue.main.async {
-            self.drawFrame()
-        }
-    }
-    
-    // Execute drawing commands on CoreGraphics context
-    private func executeCommands(commands: [[String: Any]], context: CGContext, width: Int, height: Int) {
-        // Clear canvas
-        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
-        
-        // Execute each command
-        for command in commands {
-            guard let type = command["type"] as? String,
-                  let params = command["params"] as? [String: Any] else {
-                continue
-            }
-            
-            switch type {
-            case "drawRect":
-                if let rect = params["rect"] as? [Double], rect.count == 4,
-                   let paint = params["paint"] as? [String: Any] {
-                    let color = extractColor(from: paint)
-                    let style = paint["style"] as? Int ?? 0 // 0 = fill, 1 = stroke
-                    let r = CGRect(x: rect[0], y: rect[1], width: rect[2] - rect[0], height: rect[3] - rect[1])
-                    
-                    if style == 1 {
-                        context.setStrokeColor(color)
-                        if let strokeWidth = paint["strokeWidth"] as? Double {
-                            context.setLineWidth(CGFloat(strokeWidth))
-                        }
-                        context.stroke(r)
-                    } else {
-                        context.setFillColor(color)
-                        context.fill(r)
-                    }
-                }
-            case "drawCircle":
-                if let center = params["center"] as? [Double], center.count == 2,
-                   let radius = params["radius"] as? Double,
-                   let paint = params["paint"] as? [String: Any] {
-                    let color = extractColor(from: paint)
-                    let style = paint["style"] as? Int ?? 0
-                    let r = CGRect(x: center[0] - radius, y: center[1] - radius, width: radius * 2, height: radius * 2)
-                    
-                    if style == 1 {
-                        context.setStrokeColor(color)
-                        if let strokeWidth = paint["strokeWidth"] as? Double {
-                            context.setLineWidth(CGFloat(strokeWidth))
-                        }
-                        context.strokeEllipse(in: r)
-                    } else {
-                        context.setFillColor(color)
-                        context.fillEllipse(in: r)
-                    }
-                }
-            case "drawOval":
-                if let rect = params["rect"] as? [Double], rect.count == 4,
-                   let paint = params["paint"] as? [String: Any] {
-                    let color = extractColor(from: paint)
-                    let style = paint["style"] as? Int ?? 0
-                    let r = CGRect(x: rect[0], y: rect[1], width: rect[2] - rect[0], height: rect[3] - rect[1])
-                    
-                    if style == 1 {
-                        context.setStrokeColor(color)
-                        if let strokeWidth = paint["strokeWidth"] as? Double {
-                            context.setLineWidth(CGFloat(strokeWidth))
-                        }
-                        context.strokeEllipse(in: r)
-                    } else {
-                        context.setFillColor(color)
-                        context.fillEllipse(in: r)
-                    }
-                }
-            case "drawArc":
-                if let rect = params["rect"] as? [Double], rect.count == 4,
-                   let startAngle = params["startAngle"] as? Double,
-                   let sweepAngle = params["sweepAngle"] as? Double,
-                   let useCenter = params["useCenter"] as? Bool,
-                   let paint = params["paint"] as? [String: Any] {
-                    
-                    let color = extractColor(from: paint)
-                    let style = paint["style"] as? Int ?? 0
-                    
-                    let x = rect[0]
-                    let y = rect[1]
-                    let w = rect[2] - rect[0]
-                    let h = rect[3] - rect[1]
-                    let cx = x + w/2
-                    let cy = y + h/2
-                    
-                    context.saveGState()
-                    context.translateBy(x: cx, y: cy)
-                    context.scaleBy(x: w/2, y: h/2)
-                    
-                    // CoreGraphics addArc: 0 is positive x-axis. Positive angle is clockwise in flipped coords (iOS default for UIView/CALayer is NOT flipped? Wait, CVPixelBuffer/CGContext might be).
-                    // Flutter: 0 is positive x-axis, positive is clockwise.
-                    // Let's assume they match for now.
-                    
-                    let path = CGMutablePath()
-                    if useCenter {
-                        path.move(to: CGPoint(x: 0, y: 0))
-                    }
-                    // clockwise: false means counter-clockwise in standard math, but in flipped Y (iOS), it might be clockwise?
-                    // Actually, let's just use 'false' (counter-clockwise) if sweep is negative?
-                    // Flutter sweepAngle can be negative.
-                    // CGContextAddArc takes start and end.
-                    let endAngle = startAngle + sweepAngle
-                    let clockwise = sweepAngle < 0
-                    
-                    path.addArc(center: CGPoint(x: 0, y: 0), radius: 1.0, startAngle: CGFloat(startAngle), endAngle: CGFloat(endAngle), clockwise: clockwise)
-                    
-                    if useCenter {
-                        path.closeSubpath()
-                    }
-                    
-                    context.addPath(path)
-                    
-                    // Restore transform before stroking/filling to avoid distorting the stroke width
-                    context.restoreGState()
-                    
-                    // Note: We added path to context, but we restored GState.
-                    // The path added to context is transformed by the CTM *at the time it was added*.
-                    // So restoring GState doesn't untransform the path points, but it DOES untransform the CTM for subsequent stroke width.
-                    // This is correct for non-distorted stroke.
-                    
-                    if style == 1 {
-                        context.setStrokeColor(color)
-                        if let strokeWidth = paint["strokeWidth"] as? Double {
-                            context.setLineWidth(CGFloat(strokeWidth))
-                        }
-                        context.strokePath()
-                    } else {
-                        context.setFillColor(color)
-                        context.fillPath()
-                    }
-                }
-            case "drawPath":
-                if let paint = params["paint"] as? [String: Any],
-                   let pathCommands = params["pathCommands"] as? [[String: Any]] {
-                    
-                    let color = extractColor(from: paint)
-                    let style = paint["style"] as? Int ?? 0
-                    let path = CGMutablePath()
-                    
-                    for cmd in pathCommands {
-                        if let type = cmd["type"] as? String {
-                            switch type {
-                            case "moveTo":
-                                if let x = cmd["x"] as? Double, let y = cmd["y"] as? Double {
-                                    path.move(to: CGPoint(x: x, y: y))
-                                }
-                            case "lineTo":
-                                if let x = cmd["x"] as? Double, let y = cmd["y"] as? Double {
-                                    path.addLine(to: CGPoint(x: x, y: y))
-                                }
-                            case "close":
-                                path.closeSubpath()
-                            case "addRect":
-                                if let r = cmd["rect"] as? [Double], r.count == 4 {
-                                    path.addRect(CGRect(x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1]))
-                                }
-                            case "addOval":
-                                if let r = cmd["oval"] as? [Double], r.count == 4 {
-                                    path.addEllipse(in: CGRect(x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1]))
-                                }
-                            case "addRRect":
-                                if let r = cmd["rrect"] as? [Double], r.count == 12 {
-                                    let rect = CGRect(x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1])
-                                    let rx = r[4] // tlRadiusX
-                                    let ry = r[5] // tlRadiusY
-                                    path.addRoundedRect(in: rect, cornerWidth: CGFloat(rx), cornerHeight: CGFloat(ry))
-                                }
-                            case "cubicTo":
-                                if let x1 = cmd["x1"] as? Double, let y1 = cmd["y1"] as? Double,
-                                   let x2 = cmd["x2"] as? Double, let y2 = cmd["y2"] as? Double,
-                                   let x3 = cmd["x3"] as? Double, let y3 = cmd["y3"] as? Double {
-                                    path.addCurve(to: CGPoint(x: x3, y: y3), control1: CGPoint(x: x1, y: y1), control2: CGPoint(x: x2, y: y2))
-                                }
-                            case "quadTo":
-                                if let x1 = cmd["x1"] as? Double, let y1 = cmd["y1"] as? Double,
-                                   let x2 = cmd["x2"] as? Double, let y2 = cmd["y2"] as? Double {
-                                    path.addQuadCurve(to: CGPoint(x: x2, y: y2), control: CGPoint(x: x1, y: y1))
-                                }
-                            default:
-                                break
-                            }
-                        }
-                    }
-                    
-                    context.addPath(path)
-                    
-                    if style == 1 {
-                        context.setStrokeColor(color)
-                        if let strokeWidth = paint["strokeWidth"] as? Double {
-                            context.setLineWidth(CGFloat(strokeWidth))
-                        }
-                        context.strokePath()
-                    } else {
-                        context.setFillColor(color)
-                        context.fillPath()
-                    }
-                }
-            case "drawLine":
-                if let p1 = params["p1"] as? [Double], p1.count == 2,
-                   let p2 = params["p2"] as? [Double], p2.count == 2,
-                   let paint = params["paint"] as? [String: Any] {
-                    let color = extractColor(from: paint)
-                    context.setStrokeColor(color)
-                    if let strokeWidth = paint["strokeWidth"] as? Double {
-                        context.setLineWidth(CGFloat(strokeWidth))
-                    }
-                    context.move(to: CGPoint(x: p1[0], y: p1[1]))
-                    context.addLine(to: CGPoint(x: p2[0], y: p2[1]))
-                    context.strokePath()
-                }
-            case "translate":
-                if let dx = params["dx"] as? Double, let dy = params["dy"] as? Double {
-                    context.translateBy(x: CGFloat(dx), y: CGFloat(dy))
-                }
-            case "rotate":
-                if let radians = params["radians"] as? Double {
-                    context.rotate(by: CGFloat(radians))
-                }
-            case "scale":
-                if let sx = params["sx"] as? Double, let sy = params["sy"] as? Double {
-                    context.scaleBy(x: CGFloat(sx), y: CGFloat(sy))
-                }
-            case "save":
-                context.saveGState()
-            case "restore":
-                context.restoreGState()
-            default:
-                // Only log unique unknown commands to avoid spam
-                // NSLog("DCFCanvasView: Unsupported command type: \(type)")
-                break
-            }
-        }
-    }
-    
-    private func extractColor(from paint: [String: Any]) -> CGColor {
-        if let colorValue = paint["color"] as? Int {
-            let a = CGFloat((colorValue >> 24) & 0xFF) / 255.0
-            let r = CGFloat((colorValue >> 16) & 0xFF) / 255.0
-            let g = CGFloat((colorValue >> 8) & 0xFF) / 255.0
-            let b = CGFloat(colorValue & 0xFF) / 255.0
-            return CGColor(red: r, green: g, blue: b, alpha: a)
-        }
-        return CGColor(red: 0, green: 0, blue: 0, alpha: 1)
-    }
-    
-    private func createBuffer(width: Int, height: Int) {
-        NSLog("DCFCanvasView: createBuffer \(width)x\(height)")
-        let options: [String: Any] = [
-            kCVPixelBufferCGImageCompatibilityKey as String: true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-        ]
-        
-        let status = CVPixelBufferCreate(
-            kCFAllocatorDefault,
-            width,
-            height,
-            kCVPixelFormatType_32BGRA,
-            options as CFDictionary,
-            &pixelBuffer
-        )
-        
-        if status != kCVReturnSuccess {
-            NSLog("DCFCanvasView: CVPixelBufferCreate failed: \(status)")
-        }
-    }
-
-    // MARK: - FlutterTexture Protocol
-    
-    func copyPixelBuffer() -> Unmanaged<CVPixelBuffer>? {
-        guard let buffer = pixelBuffer else { return nil }
-        return Unmanaged.passRetained(buffer)
-    }
-    
-    // MARK: - Rendering
-    
-    private func startDisplayLink() {
-        guard displayLink == nil else { return }
-        displayLink = CADisplayLink(target: self, selector: #selector(onDisplayLink))
-        displayLink?.add(to: .main, forMode: .common)
-    }
-    
-    private func stopDisplayLink() {
-        displayLink?.invalidate()
-        displayLink = nil
-    }
-    
-    @objc private func onDisplayLink() {
-        if isAnimating {
-            updateAndRenderParticles()
-        } else {
-            drawFrame()
-        }
-    }
-    
-    private func updateAndRenderParticles() {
-        guard let buffer = pixelBuffer else { return }
-        
-        let currentTime = CACurrentMediaTime()
-        let elapsed = currentTime - animationStartTime
-        
-        // Check if animation is complete
-        if elapsed >= animationDuration {
-            isAnimating = false
-            stopDisplayLink()
-            NSLog("🎉 DCFCanvasView: Particle animation complete")
-            // TODO: Fire onComplete callback
-            return
-        }
-        
-        // Update particles
-        let deltaTime = 1.0 / 60.0 // Assume 60fps
-        for i in 0..<particles.count {
-            particles[i].x += particles[i].vx * deltaTime
-            particles[i].y += (particles[i].vy + gravity) * deltaTime
-            particles[i].vy += gravity * deltaTime
-            particles[i].rotation += particles[i].rotationSpeed * deltaTime
-        }
-        
-        // Render particles to pixel buffer
-        renderParticlesToBuffer(buffer)
-        
-        // Notify Flutter that frame is available
-        if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
-           let registrar = appDelegate.pluginRegistrant as? FlutterPluginRegistrar {
-            registrar.textures().textureFrameAvailable(textureId)
-        }
-        
-        DispatchQueue.main.async {
-            self.drawFrame()
-        }
-    }
-    
-    private func renderParticlesToBuffer(_ buffer: CVPixelBuffer) {
-        CVPixelBufferLockBaseAddress(buffer, [])
-        defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
-        
-        guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else { return }
-        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
-        let width = CVPixelBufferGetWidth(buffer)
-        let height = CVPixelBufferGetHeight(buffer)
-        
-        // Clear buffer (transparent)
-        let destination = baseAddress.assumingMemoryBound(to: UInt8.self)
-        memset(destination, 0, bytesPerRow * height)
-        
-        // Render each particle
-        for particle in particles {
-            let x = Int(particle.x)
-            let y = Int(particle.y)
-            
-            // Skip if out of bounds
-            if x < 0 || x >= width || y < 0 || y >= height {
-                continue
-            }
-            
-            let radius = Int(particle.size / 2.0)
-            let color = particle.color
-            
-            // Extract ARGB components
-            let a = UInt8((color >> 24) & 0xFF)
-            let r = UInt8((color >> 16) & 0xFF)
-            let g = UInt8((color >> 8) & 0xFF)
-            let b = UInt8(color & 0xFF)
-            
-            // Draw circle (simplified - just draw a filled circle)
-            for dy in -radius...radius {
-                for dx in -radius...radius {
-                    let px = x + dx
-                    let py = y + dy
-                    
-                    if px >= 0 && px < width && py >= 0 && py < height {
-                        let distance = sqrt(Double(dx * dx + dy * dy))
-                        if distance <= Double(radius) {
-                            let pixelOffset = py * bytesPerRow + px * 4
-                            
-                            // Convert ARGB to BGRA for iOS
-                            destination[pixelOffset + 0] = b
-                            destination[pixelOffset + 1] = g
-                            destination[pixelOffset + 2] = r
-                            destination[pixelOffset + 3] = a
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func drawFrame() {
-        if let buffer = pixelBuffer {
-            if let image = createCGImage(from: buffer) {
-                contentLayer.contents = image
-                // Remove debug background if we have content
-                self.backgroundColor = .clear
-            } else {
-                NSLog("DCFCanvasView: Failed to create CGImage")
-            }
-        }
-    }
-    
-    private func createCGImage(from buffer: CVPixelBuffer) -> CGImage? {
-        var cgImage: CGImage?
-        let status = VTCreateCGImageFromCVPixelBuffer(buffer, options: nil, imageOut: &cgImage)
-        if status != noErr {
-            NSLog("DCFCanvasView: VTCreateCGImageFromCVPixelBuffer failed: \(status)")
-        }
-        return cgImage
-    }
-    
-    deinit {
-        // Safely remove from registry using the synchronized method
-        if let id = canvasId {
-            DCFCanvasView.setCanvasView(nil, forId: id)
-        }
-        if textureId != -1 {
-            if let appDelegate = UIApplication.shared.delegate as? FlutterAppDelegate,
-               let registrar = appDelegate.pluginRegistrant as? FlutterPluginRegistrar {
-                registrar.textures().unregisterTexture(textureId)
-            }
-        }
-        stopDisplayLink()
+        imageLayer?.contents = cgImage
     }
 }
+
+class DCFCanvasComponent: NSObject, DCFComponent {
+    
+    // Registry to track canvasId -> viewId mapping
+    private static var canvasRegistry: [String: Int] = [:]
+    
+    override required init() { super.init() }
+    
+    func createView(props: [String: Any]) -> UIView {
+        let view = DCFCanvasView()
+        
+        // Store canvasId in view for later registration
+        if let canvasId = props["canvasId"] as? String {
+            objc_setAssociatedObject(view,
+                                   UnsafeRawPointer(bitPattern: "canvasId".hashValue)!,
+                                   canvasId,
+                                   .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+        
+        return view
+    }
+    
+    func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
+        // Update canvasId if changed
+        if let canvasId = props["canvasId"] as? String {
+            objc_setAssociatedObject(view,
+                                   UnsafeRawPointer(bitPattern: "canvasId".hashValue)!,
+                                   canvasId,
+                                   .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+        return true
+    }
+    
+    func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        view.frame = CGRect(
+            x: layout.left,
+            y: layout.top,
+            width: layout.width,
+            height: layout.height
+        )
+    }
+    
+    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        let width = (props["width"] as? NSNumber)?.doubleValue ?? 0
+        let height = (props["height"] as? NSNumber)?.doubleValue ?? 0
+        return CGSize(width: width, height: height)
+    }
+    
+    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+        // Store mapping when view is registered
+        if let canvasId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "canvasId".hashValue)!) as? String,
+           let viewId = Int(nodeId) {
+            DCFCanvasComponent.canvasRegistry[canvasId] = viewId
+        }
+    }
+    
+    func prepareForRecycle(_ view: UIView) {
+        // Cleanup: remove from registry when view is recycled
+        // Find and remove any entries pointing to this view
+        if let canvasId = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "canvasId".hashValue)!) as? String {
+            DCFCanvasComponent.canvasRegistry.removeValue(forKey: canvasId)
+        }
+    }
+
+    static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
+        switch method {
+        case "updatePixels":
+            // Dart sends: canvasId, pixels (Data), width, height
+            guard let canvasId = params["canvasId"] as? String,
+                  let viewId = canvasRegistry[canvasId],
+                  let canvasView = ViewRegistry.shared.getView(id: viewId) as? DCFCanvasView,
+                  let pixelsData = params["pixels"] as? FlutterStandardTypedData,
+                  let width = params["width"] as? Int,
+                  let height = params["height"] as? Int else {
+                return false // View not ready or invalid params
+            }
+            
+            canvasView.updatePixels(data: pixelsData.data, width: width, height: height)
+            return true
+            
+        default:
+            return nil
+        }
+    }
+}
+

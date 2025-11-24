@@ -17,6 +17,7 @@ final styles = DCFStyleSheet.create({
     borderRadius: 12,
   ),
   'sectionTitle': DCFStyleSheet(primaryColor: DCFColors.white),
+  'descText': DCFStyleSheet(primaryColor: const Color(0xFF888888)),
   'animatedBox': DCFStyleSheet(
     backgroundColor: const Color(0xFF4CAF50),
     borderRadius: 12,
