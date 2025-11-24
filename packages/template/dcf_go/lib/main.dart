@@ -19,41 +19,6 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
     return DCFView(
       layout: layouts['root'],
       children: [
-        // Confetti overlay (absolute positioned - MUST be sibling of ScrollView, not child)
-        if (showConfetti.state)
-          DCFConfetti(
-            config: ConfettiConfig(
-              particleCount: 100,
-              startVelocity: 8, // Pixels per tick (realistic launch speed)
-              spread: 360, // Full circle spread
-              angle: 270, // Shoot upward
-              gravity: 0.3, // Downward acceleration per tick
-              drift: 0.1, // Horizontal drift per tick
-              decay: 0.97, // Velocity retained per tick (97%)
-              // ticks: 300, // Lifetime in ticks (5 seconds at 60fps)
-
-              colors: [
-                Colors.red,
-                Colors.green,
-                Colors.blue,
-                Colors.yellow,
-                Colors.purple,
-                const Color(0xFFFF6B6B),
-                Colors.orange,
-                Colors.pink,
-                DCFColors.amber,
-                DCFColors.brown,
-                DCFColors.cyan,
-                DCFColors.deepPurple,
-              ],
-              scalar: 1.0, // Increased from 1.0 to make particles bigger
-            ),
-            onComplete: () {
-              showConfetti.setState(false);
-            },
-            layout: layouts['confettiOverlay'],
-            styleSheet: styles['confettiOverlay'],
-          ),
         DCFScrollView(
           layout: layouts['root'],
           styleSheet: styles['root'],
@@ -196,7 +161,6 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                       50,
                       paint,
                     );
-                  
                   },
                 ),
                 DCFButton(
@@ -268,8 +232,41 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
             ),
           ],
         ),
+        // Confetti overlay (absolute positioned - MUST be sibling of ScrollView, not child)
+        if (showConfetti.state)
+          DCFConfetti(
+            config: ConfettiConfig(
+              particleCount: 100,
+              startVelocity: 8, // Pixels per tick (realistic launch speed)
+              spread: 360, // Full circle spread
+              angle: 270, // Shoot upward
+              gravity: 0.3, // Downward acceleration per tick
+              drift: 0.1, // Horizontal drift per tick
+              decay: 0.97, // Velocity retained per tick (97%)
+              // ticks: 300, // Lifetime in ticks (5 seconds at 60fps)
+              colors: [
+                Colors.red,
+                Colors.green,
+                Colors.blue,
+                Colors.yellow,
+                Colors.purple,
+                const Color(0xFFFF6B6B),
+                Colors.orange,
+                Colors.pink,
+                DCFColors.amber,
+                DCFColors.brown,
+                DCFColors.cyan,
+                DCFColors.deepPurple,
+              ],
+              scalar: 1.0, // Increased from 1.0 to make particles bigger
+            ),
+            onComplete: () {
+              showConfetti.setState(false);
+            },
+            layout: layouts['confettiOverlay'],
+            styleSheet: styles['confettiOverlay'],
+          ),
       ],
     );
   }
 }
-
