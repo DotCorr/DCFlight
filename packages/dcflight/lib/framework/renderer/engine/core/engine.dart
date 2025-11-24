@@ -960,6 +960,7 @@ class DCFEngine {
 
       // 🔥 CRITICAL: Clear render cycle counts after batch completes
       _renderCycleCount.clear();
+      _nodesBeingRendered.clear(); // Clear rendering set after batch completes
     } finally {
       _batchUpdateInProgress = false;
     }
@@ -3846,6 +3847,7 @@ class DCFEngine {
       _componentInstancesByProps.clear();
       _similarityCache.clear(); // Also clear similarity cache
       _errorRecovery.clear(); // Clear error recovery state
+      _nodesBeingRendered.clear(); // Clear rendering set to prevent stale state
 
       _componentsWaitingForLayout.clear();
       _componentsWaitingForInsertion.clear();
