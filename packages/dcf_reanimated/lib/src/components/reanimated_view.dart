@@ -10,7 +10,6 @@ library;
 import 'package:dcflight/dcflight.dart';
 import '../styles/animated_style.dart';
 import '../helper/init.dart';
-import '../worklets/worklet.dart';
 
 /// The main animated view component that runs animations purely on the UI thread.
 ///

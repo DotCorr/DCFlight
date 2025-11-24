@@ -10,7 +10,7 @@ import 'package:dcflight/dcflight.dart';
 import 'package:dcf_primitives/dcf_primitives.dart' hide DCFCanvas;
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'dart:async';
+import 'package:flutter/scheduler.dart';
 import 'canvas_component.dart';
 
 import 'command_canvas.dart';
@@ -91,7 +91,8 @@ class ConfettiConfig {
     this.spread = 45,
     this.startVelocity = 45,
     this.decay = 0.9,
-    this.gravity = 1,
+    this.gravity =
+        800, // pixels/sec^2 (was 1 per tick @ 60fps -> ~60, but needs to be higher for visual feel)
     this.drift = 0,
     this.flat = false,
     this.scalar = 1,
@@ -209,8 +210,9 @@ class _ConfettiPhysics {
     return _ConfettiPhysics(
       wobble: random.nextDouble() * 10,
       wobbleSpeed: math.min(0.11, random.nextDouble() * 0.1 + 0.05),
-      velocity: options.startVelocity * 0.5 +
-          random.nextDouble() * options.startVelocity,
+      velocity: (options.startVelocity * 0.5 +
+              random.nextDouble() * options.startVelocity) *
+          60, // Convert to px/sec (approx)
       angle2D: -radAngle + (0.5 * radSpread - random.nextDouble() * radSpread),
       tiltAngle: (random.nextDouble() * (0.75 - 0.25) + 0.25) * math.pi,
       color: color,
@@ -221,7 +223,7 @@ class _ConfettiPhysics {
       tiltCos: 0,
       wobbleX: 0,
       wobbleY: 0,
-      gravity: options.gravity * 3,
+      gravity: options.gravity,
       ovalScalar: 0.6,
       scalar: options.scalar,
       flat: options.flat,
@@ -231,13 +233,20 @@ class _ConfettiPhysics {
       ..y = startY;
   }
 
-  void update() {
+  void update(double dt) {
     progress = ticket / totalTicks;
     ticket++;
 
-    x += math.cos(angle2D) * velocity + drift;
-    y += math.sin(angle2D) * velocity + gravity;
-    velocity *= decay;
+    x += (math.cos(angle2D) * velocity + drift) * dt;
+    y += (math.sin(angle2D) * velocity + gravity) * dt;
+    // Decay is per second now? Or per tick?
+    // If decay is 0.9 per tick (60fps), then per second it's 0.9^60 which is tiny.
+    // Let's keep decay per-update for now but scale it?
+    // Or better: velocity -= velocity * (1 - decay) * dt * 60;
+    // Let's stick to simple exponential decay adjusted for time
+    // velocity *= math.pow(decay, dt * 60);
+    velocity *=
+        decay; // Keep simple per-tick decay for now as Ticker runs at frame rate
 
     if (flat) {
       wobble = 0;
@@ -312,14 +321,18 @@ class _SquareParticle extends _ConfettiParticle {
     required ui.Canvas canvas,
   }) {
     canvas.save();
-    // Use RecordingPath for serialization support
+    canvas.translate(physics.x, physics.y);
+    canvas.rotate(math.pi / 10 * physics.wobble);
+    canvas.scale(physics.scalar, physics.scalar);
+
+    // Use RecordingPath with relative coordinates centered at (0,0)
+    final size = 10.0; // Base size, scaled by physics.scalar
     final path = RecordingPath()
-      ..moveTo(physics.x.floor().toDouble(), physics.y.floor().toDouble());
-    path.lineTo(physics.wobbleX, physics.y1.floor().toDouble());
-    path.lineTo(physics.x2.floor().toDouble(), physics.y2.floor().toDouble());
-    path.lineTo(
-        physics.x1.floor().toDouble(), physics.wobbleY.floor().toDouble());
-    path.close();
+      ..moveTo(-size / 2, -size / 2)
+      ..lineTo(size / 2, -size / 2)
+      ..lineTo(size / 2, size / 2)
+      ..lineTo(-size / 2, size / 2)
+      ..close();
 
     final paint = Paint()
       ..color = physics.color.withOpacity(1 - physics.progress);
@@ -336,11 +349,16 @@ class _TriangleParticle extends _ConfettiParticle {
     required ui.Canvas canvas,
   }) {
     canvas.save();
-    // Use RecordingPath for serialization support
+    canvas.translate(physics.x, physics.y);
+    canvas.rotate(math.pi / 10 * physics.wobble);
+    canvas.scale(physics.scalar, physics.scalar);
+
+    // Use RecordingPath with relative coordinates centered at (0,0)
+    final size = 10.0; // Base size, scaled by physics.scalar
     final path = RecordingPath()
-      ..moveTo(physics.x.floor().toDouble(), physics.y.floor().toDouble())
-      ..lineTo(physics.wobbleX.ceil().toDouble(), physics.y1.floor().toDouble())
-      ..lineTo(physics.x2.floor().toDouble(), physics.wobbleY.ceil().toDouble())
+      ..moveTo(0, -size / 2)
+      ..lineTo(size / 2, size / 2)
+      ..lineTo(-size / 2, size / 2)
       ..close();
 
     final paint = Paint()
@@ -358,24 +376,25 @@ class _StarParticle extends _ConfettiParticle {
     required ui.Canvas canvas,
   }) {
     canvas.save();
+    canvas.translate(physics.x, physics.y);
+    canvas.rotate(math.pi / 10 * physics.wobble);
+
     final innerRadius = 4 * physics.scalar;
     final outerRadius = 8 * physics.scalar;
     double rot = math.pi / 2 * 3;
-    double x = physics.x;
-    double y = physics.y;
     int spikes = 5;
     final step = math.pi / spikes;
 
-    // Use RecordingPath for serialization support
-    final path = RecordingPath()..moveTo(x, y);
+    // Use RecordingPath with relative coordinates centered at (0,0)
+    final path = RecordingPath()..moveTo(0, -outerRadius);
     while (spikes-- >= 0) {
-      x = physics.x + math.cos(rot) * outerRadius;
-      y = physics.y + math.sin(rot) * outerRadius;
+      final x = math.cos(rot) * outerRadius;
+      final y = math.sin(rot) * outerRadius;
       path.lineTo(x, y);
       rot += step;
-      x = physics.x + math.cos(rot) * innerRadius;
-      y = physics.y + math.sin(rot) * innerRadius;
-      path.lineTo(x, y);
+      final x2 = math.cos(rot) * innerRadius;
+      final y2 = math.sin(rot) * innerRadius;
+      path.lineTo(x2, y2);
       rot += step;
     }
     path.close();
@@ -484,30 +503,38 @@ class DCFConfetti extends DCFStatefulComponent {
 
     // Update particles directly in ref - no state = no VDOM reconciliation
     // Canvas rendering happens via tunnel (also bypasses VDOM)
+    // Use Ticker for smooth animation loop
     useEffect(() {
       if (isCompleteRef.current == true) return null;
 
-      final timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
+      final ticker = Ticker((elapsed) {
         final currentParticles = particlesRef.current;
         if (currentParticles == null || currentParticles.isEmpty) return;
+
+        // Fixed time step for consistent physics (16ms)
+        // or use elapsed time? For now, let's assume 60fps step for simplicity
+        // but pass dt if we want true time independence.
+        // Let's use a fixed dt of 1/60 for physics stability
+        const dt = 1 / 60.0;
 
         // Update all particles
         bool allFinished = true;
         for (final glue in currentParticles) {
           if (!glue.physics.finished) {
-            glue.physics.update();
+            glue.physics.update(dt);
             allFinished = false;
           }
         }
 
         if (allFinished) {
-          timer.cancel();
           isCompleteRef.current = true;
           onComplete?.call();
         }
       });
 
-      return () => timer.cancel();
+      ticker.start();
+
+      return () => ticker.dispose();
     }, dependencies: []);
 
     // Wrap canvas in a DCFView - use provided layout and styleSheet directly

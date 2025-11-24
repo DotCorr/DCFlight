@@ -54,7 +54,7 @@ export 'framework/devtools/hot_reload_listener.dart';
 
 export 'framework/renderer/interface/interface.dart';
 export 'framework/renderer/interface/interface_impl.dart';
-
+export 'framework/worklets/worklet.dart';
 export 'framework/constants/layout/yoga_enums.dart';
 export 'framework/constants/layout/layout_properties.dart';
 export 'framework/constants/layout/layout_config.dart';

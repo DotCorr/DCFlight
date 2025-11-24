@@ -360,7 +360,15 @@ class DCFCanvasView: UIView, FlutterTexture {
     
     // NEW: Command-based rendering (Phase 3) - executes Skia commands directly
     func updateCommands(commands: [[String: Any]], width: Int, height: Int) {
-        NSLog("DCFCanvasView: updateCommands width: \(width) height: \(height) commands: \(commands.count)")
+        NSLog("🎨 DCFCanvasView: updateCommands width: \(width) height: \(height) commands: \(commands.count)")
+        if commands.count > 0 {
+             if let first = commands.first, let type = first["type"] as? String {
+                 NSLog("🎨 DCFCanvasView: First command type: \(type)")
+             }
+             // Print all command types to debug
+             let cmdTypes = commands.compactMap { $0["type"] as? String }
+             NSLog("🎨 DCFCanvasView: Command types: \(cmdTypes.prefix(10).joined(separator: ", "))")
+        }
         
         // Create or resize buffer if needed
         if pixelBuffer == nil || CVPixelBufferGetWidth(pixelBuffer!) != width || CVPixelBufferGetHeight(pixelBuffer!) != height {
@@ -414,8 +422,7 @@ class DCFCanvasView: UIView, FlutterTexture {
     // Execute drawing commands on CoreGraphics context
     private func executeCommands(commands: [[String: Any]], context: CGContext, width: Int, height: Int) {
         // Clear canvas
-        context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0))
-        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.clear(CGRect(x: 0, y: 0, width: width, height: height))
         
         // Execute each command
         for command in commands {

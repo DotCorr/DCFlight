@@ -103,8 +103,7 @@ class DCFCanvasComponent : DCFComponent() {
             if (canvasId != null && commands != null && width != null && height != null) {
                 val view = DCFCanvasView.canvasViews[canvasId]
                 if (view != null) {
-                    view.updateCommands(commands, width, height)
-                    return true
+                    return view.updateCommands(commands, width, height)
                 } else {
                     android.util.Log.w("DCFCanvasComponent", "View not found for canvasId: $canvasId - view may not be registered yet")
                     return false
@@ -200,13 +199,18 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
     }
     
     // NEW: Command-based rendering (Phase 3) - executes Skia commands directly
-    fun updateCommands(commands: List<Map<String, Any>>, width: Int, height: Int) {
-        android.util.Log.d("DCFCanvasView", "updateCommands width: $width height: $height commands: ${commands.size}")
+    fun updateCommands(commands: List<Map<String, Any>>, width: Int, height: Int): Boolean {
+        // android.util.Log.d("DCFCanvasView", "updateCommands width: $width height: $height commands: ${commands.size}")
         
+        if (!isAvailable) {
+            // android.util.Log.w("DCFCanvasView", "SurfaceTexture not available yet")
+            return false
+        }
+
         val canvas = lockCanvas()
         if (canvas == null) {
             android.util.Log.w("DCFCanvasView", "Failed to lock canvas")
-            return
+            return false
         }
         
         try {
@@ -217,9 +221,11 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
             executeCommands(commands, canvas, width, height)
             
             unlockCanvasAndPost(canvas)
+            return true
         } catch (e: Exception) {
             android.util.Log.e("DCFCanvasView", "Error executing commands", e)
             unlockCanvasAndPost(canvas)
+            return false
         }
     }
     

@@ -14,7 +14,7 @@ import 'direct_canvas.dart';
 
 /// Canvas component that renders using dart:ui via Flutter's CustomPaint
 /// Users can use Flutter's Canvas APIs directly (Paint, Path, Shader, etc.)
-/// 
+///
 /// Also supports native particle system rendering via particleConfig prop.
 /// When particleConfig is provided, native side handles all rendering
 /// with zero bridge calls during animation.
@@ -27,7 +27,6 @@ class DCFCanvas extends DCFStatefulComponent {
 
   /// Background color
   final Color? backgroundColor;
-
 
   /// Layout properties
   final DCFLayout? layout;
@@ -83,47 +82,52 @@ class DCFCanvas extends DCFStatefulComponent {
         // For animations, set up continuous rendering on every frame (~60fps)
         // Include onPaint in dependencies to ensure timer uses latest callback
         useEffect(() {
-          print('🎨 DCFCanvas: Setting up continuous rendering for canvasId: $canvasId, size: ${size.width}x${size.height}');
+          print(
+              '🎨 DCFCanvas: Setting up continuous rendering for canvasId: $canvasId, size: ${size.width}x${size.height}');
           Timer? frameTimer;
           bool isViewReady = false;
           int retryCount = 0;
           const maxRetries = 10;
-          
+
           void renderFrame() {
             // Validate size before rendering
             if (size.width <= 0 || size.height <= 0) {
               if (retryCount < maxRetries) {
                 retryCount++;
-                print('⚠️ DCFCanvas: Size invalid (${size.width}x${size.height}), retrying... ($retryCount/$maxRetries)');
+                print(
+                    '⚠️ DCFCanvas: Size invalid (${size.width}x${size.height}), retrying... ($retryCount/$maxRetries)');
                 return;
               } else {
-                print('❌ DCFCanvas: Size invalid after $maxRetries retries, stopping');
+                print(
+                    '❌ DCFCanvas: Size invalid after $maxRetries retries, stopping');
                 frameTimer?.cancel();
                 return;
               }
             }
-            
+
             if (!isViewReady) {
-              // Try to render, and if successful, mark view as ready
-              _renderToNative(canvasId).then((success) {
+              // Try to render silently first
+              _renderToNative(canvasId, silent: true).then((success) {
                 if (success == true) {
                   isViewReady = true;
                   retryCount = 0; // Reset retry count on success
-                  print('✅ DCFCanvas: View ready, starting continuous rendering for canvasId: $canvasId');
+                  print(
+                      '✅ DCFCanvas: View ready, starting continuous rendering for canvasId: $canvasId');
                 } else {
                   retryCount++;
                   if (retryCount >= maxRetries) {
-                    print('❌ DCFCanvas: View not ready after $maxRetries attempts, stopping for canvasId: $canvasId');
+                    print(
+                        '❌ DCFCanvas: View not ready after $maxRetries attempts, stopping for canvasId: $canvasId');
                     frameTimer?.cancel();
                   }
                 }
               });
             } else {
-              // View is ready, render normally (no logging to reduce spam)
+              // View is ready, render normally
               _renderToNative(canvasId);
             }
           }
-          
+
           // Wait longer initially to ensure view is registered and laid out by Yoga
           Future.delayed(const Duration(milliseconds: 300), () {
             renderFrame();
@@ -132,32 +136,36 @@ class DCFCanvas extends DCFStatefulComponent {
               renderFrame();
             });
           });
-          
+
           // Cleanup
           return () {
             frameTimer?.cancel();
-            print('🧹 DCFCanvas: Cleaned up continuous rendering for canvasId: $canvasId');
+            print(
+                '🧹 DCFCanvas: Cleaned up continuous rendering for canvasId: $canvasId');
           };
         }, dependencies: [canvasId, repaintOnFrame, size.width, size.height]);
       } else {
         // For static rendering, render once after layout
         useEffect(() {
-          print('🎨 DCFCanvas: Setting up static rendering for canvasId: $canvasId, size: ${size.width}x${size.height}');
+          print(
+              '🎨 DCFCanvas: Setting up static rendering for canvasId: $canvasId, size: ${size.width}x${size.height}');
           // Use a delay to ensure the native view is registered and laid out by Yoga
           Future.delayed(const Duration(milliseconds: 300), () async {
             // Validate size before rendering
             if (size.width <= 0 || size.height <= 0) {
-              print('⚠️ DCFCanvas: Invalid size ${size.width}x${size.height}, retrying...');
+              print(
+                  '⚠️ DCFCanvas: Invalid size ${size.width}x${size.height}, retrying...');
               // Retry after Yoga layout completes
               Future.delayed(const Duration(milliseconds: 200), () async {
                 final success = await _renderToNative(canvasId);
                 if (success != true) {
-                  print('⚠️ DCFCanvas: Static render failed, view may not be ready');
+                  print(
+                      '⚠️ DCFCanvas: Static render failed, view may not be ready');
                 }
               });
               return;
             }
-            
+
             final success = await _renderToNative(canvasId);
             if (success != true) {
               // Retry once more if view wasn't ready
@@ -180,10 +188,10 @@ class DCFCanvas extends DCFStatefulComponent {
   }
 
   /// Render to native using DirectCanvas - bypasses VDOM completely
-  /// 
+  ///
   /// Uses DirectCanvas.renderAndUpdate internally, which handles all
   /// the pixel conversion and tunnel communication. Zero VDOM overhead.
-  Future<bool?> _renderToNative(String canvasId) async {
+  Future<bool?> _renderToNative(String canvasId, {bool silent = false}) async {
     if (onPaint == null) {
       print('⚠️ DCFCanvas: _renderToNative called but onPaint is null');
       return false;
@@ -191,7 +199,8 @@ class DCFCanvas extends DCFStatefulComponent {
 
     // Validate size - must be > 0
     if (size.width <= 0 || size.height <= 0) {
-      print('⚠️ DCFCanvas: Invalid size ${size.width}x${size.height}, skipping render');
+      print(
+          '⚠️ DCFCanvas: Invalid size ${size.width}x${size.height}, skipping render');
       return false;
     }
 
@@ -203,12 +212,13 @@ class DCFCanvas extends DCFStatefulComponent {
       size: size,
       backgroundColor: backgroundColor,
     );
-    
-    // Only log failures to reduce log spam (success happens 60fps for animations)
-    if (!success) {
-      print('⚠️ DCFCanvas: Failed to render to native for canvasId: $canvasId (view may not be ready)');
+
+    // Only log failures if not silent
+    if (!success && !silent) {
+      print(
+          '⚠️ DCFCanvas: Failed to render to native for canvasId: $canvasId (view may not be ready)');
     }
-    
+
     // Return result: true = success, false = view not ready, null = error
     return success ? true : false;
   }

@@ -96,9 +96,8 @@ final layouts = DCFLayout.create({
     justifyContent: DCFJustifyContent.center,
   ),
   'confettiOverlay': DCFLayout(
-    // Full screen overlay - use explicit width/height with screen dimensions
-    // The confetti component will merge actual screen dimensions for true full-screen
-    // Using fullScreen() helper for positioning, component handles sizing
+    height: '100%',
+    width: '100%',
     position: DCFPositionType.absolute,
     absoluteLayout: AbsoluteLayout.fullScreen(),
   ),
