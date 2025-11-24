@@ -1412,25 +1412,31 @@ class DCFEngine {
     await isReady;
 
     // 🔥 CRITICAL: Guard against infinite render loops
-    // If this node is already being rendered, return early to prevent recursion
-    final nodeIdentity = node.hashCode;
+    // Use identityHashCode for reliable instance tracking (not hashCode which can collide)
+    final nodeIdentity = identityHashCode(node);
+    
+    // Debug: Check if node is already in set and log why
     if (_nodesBeingRendered.contains(nodeIdentity)) {
+      print('🔍 DEBUG: Node ${node.runtimeType} (identity: $nodeIdentity) is already in _nodesBeingRendered');
+      print('🔍 DEBUG: Set contents: ${_nodesBeingRendered.toList()}');
+      print('🔍 DEBUG: Current call - parentViewId=$parentViewId, index=$index');
+      print('🔍 DEBUG: Node effectiveNativeViewId=${node.effectiveNativeViewId}');
+      // Print stack trace to see what's calling renderToNative recursively
+      print('🔍 DEBUG: Stack trace:');
+      print(StackTrace.current);
+      
       final errorMsg =
-          '❌ INFINITE RENDER LOOP DETECTED: Node ${node.runtimeType} (hashCode: $nodeIdentity) '
+          '❌ INFINITE RENDER LOOP DETECTED: Node ${node.runtimeType} (identity: $nodeIdentity) '
           'is already being rendered. This indicates a recursive render call. '
           'Check for state updates in render() methods or effects that trigger re-renders.';
       print(errorMsg);
       EngineDebugLogger.log('INFINITE_RENDER_LOOP', errorMsg);
-      
-      // Return the existing view ID if available to prevent breaking the tree
-      if (node.effectiveNativeViewId != null) {
-        return node.effectiveNativeViewId;
-      }
-      return null;
+      throw Exception(errorMsg); // Throw error instead of returning null to prevent white screen
     }
 
     // Mark this node as being rendered
     _nodesBeingRendered.add(nodeIdentity);
+    print('🔍 DEBUG: Added node ${node.runtimeType} (identity: $nodeIdentity) to _nodesBeingRendered');
 
     try {
       print(
@@ -1504,9 +1510,13 @@ class DCFEngine {
             lifecycleInterceptor.beforeMount(node, context);
           }
 
-          registerComponent(node);
-
+          // 🔥 CRITICAL: Get renderedNode BEFORE registering component
+          // This prevents scheduleUpdate from being set up before render() completes
+          // If render() triggers any state updates, scheduleUpdate is still a no-op
           final renderedNode = node.renderedNode;
+          
+          // Now register component after render() has completed safely
+          registerComponent(node);
           if (renderedNode == null) {
             EngineDebugLogger.logRender('ERROR', node,
                 error: 'Component rendered null');
@@ -3899,6 +3909,9 @@ class DCFEngine {
       EngineDebugLogger.log(
           'CREATE_ROOT_FIRST', 'Creating first root component');
       rootComponent = component;
+
+      // Clear rendering set to ensure clean state for first render
+      _nodesBeingRendered.clear();
 
       print('🔥 Engine.createRoot: Starting batch update...');
       await _nativeBridge.startBatchUpdate();
