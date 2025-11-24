@@ -196,6 +196,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                       50,
                       paint,
                     );
+                  
                   },
                 ),
                 DCFButton(

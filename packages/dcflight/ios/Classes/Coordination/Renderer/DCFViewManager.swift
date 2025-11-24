@@ -35,7 +35,6 @@ public class ViewRegistry {
     public static let shared = ViewRegistry()
     
     public var registry = [Int: ViewTypeInfo]()
-    public var registry = [Int: ViewTypeInfo]()
     
     private init() {}
     
