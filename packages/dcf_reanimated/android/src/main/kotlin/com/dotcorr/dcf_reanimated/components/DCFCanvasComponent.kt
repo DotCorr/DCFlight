@@ -405,7 +405,38 @@ class ConfettiAnimation(config: Map<String, Any>) : AnimationManager() {
             initialized = true
         }
         
-        super.updateAndDraw(canvas, width, height)
+        var activeParticles = 0
+        val iterator = particles.iterator()
+        while (iterator.hasNext()) {
+            val p = iterator.next()
+            
+            // Skip dead particles
+            if (p.dead) continue
+            
+            // Physics
+            p.x += p.vx
+            p.y += p.vy
+            p.vy += gravity
+            p.vx *= decay
+            p.vy *= decay
+            p.x += drift
+
+            // Draw
+            paint.color = p.color
+            canvas.drawCircle(p.x, p.y, p.radius, paint)
+
+            // Check bounds
+            if (p.y > height + 50) {
+                p.dead = true
+            } else {
+                activeParticles++
+            }
+        }
+        
+        // Auto-stop if all particles are dead
+        if (activeParticles == 0 && initialized) {
+            isActive = false
+        }
     }
 }
 
@@ -416,5 +447,6 @@ class Particle {
     var vy: Float = 0f
     var color: Int = 0
     var radius: Float = 0f
+    var dead: Boolean = false
 }
 

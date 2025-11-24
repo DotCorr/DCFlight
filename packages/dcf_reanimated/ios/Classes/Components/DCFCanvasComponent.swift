@@ -118,6 +118,11 @@ class DCFCanvasView: UIView {
         UIGraphicsEndImageContext()
         
         imageView?.image = image
+        
+        // Auto-stop
+        if manager.isFinished {
+            stopAnimation()
+        }
     }
 }
 
@@ -125,6 +130,7 @@ class DCFCanvasView: UIView {
 
 protocol AnimationManager {
     func updateAndDraw(context: CGContext, size: CGSize)
+    var isFinished: Bool { get }
 }
 
 class ConfettiAnimation: AnimationManager {
@@ -176,7 +182,12 @@ class ConfettiAnimation: AnimationManager {
             initialized = true
         }
         
+        var activeParticles = 0
+        
         for i in 0..<particles.count {
+            // Skip dead particles
+            if particles[i].dead { continue }
+            
             // Physics
             particles[i].x += particles[i].vx
             particles[i].y += particles[i].vy
@@ -193,7 +204,22 @@ class ConfettiAnimation: AnimationManager {
                 width: particles[i].radius * 2,
                 height: particles[i].radius * 2
             ))
+            
+            // Check bounds
+            if particles[i].y > size.height + 50 {
+                particles[i].dead = true
+            } else {
+                activeParticles += 1
+            }
         }
+        
+        // Auto-stop if all particles are dead (we can't set isActive directly on struct protocol, 
+        // so we'll return a status or handle it in the view. 
+        // For now, let's assume the view checks a property or we add one to the protocol)
+    }
+    
+    var isFinished: Bool {
+        return initialized && particles.allSatisfy { $0.dead }
     }
     
     private func createParticle() -> Particle {
@@ -206,7 +232,8 @@ class ConfettiAnimation: AnimationManager {
             vx: cos(randomAngle) * speed,
             vy: -sin(randomAngle) * speed,
             color: colors.randomElement() ?? .red,
-            radius: (3 + CGFloat.random(in: 0...1) * 4) * scalar
+            radius: (3 + CGFloat.random(in: 0...1) * 4) * scalar,
+            dead: false
         )
     }
 }
@@ -218,6 +245,7 @@ struct Particle {
     var vy: CGFloat
     var color: UIColor
     var radius: CGFloat
+    var dead: Bool
 }
 
 extension UIColor {
