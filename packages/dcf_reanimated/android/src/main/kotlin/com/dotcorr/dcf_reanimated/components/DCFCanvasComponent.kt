@@ -300,119 +300,86 @@ class DCFCanvasView(context: Context) : TextureView(context), TextureView.Surfac
     }
 
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
-        this.surfaceTexture = surface
-    }
-
-    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
-
-    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+        // Stop existing
         stopAnimation()
-        return true
+
+        // Create new HW accelerated view
+        confettiView = ConfettiView(context, config)
+        addView(confettiView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
-    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+    fun stopAnimation() {
+        if (confettiView != null) {
+            removeView(confettiView)
+            confettiView?.stop()
+            confettiView = null
+        }
+    }
+
+    // The original SurfaceTextureListener methods are removed.
+    // override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+    //     this.surfaceTexture = surface
+    // }
+    //
+    // override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+    //
+    // override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+    //     stopAnimation()
+    //     return true
+    // }
+    //
+    // override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
 }
 
 // --- Animation Classes ---
+// The original AnimationManager and ConfettiAnimation classes are removed.
 
-abstract class AnimationManager {
-    var isActive: Boolean = true
-    abstract fun updateAndDraw(canvas: Canvas, width: Int, height: Int)
-}
-
-class ConfettiAnimation(config: Map<String, Any>) : AnimationManager() {
+class ConfettiView(context: Context, config: Map<String, Any>) : View(context) {
     private val particles = ArrayList<Particle>()
-    private val random = java.util.Random()
-    private val paint = Paint().apply { style = Paint.Style.FILL }
+    private val paint = Paint()
+    private var isActive = true
+    private val gravity = 0.5f
+    private val decay = 0.95f
+    private val drift = 0.0f
     
     // Config
-    private val particleCount = (config["particleCount"] as? Number)?.toInt() ?: 50
-    private val startVelocity = (config["startVelocity"] as? Number)?.toFloat() ?: 45f
-    private val spread = (config["spread"] as? Number)?.toFloat() ?: 45f
-    private val angle = (config["angle"] as? Number)?.toFloat() ?: 90f
-    private val gravity = (config["gravity"] as? Number)?.toFloat() ?: 1f
-    private val drift = (config["drift"] as? Number)?.toFloat() ?: 0f
-    private val decay = (config["decay"] as? Number)?.toFloat() ?: 0.9f
-    private val colors = (config["colors"] as? List<Number>)?.map { it.toInt() } ?: listOf(Color.RED, Color.BLUE)
-    private val scalar = (config["scalar"] as? Number)?.toFloat() ?: 1f
+    private val scalar = (config["scalar"] as? Number)?.toFloat() ?: 1.0f
+    private val spread = (config["spread"] as? Number)?.toFloat() ?: 60.0f
+    private val startVelocity = (config["startVelocity"] as? Number)?.toFloat() ?: 45.0f
+    private val colors = (config["colors"] as? List<String>)?.map { Color.parseColor(it) } ?: listOf(Color.RED, Color.GREEN, Color.BLUE)
+    private val elementCount = (config["elementCount"] as? Number)?.toInt() ?: 50
 
     init {
         // Initialize particles
-        for (i in 0 until particleCount) {
-            resetParticle(Particle(), true)
-        }
-    }
-
-    override fun updateAndDraw(canvas: Canvas, width: Int, height: Int) {
-        val iterator = particles.iterator()
-        while (iterator.hasNext()) {
-            val p = iterator.next()
-            
-            // Physics
-            p.x += p.vx
-            p.y += p.vy
-            p.vy += gravity
-            p.vx *= decay
-            p.vy *= decay
-            p.x += drift
-
-            // Draw
-            paint.color = p.color
-            canvas.drawCircle(p.x, p.y, p.radius, paint)
-
-            // Reset if out of bounds (simple recycling for demo)
-            if (p.y > height + 50) {
-                // In a real confetti, we might remove it or stop it. 
-                // For this demo, we just stop drawing it if it's way off screen
-                // or recycle if we want continuous flow. 
-                // Let's just let them fall off for now.
-            }
-        }
-    }
-
-    private fun resetParticle(p: Particle, initial: Boolean) {
-        val angleRad = Math.toRadians((angle - spread / 2 + random.nextDouble() * spread)).toFloat()
-        val speed = startVelocity * (0.5f + random.nextFloat() * 0.5f)
-        
-        // Start from bottom center or specified position? 
-        // Dart code used 0.5, 0.5 relative. Let's assume center of view for now or pass in origin.
-        // Actually Dart code: x: 0.5, y: 0.5. 
-        // We need actual pixel coordinates. We'll set them in updateAndDraw first run or here if we knew width/height.
-        // For now, let's spawn them at 0,0 and move them in update.
-        // Wait, Dart code spawn was relative 0.5.
-        
-        p.vx = (cos(angleRad.toDouble()) * speed).toFloat()
-        p.vy = (-sin(angleRad.toDouble()) * speed).toFloat()
-        p.color = colors[random.nextInt(colors.size)]
-        p.radius = (3 + random.nextFloat() * 4) * scalar
-        
-        particles.add(p)
+        // We need width/height which we don't have yet in init
+        // So we'll spawn them in onDraw or onSizeChanged
     }
     
-    // We need to initialize positions based on view size which we only get in updateAndDraw
     private var initialized = false
-    
-    override fun updateAndDraw(canvas: Canvas, width: Int, height: Int) {
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        
+        if (!isActive) return
+
         if (!initialized) {
-            // Spawn at bottom center
             val startX = width / 2f
-            val startY = height / 2f // Center
+            val startY = height / 2f
             
-            for (p in particles) {
-                p.x = startX
-                p.y = startY
+            for (i in 0 until elementCount) {
+                particles.add(createParticle(startX, startY))
             }
             initialized = true
         }
-        
+
         var activeParticles = 0
-        val iterator = particles.iterator()
-        while (iterator.hasNext()) {
-            val p = iterator.next()
-            
-            // Skip dead particles
+        
+        // Loop through particles
+        // Using indices to avoid iterator allocation in draw loop
+        for (i in particles.indices) {
+            val p = particles[i]
             if (p.dead) continue
-            
+
             // Physics
             p.x += p.vx
             p.y += p.vy
@@ -432,11 +399,30 @@ class ConfettiAnimation(config: Map<String, Any>) : AnimationManager() {
                 activeParticles++
             }
         }
-        
-        // Auto-stop if all particles are dead
-        if (activeParticles == 0 && initialized) {
-            isActive = false
+
+        if (activeParticles > 0) {
+            invalidate() // Schedule next frame (HW accelerated)
+        } else if (initialized) {
+            isActive = false // Auto-stop
         }
+    }
+    
+    fun stop() {
+        isActive = false
+    }
+
+    private fun createParticle(startX: Float, startY: Float): Particle {
+        val randomAngle = (Math.random() * spread - spread / 2 - 90) * (Math.PI / 180) // -90 for Up
+        val speed = startVelocity * (0.5 + Math.random() * 0.5).toFloat()
+        
+        val p = Particle()
+        p.x = startX
+        p.y = startY
+        p.vx = (Math.cos(randomAngle) * speed).toFloat()
+        p.vy = (Math.sin(randomAngle) * speed).toFloat()
+        p.color = colors[(Math.random() * colors.size).toInt()]
+        p.radius = ((3 + Math.random() * 4) * scalar).toFloat()
+        return p
     }
 }
 
