@@ -10,9 +10,19 @@ import 'dart:ui' as ui;
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
 
-/// Canvas component that renders using dart:ui and sends pixels to Native via tunnels
+/// Canvas component - pure Skia/Flutter texture container
+/// 
+/// Architecture:
+/// - Static rendering: Dart renders once with Skia → sends texture to native
+/// - For animations: Use shared values or describe animations at app layer
+/// 
+/// Dart thread: Describes what to render
+/// UI thread: Displays the Flutter texture
+/// 
+/// For 60fps animations on UI thread, use native animation components
+/// (particles, shaders, etc.) - Canvas is for Skia rendering
 class DCFCanvas extends DCFStatefulComponent {
-  /// Paint callback - users draw using Flutter's Canvas
+  /// Paint callback - users draw using Flutter's Canvas API
   final void Function(ui.Canvas canvas, Size size)? onPaint;
 
   /// Background color
@@ -63,6 +73,7 @@ class DCFCanvas extends DCFStatefulComponent {
 }
 
 /// Manages Canvas rendering and communication with Native via tunnels
+/// Renders static content using Flutter/Skia, sends texture to native
 class _CanvasManager {
   static final _CanvasManager instance = _CanvasManager._();
   
@@ -74,7 +85,7 @@ class _CanvasManager {
   void registerCanvas(String id, DCFCanvas canvas) {
     _canvases[id] = canvas;
     
-    // Schedule initial render after frame is built
+    // Schedule render after frame is built
     _renderTimers[id]?.cancel();
     _renderTimers[id] = Timer(const Duration(milliseconds: 100), () {
       _renderCanvas(id, canvas.size);
@@ -96,6 +107,10 @@ class _CanvasManager {
     // User drawing
     canvasComponent.onPaint!(canvas, size);
     
+    await _sendPixelsToNative(canvasId, recorder, size);
+  }
+  
+  Future<void> _sendPixelsToNative(String canvasId, ui.PictureRecorder recorder, Size size) async {
     final picture = recorder.endRecording();
     final img = await picture.toImage(size.width.toInt(), size.height.toInt());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.rawRgba);
@@ -111,10 +126,12 @@ class _CanvasManager {
       
       if (result == false) {
         // View not ready yet, retry
-        print('🎨 DCFCanvas: View not ready for $canvasId, retrying...');
-        Timer(const Duration(milliseconds: 100), () {
-          _renderCanvas(canvasId, size);
-        });
+        final canvas = _canvases[canvasId];
+        if (canvas != null) {
+          Timer(const Duration(milliseconds: 100), () {
+            _renderCanvas(canvasId, size);
+          });
+        }
       }
     }
   }
