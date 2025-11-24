@@ -81,6 +81,10 @@ class DCFEngine {
   static const int _maxRenderCycles =
       100; // Maximum renders per component per batch
 
+  /// Track nodes currently being rendered to prevent recursive/infinite calls
+  /// Key: node identity (hashCode) -> true if currently rendering
+  final Set<int> _nodesBeingRendered = {};
+
   /// OPTIMIZED: Memoization cache for structural similarity calculations
   /// Key: "oldNodeHash:newNodeHash" -> similarity score
   /// Reduces redundant similarity calculations during reconciliation
@@ -1406,12 +1410,32 @@ class DCFEngine {
       {int? parentViewId, int? index}) async {
     await isReady;
 
-    print(
-        '🔥🔥🔥 Engine.renderToNative: START - node=${node.runtimeType}, parentViewId=$parentViewId, index=$index');
-    EngineDebugLogger.logRender('START', node,
-        viewId: node.effectiveNativeViewId, parentId: parentViewId);
+    // 🔥 CRITICAL: Guard against infinite render loops
+    // If this node is already being rendered, return early to prevent recursion
+    final nodeIdentity = node.hashCode;
+    if (_nodesBeingRendered.contains(nodeIdentity)) {
+      final errorMsg =
+          '❌ INFINITE RENDER LOOP DETECTED: Node ${node.runtimeType} (hashCode: $nodeIdentity) '
+          'is already being rendered. This indicates a recursive render call. '
+          'Check for state updates in render() methods or effects that trigger re-renders.';
+      print(errorMsg);
+      EngineDebugLogger.log('INFINITE_RENDER_LOOP', errorMsg);
+      
+      // Return the existing view ID if available to prevent breaking the tree
+      if (node.effectiveNativeViewId != null) {
+        return node.effectiveNativeViewId;
+      }
+      return null;
+    }
+
+    // Mark this node as being rendered
+    _nodesBeingRendered.add(nodeIdentity);
 
     try {
+      print(
+          '🔥🔥🔥 Engine.renderToNative: START - node=${node.runtimeType}, parentViewId=$parentViewId, index=$index');
+      EngineDebugLogger.logRender('START', node,
+          viewId: node.effectiveNativeViewId, parentId: parentViewId);
       if (node is DCFFragment) {
         EngineDebugLogger.log('RENDER_FRAGMENT', 'Rendering fragment node');
 
@@ -1611,6 +1635,9 @@ class DCFEngine {
     } catch (e) {
       EngineDebugLogger.logRender('ERROR', node, error: e.toString());
       return null;
+    } finally {
+      // Always remove from rendering set when done (even on error)
+      _nodesBeingRendered.remove(nodeIdentity);
     }
   }
 
@@ -1805,6 +1832,10 @@ class DCFEngine {
     EngineDebugLogger.log('ELEMENT_RENDER_SUCCESS', 'Element render completed',
         extra: {'ViewId': viewId, 'ChildCount': childIds.length});
     return viewId;
+    } finally {
+      // Always remove from rendering set when done
+      _nodesBeingRendered.remove(nodeIdentity);
+    }
   }
 
   /// O(tree size) - Reconcile two nodes by efficiently updating only what changed
