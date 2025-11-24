@@ -300,10 +300,13 @@ class _CircleParticle extends _ConfettiParticle {
       (physics.y2 - physics.y1).abs() * physics.ovalScalar,
     );
 
+    // Make circles more visible with larger size
+    final radius = 15.0 * physics.scalar;
+
     final paint = Paint()
       ..color = physics.color.withOpacity(1 - physics.progress);
     canvas.drawArc(
-      Rect.fromCircle(center: const Offset(0, 0), radius: 1),
+      Rect.fromCircle(center: const Offset(0, 0), radius: radius),
       0,
       2 * math.pi,
       true,
@@ -323,10 +326,9 @@ class _SquareParticle extends _ConfettiParticle {
     canvas.save();
     canvas.translate(physics.x, physics.y);
     canvas.rotate(math.pi / 10 * physics.wobble);
-    canvas.scale(physics.scalar, physics.scalar);
 
     // Use RecordingPath with relative coordinates centered at (0,0)
-    final size = 10.0; // Base size, scaled by physics.scalar
+    final size = 20.0 * physics.scalar; // Increased size for visibility
     final path = RecordingPath()
       ..moveTo(-size / 2, -size / 2)
       ..lineTo(size / 2, -size / 2)
@@ -351,10 +353,9 @@ class _TriangleParticle extends _ConfettiParticle {
     canvas.save();
     canvas.translate(physics.x, physics.y);
     canvas.rotate(math.pi / 10 * physics.wobble);
-    canvas.scale(physics.scalar, physics.scalar);
 
     // Use RecordingPath with relative coordinates centered at (0,0)
-    final size = 10.0; // Base size, scaled by physics.scalar
+    final size = 20.0 * physics.scalar; // Increased size for visibility
     final path = RecordingPath()
       ..moveTo(0, -size / 2)
       ..lineTo(size / 2, size / 2)
@@ -379,8 +380,9 @@ class _StarParticle extends _ConfettiParticle {
     canvas.translate(physics.x, physics.y);
     canvas.rotate(math.pi / 10 * physics.wobble);
 
-    final innerRadius = 4 * physics.scalar;
-    final outerRadius = 8 * physics.scalar;
+    // Increased star size for visibility
+    final innerRadius = 10.0 * physics.scalar;
+    final outerRadius = 20.0 * physics.scalar;
     double rot = math.pi / 2 * 3;
     int spikes = 5;
     final step = math.pi / spikes;
@@ -484,10 +486,15 @@ class DCFConfetti extends DCFStatefulComponent {
 
       for (int i = 0; i < cfg.particleCount; i++) {
         final color = colors[i % colorsCount];
+
+        // Scatter particles across the width with some randomness
+        final randomX =
+            startX + (random.nextDouble() - 0.5) * containerWidth * 0.8;
+
         final physics = _ConfettiPhysics.fromOptions(
           options: cfg,
           color: color,
-          startX: startX,
+          startX: randomX,
           startY: startY,
         );
         final particle = defaultParticleBuilder(i);
@@ -501,9 +508,7 @@ class DCFConfetti extends DCFStatefulComponent {
           '🎉 DCFConfetti: Initialized ${particleList.length} particles at ($startX, $startY)');
     }
 
-    // Update particles directly in ref - no state = no VDOM reconciliation
-    // Canvas rendering happens via tunnel (also bypasses VDOM)
-    // Use Ticker for smooth animation loop
+    // Update particles using Ticker and trigger canvas repaint
     useEffect(() {
       if (isCompleteRef.current == true) return null;
 
@@ -511,10 +516,6 @@ class DCFConfetti extends DCFStatefulComponent {
         final currentParticles = particlesRef.current;
         if (currentParticles == null || currentParticles.isEmpty) return;
 
-        // Fixed time step for consistent physics (16ms)
-        // or use elapsed time? For now, let's assume 60fps step for simplicity
-        // but pass dt if we want true time independence.
-        // Let's use a fixed dt of 1/60 for physics stability
         const dt = 1 / 60.0;
 
         // Update all particles
@@ -528,6 +529,7 @@ class DCFConfetti extends DCFStatefulComponent {
 
         if (allFinished) {
           isCompleteRef.current = true;
+          print('🎊 DCFConfetti: Animation complete - all particles finished');
           onComplete?.call();
         }
       });
@@ -564,6 +566,16 @@ class DCFConfetti extends DCFStatefulComponent {
             height: containerHeight,
           ))
         : baseLayout;
+
+    // If animation is complete, render nothing to stop the Timer.periodic
+    if (isCompleteRef.current == true) {
+      print('🎊 DCFConfetti: Rendering complete state (empty)');
+      return DCFView(
+        layout: DCFLayout(width: 0, height: 0),
+        styleSheet: const DCFStyleSheet(backgroundColor: DCFColors.transparent),
+        children: [],
+      );
+    }
 
     return DCFView(
       layout: finalLayout,

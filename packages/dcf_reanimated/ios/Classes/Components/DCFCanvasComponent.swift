@@ -581,11 +581,6 @@ class DCFCanvasView: UIView, FlutterTexture {
                                 }
                             case "addRRect":
                                 if let r = cmd["rrect"] as? [Double], r.count == 12 {
-                                    // rrect format: left, top, right, bottom, radii...
-                                    // For simplicity, we can use a rounded rect with uniform radius if complex radii are not easily supported by CGPath(roundedRect:...) without more work.
-                                    // Or use addRoundedRect(in:cornerWidth:cornerHeight:)
-                                    // Let's assume uniform or just use the first radius for now to keep it simple, or implement fully if needed.
-                                    // CGPath(roundedRect: cornerWidth: cornerHeight: transform:)
                                     let rect = CGRect(x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1])
                                     let rx = r[4] // tlRadiusX
                                     let ry = r[5] // tlRadiusY
