@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'dart:math';
-import 'dart:ui' as ui;
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
 import 'package:flutter/material.dart' as material show Colors;
@@ -45,88 +43,46 @@ class ConfettiConfig {
   });
 }
 
-/// Particle state for physics simulation
-class _ParticleState {
-  double x, y, vx, vy;
-  final Color color;
-  final double radius;
-  int life;
-
-  _ParticleState({
-    required this.x,
-    required this.y,
-    required this.vx,
-    required this.vy,
-    required this.color,
-    required this.radius,
-    required this.life,
-  });
-}
-
-/// Confetti component using Canvas with Skia rendering
-/// 
-/// TODO: Needs worklet/shared value support for 60fps animation
-/// Current implementation is static demo
-/// 
-/// Proper architecture should be:
-/// - AnimatedValue driven by native timer (60fps)
-/// - Value changes trigger VDOM update → Canvas re-render
-/// - Skia renders particles (cross-platform consistent)
-/// - Native displays texture
-class DCFConfetti extends DCFStatelessComponent {
+/// Confetti component using Canvas with Native Animation
+///
+/// Architecture:
+/// - Dart sends configuration to Native
+/// - Native runs physics loop on UI thread (60fps)
+/// - Zero bridge traffic during animation
+class DCFConfetti extends DCFCanvasWithAnimation {
   final ConfettiConfig config;
   final VoidCallback? onComplete;
-  final DCFLayout? layout;
-  final DCFStyleSheet? styleSheet;
 
   DCFConfetti({
     required this.config,
     this.onComplete,
-    this.layout,
-    this.styleSheet,
+    DCFLayout? layout,
+    DCFStyleSheet? styleSheet,
     super.key,
-  });
+  }) : super(
+          layout: layout,
+          styleSheet: styleSheet,
+          size: const Size(300, 300), // Default size, overridden by layout
+        );
+
+  @override
+  Map<String, dynamic>? get animationConfig => {
+        'type': 'confetti',
+        'particleCount': config.particleCount,
+        'startVelocity': config.startVelocity,
+        'spread': config.spread,
+        'angle': config.angle,
+        'gravity': config.gravity,
+        'drift': config.drift,
+        'decay': config.decay,
+        'duration': config.duration,
+        'colors': config.colors.map((c) => c.value).toList(),
+        'scalar': config.scalar,
+      };
 
   @override
   DCFComponentNode render() {
-    // Static particle demo (needs worklet for animation)
-    final random = Random();
-    final particles = List<_ParticleState>.generate(config.particleCount, (i) {
-      final angleRad = (config.angle - config.spread / 2 + 
-                        random.nextDouble() * config.spread) * (pi / 180);
-      final speed = config.startVelocity * (0.5 + random.nextDouble() * 0.5);
-      
-      return _ParticleState(
-        x: 0.5,
-        y: 0.5,
-        vx: cos(angleRad) * speed,
-        vy: -sin(angleRad) * speed,
-        color: config.colors[random.nextInt(config.colors.length)],
-        radius: (3 + random.nextDouble() * 4) * config.scalar,
-        life: (config.duration / 16).toInt(),
-      );
-    });
-
-    return DCFCanvas(
-      key: 'confetti-canvas',
-      size: const Size(300, 300),
-      layout: layout,
-      styleSheet: styleSheet,
-      onPaint: (ui.Canvas canvas, Size size) {
-        // Draw initial particle positions (static)
-        for (final particle in particles) {
-          final paint = ui.Paint()
-            ..color = particle.color
-            ..style = ui.PaintingStyle.fill;
-          
-          canvas.drawCircle(
-            Offset(particle.x * size.width, particle.y * size.height),
-            particle.radius,
-            paint,
-          );
-        }
-      },
-    );
+    // Just call super.render() which handles registration and animation start
+    return super.render();
   }
 }
-
