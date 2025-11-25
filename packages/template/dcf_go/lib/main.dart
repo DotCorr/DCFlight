@@ -236,10 +236,10 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
         if (showConfetti.state)
           DCFConfetti(
             config: ConfettiConfig(
-              particleCount: 100,
-              startVelocity: 8, // Pixels per tick (realistic launch speed)
-              spread: 360, // Full circle spread
-              angle: 270, // Shoot upward
+              particleCount: 400, // Increased for "a lot scattered"
+              startVelocity: 12, // Increased velocity to scatter further
+              spread: 500, // Full circle spread
+              angle: 90, // Shoot upward
               gravity: 0.3, // Downward acceleration per tick
               drift: 0.1, // Horizontal drift per tick
               decay: 0.97, // Velocity retained per tick (97%)
@@ -258,7 +258,7 @@ class ReanimatedSkiaGPUDemo extends DCFStatefulComponent {
                 DCFColors.cyan,
                 DCFColors.deepPurple,
               ],
-              scalar: 1.0, // Increased from 1.0 to make particles bigger
+              scalar: 0.5, // Decreased size as requested
             ),
             onComplete: () {
               showConfetti.setState(false);

@@ -65,19 +65,16 @@ class DCFConfetti extends DCFCanvasWithAnimation {
         );
 
   @override
-  Map<String, dynamic>? get animationConfig {
+  CanvasCommand? get animationConfig {
     // Send generic command to native
     // Native side now handles "type" dispatch
-    return {
-      'type': 'confetti', // Command Type
-      'scalar': config.scalar,
-      'spread': config.spread,
-      'startVelocity': config.startVelocity,
-      'colors': config.colors
-          .map((c) => '#${c.value.toRadixString(16).padLeft(8, '0')}')
-          .toList(),
-      'elementCount': config.particleCount,
-    };
+    return ConfettiCommand(
+      scalar: config.scalar,
+      spread: config.spread,
+      startVelocity: config.startVelocity,
+      colors: config.colors,
+      elementCount: config.particleCount,
+    );
   }
 
   @override

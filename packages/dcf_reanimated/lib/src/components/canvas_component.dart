@@ -10,6 +10,49 @@ import 'dart:ui' as ui;
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' hide Colors;
 
+/// Base class for all canvas commands
+sealed class CanvasCommand {
+  const CanvasCommand();
+  Map<String, dynamic> toMap();
+}
+
+/// Command to clear/stop any active animation
+class ClearCommand extends CanvasCommand {
+  const ClearCommand();
+
+  @override
+  Map<String, dynamic> toMap() => {'type': 'clear'};
+}
+
+/// Command to start/update confetti animation
+class ConfettiCommand extends CanvasCommand {
+  final double scalar;
+  final double spread;
+  final double startVelocity;
+  final List<Color> colors;
+  final int elementCount;
+
+  const ConfettiCommand({
+    required this.scalar,
+    required this.spread,
+    required this.startVelocity,
+    required this.colors,
+    required this.elementCount,
+  });
+
+  @override
+  Map<String, dynamic> toMap() => {
+        'type': 'confetti',
+        'scalar': scalar,
+        'spread': spread,
+        'startVelocity': startVelocity,
+        'colors': colors
+            .map((c) => '#${c.value.toRadixString(16).padLeft(8, '0')}')
+            .toList(),
+        'elementCount': elementCount,
+      };
+}
+
 /// Canvas component - pure Skia/Flutter texture container
 ///
 /// Architecture:
@@ -66,16 +109,11 @@ class DCFCanvas extends DCFStatefulComponent {
 
     // Command Pattern: Send animation config via prop
     if (this is DCFCanvasWithAnimation) {
-      final config = (this as DCFCanvasWithAnimation).animationConfig;
-      if (config != null) {
-        // Pass the config directly as the command
-        // It already contains 'type' (e.g. 'confetti')
-        props['canvasCommand'] = config;
+      final command = (this as DCFCanvasWithAnimation).animationConfig;
+      if (command != null) {
+        props['canvasCommand'] = command.toMap();
       } else {
-        // Send a clear/stop command
-        props['canvasCommand'] = {
-          'type': 'clear',
-        };
+        props['canvasCommand'] = const ClearCommand().toMap();
       }
     }
 
@@ -169,7 +207,7 @@ class _CanvasManager {
 
 /// Extended Canvas interface for components that support native animation
 abstract class DCFCanvasWithAnimation extends DCFCanvas {
-  Map<String, dynamic>? get animationConfig;
+  CanvasCommand? get animationConfig;
 
   DCFCanvasWithAnimation({
     super.key,
