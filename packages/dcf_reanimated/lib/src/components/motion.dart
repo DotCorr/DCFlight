@@ -170,6 +170,12 @@ class Motion extends DCFStatefulComponent {
     }
 
     // Use ReanimatedView component directly - no need to create DCFElement!
+    // Pass viewport callbacks so ReanimatedView can use low-level viewport API
+    final allEvents = <String, dynamic>{
+      ...eventHandlers,
+      if (viewport != null) 'viewport': viewport!.toMap(),
+    };
+    
     return ReanimatedView(
       animatedStyle: animatedStyle,
       autoStart: autoStart,
@@ -178,7 +184,7 @@ class Motion extends DCFStatefulComponent {
       styleSheet: combinedStyle,
       onAnimationStart: onAnimationStart,
       onAnimationComplete: onAnimationComplete,
-      events: eventHandlers.isEmpty ? null : eventHandlers,
+      events: allEvents.isEmpty ? null : allEvents,
       children: children,
     );
   }

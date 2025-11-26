@@ -262,6 +262,9 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
                 "height": scrollView.bounds.height
             ]
         ])
+        
+        // Notify viewport observer of scroll change
+        NotificationCenter.default.post(name: NSNotification.Name("DCFScrollViewDidScroll"), object: scrollView)
     }
     
     

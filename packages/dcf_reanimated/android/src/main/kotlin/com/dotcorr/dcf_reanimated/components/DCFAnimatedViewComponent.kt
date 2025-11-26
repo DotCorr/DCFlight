@@ -71,6 +71,19 @@ class DCFAnimatedViewComponent : DCFComponent() {
         
         updateView(reanimatedView, props)
         
+        // Setup viewport detection if callbacks are registered (low-level API)
+        val hasViewportCallbacks = props.containsKey("onViewportEnter") || props.containsKey("onViewportLeave")
+        if (hasViewportCallbacks) {
+            val viewportData = props["viewport"] as? Map<*, *>
+            val config = com.dotcorr.dcf_primitives.utils.ViewportConfig(
+                once = (viewportData?.get("once") as? Boolean) ?: false,
+                amount = (viewportData?.get("amount") as? Number)?.toDouble()
+            )
+            reanimatedView.post {
+                com.dotcorr.dcf_primitives.utils.DCFViewportObserver.observe(reanimatedView, config)
+            }
+        }
+        
         return reanimatedView
     }
 
@@ -107,6 +120,19 @@ class DCFAnimatedViewComponent : DCFComponent() {
                 Log.d(TAG, "🎯 PURE REANIMATED: autoStart changed to false, stopping animation")
                 reanimatedView.stopPureAnimation()
             }
+        }
+        
+        // Handle viewport detection updates (low-level API)
+        val hasViewportCallbacks = mergedProps.containsKey("onViewportEnter") || mergedProps.containsKey("onViewportLeave")
+        if (hasViewportCallbacks) {
+            val viewportData = mergedProps["viewport"] as? Map<*, *>
+            val config = com.dotcorr.dcf_primitives.utils.ViewportConfig(
+                once = (viewportData?.get("once") as? Boolean) ?: false,
+                amount = (viewportData?.get("amount") as? Number)?.toDouble()
+            )
+            com.dotcorr.dcf_primitives.utils.DCFViewportObserver.observe(reanimatedView, config)
+        } else {
+            com.dotcorr.dcf_primitives.utils.DCFViewportObserver.unobserve(reanimatedView)
         }
         
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
