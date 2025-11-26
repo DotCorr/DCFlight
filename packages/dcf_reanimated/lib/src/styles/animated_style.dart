@@ -25,6 +25,8 @@ import '../enums/animation_enums.dart';
 /// ```
 class AnimatedStyle {
   final Map<String, ReanimatedValue> _animations = {};
+  final Map<String, dynamic> _config = {};
+  
   /// Configures transform animations (scale, translate, rotate).
   /// 
   /// Transform animations are the most performant since they run entirely
@@ -46,18 +48,26 @@ class AnimatedStyle {
     ReanimatedValue? scaleY,    // Y-axis scale factor
     ReanimatedValue? translateX, // X-axis translation in logical pixels
     ReanimatedValue? translateY, // Y-axis translation in logical pixels
+    ReanimatedValue? translateZ, // Z-axis translation in logical pixels (3D)
     ReanimatedValue? rotation,   // Z-axis rotation in radians
     ReanimatedValue? rotationX,  // X-axis rotation in radians
     ReanimatedValue? rotationY,  // Y-axis rotation in radians
+    ReanimatedValue? rotationZ,  // Z-axis rotation in radians (3D)
+    double? perspective,         // Perspective distance for 3D transforms
+    bool? preserve3d,           // Enable preserve-3d transform style
   }) {
     if (scale != null) _animations['scale'] = scale;
     if (scaleX != null) _animations['scaleX'] = scaleX;
     if (scaleY != null) _animations['scaleY'] = scaleY;
     if (translateX != null) _animations['translateX'] = translateX;
     if (translateY != null) _animations['translateY'] = translateY;
+    if (translateZ != null) _animations['translateZ'] = translateZ;
     if (rotation != null) _animations['rotation'] = rotation;
     if (rotationX != null) _animations['rotationX'] = rotationX;
     if (rotationY != null) _animations['rotationY'] = rotationY;
+    if (rotationZ != null) _animations['rotationZ'] = rotationZ;
+    if (perspective != null) _config['perspective'] = perspective;
+    if (preserve3d != null) _config['preserve3d'] = preserve3d;
     return this;
   }
 
@@ -250,12 +260,37 @@ class AnimatedStyle {
     return this;
   }
 
+  /// Simple Z-axis translation animation from shared value (3D).
+  /// 
+  /// Values are in logical pixels. Positive values move forward, negative backward.
+  /// Requires perspective to be set for visible effect.
+  /// 
+  /// Example:
+  /// ```dart
+  /// AnimatedStyle()
+  ///   .transform(perspective: 1000)
+  ///   .transform(translateZValue: depthValue);
+  /// ```
+  AnimatedStyle translateZValue(double sharedValue) {
+    _animations['translateZ'] = ReanimatedValue(
+      from: sharedValue,
+      to: sharedValue,
+      duration: 1, // Instant for real-time tracking
+      curve: AnimationCurve.linear,
+    );
+    return this;
+  }
+
   /// Converts all animation configurations to a map for native bridge communication.
   /// 
   /// This method is called internally when the animated style is sent to
   /// the native animation engine. Each animation property is serialized
   /// with its configuration parameters.
   Map<String, dynamic> toMap() {
-    return _animations.map((key, value) => MapEntry(key, value.toMap()));
+    final result = <String, dynamic>{
+      'animations': _animations.map((key, value) => MapEntry(key, value.toMap())),
+      ..._config,
+    };
+    return result;
   }
 }

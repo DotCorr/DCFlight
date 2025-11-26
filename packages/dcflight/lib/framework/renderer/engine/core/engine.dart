@@ -1439,10 +1439,10 @@ class DCFEngine {
     print('🔍 DEBUG: Added node ${node.runtimeType} (identity: $nodeIdentity) to _nodesBeingRendered');
 
     try {
-      print(
-          '🔥🔥🔥 Engine.renderToNative: START - node=${node.runtimeType}, parentViewId=$parentViewId, index=$index');
-      EngineDebugLogger.logRender('START', node,
-          viewId: node.effectiveNativeViewId, parentId: parentViewId);
+    print(
+        '🔥🔥🔥 Engine.renderToNative: START - node=${node.runtimeType}, parentViewId=$parentViewId, index=$index');
+    EngineDebugLogger.logRender('START', node,
+        viewId: node.effectiveNativeViewId, parentId: parentViewId);
       if (node is DCFFragment) {
         EngineDebugLogger.log('RENDER_FRAGMENT', 'Rendering fragment node');
 

@@ -1,105 +1,291 @@
-// Style and layout registries - created once, reused across renders
-// Using StyleSheet.create() for optimal performance (see StyleSheet.create() docs)
+// Style and layout registries for DotCorr Landing Page
 import 'package:dcflight/dcflight.dart';
+import 'package:flutter/material.dart' show Colors;
 
 final styles = DCFStyleSheet.create({
   'root': DCFStyleSheet(
-    backgroundColor: DCFColors.beige,
+    backgroundColor: Colors.white,
   ),
-  'header': DCFStyleSheet(
-    backgroundColor: const Color(0xFF1a1a2e),
-    borderRadius: 12,
+  // Navigation
+  'nav': DCFStyleSheet(
+    backgroundColor: Colors.white.withOpacity(0.8),
   ),
-  'titleText': DCFStyleSheet(primaryColor: DCFColors.white),
-  'subtitleText': DCFStyleSheet(primaryColor: const Color(0xFF888888)),
+  'navLogoText': DCFStyleSheet(
+    primaryColor: Colors.black,
+  ),
+  'navLink': DCFStyleSheet(
+    primaryColor: Colors.grey,
+  ),
+  // Hero
+  'hero': DCFStyleSheet(
+    backgroundColor: Colors.white,
+  ),
+  'heroTitle': DCFStyleSheet(
+    primaryColor: Colors.black,
+  ),
+  'heroButton': DCFStyleSheet(
+    backgroundColor: Colors.black,
+    borderRadius: 4,
+  ),
+  'heroButtonText': DCFStyleSheet(
+    primaryColor: Colors.white,
+  ),
+  'typewriterText': DCFStyleSheet(
+    primaryColor: Colors.grey[600]!,
+  ),
+  'ecosystemLabel': DCFStyleSheet(
+    primaryColor: Colors.grey[400]!,
+  ),
+  'ecosystemLogo': DCFStyleSheet(
+    primaryColor: Colors.grey,
+  ),
+  // Sections
   'section': DCFStyleSheet(
-    backgroundColor: const Color(0xFF16213e),
-    borderRadius: 12,
+    backgroundColor: Colors.white,
   ),
-  'sectionTitle': DCFStyleSheet(primaryColor: DCFColors.white),
-  'descText': DCFStyleSheet(primaryColor: const Color(0xFF888888)),
-  'animatedBox': DCFStyleSheet(
-    backgroundColor: const Color(0xFF4CAF50),
-    borderRadius: 12,
+  'sectionGray': DCFStyleSheet(
+    backgroundColor: Colors.grey[50]!,
   ),
-  'boxText': DCFStyleSheet(primaryColor: DCFColors.white),
-  'canvasBox': DCFStyleSheet(
-    backgroundColor: const Color(0xFF1a1a2e),
-    borderRadius: 12,
+  'sectionDark': DCFStyleSheet(
+    backgroundColor: Colors.grey[900]!,
   ),
-  'gpuDemoBox': DCFStyleSheet(
-    backgroundColor: const Color(0xFF2d1b69),
-    borderRadius: 12,
+  'sectionTitle': DCFStyleSheet(
+    primaryColor: Colors.black,
   ),
-  'demoButton': DCFStyleSheet(
-    backgroundColor: const Color(0xFF0f3460),
-    borderRadius: 8,
+  'sectionDescription': DCFStyleSheet(
+    primaryColor: Colors.grey[500]!,
   ),
-  'buttonText': DCFStyleSheet(primaryColor: DCFColors.white),
-  'confettiOverlay': DCFStyleSheet(
-    backgroundColor: DCFColors.black.withOpacity(0.5), // Explicit transparent background
+  // Cards
+  'cardWhite': DCFStyleSheet(
+    backgroundColor: Colors.white,
+    borderRadius: 0,
+    borderWidth: 1,
+    borderColor: Colors.grey[200]!,
   ),
-  'emptyStyle': DCFStyleSheet(),
+  'cardBlack': DCFStyleSheet(
+    backgroundColor: Colors.black,
+    borderRadius: 0,
+  ),
+  'cardTitle': DCFStyleSheet(
+    primaryColor: Colors.black,
+  ),
+  'cardTitleWhite': DCFStyleSheet(
+    primaryColor: Colors.white,
+  ),
+  'cardDescription': DCFStyleSheet(
+    primaryColor: Colors.grey[500]!,
+  ),
+  'cardDescriptionWhite': DCFStyleSheet(
+    primaryColor: Colors.grey[300]!,
+  ),
+  // Features
+  'featureCard': DCFStyleSheet(
+    backgroundColor: Colors.white,
+    borderRadius: 0,
+  ),
+  'featureTitle': DCFStyleSheet(
+    primaryColor: Colors.black,
+  ),
+  'featureDescription': DCFStyleSheet(
+    primaryColor: Colors.grey[500]!,
+  ),
+  // About
+  'aboutLabel': DCFStyleSheet(
+    primaryColor: Colors.white,
+  ),
+  'aboutTitle': DCFStyleSheet(
+    primaryColor: Colors.white,
+  ),
+  'aboutDescription': DCFStyleSheet(
+    primaryColor: Colors.grey[300]!,
+  ),
+  'aboutInfoText': DCFStyleSheet(
+    primaryColor: Colors.grey[400]!,
+  ),
+  // Footer
+  'footer': DCFStyleSheet(
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.grey[200]!,
+  ),
+  'footerBrandText': DCFStyleSheet(
+    primaryColor: Colors.black,
+  ),
+  'footerDescription': DCFStyleSheet(
+    primaryColor: Colors.grey[500]!,
+  ),
+  'footerLink': DCFStyleSheet(
+    primaryColor: Colors.grey[500]!,
+  ),
+  'footerCopyright': DCFStyleSheet(
+    primaryColor: Colors.grey[500]!,
+  ),
 });
 
 final layouts = DCFLayout.create({
   'root': DCFLayout(
     flex: 1,
-    padding: 20,
-  ),
-  'header': DCFLayout(
     width: '100%',
+  ),
+  // Navigation
+  'nav': DCFLayout(
+    width: '100%',
+    height: 64,
+    paddingHorizontal: 24,
+    position: DCFPositionType.absolute,
+    absoluteLayout: AbsoluteLayout(
+      top: 0,
+      left: 0,
+      right: 0,
+    ),
+  ),
+  'navContainer': DCFLayout(
+    width: '100%',
+    maxWidth: 1280,
+    flexDirection: DCFFlexDirection.row,
     alignItems: DCFAlign.center,
-    padding: 20,
-    marginBottom: 20,
+    justifyContent: DCFJustifyContent.spaceBetween,
   ),
-  'title': DCFLayout(
-    marginBottom: 8,
+  'navLogo': DCFLayout(
+    flexDirection: DCFFlexDirection.row,
+    alignItems: DCFAlign.center,
+    gap: 8,
+  ),
+  'navLinks': DCFLayout(
+    flexDirection: DCFFlexDirection.row,
+    alignItems: DCFAlign.center,
+    gap: 24,
+  ),
+  // Hero
+  'hero': DCFLayout(
+    width: '100%',
+    paddingTop: 128,
+    paddingBottom: 80,
+    paddingHorizontal: 24,
+    minHeight: '90vh',
+  ),
+  'heroContainer': DCFLayout(
+    width: '100%',
+    maxWidth: 1280,
+    flexDirection: DCFFlexDirection.row,
+    gap: 64,
+    marginBottom: 80,
+  ),
+  'heroLeft': DCFLayout(
+    flex: 1,
+    gap: 32,
+  ),
+  'heroRight': DCFLayout(
+    flex: 1,
+    height: 600,
+    alignItems: DCFAlign.center,
+    justifyContent: DCFJustifyContent.center,
+  ),
+  'heroButton': DCFLayout(
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    flexDirection: DCFFlexDirection.row,
+    alignItems: DCFAlign.center,
+    gap: 12,
+  ),
+  'typewriter': DCFLayout(
+    height: 80,
+    alignItems: DCFAlign.center,
+    justifyContent: DCFJustifyContent.center,
+  ),
+  'ecosystem': DCFLayout(
+    width: '100%',
+    paddingTop: 48,
+    gap: 32,
+  ),
+  'ecosystemLogos': DCFLayout(
+    flexDirection: DCFFlexDirection.row,
+    flexWrap: DCFWrap.wrap,
+    gap: 48,
     alignItems: DCFAlign.center,
   ),
-  'subtitle': DCFLayout(
-    marginBottom: 20,
+  // Infrastructure Visual
+  'infraContainer': DCFLayout(
+    width: '100%',
+    height: '100%',
+    position: DCFPositionType.relative,
+    alignItems: DCFAlign.center,
+    justifyContent: DCFJustifyContent.center,
   ),
+  // Sections
   'section': DCFLayout(
     width: '100%',
-    padding: 16,
-    marginBottom: 16,
+    paddingVertical: 96,
+    paddingHorizontal: 48,
   ),
-  'sectionTitle': DCFLayout(
-    marginBottom: 12,
-    alignItems: DCFAlign.center,
-  ),
-  'animatedBox': DCFLayout(
+  'sectionHeader': DCFLayout(
     width: '100%',
-    minHeight: 100,
-    padding: 20,
-    alignItems: DCFAlign.center,
-    justifyContent: DCFJustifyContent.center,
+    marginBottom: 80,
+    gap: 24,
   ),
-  'canvasBox': DCFLayout(
+  'cardsGrid': DCFLayout(
     width: '100%',
-    height: 300,
-    alignItems: DCFAlign.center,
-    justifyContent: DCFJustifyContent.center,
+    flexDirection: DCFFlexDirection.row,
+    gap: 32,
   ),
-  'gpuDemoBox': DCFLayout(
-    width: '100%',
-    minHeight: 100,
-    padding: 20,
-    alignItems: DCFAlign.center,
-    justifyContent: DCFJustifyContent.center,
+  'card': DCFLayout(
+    flex: 1,
+    padding: 40,
+    gap: 24,
   ),
-  'button': DCFLayout(
+  'featuresGrid': DCFLayout(
     width: '100%',
-    padding: 12,
-    marginTop: 12,
-    alignItems: DCFAlign.center,
-    justifyContent: DCFJustifyContent.center,
+    flexDirection: DCFFlexDirection.row,
+    flexWrap: DCFWrap.wrap,
   ),
-  'confettiOverlay': DCFLayout(
-    height: '100%',
+  'featureCard': DCFLayout(
+    flex: 1,
+    minWidth: '25%',
+    padding: 40,
+    gap: 24,
+  ),
+  'aboutContainer': DCFLayout(
     width: '100%',
-    position: DCFPositionType.absolute,
-    absoluteLayout: AbsoluteLayout.fullScreen(),
+    maxWidth: 1024,
+    alignItems: DCFAlign.center,
+    gap: 48,
+  ),
+  'aboutInfo': DCFLayout(
+    width: '100%',
+    maxWidth: 768,
+    flexDirection: DCFFlexDirection.row,
+    flexWrap: DCFWrap.wrap,
+    gap: 32,
+    paddingTop: 32,
+  ),
+  // Footer
+  'footer': DCFLayout(
+    width: '100%',
+    paddingTop: 64,
+    paddingBottom: 48,
+    paddingHorizontal: 48,
+    gap: 64,
+  ),
+  'footerContainer': DCFLayout(
+    width: '100%',
+    maxWidth: 1280,
+    flexDirection: DCFFlexDirection.row,
+    flexWrap: DCFWrap.wrap,
+    gap: 48,
+    marginBottom: 64,
+  ),
+  'footerBrand': DCFLayout(
+    flex: 2,
+    gap: 24,
+  ),
+  'footerLinks': DCFLayout(
+    flex: 1,
+    gap: 12,
+  ),
+  'footerBottom': DCFLayout(
+    width: '100%',
+    paddingTop: 32,
+    flexDirection: DCFFlexDirection.row,
+    justifyContent: DCFJustifyContent.spaceBetween,
   ),
 });

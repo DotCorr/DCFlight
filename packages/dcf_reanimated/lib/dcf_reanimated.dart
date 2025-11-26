@@ -25,6 +25,9 @@ export 'src/styles/animated_style.dart';
 // Main animated view component
 export 'src/components/reanimated_view.dart';
 
+// Framer Motion-style declarative animation component
+export 'src/components/motion.dart';
+
 // Canvas and Confetti components
 export 'src/components/canvas_component.dart';
 export 'src/components/confetti_component.dart';
@@ -36,6 +39,9 @@ export 'src/hooks/animation_hooks.dart';
 
 // Pre-configured animation presets
 export 'src/presets/animation_presets.dart';
+
+// Stagger utilities for sequential animations
+export 'src/utils/stagger.dart';
 
 // Component dictionary for DCFlight registration
 export 'src/dictionary/components.dart';
