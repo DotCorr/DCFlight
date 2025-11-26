@@ -7,6 +7,7 @@
 
 import UIKit
 import dcflight
+import dcf_primitives
 
 // ============================================================================
 // PURE REANIMATED COMPONENT - ZERO BRIDGE CALLS DURING ANIMATION
@@ -87,19 +88,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
                 // Stop animation if autoStart is false and currently animating
                 reanimatedView.stopPureAnimation()
             }
-        }
-        
-        // Handle viewport detection updates (low-level API)
-        let hasViewportCallbacks = props["onViewportEnter"] != nil || props["onViewportLeave"] != nil
-        if hasViewportCallbacks {
-            let viewportData = props["viewport"] as? [String: Any]
-            let config = ViewportConfig(
-                once: viewportData?["once"] as? Bool ?? false,
-                amount: viewportData?["amount"] as? Double
-            )
-            DCFViewportObserver.shared.observe(view, config: config)
-        } else {
-            DCFViewportObserver.shared.unobserve(view)
         }
         
         // Handle viewport detection updates (low-level API)

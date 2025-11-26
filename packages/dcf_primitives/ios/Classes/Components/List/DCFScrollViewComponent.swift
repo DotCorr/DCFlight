@@ -149,6 +149,9 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         
         DispatchQueue.main.async {
             scrollView.updateContentSizeFromYogaLayout()
+            
+            // Also trigger viewport check after content size update
+            DCFViewportObserver.shared.checkViewsInScrollView(scrollView)
         }
     }
     
@@ -263,8 +266,9 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             ]
         ])
         
-        // Notify viewport observer of scroll change
-        NotificationCenter.default.post(name: NSNotification.Name("DCFScrollViewDidScroll"), object: scrollView)
+        // CRITICAL: Built-in viewport detection - check all observed views in this scroll view
+        // This is part of ScrollView API, not a separate observer
+        DCFViewportObserver.shared.checkViewsInScrollView(scrollView)
     }
     
     

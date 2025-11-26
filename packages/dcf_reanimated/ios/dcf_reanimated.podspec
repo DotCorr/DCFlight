@@ -12,6 +12,7 @@ A crossplatform framework.
   s.source_files = 'Classes/**/*.{h,m,mm,swift}'
   s.platform = :ios, '13.5'
   s.dependency 'dcflight'
+  s.dependency 'dcf_primitives'
   s.dependency 'SVGKit', '~> 3.0.0' 
   
   # Use Flutter engine's internal Skia/Impeller - no separate bundle needed

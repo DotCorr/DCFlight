@@ -98,6 +98,10 @@ class DCFScrollViewComponent : DCFComponent() {
                     )
                 ))
             }
+            
+            // CRITICAL: Built-in viewport detection - check all observed views in this scroll view
+            // This is part of ScrollView API, not a separate observer
+            com.dotcorr.dcf_primitives.utils.DCFViewportObserver.checkViewsInScrollView(scrollView)
         }
         
         // Handle scroll begin/end drag events
@@ -319,6 +323,16 @@ class DCFScrollViewComponent : DCFComponent() {
             (layout.left + layout.width).toInt(),
             (layout.top + layout.height).toInt()
         )
+        
+        // CRITICAL: Update content size after layout
+        // This ensures ScrollView knows the full content size for scrolling
+        // Delay slightly to ensure all children are laid out first
+        scrollView.post {
+            scrollView.updateContentSizeFromYogaLayout()
+            
+            // Also trigger viewport check after content size update
+            com.dotcorr.dcf_primitives.utils.DCFViewportObserver.checkViewsInScrollView(scrollView)
+        }
         
         // CRITICAL: Position content container at (0, 0) inside ScrollView
         // Container size will be set by updateContentSizeFromYogaLayout based on children

@@ -87,8 +87,9 @@ object DCFViewportObserver {
     
     /**
      * Check visibility of views in a scroll view
+     * Made public so ScrollView can call it directly
      */
-    private fun checkViewsInScrollView(scrollView: ViewGroup) {
+    fun checkViewsInScrollView(scrollView: ViewGroup) {
         val views = scrollViewObservers[scrollView] ?: return
         
         views.forEach { view ->

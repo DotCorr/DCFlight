@@ -106,11 +106,12 @@ class DCFScrollableView @JvmOverloads constructor(
                 // Calculate max bounds from all children in content container
                 for (i in 0 until contentView.childCount) {
                     val child = contentView.getChildAt(i)
-                    // Use measured dimensions if layout hasn't happened yet
+                    // CRITICAL: Use actual layout dimensions (after Yoga layout)
+                    // If layout hasn't happened, use measured dimensions as fallback
                     val childWidth = if (child.width > 0) child.width else child.measuredWidth
                     val childHeight = if (child.height > 0) child.height else child.measuredHeight
-                    val childLeft = if (child.left > 0) child.left else child.left
-                    val childTop = if (child.top > 0) child.top else child.top
+                    val childLeft = child.left
+                    val childTop = child.top
                     
                     val right = childLeft + childWidth
                     val bottom = childTop + childHeight
@@ -119,6 +120,23 @@ class DCFScrollableView @JvmOverloads constructor(
                     
                     maxWidth = maxOf(maxWidth, right)
                     maxHeight = maxOf(maxHeight, bottom)
+                    
+                    // CRITICAL: Also check nested children (for nested ViewGroups)
+                    if (child is ViewGroup && child.childCount > 0) {
+                        for (j in 0 until child.childCount) {
+                            val nestedChild = child.getChildAt(j)
+                            val nestedWidth = if (nestedChild.width > 0) nestedChild.width else nestedChild.measuredWidth
+                            val nestedHeight = if (nestedChild.height > 0) nestedChild.height else nestedChild.measuredHeight
+                            val nestedLeft = childLeft + nestedChild.left
+                            val nestedTop = childTop + nestedChild.top
+                            
+                            val nestedRight = nestedLeft + nestedWidth
+                            val nestedBottom = nestedTop + nestedHeight
+                            
+                            maxWidth = maxOf(maxWidth, nestedRight)
+                            maxHeight = maxOf(maxHeight, nestedBottom)
+                        }
+                    }
                 }
                 Log.d(TAG, "📊 Calculated max bounds: ${maxWidth}x${maxHeight}")
             } else {

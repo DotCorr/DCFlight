@@ -10,8 +10,8 @@ import dcflight
 
 /// Low-level viewport detection system - similar to web IntersectionObserver
 /// Any view can register for viewport visibility callbacks
-class DCFViewportObserver {
-    static let shared = DCFViewportObserver()
+public class DCFViewportObserver {
+    public static let shared = DCFViewportObserver()
     
     private var observedViews: [UIView: ViewportConfig] = [:]
     private var scrollViewObservers: [UIScrollView: Set<UIView>] = [:]
@@ -19,7 +19,7 @@ class DCFViewportObserver {
     private init() {}
     
     /// Register a view for viewport detection
-    func observe(_ view: UIView, config: ViewportConfig) {
+    public func observe(_ view: UIView, config: ViewportConfig) {
         observedViews[view] = config
         
         // Find parent scroll view
@@ -36,7 +36,7 @@ class DCFViewportObserver {
     }
     
     /// Unregister a view
-    func unobserve(_ view: UIView) {
+    public func unobserve(_ view: UIView) {
         observedViews.removeValue(forKey: view)
         
         // Remove from scroll view observers
@@ -64,23 +64,18 @@ class DCFViewportObserver {
     
     /// Setup scroll observer for a scroll view
     private func setupScrollObserver(_ scrollView: UIScrollView) {
-        // Listen for scroll notifications
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("DCFScrollViewDidScroll"),
-            object: scrollView,
-            queue: .main
-        ) { [weak self] _ in
-            self?.checkViewsInScrollView(scrollView)
-        }
+        // ScrollView will call checkViewsInScrollView directly via delegate
+        // No need for notification center - it's built into ScrollView API
         
-        // Also check on initial setup
+        // Check on initial setup
         DispatchQueue.main.async { [weak self] in
             self?.checkViewsInScrollView(scrollView)
         }
     }
     
     /// Check visibility of views in a scroll view
-    private func checkViewsInScrollView(_ scrollView: UIScrollView) {
+    /// Made public so ScrollView can call it directly
+    public func checkViewsInScrollView(_ scrollView: UIScrollView) {
         guard let views = scrollViewObservers[scrollView] else { return }
         
         for view in views {
@@ -159,8 +154,13 @@ class DCFViewportObserver {
     }
 }
 
-struct ViewportConfig {
-    let once: Bool
-    let amount: Double? // 0.0 to 1.0
+public struct ViewportConfig {
+    public let once: Bool
+    public let amount: Double? // 0.0 to 1.0
+    
+    public init(once: Bool = false, amount: Double? = nil) {
+        self.once = once
+        self.amount = amount
+    }
 }
 

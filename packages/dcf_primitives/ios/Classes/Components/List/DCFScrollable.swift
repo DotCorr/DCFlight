@@ -49,15 +49,29 @@ class DCFScrollableView: UIScrollView {
         var maxWidth: CGFloat = 0
         var maxHeight: CGFloat = 0
         
+        // CRITICAL: Check all subviews, including nested content containers
+        // This ensures we capture the full content size even if content is in a container
         for subview in self.subviews {
             let className = NSStringFromClass(type(of: subview))
             guard !className.contains("UIScrollView") && !className.contains("_UIScrollViewScrollIndicator") else { continue }
             
+            // Get the actual bounds of the subview
             let right = subview.frame.origin.x + subview.frame.size.width
             let bottom = subview.frame.origin.y + subview.frame.size.height
             
             maxWidth = max(maxWidth, right)
             maxHeight = max(maxHeight, bottom)
+            
+            // CRITICAL: Also check children of content containers (for nested layouts)
+            if let container = subview as? UIView {
+                for child in container.subviews {
+                    let childRight = child.frame.origin.x + child.frame.size.width + container.frame.origin.x
+                    let childBottom = child.frame.origin.y + child.frame.size.height + container.frame.origin.y
+                    
+                    maxWidth = max(maxWidth, childRight)
+                    maxHeight = max(maxHeight, childBottom)
+                }
+            }
         }
         
         if virtualizedContentOffsetStart > 0 || virtualizedContentPaddingTop > 0 {
