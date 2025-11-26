@@ -232,16 +232,38 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         print("🎯 PURE REANIMATED: Configuring animation from props")
         self.animationConfig = animatedStyle
         
+        // Parse perspective if provided
+        if let perspective = animatedStyle["perspective"] as? Double {
+            // Set perspective on layer's sublayerTransform
+            var transform = CATransform3DIdentity
+            transform.m34 = -1.0 / CGFloat(perspective)
+            self.layer.sublayerTransform = transform
+        }
+        
         // Parse animation configurations
         currentAnimations.removeAll()
         
-        for (property, config) in animatedStyle {
-            if let animConfig = config as? [String: Any] {
-                currentAnimations[property] = PureAnimationState(
-                    property: property,
-                    config: animConfig,
-                    view: self
-                )
+        // Handle animations dictionary
+        if let animations = animatedStyle["animations"] as? [String: Any] {
+            for (property, config) in animations {
+                if let animConfig = config as? [String: Any] {
+                    currentAnimations[property] = PureAnimationState(
+                        property: property,
+                        config: animConfig,
+                        view: self
+                    )
+                }
+            }
+        } else {
+            // Legacy format: animations at top level
+            for (property, config) in animatedStyle {
+                if property != "perspective" && property != "preserve3d", let animConfig = config as? [String: Any] {
+                    currentAnimations[property] = PureAnimationState(
+                        property: property,
+                        config: animConfig,
+                        view: self
+                    )
+                }
             }
         }
     }
@@ -294,6 +316,16 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         if !isUsingWorklet && currentAnimations.isEmpty {
             print("⚠️ PURE REANIMATED: No animations configured")
             return
+        }
+        
+        // CRITICAL: Apply initial values BEFORE starting animation
+        // This ensures the view starts in the correct state
+        if !isUsingWorklet {
+            for (_, animationState) in currentAnimations {
+                // Apply initial value immediately (before animation starts)
+                let initialValue = animationState.fromValue
+                animationState.applyInitialValue(initialValue, to: self)
+            }
         }
         
         print("🚀 PURE REANIMATED: Starting pure UI thread animation")
@@ -511,26 +543,41 @@ struct PureAnimationResult {
 
 class PureAnimationState {
     let property: String
-    private let fromValue: CGFloat
+    let fromValue: CGFloat // Made public for initial value application
     private let toValue: CGFloat
+    private let keyframes: [CGFloat]? // Support keyframe animations
     private let duration: TimeInterval
     private let delay: TimeInterval
     private let curve: (Double) -> Double
     private let isRepeating: Bool
     private let repeatCount: Int?
+    private let damping: Double? // Spring damping
+    private let stiffness: Double? // Spring stiffness
     
     private weak var view: UIView?
     private var cycleCount = 0
     private var isReversing = false
     private var cycleStartTime: CFTimeInterval = 0
     
+    /// Apply initial value to view (before animation starts)
+    func applyInitialValue(_ value: CGFloat, to view: UIView) {
+        applyAnimationValue(value, to: view)
+    }
+    
     init(property: String, config: [String: Any], view: UIView) {
         self.property = property
         self.view = view
         
-        // Parse configuration
-        self.fromValue = CGFloat(config["from"] as? Double ?? 0.0)
-        self.toValue = CGFloat(config["to"] as? Double ?? 1.0)
+        // Parse keyframes if present, otherwise use from/to
+        if let keyframesArray = config["keyframes"] as? [Double] {
+            self.keyframes = keyframesArray.map { CGFloat($0) }
+            self.fromValue = self.keyframes!.first ?? 0.0
+            self.toValue = self.keyframes!.last ?? 1.0
+        } else {
+            self.keyframes = nil
+            self.fromValue = CGFloat(config["from"] as? Double ?? 0.0)
+            self.toValue = CGFloat(config["to"] as? Double ?? 1.0)
+        }
         
         let durationMs = config["duration"] as? Int ?? 300
         self.duration = TimeInterval(durationMs) / 1000.0
@@ -541,11 +588,19 @@ class PureAnimationState {
         self.isRepeating = config["repeat"] as? Bool ?? false
         self.repeatCount = config["repeatCount"] as? Int
         
+        // Parse spring parameters
+        self.damping = config["damping"] as? Double
+        self.stiffness = config["stiffness"] as? Double
+        
         // Parse curve
         let curveString = config["curve"] as? String ?? "easeInOut"
-        self.curve = PureAnimationState.getCurveFunction(curveString)
+        self.curve = PureAnimationState.getCurveFunction(curveString, damping: damping, stiffness: stiffness)
         
-        print("🎯 PURE ANIMATION STATE: \(property) from \(fromValue) to \(toValue) over \(duration)s")
+        if let keyframes = keyframes {
+            print("🎯 PURE ANIMATION STATE: \(property) keyframes \(keyframes) over \(duration)s")
+        } else {
+            print("🎯 PURE ANIMATION STATE: \(property) from \(fromValue) to \(toValue) over \(duration)s")
+        }
     }
     
     /// Update animation state - PURE UI THREAD
@@ -569,10 +624,32 @@ class PureAnimationState {
         let progress = min(1.0, elapsed / duration)
         let easedProgress = curve(progress)
         
-        // Calculate current value
-        let currentFromValue = isReversing ? toValue : fromValue
-        let currentToValue = isReversing ? fromValue : toValue
-        let currentValue = currentFromValue + (currentToValue - currentFromValue) * CGFloat(easedProgress)
+        // Calculate current value - support keyframes
+        let currentValue: CGFloat
+        if let keyframes = keyframes {
+            // Keyframe animation: interpolate between keyframes
+            let keyframeCount = keyframes.count
+            if keyframeCount == 1 {
+                currentValue = keyframes[0]
+            } else {
+                let segmentProgress = progress * Double(keyframeCount - 1)
+                let segmentIndex = Int(segmentProgress)
+                let segmentT = segmentProgress - Double(segmentIndex)
+                
+                if segmentIndex >= keyframeCount - 1 {
+                    currentValue = keyframes[keyframeCount - 1]
+                } else {
+                    let fromKeyframe = keyframes[segmentIndex]
+                    let toKeyframe = keyframes[segmentIndex + 1]
+                    currentValue = fromKeyframe + (toKeyframe - fromKeyframe) * CGFloat(segmentT)
+                }
+            }
+        } else {
+            // Standard from/to animation
+            let currentFromValue = isReversing ? toValue : fromValue
+            let currentToValue = isReversing ? fromValue : toValue
+            currentValue = currentFromValue + (currentToValue - currentFromValue) * CGFloat(easedProgress)
+        }
         
         // Apply to view
         applyAnimationValue(currentValue, to: view)
@@ -622,9 +699,21 @@ class PureAnimationState {
         case "rotation":
             view.transform = CGAffineTransform(rotationAngle: value)
         case "rotationX":
-            view.layer.transform = CATransform3DMakeRotation(value, 1, 0, 0)
+            var transform = view.layer.transform
+            transform = CATransform3DRotate(transform, value, 1, 0, 0)
+            view.layer.transform = transform
         case "rotationY":
-            view.layer.transform = CATransform3DMakeRotation(value, 0, 1, 0)
+            var transform = view.layer.transform
+            transform = CATransform3DRotate(transform, value, 0, 1, 0)
+            view.layer.transform = transform
+        case "rotationZ":
+            var transform = view.layer.transform
+            transform = CATransform3DRotate(transform, value, 0, 0, 1)
+            view.layer.transform = transform
+        case "translateZ":
+            var transform = view.layer.transform
+            transform = CATransform3DTranslate(transform, 0, 0, value)
+            view.layer.transform = transform
             
         // Opacity
         case "opacity":
@@ -658,7 +747,7 @@ class PureAnimationState {
     }
     
     /// Get easing curve function
-    static func getCurveFunction(_ curveString: String) -> (Double) -> Double {
+    static func getCurveFunction(_ curveString: String, damping: Double? = nil, stiffness: Double? = nil) -> (Double) -> Double {
         switch curveString.lowercased() {
         case "linear":
             return { $0 }
@@ -669,24 +758,25 @@ class PureAnimationState {
         case "easeinout":
             return { $0 < 0.5 ? 2 * $0 * $0 : 1 - 2 * (1 - $0) * (1 - $0) }
         case "spring":
-            return springCurve
+            return { t in springCurve(t, damping: damping, stiffness: stiffness) }
         default:
             return { $0 < 0.5 ? 2 * $0 * $0 : 1 - 2 * (1 - $0) * (1 - $0) } // Default to easeInOut
         }
     }
     
-    /// Spring curve implementation
-    static func springCurve(_ t: Double) -> Double {
-        let damping = 0.8
-        let frequency = 8.0
+    /// Spring curve implementation with configurable damping and stiffness
+    static func springCurve(_ t: Double, damping: Double? = nil, stiffness: Double? = nil) -> Double {
+        let dampingValue = damping ?? 0.8
+        let stiffnessValue = stiffness ?? 300.0
+        let frequency = sqrt(stiffnessValue / 1.0) // Mass = 1.0
         
         if t == 0 || t == 1 {
             return t
         }
         
         let omega = frequency * 2 * Double.pi
-        let exponential = pow(2, -damping * t)
-        let sine = sin((omega * t) + acos(damping))
+        let exponential = pow(2, -dampingValue * t)
+        let sine = sin((omega * t) + acos(dampingValue))
         
         return 1 - exponential * sine
     }

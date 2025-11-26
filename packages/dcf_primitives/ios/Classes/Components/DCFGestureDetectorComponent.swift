@@ -99,6 +99,13 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, UIGestureRecognizerDe
         view.addGestureRecognizer(pinchRecognizer)
         recognizers.append(pinchRecognizer)
         
+        // Hover gesture (iOS 13+)
+        if #available(iOS 13.0, *) {
+            let hoverRecognizer = UIHoverGestureRecognizer(target: DCFGestureDetectorComponent.sharedInstance, action: #selector(handleHover(_:)))
+            view.addGestureRecognizer(hoverRecognizer)
+            recognizers.append(hoverRecognizer)
+        }
+        
         // Rotation gesture
         let rotationRecognizer = UIRotationGestureRecognizer(target: DCFGestureDetectorComponent.sharedInstance, action: #selector(handleRotation(_:)))
         view.addGestureRecognizer(rotationRecognizer)
@@ -285,6 +292,34 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, UIGestureRecognizerDe
             eventType = "onRotationUpdate"
         case .ended, .cancelled:
             eventType = "onRotationEnd"
+        default:
+            return
+        }
+        
+        propagateEvent(on: view, eventName: eventType, data: eventData)
+    }
+    
+    @objc @available(iOS 13.0, *)
+    func handleHover(_ recognizer: UIHoverGestureRecognizer) {
+        guard let view = recognizer.view else { return }
+        
+        let location = recognizer.location(in: view)
+        
+        var eventType = "onHover"
+        var eventData: [String: Any] = [
+            "x": location.x,
+            "y": location.y,
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000),
+            "fromUser": true
+        ]
+        
+        switch recognizer.state {
+        case .began:
+            eventType = "onHoverEnter"
+        case .changed:
+            eventType = "onHover"
+        case .ended:
+            eventType = "onHoverExit"
         default:
             return
         }

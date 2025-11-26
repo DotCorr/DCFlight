@@ -12,6 +12,7 @@ import '../styles/animated_style.dart';
 import '../values/animation_values.dart';
 import '../enums/animation_enums.dart';
 import '../helper/init.dart';
+import 'reanimated_view.dart';
 
 /// Framer Motion-style declarative animation component.
 /// 
@@ -149,6 +150,10 @@ class Motion extends DCFStatefulComponent {
     // Convert declarative animation props to AnimatedStyle
     final animatedStyle = _buildAnimatedStyle();
     
+    // Merge user style with initial style
+    final initialStyle = _buildInitialStyle();
+    final combinedStyle = _mergeStyles(styleSheet, initialStyle);
+    
     // Prepare event handlers
     Map<String, dynamic> eventHandlers = events ?? {};
     if (onAnimationStart != null) {
@@ -164,51 +169,24 @@ class Motion extends DCFStatefulComponent {
       eventHandlers['onViewportLeave'] = onViewportLeave;
     }
 
-    // Build props map
-    Map<String, dynamic> props = {
-      'autoStart': autoStart,
-      'startDelay': delay,
-      'isMotion': true, // Flag for native to use Motion component
-      'hasViewport': whileInView != null,
-      'hasHover': whileHover != null,
-      'hasTap': whileTap != null,
-      ...(layout ?? DCFLayout()).toMap(),
-      ...(styleSheet ?? DCFStyleSheet()).toMap(),
-      ...eventHandlers,
-    };
-
-    // Add viewport config
-    if (viewport != null) {
-      props['viewport'] = viewport!.toMap();
-    }
-
-    // Add transition config
-    if (transition != null) {
-      props['transition'] = transition!.toMap();
-    }
-
-    // Add animation states
-    if (initial != null) props['initial'] = initial;
-    if (animate != null) props['animate'] = animate;
-    if (whileInView != null) props['whileInView'] = whileInView;
-    if (whileHover != null) props['whileHover'] = whileHover;
-    if (whileTap != null) props['whileTap'] = whileTap;
-
-    // Add animated style if built
-    if (animatedStyle != null) {
-      props['animatedStyle'] = animatedStyle.toMap();
-    }
-
-    return DCFElement(
-      type: 'Motion', // Must match native component registration
-      elementProps: props,
+    // Use ReanimatedView component directly - no need to create DCFElement!
+    return ReanimatedView(
+      animatedStyle: animatedStyle,
+      autoStart: autoStart,
+      startDelay: delay,
+      layout: layout,
+      styleSheet: combinedStyle,
+      onAnimationStart: onAnimationStart,
+      onAnimationComplete: onAnimationComplete,
+      events: eventHandlers.isEmpty ? null : eventHandlers,
       children: children,
     );
   }
 
   /// Converts declarative animation props to AnimatedStyle
   AnimatedStyle? _buildAnimatedStyle() {
-    if (animate == null && initial == null) return null;
+    // Only build if we have animate prop (initial alone doesn't animate)
+    if (animate == null) return null;
 
     final style = AnimatedStyle();
     final trans = transition ?? Transition();
@@ -305,6 +283,38 @@ class Motion extends DCFStatefulComponent {
       default:
         return 0.0;
     }
+  }
+
+  /// Builds static style from initial values (applied before animation starts)
+  /// Note: Transforms and opacity are handled by native animation system,
+  /// not static styles. This is just for merging with user-provided styles.
+  DCFStyleSheet _buildInitialStyle() {
+    // Initial values for transforms/opacity are applied by native side
+    // before animation starts. We just return empty style here.
+    return DCFStyleSheet();
+  }
+
+  /// Merges two style sheets (user style takes precedence)
+  DCFStyleSheet _mergeStyles(DCFStyleSheet? userStyle, DCFStyleSheet initialStyle) {
+    if (userStyle == null) return initialStyle;
+    if (initialStyle == DCFStyleSheet()) return userStyle;
+    
+    // Merge styles - user style takes precedence
+    return DCFStyleSheet(
+      backgroundColor: userStyle.backgroundColor ?? initialStyle.backgroundColor,
+      borderRadius: userStyle.borderRadius ?? initialStyle.borderRadius,
+      borderColor: userStyle.borderColor ?? initialStyle.borderColor,
+      borderWidth: userStyle.borderWidth ?? initialStyle.borderWidth,
+      opacity: userStyle.opacity ?? initialStyle.opacity,
+      primaryColor: userStyle.primaryColor ?? initialStyle.primaryColor,
+      secondaryColor: userStyle.secondaryColor ?? initialStyle.secondaryColor,
+      shadowColor: userStyle.shadowColor ?? initialStyle.shadowColor,
+      shadowOpacity: userStyle.shadowOpacity ?? initialStyle.shadowOpacity,
+      shadowRadius: userStyle.shadowRadius ?? initialStyle.shadowRadius,
+      shadowOffsetX: userStyle.shadowOffsetX ?? initialStyle.shadowOffsetX,
+      shadowOffsetY: userStyle.shadowOffsetY ?? initialStyle.shadowOffsetY,
+      elevation: userStyle.elevation ?? initialStyle.elevation,
+    );
   }
 }
 

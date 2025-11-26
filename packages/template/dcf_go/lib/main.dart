@@ -12,7 +12,7 @@ void main() async {
 class DotCorrLanding extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    return DCFView(
+    return DCFScrollView(
       layout: layouts['root'],
       styleSheet: styles['root'],
       children: [

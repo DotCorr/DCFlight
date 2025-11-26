@@ -249,16 +249,38 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         this.animationConfig = animatedStyle
         this.isUsingWorklet = false
         
+        // Parse perspective if provided
+        if (animatedStyle["perspective"] is Number) {
+            val perspective = (animatedStyle["perspective"] as Number).toFloat()
+            // Set camera distance for 3D perspective effect
+            cameraDistance = perspective
+        }
+        
         // Parse animation configurations
         currentAnimations.clear()
         
-        for ((property, config) in animatedStyle) {
-            if (config is Map<*, *>) {
-                currentAnimations[property] = PureAnimationState(
-                    property = property,
-                    config = config as Map<String, Any?>,
-                    view = this
-                )
+        // Handle animations dictionary
+        val animations = animatedStyle["animations"] as? Map<*, *>
+        if (animations != null) {
+            for ((property, config) in animations) {
+                if (config is Map<*, *>) {
+                    currentAnimations[property as String] = PureAnimationState(
+                        property = property as String,
+                        config = config as Map<String, Any?>,
+                        view = this
+                    )
+                }
+            }
+        } else {
+            // Legacy format: animations at top level
+            for ((property, config) in animatedStyle) {
+                if (property != "perspective" && property != "preserve3d" && config is Map<*, *>) {
+                    currentAnimations[property] = PureAnimationState(
+                        property = property,
+                        config = config as Map<String, Any?>,
+                        view = this
+                    )
+                }
             }
         }
     }
@@ -285,12 +307,21 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
             Log.w(TAG, "⚠️ PURE REANIMATED: No worklet configured")
             return
         }
-        
+
         if (!isUsingWorklet && currentAnimations.isEmpty()) {
             Log.w(TAG, "⚠️ PURE REANIMATED: No animations configured")
             return
         }
-        
+
+        // CRITICAL: Apply initial values BEFORE starting animation
+        // This ensures the view starts in the correct state
+        if (!isUsingWorklet) {
+            for ((_, animationState) in currentAnimations) {
+                // Apply initial value immediately (before animation starts)
+                animationState.applyInitialValue()
+            }
+        }
+
         Log.d(TAG, "🚀 PURE REANIMATED: Starting pure UI thread animation")
         
         // 🔥 CRITICAL: Set pivot points BEFORE animation starts to prevent "walking" or "eclipse" effects
@@ -504,12 +535,20 @@ class PureAnimationState(
     private val config: Map<String, Any?>,
     private val view: View
 ) {
-    private val fromValue: Float
+    val fromValue: Float // Made public for initial value application
     private val toValue: Float
+    private val keyframes: List<Float>? // Support keyframe animations
     private val duration: Long
     private val delay: Long
     private val isRepeating: Boolean
     private val repeatCount: Int?
+    private val damping: Double? // Spring damping
+    private val stiffness: Double? // Spring stiffness
+    
+    /// Apply initial value to view (before animation starts)
+    fun applyInitialValue() {
+        applyAnimationValue(fromValue)
+    }
     
     private var cycleCount = 0
     private var isReversing = false
@@ -518,8 +557,24 @@ class PureAnimationState(
     private val curve: (Float) -> Float
     
     init {
-        fromValue = ((config["from"] as? Number)?.toDouble() ?: 0.0).toFloat()
-        toValue = ((config["to"] as? Number)?.toDouble() ?: 1.0).toFloat()
+        // Parse keyframes if present, otherwise use from/to
+        if (config["keyframes"] is List<*>) {
+            val keyframesList = config["keyframes"] as List<*>
+            keyframes = keyframesList.mapNotNull { 
+                when (it) {
+                    is Number -> it.toDouble().toFloat()
+                    is Double -> it.toFloat()
+                    is Float -> it
+                    else -> null
+                }
+            }
+            fromValue = keyframes?.firstOrNull() ?: 0f
+            toValue = keyframes?.lastOrNull() ?: 1f
+        } else {
+            keyframes = null
+            fromValue = ((config["from"] as? Number)?.toDouble() ?: 0.0).toFloat()
+            toValue = ((config["to"] as? Number)?.toDouble() ?: 1.0).toFloat()
+        }
         
         val durationMs = (config["duration"] as? Number)?.toInt() ?: 300
         duration = durationMs.toLong()
@@ -530,18 +585,26 @@ class PureAnimationState(
         isRepeating = config["repeat"] as? Boolean ?: false
         repeatCount = config["repeatCount"] as? Int
         
+        // Parse spring parameters
+        damping = (config["damping"] as? Number)?.toDouble()
+        stiffness = (config["stiffness"] as? Number)?.toDouble()
+        
         // Parse curve - support all curves from iOS
         val curveString = (config["curve"] as? String ?: "easeInOut").lowercase()
-        curve = getCurveFunction(curveString)
+        curve = getCurveFunction(curveString, damping, stiffness)
         
-        Log.d("PureAnimationState", "🎯 $property from $fromValue to $toValue over ${duration}ms with curve $curveString")
+        if (keyframes != null) {
+            Log.d("PureAnimationState", "🎯 $property keyframes ${keyframes} over ${duration}ms with curve $curveString")
+        } else {
+            Log.d("PureAnimationState", "🎯 $property from $fromValue to $toValue over ${duration}ms with curve $curveString")
+        }
     }
     
     companion object {
         /**
          * Get easing curve function - matches iOS implementation
          */
-        fun getCurveFunction(curveString: String): (Float) -> Float {
+        fun getCurveFunction(curveString: String, damping: Double? = null, stiffness: Double? = null): (Float) -> Float {
             return when (curveString.lowercase()) {
                 "linear" -> { t -> t }
                 "easein" -> { t -> t * t }
@@ -553,7 +616,7 @@ class PureAnimationState(
                         1 - 2 * (1 - t) * (1 - t)
                     }
                 }
-                "spring" -> { t -> springCurve(t) }
+                "spring" -> { t -> springCurve(t, damping, stiffness) }
                 "bouncein" -> { t -> bounceInCurve(t) }
                 "bounceout" -> { t -> bounceOutCurve(t) }
                 "elasticin" -> { t -> elasticInCurve(t) }
@@ -569,9 +632,10 @@ class PureAnimationState(
             }
         }
         
-        private fun springCurve(t: Float): Float {
-            val damping = 0.8f
-            val frequency = 8.0f
+        private fun springCurve(t: Float, damping: Double? = null, stiffness: Double? = null): Float {
+            val dampingValue = (damping ?: 0.8).toFloat()
+            val stiffnessValue = (stiffness ?: 300.0).toFloat()
+            val frequency = Math.sqrt((stiffnessValue / 1.0).toDouble()).toFloat() // Mass = 1.0
             
             if (t == 0f || t == 1f) {
                 return t
@@ -635,10 +699,31 @@ class PureAnimationState(
         val progress = (cycleElapsedMs.toFloat() / duration).coerceIn(0f, 1f)
         val easedProgress = curve(progress)
         
-        // Calculate current value
-        val currentFromValue = if (isReversing) toValue else fromValue
-        val currentToValue = if (isReversing) fromValue else toValue
-        val currentValue = currentFromValue + (currentToValue - currentFromValue) * easedProgress
+        // Calculate current value - support keyframes
+        val currentValue: Float = if (keyframes != null) {
+            // Keyframe animation: interpolate between keyframes
+            val keyframeCount = keyframes!!.size
+            if (keyframeCount == 1) {
+                keyframes!![0]
+            } else {
+                val segmentProgress = progress * (keyframeCount - 1)
+                val segmentIndex = segmentProgress.toInt()
+                val segmentT = segmentProgress - segmentIndex
+                
+                if (segmentIndex >= keyframeCount - 1) {
+                    keyframes!![keyframeCount - 1]
+                } else {
+                    val fromKeyframe = keyframes!![segmentIndex]
+                    val toKeyframe = keyframes!![segmentIndex + 1]
+                    fromKeyframe + (toKeyframe - fromKeyframe) * segmentT
+                }
+            }
+        } else {
+            // Standard from/to animation
+            val currentFromValue = if (isReversing) toValue else fromValue
+            val currentToValue = if (isReversing) fromValue else toValue
+            currentFromValue + (currentToValue - currentFromValue) * easedProgress
+        }
         
         // Apply to view
         applyAnimationValue(currentValue)
@@ -671,6 +756,20 @@ class PureAnimationState(
                 view.scaleX = value
                 view.scaleY = value
             }
+            "scaleX" -> view.scaleX = value
+            "scaleY" -> view.scaleY = value
+            "translateX" -> view.translationX = value
+            "translateY" -> view.translationY = value
+            "translateZ" -> {
+                // 3D translation requires elevation on Android
+                view.translationZ = value
+                // Also set elevation for proper 3D effect
+                view.elevation = value
+            }
+            "rotation" -> view.rotation = value
+            "rotationX" -> view.rotationX = value
+            "rotationY" -> view.rotationY = value
+            "rotationZ" -> view.rotation = value
             "scaleX" -> view.scaleX = value
             "scaleY" -> view.scaleY = value
             "translateX" -> view.translationX = value
