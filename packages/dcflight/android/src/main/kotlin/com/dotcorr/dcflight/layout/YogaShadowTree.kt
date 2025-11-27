@@ -728,8 +728,14 @@ class YogaShadowTree private constructor() {
             node.setFlexShrink(0.0f)
         }
         
-        node.setJustifyContent(YogaJustify.CENTER)
-        node.setAlignItems(YogaAlign.CENTER)
+        // ScrollView should start content at top, not center
+        if (nodeType == "ScrollView") {
+            node.setJustifyContent(YogaJustify.FLEX_START)
+            node.setAlignItems(YogaAlign.FLEX_START)
+        } else {
+            node.setJustifyContent(YogaJustify.CENTER)
+            node.setAlignItems(YogaAlign.CENTER)
+        }
     }
 
 
@@ -1155,6 +1161,118 @@ class YogaShadowTree private constructor() {
                 val dimension = parseDimension(value)
                 if (dimension != null) {
                     node.setGap(YogaGutter.COLUMN, dimension)
+                }
+            }
+            "start" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPosition(YogaEdge.START, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPositionPercent(YogaEdge.START, percent)
+                    }
+                }
+            }
+            "end" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPosition(YogaEdge.END, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPositionPercent(YogaEdge.END, percent)
+                    }
+                }
+            }
+            "marginStart" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMargin(YogaEdge.START, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMarginPercent(YogaEdge.START, percent)
+                    }
+                }
+            }
+            "marginEnd" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMargin(YogaEdge.END, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMarginPercent(YogaEdge.END, percent)
+                    }
+                }
+            }
+            "paddingStart" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPadding(YogaEdge.START, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPaddingPercent(YogaEdge.START, percent)
+                    }
+                }
+            }
+            "paddingEnd" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPadding(YogaEdge.END, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPaddingPercent(YogaEdge.END, percent)
+                    }
+                }
+            }
+            "borderTopWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setBorder(YogaEdge.TOP, dimension)
+                }
+            }
+            "borderRightWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setBorder(YogaEdge.RIGHT, dimension)
+                }
+            }
+            "borderBottomWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setBorder(YogaEdge.BOTTOM, dimension)
+                }
+            }
+            "borderLeftWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setBorder(YogaEdge.LEFT, dimension)
+                }
+            }
+            "borderStartWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setBorder(YogaEdge.START, dimension)
+                }
+            }
+            "borderEndWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setBorder(YogaEdge.END, dimension)
+                }
+            }
+            "zIndex" -> {
+                val zIndex = (value as? Number)?.toFloat() ?: return
+                val viewIdInt = nodeId.toIntOrNull() ?: return
+                val view = DCFLayoutManager.shared.getView(viewIdInt)
+                if (view != null) {
+                    mainHandler.post {
+                        androidx.core.view.ViewCompat.setZ(view, zIndex)
+                    }
                 }
             }
             "direction" -> {

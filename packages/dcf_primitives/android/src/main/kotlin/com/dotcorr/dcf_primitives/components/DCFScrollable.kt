@@ -116,11 +116,7 @@ class DCFScrollableView @JvmOverloads constructor(
                     }
                 }
                 
-                // Ensure at least the size of the ScrollView itself (if we want it to fill)
-                // or just use the content size.
-                // For ScrollView, usually we want the content to dictate the size.
-                
-                // Add padding if needed
+                // Add padding
                 maxWidth += contentView.paddingRight
                 maxHeight += contentView.paddingBottom
                 

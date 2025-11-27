@@ -62,7 +62,7 @@ class YogaShadowTree {
             let node = YGNodeNew()
             
             if let node = node {
-                applyDefaultNodeStyles(to: node)
+                applyDefaultNodeStyles(to: node, componentType: componentType)
                 
                 let context: [String: Any] = [
                     "nodeId": id,
@@ -342,6 +342,12 @@ class YogaShadowTree {
             
             print("✅ YogaShadowTree: Applied layout to \(appliedCount) views out of \(nodes.count) nodes")
             return true
+        }
+    }
+    
+    private func applyLayoutToView(viewId: String, frame: CGRect) {
+        if let id = Int(viewId) {
+            DCFLayoutManager.shared.applyLayout(to: id, left: frame.origin.x, top: frame.origin.y, width: frame.size.width, height: frame.size.height)
         }
     }
     
@@ -759,6 +765,89 @@ class YogaShadowTree {
             if let columnGap = parseDimension(value) {
                 YGNodeStyleSetGap(node, YGGutter.column, columnGap)
             }
+        case "start":
+            if !isStaticPositioned(node: node) {
+                if let start = parseDimension(value) {
+                    YGNodeStyleSetPosition(node, YGEdge.start, start)
+                } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                         let percentValue = Float(strValue.dropLast()) {
+                    YGNodeStyleSetPositionPercent(node, YGEdge.start, percentValue)
+                }
+            }
+        case "end":
+            if !isStaticPositioned(node: node) {
+                if let end = parseDimension(value) {
+                    YGNodeStyleSetPosition(node, YGEdge.end, end)
+                } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                         let percentValue = Float(strValue.dropLast()) {
+                    YGNodeStyleSetPositionPercent(node, YGEdge.end, percentValue)
+                }
+            }
+        case "marginStart":
+            if let marginStart = parseDimension(value) {
+                YGNodeStyleSetMargin(node, YGEdge.start, marginStart)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMarginPercent(node, YGEdge.start, percentValue)
+            }
+        case "marginEnd":
+            if let marginEnd = parseDimension(value) {
+                YGNodeStyleSetMargin(node, YGEdge.end, marginEnd)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetMarginPercent(node, YGEdge.end, percentValue)
+            }
+        case "paddingStart":
+            if let paddingStart = parseDimension(value) {
+                YGNodeStyleSetPadding(node, YGEdge.start, paddingStart)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPaddingPercent(node, YGEdge.start, percentValue)
+            }
+        case "paddingEnd":
+            if let paddingEnd = parseDimension(value) {
+                YGNodeStyleSetPadding(node, YGEdge.end, paddingEnd)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                YGNodeStyleSetPaddingPercent(node, YGEdge.end, percentValue)
+            }
+        case "borderTopWidth":
+            if let val = parseDimension(value) {
+                YGNodeStyleSetBorder(node, YGEdge.top, val)
+            }
+        case "borderRightWidth":
+            if let val = parseDimension(value) {
+                YGNodeStyleSetBorder(node, YGEdge.right, val)
+            }
+        case "borderBottomWidth":
+            if let val = parseDimension(value) {
+                YGNodeStyleSetBorder(node, YGEdge.bottom, val)
+            }
+        case "borderLeftWidth":
+            if let val = parseDimension(value) {
+                YGNodeStyleSetBorder(node, YGEdge.left, val)
+            }
+        case "borderStartWidth":
+            if let val = parseDimension(value) {
+                YGNodeStyleSetBorder(node, YGEdge.start, val)
+            }
+        case "borderEndWidth":
+            if let val = parseDimension(value) {
+                YGNodeStyleSetBorder(node, YGEdge.end, val)
+            }
+        case "zIndex":
+            if let zIndex = value as? Int {
+                // Apply zIndex directly to the view
+                if let context = YGNodeGetContext(node),
+                   let contextDict = Unmanaged<NSDictionary>.fromOpaque(context).takeUnretainedValue() as? [String: Any],
+                   let nodeIdStr = contextDict["nodeId"] as? String,
+                   let nodeId = Int(nodeIdStr),
+                   let view = DCFLayoutManager.shared.getView(withId: nodeId) {
+                    DispatchQueue.main.async {
+                        view.layer.zPosition = CGFloat(zIndex)
+                    }
+                }
+            }
         default:
             break
         }
@@ -852,7 +941,7 @@ class YogaShadowTree {
         YGNodeSetContext(node, Unmanaged.passRetained(contextDict as NSDictionary).toOpaque())
     }
     
-    private func applyDefaultNodeStyles(to node: YGNodeRef) {
+    private func applyDefaultNodeStyles(to node: YGNodeRef, componentType: String = "View") {
         if useWebDefaults {
             YGNodeStyleSetFlexDirection(node, YGFlexDirection.row)
             YGNodeStyleSetAlignContent(node, YGAlign.stretch)
@@ -863,8 +952,34 @@ class YogaShadowTree {
             YGNodeStyleSetFlexShrink(node, 0.0)
         }
         
-        YGNodeStyleSetJustifyContent(node, YGJustify.center)
-        YGNodeStyleSetAlignItems(node, YGAlign.center)
+        // ScrollView should start content at top, not center
+        if componentType == "ScrollView" {
+            YGNodeStyleSetJustifyContent(node, YGJustify.flexStart)
+            YGNodeStyleSetAlignItems(node, YGAlign.flexStart)
+        } else {
+            YGNodeStyleSetJustifyContent(node, YGJustify.center)
+            YGNodeStyleSetAlignItems(node, YGAlign.center)
+        }
+    }
+    
+    func applyWebDefaults() {
+        useWebDefaults = true
+        
+        if let root = rootNode {
+            YGNodeStyleSetFlexDirection(root, YGFlexDirection.row)
+            YGNodeStyleSetAlignContent(root, YGAlign.stretch)
+            YGNodeStyleSetFlexShrink(root, 1.0)
+            
+            print("✅ YogaShadowTree: Applied web defaults to root node")
+        }
+        
+        for (_, screenRoot) in screenRoots {
+            YGNodeStyleSetFlexDirection(screenRoot, YGFlexDirection.row)
+            YGNodeStyleSetAlignContent(screenRoot, YGAlign.stretch)
+            YGNodeStyleSetFlexShrink(screenRoot, 1.0)
+        }
+        
+        print("✅ YogaShadowTree: Applied web defaults to \(screenRoots.count) screen roots")
     }
     
     private func applyParentLayoutInheritance(childNode: YGNodeRef, parentNode: YGNodeRef, childId: String) {

@@ -120,6 +120,24 @@ class DCFLayout extends Equatable {
   final dynamic rowGap;
   final dynamic columnGap;
 
+  final dynamic start;
+  final dynamic end;
+
+  final dynamic marginStart;
+  final dynamic marginEnd;
+
+  final dynamic paddingStart;
+  final dynamic paddingEnd;
+
+  final int? zIndex;
+
+  final dynamic borderTopWidth;
+  final dynamic borderRightWidth;
+  final dynamic borderBottomWidth;
+  final dynamic borderLeftWidth;
+  final dynamic borderStartWidth;
+  final dynamic borderEndWidth;
+
   @Deprecated("Use borderWidth from style instead")
   final dynamic borderWidth;
 
@@ -169,6 +187,19 @@ class DCFLayout extends Equatable {
     this.gap,
     this.rowGap,
     this.columnGap,
+    this.start,
+    this.end,
+    this.marginStart,
+    this.marginEnd,
+    this.paddingStart,
+    this.paddingEnd,
+    this.zIndex,
+    this.borderTopWidth,
+    this.borderRightWidth,
+    this.borderBottomWidth,
+    this.borderLeftWidth,
+    this.borderStartWidth,
+    this.borderEndWidth,
     this.borderWidth,
   }) : _layoutId = layoutId;
 
@@ -222,10 +253,23 @@ class DCFLayout extends Equatable {
     this.gap,
     this.rowGap,
     this.columnGap,
+    this.start,
+    this.end,
+    this.marginStart,
+    this.marginEnd,
+    this.paddingStart,
+    this.paddingEnd,
+    this.zIndex,
+    this.borderTopWidth,
+    this.borderRightWidth,
+    this.borderBottomWidth,
+    this.borderLeftWidth,
+    this.borderStartWidth,
+    this.borderEndWidth,
     this.borderWidth,
   }) : _layoutId = null;
 
-  /// Create a Layout registry (React Native StyleSheet.create() pattern)
+  /// Create a Layout registry
   ///
   /// **Performance Benefits:**
   /// - **Bridge Efficiency**: Registered layouts are cached and assigned unique IDs.
@@ -299,6 +343,19 @@ class DCFLayout extends Equatable {
         gap: entry.value.gap,
         rowGap: entry.value.rowGap,
         columnGap: entry.value.columnGap,
+        start: entry.value.start,
+        end: entry.value.end,
+        marginStart: entry.value.marginStart,
+        marginEnd: entry.value.marginEnd,
+        paddingStart: entry.value.paddingStart,
+        paddingEnd: entry.value.paddingEnd,
+        zIndex: entry.value.zIndex,
+        borderTopWidth: entry.value.borderTopWidth,
+        borderRightWidth: entry.value.borderRightWidth,
+        borderBottomWidth: entry.value.borderBottomWidth,
+        borderLeftWidth: entry.value.borderLeftWidth,
+        borderStartWidth: entry.value.borderStartWidth,
+        borderEndWidth: entry.value.borderEndWidth,
         borderWidth: entry.value.borderWidth,
       );
     }
@@ -350,6 +407,19 @@ class DCFLayout extends Equatable {
         gap != null ||
         rowGap != null ||
         columnGap != null ||
+        start != null ||
+        end != null ||
+        marginStart != null ||
+        marginEnd != null ||
+        paddingStart != null ||
+        paddingEnd != null ||
+        zIndex != null ||
+        borderTopWidth != null ||
+        borderRightWidth != null ||
+        borderBottomWidth != null ||
+        borderLeftWidth != null ||
+        borderStartWidth != null ||
+        borderEndWidth != null ||
         borderWidth != null;
   }
 
@@ -450,6 +520,23 @@ class DCFLayout extends Equatable {
     if (rowGap != null) map['rowGap'] = rowGap;
     if (columnGap != null) map['columnGap'] = columnGap;
 
+    if (start != null) map['start'] = start;
+    if (end != null) map['end'] = end;
+
+    if (marginStart != null) map['marginStart'] = marginStart;
+    if (marginEnd != null) map['marginEnd'] = marginEnd;
+
+    if (paddingStart != null) map['paddingStart'] = paddingStart;
+    if (paddingEnd != null) map['paddingEnd'] = paddingEnd;
+
+    if (zIndex != null) map['zIndex'] = zIndex;
+
+    if (borderTopWidth != null) map['borderTopWidth'] = borderTopWidth;
+    if (borderRightWidth != null) map['borderRightWidth'] = borderRightWidth;
+    if (borderBottomWidth != null) map['borderBottomWidth'] = borderBottomWidth;
+    if (borderLeftWidth != null) map['borderLeftWidth'] = borderLeftWidth;
+    if (borderStartWidth != null) map['borderStartWidth'] = borderStartWidth;
+    if (borderEndWidth != null) map['borderEndWidth'] = borderEndWidth;
     if (borderWidth != null) map['borderWidth'] = borderWidth;
 
     return map;
@@ -501,6 +588,19 @@ class DCFLayout extends Equatable {
       gap: other.gap ?? gap,
       rowGap: other.rowGap ?? rowGap,
       columnGap: other.columnGap ?? columnGap,
+      start: other.start ?? start,
+      end: other.end ?? end,
+      marginStart: other.marginStart ?? marginStart,
+      marginEnd: other.marginEnd ?? marginEnd,
+      paddingStart: other.paddingStart ?? paddingStart,
+      paddingEnd: other.paddingEnd ?? paddingEnd,
+      zIndex: other.zIndex ?? zIndex,
+      borderTopWidth: other.borderTopWidth ?? borderTopWidth,
+      borderRightWidth: other.borderRightWidth ?? borderRightWidth,
+      borderBottomWidth: other.borderBottomWidth ?? borderBottomWidth,
+      borderLeftWidth: other.borderLeftWidth ?? borderLeftWidth,
+      borderStartWidth: other.borderStartWidth ?? borderStartWidth,
+      borderEndWidth: other.borderEndWidth ?? borderEndWidth,
       borderWidth: other.borderWidth ?? borderWidth,
     );
   }
@@ -550,6 +650,19 @@ class DCFLayout extends Equatable {
     dynamic gap,
     dynamic rowGap,
     dynamic columnGap,
+    dynamic start,
+    dynamic end,
+    dynamic marginStart,
+    dynamic marginEnd,
+    dynamic paddingStart,
+    dynamic paddingEnd,
+    int? zIndex,
+    dynamic borderTopWidth,
+    dynamic borderRightWidth,
+    dynamic borderBottomWidth,
+    dynamic borderLeftWidth,
+    dynamic borderStartWidth,
+    dynamic borderEndWidth,
     dynamic borderWidth,
   }) {
     return DCFLayout(
@@ -596,6 +709,19 @@ class DCFLayout extends Equatable {
       gap: gap ?? this.gap,
       rowGap: rowGap ?? this.rowGap,
       columnGap: columnGap ?? this.columnGap,
+      start: start ?? this.start,
+      end: end ?? this.end,
+      marginStart: marginStart ?? this.marginStart,
+      marginEnd: marginEnd ?? this.marginEnd,
+      paddingStart: paddingStart ?? this.paddingStart,
+      paddingEnd: paddingEnd ?? this.paddingEnd,
+      zIndex: zIndex ?? this.zIndex,
+      borderTopWidth: borderTopWidth ?? this.borderTopWidth,
+      borderRightWidth: borderRightWidth ?? this.borderRightWidth,
+      borderBottomWidth: borderBottomWidth ?? this.borderBottomWidth,
+      borderLeftWidth: borderLeftWidth ?? this.borderLeftWidth,
+      borderStartWidth: borderStartWidth ?? this.borderStartWidth,
+      borderEndWidth: borderEndWidth ?? this.borderEndWidth,
       borderWidth: borderWidth ?? this.borderWidth,
     );
   }
@@ -645,6 +771,19 @@ class DCFLayout extends Equatable {
     'gap',
     'rowGap',
     'columnGap',
+    'start',
+    'end',
+    'marginStart',
+    'marginEnd',
+    'paddingStart',
+    'paddingEnd',
+    'zIndex',
+    'borderTopWidth',
+    'borderRightWidth',
+    'borderBottomWidth',
+    'borderLeftWidth',
+    'borderStartWidth',
+    'borderEndWidth',
     'borderWidth',
   ];
 
@@ -724,6 +863,19 @@ class DCFLayout extends Equatable {
         gap,
         rowGap,
         columnGap,
+        start,
+        end,
+        marginStart,
+        marginEnd,
+        paddingStart,
+        paddingEnd,
+        zIndex,
+        borderTopWidth,
+        borderRightWidth,
+        borderBottomWidth,
+        borderLeftWidth,
+        borderStartWidth,
+        borderEndWidth,
         borderWidth,
         _layoutId,
       ];
