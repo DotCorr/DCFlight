@@ -145,6 +145,44 @@ class DCFScrollViewContentSizeData {
   }
 }
 
+/// Scroll indicator style options
+enum DCFScrollIndicatorStyle {
+  defaultStyle,
+  black,
+  white;
+
+  /// Convert to string value for native side
+  String get value {
+    switch (this) {
+      case DCFScrollIndicatorStyle.defaultStyle:
+        return 'default';
+      case DCFScrollIndicatorStyle.black:
+        return 'black';
+      case DCFScrollIndicatorStyle.white:
+        return 'white';
+    }
+  }
+}
+
+/// Snap to alignment options for scroll view
+enum DCFSnapToAlignment {
+  start,
+  center,
+  end;
+
+  /// Convert to string value for native side
+  String get value {
+    switch (this) {
+      case DCFSnapToAlignment.start:
+        return 'start';
+      case DCFSnapToAlignment.center:
+        return 'center';
+      case DCFSnapToAlignment.end:
+        return 'end';
+    }
+  }
+}
+
 /// DCFScrollView - Optimized scroll view component
 /// Uses your native VirtualizedScrollView for best performance
 class DCFScrollView extends DCFStatelessComponent
@@ -176,6 +214,11 @@ class DCFScrollView extends DCFStatelessComponent
   final Function(DCFScrollViewDragEndData)? onScrollEndDrag;
   final Function(DCFScrollViewScrollEndData)? onScrollEnd;
   final Function(DCFScrollViewContentSizeData)? onContentSizeChange;
+  final Function(DCFScrollViewScrollData)? onMomentumScrollBegin;
+  final Function(DCFScrollViewScrollData)? onMomentumScrollEnd;
+  
+  /// Scroll event throttle (milliseconds between scroll events)
+  final double? scrollEventThrottle;
 
   /// Scroll indicator styling
   /// NOTE: scrollIndicatorColor removed - use StyleSheet.tertiaryColor instead
@@ -187,9 +230,25 @@ class DCFScrollView extends DCFStatelessComponent
   final bool alwaysBounceHorizontal;
   final bool pagingEnabled;
   final bool keyboardDismissMode;
+  final bool bounces;
+  final bool bouncesZoom;
+  final bool canCancelContentTouches;
+  final bool centerContent;
+  final bool automaticallyAdjustContentInsets;
+  final double? decelerationRate;
+  final bool directionalLockEnabled;
+  final DCFScrollIndicatorStyle? indicatorStyle;
+  final double? maximumZoomScale;
+  final double? minimumZoomScale;
+  final bool scrollsToTop;
+  final double? zoomScale;
+  final int? snapToInterval;
+  final DCFSnapToAlignment? snapToAlignment;
+  final DCFPoint? contentOffset;
 
   /// Content insets
   final DCFContentInset? contentInset;
+  final DCFContentInset? scrollIndicatorInsets;
 
   /// Command for imperative scroll operations
   final ScrollViewCommand? command;
@@ -209,6 +268,8 @@ class DCFScrollView extends DCFStatelessComponent
     this.onScrollEndDrag,
     this.onScrollEnd,
     this.onContentSizeChange,
+    this.onMomentumScrollBegin,
+    this.onMomentumScrollEnd,
     // scrollIndicatorColor removed - use StyleSheet.tertiaryColor
     this.scrollIndicatorSize,
     this.scrollEnabled = true,
@@ -216,7 +277,24 @@ class DCFScrollView extends DCFStatelessComponent
     this.alwaysBounceHorizontal = false,
     this.pagingEnabled = false,
     this.keyboardDismissMode = false,
+    this.bounces = true,
+    this.bouncesZoom = true,
+    this.canCancelContentTouches = true,
+    this.centerContent = false,
+    this.automaticallyAdjustContentInsets = true,
+    this.decelerationRate,
+    this.directionalLockEnabled = false,
+    this.indicatorStyle,
+    this.maximumZoomScale,
+    this.minimumZoomScale,
+    this.scrollsToTop = true,
+    this.zoomScale,
+    this.snapToInterval,
+    this.snapToAlignment,
+    this.contentOffset,
     this.contentInset = const DCFContentInset.all(0),
+    this.scrollIndicatorInsets,
+    this.scrollEventThrottle,
     this.command,
     this.events,
     super.key,
@@ -255,6 +333,16 @@ class DCFScrollView extends DCFStatelessComponent
         onContentSizeChange!(DCFScrollViewContentSizeData.fromMap(data));
       };
     }
+    if (onMomentumScrollBegin != null) {
+      eventMap['onMomentumScrollBegin'] = (Map<dynamic, dynamic> data) {
+        onMomentumScrollBegin!(DCFScrollViewScrollData.fromMap(data));
+      };
+    }
+    if (onMomentumScrollEnd != null) {
+      eventMap['onMomentumScrollEnd'] = (Map<dynamic, dynamic> data) {
+        onMomentumScrollEnd!(DCFScrollViewScrollData.fromMap(data));
+      };
+    }
 
     final props = <String, dynamic>{
       'horizontal': horizontal,
@@ -264,10 +352,27 @@ class DCFScrollView extends DCFStatelessComponent
       'alwaysBounceHorizontal': alwaysBounceHorizontal,
       'pagingEnabled': pagingEnabled,
       'keyboardDismissMode': keyboardDismissMode,
+      'bounces': bounces,
+      'bouncesZoom': bouncesZoom,
+      'canCancelContentTouches': canCancelContentTouches,
+      'centerContent': centerContent,
+      'automaticallyAdjustContentInsets': automaticallyAdjustContentInsets,
+      'directionalLockEnabled': directionalLockEnabled,
+      'scrollsToTop': scrollsToTop,
 
+      if (decelerationRate != null) 'decelerationRate': decelerationRate,
+      if (indicatorStyle != null) 'indicatorStyle': indicatorStyle!.value,
+      if (maximumZoomScale != null) 'maximumZoomScale': maximumZoomScale,
+      if (minimumZoomScale != null) 'minimumZoomScale': minimumZoomScale,
+      if (zoomScale != null) 'zoomScale': zoomScale,
+      if (snapToInterval != null) 'snapToInterval': snapToInterval,
+      if (snapToAlignment != null) 'snapToAlignment': snapToAlignment!.value,
+      if (contentOffset != null) 'contentOffset': contentOffset!.toMap(),
       if (contentInset != null) 'contentInset': contentInset!.toMap(),
+      if (scrollIndicatorInsets != null) 'scrollIndicatorInsets': scrollIndicatorInsets!.toMap(),
+      if (scrollEventThrottle != null) 'scrollEventThrottle': scrollEventThrottle,
       // scrollIndicatorColor removed - native components use StyleSheet.tertiaryColor
-      'scrollIndicatorSize': scrollIndicatorSize,
+      if (scrollIndicatorSize != null) 'scrollIndicatorSize': scrollIndicatorSize,
       'contentContainerStyle': contentContainerStyle.toMap(),
 
       ...layout.toMap(),
@@ -322,6 +427,28 @@ class DCFContentInset {
       'left': left,
       'bottom': bottom,
       'right': right,
+    };
+  }
+}
+
+/// Point with x and y coordinates
+class DCFPoint {
+  final double x;
+  final double y;
+
+  const DCFPoint({
+    required this.x,
+    required this.y,
+  });
+
+  const DCFPoint.zero()
+      : x = 0,
+        y = 0;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'x': x,
+      'y': y,
     };
   }
 }

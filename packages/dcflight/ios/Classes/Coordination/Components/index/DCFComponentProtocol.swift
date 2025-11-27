@@ -63,6 +63,10 @@ public protocol DCFComponent {
     
     /// Handle tunnel method calls from Dart
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any?
+    
+    /// Set children for a view (optional - components can override for custom child routing)
+    /// Returns true if handled, false to use default implementation
+    func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool
 }
 
 /// Layout information from a Yoga node
@@ -81,6 +85,14 @@ public struct YGNodeLayout {
 }
 
 public extension DCFComponent {
+    
+    // MARK: - Children Management (Default Implementation)
+    
+    /// Default implementation: Return false to use normal child attachment
+    /// Components can override this to route children to custom containers (e.g., ScrollView contentView)
+    func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
+        return false
+    }
     
     // MARK: - View Recycling (Default Implementation)
     

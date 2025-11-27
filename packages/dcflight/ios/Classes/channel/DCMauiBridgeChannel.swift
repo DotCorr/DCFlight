@@ -292,6 +292,8 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     
     private func handleSetChildren(_ args: [String: Any], result: @escaping FlutterResult) {
+        print("🚨 METHOD_CHANNEL: handleSetChildren called with args: \(args)")
+        
         let viewId: Int?
         if let viewIdInt = args["viewId"] as? Int {
             viewId = viewIdInt
@@ -312,12 +314,17 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         guard let viewId = viewId,
               let childrenIds = childrenIds else {
+            print("❌ METHOD_CHANNEL: Invalid setChildren parameters - viewId=\(String(describing: viewId)), childrenIds=\(String(describing: childrenIds))")
             result(FlutterError(code: "CHILDREN_ERROR", message: "Invalid children parameters", details: nil))
             return
         }
         
+        print("🚨 METHOD_CHANNEL: Calling setChildren for viewId=\(viewId) with \(childrenIds.count) children")
+        
         DispatchQueue.main.async {
+            print("🚨 METHOD_CHANNEL: Inside DispatchQueue.main.async, calling DCMauiBridgeImpl.setChildren")
             let success = DCMauiBridgeImpl.shared.setChildren(viewId: viewId, childrenIds: childrenIds)
+            print("🚨 METHOD_CHANNEL: setChildren returned: \(success)")
             result(success)
         }
     }

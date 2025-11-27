@@ -130,6 +130,14 @@ class DCFViewManager {
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
+        // Store component instance on view for setChildren and other component methods
+        objc_setAssociatedObject(
+            view,
+            UnsafeRawPointer(bitPattern: "componentInstance".hashValue)!,
+            componentInstance,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
         ViewRegistry.shared.registerView(view, id: viewId, type: viewType)
         
         let isScreen = (viewType == "Screen" || props["presentationStyle"] != nil)
@@ -266,15 +274,36 @@ class DCFViewManager {
             childView.removeFromSuperview()
         }
         
-        // Check if parent is already the superview
-        if childView.superview == parentView {
+        // CRITICAL: Check if parent component has custom child routing (e.g., ScrollView contentView)
+        var targetView = parentView
+        
+        if let viewInfo = ViewRegistry.shared.getViewInfo(id: parentId),
+           let componentType = DCFComponentRegistry.shared.getComponentType(for: viewInfo.type) {
+            
+            // Get component instance from view (stored during createView)
+            if let componentInstance = objc_getAssociatedObject(parentView,
+                                                               UnsafeRawPointer(bitPattern: "componentInstance".hashValue)!) as? DCFComponent {
+                
+                // For ScrollView, route to contentView instead of scroll view directly
+                if let scrollView = parentView as? UIScrollView,
+                   let contentView = objc_getAssociatedObject(scrollView,
+                                                            UnsafeRawPointer(bitPattern: "contentView".hashValue)!) as? UIView {
+                    targetView = contentView
+                    print("✅ attachView: Routing child \(childId) to ScrollView contentView for parent \(parentId)")
+                }
+            }
+        }
+        
+        // Check if child is already attached to target view
+        if childView.superview == targetView {
             return true
         }
         
-        if index >= 0 && index < parentView.subviews.count {
-            parentView.insertSubview(childView, at: index)
+        // Attach to target view (either parentView or custom container like contentView)
+        if index >= 0 && index < targetView.subviews.count {
+            targetView.insertSubview(childView, at: index)
         } else {
-            parentView.addSubview(childView)
+            targetView.addSubview(childView)
         }
         
         if !childIsScreen {

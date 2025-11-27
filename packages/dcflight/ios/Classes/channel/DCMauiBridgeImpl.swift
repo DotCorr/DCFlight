@@ -184,9 +184,63 @@ import Foundation
     @objc func setChildren(viewId: Int, childrenIds: [Int]) -> Bool {
         
         guard let parentView = self.views[viewId] else {
+            print("❌ setChildren: Parent view not found for viewId=\(viewId)")
             return false
         }
         
+        print("🔍 setChildren: Checking for custom implementation - viewId=\(viewId), childrenIds.count=\(childrenIds.count), viewType=\(type(of: parentView))")
+        
+        //  Check if component has custom setChildren implementation
+        if let viewInfo = ViewRegistry.shared.getViewInfo(id: viewId) {
+            print("🔍 setChildren: Found viewInfo for viewId=\(viewId), type=\(viewInfo.type)")
+            
+            if let componentType = DCFComponentRegistry.shared.getComponentType(for: viewInfo.type) {
+                print("🔍 setChildren: Found componentType for '\(viewInfo.type)'")
+                
+                // Get component instance from view (stored during createView)
+                let componentInstance = objc_getAssociatedObject(parentView, 
+                                                               UnsafeRawPointer(bitPattern: "componentInstance".hashValue)!) as? DCFComponent
+                
+                if let componentInstance = componentInstance {
+                    print("✅ setChildren: Found component instance for '\(viewInfo.type)'")
+                    
+                    // Get child views
+                    let childViews = childrenIds.compactMap { self.views[$0] }
+                    
+                    print("📦 setChildren: Component '\(viewInfo.type)' has custom setChildren, routing \(childViews.count) children")
+                    
+                    // Call component's setChildren if it exists
+                    if componentInstance.setChildren(parentView, childViews: childViews, viewId: String(viewId)) {
+                        print("✅ setChildren: Component '\(viewInfo.type)' handled children routing")
+                        // Update hierarchy tracking
+                        let viewIdStr = String(viewId)
+                        let childrenIdsStr = childrenIds.map { String($0) }
+                        viewHierarchy[viewIdStr] = childrenIdsStr
+                        for childIdStr in childrenIdsStr {
+                            childToParent[childIdStr] = viewIdStr
+                        }
+                        
+                        // Update layout manager
+                        for (index, childId) in childrenIds.enumerated() {
+                            DCFLayoutManager.shared.addChildNode(parentId: viewId, childId: childId, index: index)
+                        }
+                        
+                        return true
+                    } else {
+                        print("❌ setChildren: Component '\(viewInfo.type)' setChildren returned false")
+                    }
+                } else {
+                    print("❌ setChildren: Component instance not found on view for '\(viewInfo.type)'")
+                }
+            } else {
+                print("❌ setChildren: Component type not found for '\(viewInfo.type)'")
+            }
+        } else {
+            print("❌ setChildren: ViewInfo not found for viewId=\(viewId)")
+        }
+        
+        // Fallback to normal implementation
+        print("⚠️ setChildren: Falling back to normal implementation for viewId=\(viewId)")
         return setChildrenNormally(parentView: parentView, viewId: viewId, childrenIds: childrenIds)
     }
     
