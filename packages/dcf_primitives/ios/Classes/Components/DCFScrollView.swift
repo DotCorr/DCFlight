@@ -150,7 +150,7 @@ class DCFCustomScrollView: UIScrollView {
         return _scrollView
     }
     
-    public var contentView: UIView? {
+    @objc public var contentView: UIView? {
         return _contentView
     }
     
@@ -181,84 +181,80 @@ class DCFCustomScrollView: UIScrollView {
      * we need to calculate its size from the bounding box of its children.
      */
     public func updateContentSizeFromContentView() {
-        guard let contentView = _contentView else { return }
-        
-        // Calculate bounding box of all children (React Native pattern adapted for DCFlight)
-        var minX: CGFloat = CGFloat.greatestFiniteMagnitude
-        var minY: CGFloat = CGFloat.greatestFiniteMagnitude
-        var maxX: CGFloat = -CGFloat.greatestFiniteMagnitude
-        var maxY: CGFloat = -CGFloat.greatestFiniteMagnitude
-        
-        var hasChildren = false
-        
-        // Recursively measure all children in contentView's coordinate space
-        func measureAll(_ view: UIView) {
-            if view.isHidden || view.alpha <= 0 {
-                for subview in view.subviews {
-                    measureAll(subview)
-                }
-                return
-            }
-            
-            let frame = view.frame
-            let frameInContentView: CGRect
-            if let superview = view.superview {
-                frameInContentView = contentView.convert(frame, from: superview)
-            } else {
-                for subview in view.subviews {
-                    measureAll(subview)
-                }
-                return
-            }
-            
-            if !frameInContentView.isNull && !frameInContentView.isInfinite {
-                if frameInContentView.width > 0 && frameInContentView.height > 0 {
-                    hasChildren = true
-                }
-                
-                if frameInContentView.width >= 0 && frameInContentView.height >= 0 {
-                    minX = min(minX, frameInContentView.minX)
-                    minY = min(minY, frameInContentView.minY)
-                    maxX = max(maxX, frameInContentView.maxX)
-                    maxY = max(maxY, frameInContentView.maxY)
-                }
-            }
-            
-            for subview in view.subviews {
-                measureAll(subview)
-            }
+        guard let contentView = _contentView else {
+            _scrollView.contentSize = .zero
+            return
         }
         
+        // React Native pattern: Calculate contentSize from direct children only
+        // In React Native, ScrollContentView is laid out by Yoga, so we measure its direct children
+        var minX: CGFloat = 0
+        var minY: CGFloat = 0
+        var maxX: CGFloat = 0
+        var maxY: CGFloat = 0
+        var hasChildren = false
+        
+        // Only measure DIRECT children of contentView (not recursively)
+        // Each child is already laid out by Yoga with its correct frame
         for subview in contentView.subviews {
-            measureAll(subview)
+            // Skip hidden views
+            if subview.isHidden || subview.alpha <= 0 {
+                continue
+            }
+            
+            let frame = subview.frame
+            
+            // Skip invalid frames (including zero-sized frames that haven't been laid out yet)
+            guard !frame.isNull && !frame.isInfinite && 
+                  frame.width > 0 && frame.height > 0 else {
+                continue
+            }
+            
+            // Update bounding box
+            if !hasChildren {
+                minX = frame.minX
+                minY = frame.minY
+                maxX = frame.maxX
+                maxY = frame.maxY
+                hasChildren = true
+            } else {
+                minX = min(minX, frame.minX)
+                minY = min(minY, frame.minY)
+                maxX = max(maxX, frame.maxX)
+                maxY = max(maxY, frame.maxY)
+            }
         }
         
         let viewportSize = self.bounds.size
         let newContentSize: CGSize
         
-        let hasValidBounds = minX != CGFloat.greatestFiniteMagnitude &&
-                            minY != CGFloat.greatestFiniteMagnitude &&
-                            maxX != -CGFloat.greatestFiniteMagnitude &&
-                            maxY != -CGFloat.greatestFiniteMagnitude
-        
-        if hasValidBounds && hasChildren {
-            // Calculate actual content span
-            let actualContentWidth = maxX - minX
-            let actualContentHeight = maxY - minY
+        if hasChildren {
+            // React Native pattern: contentView starts at (0,0) and contains all children
+            // Content size should be the maximum extent needed to show all children
+            // If children span from y=minY to y=maxY, contentSize.height = maxY (not maxY - minY)
+            // because contentView starts at y=0, so if a child is at y=100, that's 100 points from top
+            // and if the last child ends at y=300, contentSize.height should be 300
             
-            // Width: at least viewport width
-            let contentWidth = max(actualContentWidth, viewportSize.width)
+            // Handle negative coordinates (shouldn't happen in normal layout, but be safe)
+            let adjustedMinX = min(0, minX)
+            let adjustedMinY = min(0, minY)
             
-            // Height: full span from minY to maxY (React Native pattern)
-            // This correctly handles children with negative Y coordinates
-            let contentHeight = actualContentHeight
+            // Content dimensions: from adjusted origin (which might be negative) to maximum extent
+            // If minY > 0, that's fine - it just means there's space at the top before first child
+            // Content size should be maxY to ensure all children are scrollable
+            let contentWidth = maxX - adjustedMinX
+            let contentHeight = maxY - adjustedMinY
             
-            newContentSize = CGSize(width: contentWidth, height: max(contentHeight, viewportSize.height))
+            // Content size must be at least viewport size to enable scrolling
+            let finalWidth = max(contentWidth, viewportSize.width)
+            let finalHeight = max(contentHeight, viewportSize.height)
             
-            // Update contentView frame to match calculated size (always at 0,0)
-            contentView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
+            newContentSize = CGSize(width: finalWidth, height: finalHeight)
+            
+            // Update contentView frame to match content size (always at 0,0)
+            contentView.frame = CGRect(x: 0, y: 0, width: finalWidth, height: finalHeight)
         } else {
-            // No valid bounds - use viewport size
+            // No children - use viewport size
             newContentSize = viewportSize
             contentView.frame = CGRect(x: 0, y: 0, width: viewportSize.width, height: viewportSize.height)
         }
@@ -284,6 +280,11 @@ class DCFCustomScrollView: UIScrollView {
         
         let oldContentSize = _scrollView.contentSize
         let viewportSize = self.bounds.size
+        
+        // If contentSize was zero (initial case), start at top
+        if CGSizeEqualToSize(oldContentSize, .zero) {
+            return .zero
+        }
         
         // Vertical
         let fitsInViewportY = oldContentSize.height <= viewportSize.height && newContentSize.height <= viewportSize.height

@@ -285,11 +285,23 @@ class DCFViewManager {
                                                                UnsafeRawPointer(bitPattern: "componentInstance".hashValue)!) as? DCFComponent {
                 
                 // For ScrollView, route to contentView instead of scroll view directly
-                if let scrollView = parentView as? UIScrollView,
-                   let contentView = objc_getAssociatedObject(scrollView,
-                                                            UnsafeRawPointer(bitPattern: "contentView".hashValue)!) as? UIView {
-                    targetView = contentView
-                    print("✅ attachView: Routing child \(childId) to ScrollView contentView for parent \(parentId)")
+                // Check by component type name (works without importing dcf_primitives)
+                if viewInfo.type == "ScrollView" {
+                    // Try to get contentView from associated object (set by DCFScrollViewComponent)
+                    if let contentView = objc_getAssociatedObject(parentView,
+                                                                UnsafeRawPointer(bitPattern: "contentView".hashValue)!) as? UIView {
+                        targetView = contentView
+                        print("✅ attachView: Routing child \(childId) to ScrollView contentView for parent \(parentId)")
+                    } else {
+                        // Fallback: Try to access contentView property via runtime
+                        let contentViewSelector = NSSelectorFromString("contentView")
+                        if parentView.responds(to: contentViewSelector) {
+                            if let contentView = parentView.perform(contentViewSelector)?.takeUnretainedValue() as? UIView {
+                                targetView = contentView
+                                print("✅ attachView: Routing child \(childId) to ScrollView contentView (via selector) for parent \(parentId)")
+                            }
+                        }
+                    }
                 }
             }
         }
