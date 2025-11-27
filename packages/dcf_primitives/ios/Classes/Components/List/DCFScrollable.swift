@@ -13,12 +13,9 @@ import dcflight
 class DCFScrollableView: UIScrollView {
     
     var isHorizontal: Bool = false
-    var virtualizedContentOffsetStart: CGFloat = 0
-    var virtualizedContentPaddingTop: CGFloat = 0
     var nodeId: String?
     
     private var explicitContentSize: CGSize?
-    private var lastFrameSize: CGSize = .zero
     private var isUpdatingContentSize: Bool = false // Prevent redundant calculations
     
     override init(frame: CGRect) {
@@ -33,9 +30,19 @@ class DCFScrollableView: UIScrollView {
     
     private func setupDCFScrollableView() {
         self.clipsToBounds = true
+        // Important: Ensure contentInsetAdjustmentBehavior is automatic or never, depending on needs
+        // For now, let's stick to default, but be aware of it.
+        if #available(iOS 11.0, *) {
+            self.contentInsetAdjustmentBehavior = .never
+        }
     }
     
-    /// Update content size based on Yoga layout results - React Native VirtualizedList approach
+    /// Update content size based on Yoga layout results
+    ///
+    /// Simplified approach:
+    /// 1. Iterate over direct subviews (which are Yoga nodes).
+    /// 2. Find the maximum extent (maxX, maxY).
+    /// 3. Set contentSize to that extent.
     func updateContentSizeFromYogaLayout() {
         guard !isUpdatingContentSize else { return }
         isUpdatingContentSize = true
@@ -46,75 +53,35 @@ class DCFScrollableView: UIScrollView {
             return
         }
         
-        var maxWidth: CGFloat = 0
-        var maxHeight: CGFloat = 0
+        // Ensure layout is up to date
+        self.layoutIfNeeded()
         
-        // CRITICAL: Check all subviews, including nested content containers
-        // This ensures we capture the full content size even if content is in a container
-        for subview in self.subviews {
+        var maxX: CGFloat = 0
+        var maxY: CGFloat = 0
+        
+        // Get all content children (exclude scroll indicators)
+        let contentChildren = self.subviews.filter { subview in
             let className = NSStringFromClass(type(of: subview))
-            guard !className.contains("UIScrollView") && !className.contains("_UIScrollViewScrollIndicator") else { continue }
-            
-            // Get the actual bounds of the subview
-            let right = subview.frame.origin.x + subview.frame.size.width
-            let bottom = subview.frame.origin.y + subview.frame.size.height
-            
-            maxWidth = max(maxWidth, right)
-            maxHeight = max(maxHeight, bottom)
-            
-            // CRITICAL: Also check children of content containers (for nested layouts)
-            if let container = subview as? UIView {
-                for child in container.subviews {
-                    let childRight = child.frame.origin.x + child.frame.size.width + container.frame.origin.x
-                    let childBottom = child.frame.origin.y + child.frame.size.height + container.frame.origin.y
-                    
-                    maxWidth = max(maxWidth, childRight)
-                    maxHeight = max(maxHeight, childBottom)
-                }
-            }
+            return !className.contains("UIScrollView") && !className.contains("_UIScrollViewScrollIndicator")
         }
         
-        if virtualizedContentOffsetStart > 0 || virtualizedContentPaddingTop > 0 {
-            let extraPadding = max(virtualizedContentOffsetStart, virtualizedContentPaddingTop)
+        for child in contentChildren {
+            // Trust the frame set by Yoga/Layout system
+            let right = child.frame.maxX
+            let bottom = child.frame.maxY
             
-            if isHorizontal {
-                maxWidth += extraPadding
-                
-                for subview in self.subviews {
-                    let className = NSStringFromClass(type(of: subview))
-                    guard !className.contains("UIScrollView") else { continue }
-                    
-                    var frame = subview.frame
-                    frame.origin.x += extraPadding
-                    subview.frame = frame
-                }
-            } else {
-                maxHeight += extraPadding
-                
-                for subview in self.subviews {
-                    let className = NSStringFromClass(type(of: subview))
-                    guard !className.contains("UIScrollView") else { continue }
-                    
-                    var frame = subview.frame
-                    frame.origin.y += extraPadding
-                    subview.frame = frame
-                }
-            }
+            maxX = max(maxX, right)
+            maxY = max(maxY, bottom)
         }
         
-        let availableWidth = self.frame.width
-        let availableHeight = self.frame.height
+        // Ensure content size is at least the size of the scroll view if needed,
+        // but typically scroll view content size should just be the content.
+        // If content is smaller than viewport, it won't scroll (which is correct).
         
-        let finalContentSize: CGSize
-        if isHorizontal {
-            finalContentSize = CGSize(width: maxWidth, height: availableHeight)
-        } else {
-            finalContentSize = CGSize(width: availableWidth, height: maxHeight)
-        }
+        let finalContentSize = CGSize(width: maxX, height: maxY)
         
         if self.contentSize != finalContentSize {
             self.contentSize = finalContentSize
-            
             notifyContentSizeUpdate(finalContentSize)
         }
     }
@@ -125,7 +92,6 @@ class DCFScrollableView: UIScrollView {
         
         if self.contentSize != size {
             self.contentSize = size
-            
             notifyContentSizeUpdate(size)
         }
     }
@@ -143,18 +109,17 @@ class DCFScrollableView: UIScrollView {
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        let currentFrameSize = self.frame.size
-        
-        if lastFrameSize != currentFrameSize && !isUpdatingContentSize {
-            lastFrameSize = currentFrameSize
-            
-            if currentFrameSize.width > 0 && currentFrameSize.height > 0 && self.subviews.count > 0 {
-                // 🚀 CRITICAL: Delay to ensure Yoga layout is complete after orientation change
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    guard !self.isUpdatingContentSize else { return }
-                    self.updateContentSizeFromYogaLayout()
-                }
-            }
+        // Check if we need to update content size
+        // We can do this check cheaply
+        if !isUpdatingContentSize {
+             // Debounce or check if update is needed?
+             // For now, let's just trigger it if we have children
+             if self.subviews.count > 0 {
+                 // Use a small delay or run on next runloop to allow layout to settle
+                 DispatchQueue.main.async { [weak self] in
+                     self?.updateContentSizeFromYogaLayout()
+                 }
+             }
         }
     }
     

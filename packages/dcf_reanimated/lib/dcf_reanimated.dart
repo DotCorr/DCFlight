@@ -13,9 +13,6 @@ export 'src/enums/animation_enums.dart';
 // Core animation values and configuration
 export 'src/values/animation_values.dart';
 
-// Canvas repaint notifier for efficient animations
-export 'src/values/canvas_notifier.dart';
-
 // Mutable animated values for React Native Skia-style animations (AnimatedValue)
 export 'src/values/shared_value.dart';
 
@@ -27,10 +24,6 @@ export 'src/components/reanimated_view.dart';
 
 // Framer Motion-style declarative animation component
 export 'src/components/motion.dart';
-
-// Canvas and Confetti components
-export 'src/components/canvas_component.dart';
-export 'src/components/confetti_component.dart';
 
 export 'src/hooks/skia_hooks.dart';
 

@@ -30,6 +30,7 @@ class DCFViewComponent: NSObject, DCFComponent {
         guard let view = view as? UIView else { return false }
         
         // Handle viewport detection (low-level API - any view can use it)
+        // Uses DCFViewportObserver from dcflight framework
         let hasViewportCallbacks = props["onViewportEnter"] != nil || props["onViewportLeave"] != nil
         if hasViewportCallbacks {
             let viewportData = props["viewport"] as? [String: Any]

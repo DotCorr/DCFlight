@@ -37,7 +37,6 @@ class ScrollContentContainer @JvmOverloads constructor(
     }
     
     // Inherits all functionality from DCFFrameLayout
-    // No need to override onLayout - DCFFrameLayout already handles manually positioned children
 }
 
 /**
@@ -52,28 +51,19 @@ class DCFScrollViewComponent : DCFComponent() {
         scrollView.setTag(DCFTags.COMPONENT_TYPE_KEY, "ScrollView")
         
         // Create content container (FrameLayout to hold children)
-        // CRITICAL: For vertical scrolling, width should match ScrollView, height grows with content
-        // Use a custom FrameLayout that doesn't reset manually positioned children
         val contentContainer = ScrollContentContainer(context)
         val containerParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, // Fill ScrollView width
-            ViewGroup.LayoutParams.WRAP_CONTENT  // Grow with content height
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
         )
         contentContainer.layoutParams = containerParams
-        // CRITICAL: Ensure content container is visible and can receive children
         contentContainer.visibility = View.VISIBLE
         contentContainer.clipToPadding = false
         contentContainer.clipChildren = false
         scrollView.addView(contentContainer)
         scrollView.setContentContainer(contentContainer) // Register with ScrollView
         
-        // Set up scroll view properties
-        // NestedScrollView is vertical by default
-        // For horizontal scrolling, we'd need HorizontalScrollView (not implemented yet)
-        
         // Set up scroll listener for events
-        // Note: NestedScrollView doesn't have setOnScrollChangeListener in older API levels
-        // We'll use a custom scroll listener
         scrollView.viewTreeObserver.addOnScrollChangedListener {
             val scrollX = scrollView.scrollX
             val scrollY = scrollView.scrollY
@@ -100,8 +90,7 @@ class DCFScrollViewComponent : DCFComponent() {
             }
             
             // CRITICAL: Built-in viewport detection - check all observed views in this scroll view
-            // This is part of ScrollView API, not a separate observer
-            com.dotcorr.dcf_primitives.utils.DCFViewportObserver.checkViewsInScrollView(scrollView)
+            com.dotcorr.dcflight.utils.DCFViewportObserver.checkViewsInScrollView(scrollView)
         }
         
         // Handle scroll begin/end drag events
@@ -170,7 +159,6 @@ class DCFScrollViewComponent : DCFComponent() {
         mergedProps["tertiaryColor"]?.let { colorStr ->
             if (colorStr is String) {
                 val color = ColorUtilities.parseColor(colorStr)
-                // Android doesn't have direct scroll indicator color API, but we can store it
                 scrollView.setTag(DCFPrimitiveTags.SCROLL_INDICATOR_COLOR_KEY, color)
             }
         }
@@ -199,8 +187,6 @@ class DCFScrollViewComponent : DCFComponent() {
                 else -> false
             }
             scrollView.isHorizontal = horizontal
-            // Note: NestedScrollView is vertical-only, horizontal would need HorizontalScrollView
-            // For now, we'll just track the flag
         }
         
         // Paging enabled
@@ -249,7 +235,6 @@ class DCFScrollViewComponent : DCFComponent() {
                 is String -> it.toFloatOrNull() ?: 0f
                 else -> 0f
             }
-            // Note: Border radius requires custom drawable or CardView
             scrollView.setTag(DCFPrimitiveTags.BORDER_RADIUS_KEY, radius)
         }
         
@@ -324,60 +309,12 @@ class DCFScrollViewComponent : DCFComponent() {
             (layout.top + layout.height).toInt()
         )
         
-        // CRITICAL: Update content size after layout
-        // This ensures ScrollView knows the full content size for scrolling
-        // Delay slightly to ensure all children are laid out first
+        // Update content size after layout
         scrollView.post {
             scrollView.updateContentSizeFromYogaLayout()
             
             // Also trigger viewport check after content size update
-            com.dotcorr.dcf_primitives.utils.DCFViewportObserver.checkViewsInScrollView(scrollView)
-        }
-        
-        // CRITICAL: Position content container at (0, 0) inside ScrollView
-        // Container size will be set by updateContentSizeFromYogaLayout based on children
-        val contentContainer = scrollView.getChildAt(0) as? FrameLayout
-        contentContainer?.let { container ->
-            val scrollWidth = scrollView.width
-            val scrollHeight = scrollView.height
-            if (scrollWidth > 0 && scrollHeight > 0) {
-                // Ensure container layout params allow it to fill ScrollView width and grow height
-                val layoutParams = container.layoutParams ?: ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                
-                // For vertical scrolling: width = MATCH_PARENT (fills ScrollView), height = WRAP_CONTENT (grows with content)
-                // For horizontal scrolling: width = WRAP_CONTENT (grows with content), height = MATCH_PARENT (fills ScrollView)
-                if (!scrollView.isHorizontal) {
-                    // Vertical: fill width, growing height
-                    layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
-                    layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
-                } else {
-                    // Horizontal: growing width, fill height
-                    layoutParams.width = ViewGroup.LayoutParams.WRAP_CONTENT
-                    layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
-                }
-                container.layoutParams = layoutParams
-                container.visibility = View.VISIBLE
-                
-                // CRITICAL: DON'T call container.layout() here!
-                // It resets all children positions to (0, 0).
-                // Let Yoga handle layout through the normal layout pass.
-                // The container will be laid out by its parent (ScrollView) automatically.
-            }
-        }
-        
-        // Force layout pass to ensure children are positioned
-        scrollView.requestLayout()
-        
-        // CRITICAL: Update content size after layout completes
-        // This must happen after all children are laid out by Yoga
-        scrollView.post {
-            // Wait one more frame to ensure all children are positioned
-            scrollView.post {
-                scrollView.updateContentSizeFromYogaLayout()
-            }
+            com.dotcorr.dcflight.utils.DCFViewportObserver.checkViewsInScrollView(scrollView)
         }
     }
     
@@ -385,14 +322,14 @@ class DCFScrollViewComponent : DCFComponent() {
         val scrollView = view as? DCFScrollableView
         scrollView?.nodeId = nodeId
         
-        // Update content size after registration (matches iOS behavior)
-        scrollView?.postDelayed({
+        // Update content size after registration
+        scrollView?.post {
             scrollView.updateContentSizeFromYogaLayout()
-        }, 100) // 100ms delay, matches iOS 0.1s
+        }
     }
     
     /**
-     * Handle commands passed as props - matches iOS handleCommand behavior
+     * Handle commands passed as props
      */
     private fun handleCommand(scrollView: DCFScrollableView, props: Map<String, Any?>) {
         val commandData = props["command"] as? Map<String, Any?> ?: return
@@ -445,7 +382,6 @@ class DCFScrollViewComponent : DCFComponent() {
         // Flash scroll indicators
         commandData["flashScrollIndicators"]?.let {
             if (it is Boolean && it) {
-                // Android doesn't have flashScrollIndicators, but we can show scrollbars temporarily
                 scrollView.isVerticalScrollBarEnabled = true
                 scrollView.postDelayed({
                     // Scrollbars will auto-hide
@@ -478,4 +414,3 @@ class DCFScrollViewComponent : DCFComponent() {
         return null
     }
 }
-

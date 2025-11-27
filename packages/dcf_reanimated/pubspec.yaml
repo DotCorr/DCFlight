@@ -19,8 +19,6 @@ dependencies:
 # framework dependencies (local)
   dcflight:
    path : ../dcflight
-  dcf_primitives:
-    path: ../dcf_primitives
   equatable: ^2.0.5
 
 dev_dependencies:

@@ -429,112 +429,112 @@ class YogaShadowTree {
                 updateNodeTransformContext(node: node, key: "scaleY", value: scaleY)
             }
         case "width":
-            if let width = convertToFloat(value) {
+            if let width = parseDimension(value) {
                 YGNodeStyleSetWidth(node, width)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetWidthPercent(node, percentValue)
             }
         case "height":
-            if let height = convertToFloat(value) {
+            if let height = parseDimension(value) {
                 YGNodeStyleSetHeight(node, height)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetHeightPercent(node, percentValue)
             }
         case "minWidth":
-            if let minWidth = convertToFloat(value) {
+            if let minWidth = parseDimension(value) {
                 YGNodeStyleSetMinWidth(node, minWidth)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMinWidthPercent(node, percentValue)
             }
         case "maxWidth":
-            if let maxWidth = convertToFloat(value) {
+            if let maxWidth = parseDimension(value) {
                 YGNodeStyleSetMaxWidth(node, maxWidth)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMaxWidthPercent(node, percentValue)
             }
         case "minHeight":
-            if let minHeight = convertToFloat(value) {
+            if let minHeight = parseDimension(value) {
                 YGNodeStyleSetMinHeight(node, minHeight)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMinHeightPercent(node, percentValue)
             }
         case "maxHeight":
-            if let maxHeight = convertToFloat(value) {
+            if let maxHeight = parseDimension(value) {
                 YGNodeStyleSetMaxHeight(node, maxHeight)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMaxHeightPercent(node, percentValue)
             }
         case "margin":
-            if let margin = convertToFloat(value) {
+            if let margin = parseDimension(value) {
                 YGNodeStyleSetMargin(node, YGEdge.all, margin)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.all, percentValue)
             }
         case "marginTop":
-            if let marginTop = convertToFloat(value) {
+            if let marginTop = parseDimension(value) {
                 YGNodeStyleSetMargin(node, YGEdge.top, marginTop)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.top, percentValue)
             }
         case "marginRight":
-            if let marginRight = convertToFloat(value) {
+            if let marginRight = parseDimension(value) {
                 YGNodeStyleSetMargin(node, YGEdge.right, marginRight)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.right, percentValue)
             }
         case "marginBottom":
-            if let marginBottom = convertToFloat(value) {
+            if let marginBottom = parseDimension(value) {
                 YGNodeStyleSetMargin(node, YGEdge.bottom, marginBottom)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.bottom, percentValue)
             }
         case "marginLeft":
-            if let marginLeft = convertToFloat(value) {
+            if let marginLeft = parseDimension(value) {
                 YGNodeStyleSetMargin(node, YGEdge.left, marginLeft)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMarginPercent(node, YGEdge.left, percentValue)
             }
         case "padding":
-            if let padding = convertToFloat(value) {
+            if let padding = parseDimension(value) {
                 YGNodeStyleSetPadding(node, YGEdge.all, padding)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.all, percentValue)
             }
         case "paddingTop":
-            if let paddingTop = convertToFloat(value) {
+            if let paddingTop = parseDimension(value) {
                 YGNodeStyleSetPadding(node, YGEdge.top, paddingTop)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.top, percentValue)
             }
         case "paddingRight":
-            if let paddingRight = convertToFloat(value) {
+            if let paddingRight = parseDimension(value) {
                 YGNodeStyleSetPadding(node, YGEdge.right, paddingRight)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.right, percentValue)
             }
         case "paddingBottom":
-            if let paddingBottom = convertToFloat(value) {
+            if let paddingBottom = parseDimension(value) {
                 YGNodeStyleSetPadding(node, YGEdge.bottom, paddingBottom)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPaddingPercent(node, YGEdge.bottom, percentValue)
             }
         case "paddingLeft":
-            if let paddingLeft = convertToFloat(value) {
+            if let paddingLeft = parseDimension(value) {
                 YGNodeStyleSetPadding(node, YGEdge.left, paddingLeft)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
@@ -556,7 +556,7 @@ class YogaShadowTree {
             }
         case "left":
             if !isStaticPositioned(node: node) {
-                if let left = convertToFloat(value) {
+                if let left = parseDimension(value) {
                     YGNodeStyleSetPosition(node, YGEdge.left, left)
                 } else if let strValue = value as? String, strValue.hasSuffix("%"),
                          let percentValue = Float(strValue.dropLast()) {
@@ -565,7 +565,7 @@ class YogaShadowTree {
             }
         case "top":
             if !isStaticPositioned(node: node) {
-                if let top = convertToFloat(value) {
+                if let top = parseDimension(value) {
                     YGNodeStyleSetPosition(node, YGEdge.top, top)
                 } else if let strValue = value as? String, strValue.hasSuffix("%"),
                          let percentValue = Float(strValue.dropLast()) {
@@ -574,7 +574,7 @@ class YogaShadowTree {
             }
         case "right":
             if !isStaticPositioned(node: node) {
-                if let right = convertToFloat(value) {
+                if let right = parseDimension(value) {
                     YGNodeStyleSetPosition(node, YGEdge.right, right)
                 } else if let strValue = value as? String, strValue.hasSuffix("%"),
                          let percentValue = Float(strValue.dropLast()) {
@@ -583,7 +583,7 @@ class YogaShadowTree {
             }
         case "bottom":
             if !isStaticPositioned(node: node) {
-                if let bottom = convertToFloat(value) {
+                if let bottom = parseDimension(value) {
                     YGNodeStyleSetPosition(node, YGEdge.bottom, bottom)
                 } else if let strValue = value as? String, strValue.hasSuffix("%"),
                          let percentValue = Float(strValue.dropLast()) {
@@ -696,7 +696,7 @@ class YogaShadowTree {
                 YGNodeStyleSetFlexShrink(node, flexShrink)
             }
         case "flexBasis":
-            if let flexBasis = convertToFloat(value) {
+            if let flexBasis = parseDimension(value) {
                 YGNodeStyleSetFlexBasis(node, flexBasis)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
@@ -740,7 +740,7 @@ class YogaShadowTree {
                 }
             }
         case "borderWidth":
-            if let borderWidth = convertToFloat(value) {
+            if let borderWidth = parseDimension(value) {
                 YGNodeStyleSetBorder(node, YGEdge.all, borderWidth)
             }
         case "aspectRatio":
@@ -748,15 +748,15 @@ class YogaShadowTree {
                 YGNodeStyleSetAspectRatio(node, aspectRatio)
             }
         case "gap":
-            if let gap = convertToFloat(value) {
+            if let gap = parseDimension(value) {
                 YGNodeStyleSetGap(node, YGGutter.all, gap)
             }
         case "rowGap":
-            if let rowGap = convertToFloat(value) {
+            if let rowGap = parseDimension(value) {
                 YGNodeStyleSetGap(node, YGGutter.row, rowGap)
             }
         case "columnGap":
-            if let columnGap = convertToFloat(value) {
+            if let columnGap = parseDimension(value) {
                 YGNodeStyleSetGap(node, YGGutter.column, columnGap)
             }
         default:
@@ -776,6 +776,28 @@ class YogaShadowTree {
         } else if let str = value as? String, let num = Float(str) {
             return num
         }
+        return nil
+    }
+    
+    private func parseDimension(_ value: Any) -> Float? {
+        if let num = convertToFloat(value) {
+            return num
+        }
+        
+        if let strValue = value as? String {
+            if strValue.hasSuffix("vh") {
+                if let percentValue = Float(strValue.dropLast(2)) {
+                    let screenHeight = Float(UIScreen.main.bounds.height)
+                    return (percentValue / 100.0) * screenHeight
+                }
+            } else if strValue.hasSuffix("vw") {
+                if let percentValue = Float(strValue.dropLast(2)) {
+                    let screenWidth = Float(UIScreen.main.bounds.width)
+                    return (percentValue / 100.0) * screenWidth
+                }
+            }
+        }
+        
         return nil
     }
     
@@ -803,378 +825,77 @@ class YogaShadowTree {
                      let percentValue = Float(strValue.dropLast()) {
                 contextDict["translateYPercent"] = percentValue
             }
+        case "scale":
+            if let scale = convertToFloat(value) {
+                contextDict["scale"] = scale
+            }
+        case "scaleX":
+            if let scaleX = convertToFloat(value) {
+                contextDict["scaleX"] = scaleX
+            }
+        case "scaleY":
+            if let scaleY = convertToFloat(value) {
+                contextDict["scaleY"] = scaleY
+            }
+        case "rotate":
+            if let rotate = convertToFloat(value) {
+                contextDict["rotate"] = rotate
+            }
+        case "positionType":
+            if let type = value as? String {
+                contextDict["positionType"] = type
+            }
         default:
-            if let floatValue = value as? Float {
-                contextDict[key] = floatValue
-            }
+            break
         }
         
-        if let existingContextPtr = YGNodeGetContext(node) {
-            Unmanaged<NSDictionary>.fromOpaque(existingContextPtr).release()
-                }
-                
-                YGNodeSetContext(node, Unmanaged.passRetained(contextDict as NSDictionary).toOpaque())
-            }
-            
-            func setCustomMeasureFunction(nodeId: String, measureFunc: @escaping YGMeasureFunc) {
-                guard let node = nodes[nodeId] else { return }
-                
-                if YGNodeGetChildCount(node) == 0 {
-                    YGNodeSetMeasureFunc(node, measureFunc)
-                }
-            }
-            
-            private func applyLayoutToView(viewId: String, frame: CGRect) {
-                guard let viewIdInt = Int(viewId),
-                      let view = DCFLayoutManager.shared.getView(withId: viewIdInt),
-                      let node = nodes[viewId] else {
-                    return
-                }
-                
-                // CRITICAL: Skip layout for views that opt-out via DCFLayoutIndependent protocol
-                // This allows modules (like dcf_reanimated) to make views layout-independent
-                // without modifying the framework layer 
-                if let layoutIndependent = view as? DCFLayoutIndependent,
-                   layoutIndependent.shouldSkipLayout {
-                    // Skip layout update to prevent interference with animations/transforms
-                    return
-                }
-                
-                var finalFrame = frame
-                
-                if let contextPtr = YGNodeGetContext(node),
-                   let contextDict = Unmanaged<NSDictionary>.fromOpaque(contextPtr).takeUnretainedValue() as? [String: Any] {
-                    
-                    var transform = CGAffineTransform.identity
-                    var translationX: CGFloat = 0
-                    var translationY: CGFloat = 0
-                    
-                    if let translateX = contextDict["translateX"] as? Float {
-                        translationX += CGFloat(translateX)
-                    }
-                    
-                    if let translateXPercent = contextDict["translateXPercent"] as? Float {
-                        let parentWidth = finalFrame.width
-                        translationX += CGFloat(translateXPercent * Float(parentWidth) / 100.0)
-                    }
-                    
-                    if let translateY = contextDict["translateY"] as? Float {
-                        translationY += CGFloat(translateY)
-                    }
-                    
-                    if let translateYPercent = contextDict["translateYPercent"] as? Float {
-                        let parentHeight = finalFrame.height
-                        translationY += CGFloat(translateYPercent * Float(parentHeight) / 100.0)
-                    }
-                    
-                    finalFrame.origin.x += translationX
-                    finalFrame.origin.y += translationY
-                    
-                    var hasTransform = false
-                    
-                    let centerX = finalFrame.width / 2.0
-                    let centerY = finalFrame.height / 2.0
-                    
-                    transform = transform.translatedBy(x: centerX, y: centerY)
-                    
-                    if let rotation = contextDict["rotate"] as? Float {
-                        transform = transform.rotated(by: CGFloat(rotation))
-                        hasTransform = true
-                    }
-                    
-                    if let scale = contextDict["scale"] as? Float {
-                        transform = transform.scaledBy(x: CGFloat(scale), y: CGFloat(scale))
-                        hasTransform = true
-                    } else {
-                        var scaleXValue: CGFloat = 1.0
-                        var scaleYValue: CGFloat = 1.0
-                        
-                        if let scaleX = contextDict["scaleX"] as? Float {
-                            scaleXValue = CGFloat(scaleX)
-                            hasTransform = true
-                        }
-                        
-                        if let scaleY = contextDict["scaleY"] as? Float {
-                            scaleYValue = CGFloat(scaleY)
-                            hasTransform = true
-                        }
-                        
-                        if hasTransform {
-                            transform = transform.scaledBy(x: scaleXValue, y: scaleYValue)
-                        }
-                    }
-                    
-                    transform = transform.translatedBy(x: -centerX, y: -centerY)
-                    
-                    if hasTransform {
-                        DispatchQueue.main.async {
-                            guard let viewIdInt = Int(viewId),
-                                  let view = DCFLayoutManager.shared.getView(withId: viewIdInt),
-                                  view.superview != nil || view.window != nil else {
-                                return
-                            }
-                            view.transform = transform
-                        }
-                    }
-                }
-                
-                DispatchQueue.main.async {
-                    guard let viewIdInt = Int(viewId),
-                          let view = DCFLayoutManager.shared.getView(withId: viewIdInt) else {
-                        return
-                    }
-                    
-                    guard view.superview != nil || view.window != nil,
-                          view.layer != nil,
-                          !view.isEqual(nil) else {
-                        return
-                    }
-                    
-                    guard finalFrame.width.isFinite && finalFrame.height.isFinite &&
-                          finalFrame.origin.x.isFinite && finalFrame.origin.y.isFinite else {
-                        return
-                    }
-                    
-                    let wasUserInteractionEnabled = view.isUserInteractionEnabled
-                    
-                    DCFLayoutManager.shared.applyLayout(
-                        to: viewIdInt,
-                        left: finalFrame.origin.x,
-                        top: finalFrame.origin.y,
-                        width: finalFrame.width,
-                        height: finalFrame.height
-                    )
-                    
-                    view.isUserInteractionEnabled = wasUserInteractionEnabled
-                    view.setNeedsLayout()
-                    view.layoutIfNeeded()
-                }
-            }
-            
-            
-            /// Apply web defaults for cross-platform compatibility
-            /// Web defaults: flex-direction: row, align-content: stretch, flex-shrink: 1
-            func applyWebDefaults() {
-                syncQueue.sync {
-                    useWebDefaults = true
-                    
-                    if let root = rootNode {
-                        YGNodeStyleSetFlexDirection(root, YGFlexDirection.row)
-                        YGNodeStyleSetAlignContent(root, YGAlign.stretch)
-                        YGNodeStyleSetFlexShrink(root, 1.0)
-                        
-                        print("✅ YogaShadowTree: Applied web defaults to root node")
-                    }
-                    
-                    for (_, screenRoot) in screenRoots {
-                        YGNodeStyleSetFlexDirection(screenRoot, YGFlexDirection.row)
-                        YGNodeStyleSetAlignContent(screenRoot, YGAlign.stretch) 
-                        YGNodeStyleSetFlexShrink(screenRoot, 1.0)
-                    }
-                    
-                    print("✅ YogaShadowTree: Applied web defaults to \(screenRoots.count) screen roots")
-                }
-            }
-            
-            /// Apply default node styles based on configuration
-            private func applyDefaultNodeStyles(to node: YGNodeRef) {
-                if useWebDefaults {
-                    YGNodeStyleSetFlexDirection(node, YGFlexDirection.row)
-                    YGNodeStyleSetAlignContent(node, YGAlign.stretch)
-                    YGNodeStyleSetFlexShrink(node, 1.0)
-                } else {
-                    YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
-                    YGNodeStyleSetAlignContent(node, YGAlign.flexStart)
-                    YGNodeStyleSetFlexShrink(node, 0.0)
-                }
-                
-                YGNodeStyleSetJustifyContent(node, YGJustify.center)
-                YGNodeStyleSetAlignItems(node, YGAlign.center)
-            }
-            
-            /// Check if a node is positioned as static
-            private func isStaticPositioned(node: YGNodeRef) -> Bool {
-                guard let context = YGNodeGetContext(node),
-                      let contextDict = Unmanaged<NSDictionary>.fromOpaque(context).takeUnretainedValue() as? [String: Any],
-                      let positionType = contextDict["positionType"] as? String else {
-                    return false
-                }
-                return positionType == "static"
-            }
-            
-            /// Apply layout inheritance from parent to child node
-            /// This ensures cross-platform layout consistency between iOS and Android
-            private func applyParentLayoutInheritance(childNode: YGNodeRef, parentNode: YGNodeRef, childId: String) {
-                guard let nodeType = nodeTypes[childId] else { return }
-                
-                
-                let isParentWithChildren = YGNodeGetChildCount(childNode) > 0
-                
-                if isParentWithChildren {
-                    
-                    let childAlignItems = YGNodeStyleGetAlignItems(childNode)
-                    let childJustifyContent = YGNodeStyleGetJustifyContent(childNode)
-                    let childAlignContent = YGNodeStyleGetAlignContent(childNode)
-                    
-                    let parentAlignItems = YGNodeStyleGetAlignItems(parentNode)
-                    let parentJustifyContent = YGNodeStyleGetJustifyContent(parentNode)
-                    let parentAlignContent = YGNodeStyleGetAlignContent(parentNode)
-                    
-                    if childAlignItems == YGAlign.stretch && parentAlignItems != YGAlign.stretch {
-                        YGNodeStyleSetAlignItems(childNode, parentAlignItems)
-                        print("🔄 INHERIT: Parent \(childId) inherited alignItems=\(parentAlignItems) from parent")
-                    }
-                    
-                    if childJustifyContent == YGJustify.flexStart && parentJustifyContent != YGJustify.flexStart {
-                        YGNodeStyleSetJustifyContent(childNode, parentJustifyContent)
-                        print("🔄 INHERIT: Parent \(childId) inherited justifyContent=\(parentJustifyContent) from parent")
-                    }
-                    
-                    if childAlignContent == YGAlign.flexStart && parentAlignContent != YGAlign.flexStart {
-                        YGNodeStyleSetAlignContent(childNode, parentAlignContent)
-                        print("🔄 INHERIT: Parent \(childId) inherited alignContent=\(parentAlignContent) from parent")
-                    }
-                    
-                    print("🔄 LAYOUT: Parent container \(childId) (\(nodeType)) with \(YGNodeGetChildCount(childNode)) children inherits layout props")
-                } else {
-                    print("🔄 LAYOUT: Leaf node \(childId) (\(nodeType)) positioned via parent flex layout (no inheritance)")
-                }
-                
-                
-                print("🔄 LAYOUT: Child \(childId) (\(nodeType)) positioned via parent flex layout (no alignSelf override)")
-            }
-            
-            deinit {
-                for (_, node) in nodes {
-                    YGNodeFree(node)
-                }
-                
-                for (_, screenRoot) in screenRoots {
-                    YGNodeFree(screenRoot)
-                }
-            }
-        }
-
-extension YogaShadowTree {
+        YGNodeSetContext(node, Unmanaged.passRetained(contextDict as NSDictionary).toOpaque())
+    }
     
-    /// Recalculate layout for a specific node and its children (for animations)
-    func recalculateLayoutForNode(nodeId: String) {
-        syncQueue.async {
-            guard let node = self.nodes[nodeId] else {
-                print("⚠️ YogaShadowTree: Cannot recalculate layout for unknown node '\(nodeId)'")
-                return
+    private func applyDefaultNodeStyles(to node: YGNodeRef) {
+        if useWebDefaults {
+            YGNodeStyleSetFlexDirection(node, YGFlexDirection.row)
+            YGNodeStyleSetAlignContent(node, YGAlign.stretch)
+            YGNodeStyleSetFlexShrink(node, 1.0)
+        } else {
+            YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
+            YGNodeStyleSetAlignContent(node, YGAlign.flexStart)
+            YGNodeStyleSetFlexShrink(node, 0.0)
+        }
+        
+        YGNodeStyleSetJustifyContent(node, YGJustify.center)
+        YGNodeStyleSetAlignItems(node, YGAlign.center)
+    }
+    
+    private func applyParentLayoutInheritance(childNode: YGNodeRef, parentNode: YGNodeRef, childId: String) {
+        guard let nodeType = nodeTypes[childId] else { return }
+        
+        let isParentWithChildren = YGNodeGetChildCount(childNode) > 0
+        
+        if isParentWithChildren {
+            let childAlignItems = YGNodeStyleGetAlignItems(childNode)
+            let childJustifyContent = YGNodeStyleGetJustifyContent(childNode)
+            let childAlignContent = YGNodeStyleGetAlignContent(childNode)
+            
+            let parentAlignItems = YGNodeStyleGetAlignItems(parentNode)
+            let parentJustifyContent = YGNodeStyleGetJustifyContent(parentNode)
+            let parentAlignContent = YGNodeStyleGetAlignContent(parentNode)
+            
+            if childAlignItems == YGAlign.stretch && parentAlignItems != YGAlign.stretch {
+                YGNodeStyleSetAlignItems(childNode, parentAlignItems)
             }
             
-            if self.isReconciling {
-                print("⏸️ YogaShadowTree: Layout recalculation deferred for '\(nodeId)' - reconciliation in progress")
-                return
+            if childJustifyContent == YGJustify.flexStart && parentJustifyContent != YGJustify.flexStart {
+                YGNodeStyleSetJustifyContent(childNode, parentJustifyContent)
             }
             
-            self.isLayoutCalculating = true
-            defer { self.isLayoutCalculating = false }
-            
-            print("🔄 YogaShadowTree: Recalculating layout for node '\(nodeId)'")
-            
-            let rootNode = self.findRootForNode(nodeId: nodeId)
-            
-            let screenBounds = UIScreen.main.bounds
-            
-            do {
-                try {
-                    YGNodeCalculateLayout(rootNode, Float(screenBounds.width), Float(screenBounds.height), YGDirection.LTR)
-                }()
-                print("✅ YogaShadowTree: Layout recalculated for '\(nodeId)' and children")
-            } catch {
-                print("❌ YogaShadowTree: Layout recalculation failed for '\(nodeId)': \(error)")
-                return
-            }
-            
-            DispatchQueue.main.async {
-                self.applyLayoutForSubtree(nodeId: nodeId)
+            if childAlignContent == YGAlign.flexStart && parentAlignContent != YGAlign.flexStart {
+                YGNodeStyleSetAlignContent(childNode, parentAlignContent)
             }
         }
     }
     
-    /// Find the root node for a given node (could be main root or screen root)
-    private func findRootForNode(nodeId: String) -> YGNodeRef {
-        if screenRootIds.contains(nodeId) {
-            return nodes[nodeId]!
-        }
-        
-        var currentId = nodeId
-        while let parentId = nodeParents[currentId] {
-            if screenRootIds.contains(parentId) {
-                return nodes[parentId]!
-            }
-            currentId = parentId
-        }
-        
-        return nodes["0"]!
-    }
-    
-    /// Apply layout updates to a subtree starting from a specific node
-    private func applyLayoutForSubtree(nodeId: String) {
-        guard let node = nodes[nodeId] else { return }
-        
-        if let layout = getNodeLayout(nodeId: nodeId) {
-            applyLayoutToView(viewId: nodeId, frame: layout)
-        }
-        
-        let childCount = YGNodeGetChildCount(node)
-        for i in 0..<childCount {
-            if let childNode = YGNodeGetChild(node, i) {
-                for (childId, nodeRef) in nodes {
-                    if nodeRef == childNode {
-                        applyLayoutForSubtree(nodeId: childId)
-                        break
-                    }
-                }
-            }
-        }
-    }
-    
-    /// Update a specific Yoga node property (for animations)
-    func updateNodeProperty(nodeId: String, property: String, value: Float) {
-        syncQueue.async {
-            guard let node = self.nodes[nodeId] else {
-                print("⚠️ YogaShadowTree: Cannot update property for unknown node '\(nodeId)'")
-                return
-            }
-            
-            print("🔧 YogaShadowTree: Updating '\(property)' to \(value) for node '\(nodeId)'")
-            
-            switch property {
-            case "width":
-                YGNodeStyleSetWidth(node, value)
-            case "height":
-                YGNodeStyleSetHeight(node, value)
-            case "top":
-                YGNodeStyleSetPosition(node, YGEdge.top, value)
-            case "left":
-                YGNodeStyleSetPosition(node, YGEdge.left, value)
-            case "right":
-                YGNodeStyleSetPosition(node, YGEdge.right, value)
-            case "bottom":
-                YGNodeStyleSetPosition(node, YGEdge.bottom, value)
-            default:
-                print("⚠️ YogaShadowTree: Unknown property '\(property)'")
-                return
-            }
-            
-            print("✅ YogaShadowTree: Updated '\(property)' for node '\(nodeId)'")
-        }
-    }
-}
-
-extension DCFLayoutManager {
-    
-    /// Update a Yoga property for animation (delegating to YogaShadowTree)
-    func updateYogaProperty(nodeId: String, property: String, value: Float) {
-        YogaShadowTree.shared.updateNodeProperty(nodeId: nodeId, property: property, value: value)
-    }
-    
-    /// Trigger layout calculation for a specific node (for animations)
-    func triggerLayoutForNode(_ nodeId: String) {
-        YogaShadowTree.shared.recalculateLayoutForNode(nodeId: nodeId)
+    private func isStaticPositioned(node: YGNodeRef) -> Bool {
+        return YGNodeStyleGetPositionType(node) == YGPositionType.static
     }
 }

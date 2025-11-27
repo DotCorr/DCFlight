@@ -8,7 +8,7 @@ final styles = DCFStyleSheet.create({
   ),
   // Navigation
   'nav': DCFStyleSheet(
-    backgroundColor: Colors.white.withOpacity(0.8),
+    backgroundColor: Colors.red,
   ),
   'navLogoText': DCFStyleSheet(
     primaryColor: Colors.black,
@@ -18,7 +18,7 @@ final styles = DCFStyleSheet.create({
   ),
   // Hero
   'hero': DCFStyleSheet(
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.red,
   ),
   'heroTitle': DCFStyleSheet(
     primaryColor: Colors.black,
@@ -132,12 +132,7 @@ final layouts = DCFLayout.create({
     width: '100%',
     height: 64,
     paddingHorizontal: 24,
-    position: DCFPositionType.absolute,
-    absoluteLayout: AbsoluteLayout(
-      top: 0,
-      left: 0,
-      right: 0,
-    ),
+    // Removed absolute positioning so it's in normal flow and visible
   ),
   'navContainer': DCFLayout(
     width: '100%',

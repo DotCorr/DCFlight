@@ -123,14 +123,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             scrollView.alpha = opacity
         }
         
-        if let contentOffsetStart = props["contentOffsetStart"] as? CGFloat, contentOffsetStart > 0 {
-            scrollView.virtualizedContentOffsetStart = contentOffsetStart
-        }
-        
-        if let contentPaddingTop = props["contentPaddingTop"] as? CGFloat, contentPaddingTop > 0 {
-            scrollView.virtualizedContentPaddingTop = contentPaddingTop
-        }
-        
         handleCommand(scrollView: scrollView, props: props)
         
         scrollView.applyStyles(props: props)
@@ -144,9 +136,9 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         let newFrame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
         scrollView.frame = newFrame
         
-        
         scrollView.layoutIfNeeded()
         
+        // Update content size after layout
         DispatchQueue.main.async {
             scrollView.updateContentSizeFromYogaLayout()
             
@@ -164,13 +156,11 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         if let scrollView = view as? DCFScrollableView {
             scrollView.nodeId = nodeId
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            DispatchQueue.main.async {
                 scrollView.updateContentSizeFromYogaLayout()
             }
         }
     }
-    
-    
     
     /// Handle commands passed as props - the new declarative command pattern
     private func handleCommand(scrollView: DCFScrollableView, props: [String: Any]) {
@@ -211,7 +201,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
             }
         }
     }
-    
     
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         propagateEvent(on: scrollView, eventName: "onScrollBeginDrag", data: [
@@ -270,7 +259,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent, UIScrollViewDelegate {
         // This is part of ScrollView API, not a separate observer
         DCFViewportObserver.shared.checkViewsInScrollView(scrollView)
     }
-    
     
     /// Handle content size change notifications from DCFScrollableView
     func notifyContentSizeChange(_ scrollView: DCFScrollableView, size: CGSize) {

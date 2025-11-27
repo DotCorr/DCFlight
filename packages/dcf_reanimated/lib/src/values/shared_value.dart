@@ -7,7 +7,8 @@
 
 library;
 
-import 'canvas_notifier.dart' show VoidCallback;
+/// Typedef for void callback functions
+typedef VoidCallback = void Function();
 
 /// A mutable value container that notifies listeners when changed.
 ///

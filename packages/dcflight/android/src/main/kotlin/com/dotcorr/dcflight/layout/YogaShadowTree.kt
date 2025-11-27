@@ -533,6 +533,12 @@ class YogaShadowTree private constructor() {
         Log.d(TAG, "🔄 Invalidated $invalidatedCount leaf nodes (out of ${nodes.size} total)")
     }
     
+    /**
+     * Helper to refresh density scale factor on configuration changes
+     */
+    private fun refreshDensityScaleFactor() {
+        updateDensityScaleFactor()
+    }
 
     fun isScreenRoot(nodeId: String): Boolean {
         return screenRootIds.contains(nodeId)
@@ -567,6 +573,11 @@ class YogaShadowTree private constructor() {
         val height = node.layoutHeight
         
         return Rect(left.toInt(), top.toInt(), (left + width).toInt(), (top + height).toInt())
+    }
+    
+    private fun isValidLayoutBounds(rect: Rect): Boolean {
+        return rect.width() >= 0 && rect.height() >= 0 && 
+               rect.width() < 10000 && rect.height() < 10000
     }
 
     private fun validateNodeLayoutConfig(nodeId: String) {
@@ -750,37 +761,65 @@ class YogaShadowTree private constructor() {
         }
     }
 
+    /**
+     * Parse dimension value supporting number, %, vh, and vw
+     */
+    private fun parseDimension(value: Any): Float? {
+        return when (value) {
+            is Number -> applyDensityScaling(value.toFloat())
+            is String -> {
+                when {
+                    value.endsWith("%") -> {
+                        // Percentage is handled by specific Yoga methods (setWidthPercent etc)
+                        // This helper returns null for % so caller can handle it specifically
+                        null 
+                    }
+                    value.endsWith("vh") -> {
+                        val percent = value.removeSuffix("vh").toFloatOrNull()
+                        if (percent != null) {
+                            val displayMetrics = Resources.getSystem().displayMetrics
+                            val screenHeight = displayMetrics.heightPixels.toFloat()
+                            // vh is percentage of screen height
+                            (percent / 100f) * screenHeight
+                        } else null
+                    }
+                    value.endsWith("vw") -> {
+                        val percent = value.removeSuffix("vw").toFloatOrNull()
+                        if (percent != null) {
+                            val displayMetrics = Resources.getSystem().displayMetrics
+                            val screenWidth = displayMetrics.widthPixels.toFloat()
+                            // vw is percentage of screen width
+                            (percent / 100f) * screenWidth
+                        } else null
+                    }
+                    else -> value.toFloatOrNull()?.let { applyDensityScaling(it) }
+                }
+            }
+            else -> null
+        }
+    }
+
     private fun applyLayoutProp(node: YogaNode, key: String, value: Any, nodeId: String) {
         when (key) {
             "width" -> {
-                when (value) {
-                    is Number -> {
-                        val scaledValue = applyDensityScaling(value.toFloat())
-                        node.setWidth(scaledValue)
-                    }
-                    is String -> {
-                        if (value.endsWith("%")) {
-                            val percent = value.removeSuffix("%").toFloatOrNull()
-                            if (percent != null) {
-                                node.setWidthPercent(percent)
-                            }
-                        }
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setWidth(dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setWidthPercent(percent)
                     }
                 }
             }
             "height" -> {
-                when (value) {
-                    is Number -> {
-                        val scaledValue = applyDensityScaling(value.toFloat())
-                        node.setHeight(scaledValue)
-                    }
-                    is String -> {
-                        if (value.endsWith("%")) {
-                            val percent = value.removeSuffix("%").toFloatOrNull()
-                            if (percent != null) {
-                                node.setHeightPercent(percent)
-                            }
-                        }
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setHeight(dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setHeightPercent(percent)
                     }
                 }
             }
@@ -799,27 +838,248 @@ class YogaShadowTree private constructor() {
             }
             "flexWrap" -> {
                 when (value as? String) {
-                    "nowrap" -> node.setWrap(YogaWrap.NO_WRAP)
-                    "wrap" -> node.setWrap(YogaWrap.WRAP)
-                    "wrapReverse" -> node.setWrap(YogaWrap.WRAP_REVERSE)
+                    "nowrap" -> node.setFlexWrap(YogaWrap.NO_WRAP)
+                    "wrap" -> node.setFlexWrap(YogaWrap.WRAP)
+                    "wrapReverse" -> node.setFlexWrap(YogaWrap.WRAP_REVERSE)
                 }
             }
-            "gap" -> {
+            "flexGrow" -> {
                 if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setGap(YogaGutter.ALL, scaledValue)
+                    node.setFlexGrow(value.toFloat())
                 }
             }
-            "rowGap" -> {
+            "flexShrink" -> {
                 if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setGap(YogaGutter.ROW, scaledValue)
+                    node.setFlexShrink(value.toFloat())
                 }
             }
-            "columnGap" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setGap(YogaGutter.COLUMN, scaledValue)
+            "flexBasis" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setFlexBasis(dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setFlexBasisPercent(percent)
+                    }
+                }
+            }
+            "display" -> {
+                when (value as? String) {
+                    "flex" -> node.setDisplay(YogaDisplay.FLEX)
+                    "none" -> node.setDisplay(YogaDisplay.NONE)
+                }
+            }
+            "overflow" -> {
+                when (value as? String) {
+                    "visible" -> node.setOverflow(YogaOverflow.VISIBLE)
+                    "hidden" -> node.setOverflow(YogaOverflow.HIDDEN)
+                    "scroll" -> node.setOverflow(YogaOverflow.SCROLL)
+                }
+            }
+            "minWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMinWidth(dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMinWidthPercent(percent)
+                    }
+                }
+            }
+            "maxWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMaxWidth(dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMaxWidthPercent(percent)
+                    }
+                }
+            }
+            "minHeight" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMinHeight(dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMinHeightPercent(percent)
+                    }
+                }
+            }
+            "maxHeight" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMaxHeight(dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMaxHeightPercent(percent)
+                    }
+                }
+            }
+            "margin" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMargin(YogaEdge.ALL, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMarginPercent(YogaEdge.ALL, percent)
+                    }
+                }
+            }
+            "marginTop" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMargin(YogaEdge.TOP, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMarginPercent(YogaEdge.TOP, percent)
+                    }
+                }
+            }
+            "marginRight" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMargin(YogaEdge.RIGHT, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMarginPercent(YogaEdge.RIGHT, percent)
+                    }
+                }
+            }
+            "marginBottom" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMargin(YogaEdge.BOTTOM, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMarginPercent(YogaEdge.BOTTOM, percent)
+                    }
+                }
+            }
+            "marginLeft" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setMargin(YogaEdge.LEFT, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setMarginPercent(YogaEdge.LEFT, percent)
+                    }
+                }
+            }
+            "padding" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPadding(YogaEdge.ALL, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPaddingPercent(YogaEdge.ALL, percent)
+                    }
+                }
+            }
+            "paddingTop" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPadding(YogaEdge.TOP, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPaddingPercent(YogaEdge.TOP, percent)
+                    }
+                }
+            }
+            "paddingRight" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPadding(YogaEdge.RIGHT, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPaddingPercent(YogaEdge.RIGHT, percent)
+                    }
+                }
+            }
+            "paddingBottom" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPadding(YogaEdge.BOTTOM, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPaddingPercent(YogaEdge.BOTTOM, percent)
+                    }
+                }
+            }
+            "paddingLeft" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPadding(YogaEdge.LEFT, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPaddingPercent(YogaEdge.LEFT, percent)
+                    }
+                }
+            }
+            "position" -> {
+                when (value as? String) {
+                    "absolute" -> node.setPositionType(YogaPositionType.ABSOLUTE)
+                    "relative" -> node.setPositionType(YogaPositionType.RELATIVE)
+                    "static" -> node.setPositionType(YogaPositionType.STATIC)
+                }
+            }
+            "left" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPosition(YogaEdge.LEFT, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPositionPercent(YogaEdge.LEFT, percent)
+                    }
+                }
+            }
+            "top" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPosition(YogaEdge.TOP, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPositionPercent(YogaEdge.TOP, percent)
+                    }
+                }
+            }
+            "right" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPosition(YogaEdge.RIGHT, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPositionPercent(YogaEdge.RIGHT, percent)
+                    }
+                }
+            }
+            "bottom" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setPosition(YogaEdge.BOTTOM, dimension)
+                } else if (value is String && value.endsWith("%")) {
+                    val percent = value.removeSuffix("%").toFloatOrNull()
+                    if (percent != null) {
+                        node.setPositionPercent(YogaEdge.BOTTOM, percent)
+                    }
                 }
             }
             "justifyContent" -> {
@@ -840,171 +1100,70 @@ class YogaShadowTree private constructor() {
                     "flexEnd" -> node.setAlignItems(YogaAlign.FLEX_END)
                     "stretch" -> node.setAlignItems(YogaAlign.STRETCH)
                     "baseline" -> node.setAlignItems(YogaAlign.BASELINE)
+                    "spaceBetween" -> node.setAlignItems(YogaAlign.SPACE_BETWEEN)
+                    "spaceAround" -> node.setAlignItems(YogaAlign.SPACE_AROUND)
+                }
+            }
+            "alignSelf" -> {
+                when (value as? String) {
+                    "auto" -> node.setAlignSelf(YogaAlign.AUTO)
+                    "flexStart" -> node.setAlignSelf(YogaAlign.FLEX_START)
+                    "center" -> node.setAlignSelf(YogaAlign.CENTER)
+                    "flexEnd" -> node.setAlignSelf(YogaAlign.FLEX_END)
+                    "stretch" -> node.setAlignSelf(YogaAlign.STRETCH)
+                    "baseline" -> node.setAlignSelf(YogaAlign.BASELINE)
+                    "spaceBetween" -> node.setAlignSelf(YogaAlign.SPACE_BETWEEN)
+                    "spaceAround" -> node.setAlignSelf(YogaAlign.SPACE_AROUND)
                 }
             }
             "alignContent" -> {
                 when (value as? String) {
+                    "auto" -> node.setAlignContent(YogaAlign.AUTO)
                     "flexStart" -> node.setAlignContent(YogaAlign.FLEX_START)
                     "center" -> node.setAlignContent(YogaAlign.CENTER)
                     "flexEnd" -> node.setAlignContent(YogaAlign.FLEX_END)
                     "stretch" -> node.setAlignContent(YogaAlign.STRETCH)
+                    "baseline" -> node.setAlignContent(YogaAlign.BASELINE)
                     "spaceBetween" -> node.setAlignContent(YogaAlign.SPACE_BETWEEN)
                     "spaceAround" -> node.setAlignContent(YogaAlign.SPACE_AROUND)
                 }
             }
-            "paddingTop" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPadding(YogaEdge.TOP, scaledValue)
+            "borderWidth" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setBorder(YogaEdge.ALL, dimension)
                 }
             }
-            "paddingRight" -> {
+            "aspectRatio" -> {
                 if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPadding(YogaEdge.RIGHT, scaledValue)
+                    node.setAspectRatio(value.toFloat())
                 }
             }
-            "paddingBottom" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPadding(YogaEdge.BOTTOM, scaledValue)
+            "gap" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setGap(YogaGutter.ALL, dimension)
                 }
             }
-            "paddingLeft" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPadding(YogaEdge.LEFT, scaledValue)
+            "rowGap" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setGap(YogaGutter.ROW, dimension)
                 }
             }
-            "padding" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPadding(YogaEdge.ALL, scaledValue)
+            "columnGap" -> {
+                val dimension = parseDimension(value)
+                if (dimension != null) {
+                    node.setGap(YogaGutter.COLUMN, dimension)
                 }
             }
-            "marginTop" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setMargin(YogaEdge.TOP, scaledValue)
-                }
-            }
-            "marginRight" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setMargin(YogaEdge.RIGHT, scaledValue)
-                }
-            }
-            "marginBottom" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setMargin(YogaEdge.BOTTOM, scaledValue)
-                }
-            }
-            "marginLeft" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setMargin(YogaEdge.LEFT, scaledValue)
-                }
-            }
-            "margin" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setMargin(YogaEdge.ALL, scaledValue)
-                }
-            }
-            "position" -> {
+            "direction" -> {
                 when (value as? String) {
-                    "absolute" -> node.setPositionType(YogaPositionType.ABSOLUTE)
-                    "relative" -> node.setPositionType(YogaPositionType.RELATIVE)
-                }
-            }
-            "top" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPosition(YogaEdge.TOP, scaledValue)
-                }
-            }
-            "right" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPosition(YogaEdge.RIGHT, scaledValue)
-                }
-            }
-            "bottom" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPosition(YogaEdge.BOTTOM, scaledValue)
-                }
-            }
-            "left" -> {
-                if (value is Number) {
-                    val scaledValue = applyDensityScaling(value.toFloat())
-                    node.setPosition(YogaEdge.LEFT, scaledValue)
+                    "inherit" -> node.setDirection(YogaDirection.INHERIT)
+                    "ltr" -> node.setDirection(YogaDirection.LTR)
+                    "rtl" -> node.setDirection(YogaDirection.RTL)
                 }
             }
         }
-    }
-
-
-    /**
-     * Clears all nodes from the shadow tree and recreates the root node.
-     * 
-     * This method is used during hot restart cleanup to prevent layout stacking.
-     * It clears all nodes, mappings, and screen roots, then recreates a fresh root node
-     * with default dimensions matching the current display metrics.
-     */
-    fun clearAll() {
-        // Clear all nodes and mappings
-        nodes.clear()
-        nodeParents.clear()
-        nodeTypes.clear()
-        screenRoots.clear()
-        screenRootIds.clear()
-        
-        // Recreate root node completely to ensure clean state
-        // This prevents layout stacking after hot restart
-        rootNode = YogaNodeFactory.create()
-        rootNode?.let { root ->
-            root.setDirection(YogaDirection.LTR)
-            root.setFlexDirection(YogaFlexDirection.COLUMN)
-            
-            val displayMetrics = Resources.getSystem().displayMetrics
-            root.setWidth(displayMetrics.widthPixels.toFloat())
-            root.setHeight(displayMetrics.heightPixels.toFloat())
-            
-            nodes["0"] = root
-            nodeTypes["0"] = "View"
-        }
-    }
-
-    fun viewRegisteredWithShadowTree(viewId: String): Boolean {
-        return nodes.containsKey(viewId)
-    }
-    
-    /**
-     * CRITICAL FIX: Refresh density scale factor when screen configuration changes
-     * This ensures consistent scaling across device rotations and density changes
-     */
-    fun refreshDensityScaleFactor() {
-        updateDensityScaleFactor()
-        Log.d(TAG, "Density scale factor refreshed: $densityScaleFactor")
-    }
-    
-    /**
-     * SLIDER PERFORMANCE FIX: Validate layout bounds to prevent flash
-     * This prevents views from getting stuck in full-screen mode
-     */
-    private fun isValidLayoutBounds(layout: Rect): Boolean {
-        val width = layout.width()
-        val height = layout.height()
-        
-        if (width < 0 || height < 0) return false
-        if (width > 50000 || height > 50000) return false // Increased limit for large screens
-        
-        if (!width.toFloat().isFinite() || !height.toFloat().isFinite()) return false
-        if (width.toFloat().isNaN() || height.toFloat().isNaN()) return false
-        
-        return true
     }
 }
-

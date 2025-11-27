@@ -7,11 +7,7 @@
 
 import UIKit
 import dcflight
-import dcf_primitives
-
-// ============================================================================
-// PURE REANIMATED COMPONENT - ZERO BRIDGE CALLS DURING ANIMATION
-// ============================================================================
+ 
 
 class DCFAnimatedViewComponent: NSObject, DCFComponent {
     required override init() {

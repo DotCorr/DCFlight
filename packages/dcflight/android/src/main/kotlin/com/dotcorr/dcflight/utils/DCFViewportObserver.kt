@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package com.dotcorr.dcf_primitives.utils
+package com.dotcorr.dcflight.utils
 
 import android.graphics.Rect
 import android.view.View
@@ -13,7 +13,6 @@ import android.view.ViewGroup
 import androidx.core.widget.NestedScrollView
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
-import com.dotcorr.dcf_primitives.components.DCFScrollableView
 
 /**
  * Low-level viewport detection system - similar to web IntersectionObserver
@@ -61,12 +60,13 @@ object DCFViewportObserver {
     }
     
     /**
-     * Find parent scroll view
+     * Find parent scroll view - works with any scroll view type
      */
     private fun findParentScrollView(view: View): ViewGroup? {
         var current: View? = view.parent as? View
         while (current != null) {
-            if (current is NestedScrollView || current is DCFScrollableView) {
+            // Check if it's a scroll view (NestedScrollView or any ViewGroup that can scroll)
+            if (current is NestedScrollView || (current is ViewGroup && canScroll(current))) {
                 return current as ViewGroup
             }
             current = current.parent as? View
@@ -75,10 +75,25 @@ object DCFViewportObserver {
     }
     
     /**
+     * Check if a ViewGroup can scroll (heuristic)
+     */
+    private fun canScroll(viewGroup: ViewGroup): Boolean {
+        // Simple heuristic: if it has scrollbars or implements scrolling
+        return viewGroup.isScrollContainer || 
+               viewGroup.horizontalScrollBarEnabled || 
+               viewGroup.verticalScrollBarEnabled
+    }
+    
+    /**
      * Setup scroll observer for a scroll view
      */
     private fun setupScrollObserver(scrollView: ViewGroup) {
         if (scrollView is NestedScrollView) {
+            scrollView.viewTreeObserver.addOnScrollChangedListener {
+                checkViewsInScrollView(scrollView)
+            }
+        } else {
+            // For other scroll views, use a more generic approach
             scrollView.viewTreeObserver.addOnScrollChangedListener {
                 checkViewsInScrollView(scrollView)
             }

@@ -16,6 +16,17 @@ class DotCorrLanding extends DCFStatefulComponent {
       layout: layouts['root'],
       styleSheet: styles['root'],
       children: [
+
+        DCFView(
+          layout: DCFLayout(
+            width: '100%',
+            height: 100,
+           
+          ),
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFColors.blue,
+          ),
+        ),
         // Navigation
         NavigationBar(),
         
