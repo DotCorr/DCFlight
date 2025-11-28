@@ -11,6 +11,7 @@ export '../button_component.dart';
 export '../image_component.dart';
 export '../touchable_opacity_component.dart';
 export '../scroll_view_component.dart';
+export '../scroll_content_view_component.dart';
 export '../gesture_detector_component.dart';
 export '../svg_component.dart';
 export '../icon_component.dart';

@@ -274,37 +274,23 @@ class DCFViewManager {
             childView.removeFromSuperview()
         }
         
-        // CRITICAL: Check if parent component has custom child routing (e.g., ScrollView contentView)
-        var targetView = parentView
-        
-        if let viewInfo = ViewRegistry.shared.getViewInfo(id: parentId),
-           let componentType = DCFComponentRegistry.shared.getComponentType(for: viewInfo.type) {
-            
-            // Get component instance from view (stored during createView)
-            if let componentInstance = objc_getAssociatedObject(parentView,
-                                                               UnsafeRawPointer(bitPattern: "componentInstance".hashValue)!) as? DCFComponent {
-                
-                // For ScrollView, route to contentView instead of scroll view directly
-                // Check by component type name (works without importing dcf_primitives)
-                if viewInfo.type == "ScrollView" {
-                    // Try to get contentView from associated object (set by DCFScrollViewComponent)
-                    if let contentView = objc_getAssociatedObject(parentView,
-                                                                UnsafeRawPointer(bitPattern: "contentView".hashValue)!) as? UIView {
-                        targetView = contentView
-                        print("✅ attachView: Routing child \(childId) to ScrollView contentView for parent \(parentId)")
-                    } else {
-                        // Fallback: Try to access contentView property via runtime
-                        let contentViewSelector = NSSelectorFromString("contentView")
-                        if parentView.responds(to: contentViewSelector) {
-                            if let contentView = parentView.perform(contentViewSelector)?.takeUnretainedValue() as? UIView {
-                                targetView = contentView
-                                print("✅ attachView: Routing child \(childId) to ScrollView contentView (via selector) for parent \(parentId)")
-                            }
-                        }
-                    }
-                }
+        // CRITICAL: ScrollView only has ONE child - ScrollContentView
+        // ScrollView's setChildren handles adding ScrollContentView to _scrollView
+        // So we skip attachView for ScrollView's children (they're handled by setChildren)
+        if let parentViewInfo = ViewRegistry.shared.getViewInfo(id: parentId),
+           parentViewInfo.type == "ScrollView" {
+            // ScrollView children are handled by setChildren, not attachView
+            // Still add to Yoga tree for layout
+            if !childIsScreen {
+                DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
             }
+            print("✅ attachView: Skipping ScrollView child attachment - setChildren will handle it")
+            return true
         }
+        
+        // Components handle their own child routing via setChildren
+        // No hardcoded routing needed here - let components handle it
+        var targetView = parentView
         
         // Check if child is already attached to target view
         if childView.superview == targetView {

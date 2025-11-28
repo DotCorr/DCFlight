@@ -167,23 +167,57 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
         }
     }
     
-    /// Set children - route to contentView instead of scrollView directly
+    /// Set children - ScrollView should have ScrollContentView as its only child
+    /// ScrollContentView's view becomes the contentView
     func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
-        guard let scrollView = view as? DCFScrollView,
-              let contentView = objc_getAssociatedObject(scrollView,
+        guard let scrollView = view as? DCFScrollView else {
+            return false
+        }
+        
+        // React Native pattern: ScrollView's only child should be ScrollContentView component
+        if childViews.count == 1,
+           let scrollContentView = childViews.first {
+            // Check if this is a ScrollContentView component
+            let componentType = objc_getAssociatedObject(scrollContentView,
+                                                         UnsafeRawPointer(bitPattern: "componentType".hashValue)!) as? String
+            
+            if componentType == "ScrollContentView" {
+                // Remove old manually created contentView
+                if let oldContentView = objc_getAssociatedObject(scrollView,
+                                                                 UnsafeRawPointer(bitPattern: "contentView".hashValue)!) as? UIView,
+                   oldContentView != scrollContentView {
+                    oldContentView.removeFromSuperview()
+                }
+                
+                // CRITICAL: Remove ScrollContentView from DCFScrollView if attachView added it there
+                // ScrollContentView should be added to _scrollView, not DCFScrollView
+                if scrollContentView.superview == scrollView {
+                    scrollContentView.removeFromSuperview()
+                }
+                
+                // Use ScrollContentView's view as the contentView (adds to _scrollView)
+                scrollView.insertContentView(scrollContentView)
+                objc_setAssociatedObject(scrollView,
+                                         UnsafeRawPointer(bitPattern: "contentView".hashValue)!,
+                                         scrollContentView,
+                                         .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                
+                print("✅ DCFScrollViewComponent: Using ScrollContentView component as contentView")
+                return true
+            }
+        }
+        
+        // Fallback: If no ScrollContentView, route children directly to contentView (backwards compat)
+        guard let contentView = objc_getAssociatedObject(scrollView,
                                                          UnsafeRawPointer(bitPattern: "contentView".hashValue)!) as? UIView else {
             return false
         }
         
-        // Remove existing children from content view
         contentView.subviews.forEach { $0.removeFromSuperview() }
-        
-        // Add new children to content view
         for childView in childViews {
             contentView.addSubview(childView)
         }
         
-        // Update content size after children are added (React Native pattern)
         DispatchQueue.main.async {
             scrollView.updateContentSizeFromContentView()
         }

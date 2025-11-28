@@ -6,6 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'scroll_content_view_component.dart';
 
 /// Scroll view scroll callback data
 class DCFScrollViewScrollData {
@@ -385,10 +386,23 @@ class DCFScrollView extends DCFStatelessComponent
       props['command'] = command!.toMap();
     }
 
+    // CRITICAL: Wrap children in ScrollContentView component
+    // This ensures ScrollContentView is registered in Yoga tree as a proper component
+    // React Native pattern: ScrollView has ScrollContentView as child, which contains the actual children
+    final contentView = DCFScrollContentView(
+      layout: DCFLayout(
+        flex: 1,
+        width: '100%',
+        height: '100%',
+      ),
+      styleSheet: contentContainerStyle,
+      children: children,
+    );
+
     return DCFElement(
       type: 'ScrollView', // Use the correct registered component name
       elementProps: props,
-      children: children,
+      children: [contentView], // ScrollView's only child is ScrollContentView
     );
   }
 }

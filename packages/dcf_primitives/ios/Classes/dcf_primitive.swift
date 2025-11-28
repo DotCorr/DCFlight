@@ -24,6 +24,8 @@ import dcflight
             "Image", componentClass: DCFImageComponent.self)
         DCFComponentRegistry.shared.registerComponent(
             "ScrollView", componentClass: DCFScrollViewComponent.self)
+        DCFComponentRegistry.shared.registerComponent(
+            "ScrollContentView", componentClass: DCFScrollContentViewComponent.self)
 
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
         DCFComponentRegistry.shared.registerComponent(
