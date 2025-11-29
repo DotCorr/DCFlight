@@ -40,6 +40,7 @@ class YogaShadowTree {
     // MARK: - Thread Safety
     
     private let syncQueue = DispatchQueue(label: "YogaShadowTree.sync", qos: .userInitiated)
+    private let syncQueueKey = DispatchSpecificKey<String>()
     private var isLayoutCalculating = false
     private var isReconciling = false
     
@@ -72,6 +73,9 @@ class YogaShadowTree {
     // MARK: - Initialization
     
     private init() {
+        // Setup queue-specific key for re-entrancy detection
+        setupSyncQueueKey()
+        
         // Create root shadow view
         let rootViewId = 0
         let rootShadowView = DCFRootShadowView(viewId: rootViewId)
@@ -401,7 +405,9 @@ class YogaShadowTree {
     // MARK: - Helper Methods
     
     func getComponentInstance(for componentType: String) -> DCFComponent? {
-        return syncQueue.sync {
+        // Check if we're already on the sync queue to avoid deadlock
+        if DispatchQueue.getSpecific(key: syncQueueKey) != nil {
+            // Already on sync queue, access directly
             if let cached = componentInstances[componentType] {
                 return cached
             }
@@ -413,13 +419,41 @@ class YogaShadowTree {
             let instance = componentClass.init()
             componentInstances[componentType] = instance
             return instance
+        } else {
+            // Not on sync queue, use sync
+            return syncQueue.sync {
+                if let cached = componentInstances[componentType] {
+                    return cached
+                }
+                
+                guard let componentClass = DCFComponentRegistry.shared.getComponent(componentType) else {
+                    return nil
+                }
+                
+                let instance = componentClass.init()
+                componentInstances[componentType] = instance
+                return instance
+            }
         }
     }
     
     func getComponentType(for viewId: Int) -> String? {
-        return syncQueue.sync {
+        // Check if we're already on the sync queue to avoid deadlock
+        if DispatchQueue.getSpecific(key: syncQueueKey) != nil {
+            // Already on sync queue, access directly
             return nodeTypes[viewId]
+        } else {
+            // Not on sync queue, use sync
+            return syncQueue.sync {
+                return nodeTypes[viewId]
+            }
         }
+    }
+    
+    // MARK: - Queue-specific key for re-entrancy detection
+    
+    private func setupSyncQueueKey() {
+        syncQueue.setSpecific(key: syncQueueKey, value: "YogaShadowTree.syncQueue")
     }
     
     private func setupMeasureFunction(shadowView: DCFShadowView, componentType: String) {
