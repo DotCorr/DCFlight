@@ -168,26 +168,47 @@ public class DCFLayoutManager {
             height: max(1, height)
         )
         
+        // Create YGNodeLayout for component's applyLayout method
+        let layout = YGNodeLayout(
+            left: left,
+            top: top,
+            width: width,
+            height: height
+        )
+        
         // Use global layout animation settings if duration not specified
         let effectiveDuration = animationDuration > 0 ? animationDuration : 
             (layoutAnimationEnabled ? layoutAnimationDuration : 0.0)
         
+        // Get component type and instance to call component's applyLayout
+        let componentType = YogaShadowTree.shared.getComponentType(for: viewId)
+        let applyLayoutBlock = {
+            // Always apply frame directly first
+            self.applyLayoutDirectly(to: view, frame: frame)
+            
+            // Then call component's applyLayout if available (e.g., ScrollContentView needs this to update ScrollView's contentSize)
+            if let componentType = componentType,
+               let componentInstance = YogaShadowTree.shared.getComponentInstance(for: componentType) {
+                componentInstance.applyLayout(view, layout: layout)
+            }
+        }
+        
         if Thread.isMainThread {
             if effectiveDuration > 0 {
                 UIView.animate(withDuration: effectiveDuration) {
-                    self.applyLayoutDirectly(to: view, frame: frame)
+                    applyLayoutBlock()
                 }
             } else {
-                self.applyLayoutDirectly(to: view, frame: frame)
+                applyLayoutBlock()
             }
         } else {
             DispatchQueue.main.async {
                 if effectiveDuration > 0 {
                     UIView.animate(withDuration: effectiveDuration) {
-                        self.applyLayoutDirectly(to: view, frame: frame)
+                        applyLayoutBlock()
                     }
                 } else {
-                    self.applyLayoutDirectly(to: view, frame: frame)
+                    applyLayoutBlock()
                 }
             }
         }

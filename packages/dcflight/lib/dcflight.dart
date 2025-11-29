@@ -71,6 +71,10 @@ export 'framework/protocol/plugin_protocol.dart';
 export 'framework/components/portal/dcf_portal.dart';
 export 'framework/components/portal/dcf_portal_target.dart';
 export 'framework/utils/widget_to_dcf_adaptor.dart';
+export 'src/components/view_component.dart';
+export 'src/components/text_component.dart';
+export 'src/components/scroll_view_component.dart';
+export 'src/components/scroll_content_view_component.dart';
 import 'package:dcflight/framework/components/component_node.dart';
 
 import 'framework/renderer/engine/engine_api.dart';

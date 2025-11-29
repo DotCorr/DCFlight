@@ -24,5 +24,15 @@ object FrameworkComponentsReg {
         // Register FlutterWidget component for embedding Flutter widgets
         DCFComponentRegistry.shared.registerComponent("FlutterWidget", DCFFlutterWidgetComponent::class.java)
         Log.d(TAG, "✅ Registered FlutterWidget component")
+        
+        // Register core framework components
+        DCFComponentRegistry.shared.registerComponent("View", DCFViewComponent::class.java)
+        Log.d(TAG, "✅ Registered View component")
+        
+        DCFComponentRegistry.shared.registerComponent("Text", DCFTextComponent::class.java)
+        Log.d(TAG, "✅ Registered Text component")
+        
+        DCFComponentRegistry.shared.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
+        Log.d(TAG, "✅ Registered ScrollView component")
     }
 }

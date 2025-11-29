@@ -433,49 +433,6 @@ extension ViewRegistry {
     }
 }
 
-extension YogaShadowTree {
-    /// Clears all nodes from the shadow tree except the root node.
-    /// 
-    /// This method is used during hot restart cleanup to prevent layout stacking.
-    /// It removes all non-root nodes, clears root node children, resets root dimensions
-    /// to current window bounds, and clears all parent mappings.
-    func clearAll() {
-        // CRITICAL: Reset reconciliation flag first to prevent blocking layout
-        resetFlags()
-        
-        // Remove all non-root nodes (this will set isReconciling temporarily, but we reset it after)
-        let nodeIds = Array(nodes.keys)
-        for nodeId in nodeIds {
-            if nodeId != "0" && nodeId != "root" {
-                removeNode(nodeId: nodeId)
-            }
-        }
-        
-        // CRITICAL: Reset flags again after removeNode calls (they set isReconciling=true)
-        resetFlags()
-        
-        // Clear root node's children to prevent stacking after hot restart
-        clearRootNodeChildren()
-        
-        // Reset root node dimensions to current window bounds
-        let windowBounds: CGRect
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first {
-            windowBounds = window.bounds
-        } else {
-            windowBounds = UIScreen.main.bounds
-        }
-        resetRootNodeDimensions(width: Float(windowBounds.width), height: Float(windowBounds.height))
-        
-        // Clear all parent mappings and screen roots
-        clearAllMappings()
-        
-        // Final reset to ensure flags are clear
-        resetFlags()
-        
-        print("✅ YogaShadowTree: clearAll completed - isReconciling=false, isLayoutCalculating=false")
-    }
-}
 
 extension DCFLayoutManager {
     func clearAll() {
