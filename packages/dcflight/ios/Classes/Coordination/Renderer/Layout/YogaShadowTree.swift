@@ -113,9 +113,6 @@ class YogaShadowTree {
             // Setup measure function if needed
             setupMeasureFunction(shadowView: shadowView, componentType: componentType)
             
-            // Validate layout config to ensure proper defaults (height/width auto if no flex)
-            validateNodeLayoutConfig(shadowView: shadowView)
-            
             shadowViewRegistry[viewId] = shadowView
             nodeTypes[viewId] = componentType
         }
@@ -191,10 +188,6 @@ class YogaShadowTree {
             
             // Setup measure function for child (only if it has no children)
             setupMeasureFunction(shadowView: childShadowView, componentType: nodeTypes[childViewId] ?? "View")
-            
-            // Re-validate parent's layout config since it now has children
-            // This ensures height: auto is set if parent doesn't have flex or explicit height
-            validateNodeLayoutConfig(shadowView: parentShadowView)
         }
     }
     
@@ -249,8 +242,6 @@ class YogaShadowTree {
             for (key, value) in props {
                 applyLayoutProp(node: yogaNode, key: key, value: value)
             }
-            
-            validateNodeLayoutConfig(shadowView: shadowView)
         }
     }
     
@@ -512,65 +503,20 @@ class YogaShadowTree {
     private func applyDefaultNodeStyles(to shadowView: DCFShadowView, componentType: String) {
         let yogaNode = shadowView.yogaNode
         
+        // Match React Native: Only set flexDirection based on useWebDefaults
+        // React Native doesn't set justify-content, align-items, or align-content by default
+        // Yoga's defaults handle undefined dimensions automatically
         if useWebDefaults {
             YGNodeStyleSetFlexDirection(yogaNode, YGFlexDirection.row)
-            YGNodeStyleSetAlignContent(yogaNode, YGAlign.stretch)
             YGNodeStyleSetFlexShrink(yogaNode, 1.0)
         } else {
+            // React Native default: column direction, no flex shrink
             YGNodeStyleSetFlexDirection(yogaNode, YGFlexDirection.column)
-            YGNodeStyleSetAlignContent(yogaNode, YGAlign.flexStart)
             YGNodeStyleSetFlexShrink(yogaNode, 0.0)
         }
         
-        // ScrollView should start content at top, not center
-        if componentType == "ScrollView" {
-            YGNodeStyleSetJustifyContent(yogaNode, YGJustify.flexStart)
-            YGNodeStyleSetAlignItems(yogaNode, YGAlign.flexStart)
-        } else {
-            YGNodeStyleSetJustifyContent(yogaNode, YGJustify.center)
-            YGNodeStyleSetAlignItems(yogaNode, YGAlign.center)
-        }
-    }
-    
-    private func validateNodeLayoutConfig(shadowView: DCFShadowView) {
-        let yogaNode = shadowView.yogaNode
-        
-        // Check if node has flex (flex > 0 means it will grow/shrink)
-        let hasFlex = YGNodeStyleGetFlex(yogaNode) > 0 || 
-                     YGNodeStyleGetFlexGrow(yogaNode) > 0
-        
-        // Check if node has explicit height
-        let heightValue = YGNodeStyleGetHeight(yogaNode)
-        let hasExplicitHeight = heightValue.unit == YGUnit.point || 
-                               heightValue.unit == YGUnit.percent
-        
-        // Check if node has children
-        let hasChildren = YGNodeGetChildCount(yogaNode) > 0
-        
-        // If node doesn't have flex and doesn't have explicit height, we need to set a default
-        if !hasFlex && !hasExplicitHeight {
-            if hasChildren {
-                // Components with children should use height: auto (Yoga will calculate based on content)
-                // This matches React Native behavior
-                YGNodeStyleSetHeightAuto(yogaNode)
-            } else {
-                // Leaf nodes (no children) should also use height: auto
-                // Yoga will use intrinsic content size if available, otherwise it will be calculated
-                // based on content or parent constraints
-                YGNodeStyleSetHeightAuto(yogaNode)
-            }
-        }
-        
-        // Also ensure width is set to auto if not explicitly set and no flex
-        let widthValue = YGNodeStyleGetWidth(yogaNode)
-        let hasExplicitWidth = widthValue.unit == YGUnit.point || 
-                              widthValue.unit == YGUnit.percent
-        
-        if !hasFlex && !hasExplicitWidth {
-            // Width should be auto if not explicitly set
-            // This allows the component to size based on content or parent constraints
-            YGNodeStyleSetWidthAuto(yogaNode)
-        }
+        // Don't set justify-content or align-items - let Yoga use defaults
+        // This allows components to inherit proper sizing behavior automatically
     }
     
     // MARK: - Layout Property Application

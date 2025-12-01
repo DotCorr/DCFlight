@@ -206,7 +206,12 @@ open class DCFShadowView: Hashable {
         guard let config = YGConfigNew() else {
             fatalError("Failed to create Yoga config")
         }
+        // Match React Native's Yoga config exactly
         YGConfigSetPointScaleFactor(config, 0.0)
+        // React Native uses legacy stretch behavior for compatibility
+        // In newer Yoga versions, this is done via YGConfigSetErrata with YGErrataClassic
+        // YGErrataClassic matches Yoga 1.x behavior including UseLegacyStretchBehaviour
+        YGConfigSetErrata(config, YGErrata.classic)
         return config
     }()
     
