@@ -198,8 +198,10 @@ import Foundation
                 print("🔍 setChildren: Found componentType for '\(viewInfo.type)'")
                 
                 // Get component instance from view (stored during createView)
-                let componentInstance = objc_getAssociatedObject(parentView, 
-                                                               UnsafeRawPointer(bitPattern: "componentInstance".hashValue)!) as? DCFComponent
+                let componentInstanceKey = UnsafeRawPointer(bitPattern: "componentInstance".hashValue)!
+                let componentInstance = objc_getAssociatedObject(parentView, componentInstanceKey) as? DCFComponent
+                
+                print("🔍 setChildren: Retrieving component instance - key=\(componentInstanceKey), found=\(componentInstance != nil), viewType=\(type(of: parentView))")
                 
                 if let componentInstance = componentInstance {
                     print("✅ setChildren: Found component instance for '\(viewInfo.type)'")

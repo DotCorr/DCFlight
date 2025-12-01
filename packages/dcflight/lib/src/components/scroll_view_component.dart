@@ -389,11 +389,13 @@ class DCFScrollView extends DCFStatelessComponent
     // CRITICAL: Wrap children in ScrollContentView component
     // This ensures ScrollContentView is registered in Yoga tree as a proper component
     // React Native pattern: ScrollView has ScrollContentView as child, which contains the actual children
+    // ScrollContentView should fill width but grow height based on children (no flex or height constraint)
     final contentView = DCFScrollContentView(
       layout: DCFLayout(
-        flex: 1,
         width: '100%',
-        height: '100%',
+        // CRITICAL: Do NOT set flex: 1 or height - let it grow based on children's layout
+        // flex: 1 would make it fill available height, preventing scrolling
+        // Setting height: '100%' would constrain it to ScrollView's height, preventing scrolling
       ),
       styleSheet: contentContainerStyle,
       children: children,

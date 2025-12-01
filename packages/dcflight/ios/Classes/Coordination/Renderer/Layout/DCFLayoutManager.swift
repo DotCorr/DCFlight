@@ -183,13 +183,16 @@ public class DCFLayoutManager {
         // Get component type and instance to call component's applyLayout
         let componentType = YogaShadowTree.shared.getComponentType(for: viewId)
         let applyLayoutBlock = {
-            // Always apply frame directly first
-            self.applyLayoutDirectly(to: view, frame: frame)
-            
-            // Then call component's applyLayout if available (e.g., ScrollContentView needs this to update ScrollView's contentSize)
+            // Check if component has custom applyLayout implementation
+            // If so, let it handle the frame entirely (e.g., ScrollContentView needs custom frame handling)
             if let componentType = componentType,
                let componentInstance = YogaShadowTree.shared.getComponentInstance(for: componentType) {
+                // For components with custom applyLayout, let them handle the frame
+                // This prevents race conditions where applyLayoutDirectly and component.applyLayout both set the frame
                 componentInstance.applyLayout(view, layout: layout)
+            } else {
+                // For components without custom applyLayout, use the default direct frame application
+                self.applyLayoutDirectly(to: view, frame: frame)
             }
         }
         

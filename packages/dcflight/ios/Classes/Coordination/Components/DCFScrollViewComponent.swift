@@ -121,22 +121,11 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
         // Apply layout to scroll view
         scrollView.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
         
-        // React Native pattern: Update contentSize from contentView.frame.size after layout
-        // Use a single async to ensure all layouts are complete before updating contentSize
-        DispatchQueue.main.async {
-            // Force layout of scroll view and its content
-            scrollView.scrollView.setNeedsLayout()
-            scrollView.scrollView.layoutIfNeeded()
-            
-            if let contentView = scrollView.contentView {
-                contentView.setNeedsLayout()
-                contentView.layoutIfNeeded()
-            }
-            
-            // Update content size (React Native pattern: use contentView.frame.size)
-            // This reads contentView.frame.size which was set by ScrollContentViewComponent.applyLayout
-            scrollView.updateContentSizeFromContentView()
-        }
+        // CRITICAL: Don't update contentSize here because ScrollContentView's layout hasn't been applied yet
+        // Layouts are applied parent-first, so ScrollView's layout is applied before ScrollContentView's layout
+        // ScrollContentViewComponent.applyLayout will trigger updateContentSizeFromContentView after it sets its frame
+        // This ensures we read the correct frame size
+        print("🔍 DCFScrollViewComponent.applyLayout: Applied frame=\(scrollView.frame), deferring contentSize update until ScrollContentView layout is applied")
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
@@ -167,6 +156,8 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
             let componentType = objc_getAssociatedObject(scrollContentView,
                                                          UnsafeRawPointer(bitPattern: "componentType".hashValue)!) as? String
             
+            print("🔍 DCFScrollViewComponent.setChildren: childViews.count=\(childViews.count), componentType=\(componentType ?? "nil"), view=\(scrollContentView)")
+            
             if componentType == "ScrollContentView" {
                 // Remove old manually created contentView
                 if let oldContentView = objc_getAssociatedObject(scrollView,
@@ -181,14 +172,25 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
                     scrollContentView.removeFromSuperview()
                 }
                 
+                print("🔍 DCFScrollViewComponent.setChildren: Adding ScrollContentView to ScrollView, currentFrame=\(scrollContentView.frame), superview=\(scrollContentView.superview?.description ?? "nil")")
+                
                 // Use ScrollContentView's view as the contentView (adds to _scrollView)
+                // insertContentView will handle frame restoration and contentSize updates
                 scrollView.insertContentView(scrollContentView)
+                
                 objc_setAssociatedObject(scrollView,
                                          UnsafeRawPointer(bitPattern: "contentView".hashValue)!,
                                          scrollContentView,
                                          .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
                 
                 print("✅ DCFScrollViewComponent: Using ScrollContentView component as contentView")
+                print("🔍 DCFScrollViewComponent: ScrollContentView frame=\(scrollContentView.frame), superview=\(scrollContentView.superview?.description ?? "nil")")
+                print("🔍 DCFScrollViewComponent: ScrollView.subviews.count=\(scrollView.scrollView.subviews.count)")
+                
+                // Note: contentSize will be updated by:
+                // 1. insertContentView if frame is already valid
+                // 2. applyLayout when it runs (which happens after setChildren in the batch)
+                
                 return true
             }
         }

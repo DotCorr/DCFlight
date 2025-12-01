@@ -319,7 +319,7 @@ class DCFCustomScrollView: UIScrollView {
         assert(self.subviews.last == _scrollView, "our only subview should be a scrollview")
         
         // Update content size from contentView after layout
-        updateContentSizeFromContentView()
+                updateContentSizeFromContentView()
     }
     
     // MARK: - UIScrollViewDelegate

@@ -12,38 +12,33 @@ void main() async {
 class DotCorrLanding extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    return DCFScrollView(
+    return DCFView(
       layout: layouts['root'],
-      styleSheet: styles['root'],
       children: [
-
-        DCFView(
+        DCFScrollContentView(
           layout: DCFLayout(
             width: '100%',
-            height: 100,
-           
           ),
-          styleSheet: DCFStyleSheet(
-            backgroundColor: DCFColors.blue,
-          ),
+          children: [
+            // Navigation
+            NavigationBar(),
+            
+            // Hero Section
+            HeroSection(),
+            
+            // Infrastructure for Builders & Machines
+            BuildersAndMachinesSection(),
+            
+            // Technology Ecosystem
+            TechnologyEcosystemSection(),
+            
+            // About Section
+            AboutSection(),
+            
+            // Footer
+            Footer(),
+          ],
         ),
-        // Navigation
-        NavigationBar(),
-        
-        // Hero Section
-        HeroSection(),
-        
-        // Infrastructure for Builders & Machines
-        BuildersAndMachinesSection(),
-        
-        // Technology Ecosystem
-        TechnologyEcosystemSection(),
-        
-        // About Section
-        AboutSection(),
-        
-        // Footer
-        Footer(),
       ],
     );
   }

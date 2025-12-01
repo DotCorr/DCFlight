@@ -8,6 +8,11 @@
 import UIKit
 import dcflight
 
+// Static pointer key for storing ScrollView reference on contentView
+// Shared between DCFScrollView and DCFScrollContentViewComponent
+// Using a global variable ensures both files use the same memory address
+internal var ScrollViewKey: UInt8 = 0
+
 /**
  * Custom UIScrollView subclass (1:1 with React Native's RCTCustomScrollView)
  * Limits certain default UIKit behaviors
@@ -182,14 +187,32 @@ class DCFCustomScrollView: UIScrollView {
      */
     public func updateContentSizeFromContentView() {
         guard let contentView = _contentView else {
+            print("⚠️ DCFScrollView.updateContentSizeFromContentView: No contentView, setting contentSize to zero")
             _scrollView.contentSize = .zero
             return
+        }
+        
+        // CRITICAL: If frame is zero, try to restore it from pendingFrame
+        // This handles the case where applyLayout hasn't run yet or the frame was reset
+        if contentView.frame.width == 0 || contentView.frame.height == 0 {
+            let pendingFrameValue = objc_getAssociatedObject(contentView,
+                                                              UnsafeRawPointer(bitPattern: "pendingFrame".hashValue)!) as? NSValue
+            if let pendingFrame = pendingFrameValue?.cgRectValue, pendingFrame.width > 0 && pendingFrame.height > 0 {
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                contentView.frame = pendingFrame
+                CATransaction.commit()
+                contentView.setNeedsLayout()
+                contentView.layoutIfNeeded()
+                print("⚠️ DCFScrollView.updateContentSizeFromContentView: Frame was zero, restored from pendingFrame=\(pendingFrame), actualFrame=\(contentView.frame)")
+            }
         }
         
         // React Native pattern: Use contentView.frame.size directly
         // ScrollContentView is in the Yoga tree, so Yoga has already calculated its size
         // DCFScrollContentViewComponent.applyLayout sets contentView.frame from Yoga layout
         let contentSize = contentView.frame.size
+        print("🔍 DCFScrollView.updateContentSizeFromContentView: contentView.frame=\(contentView.frame), contentSize=\(contentSize), current scrollView.contentSize=\(_scrollView.contentSize), subviews.count=\(contentView.subviews.count)")
         
         if !CGSizeEqualToSize(_scrollView.contentSize, contentSize) {
             // When contentSize is set manually, ScrollView internals will reset
@@ -199,6 +222,9 @@ class DCFCustomScrollView: UIScrollView {
             let newOffset = calculateOffsetForContentSize(contentSize)
             _scrollView.contentSize = contentSize
             _scrollView.contentOffset = newOffset
+            print("✅ DCFScrollView.updateContentSizeFromContentView: Updated contentSize=\(contentSize), contentOffset=\(newOffset)")
+        } else {
+            print("ℹ️ DCFScrollView.updateContentSizeFromContentView: contentSize unchanged")
         }
     }
     
@@ -258,8 +284,64 @@ class DCFCustomScrollView: UIScrollView {
      */
     public func insertContentView(_ view: UIView) {
         assert(_contentView == nil, "DCFScrollView may only contain a single subview")
+        
+        // CRITICAL: Get the frame that should be restored after addSubview
+        // UIKit resets the frame to zero when adding a view to a superview
+        let pendingFrameValue = objc_getAssociatedObject(view,
+                                                          UnsafeRawPointer(bitPattern: "pendingFrame".hashValue)!) as? NSValue
+        let pendingFrame = pendingFrameValue?.cgRectValue
+        let frameBeforeAdd = view.frame
+        
         _contentView = view
+        
+        // CRITICAL: Store reference to this DCFScrollView on the contentView
+        // This allows applyLayout to find the ScrollView even if superview is nil
+        // Use static pointer key and RETAIN to ensure the reference persists
+        // Note: This creates a retain cycle (ScrollView -> contentView -> ScrollView), but that's intentional
+        // The ScrollView owns the contentView, so this cycle is broken when ScrollView is deallocated
+        objc_setAssociatedObject(view,
+                                 &ScrollViewKey,
+                                 self,
+                                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Verify the stored reference was set correctly
+        let storedRef = objc_getAssociatedObject(view, &ScrollViewKey) as? DCFScrollView
+        print("🔍 DCFScrollView.insertContentView: Stored ScrollView reference, storedRef=\(storedRef != nil ? "set" : "nil"), self=\(self)")
+        
         _scrollView.addSubview(view)
+        
+        // CRITICAL: Restore frame immediately after addSubview
+        // UIKit resets the frame when adding to superview, so we restore it from the stored value
+        // Priority: 1) pendingFrame (from applyLayout), 2) frameBeforeAdd (if valid)
+        let frameToRestore: CGRect?
+        if let frame = pendingFrame, frame.width > 0 && frame.height > 0 {
+            frameToRestore = frame
+        } else if frameBeforeAdd.width > 0 && frameBeforeAdd.height > 0 {
+            frameToRestore = frameBeforeAdd
+        } else {
+            frameToRestore = nil
+        }
+        
+        if let frame = frameToRestore {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            view.frame = frame
+            CATransaction.commit()
+            view.setNeedsLayout()
+            view.layoutIfNeeded()
+            print("✅ DCFScrollView.insertContentView: Restored frame=\(frame) after addSubview (was \(frameBeforeAdd), pendingFrame=\(pendingFrame != nil ? String(describing: pendingFrame!) : "nil"))")
+            // Update contentSize immediately since frame is valid
+            updateContentSizeFromContentView()
+        } else {
+            print("⚠️ DCFScrollView.insertContentView: No frame to restore - frameBeforeAdd=\(frameBeforeAdd), pendingFrame=\(pendingFrame != nil ? String(describing: pendingFrame!) : "nil") - will wait for applyLayout")
+            // Set a flag so applyLayout knows to restore the frame and update contentSize
+            objc_setAssociatedObject(view,
+                                     UnsafeRawPointer(bitPattern: "needsFrameRestore".hashValue)!,
+                                     NSNumber(booleanLiteral: true),
+                                     .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+        
+        print("✅ DCFScrollView.insertContentView: Added view to _scrollView, finalFrame=\(view.frame), superview=\(view.superview?.description ?? "nil")")
     }
     
     /**

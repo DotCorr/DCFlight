@@ -8,7 +8,7 @@ final styles = DCFStyleSheet.create({
   ),
   // Navigation
   'nav': DCFStyleSheet(
-    backgroundColor: Colors.red,
+    backgroundColor: Colors.white,
   ),
   'navLogoText': DCFStyleSheet(
     primaryColor: Colors.black,
@@ -18,7 +18,7 @@ final styles = DCFStyleSheet.create({
   ),
   // Hero
   'hero': DCFStyleSheet(
-    backgroundColor: Colors.red,
+    backgroundColor: Colors.white,
   ),
   'heroTitle': DCFStyleSheet(
     primaryColor: Colors.black,
@@ -126,6 +126,7 @@ final layouts = DCFLayout.create({
   'root': DCFLayout(
     flex: 1,
     width: '100%',
+    height: '100%',
   ),
   // Navigation
   'nav': DCFLayout(
