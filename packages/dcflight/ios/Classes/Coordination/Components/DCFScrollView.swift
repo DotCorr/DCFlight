@@ -14,8 +14,8 @@ import dcflight
 internal var ScrollViewKey: UInt8 = 0
 
 /**
- * Custom UIScrollView subclass (1:1 with React Native's RCTCustomScrollView)
- * Limits certain default UIKit behaviors
+ * Custom UIScrollView subclass that limits certain default UIKit behaviors
+ * to ensure proper integration with DCFlight's layout system.
  */
 class DCFCustomScrollView: UIScrollView {
     var centerContent: Bool = false
@@ -84,7 +84,7 @@ class DCFCustomScrollView: UIScrollView {
 }
 
 /**
- * DCFScrollView - Main ScrollView class (1:1 with React Native's RCTScrollView)
+ * DCFScrollView - Main ScrollView class
  * 
  * The ScrollView may have at most one single subview (contentView). This ensures
  * that the scroll view's contentSize will be efficiently set to the size of the
@@ -179,7 +179,7 @@ class DCFCustomScrollView: UIScrollView {
     
     /**
      * Update contentSize from contentView.frame.size
-     * Called after layout is complete (equivalent to reactBridgeDidFinishTransaction)
+     * Called after layout is complete
      * 
      * KEY INSIGHT: We use contentView.frame.size directly because
      * ScrollContentView is laid out by Yoga. Yoga calculates the frame.size based on
@@ -525,7 +525,7 @@ class DCFCustomScrollView: UIScrollView {
         propagateEvent(on: self, eventName: eventName, data: eventData)
     }
     
-    // MARK: - Property Setters (Preserve ContentOffset Pattern from React Native)
+    // MARK: - Property Setters
     
     // Note: setting several properties of UIScrollView has the effect of
     // resetting its contentOffset to {0, 0}. To prevent this, we generate

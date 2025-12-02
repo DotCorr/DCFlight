@@ -9,7 +9,7 @@ import UIKit
 import dcflight
 
 /**
- * DCFScrollViewComponent - Component manager (1:1 with React Native's RCTScrollViewManager)
+ * DCFScrollViewComponent - Component manager
  * Manages creation and updates of DCFScrollView instances
  */
 class DCFScrollViewComponent: NSObject, DCFComponent {

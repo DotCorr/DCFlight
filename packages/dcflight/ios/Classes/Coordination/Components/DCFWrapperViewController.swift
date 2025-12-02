@@ -14,7 +14,7 @@ import dcflight
  * Purpose:
  * 1. Cache layout guides (topLayoutGuide, bottomLayoutGuide) so views can access them at any time
  * 2. Refresh scroll view content insets when layout guides change (e.g., navigation bar height changes)
- * 3. Prevent UINavigationController from resetting frames for React-managed views
+ * 3. Prevent UINavigationController from resetting frames for DCFlight-managed views
  * 4. Handle navigation bar appearance and configuration
  * 
  * Used by:

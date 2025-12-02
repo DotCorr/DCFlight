@@ -8,7 +8,7 @@
 import UIKit
 
 /**
- * DCFScrollContentView - Content view wrapper (1:1 with React Native's RCTScrollContentView)
+ * DCFScrollContentView - Content view wrapper
  * This is a simple UIView that serves as the container for ScrollView's children.
  * Yoga will layout this view and its children, and the ScrollView will use its
  * frame.size as the contentSize.

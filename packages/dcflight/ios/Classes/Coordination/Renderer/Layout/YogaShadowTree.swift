@@ -4,22 +4,22 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
- * NEW: Uses DCFShadowView objects (React Native pattern) instead of dictionaries
+ * Uses DCFShadowView objects for shadow view tree management
  */
 
 import UIKit
 import yoga
 
 /**
- * YogaShadowTree - Manages shadow view tree using DCFShadowView objects (React Native pattern)
+ * YogaShadowTree - Manages shadow view tree using DCFShadowView objects
  * 
- * This is a wrapper/adapter that maintains the same public interface as the old dictionary-based
- * implementation, but uses shadow view objects internally for better consistency with React Native.
+ * This manages the shadow view hierarchy and coordinates with Yoga layout engine
+ * to calculate and apply layout to views.
  */
 class YogaShadowTree {
     static let shared = YogaShadowTree()
     
-    // MARK: - Shadow View Registry (React Native pattern)
+    // MARK: - Shadow View Registry
     
     /// Shadow view registry: viewId -> DCFShadowView
     private var shadowViewRegistry: [Int: DCFShadowView] = [:]
@@ -189,7 +189,7 @@ class YogaShadowTree {
                 YGNodeSetMeasureFunc(parentYogaNode, nil)
             }
             
-            // Add to new parent using shadow view's insertReactSubview (React Native pattern)
+            // Add to new parent using shadow view's insertSubview method
             let insertIndex = index ?? parentShadowView.reactSubviews.count
             parentShadowView.insertReactSubview(childShadowView, atIndex: insertIndex)
             
@@ -272,7 +272,7 @@ class YogaShadowTree {
             }
             
             // Update root available size
-            // React Native pattern: Just set availableSize and let Yoga calculate layout naturally
+               // Set availableSize and let Yoga calculate layout naturally
             // DO NOT set explicit width/height/position on root node - Yoga handles this
             rootShadowView.availableSize = CGSize(width: width, height: height)
             
@@ -552,14 +552,14 @@ class YogaShadowTree {
     private func applyDefaultNodeStyles(to shadowView: DCFShadowView, componentType: String) {
         let yogaNode = shadowView.yogaNode
         
-        // Match React Native: Only set flexDirection based on useWebDefaults
-        // React Native doesn't set justify-content, align-items, or align-content by default
+        // Only set flexDirection based on useWebDefaults
+        // Don't set justify-content, align-items, or align-content by default
         // Yoga's defaults handle undefined dimensions automatically
         if useWebDefaults {
             YGNodeStyleSetFlexDirection(yogaNode, YGFlexDirection.row)
             YGNodeStyleSetFlexShrink(yogaNode, 1.0)
         } else {
-            // React Native default: column direction, no flex shrink
+            // Default: column direction, no flex shrink
             YGNodeStyleSetFlexDirection(yogaNode, YGFlexDirection.column)
             YGNodeStyleSetFlexShrink(yogaNode, 0.0)
         }

@@ -25,7 +25,7 @@ public protocol DCFLayoutIndependent {
     /// Returns true if layout updates should be skipped for this view.
     /// 
     /// When true, Yoga will skip applying layout to this view, making it
-    /// layout-independent (similar to React Native Reanimated's approach).
+    /// layout-independent (allows views to opt-out of Yoga layout updates).
     /// 
     /// This is useful for:
     /// - Animated views that use transforms (prevents anchor point recalculation)

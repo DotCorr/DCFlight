@@ -206,9 +206,9 @@ open class DCFShadowView: Hashable {
         guard let config = YGConfigNew() else {
             fatalError("Failed to create Yoga config")
         }
-        // Match React Native's Yoga config exactly
+        // Configure Yoga to match DCFlight's layout behavior
         YGConfigSetPointScaleFactor(config, 0.0)
-        // React Native uses legacy stretch behavior for compatibility
+        // Use legacy stretch behavior for compatibility
         // In newer Yoga versions, this is done via YGConfigSetErrata with YGErrataClassic
         // YGErrataClassic matches Yoga 1.x behavior including UseLegacyStretchBehaviour
         YGConfigSetErrata(config, YGErrata.classic)
@@ -335,9 +335,9 @@ open class DCFShadowView: Hashable {
             return
         }
         
-        // Calculate frame using React Native's exact pattern
+        // Calculate frame from Yoga layout results
         // Position is relative to parent (YGNodeLayoutGetLeft/Top)
-        // Size is calculated from absolute positions (like React Native does)
+        // Size is calculated from absolute positions
         let absoluteTopLeft = CGPoint(
             x: absolutePosition.x + CGFloat(YGNodeLayoutGetLeft(node)),
             y: absolutePosition.y + CGFloat(YGNodeLayoutGetTop(node))

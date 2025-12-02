@@ -10,7 +10,7 @@ import UIKit
 /**
  * UIView extension for layout guide utilities
  * 
- * React Native pattern: UIView+React (reactViewController, contentInsetsForView, autoAdjustInsetsForView)
+ * Provides methods to find view controllers and calculate content insets based on layout guides.
  */
 extension UIView {
     /**
@@ -30,8 +30,6 @@ extension UIView {
     
     /**
      * Find content insets for a view based on its view controller's layout guides.
-     * 
-     * React Native pattern: contentInsetsForView
      */
     @objc public static func contentInsets(for view: UIView) -> UIEdgeInsets {
         var currentView: UIView? = view

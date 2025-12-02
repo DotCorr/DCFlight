@@ -9,7 +9,7 @@ import UIKit
 
 /// Context protocol for DCFlight components
 /// Provides access to view controller, theme, and app-level state
-/// Similar to React Native's ReactContext hierarchy
+/// Context hierarchy for managing component context and state
 public protocol DCFContext {
     var viewController: UIViewController? { get }
     var isDarkMode: Bool { get }

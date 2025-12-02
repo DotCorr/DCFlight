@@ -32,6 +32,7 @@ Framework overview, architecture, and core concepts.
   - [Compose Integration](./platform/ANDROID_COMPOSE_INTEGRATION.md)
   - [Color Overrides](./platform/ANDROID_COMPONENTS_COLOR_OVERRIDES.md)
 - **iOS**
+  - [View Controller Systems](./platform/IOS_VIEW_CONTROLLER_SYSTEMS.md) - View controller wrappers, layout guides, and content insets
   - [Color Overrides](./platform/IOS_COMPONENTS_COLOR_OVERRIDES.md)
 - **[Explicit Color Overrides](./platform/EXPLICIT_COLOR_OVERRIDES.md)**
 

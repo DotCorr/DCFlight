@@ -8,7 +8,7 @@
 import UIKit
 
 /**
- * Protocol for scrollable views (1:1 with React Native's RCTScrollableProtocol)
+ * Protocol for scrollable views
  * Any view that has scrolling features should implement these methods.
  */
 @objc public protocol DCFScrollableProtocol {
