@@ -109,8 +109,9 @@ class YogaShadowTree {
             if componentType == "ScrollContentView" {
                 shadowView = DCFScrollContentShadowView(viewId: viewId)
             } else if componentType == "Text" {
-                // CRITICAL: Use specialized shadow view for Text components
-                // This enables proper text measurement with padding support
+                // Text components require specialized shadow view for custom measurement.
+                // Text size depends on content and available width, and must account for padding.
+                // Other components use standard measurement (fixed size, intrinsic size, or child-based).
                 shadowView = DCFTextShadowView(viewId: viewId)
             } else {
                 shadowView = DCFShadowView(viewId: viewId)
@@ -264,8 +265,8 @@ class YogaShadowTree {
                 }
             }
             
-            // Process meta props (margin/padding/border) via didSetProps
-            // This matches React Native's pattern for processing meta properties
+            // Process meta props (margin/padding/border) via didSetProps.
+            // Meta properties are composite properties that affect multiple edges.
             if !changedProps.isEmpty {
                 shadowView.didSetProps(changedProps)
             }

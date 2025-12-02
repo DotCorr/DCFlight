@@ -395,11 +395,11 @@ open class DCFShadowView: Hashable {
         // Does nothing by default
     }
     
-    // MARK: - Prop Processing (React Native Pattern)
+    // MARK: - Prop Processing
     
     /**
      * Called when props are set to process meta props (margin/padding/border).
-     * This matches React Native's didSetProps pattern for processing meta properties.
+     * Meta properties are composite properties that affect multiple edges (e.g., margin affects all sides).
      */
     public func didSetProps(_ changedProps: [String]) {
         if _recomputePadding {

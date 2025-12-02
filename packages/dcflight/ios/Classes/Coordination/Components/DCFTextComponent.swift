@@ -240,17 +240,19 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // CRITICAL: Text measurement is now handled by DCFTextShadowView's custom measure function
-        // This follows React Native's pattern where text measurement accounts for padding
-        // and uses NSLayoutManager for accurate measurement.
+        // Text measurement is handled by DCFTextShadowView's custom measure function.
         // 
-        // For non-Text components or fallback, return zero to let Yoga handle it
+        // Why Text is special:
+        // - Text size depends on content and available width (wrapping)
+        // - Padding must be accounted for during measurement
+        // - Requires NSLayoutManager for accurate text layout
+        // 
+        // The shadow view's measure function handles all of this, so we return
+        // a minimal size here to prevent double measurement.
         guard let label = view as? UILabel else {
             return CGSize.zero
         }
         
-        // Return a minimal size - the shadow view's measure function will handle actual measurement
-        // This prevents double measurement and ensures padding is accounted for correctly
         return CGSize(width: 1, height: 1)
     }
     

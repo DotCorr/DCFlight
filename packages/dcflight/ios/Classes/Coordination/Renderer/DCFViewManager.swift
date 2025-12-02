@@ -217,8 +217,8 @@ class DCFViewManager {
                 return false
             }
             
-            // CRITICAL: For Text components, update shadow view text properties
-            // This follows React Native's pattern where text properties are set on shadow view
+            // For Text components, update shadow view text properties.
+            // Text properties must be set on the shadow view for accurate measurement.
             if viewType == "Text" {
                 if let textShadowView = YogaShadowTree.shared.getShadowView(for: viewId) as? DCFTextShadowView {
                     textShadowView.updateTextProps(nonLayoutProps)

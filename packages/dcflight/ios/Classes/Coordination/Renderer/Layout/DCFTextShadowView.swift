@@ -12,13 +12,23 @@ import dcflight
 /**
  * DCFTextShadowView - Specialized shadow view for Text components
  * 
- * Implements proper text measurement using NSLayoutManager/NSTextContainer
- * following React Native's RCTShadowText pattern.
+ * Text components require custom measurement logic because:
+ * 1. Text size depends on content and available width (wrapping behavior)
+ * 2. Padding must be subtracted from available width before measurement
+ * 3. Accurate measurement requires NSLayoutManager/NSTextContainer for proper
+ *    text layout, line breaks, and truncation
+ * 4. Text properties (font, line height, letter spacing) affect measurement
+ * 
+ * Other components (View, Image, etc.) either:
+ * - Have fixed sizes (explicit width/height)
+ * - Use standard intrinsic content size (UIImageView, UIButton)
+ * - Are measured by their children (container views)
  * 
  * Key features:
  * - Custom measure function that accounts for padding
  * - Uses NSLayoutManager for accurate text measurement
  * - Handles text wrapping and truncation correctly
+ * - Caches text storage to avoid recomputation
  */
 open class DCFTextShadowView: DCFShadowView {
     
@@ -31,10 +41,10 @@ open class DCFTextShadowView: DCFShadowView {
     
     // Text properties
     public var text: String = ""
-    public var fontSize: CGFloat = NAN
+    public var fontSize: CGFloat = CGFloat.nan
     public var fontWeight: String?
     public var fontFamily: String?
-    public var letterSpacing: CGFloat = NAN
+    public var letterSpacing: CGFloat = CGFloat.nan
     public var lineHeight: CGFloat = 0.0
     public var numberOfLines: Int = 0
     public var textAlign: NSTextAlignment = .natural
@@ -46,21 +56,38 @@ open class DCFTextShadowView: DCFShadowView {
         super.init(viewId: viewId)
         
         // Set up custom measure function for text
-        YGNodeSetMeasureFunc(self.yogaNode) { [weak self] (node, width, widthMode, height, heightMode) -> YGSize in
-            guard let self = self else {
-                return YGSize(width: 0, height: 0)
-            }
-            return self.measureText(node: node, width: width, widthMode: widthMode, height: height, heightMode: heightMode)
-        }
+        // Use static function to avoid closure capture issues with C function pointers
+        YGNodeSetMeasureFunc(self.yogaNode, DCFTextShadowView.textMeasureFunction)
     }
     
     // MARK: - Text Measurement
+    
+    /**
+     * Static measure function for text nodes (C function pointer compatible)
+     * Retrieves the shadow view from the Yoga node's context
+     */
+    private static let textMeasureFunction: YGMeasureFunc = { (node, width, widthMode, height, heightMode) -> YGSize in
+        guard let node = node else {
+            return YGSize(width: 0, height: 0)
+        }
+        guard let context = YGNodeGetContext(node) else {
+            return YGSize(width: 0, height: 0)
+        }
+        
+        let shadowView = Unmanaged<DCFTextShadowView>.fromOpaque(context).takeUnretainedValue()
+        return shadowView.measureText(node: node, width: width, widthMode: widthMode, height: height, heightMode: heightMode)
+    }
     
     /**
      * Custom measure function for text nodes
      * Accounts for padding and uses NSLayoutManager for accurate measurement
      */
     private func measureText(node: YGNodeRef?, width: Float, widthMode: YGMeasureMode, height: Float, heightMode: YGMeasureMode) -> YGSize {
+        // If text is empty, return minimal size
+        if text.isEmpty {
+            return YGSize(width: 1, height: 1)
+        }
+        
         // Get padding to calculate available width
         let padding = self.paddingAsInsets
         let availableWidth: CGFloat
@@ -69,7 +96,7 @@ open class DCFTextShadowView: DCFShadowView {
             availableWidth = CGFloat.greatestFiniteMagnitude
         } else {
             // Account for padding when measuring
-            availableWidth = CGFloat(width) - (padding.left + padding.right)
+            availableWidth = max(0, CGFloat(width) - (padding.left + padding.right))
         }
         
         // Build text storage for the available width
@@ -78,16 +105,16 @@ open class DCFTextShadowView: DCFShadowView {
         // Get the layout manager and text container
         guard let layoutManager = textStorage.layoutManagers.first,
               let textContainer = layoutManager.textContainers.first else {
-            return YGSize(width: 0, height: 0)
+            return YGSize(width: 1, height: 1)
         }
         
         // Calculate the actual text size
         let computedSize = layoutManager.usedRect(for: textContainer).size
         
-        // Round up to pixel boundaries
+        // Round up to pixel boundaries, ensure minimum size
         let result = YGSize(
-            width: Float(ceil(computedSize.width)),
-            height: Float(ceil(computedSize.height))
+            width: Float(max(1, ceil(computedSize.width))),
+            height: Float(max(1, ceil(computedSize.height)))
         )
         
         return result
@@ -320,18 +347,25 @@ open class DCFTextShadowView: DCFShadowView {
     }
     
     /**
-     * Mark text as dirty to force recomputation
+     * Mark text as dirty to force recomputation.
+     * Overrides base class to also clear cached text storage.
      */
-    public func dirtyText() {
+    public override func dirtyText() {
+        // Clear cached text storage and attributed string
         _cachedTextStorage = nil
         _cachedAttributedString = nil
         _cachedTextStorageWidth = -1
+        
+        // Mark Yoga node as dirty for layout recalculation
         YGNodeMarkDirty(self.yogaNode)
+        
+        // Call super to maintain text lifecycle tracking
+        super.dirtyText()
     }
     
     // MARK: - Overrides
     
-    open override func didSetProps(_ changedProps: [String]) {
+    public override func didSetProps(_ changedProps: [String]) {
         // Check if text-related props changed
         let textProps = ["content", "fontSize", "fontWeight", "fontFamily", "letterSpacing", 
                         "lineHeight", "numberOfLines", "textAlign", "textColor", "primaryColor"]
