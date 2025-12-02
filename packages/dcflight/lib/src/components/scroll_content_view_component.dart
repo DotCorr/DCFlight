@@ -6,9 +6,16 @@
  */
 
 import 'package:dcflight/dcflight.dart';
+import 'package:meta/meta.dart';
 
 /// DCFScrollContentView - Content view wrapper for ScrollView children
-/// This component wraps the children of a ScrollView and is laid out by Yoga
+/// 
+/// **INTERNAL USE ONLY** - Users should NOT use this component directly.
+/// DCFScrollView automatically wraps children in ScrollContentView behind the scenes.
+/// 
+/// This component wraps the children of a ScrollView and is laid out by Yoga.
+/// It matches React Native's ScrollContentView pattern.
+@internal
 class DCFScrollContentView extends DCFStatelessComponent {
   /// Child nodes
   final List<DCFComponentNode> children;

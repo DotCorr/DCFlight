@@ -386,25 +386,48 @@ class DCFScrollView extends DCFStatelessComponent
       props['command'] = command!.toMap();
     }
 
-    // CRITICAL: Wrap children in ScrollContentView component
-    // This ensures ScrollContentView is registered in Yoga tree as a proper component
-    // ScrollView has ScrollContentView as child, which contains the actual children
-    // ScrollContentView should fill width but grow height based on children (no flex or height constraint)
-    final contentView = DCFScrollContentView(
-      layout: DCFLayout(
-        width: '100%',
-        // CRITICAL: Do NOT set flex: 1 or height - let it grow based on children's layout
-        // flex: 1 would make it fill available height, preventing scrolling
-        // Setting height: '100%' would constrain it to ScrollView's height, preventing scrolling
-      ),
-      styleSheet: contentContainerStyle,
-      children: children,
-    );
+    // CRITICAL: Automatically wrap children in ScrollContentView behind the scenes
+    // This matches React Native's pattern where ScrollView automatically wraps content
+    // Users should NOT use DCFScrollContentView directly - it's internal
+    DCFComponentNode contentView;
+    
+    // Check if first child is already a ScrollContentView (backwards compat)
+    if (children.isNotEmpty && children.first is DCFElement) {
+      final firstElement = children.first as DCFElement;
+      if (firstElement.type == 'ScrollContentView') {
+        // User manually provided ScrollContentView - use it directly (backwards compat)
+        contentView = firstElement;
+      } else {
+        // Wrap all children in ScrollContentView automatically
+        contentView = DCFScrollContentView(
+          layout: DCFLayout(
+            width: '100%',
+            // CRITICAL: Do NOT set flex: 1 or height - let it grow based on children's layout
+            // flex: 1 would make it fill available height, preventing scrolling
+            // Setting height: '100%' would constrain it to ScrollView's height, preventing scrolling
+          ),
+          styleSheet: contentContainerStyle,
+          children: children,
+        ).render();
+      }
+    } else {
+      // Wrap all children in ScrollContentView automatically
+      contentView = DCFScrollContentView(
+        layout: DCFLayout(
+          width: '100%',
+          // CRITICAL: Do NOT set flex: 1 or height - let it grow based on children's layout
+          // flex: 1 would make it fill available height, preventing scrolling
+          // Setting height: '100%' would constrain it to ScrollView's height, preventing scrolling
+        ),
+        styleSheet: contentContainerStyle,
+        children: children,
+      ).render();
+    }
 
     return DCFElement(
       type: 'ScrollView', // Use the correct registered component name
       elementProps: props,
-      children: [contentView], // ScrollView's only child is ScrollContentView
+      children: [contentView], // ScrollView's only child is ScrollContentView (auto-wrapped)
     );
   }
 }
