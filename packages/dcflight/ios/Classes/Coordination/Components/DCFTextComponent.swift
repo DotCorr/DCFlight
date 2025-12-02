@@ -240,43 +240,18 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
+        // CRITICAL: Text measurement is now handled by DCFTextShadowView's custom measure function
+        // This follows React Native's pattern where text measurement accounts for padding
+        // and uses NSLayoutManager for accurate measurement.
+        // 
+        // For non-Text components or fallback, return zero to let Yoga handle it
         guard let label = view as? UILabel else {
             return CGSize.zero
         }
         
-        let text = label.text ?? ""
-        
-        if text.isEmpty {
-            return CGSize.zero
-        }
-        
-        // CRITICAL: If width is constrained, use it for proper text wrapping calculation
-        // This ensures text respects parent's padding and doesn't overflow
-        let constrainedWidth: CGFloat?
-        if let width = props["width"] as? CGFloat, width > 0 {
-            constrainedWidth = width
-        } else if let widthStr = props["width"] as? String, widthStr == "100%" {
-            // For 100% width, we can't know the exact width yet, but we should still
-            // set preferredMaxLayoutWidth when frame is available in applyLayout
-            constrainedWidth = nil
-        } else {
-            constrainedWidth = nil
-        }
-        
-        // If we have a constrained width, use it for size calculation
-        // Otherwise, calculate natural size (Yoga will constrain it)
-        let maxWidth = constrainedWidth ?? CGFloat.greatestFiniteMagnitude
-        let maxSize = CGSize(width: maxWidth, height: CGFloat.greatestFiniteMagnitude)
-        
-        // CRITICAL: Set preferredMaxLayoutWidth before calculating size
-        // This ensures multi-line text wraps correctly
-        if constrainedWidth != nil {
-            label.preferredMaxLayoutWidth = maxWidth
-        }
-        
-        let size = label.sizeThatFits(maxSize)
-        
-        return CGSize(width: max(1, size.width), height: max(1, size.height))
+        // Return a minimal size - the shadow view's measure function will handle actual measurement
+        // This prevents double measurement and ensures padding is accounted for correctly
+        return CGSize(width: 1, height: 1)
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {

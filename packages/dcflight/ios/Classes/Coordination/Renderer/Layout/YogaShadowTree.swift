@@ -108,6 +108,10 @@ class YogaShadowTree {
             let shadowView: DCFShadowView
             if componentType == "ScrollContentView" {
                 shadowView = DCFScrollContentShadowView(viewId: viewId)
+            } else if componentType == "Text" {
+                // CRITICAL: Use specialized shadow view for Text components
+                // This enables proper text measurement with padding support
+                shadowView = DCFTextShadowView(viewId: viewId)
             } else {
                 shadowView = DCFShadowView(viewId: viewId)
             }
@@ -117,8 +121,10 @@ class YogaShadowTree {
             // Apply default styles
             applyDefaultNodeStyles(to: shadowView, componentType: componentType)
             
-            // Setup measure function if needed
-            setupMeasureFunction(shadowView: shadowView, componentType: componentType)
+            // Setup measure function if needed (Text has its own, so skip for Text)
+            if componentType != "Text" {
+                setupMeasureFunction(shadowView: shadowView, componentType: componentType)
+            }
             
             shadowViewRegistry[viewId] = shadowView
             nodeTypes[viewId] = componentType
@@ -505,6 +511,19 @@ class YogaShadowTree {
             // Not on sync queue, use sync
             return syncQueue.sync {
                 return nodeTypes[viewId]
+            }
+        }
+    }
+    
+    func getShadowView(for viewId: Int) -> DCFShadowView? {
+        // Check if we're already on the sync queue to avoid deadlock
+        if DispatchQueue.getSpecific(key: syncQueueKey) != nil {
+            // Already on sync queue, access directly
+            return shadowViewRegistry[viewId]
+        } else {
+            // Not on sync queue, use sync
+            return syncQueue.sync {
+                return shadowViewRegistry[viewId]
             }
         }
     }

@@ -142,23 +142,33 @@ class DCFViewManager {
         
         let isScreen = (viewType == "Screen" || props["presentationStyle"] != nil)
         
+        // Separate layout props from non-layout props
+        let layoutProps = extractLayoutProps(from: props)
+        let nonLayoutProps = props.filter { !layoutProps.keys.contains($0.key) }
+        
         if isScreen {
             YogaShadowTree.shared.createScreenRoot(id: String(viewId), componentType: viewType)
             
-            let layoutProps = extractLayoutProps(from: props)
             if !layoutProps.isEmpty {
                 YogaShadowTree.shared.updateNodeLayoutProps(nodeId: String(viewId), props: layoutProps)
             }
         } else {
             YogaShadowTree.shared.createNode(id: String(viewId), componentType: viewType)
             
-            let layoutProps = extractLayoutProps(from: props)
             if !layoutProps.isEmpty {
                 DCFLayoutManager.shared.updateNodeWithLayoutProps(
                     nodeId: viewId,
                     componentType: viewType,
                     props: layoutProps
                 )
+            }
+            
+            // CRITICAL: For Text components, update shadow view text properties immediately
+            // This ensures text measurement uses correct properties from the start
+            if viewType == "Text", !nonLayoutProps.isEmpty {
+                if let textShadowView = YogaShadowTree.shared.getShadowView(for: viewId) as? DCFTextShadowView {
+                    textShadowView.updateTextProps(nonLayoutProps)
+                }
             }
         }
         
@@ -205,6 +215,14 @@ class DCFViewManager {
         if !nonLayoutProps.isEmpty {
             guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
                 return false
+            }
+            
+            // CRITICAL: For Text components, update shadow view text properties
+            // This follows React Native's pattern where text properties are set on shadow view
+            if viewType == "Text" {
+                if let textShadowView = YogaShadowTree.shared.getShadowView(for: viewId) as? DCFTextShadowView {
+                    textShadowView.updateTextProps(nonLayoutProps)
+                }
             }
             
             let componentInstance = componentType.init()
