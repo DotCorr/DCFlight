@@ -93,19 +93,19 @@ public class DCFLayoutManager {
             
             // Now do layout calculation on background thread
             self.layoutQueue.async {
-                let success = YogaShadowTree.shared.calculateAndApplyLayout(
-                    width: screenBounds.width,
-                    height: screenBounds.height
-                )
-                
-                DispatchQueue.main.async {
-                    self.needsLayoutCalculation = false
-                    if success {
-                        print("✅ DCFLayoutManager: Layout calculation successful")
-                    } else {
-                        print("⚠️ DCFLayoutManager: Layout calculation deferred, rescheduling")
-                        self.needsLayoutCalculation = true
-                        self.scheduleLayoutCalculation()
+            let success = YogaShadowTree.shared.calculateAndApplyLayout(
+                width: screenBounds.width,
+                height: screenBounds.height
+            )
+            
+            DispatchQueue.main.async {
+                self.needsLayoutCalculation = false
+                if success {
+                    print("✅ DCFLayoutManager: Layout calculation successful")
+                } else {
+                    print("⚠️ DCFLayoutManager: Layout calculation deferred, rescheduling")
+                    self.needsLayoutCalculation = true
+                    self.scheduleLayoutCalculation()
                     }
                 }
             }

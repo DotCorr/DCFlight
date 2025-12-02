@@ -583,7 +583,7 @@ open class DCFShadowView: Hashable {
             if let autoSetter = setterAuto {
                 autoSetter(node)
             } else {
-                setter(node, Float.nan)
+            setter(node, Float.nan)
             }
         case .undefined:
             setter(node, Float.nan)
