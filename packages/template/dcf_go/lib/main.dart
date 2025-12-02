@@ -5,33 +5,132 @@ import 'package:dcflight/dcflight.dart';
 import 'dart:math' as math;
 
 void main() async {
-  await DCFlight.go(app: DotCorrLanding());
+  await DCFlight.go(app: TestScrollViewScreen());
+}
+
+/// Test Screen with ScrollView and Long List
+/// This helps verify if first items are visible
+class TestScrollViewScreen extends DCFStatelessComponent {
+  @override
+  DCFComponentNode render() {
+    return DCFScrollView(
+      layout: DCFLayout(
+        flex: 1,
+      ),
+      children: [
+        DCFScrollContentView(
+          layout: DCFLayout(
+            width: '100%',
+          ),
+          children: [
+            // Header - This should be visible at the top
+            DCFView(
+              layout: DCFLayout(
+                width: '100%',
+                padding: 24,
+              ),
+              styleSheet: DCFStyleSheet(
+                backgroundColor: const Color(0xFF000000),
+              ),
+              children: [
+                DCFText(
+                  content: "ScrollView Test",
+                  textProps: DCFTextProps(
+                    fontSize: 24,
+                    fontWeight: DCFFontWeight.bold,
+                  ),
+                  styleSheet: DCFStyleSheet(
+                    primaryColor: const Color(0xFFFFFFFF),
+                  ),
+                ),
+                DCFText(
+                  content: "First item should be visible at the top",
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                  ),
+                  styleSheet: DCFStyleSheet(
+                    primaryColor: const Color(0xFFFFFFFF),
+                  ),
+                ),
+              ],
+            ),
+            // Long list of items - First few should be visible
+            ...List.generate(50, (index) {
+              return DCFView(
+                layout: DCFLayout(
+                  width: '100%',
+                  padding: 16,
+                  marginBottom: 8,
+                ),
+                styleSheet: DCFStyleSheet(
+                  backgroundColor: index % 2 == 0 
+                      ? const Color(0xFFF5F5F5)
+                      : const Color(0xFFFFFFFF),
+                  borderWidth: 1,
+                  borderColor: const Color(0xFFE0E0E0),
+                ),
+                children: [
+                  DCFText(
+                    content: "Item ${index + 1}",
+                    textProps: DCFTextProps(
+                      fontSize: 18,
+                      fontWeight: DCFFontWeight.medium,
+                    ),
+                    styleSheet: DCFStyleSheet(
+                      primaryColor: const Color(0xFF000000),
+                    ),
+                  ),
+                  DCFText(
+                    content: "This is item number ${index + 1} in the list. Scroll to see more items.",
+                    textProps: DCFTextProps(
+                      fontSize: 14,
+                    ),
+                    styleSheet: DCFStyleSheet(
+                      primaryColor: const Color(0xFF666666),
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 /// DotCorr Landing Page - Recreated from React/Framer Motion
 class DotCorrLanding extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    return DCFView(
+    return DCFScrollView(
       layout: layouts['root'],
       children: [
-        // Navigation
-        NavigationBar(),
-
-        // Hero Section
-        HeroSection(),
-
-        // Infrastructure for Builders & Machines
-        BuildersAndMachinesSection(),
-
-        // Technology Ecosystem
-        TechnologyEcosystemSection(),
-
-        // About Section
-        AboutSection(),
-
-        // Footer
-        Footer(),
+        DCFScrollContentView(
+          layout: DCFLayout(
+            width: '100%',
+            // Don't set height: '100%' - let it grow with content
+          ),
+          children: [
+            // Navigation
+            NavigationBar(),
+            
+            // Hero Section
+            HeroSection(),
+            
+            // Infrastructure for Builders & Machines
+            BuildersAndMachinesSection(),
+            
+            // Technology Ecosystem
+            TechnologyEcosystemSection(),
+            
+            // About Section
+            AboutSection(),
+            
+            // Footer
+            Footer(),
+          ],
+        ),
       ],
     );
   }
@@ -42,8 +141,8 @@ class NavigationBar extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return Motion(
-      initial: {'opacity': 0, 'y': -20},
-      animate: {'opacity': 1, 'y': 0},
+      initial: { 'opacity': 0, 'y': -20 },
+      animate: { 'opacity': 1, 'y': 0 },
       transition: Transition(duration: 600),
       layout: layouts['nav'],
       styleSheet: styles['nav'],
@@ -99,8 +198,8 @@ class HeroSection extends DCFStatefulComponent {
           children: [
             // Left: Typography & Message
             Motion(
-              initial: {'opacity': 0, 'y': 20},
-              animate: {'opacity': 1, 'y': 0},
+              initial: { 'opacity': 0, 'y': 20 },
+              animate: { 'opacity': 1, 'y': 0 },
               transition: Transition(duration: 800),
               layout: layouts['heroLeft'],
               children: [
@@ -130,19 +229,21 @@ class HeroSection extends DCFStatefulComponent {
                 ),
               ],
             ),
-
+            
             // Right: Infrastructure Visualization
             DCFView(
               layout: layouts['heroRight'],
-              children: [InfrastructureVisual()],
+              children: [
+                InfrastructureVisual(),
+              ],
             ),
           ],
         ),
-
+        
         // Ecosystem/Model Compatibility
         Motion(
-          initial: {'opacity': 0, 'y': 20},
-          animate: {'opacity': 1, 'y': 0},
+          initial: { 'opacity': 0, 'y': 20 },
+          animate: { 'opacity': 1, 'y': 0 },
           transition: Transition(delay: 500, duration: 800),
           layout: layouts['ecosystem'],
           children: [
@@ -156,20 +257,11 @@ class HeroSection extends DCFStatefulComponent {
               children: [
                 DCFText(content: "OpenAI", styleSheet: styles['ecosystemLogo']),
                 DCFText(content: "Gemini", styleSheet: styles['ecosystemLogo']),
-                DCFText(
-                  content: "Anthropic",
-                  styleSheet: styles['ecosystemLogo'],
-                ),
+                DCFText(content: "Anthropic", styleSheet: styles['ecosystemLogo']),
                 DCFText(content: "Meta", styleSheet: styles['ecosystemLogo']),
-                DCFText(
-                  content: "Mistral",
-                  styleSheet: styles['ecosystemLogo'],
-                ),
+                DCFText(content: "Mistral", styleSheet: styles['ecosystemLogo']),
                 DCFText(content: "Cohere", styleSheet: styles['ecosystemLogo']),
-                DCFText(
-                  content: "+ Any LLM",
-                  styleSheet: styles['ecosystemLogo'],
-                ),
+                DCFText(content: "+ Any LLM", styleSheet: styles['ecosystemLogo']),
               ],
             ),
           ],
@@ -188,26 +280,26 @@ class TypewriterEffect extends DCFStatefulComponent {
       "Build for Web.",
       "Build for AI.",
       "Build for AGI.",
-      "Build for The Future.",
+      "Build for The Future."
     ];
     final index = useState<int>(0);
     final subIndex = useState<int>(0);
     final blink = useState<bool>(true);
-
+    
     // Typewriter logic would go here with useEffect hooks
     // For now, showing current word
     final currentWord = words[index.state];
-    final displayText = currentWord.substring(
-      0,
-      math.min(subIndex.state, currentWord.length),
-    );
-
+    final displayText = currentWord.substring(0, math.min(subIndex.state, currentWord.length));
+    
     return DCFView(
       layout: layouts['typewriter'],
       children: [
         DCFText(
           content: "\$ $displayText${blink.state ? '|' : ' '}",
-          textProps: DCFTextProps(fontSize: 20, fontFamily: 'monospace'),
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontFamily: 'monospace',
+          ),
           styleSheet: styles['typewriterText'],
         ),
       ],
@@ -223,25 +315,28 @@ class InfrastructureVisual extends DCFStatefulComponent {
     final towerSize = size * 0.35;
     final towerOffset = size * 0.15;
     final towerHeight = 160.0;
-
+    
     return DCFView(
       layout: layouts['infraContainer'],
       children: [
         // Main 3D Container
         Motion(
-          initial: {
-            'opacity': 0,
-            'rotateX': 60 * (math.pi / 180),
-            'rotateZ': 45 * (math.pi / 180),
-            'scale': 0.8,
+          initial: { 
+            'opacity': 0, 
+            'rotateX': 60 * (math.pi / 180), 
+            'rotateZ': 45 * (math.pi / 180), 
+            'scale': 0.8 
           },
-          animate: {
-            'opacity': 1,
-            'rotateX': 60 * (math.pi / 180),
-            'rotateZ': 45 * (math.pi / 180),
-            'scale': 1,
+          animate: { 
+            'opacity': 1, 
+            'rotateX': 60 * (math.pi / 180), 
+            'rotateZ': 45 * (math.pi / 180), 
+            'scale': 1 
           },
-          transition: Transition(duration: 1200, curve: AnimationCurve.easeOut),
+          transition: Transition(
+            duration: 1200,
+            curve: AnimationCurve.easeOut,
+          ),
           layout: DCFLayout(
             width: size,
             height: size,
@@ -250,11 +345,11 @@ class InfrastructureVisual extends DCFStatefulComponent {
           children: [
             // Base (Black Platform)
             Base3D(),
-
+            
             // Tower (White Extruded)
             Motion(
-              initial: {'z': 0},
-              animate: {'z': towerHeight},
+              initial: { 'z': 0 },
+              animate: { 'z': towerHeight },
               transition: Transition(
                 duration: 1500,
                 delay: 500,
@@ -270,34 +365,30 @@ class InfrastructureVisual extends DCFStatefulComponent {
                   top: towerOffset,
                 ),
               ),
-              children: [Tower3D(towerHeight: towerHeight)],
+              children: [
+                Tower3D(towerHeight: towerHeight),
+              ],
             ),
-
+            
             // Orbiting Drones
-            ...List.generate(
-              3,
-              (i) => DroneOrbit(
-                index: i,
-                size: size,
-                delay: i * -3,
-                duration: 10 + (i * 2),
-              ),
-            ),
-
+            ...List.generate(3, (i) => DroneOrbit(
+              index: i,
+              size: size,
+              delay: i * -3,
+              duration: 10 + (i * 2),
+            )),
+            
             // Data Streams (SVG lines would go here)
             DataStreams(size: size),
-
+            
             // Energy Particles
-            ...List.generate(
-              2,
-              (i) => EnergyParticle(
-                index: i,
-                towerOffset: towerOffset,
-                towerSize: towerSize,
-                towerHeight: towerHeight,
-                delay: i * 1.25,
-              ),
-            ),
+            ...List.generate(2, (i) => EnergyParticle(
+              index: i,
+              towerOffset: towerOffset,
+              towerSize: towerSize,
+              towerHeight: towerHeight,
+              delay: i * 1.25,
+            )),
           ],
         ),
       ],
@@ -315,7 +406,9 @@ class Base3D extends DCFStatelessComponent {
         height: '100%',
         position: DCFPositionType.absolute,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: const Color(0xFF000000)),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: const Color(0xFF000000),
+      ),
       children: [
         // Grid pattern overlay would go here
         DCFView(
@@ -337,9 +430,9 @@ class Base3D extends DCFStatelessComponent {
 /// 3D Tower Component
 class Tower3D extends DCFStatelessComponent {
   final double towerHeight;
-
+  
   Tower3D({required this.towerHeight});
-
+  
   @override
   DCFComponentNode render() {
     return Motion(
@@ -352,8 +445,13 @@ class Tower3D extends DCFStatelessComponent {
         repeat: true,
         curve: AnimationCurve.easeInOut,
       ),
-      layout: DCFLayout(width: '100%', height: '100%'),
-      styleSheet: DCFStyleSheet(backgroundColor: const Color(0xFFFFFFFF)),
+      layout: DCFLayout(
+        width: '100%',
+        height: '100%',
+      ),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: const Color(0xFFFFFFFF),
+      ),
       children: [
         // Tower faces would be rendered via 3D transforms
       ],
@@ -367,19 +465,19 @@ class DroneOrbit extends DCFStatelessComponent {
   final double size;
   final int delay;
   final int duration;
-
+  
   DroneOrbit({
     required this.index,
     required this.size,
     required this.delay,
     required this.duration,
   });
-
+  
   @override
   DCFComponentNode render() {
     final orbitRadius = size * 0.6;
     return Motion(
-      animate: {'rotateZ': 360 * (math.pi / 180)},
+      animate: { 'rotateZ': 360 * (math.pi / 180) },
       transition: Transition(
         duration: duration * 1000,
         repeat: true,
@@ -407,10 +505,11 @@ class DroneOrbit extends DCFStatelessComponent {
           children: [
             // Scan beam would go here
             Motion(
-              animate: {
-                'opacity': [0.2, 0.6, 0.2],
-              },
-              transition: Transition(duration: 2000, repeat: true),
+              animate: { 'opacity': [0.2, 0.6, 0.2] },
+              transition: Transition(
+                duration: 2000,
+                repeat: true,
+              ),
               layout: DCFLayout(
                 width: 80,
                 height: 80,
@@ -434,9 +533,9 @@ class DroneOrbit extends DCFStatelessComponent {
 /// Data Streams Component
 class DataStreams extends DCFStatelessComponent {
   final double size;
-
+  
   DataStreams({required this.size});
-
+  
   @override
   DCFComponentNode render() {
     return DCFView(
@@ -447,67 +546,61 @@ class DataStreams extends DCFStatelessComponent {
       ),
       children: [
         // Horizontal lines
-        ...List.generate(
-          4,
-          (i) => Motion(
-            initial: {'scaleY': 0, 'opacity': 0},
-            animate: {
-              'scaleY': 1,
-              'opacity': [0.3, 0.8, 0.3],
-            },
-            transition: Transition(
-              duration: 800,
-              delay: (1000 + (i * 100)).round(),
-              repeat: true,
-              repeatCount: null,
-            ),
-            layout: DCFLayout(
-              width: 2,
-              height: size * 0.5,
-              position: DCFPositionType.absolute,
-              absoluteLayout: AbsoluteLayout(
-                left: size - (i * 35),
-                top: size * 0.25,
-              ),
-            ),
-            styleSheet: DCFStyleSheet(
-              backgroundColor: const Color(0xFF06B6D4),
-              opacity: 0.8,
-            ),
-            children: [],
+        ...List.generate(4, (i) => Motion(
+          initial: { 'scaleY': 0, 'opacity': 0 },
+          animate: { 
+            'scaleY': 1, 
+            'opacity': [0.3, 0.8, 0.3] 
+          },
+          transition: Transition(
+            duration: 800,
+            delay: (1000 + (i * 100)).round(),
+            repeat: true,
+            repeatCount: null,
           ),
-        ),
+          layout: DCFLayout(
+            width: 2,
+            height: size * 0.5,
+            position: DCFPositionType.absolute,
+            absoluteLayout: AbsoluteLayout(
+              left: size - (i * 35),
+              top: size * 0.25,
+            ),
+          ),
+          styleSheet: DCFStyleSheet(
+            backgroundColor: const Color(0xFF06B6D4),
+            opacity: 0.8,
+          ),
+          children: [],
+        )),
         // Vertical lines
-        ...List.generate(
-          4,
-          (i) => Motion(
-            initial: {'scaleX': 0, 'opacity': 0},
-            animate: {
-              'scaleX': 1,
-              'opacity': [0.3, 0.8, 0.3],
-            },
-            transition: Transition(
-              duration: 800,
-              delay: (1200 + (i * 100)).round(),
-              repeat: true,
-              repeatCount: null,
-            ),
-            layout: DCFLayout(
-              width: size * 0.5,
-              height: 2,
-              position: DCFPositionType.absolute,
-              absoluteLayout: AbsoluteLayout(
-                left: size * 0.25,
-                top: size - (i * 35),
-              ),
-            ),
-            styleSheet: DCFStyleSheet(
-              backgroundColor: const Color(0xFF06B6D4),
-              opacity: 0.8,
-            ),
-            children: [],
+        ...List.generate(4, (i) => Motion(
+          initial: { 'scaleX': 0, 'opacity': 0 },
+          animate: { 
+            'scaleX': 1, 
+            'opacity': [0.3, 0.8, 0.3] 
+          },
+          transition: Transition(
+            duration: 800,
+            delay: (1200 + (i * 100)).round(),
+            repeat: true,
+            repeatCount: null,
           ),
-        ),
+          layout: DCFLayout(
+            width: size * 0.5,
+            height: 2,
+            position: DCFPositionType.absolute,
+            absoluteLayout: AbsoluteLayout(
+              left: size * 0.25,
+              top: size - (i * 35),
+            ),
+          ),
+          styleSheet: DCFStyleSheet(
+            backgroundColor: const Color(0xFF06B6D4),
+            opacity: 0.8,
+          ),
+          children: [],
+        )),
       ],
     );
   }
@@ -520,7 +613,7 @@ class EnergyParticle extends DCFStatelessComponent {
   final double towerSize;
   final double towerHeight;
   final double delay;
-
+  
   EnergyParticle({
     required this.index,
     required this.towerOffset,
@@ -528,7 +621,7 @@ class EnergyParticle extends DCFStatelessComponent {
     required this.towerHeight,
     required this.delay,
   });
-
+  
   @override
   DCFComponentNode render() {
     return Motion(
@@ -570,8 +663,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
       styleSheet: styles['sectionGray'],
       children: [
         Motion(
-          initial: {'opacity': 0, 'y': 20},
-          whileInView: {'opacity': 1, 'y': 0},
+          initial: { 'opacity': 0, 'y': 20 },
+          whileInView: { 'opacity': 1, 'y': 0 },
           viewport: ViewportConfig(once: true),
           transition: Transition(duration: 600),
           layout: layouts['sectionHeader'],
@@ -585,8 +678,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               styleSheet: styles['sectionTitle'],
             ),
             DCFText(
-              content:
-                  "We provide the tools to build native applications today and the cognitive architecture for the intelligent systems of tomorrow.",
+              content: "We provide the tools to build native applications today and the cognitive architecture for the intelligent systems of tomorrow.",
               textProps: DCFTextProps(fontSize: 20),
               styleSheet: styles['sectionDescription'],
             ),
@@ -597,9 +689,9 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           children: [
             // Builders Card
             Motion(
-              initial: {'opacity': 0, 'y': 20},
-              whileInView: {'opacity': 1, 'y': 0},
-              whileHover: {'y': -5},
+              initial: { 'opacity': 0, 'y': 20 },
+              whileInView: { 'opacity': 1, 'y': 0 },
+              whileHover: { 'y': -5 },
               viewport: ViewportConfig(once: true),
               transition: Transition(duration: 600, delay: 200),
               layout: layouts['card'],
@@ -614,8 +706,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                   styleSheet: styles['cardTitle'],
                 ),
                 DCFText(
-                  content:
-                      "Direct access to native platform capabilities. Write Dart once, render true native UI components. No abstractions, no compromises.",
+                  content: "Direct access to native platform capabilities. Write Dart once, render true native UI components. No abstractions, no compromises.",
                   textProps: DCFTextProps(fontSize: 14),
                   styleSheet: styles['cardDescription'],
                 ),
@@ -623,9 +714,9 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             ),
             // Machines Card
             Motion(
-              initial: {'opacity': 0, 'y': 20},
-              whileInView: {'opacity': 1, 'y': 0},
-              whileHover: {'y': -5},
+              initial: { 'opacity': 0, 'y': 20 },
+              whileInView: { 'opacity': 1, 'y': 0 },
+              whileHover: { 'y': -5 },
               viewport: ViewportConfig(once: true),
               transition: Transition(duration: 600, delay: 400),
               layout: layouts['card'],
@@ -640,8 +731,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                   styleSheet: styles['cardTitleWhite'],
                 ),
                 DCFText(
-                  content:
-                      "The cognitive layer for artificial intelligence. We build the foundational systems required to support autonomous agents and AGI.",
+                  content: "The cognitive layer for artificial intelligence. We build the foundational systems required to support autonomous agents and AGI.",
                   textProps: DCFTextProps(fontSize: 14),
                   styleSheet: styles['cardDescriptionWhite'],
                 ),
@@ -659,35 +749,19 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     final features = [
-      {
-        'title': 'High Performance',
-        'desc':
-            'Rust-powered core architecture ensuring maximum efficiency and memory safety at scale.',
-      },
-      {
-        'title': 'Cross Platform',
-        'desc':
-            'Deploy native applications to iOS, Android, and Web from a single unified codebase.',
-      },
-      {
-        'title': 'LLM Agnostic',
-        'desc':
-            'Plug-and-play compatibility with foundation models from OpenAI, Anthropic, and Llama.',
-      },
-      {
-        'title': 'Vector Native',
-        'desc':
-            'Built-in high-performance vector search and graph capabilities for AI memory systems.',
-      },
+      {'title': 'High Performance', 'desc': 'Rust-powered core architecture ensuring maximum efficiency and memory safety at scale.'},
+      {'title': 'Cross Platform', 'desc': 'Deploy native applications to iOS, Android, and Web from a single unified codebase.'},
+      {'title': 'LLM Agnostic', 'desc': 'Plug-and-play compatibility with foundation models from OpenAI, Anthropic, and Llama.'},
+      {'title': 'Vector Native', 'desc': 'Built-in high-performance vector search and graph capabilities for AI memory systems.'},
     ];
-
+    
     return DCFView(
       layout: layouts['section'],
       styleSheet: styles['section'],
       children: [
         Motion(
-          initial: {'opacity': 0, 'y': 20},
-          whileInView: {'opacity': 1, 'y': 0},
+          initial: { 'opacity': 0, 'y': 20 },
+          whileInView: { 'opacity': 1, 'y': 0 },
           viewport: ViewportConfig(once: true),
           layout: layouts['sectionHeader'],
           children: [
@@ -700,8 +774,7 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
               styleSheet: styles['sectionTitle'],
             ),
             DCFText(
-              content:
-                  "Our infrastructure is designed to integrate seamlessly with the technologies that power the world's most ambitious software.",
+              content: "Our infrastructure is designed to integrate seamlessly with the technologies that power the world's most ambitious software.",
               textProps: DCFTextProps(fontSize: 20),
               styleSheet: styles['sectionDescription'],
             ),
@@ -709,34 +782,33 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
         ),
         DCFView(
           layout: layouts['featuresGrid'],
-          children:
-              features.asMap().entries.map((entry) {
-                final index = entry.key;
-                final feature = entry.value;
-                return Motion(
-                  initial: {'opacity': 0},
-                  whileInView: {'opacity': 1},
-                  viewport: ViewportConfig(once: true),
-                  transition: Transition(delay: index * 100),
-                  layout: layouts['featureCard'],
-                  styleSheet: styles['featureCard'],
-                  children: [
-                    DCFText(
-                      content: feature['title']!,
-                      textProps: DCFTextProps(
-                        fontSize: 18,
-                        fontWeight: DCFFontWeight.bold,
-                      ),
-                      styleSheet: styles['featureTitle'],
-                    ),
-                    DCFText(
-                      content: feature['desc']!,
-                      textProps: DCFTextProps(fontSize: 12),
-                      styleSheet: styles['featureDescription'],
-                    ),
-                  ],
-                );
-              }).toList(),
+          children: features.asMap().entries.map((entry) {
+            final index = entry.key;
+            final feature = entry.value;
+            return Motion(
+              initial: { 'opacity': 0 },
+              whileInView: { 'opacity': 1 },
+              viewport: ViewportConfig(once: true),
+              transition: Transition(delay: index * 100),
+              layout: layouts['featureCard'],
+              styleSheet: styles['featureCard'],
+              children: [
+                DCFText(
+                  content: feature['title']!,
+                  textProps: DCFTextProps(
+                    fontSize: 18,
+                    fontWeight: DCFFontWeight.bold,
+                  ),
+                  styleSheet: styles['featureTitle'],
+                ),
+                DCFText(
+                  content: feature['desc']!,
+                  textProps: DCFTextProps(fontSize: 12),
+                  styleSheet: styles['featureDescription'],
+                ),
+              ],
+            );
+          }).toList(),
         ),
       ],
     );
@@ -752,8 +824,8 @@ class AboutSection extends DCFStatelessComponent {
       styleSheet: styles['sectionDark'],
       children: [
         Motion(
-          initial: {'opacity': 0, 'y': 20},
-          whileInView: {'opacity': 1, 'y': 0},
+          initial: { 'opacity': 0, 'y': 20 },
+          whileInView: { 'opacity': 1, 'y': 0 },
           viewport: ViewportConfig(once: true),
           transition: Transition(duration: 600),
           layout: layouts['aboutContainer'],
@@ -775,26 +847,16 @@ class AboutSection extends DCFStatelessComponent {
               styleSheet: styles['aboutTitle'],
             ),
             DCFText(
-              content:
-                  "DotCorr is a software design and production company specializing in next-generation infrastructure. Based in the Netherlands, we bridge the gap between today's applications and tomorrow's autonomous systems.",
+              content: "DotCorr is a software design and production company specializing in next-generation infrastructure. Based in the Netherlands, we bridge the gap between today's applications and tomorrow's autonomous systems.",
               textProps: DCFTextProps(fontSize: 18),
               styleSheet: styles['aboutDescription'],
             ),
             DCFView(
               layout: layouts['aboutInfo'],
               children: [
-                DCFText(
-                  content: "Location: Netherlands",
-                  styleSheet: styles['aboutInfoText'],
-                ),
-                DCFText(
-                  content: "Focus: AI Infrastructure & Mobile",
-                  styleSheet: styles['aboutInfoText'],
-                ),
-                DCFText(
-                  content: "Status: Research & Development",
-                  styleSheet: styles['aboutInfoText'],
-                ),
+                DCFText(content: "Location: Netherlands", styleSheet: styles['aboutInfoText']),
+                DCFText(content: "Focus: AI Infrastructure & Mobile", styleSheet: styles['aboutInfoText']),
+                DCFText(content: "Status: Research & Development", styleSheet: styles['aboutInfoText']),
               ],
             ),
           ],
@@ -827,8 +889,7 @@ class Footer extends DCFStatelessComponent {
                   styleSheet: styles['footerBrandText'],
                 ),
                 DCFText(
-                  content:
-                      "Building the cognitive infrastructure for artificial general intelligence and high-performance mobile applications.",
+                  content: "Building the cognitive infrastructure for artificial general intelligence and high-performance mobile applications.",
                   textProps: DCFTextProps(fontSize: 12),
                   styleSheet: styles['footerDescription'],
                 ),
@@ -839,10 +900,7 @@ class Footer extends DCFStatelessComponent {
               children: [
                 DCFText(content: "DCFlight", styleSheet: styles['footerLink']),
                 DCFText(content: "DCCortex", styleSheet: styles['footerLink']),
-                DCFText(
-                  content: "Documentation",
-                  styleSheet: styles['footerLink'],
-                ),
+                DCFText(content: "Documentation", styleSheet: styles['footerLink']),
                 DCFText(content: "GitHub", styleSheet: styles['footerLink']),
               ],
             ),

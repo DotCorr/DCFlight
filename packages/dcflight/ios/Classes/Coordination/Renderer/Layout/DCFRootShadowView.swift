@@ -52,7 +52,20 @@ public class DCFRootShadowView: DCFShadowView {
         let availableWidth = availableSize.width == .infinity ? Float.nan : Float(availableSize.width)
         let availableHeight = availableSize.height == .infinity ? Float.nan : Float(availableSize.height)
         
+        // DEBUG: Log root node state before layout
+        print("🔍 DCFRootShadowView: Before layout - availableSize=\(availableSize), yogaNode width=\(YGNodeStyleGetWidth(yogaNode).value), height=\(YGNodeStyleGetHeight(yogaNode).value)")
+        
         YGNodeCalculateLayout(yogaNode, availableWidth, availableHeight, baseDirection)
+        
+        // DEBUG: Log root node layout after calculation
+        print("🔍 DCFRootShadowView: After layout - root node layout: left=\(YGNodeLayoutGetLeft(yogaNode)), top=\(YGNodeLayoutGetTop(yogaNode)), width=\(YGNodeLayoutGetWidth(yogaNode)), height=\(YGNodeLayoutGetHeight(yogaNode))")
+        
+        // DEBUG: Log first child if exists
+        if YGNodeGetChildCount(yogaNode) > 0 {
+            if let firstChild = YGNodeGetChild(yogaNode, 0) {
+                print("🔍 DCFRootShadowView: First child layout: left=\(YGNodeLayoutGetLeft(firstChild)), top=\(YGNodeLayoutGetTop(firstChild)), width=\(YGNodeLayoutGetWidth(firstChild)), height=\(YGNodeLayoutGetHeight(firstChild))")
+            }
+        }
         
         let viewsWithNewFrame = NSMutableSet()
         applyLayoutNode(yogaNode, viewsWithNewFrame: viewsWithNewFrame, absolutePosition: .zero)

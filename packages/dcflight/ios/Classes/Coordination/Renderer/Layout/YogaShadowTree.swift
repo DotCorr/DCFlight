@@ -240,12 +240,14 @@ class YogaShadowTree {
     func updateNodeLayoutProps(nodeId: String, props: [String: Any]) {
         guard let viewId = Int(nodeId),
               let shadowView = shadowViewRegistry[viewId] else {
+            print("⚠️ YogaShadowTree: updateNodeLayoutProps - viewId=\(nodeId) not found")
             return
         }
         
         syncQueue.sync {
             let yogaNode = shadowView.yogaNode
             
+            print("🔍 YogaShadowTree: updateNodeLayoutProps for viewId=\(nodeId), props=\(props)")
             for (key, value) in props {
                 applyLayoutProp(node: yogaNode, key: key, value: value)
             }
@@ -573,16 +575,20 @@ class YogaShadowTree {
         case "width":
             if let width = parseDimension(value) {
                 YGNodeStyleSetWidth(node, width)
+                print("🔍 YogaShadowTree: Applied width=\(width) to node")
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetWidthPercent(node, percentValue)
+                print("🔍 YogaShadowTree: Applied width=\(percentValue)% to node")
             }
         case "height":
             if let height = parseDimension(value) {
                 YGNodeStyleSetHeight(node, height)
+                print("🔍 YogaShadowTree: Applied height=\(height) to node")
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetHeightPercent(node, percentValue)
+                print("🔍 YogaShadowTree: Applied height=\(percentValue)% to node")
             }
         case "flex":
             if let flex = parseDimension(value) {

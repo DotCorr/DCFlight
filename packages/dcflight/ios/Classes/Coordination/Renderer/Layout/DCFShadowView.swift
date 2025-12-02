@@ -335,15 +335,39 @@ open class DCFShadowView: Hashable {
             return
         }
         
-        // Calculate frame using Yoga's layout metrics directly
+        // Calculate frame using React Native's exact pattern
         // Position is relative to parent (YGNodeLayoutGetLeft/Top)
-        // Size comes directly from Yoga (YGNodeLayoutGetWidth/Height)
+        // Size is calculated from absolute positions (like React Native does)
+        let absoluteTopLeft = CGPoint(
+            x: absolutePosition.x + CGFloat(YGNodeLayoutGetLeft(node)),
+            y: absolutePosition.y + CGFloat(YGNodeLayoutGetTop(node))
+        )
+        
+        let absoluteBottomRight = CGPoint(
+            x: absolutePosition.x + CGFloat(YGNodeLayoutGetLeft(node)) + CGFloat(YGNodeLayoutGetWidth(node)),
+            y: absolutePosition.y + CGFloat(YGNodeLayoutGetTop(node)) + CGFloat(YGNodeLayoutGetHeight(node))
+        )
+        
         let newFrame = CGRect(
             x: roundPixelValue(CGFloat(YGNodeLayoutGetLeft(node))),
             y: roundPixelValue(CGFloat(YGNodeLayoutGetTop(node))),
-            width: roundPixelValue(CGFloat(YGNodeLayoutGetWidth(node))),
-            height: roundPixelValue(CGFloat(YGNodeLayoutGetHeight(node)))
+            width: roundPixelValue(absoluteBottomRight.x - absoluteTopLeft.x),
+            height: roundPixelValue(absoluteBottomRight.y - absoluteTopLeft.y)
         )
+        
+        // DEBUG: Log problematic frames (negative Y or zero height)
+        if newFrame.origin.y < 0 || newFrame.size.height == 0 {
+            let yogaLeft = YGNodeLayoutGetLeft(node)
+            let yogaTop = YGNodeLayoutGetTop(node)
+            let yogaWidth = YGNodeLayoutGetWidth(node)
+            let yogaHeight = YGNodeLayoutGetHeight(node)
+            print("⚠️ DCFShadowView: viewId=\(viewId) has problematic frame:")
+            print("   Yoga values: left=\(yogaLeft), top=\(yogaTop), width=\(yogaWidth), height=\(yogaHeight)")
+            print("   absolutePosition=\(absolutePosition)")
+            print("   absoluteTopLeft=\(absoluteTopLeft), absoluteBottomRight=\(absoluteBottomRight)")
+            print("   Calculated frame=\(newFrame)")
+            print("   Parent frame=\(frame)")
+        }
         
         if !frame.equalTo(newFrame) {
             frame = newFrame

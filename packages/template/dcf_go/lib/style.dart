@@ -124,9 +124,9 @@ final styles = DCFStyleSheet.create({
 
 final layouts = DCFLayout.create({
   'root': DCFLayout(
+    // Use flex: 1 to fill parent - this works better with Yoga than width/height 100%
+    // flex: 1 means "grow to fill available space" which is what we want for the root
     flex: 1,
-    width: '100%',
-    height: '100%',
   ),
   // Navigation
   'nav': DCFLayout(
