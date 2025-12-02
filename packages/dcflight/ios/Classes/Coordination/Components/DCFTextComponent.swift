@@ -20,9 +20,20 @@ class DCFTextComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let label = UILabel()
         
-        label.numberOfLines = 0
+        // CRITICAL: Set default line break mode based on numberOfLines
+        if let numberOfLines = props["numberOfLines"] as? Int {
+            label.numberOfLines = numberOfLines
+            if numberOfLines == 1 {
+                label.lineBreakMode = .byTruncatingTail // Truncate for single line
+            } else {
+                label.lineBreakMode = .byWordWrapping // Wrap for multi-line
+            }
+        } else {
+            label.numberOfLines = 0 // Default: unlimited lines
+            label.lineBreakMode = .byWordWrapping // Default: word wrapping
+        }
+        
         label.clipsToBounds = true // CRITICAL: Ensure text respects bounds
-        label.lineBreakMode = .byWordWrapping // Ensure text wraps properly
         
         storeProps(props.mapValues { $0 as Any? }, in: label)
         
@@ -162,6 +173,13 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         if let numberOfLines = nonNullProps["numberOfLines"] as? Int {
             label.numberOfLines = numberOfLines
+            // CRITICAL: For single-line text, use truncation to prevent overflow
+            if numberOfLines == 1 {
+                label.lineBreakMode = .byTruncatingTail
+            } else if numberOfLines == 0 {
+                // For unlimited lines, use word wrapping
+                label.lineBreakMode = .byWordWrapping
+            }
         }
         
         // Handle letterSpacing and lineHeight using NSAttributedString
@@ -232,7 +250,30 @@ class DCFTextComponent: NSObject, DCFComponent {
             return CGSize.zero
         }
         
-        let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        // CRITICAL: If width is constrained, use it for proper text wrapping calculation
+        // This ensures text respects parent's padding and doesn't overflow
+        let constrainedWidth: CGFloat?
+        if let width = props["width"] as? CGFloat, width > 0 {
+            constrainedWidth = width
+        } else if let widthStr = props["width"] as? String, widthStr == "100%" {
+            // For 100% width, we can't know the exact width yet, but we should still
+            // set preferredMaxLayoutWidth when frame is available in applyLayout
+            constrainedWidth = nil
+        } else {
+            constrainedWidth = nil
+        }
+        
+        // If we have a constrained width, use it for size calculation
+        // Otherwise, calculate natural size (Yoga will constrain it)
+        let maxWidth = constrainedWidth ?? CGFloat.greatestFiniteMagnitude
+        let maxSize = CGSize(width: maxWidth, height: CGFloat.greatestFiniteMagnitude)
+        
+        // CRITICAL: Set preferredMaxLayoutWidth before calculating size
+        // This ensures multi-line text wraps correctly
+        if constrainedWidth != nil {
+            label.preferredMaxLayoutWidth = maxWidth
+        }
+        
         let size = label.sizeThatFits(maxSize)
         
         return CGSize(width: max(1, size.width), height: max(1, size.height))
@@ -245,8 +286,19 @@ class DCFTextComponent: NSObject, DCFComponent {
         // CRITICAL: Ensure label respects the frame bounds
         if let label = view as? UILabel {
             label.clipsToBounds = true
-            // Ensure text fits within bounds
-            label.preferredMaxLayoutWidth = frame.width > 0 ? frame.width : CGFloat.greatestFiniteMagnitude
+            
+            // CRITICAL: Set preferredMaxLayoutWidth to frame width for proper text wrapping
+            // This ensures text wraps within the allocated space, respecting parent padding
+            if frame.width > 0 {
+                label.preferredMaxLayoutWidth = frame.width
+            } else {
+                label.preferredMaxLayoutWidth = CGFloat.greatestFiniteMagnitude
+            }
+            
+            // CRITICAL: Force label to recalculate its layout with the new width constraint
+            // This ensures text wraps correctly after frame is set
+            label.setNeedsLayout()
+            label.layoutIfNeeded()
         }
     }
     

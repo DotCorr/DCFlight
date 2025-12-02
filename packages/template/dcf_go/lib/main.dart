@@ -79,7 +79,7 @@ class NavigationBar extends DCFStatelessComponent {
             ),
           ],
         ),
-        // Links - CRITICAL: Add flexShrink to prevent overflow
+        // Links - CRITICAL: Add flexShrink and minWidth: 0 to prevent overflow
         DCFView(
           layout: DCFLayout(
             flexDirection: DCFFlexDirection.row,
@@ -87,6 +87,7 @@ class NavigationBar extends DCFStatelessComponent {
             gap: 24,
             flexShrink: 1, // Allow shrinking to prevent overflow
             flexGrow: 0, // Don't grow
+            minWidth: 0, // CRITICAL: Allow shrinking below content size
           ),
           children: [
             DCFText(
@@ -94,14 +95,27 @@ class NavigationBar extends DCFStatelessComponent {
               textProps: DCFTextProps(
                 fontSize: 14,
                 fontWeight: DCFFontWeight.medium,
+                numberOfLines: 1, // Single line with truncation
               ),
               styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+              layout: DCFLayout(
+                flexShrink: 1, // Allow text to shrink
+                minWidth: 0, // CRITICAL: Allow shrinking below content size
+              ),
             ),
             // GitHub Icon placeholder (text for now)
             DCFText(
               content: "GitHub",
-              textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.medium),
+              textProps: DCFTextProps(
+                fontSize: 14,
+                fontWeight: DCFFontWeight.medium,
+                numberOfLines: 1, // Single line with truncation
+              ),
               styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+              layout: DCFLayout(
+                flexShrink: 1, // Allow text to shrink
+                minWidth: 0, // CRITICAL: Allow shrinking below content size
+              ),
             ),
           ],
         ),
