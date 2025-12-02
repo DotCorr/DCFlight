@@ -82,32 +82,32 @@ open class DCFShadowView: Hashable {
     
     public var width: YGValue {
         get { YGNodeStyleGetWidth(yogaNode) }
-        set { setYogaValueAuto(newValue, setter: YGNodeStyleSetWidth, node: yogaNode) }
+        set { applyDimensionValue(node: yogaNode, value: newValue, setter: YGNodeStyleSetWidth, setterPercent: YGNodeStyleSetWidthPercent, setterAuto: YGNodeStyleSetWidthAuto) }
     }
     
     public var height: YGValue {
         get { YGNodeStyleGetHeight(yogaNode) }
-        set { setYogaValueAuto(newValue, setter: YGNodeStyleSetHeight, node: yogaNode) }
+        set { applyDimensionValue(node: yogaNode, value: newValue, setter: YGNodeStyleSetHeight, setterPercent: YGNodeStyleSetHeightPercent, setterAuto: YGNodeStyleSetHeightAuto) }
     }
     
     public var minWidth: YGValue {
         get { YGNodeStyleGetMinWidth(yogaNode) }
-        set { setYogaValueAuto(newValue, setter: YGNodeStyleSetMinWidth, node: yogaNode) }
+        set { applyDimensionValue(node: yogaNode, value: newValue, setter: YGNodeStyleSetMinWidth, setterPercent: YGNodeStyleSetMinWidthPercent, setterAuto: nil) }
     }
     
     public var maxWidth: YGValue {
         get { YGNodeStyleGetMaxWidth(yogaNode) }
-        set { setYogaValueAuto(newValue, setter: YGNodeStyleSetMaxWidth, node: yogaNode) }
+        set { applyDimensionValue(node: yogaNode, value: newValue, setter: YGNodeStyleSetMaxWidth, setterPercent: YGNodeStyleSetMaxWidthPercent, setterAuto: nil) }
     }
     
     public var minHeight: YGValue {
         get { YGNodeStyleGetMinHeight(yogaNode) }
-        set { setYogaValueAuto(newValue, setter: YGNodeStyleSetMinHeight, node: yogaNode) }
+        set { applyDimensionValue(node: yogaNode, value: newValue, setter: YGNodeStyleSetMinHeight, setterPercent: YGNodeStyleSetMinHeightPercent, setterAuto: nil) }
     }
     
     public var maxHeight: YGValue {
         get { YGNodeStyleGetMaxHeight(yogaNode) }
-        set { setYogaValueAuto(newValue, setter: YGNodeStyleSetMaxHeight, node: yogaNode) }
+        set { applyDimensionValue(node: yogaNode, value: newValue, setter: YGNodeStyleSetMaxHeight, setterPercent: YGNodeStyleSetMaxHeightPercent, setterAuto: nil) }
     }
     
     /**
@@ -174,7 +174,7 @@ open class DCFShadowView: Hashable {
     private var _marginMetaProps: [MetaProp: YGValue] = [:]
     private var _borderMetaProps: [MetaProp: YGValue] = [:]
     
-    private enum MetaProp: Int {
+    internal enum MetaProp: Int {
         case left = 0
         case top
         case right
@@ -395,6 +395,160 @@ open class DCFShadowView: Hashable {
         // Does nothing by default
     }
     
+    // MARK: - Prop Processing (React Native Pattern)
+    
+    /**
+     * Called when props are set to process meta props (margin/padding/border).
+     * This matches React Native's didSetProps pattern for processing meta properties.
+     */
+    public func didSetProps(_ changedProps: [String]) {
+        if _recomputePadding {
+            processMetaPropsPadding()
+        }
+        if _recomputeMargin {
+            processMetaPropsMargin()
+        }
+        if _recomputeBorder {
+            processMetaPropsBorder()
+        }
+        _recomputeMargin = false
+        _recomputePadding = false
+        _recomputeBorder = false
+    }
+    
+    /**
+     * Process padding meta props and apply to Yoga node.
+     * Handles: padding, paddingTop, paddingRight, paddingBottom, paddingLeft,
+     * paddingHorizontal, paddingVertical
+     */
+    private func processMetaPropsPadding() {
+        let node = yogaNode
+        
+        if let value = _paddingMetaProps[.left] {
+            setYogaValue(value, setter: YGNodeStyleSetPadding, node: node, edge: .start)
+        }
+        if let value = _paddingMetaProps[.right] {
+            setYogaValue(value, setter: YGNodeStyleSetPadding, node: node, edge: .end)
+        }
+        if let value = _paddingMetaProps[.top] {
+            setYogaValue(value, setter: YGNodeStyleSetPadding, node: node, edge: .top)
+        }
+        if let value = _paddingMetaProps[.bottom] {
+            setYogaValue(value, setter: YGNodeStyleSetPadding, node: node, edge: .bottom)
+        }
+        if let value = _paddingMetaProps[.horizontal] {
+            setYogaValue(value, setter: YGNodeStyleSetPadding, node: node, edge: .horizontal)
+        }
+        if let value = _paddingMetaProps[.vertical] {
+            setYogaValue(value, setter: YGNodeStyleSetPadding, node: node, edge: .vertical)
+        }
+        if let value = _paddingMetaProps[.all] {
+            setYogaValue(value, setter: YGNodeStyleSetPadding, node: node, edge: .all)
+        }
+    }
+    
+    /**
+     * Process margin meta props and apply to Yoga node.
+     * Handles: margin, marginTop, marginRight, marginBottom, marginLeft,
+     * marginHorizontal, marginVertical
+     */
+    private func processMetaPropsMargin() {
+        let node = yogaNode
+        
+        if let value = _marginMetaProps[.left] {
+            applyMarginValue(node: node, edge: .start, value: value)
+        }
+        if let value = _marginMetaProps[.right] {
+            applyMarginValue(node: node, edge: .end, value: value)
+        }
+        if let value = _marginMetaProps[.top] {
+            applyMarginValue(node: node, edge: .top, value: value)
+        }
+        if let value = _marginMetaProps[.bottom] {
+            applyMarginValue(node: node, edge: .bottom, value: value)
+        }
+        if let value = _marginMetaProps[.horizontal] {
+            applyMarginValue(node: node, edge: .horizontal, value: value)
+        }
+        if let value = _marginMetaProps[.vertical] {
+            applyMarginValue(node: node, edge: .vertical, value: value)
+        }
+        if let value = _marginMetaProps[.all] {
+            applyMarginValue(node: node, edge: .all, value: value)
+        }
+    }
+    
+    /**
+     * Apply margin value to Yoga node, handling auto, undefined, point, and percent units.
+     */
+    private func applyMarginValue(node: YGNodeRef, edge: YGEdge, value: YGValue) {
+        switch value.unit {
+        case .auto:
+            YGNodeStyleSetMarginAuto(node, edge)
+        case .undefined:
+            YGNodeStyleSetMargin(node, edge, Float.nan)
+        case .point:
+            YGNodeStyleSetMargin(node, edge, value.value)
+        case .percent:
+            YGNodeStyleSetMarginPercent(node, edge, value.value)
+        }
+        dirtyText()
+    }
+    
+    /**
+     * Process border meta props and apply to Yoga node.
+     * Handles: borderWidth, borderTopWidth, borderRightWidth, borderBottomWidth, borderLeftWidth
+     */
+    private func processMetaPropsBorder() {
+        let node = yogaNode
+        
+        if let value = _borderMetaProps[.left] {
+            YGNodeStyleSetBorder(node, YGEdge.start, value.value)
+        }
+        if let value = _borderMetaProps[.right] {
+            YGNodeStyleSetBorder(node, YGEdge.end, value.value)
+        }
+        if let value = _borderMetaProps[.top] {
+            YGNodeStyleSetBorder(node, YGEdge.top, value.value)
+        }
+        if let value = _borderMetaProps[.bottom] {
+            YGNodeStyleSetBorder(node, YGEdge.bottom, value.value)
+        }
+        if let value = _borderMetaProps[.horizontal] {
+            YGNodeStyleSetBorder(node, YGEdge.horizontal, value.value)
+        }
+        if let value = _borderMetaProps[.vertical] {
+            YGNodeStyleSetBorder(node, YGEdge.vertical, value.value)
+        }
+        if let value = _borderMetaProps[.all] {
+            YGNodeStyleSetBorder(node, YGEdge.all, value.value)
+        }
+    }
+    
+    /**
+     * Store meta prop value for later processing.
+     * Called by YogaShadowTree when layout props are updated.
+     */
+    internal func storeMetaProp(_ prop: MetaProp, value: YGValue, type: MetaPropType) {
+        switch type {
+        case .padding:
+            _paddingMetaProps[prop] = value
+            _recomputePadding = true
+        case .margin:
+            _marginMetaProps[prop] = value
+            _recomputeMargin = true
+        case .border:
+            _borderMetaProps[prop] = value
+            _recomputeBorder = true
+        }
+    }
+    
+    internal enum MetaPropType {
+        case padding
+        case margin
+        case border
+    }
+    
     // MARK: - Helper Functions
     
     private func roundPixelValue(_ value: CGFloat) -> CGFloat {
@@ -413,19 +567,34 @@ open class DCFShadowView: Hashable {
         dirtyText()
     }
     
-    private func setYogaValueAuto(_ value: YGValue, setter: (YGNodeRef, Float) -> Void, node: YGNodeRef) {
+    /**
+     * Apply dimension value (width/height) to Yoga node, handling auto, undefined, point, and percent units.
+     * Used for properties that don't have an edge parameter.
+     */
+    private func applyDimensionValue(
+        node: YGNodeRef,
+        value: YGValue,
+        setter: (YGNodeRef, Float) -> Void,
+        setterPercent: (YGNodeRef, Float) -> Void,
+        setterAuto: ((YGNodeRef) -> Void)?
+    ) {
         switch value.unit {
         case .auto:
-            setter(node, Float.nan)
+            if let autoSetter = setterAuto {
+                autoSetter(node)
+            } else {
+                setter(node, Float.nan)
+            }
         case .undefined:
             setter(node, Float.nan)
         case .point:
             setter(node, value.value)
         case .percent:
-            break
+            setterPercent(node, value.value)
         }
         dirtyText()
     }
+    
     
     // MARK: - Hashable
     

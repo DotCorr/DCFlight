@@ -52,11 +52,11 @@ class DCFView extends DCFStatelessComponent
   @override
   ComponentPriority get priority => ComponentPriority.normal;
 
-  /// The layout properties
-  final DCFLayout layout;
+  /// The layout properties (optional - defaults to empty layout if not provided)
+  final DCFLayout? layout;
 
   /// The style properties
-  final DCFStyleSheet styleSheet;
+  final DCFStyleSheet? styleSheet;
 
   /// Child nodes
   final List<DCFComponentNode> children;
@@ -69,8 +69,8 @@ class DCFView extends DCFStatelessComponent
 
   /// Create a view component
   DCFView({
-    this.layout = const DCFLayout(),
-    this.styleSheet = const DCFStyleSheet(backgroundColor: DCFColors.transparent),
+    this.layout,
+    this.styleSheet,
     this.children = const [],
     this.events,
     this.onLayout,
@@ -89,8 +89,8 @@ class DCFView extends DCFStatelessComponent
     return DCFElement(
       type: 'View',
       elementProps: {
-        ...layout.toMap(),
-        ...styleSheet.toMap(),
+        ...(layout ?? const DCFLayout()).toMap(),
+        ...(styleSheet ?? const DCFStyleSheet(backgroundColor: DCFColors.transparent)).toMap(),
         ...eventMap,
       },
       children: children,

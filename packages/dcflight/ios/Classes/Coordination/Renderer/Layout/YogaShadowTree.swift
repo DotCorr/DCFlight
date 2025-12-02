@@ -246,10 +246,22 @@ class YogaShadowTree {
         
         syncQueue.sync {
             let yogaNode = shadowView.yogaNode
+            var changedProps: [String] = []
             
             print("🔍 YogaShadowTree: updateNodeLayoutProps for viewId=\(nodeId), props=\(props)")
+            
+            // Apply layout props and track which ones changed
             for (key, value) in props {
-                applyLayoutProp(node: yogaNode, key: key, value: value)
+                let changed = applyLayoutProp(shadowView: shadowView, node: yogaNode, key: key, value: value)
+                if changed {
+                    changedProps.append(key)
+                }
+            }
+            
+            // Process meta props (margin/padding/border) via didSetProps
+            // This matches React Native's pattern for processing meta properties
+            if !changedProps.isEmpty {
+                shadowView.didSetProps(changedProps)
             }
         }
     }
@@ -570,314 +582,477 @@ class YogaShadowTree {
     
     // MARK: - Layout Property Application
     
-    private func applyLayoutProp(node: YGNodeRef, key: String, value: Any) {
+    private func applyLayoutProp(shadowView: DCFShadowView, node: YGNodeRef, key: String, value: Any) -> Bool {
         switch key {
         case "width":
             if let width = parseDimension(value) {
                 YGNodeStyleSetWidth(node, width)
                 print("🔍 YogaShadowTree: Applied width=\(width) to node")
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetWidthPercent(node, percentValue)
                 print("🔍 YogaShadowTree: Applied width=\(percentValue)% to node")
+                return true
             }
+            return false
         case "height":
             if let height = parseDimension(value) {
                 YGNodeStyleSetHeight(node, height)
                 print("🔍 YogaShadowTree: Applied height=\(height) to node")
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetHeightPercent(node, percentValue)
                 print("🔍 YogaShadowTree: Applied height=\(percentValue)% to node")
+                return true
             }
+            return false
         case "flex":
             if let flex = parseDimension(value) {
                 YGNodeStyleSetFlex(node, flex)
+                return true
             }
+            return false
         case "flexDirection":
             if let direction = value as? String {
                 switch direction {
                 case "row":
                     YGNodeStyleSetFlexDirection(node, YGFlexDirection.row)
+                    return true
                 case "column":
                     YGNodeStyleSetFlexDirection(node, YGFlexDirection.column)
+                    return true
                 case "rowReverse":
                     YGNodeStyleSetFlexDirection(node, YGFlexDirection.rowReverse)
+                    return true
                 case "columnReverse":
                     YGNodeStyleSetFlexDirection(node, YGFlexDirection.columnReverse)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "flexWrap":
             if let wrap = value as? String {
                 switch wrap {
                 case "nowrap":
                     YGNodeStyleSetFlexWrap(node, YGWrap.noWrap)
+                    return true
                 case "wrap":
                     YGNodeStyleSetFlexWrap(node, YGWrap.wrap)
+                    return true
                 case "wrapReverse":
                     YGNodeStyleSetFlexWrap(node, YGWrap.wrapReverse)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "flexGrow":
             if let grow = parseDimension(value) {
                 YGNodeStyleSetFlexGrow(node, grow)
+                return true
             }
+            return false
         case "flexShrink":
             if let shrink = parseDimension(value) {
                 YGNodeStyleSetFlexShrink(node, shrink)
+                return true
             }
+            return false
         case "flexBasis":
             if let basis = parseDimension(value) {
                 YGNodeStyleSetFlexBasis(node, basis)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetFlexBasisPercent(node, percentValue)
+                return true
             }
+            return false
         case "display":
             if let display = value as? String {
                 switch display {
                 case "flex":
                     YGNodeStyleSetDisplay(node, YGDisplay.flex)
+                    return true
                 case "none":
                     YGNodeStyleSetDisplay(node, YGDisplay.none)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "overflow":
             if let overflow = value as? String {
                 switch overflow {
                 case "visible":
                     YGNodeStyleSetOverflow(node, YGOverflow.visible)
+                    return true
                 case "hidden":
                     YGNodeStyleSetOverflow(node, YGOverflow.hidden)
+                    return true
                 case "scroll":
                     YGNodeStyleSetOverflow(node, YGOverflow.scroll)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "minWidth":
             if let minWidth = parseDimension(value) {
                 YGNodeStyleSetMinWidth(node, minWidth)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMinWidthPercent(node, percentValue)
+                return true
             }
+            return false
         case "maxWidth":
             if let maxWidth = parseDimension(value) {
                 YGNodeStyleSetMaxWidth(node, maxWidth)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMaxWidthPercent(node, percentValue)
+                return true
             }
+            return false
         case "minHeight":
             if let minHeight = parseDimension(value) {
                 YGNodeStyleSetMinHeight(node, minHeight)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMinHeightPercent(node, percentValue)
+                return true
             }
+            return false
         case "maxHeight":
             if let maxHeight = parseDimension(value) {
                 YGNodeStyleSetMaxHeight(node, maxHeight)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetMaxHeightPercent(node, percentValue)
+                return true
             }
+            return false
         case "margin":
             if let margin = parseDimension(value) {
-                YGNodeStyleSetMargin(node, YGEdge.all, margin)
+                shadowView.storeMetaProp(.all, value: YGValue(value: margin, unit: .point), type: .margin)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetMarginPercent(node, YGEdge.all, percentValue)
+                shadowView.storeMetaProp(.all, value: YGValue(value: percentValue, unit: .percent), type: .margin)
             }
+            return true
         case "marginTop":
             if let margin = parseDimension(value) {
-                YGNodeStyleSetMargin(node, YGEdge.top, margin)
+                shadowView.storeMetaProp(.top, value: YGValue(value: margin, unit: .point), type: .margin)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetMarginPercent(node, YGEdge.top, percentValue)
+                shadowView.storeMetaProp(.top, value: YGValue(value: percentValue, unit: .percent), type: .margin)
             }
+            return true
         case "marginRight":
             if let margin = parseDimension(value) {
-                YGNodeStyleSetMargin(node, YGEdge.right, margin)
+                shadowView.storeMetaProp(.right, value: YGValue(value: margin, unit: .point), type: .margin)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetMarginPercent(node, YGEdge.right, percentValue)
+                shadowView.storeMetaProp(.right, value: YGValue(value: percentValue, unit: .percent), type: .margin)
             }
+            return true
         case "marginBottom":
             if let margin = parseDimension(value) {
-                YGNodeStyleSetMargin(node, YGEdge.bottom, margin)
+                shadowView.storeMetaProp(.bottom, value: YGValue(value: margin, unit: .point), type: .margin)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetMarginPercent(node, YGEdge.bottom, percentValue)
+                shadowView.storeMetaProp(.bottom, value: YGValue(value: percentValue, unit: .percent), type: .margin)
             }
+            return true
         case "marginLeft":
             if let margin = parseDimension(value) {
-                YGNodeStyleSetMargin(node, YGEdge.left, margin)
+                shadowView.storeMetaProp(.left, value: YGValue(value: margin, unit: .point), type: .margin)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetMarginPercent(node, YGEdge.left, percentValue)
+                shadowView.storeMetaProp(.left, value: YGValue(value: percentValue, unit: .percent), type: .margin)
             }
+            return true
+        case "marginHorizontal":
+            if let margin = parseDimension(value) {
+                shadowView.storeMetaProp(.horizontal, value: YGValue(value: margin, unit: .point), type: .margin)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                shadowView.storeMetaProp(.horizontal, value: YGValue(value: percentValue, unit: .percent), type: .margin)
+            }
+            return true
+        case "marginVertical":
+            if let margin = parseDimension(value) {
+                shadowView.storeMetaProp(.vertical, value: YGValue(value: margin, unit: .point), type: .margin)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                shadowView.storeMetaProp(.vertical, value: YGValue(value: percentValue, unit: .percent), type: .margin)
+            }
+            return true
         case "padding":
             if let padding = parseDimension(value) {
-                YGNodeStyleSetPadding(node, YGEdge.all, padding)
+                shadowView.storeMetaProp(.all, value: YGValue(value: padding, unit: .point), type: .padding)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPaddingPercent(node, YGEdge.all, percentValue)
+                shadowView.storeMetaProp(.all, value: YGValue(value: percentValue, unit: .percent), type: .padding)
             }
+            return true
         case "paddingTop":
             if let padding = parseDimension(value) {
-                YGNodeStyleSetPadding(node, YGEdge.top, padding)
+                shadowView.storeMetaProp(.top, value: YGValue(value: padding, unit: .point), type: .padding)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPaddingPercent(node, YGEdge.top, percentValue)
+                shadowView.storeMetaProp(.top, value: YGValue(value: percentValue, unit: .percent), type: .padding)
             }
+            return true
         case "paddingRight":
             if let padding = parseDimension(value) {
-                YGNodeStyleSetPadding(node, YGEdge.right, padding)
+                shadowView.storeMetaProp(.right, value: YGValue(value: padding, unit: .point), type: .padding)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPaddingPercent(node, YGEdge.right, percentValue)
+                shadowView.storeMetaProp(.right, value: YGValue(value: percentValue, unit: .percent), type: .padding)
             }
+            return true
         case "paddingBottom":
             if let padding = parseDimension(value) {
-                YGNodeStyleSetPadding(node, YGEdge.bottom, padding)
+                shadowView.storeMetaProp(.bottom, value: YGValue(value: padding, unit: .point), type: .padding)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPaddingPercent(node, YGEdge.bottom, percentValue)
+                shadowView.storeMetaProp(.bottom, value: YGValue(value: percentValue, unit: .percent), type: .padding)
             }
+            return true
         case "paddingLeft":
             if let padding = parseDimension(value) {
-                YGNodeStyleSetPadding(node, YGEdge.left, padding)
+                shadowView.storeMetaProp(.left, value: YGValue(value: padding, unit: .point), type: .padding)
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
-                YGNodeStyleSetPaddingPercent(node, YGEdge.left, percentValue)
+                shadowView.storeMetaProp(.left, value: YGValue(value: percentValue, unit: .percent), type: .padding)
             }
+            return true
+        case "paddingHorizontal":
+            if let padding = parseDimension(value) {
+                shadowView.storeMetaProp(.horizontal, value: YGValue(value: padding, unit: .point), type: .padding)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                shadowView.storeMetaProp(.horizontal, value: YGValue(value: percentValue, unit: .percent), type: .padding)
+            }
+            return true
+        case "paddingVertical":
+            if let padding = parseDimension(value) {
+                shadowView.storeMetaProp(.vertical, value: YGValue(value: padding, unit: .point), type: .padding)
+            } else if let strValue = value as? String, strValue.hasSuffix("%"),
+                     let percentValue = Float(strValue.dropLast()) {
+                shadowView.storeMetaProp(.vertical, value: YGValue(value: percentValue, unit: .percent), type: .padding)
+            }
+            return true
         case "justifyContent":
             if let justify = value as? String {
                 switch justify {
                 case "flexStart":
                     YGNodeStyleSetJustifyContent(node, YGJustify.flexStart)
+                    return true
                 case "center":
                     YGNodeStyleSetJustifyContent(node, YGJustify.center)
+                    return true
                 case "flexEnd":
                     YGNodeStyleSetJustifyContent(node, YGJustify.flexEnd)
+                    return true
                 case "spaceBetween":
                     YGNodeStyleSetJustifyContent(node, YGJustify.spaceBetween)
+                    return true
                 case "spaceAround":
                     YGNodeStyleSetJustifyContent(node, YGJustify.spaceAround)
+                    return true
                 case "spaceEvenly":
                     YGNodeStyleSetJustifyContent(node, YGJustify.spaceEvenly)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "alignItems":
             if let align = value as? String {
                 switch align {
                 case "flexStart":
                     YGNodeStyleSetAlignItems(node, YGAlign.flexStart)
+                    return true
                 case "center":
                     YGNodeStyleSetAlignItems(node, YGAlign.center)
+                    return true
                 case "flexEnd":
                     YGNodeStyleSetAlignItems(node, YGAlign.flexEnd)
+                    return true
                 case "stretch":
                     YGNodeStyleSetAlignItems(node, YGAlign.stretch)
+                    return true
                 case "baseline":
                     YGNodeStyleSetAlignItems(node, YGAlign.baseline)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "alignSelf":
             if let align = value as? String {
                 switch align {
                 case "auto":
                     YGNodeStyleSetAlignSelf(node, YGAlign.auto)
+                    return true
                 case "flexStart":
                     YGNodeStyleSetAlignSelf(node, YGAlign.flexStart)
+                    return true
                 case "center":
                     YGNodeStyleSetAlignSelf(node, YGAlign.center)
+                    return true
                 case "flexEnd":
                     YGNodeStyleSetAlignSelf(node, YGAlign.flexEnd)
+                    return true
                 case "stretch":
                     YGNodeStyleSetAlignSelf(node, YGAlign.stretch)
+                    return true
                 case "baseline":
                     YGNodeStyleSetAlignSelf(node, YGAlign.baseline)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "alignContent":
             if let align = value as? String {
                 switch align {
                 case "flexStart":
                     YGNodeStyleSetAlignContent(node, YGAlign.flexStart)
+                    return true
                 case "center":
                     YGNodeStyleSetAlignContent(node, YGAlign.center)
+                    return true
                 case "flexEnd":
                     YGNodeStyleSetAlignContent(node, YGAlign.flexEnd)
+                    return true
                 case "stretch":
                     YGNodeStyleSetAlignContent(node, YGAlign.stretch)
+                    return true
                 case "spaceBetween":
                     YGNodeStyleSetAlignContent(node, YGAlign.spaceBetween)
+                    return true
                 case "spaceAround":
                     YGNodeStyleSetAlignContent(node, YGAlign.spaceAround)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "position":
             if let position = value as? String {
                 switch position {
                 case "relative":
                     YGNodeStyleSetPositionType(node, YGPositionType.relative)
+                    return true
                 case "absolute":
                     YGNodeStyleSetPositionType(node, YGPositionType.absolute)
+                    return true
                 default:
                     break
                 }
             }
+            return false
         case "top":
             if let top = parseDimension(value) {
                 YGNodeStyleSetPosition(node, YGEdge.top, top)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPositionPercent(node, YGEdge.top, percentValue)
+                return true
             }
+            return false
         case "right":
             if let right = parseDimension(value) {
                 YGNodeStyleSetPosition(node, YGEdge.right, right)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPositionPercent(node, YGEdge.right, percentValue)
+                return true
             }
+            return false
         case "bottom":
             if let bottom = parseDimension(value) {
                 YGNodeStyleSetPosition(node, YGEdge.bottom, bottom)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPositionPercent(node, YGEdge.bottom, percentValue)
+                return true
             }
+            return false
         case "left":
             if let left = parseDimension(value) {
                 YGNodeStyleSetPosition(node, YGEdge.left, left)
+                return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetPositionPercent(node, YGEdge.left, percentValue)
+                return true
             }
+            return false
         case "aspectRatio":
             if let ratio = parseDimension(value) {
                 YGNodeStyleSetAspectRatio(node, ratio)
+                return true
             }
+            return false
+        case "gap", "rowGap", "columnGap", "direction", "zIndex":
+            // These are handled but don't need special processing
+            return true
+        case "borderWidth":
+            // Store border width as meta prop
+            if let borderWidth = parseDimension(value) {
+                shadowView.storeMetaProp(.all, value: YGValue(value: borderWidth, unit: .point), type: .border)
+                return true
+            }
+            return false
+        case "borderTopWidth":
+            if let borderWidth = parseDimension(value) {
+                shadowView.storeMetaProp(.top, value: YGValue(value: borderWidth, unit: .point), type: .border)
+                return true
+            }
+            return false
+        case "borderRightWidth":
+            if let borderWidth = parseDimension(value) {
+                shadowView.storeMetaProp(.right, value: YGValue(value: borderWidth, unit: .point), type: .border)
+                return true
+            }
+            return false
+        case "borderBottomWidth":
+            if let borderWidth = parseDimension(value) {
+                shadowView.storeMetaProp(.bottom, value: YGValue(value: borderWidth, unit: .point), type: .border)
+                return true
+            }
+            return false
+        case "borderLeftWidth":
+            if let borderWidth = parseDimension(value) {
+                shadowView.storeMetaProp(.left, value: YGValue(value: borderWidth, unit: .point), type: .border)
+                return true
+            }
+            return false
         default:
-            break
+            return false
         }
     }
     

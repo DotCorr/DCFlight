@@ -18,7 +18,7 @@ class TestScrollViewScreen extends DCFStatelessComponent {
         flex: 1,
       ),
       children: [
-        DCFScrollContentView(
+        DCFScrollContentView(styleSheet: DCFStyleSheet(backgroundColor: DCFColors.amberAccent),
           layout: DCFLayout(
             width: '100%',
           ),
