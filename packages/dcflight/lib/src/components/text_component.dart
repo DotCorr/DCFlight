@@ -89,6 +89,12 @@ class DCFTextProps {
   /// Number of lines (0 for unlimited)
   final int? numberOfLines;
 
+  /// Letter spacing (character spacing)
+  final double? letterSpacing;
+
+  /// Line height (line spacing multiplier or absolute value)
+  final double? lineHeight;
+
   /// Create text props
   /// 
   /// NOTE: Use StyleSheet.primaryColor for text color instead of color prop
@@ -99,6 +105,8 @@ class DCFTextProps {
     this.isFontAsset = false,
     this.textAlign =  DCFTextAlign.center,
     this.numberOfLines,
+    this.letterSpacing,
+    this.lineHeight,
   });
 
   /// Convert to props map
@@ -111,6 +119,8 @@ class DCFTextProps {
       // Color removed - use StyleSheet.primaryColor instead
       if (textAlign != null) 'textAlign': textAlign!.value,
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
+      if (letterSpacing != null) 'letterSpacing': letterSpacing,
+      if (lineHeight != null) 'lineHeight': lineHeight,
     };
   }
 }

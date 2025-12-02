@@ -88,8 +88,18 @@ class DCFStyleSheet extends Equatable {
   final dynamic borderTopRightRadius;
   final dynamic borderBottomLeftRadius;
   final dynamic borderBottomRightRadius;
+  
   final Color? borderColor;
+  final Color? borderTopColor;
+  final Color? borderRightColor;
+  final Color? borderBottomColor;
+  final Color? borderLeftColor;
+  
   final dynamic borderWidth;
+  final dynamic borderTopWidth;
+  final dynamic borderRightWidth;
+  final dynamic borderBottomWidth;
+  final dynamic borderLeftWidth;
 
   final Color? backgroundColor;
   final DCFGradient? backgroundGradient;
@@ -163,7 +173,15 @@ class DCFStyleSheet extends Equatable {
     this.borderBottomLeftRadius,
     this.borderBottomRightRadius,
     this.borderColor,
+    this.borderTopColor,
+    this.borderRightColor,
+    this.borderBottomColor,
+    this.borderLeftColor,
     this.borderWidth,
+    this.borderTopWidth,
+    this.borderRightWidth,
+    this.borderBottomWidth,
+    this.borderLeftWidth,
     this.backgroundColor,
     this.backgroundGradient,
     this.opacity,
@@ -221,7 +239,15 @@ class DCFStyleSheet extends Equatable {
     this.borderBottomLeftRadius,
     this.borderBottomRightRadius,
     this.borderColor,
+    this.borderTopColor,
+    this.borderRightColor,
+    this.borderBottomColor,
+    this.borderLeftColor,
     this.borderWidth,
+    this.borderTopWidth,
+    this.borderRightWidth,
+    this.borderBottomWidth,
+    this.borderLeftWidth,
     this.backgroundColor,
     this.backgroundGradient,
     this.opacity,
@@ -307,7 +333,15 @@ class DCFStyleSheet extends Equatable {
         borderBottomLeftRadius: entry.value.borderBottomLeftRadius,
         borderBottomRightRadius: entry.value.borderBottomRightRadius,
         borderColor: entry.value.borderColor,
+        borderTopColor: entry.value.borderTopColor,
+        borderRightColor: entry.value.borderRightColor,
+        borderBottomColor: entry.value.borderBottomColor,
+        borderLeftColor: entry.value.borderLeftColor,
         borderWidth: entry.value.borderWidth,
+        borderTopWidth: entry.value.borderTopWidth,
+        borderRightWidth: entry.value.borderRightWidth,
+        borderBottomWidth: entry.value.borderBottomWidth,
+        borderLeftWidth: entry.value.borderLeftWidth,
         backgroundColor: entry.value.backgroundColor,
         backgroundGradient: entry.value.backgroundGradient,
         opacity: entry.value.opacity,
@@ -429,7 +463,23 @@ class DCFStyleSheet extends Equatable {
     if (borderColor != null) {
       map['borderColor'] = _colorToString(borderColor!);
     }
+    if (borderTopColor != null) {
+      map['borderTopColor'] = _colorToString(borderTopColor!);
+    }
+    if (borderRightColor != null) {
+      map['borderRightColor'] = _colorToString(borderRightColor!);
+    }
+    if (borderBottomColor != null) {
+      map['borderBottomColor'] = _colorToString(borderBottomColor!);
+    }
+    if (borderLeftColor != null) {
+      map['borderLeftColor'] = _colorToString(borderLeftColor!);
+    }
     if (borderWidth != null) map['borderWidth'] = borderWidth;
+    if (borderTopWidth != null) map['borderTopWidth'] = borderTopWidth;
+    if (borderRightWidth != null) map['borderRightWidth'] = borderRightWidth;
+    if (borderBottomWidth != null) map['borderBottomWidth'] = borderBottomWidth;
+    if (borderLeftWidth != null) map['borderLeftWidth'] = borderLeftWidth;
 
     if (backgroundColor != null) {
       map['backgroundColor'] = _colorToString(backgroundColor!);
@@ -562,7 +612,15 @@ class DCFStyleSheet extends Equatable {
       borderBottomRightRadius:
           other.borderBottomRightRadius ?? borderBottomRightRadius,
       borderColor: other.borderColor ?? borderColor,
+      borderTopColor: other.borderTopColor ?? borderTopColor,
+      borderRightColor: other.borderRightColor ?? borderRightColor,
+      borderBottomColor: other.borderBottomColor ?? borderBottomColor,
+      borderLeftColor: other.borderLeftColor ?? borderLeftColor,
       borderWidth: other.borderWidth ?? borderWidth,
+      borderTopWidth: other.borderTopWidth ?? borderTopWidth,
+      borderRightWidth: other.borderRightWidth ?? borderRightWidth,
+      borderBottomWidth: other.borderBottomWidth ?? borderBottomWidth,
+      borderLeftWidth: other.borderLeftWidth ?? borderLeftWidth,
       backgroundColor: other.backgroundColor ?? backgroundColor,
       backgroundGradient: other.backgroundGradient ?? backgroundGradient,
       opacity: other.opacity ?? opacity,
@@ -625,7 +683,15 @@ class DCFStyleSheet extends Equatable {
     dynamic borderBottomLeftRadius,
     dynamic borderBottomRightRadius,
     Color? borderColor,
+    Color? borderTopColor,
+    Color? borderRightColor,
+    Color? borderBottomColor,
+    Color? borderLeftColor,
     dynamic borderWidth,
+    dynamic borderTopWidth,
+    dynamic borderRightWidth,
+    dynamic borderBottomWidth,
+    dynamic borderLeftWidth,
     Color? backgroundColor,
     DCFGradient? backgroundGradient,
     double? opacity,
@@ -680,7 +746,15 @@ class DCFStyleSheet extends Equatable {
       borderBottomRightRadius:
           borderBottomRightRadius ?? this.borderBottomRightRadius,
       borderColor: borderColor ?? this.borderColor,
+      borderTopColor: borderTopColor ?? this.borderTopColor,
+      borderRightColor: borderRightColor ?? this.borderRightColor,
+      borderBottomColor: borderBottomColor ?? this.borderBottomColor,
+      borderLeftColor: borderLeftColor ?? this.borderLeftColor,
       borderWidth: borderWidth ?? this.borderWidth,
+      borderTopWidth: borderTopWidth ?? this.borderTopWidth,
+      borderRightWidth: borderRightWidth ?? this.borderRightWidth,
+      borderBottomWidth: borderBottomWidth ?? this.borderBottomWidth,
+      borderLeftWidth: borderLeftWidth ?? this.borderLeftWidth,
       backgroundColor: backgroundColor ?? this.backgroundColor,
       backgroundGradient: backgroundGradient ?? this.backgroundGradient,
       opacity: opacity ?? this.opacity,
@@ -807,7 +881,15 @@ class DCFStyleSheet extends Equatable {
     'borderBottomLeftRadius',
     'borderBottomRightRadius',
     'borderColor',
+    'borderTopColor',
+    'borderRightColor',
+    'borderBottomColor',
+    'borderLeftColor',
     'borderWidth',
+    'borderTopWidth',
+    'borderRightWidth',
+    'borderBottomWidth',
+    'borderLeftWidth',
     'backgroundColor',
     'backgroundGradient',
     'opacity',
@@ -890,7 +972,15 @@ class DCFStyleSheet extends Equatable {
         borderBottomLeftRadius,
         borderBottomRightRadius,
         borderColor,
+        borderTopColor,
+        borderRightColor,
+        borderBottomColor,
+        borderLeftColor,
         borderWidth,
+        borderTopWidth,
+        borderRightWidth,
+        borderBottomWidth,
+        borderLeftWidth,
         backgroundColor,
         backgroundGradient,
         opacity,

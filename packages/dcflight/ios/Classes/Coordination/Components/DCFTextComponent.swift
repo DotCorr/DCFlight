@@ -40,6 +40,46 @@ class DCFTextComponent: NSObject, DCFComponent {
             label.textColor = textColor
         }
         
+        // Handle letterSpacing and lineHeight on initial creation
+        let hasLetterSpacing = props["letterSpacing"] != nil
+        let hasLineHeight = props["lineHeight"] != nil
+        
+        if hasLetterSpacing || hasLineHeight, let text = label.text {
+            let attributedString = NSMutableAttributedString(string: text)
+            let range = NSRange(location: 0, length: text.count)
+            
+            if let letterSpacing = props["letterSpacing"] as? CGFloat {
+                attributedString.addAttribute(.kern, value: letterSpacing, range: range)
+            }
+            
+            // Apply line height using paragraph style
+            // lineHeight can be a multiplier (e.g., 1.5) or absolute value
+            // If it's less than 10, treat as multiplier; otherwise treat as absolute
+            if let lineHeightValue = props["lineHeight"] as? CGFloat {
+                let paragraphStyle = NSMutableParagraphStyle()
+                let fontSize = props["fontSize"] as? CGFloat ?? UIFont.systemFontSize
+                let absoluteLineHeight: CGFloat
+                
+                if lineHeightValue < 10 {
+                    // Treat as multiplier (e.g., 1.5)
+                    absoluteLineHeight = lineHeightValue * fontSize
+                } else {
+                    // Treat as absolute value (e.g., 24)
+                    absoluteLineHeight = lineHeightValue
+                }
+                
+                paragraphStyle.minimumLineHeight = absoluteLineHeight
+                paragraphStyle.maximumLineHeight = absoluteLineHeight
+                attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
+            }
+            
+            if let textColor = label.textColor {
+                attributedString.addAttribute(.foregroundColor, value: textColor, range: range)
+            }
+            
+            label.attributedText = attributedString
+        }
+        
         return label
     }
     
@@ -122,6 +162,44 @@ class DCFTextComponent: NSObject, DCFComponent {
             label.numberOfLines = numberOfLines
         }
         
+        // Handle letterSpacing and lineHeight using NSAttributedString
+        let hasLetterSpacing = nonNullProps["letterSpacing"] != nil
+        let hasLineHeight = nonNullProps["lineHeight"] != nil
+        
+        if hasLetterSpacing || hasLineHeight {
+            let text = label.text ?? ""
+            let attributedString = NSMutableAttributedString(string: text)
+            let range = NSRange(location: 0, length: text.count)
+            
+            // Apply letter spacing (kern)
+            if let letterSpacing = nonNullProps["letterSpacing"] as? CGFloat {
+                attributedString.addAttribute(.kern, value: letterSpacing, range: range)
+            }
+            
+            // Apply line height using paragraph style
+            // lineHeight can be a multiplier (e.g., 1.5) or absolute value
+            // If it's less than 10, treat as multiplier; otherwise treat as absolute
+            if let lineHeightValue = nonNullProps["lineHeight"] as? CGFloat {
+                let paragraphStyle = NSMutableParagraphStyle()
+                let fontSize = label.font?.pointSize ?? UIFont.systemFontSize
+                let absoluteLineHeight: CGFloat
+                
+                if lineHeightValue < 10 {
+                    // Treat as multiplier (e.g., 1.5)
+                    absoluteLineHeight = lineHeightValue * fontSize
+                } else {
+                    // Treat as absolute value (e.g., 24)
+                    absoluteLineHeight = lineHeightValue
+                }
+                
+                paragraphStyle.minimumLineHeight = absoluteLineHeight
+                paragraphStyle.maximumLineHeight = absoluteLineHeight
+                attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
+            }
+            
+            label.attributedText = attributedString
+        }
+        
         label.applyStyles(props: nonNullProps)
         
         if let textColor = ColorUtilities.getColor(
@@ -130,6 +208,12 @@ class DCFTextComponent: NSObject, DCFComponent {
             from: nonNullProps
         ) {
             label.textColor = textColor
+            // Update attributed text color if it exists
+            if let attributedText = label.attributedText {
+                let mutableAttributedText = NSMutableAttributedString(attributedString: attributedText)
+                mutableAttributedText.addAttribute(.foregroundColor, value: textColor, range: NSRange(location: 0, length: mutableAttributedText.length))
+                label.attributedText = mutableAttributedText
+            }
         }
         
         return true

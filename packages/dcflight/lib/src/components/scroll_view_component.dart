@@ -402,6 +402,8 @@ class DCFScrollView extends DCFStatelessComponent
         contentView = DCFScrollContentView(
           layout: DCFLayout(
             width: '100%',
+            flexDirection: DCFFlexDirection.column, // Explicitly set column layout
+            flexShrink: 0, // Do not shrink, allow growing to fit content
             // CRITICAL: Do NOT set flex: 1 or height - let it grow based on children's layout
             // flex: 1 would make it fill available height, preventing scrolling
             // Setting height: '100%' would constrain it to ScrollView's height, preventing scrolling

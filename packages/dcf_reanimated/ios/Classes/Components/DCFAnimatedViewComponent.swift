@@ -574,6 +574,7 @@ class PureAnimationState {
     private let curve: (Double) -> Double
     private let isRepeating: Bool
     private let repeatCount: Int?
+    private let repeatType: String? // 'loop', 'reverse', 'mirror'
     private let damping: Double? // Spring damping
     private let stiffness: Double? // Spring stiffness
     
@@ -610,6 +611,7 @@ class PureAnimationState {
         
         self.isRepeating = config["repeat"] as? Bool ?? false
         self.repeatCount = config["repeatCount"] as? Int
+        self.repeatType = config["repeatType"] as? String ?? "loop" // Default to 'loop'
         
         // Parse spring parameters
         self.damping = config["damping"] as? Double
@@ -690,7 +692,21 @@ class PureAnimationState {
                 
                 if shouldContinue {
                     cycleCount += 1
-                    isReversing.toggle() // Reverse for ping-pong effect
+                    
+                    // Handle different repeat types
+                    let repeatTypeValue = repeatType ?? "loop"
+                    switch repeatTypeValue {
+                    case "reverse", "mirror":
+                        // Ping-pong: reverse direction
+                        isReversing.toggle()
+                    case "loop":
+                        // Loop: restart from beginning
+                        isReversing = false
+                    default:
+                        // Default to loop behavior
+                        isReversing = false
+                    }
+                    
                     // Reset cycle start time for smooth repeat
                     cycleStartTime = currentTime
                     return PureAnimationResult(isActive: true, didRepeat: true)

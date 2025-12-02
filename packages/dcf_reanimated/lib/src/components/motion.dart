@@ -362,6 +362,9 @@ class Transition {
   /// Delay before each child animation starts
   final double? delayChildren;
 
+  /// Repeat type: 'loop' (default), 'reverse', or 'mirror'
+  final String? repeatType;
+
   const Transition({
     this.duration = 300,
     this.delay = 0,
@@ -375,6 +378,7 @@ class Transition {
     this.perspective,
     this.staggerChildren,
     this.delayChildren,
+    this.repeatType,
   });
 
   Map<String, dynamic> toMap() => {
@@ -390,6 +394,7 @@ class Transition {
     if (perspective != null) 'perspective': perspective,
     if (staggerChildren != null) 'staggerChildren': staggerChildren,
     if (delayChildren != null) 'delayChildren': delayChildren,
+    if (repeatType != null) 'repeatType': repeatType,
   };
 }
 

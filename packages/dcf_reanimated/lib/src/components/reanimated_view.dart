@@ -9,7 +9,9 @@ library;
 
 import 'package:dcflight/dcflight.dart';
 import '../styles/animated_style.dart';
+import '../values/animation_values.dart';
 import '../helper/init.dart';
+import 'motion.dart';
 
 /// The main animated view component that runs animations purely on the UI thread.
 ///
@@ -51,6 +53,21 @@ import '../helper/init.dart';
 class ReanimatedView extends DCFStatelessComponent {
   /// Child components to render inside the animated view
   final List<DCFComponentNode> children;
+
+  /// Initial animation values (applied on mount)
+  /// 
+  /// Keys can be: opacity, scale, x, y, z, rotate, rotateX, rotateY, rotateZ
+  /// Values can be numbers or lists for keyframes
+  final Map<String, dynamic>? initial;
+
+  /// Target animation values (animated to on mount)
+  /// 
+  /// Keys can be: opacity, scale, x, y, z, rotate, rotateX, rotateY, rotateZ
+  /// Values can be numbers or lists for keyframes
+  final Map<String, dynamic>? animate;
+
+  /// Animation transition configuration (used with initial/animate)
+  final Transition? transition;
 
   /// Animation configuration that runs on UI thread
   final AnimatedStyle? animatedStyle;
@@ -102,6 +119,9 @@ class ReanimatedView extends DCFStatelessComponent {
 
   ReanimatedView({
     required this.children,
+    this.initial,
+    this.animate,
+    this.transition,
     this.animatedStyle,
     this.worklet,
     this.workletConfig,
@@ -143,22 +163,28 @@ class ReanimatedView extends DCFStatelessComponent {
       'isPureReanimated': true, // Flag for native to use pure animation mode
 
       // Layout and styling
-      ...(layout ?? _reanimatedLayouts['default']!).toMap(),
-      ...(styleSheet ?? _reanimatedStyles['default']!).toMap(),
+      ...(layout ?? _reanimatedLayouts['default']).toMap(),
+      ...(styleSheet ?? _reanimatedStyles['default']).toMap(),
 
       // Event handlers
       ...eventHandlers,
     };
 
-    // Configure worklet if provided (takes precedence over animatedStyle)
+    // Configure worklet if provided (takes precedence over everything)
     if (worklet != null) {
       final workletConfig = WorkletExecutor.serialize(worklet!);
       props['worklet'] = workletConfig.toMap();
       if (this.workletConfig != null) {
         props['workletConfig'] = this.workletConfig;
       }
+    } else if (animate != null) {
+      // Convert initial/animate to AnimatedStyle
+      final convertedStyle = _buildAnimatedStyleFromInitialAnimate();
+      if (convertedStyle != null) {
+        props['animatedStyle'] = convertedStyle.toMap();
+      }
     } else if (animatedStyle != null) {
-      // Fall back to animated style if no worklet
+      // Fall back to animated style if no worklet or initial/animate
       props['animatedStyle'] = animatedStyle!.toMap();
     }
 
@@ -168,5 +194,112 @@ class ReanimatedView extends DCFStatelessComponent {
       elementProps: props,
       children: children,
     );
+  }
+
+  /// Converts initial/animate props to AnimatedStyle (similar to Motion component)
+  AnimatedStyle? _buildAnimatedStyleFromInitialAnimate() {
+    if (animate == null) return null;
+
+    final style = AnimatedStyle();
+    final trans = transition ?? Transition();
+    
+    // Helper to create ReanimatedValue from value (supports keyframes)
+    ReanimatedValue createValue(dynamic from, dynamic to) {
+      // Check if 'to' is a list (keyframes)
+      if (to is List) {
+        final keyframes = to.map((v) => (v is num) ? v.toDouble() : 0.0).toList();
+        return ReanimatedValue(
+          keyframes: keyframes,
+          duration: trans.duration,
+          delay: trans.delay,
+          curve: trans.curve,
+          repeat: trans.repeat,
+          repeatCount: trans.repeatCount,
+        );
+      }
+      
+      // Single value animation
+      return ReanimatedValue(
+        from: (from is num) ? from.toDouble() : 0.0,
+        to: (to is num) ? to.toDouble() : 1.0,
+        duration: trans.duration,
+        delay: trans.delay,
+        curve: trans.curve,
+        repeat: trans.repeat,
+        repeatCount: trans.repeatCount,
+      );
+    }
+
+    // Process animate props
+    final initialValues = initial ?? {};
+    
+    animate!.forEach((key, value) {
+      final fromValue = initialValues[key] ?? _getDefaultValue(key);
+      final toValue = value;
+      
+      switch (key) {
+        case 'opacity':
+          style.opacity(createValue(fromValue, toValue));
+          break;
+        case 'scale':
+          style.transform(scale: createValue(fromValue, toValue));
+          break;
+        case 'x':
+          style.transform(translateX: createValue(fromValue, toValue));
+          break;
+        case 'y':
+          style.transform(translateY: createValue(fromValue, toValue));
+          break;
+        case 'z':
+          style.transform(translateZ: createValue(fromValue, toValue));
+          break;
+        case 'rotate':
+        case 'rotateZ':
+          style.transform(rotationZ: createValue(fromValue, toValue));
+          break;
+        case 'rotateX':
+          style.transform(rotationX: createValue(fromValue, toValue));
+          break;
+        case 'rotateY':
+          style.transform(rotationY: createValue(fromValue, toValue));
+          break;
+        case 'translateX':
+          style.transform(translateX: createValue(fromValue, toValue));
+          break;
+        case 'translateY':
+          style.transform(translateY: createValue(fromValue, toValue));
+          break;
+        case 'translateZ':
+          style.transform(translateZ: createValue(fromValue, toValue));
+          break;
+        default:
+          break;
+      }
+    });
+
+    return style;
+  }
+
+  /// Get default value for animation property
+  dynamic _getDefaultValue(String key) {
+    switch (key) {
+      case 'opacity':
+        return 1.0;
+      case 'scale':
+      case 'x':
+      case 'y':
+      case 'z':
+      case 'translateX':
+      case 'translateY':
+      case 'translateZ':
+        return 0.0;
+      case 'rotate':
+      case 'rotateX':
+      case 'rotateY':
+      case 'rotateZ':
+        return 0.0;
+      default:
+        return 0.0;
+    }
   }
 }

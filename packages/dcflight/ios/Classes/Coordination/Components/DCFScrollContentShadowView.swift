@@ -16,6 +16,8 @@ public class DCFScrollContentShadowView: DCFShadowView {
     
     public required override init(viewId: Int) {
         super.init(viewId: viewId)
+        // Enforce column layout for ScrollContentView by default
+        YGNodeStyleSetFlexDirection(yogaNode, YGFlexDirection.column)
     }
     
     public override func applyLayoutNode(_ node: YGNodeRef, viewsWithNewFrame: NSMutableSet, absolutePosition: CGPoint) {
