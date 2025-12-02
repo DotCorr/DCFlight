@@ -21,6 +21,8 @@ class DCFTextComponent: NSObject, DCFComponent {
         let label = UILabel()
         
         label.numberOfLines = 0
+        label.clipsToBounds = true // CRITICAL: Ensure text respects bounds
+        label.lineBreakMode = .byWordWrapping // Ensure text wraps properly
         
         storeProps(props.mapValues { $0 as Any? }, in: label)
         
@@ -237,7 +239,15 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
-        view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        let frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+        view.frame = frame
+        
+        // CRITICAL: Ensure label respects the frame bounds
+        if let label = view as? UILabel {
+            label.clipsToBounds = true
+            // Ensure text fits within bounds
+            label.preferredMaxLayoutWidth = frame.width > 0 ? frame.width : CGFloat.greatestFiniteMagnitude
+        }
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {

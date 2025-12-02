@@ -54,39 +54,43 @@ class NavigationBar extends DCFStatelessComponent {
         borderBottomColor: Colors.grey[100]!,
       ),
       children: [
-        // Logo Area
+        // Logo Area - CRITICAL: Add flexShrink to prevent overflow
         DCFView(
           layout: DCFLayout(
             flexDirection: DCFFlexDirection.row,
             alignItems: DCFAlign.center,
             gap: 8,
+            flexShrink: 1, // Allow shrinking to prevent overflow
+            flexGrow: 0, // Don't grow
           ),
           children: [
             DCFView(
               layout: DCFLayout(width: 24, height: 24),
               styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
             ),
-                DCFText(
-                  content: "DotCorr",
-                  textProps: DCFTextProps(
-                    fontSize: 18,
-                    fontWeight: DCFFontWeight.bold,
+            DCFText(
+              content: "DotCorr",
+              textProps: DCFTextProps(
+                fontSize: 18,
+                fontWeight: DCFFontWeight.bold,
                 letterSpacing: -0.5,
-                  ),
+              ),
               styleSheet: DCFStyleSheet(primaryColor: Colors.black),
-                ),
-              ],
             ),
-        // Links
-            DCFView(
+          ],
+        ),
+        // Links - CRITICAL: Add flexShrink to prevent overflow
+        DCFView(
           layout: DCFLayout(
             flexDirection: DCFFlexDirection.row,
             alignItems: DCFAlign.center,
             gap: 24,
+            flexShrink: 1, // Allow shrinking to prevent overflow
+            flexGrow: 0, // Don't grow
           ),
-              children: [
-                DCFText(
-                  content: "The Lab",
+          children: [
+            DCFText(
+              content: "The Lab",
               textProps: DCFTextProps(
                 fontSize: 14,
                 fontWeight: DCFFontWeight.medium,
@@ -94,8 +98,8 @@ class NavigationBar extends DCFStatelessComponent {
               styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
             ),
             // GitHub Icon placeholder (text for now)
-                DCFText(
-                  content: "GitHub",
+            DCFText(
+              content: "GitHub",
               textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.medium),
               styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
             ),

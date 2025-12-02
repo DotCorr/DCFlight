@@ -16,6 +16,10 @@ class DCFViewComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let view = UIView()
         
+        // CRITICAL: Enable clipping for views with padding/borderRadius to prevent child overflow
+        // This ensures children respect the view's bounds
+        view.clipsToBounds = true
+        
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
         }
         
@@ -28,6 +32,10 @@ class DCFViewComponent: NSObject, DCFComponent {
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let view = view as? UIView else { return false }
+        
+        // CRITICAL: Enable clipping to ensure children respect bounds
+        // This prevents text and other content from overflowing outside the view
+        view.clipsToBounds = true
         
         // Handle viewport detection (low-level API - any view can use it)
         // Uses DCFViewportObserver from dcflight framework
