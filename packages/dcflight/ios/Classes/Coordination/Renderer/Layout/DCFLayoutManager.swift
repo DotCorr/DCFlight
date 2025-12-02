@@ -66,22 +66,47 @@ public class DCFLayoutManager {
     private func performAutomaticLayoutCalculation() {
         guard needsLayoutCalculation else { return }
         
-        layoutQueue.async {
+        // CRITICAL: Set root view frame on main thread BEFORE layout calculation
+        // This ensures root view is correctly positioned when Yoga calculates child positions
+        DispatchQueue.main.async {
             let screenBounds = UIScreen.main.bounds
             
-            let success = YogaShadowTree.shared.calculateAndApplyLayout(
-                width: screenBounds.width,
-                height: screenBounds.height
-            )
-            
-            DispatchQueue.main.async {
-                self.needsLayoutCalculation = false
-                if success {
-                    print("✅ DCFLayoutManager: Layout calculation successful")
+            // Set root view frame first - CRITICAL: Must be exactly (0,0) to fill window
+            // This ensures all children are positioned correctly relative to window origin
+            if let rootView = self.getView(withId: 0) {
+                // Get actual window bounds (not safe area)
+                let windowBounds: CGRect
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first {
+                    windowBounds = window.bounds
                 } else {
-                    print("⚠️ DCFLayoutManager: Layout calculation deferred, rescheduling")
-                    self.needsLayoutCalculation = true
-                    self.scheduleLayoutCalculation()
+                    windowBounds = screenBounds
+                }
+                
+                let rootFrame = CGRect(x: 0, y: 0, width: windowBounds.width, height: windowBounds.height)
+                if !rootView.frame.equalTo(rootFrame) {
+                    rootView.frame = rootFrame
+                    rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                    print("✅ DCFLayoutManager: Root view frame set to \(rootFrame) on main thread (window.bounds)")
+                }
+            }
+            
+            // Now do layout calculation on background thread
+            self.layoutQueue.async {
+                let success = YogaShadowTree.shared.calculateAndApplyLayout(
+                    width: screenBounds.width,
+                    height: screenBounds.height
+                )
+                
+                DispatchQueue.main.async {
+                    self.needsLayoutCalculation = false
+                    if success {
+                        print("✅ DCFLayoutManager: Layout calculation successful")
+                    } else {
+                        print("⚠️ DCFLayoutManager: Layout calculation deferred, rescheduling")
+                        self.needsLayoutCalculation = true
+                        self.scheduleLayoutCalculation()
+                    }
                 }
             }
         }

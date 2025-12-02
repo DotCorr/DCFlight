@@ -82,6 +82,13 @@ class YogaShadowTree {
         rootShadowView.viewName = "View"
         rootShadowView.availableSize = UIScreen.main.bounds.size
         
+        // CRITICAL: Configure root shadow view's Yoga node with proper defaults
+        // This ensures children are laid out correctly (vertically stacked)
+        let rootYogaNode = rootShadowView.yogaNode
+        YGNodeStyleSetFlexDirection(rootYogaNode, YGFlexDirection.column)
+        YGNodeStyleSetDirection(rootYogaNode, YGDirection.LTR)
+        YGNodeStyleSetFlexShrink(rootYogaNode, 0.0)
+        
         self.rootShadowView = rootShadowView
         shadowViewRegistry[rootViewId] = rootShadowView
         nodeTypes[rootViewId] = "View"
@@ -248,10 +255,10 @@ class YogaShadowTree {
     // MARK: - Layout Calculation
     
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
-        return syncQueue.sync { () -> Bool in
+        let result = syncQueue.sync { () -> (Bool, Set<DCFShadowView>, Int, Int) in
             if isReconciling {
                 print("⚠️ YogaShadowTree: Layout calculation blocked - reconciliation in progress")
-                return false
+                return (false, Set<DCFShadowView>(), 0, 0)
             }
             
             isLayoutCalculating = true
@@ -259,13 +266,21 @@ class YogaShadowTree {
             
             guard let rootShadowView = rootShadowView else {
                 print("❌ YogaShadowTree: Root shadow view not found")
-                return false
+                return (false, Set<DCFShadowView>(), 0, 0)
             }
             
             // Update root available size
+            // React Native pattern: Just set availableSize and let Yoga calculate layout naturally
+            // DO NOT set explicit width/height/position on root node - Yoga handles this
             rootShadowView.availableSize = CGSize(width: width, height: height)
             
-            // Calculate layout using shadow view's collectViewsWithUpdatedFrames (React Native pattern)
+            // CRITICAL: Set root view frame BEFORE layout calculation
+            // This ensures children are positioned correctly relative to the root view
+            // We need to do this on main thread, but we're in sync queue, so we'll do it after
+            // But we need to ensure root view frame is set before children are positioned
+            // So we'll set it synchronously if we're on main thread, otherwise queue it
+            
+            // Calculate layout using shadow view's collectViewsWithUpdatedFrames
             let viewsWithNewFrame = rootShadowView.collectViewsWithUpdatedFrames()
             
             // Apply layout to all screen roots
@@ -285,8 +300,18 @@ class YogaShadowTree {
                 }
             }
             
-            // Apply frames to actual UIViews
+            // Apply frames to actual UIViews (excluding root view which we set below)
             for shadowView in viewsWithNewFrame {
+                // Skip root view (viewId=0) - we set it explicitly below
+                if shadowView.viewId == 0 {
+                    continue
+                }
+                
+                // DEBUG: Log first few children to diagnose positioning issues
+                if shadowView.viewId <= 3 {
+                    print("🔍 YogaShadowTree: viewId=\(shadowView.viewId) frame=\(shadowView.frame)")
+                }
+                
                 DCFLayoutManager.shared.applyLayout(
                     to: shadowView.viewId,
                     left: shadowView.frame.origin.x,
@@ -297,9 +322,31 @@ class YogaShadowTree {
                 appliedCount += 1
             }
             
-            print("✅ YogaShadowTree: Applied layout to \(appliedCount) views out of \(shadowViewRegistry.count) shadow views")
-            return true
+            let totalViews = shadowViewRegistry.count
+            return (true, viewsWithNewFrame, appliedCount, totalViews)
         }
+        
+        let (success, viewsWithNewFrame, appliedCount, totalViews) = result
+        
+        if success {
+            // CRITICAL: Verify and set root view frame AFTER layout calculation
+            // This ensures root view frame is correct even if it was reset during layout
+            DispatchQueue.main.async {
+                if let rootView = DCFLayoutManager.shared.getView(withId: 0) {
+                    let rootFrame = CGRect(x: 0, y: 0, width: width, height: height)
+                    if !rootView.frame.equalTo(rootFrame) {
+                        print("⚠️ YogaShadowTree: Root view frame was incorrect after layout: \(rootView.frame), correcting to \(rootFrame)")
+                        rootView.frame = rootFrame
+                        rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                    }
+                    print("✅ YogaShadowTree: Root view (0) verified at \(rootView.frame)")
+                }
+            }
+            
+            print("✅ YogaShadowTree: Applied layout to \(appliedCount) views out of \(totalViews) shadow views")
+        }
+        
+        return success
     }
     
     // MARK: - Screen Root Management

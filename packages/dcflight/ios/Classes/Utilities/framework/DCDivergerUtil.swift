@@ -123,6 +123,14 @@ import Flutter
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
         nativeRootVC.title = "Root View (DCFlight)"
+        
+        // CRITICAL: Disable automatic safe area adjustments
+        // We want the root view to fill the entire window starting from (0,0)
+        if #available(iOS 11.0, *) {
+            nativeRootVC.view.insetsLayoutMarginsFromSafeArea = false
+        }
+        nativeRootVC.automaticallyAdjustsScrollViewInsets = false
+        
         guard let window = self.window else {
             print("❌ DCFlight: No window available to set rootViewController")
             return
@@ -150,6 +158,23 @@ import Flutter
         // Ensure root view is visible
         rootView.isHidden = false
         rootView.alpha = 1.0
+        
+        // CRITICAL: Set root view frame to fill window bounds immediately
+        // This ensures children are positioned correctly from the start
+        // Use window.bounds (not safe area) to fill entire screen from (0,0)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            // CRITICAL: Set frame to window.bounds (not safeAreaLayoutGuide)
+            // This ensures root view starts at (0,0) and fills entire window
+            rootView.frame = CGRect(x: 0, y: 0, width: window.bounds.width, height: window.bounds.height)
+            rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            print("✅ DCDivergerUtil: Root view frame set to window.bounds: \(rootView.frame)")
+        } else {
+            let screenBounds = UIScreen.main.bounds
+            rootView.frame = CGRect(x: 0, y: 0, width: screenBounds.width, height: screenBounds.height)
+            rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            print("✅ DCDivergerUtil: Root view frame set to screen.bounds: \(rootView.frame)")
+        }
         
         DCMauiBridgeImpl.shared.registerView(rootView, withId: 0)
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)

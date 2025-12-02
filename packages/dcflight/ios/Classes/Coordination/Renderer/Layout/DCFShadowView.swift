@@ -335,21 +335,14 @@ open class DCFShadowView: Hashable {
             return
         }
         
-        let absoluteTopLeft = CGPoint(
-            x: absolutePosition.x + CGFloat(YGNodeLayoutGetLeft(node)),
-            y: absolutePosition.y + CGFloat(YGNodeLayoutGetTop(node))
-        )
-        
-        let absoluteBottomRight = CGPoint(
-            x: absolutePosition.x + CGFloat(YGNodeLayoutGetLeft(node)) + CGFloat(YGNodeLayoutGetWidth(node)),
-            y: absolutePosition.y + CGFloat(YGNodeLayoutGetTop(node)) + CGFloat(YGNodeLayoutGetHeight(node))
-        )
-        
+        // Calculate frame using Yoga's layout metrics directly
+        // Position is relative to parent (YGNodeLayoutGetLeft/Top)
+        // Size comes directly from Yoga (YGNodeLayoutGetWidth/Height)
         let newFrame = CGRect(
             x: roundPixelValue(CGFloat(YGNodeLayoutGetLeft(node))),
             y: roundPixelValue(CGFloat(YGNodeLayoutGetTop(node))),
-            width: roundPixelValue(absoluteBottomRight.x - absoluteTopLeft.x),
-            height: roundPixelValue(absoluteBottomRight.y - absoluteTopLeft.y)
+            width: roundPixelValue(CGFloat(YGNodeLayoutGetWidth(node))),
+            height: roundPixelValue(CGFloat(YGNodeLayoutGetHeight(node)))
         )
         
         if !frame.equalTo(newFrame) {

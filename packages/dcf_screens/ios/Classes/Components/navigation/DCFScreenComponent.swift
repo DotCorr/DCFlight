@@ -1663,20 +1663,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
         screenContainer.contentView.subviews.forEach { $0.removeFromSuperview() }
 
+        // CRITICAL: Only add subviews here - DO NOT set frames or autoresizingMask
+        // Frames will be set by applyLayout based on Yoga's calculated positions
+        // Setting frame here would override Yoga's layout calculations and cause overlapping
         for childView in childViews {
             screenContainer.contentView.addSubview(childView)
-            childView.frame = screenContainer.contentView.bounds
-            childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            // Disable autoresizing - Yoga controls layout
+            childView.translatesAutoresizingMaskIntoConstraints = false
+            childView.autoresizingMask = []
             childView.isHidden = false
             childView.alpha = 1.0
-        }
-
-        screenContainer.contentView.setNeedsLayout()
-        screenContainer.contentView.layoutIfNeeded()
-
-        for childView in childViews {
-            childView.setNeedsLayout()
-            childView.layoutIfNeeded()
         }
 
         return true
