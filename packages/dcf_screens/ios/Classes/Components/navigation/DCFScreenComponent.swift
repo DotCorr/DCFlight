@@ -1730,14 +1730,16 @@ class ScreenContainer {
         self.route = route
         self.presentationStyle = presentationStyle
 
-        self.viewController = UIViewController()
+        // React Native pattern: Use DCFWrapperViewController to wrap content view
+        // This ensures proper layout guide caching and auto-insets refresh
         self.contentView = UIView()
         self.contentView.backgroundColor = UIColor.clear
         self.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
-        self.viewController.view = contentView
+        // Wrap content view in DCFWrapperViewController (React Native pattern)
+        self.viewController = DCFWrapperViewController(contentView: contentView)
 
-        print("📱 ScreenContainer: Created '\(route)' with style '\(presentationStyle)'")
+        print("📱 ScreenContainer: Created '\(route)' with style '\(presentationStyle)' using DCFWrapperViewController")
     }
 
     deinit {

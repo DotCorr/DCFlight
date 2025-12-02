@@ -29,7 +29,7 @@ class DCFCustomScrollView: UIScrollView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    // Override contentOffset property setter (React Native pattern)
+    // Override contentOffset property setter
     override var contentOffset: CGPoint {
         get {
             return super.contentOffset
@@ -56,13 +56,13 @@ class DCFCustomScrollView: UIScrollView {
         }
     }
     
-    // Override frame property setter (React Native pattern)
+    // Override frame property setter
     override var frame: CGRect {
         get {
             return super.frame
         }
         set {
-            // Preserving and revalidating contentOffset (React Native pattern)
+            // Preserving and revalidating contentOffset
             let originalOffset = self.contentOffset
             super.frame = newValue
             
@@ -91,7 +91,7 @@ class DCFCustomScrollView: UIScrollView {
  * single subview's frame. That frame size will be determined efficiently since
  * it will have already been computed by the off-main-thread layout system (Yoga).
  */
-@objc public class DCFScrollView: UIView, DCFScrollableProtocol, UIScrollViewDelegate {
+@objc public class DCFScrollView: UIView, DCFScrollableProtocol, DCFAutoInsetsProtocol, UIScrollViewDelegate {
     private var _scrollView: DCFCustomScrollView
     private var _contentView: UIView?
     private var _lastScrollDispatchTime: TimeInterval = 0
@@ -159,31 +159,31 @@ class DCFCustomScrollView: UIScrollView {
         return _contentView
     }
     
-    // MARK: - Content Size Management (React Native Pattern)
+    // MARK: - Content Size Management
     
     /**
      * Once you set the contentSize, to a nonzero value, it is assumed to be
      * managed by you, and we'll never automatically compute the size for you,
      * unless you manually reset it back to {0, 0}
      * 
-     * React Native pattern: contentSize is determined by contentView.frame.size
+     * contentSize is determined by contentView.frame.size
      */
     public var contentSize: CGSize {
         if !CGSizeEqualToSize(_scrollView.contentSize, .zero) {
             return _scrollView.contentSize
         }
-        // React Native pattern: Use contentView.frame.size directly
+        // Use contentView.frame.size directly
         // Yoga has already calculated this, so we just use it
         return _contentView?.frame.size ?? .zero
     }
     
     /**
-     * React Native pattern: Update contentSize from contentView.frame.size
+     * Update contentSize from contentView.frame.size
      * Called after layout is complete (equivalent to reactBridgeDidFinishTransaction)
      * 
-     * KEY INSIGHT: React Native uses contentView.frame.size directly because
+     * KEY INSIGHT: We use contentView.frame.size directly because
      * ScrollContentView is laid out by Yoga. Yoga calculates the frame.size based on
-     * the children's layout, so we just use it directly (React Native pattern).
+     * the children's layout, so we just use it directly.
      */
     public func updateContentSizeFromContentView() {
         guard let contentView = _contentView else {
@@ -208,7 +208,7 @@ class DCFCustomScrollView: UIScrollView {
             }
         }
         
-        // React Native pattern: Use contentView.frame.size directly
+        // Use contentView.frame.size directly
         // ScrollContentView is in the Yoga tree, so Yoga has already calculated its size
         // DCFScrollContentViewComponent.applyLayout sets contentView.frame from Yoga layout
         let contentSize = contentView.frame.size
@@ -218,7 +218,7 @@ class DCFCustomScrollView: UIScrollView {
             // When contentSize is set manually, ScrollView internals will reset
             // contentOffset to {0, 0}. Since we potentially set contentSize whenever
             // anything in the ScrollView updates, we workaround this issue by manually
-            // adjusting contentOffset whenever this happens (React Native pattern)
+            // adjusting contentOffset whenever this happens
             let newOffset = calculateOffsetForContentSize(contentSize)
             _scrollView.contentSize = contentSize
             _scrollView.contentOffset = newOffset
@@ -230,7 +230,6 @@ class DCFCustomScrollView: UIScrollView {
     
     /**
      * Calculate offset for new content size (preserving scroll position when possible)
-     * React Native pattern from RCTScrollView.m
      */
     private func calculateOffsetForContentSize(_ newContentSize: CGSize) -> CGPoint {
         let oldOffset = _scrollView.contentOffset
@@ -280,10 +279,28 @@ class DCFCustomScrollView: UIScrollView {
     // MARK: - Child Management
     
     /**
-     * Insert a subview (React Native pattern: RCTScrollView may only contain a single subview)
+     * Insert a subview (DCFScrollView may only contain a single subview)
+     * 
+     * If a contentView already exists, remove it first before adding the new one.
+     * This handles the case where ScrollContentView component is replaced or re-attached.
      */
     public func insertContentView(_ view: UIView) {
-        assert(_contentView == nil, "DCFScrollView may only contain a single subview")
+        // Remove existing contentView if it exists and is different
+        // This prevents assertion errors when ScrollContentView is re-attached or replaced
+        if let existingContentView = _contentView, existingContentView != view {
+            print("⚠️ DCFScrollView.insertContentView: Removing existing contentView before adding new one")
+            existingContentView.removeFromSuperview()
+            _contentView = nil
+        }
+        
+        // Assert that we don't already have this exact view (shouldn't happen, but safety check)
+        assert(_contentView == nil || _contentView == view, "DCFScrollView may only contain a single subview")
+        
+        // If this is the same view, we're done (already attached)
+        if _contentView == view {
+            print("🔍 DCFScrollView.insertContentView: ContentView already attached, skipping")
+            return
+        }
         
         // CRITICAL: Get the frame that should be restored after addSubview
         // UIKit resets the frame to zero when adding a view to a superview
@@ -513,7 +530,7 @@ class DCFCustomScrollView: UIScrollView {
     // Note: setting several properties of UIScrollView has the effect of
     // resetting its contentOffset to {0, 0}. To prevent this, we generate
     // setters here that will record the contentOffset beforehand, and
-    // restore it after the property has been set (React Native pattern)
+    // restore it after the property has been set
     
     public func setAlwaysBounceHorizontal(_ value: Bool) {
         let contentOffset = _scrollView.contentOffset
@@ -549,6 +566,20 @@ class DCFCustomScrollView: UIScrollView {
         let contentOffset = _scrollView.contentOffset
         _scrollView.showsVerticalScrollIndicator = value
         _scrollView.contentOffset = contentOffset
+    }
+    
+    // MARK: - DCFAutoInsetsProtocol
+    
+    /**
+     * Refresh content insets based on layout guides.
+     * Called automatically by DCFWrapperViewController when layout guides change.
+     */
+    @objc public func refreshContentInset() {
+        UIView.autoAdjustInsets(
+            for: self,
+            with: _scrollView,
+            updateOffset: true
+        )
     }
 }
 

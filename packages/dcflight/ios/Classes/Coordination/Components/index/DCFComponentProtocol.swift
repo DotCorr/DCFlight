@@ -137,9 +137,9 @@ public extension DCFComponent {
         view.subviews.forEach { $0.removeFromSuperview() }
     }
     
-    // MARK: - Props Management (React Native Pattern)
+    // MARK: - Props Management
     
-    /// Store props in view's associated object for merging on updates (React Native pattern)
+    /// Store props in view's associated object for merging on updates
     /// This ensures properties are preserved across partial updates
     func storeProps(_ props: [String: Any?], in view: UIView) {
         objc_setAssociatedObject(view,
@@ -153,7 +153,7 @@ public extension DCFComponent {
         return objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "dcf_stored_props".hashValue)!) as? [String: Any?] ?? [:]
     }
     
-    /// Merge existing props with updates (React Native pattern)
+    /// Merge existing props with updates
     /// - Null values remove props
     /// - Non-null values update props
     /// - Missing props are preserved

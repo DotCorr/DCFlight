@@ -274,18 +274,47 @@ class DCFViewManager {
             childView.removeFromSuperview()
         }
         
-        // CRITICAL: ScrollView only has ONE child - ScrollContentView
-        // ScrollView's setChildren handles adding ScrollContentView to _scrollView
-        // So we skip attachView for ScrollView's children (they're handled by setChildren)
-        if let parentViewInfo = ViewRegistry.shared.getViewInfo(id: parentId),
-           parentViewInfo.type == "ScrollView" {
-            // ScrollView children are handled by setChildren, not attachView
-            // Still add to Yoga tree for layout
-            if !childIsScreen {
-                DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+        // CRITICAL: ScrollView special handling
+        // DCFScrollView.insertContentView adds the child (ScrollContentView)
+        // directly to the internal scroll view via insertContentView
+        // IMPORTANT: Only do this when the CHILD is ScrollContentView being attached to ScrollView
+        // The ScrollView itself should be attached normally to its parent
+        if let scrollView = parentView as? DCFScrollView {
+            // Check if the child is a ScrollContentView component
+            let childComponentType = objc_getAssociatedObject(childView,
+                                                               UnsafeRawPointer(bitPattern: "componentType".hashValue)!) as? String
+            
+            if childComponentType == "ScrollContentView" {
+                // Check if contentView is already set and is the same view
+                // This prevents duplicate calls to insertContentView
+                if let existingContentView = scrollView.contentView, existingContentView == childView {
+                    print("🔍 attachView: ScrollContentView already attached, skipping insertContentView")
+                    // Still add to Yoga tree if not already added
+                    if !childIsScreen {
+                        DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+                    }
+                    return true
+                }
+                
+                print("🔍 attachView: Detected ScrollContentView being attached to ScrollView, using insertContentView")
+                scrollView.insertContentView(childView)
+                
+                // Store content view reference for component access
+                objc_setAssociatedObject(scrollView,
+                                         UnsafeRawPointer(bitPattern: "contentView".hashValue)!,
+                                         childView,
+                                         .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                
+                // Add to Yoga tree for layout
+                if !childIsScreen {
+                    DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+                }
+                
+                print("✅ attachView: ScrollContentView attached via insertContentView")
+                return true
             }
-            print("✅ attachView: Skipping ScrollView child attachment - setChildren will handle it")
-            return true
+            // If child is NOT ScrollContentView, fall through to normal attachment
+            // This allows ScrollView to be attached to its parent normally
         }
         
         // Components handle their own child routing via setChildren

@@ -12,11 +12,10 @@ import UIKit
 
 /**
  * DCFScrollContentViewComponent - Content view component manager
- * (1:1 with React Native's RCTScrollContentViewManager)
  * 
  * This component creates the content view that wraps ScrollView's children.
  * Yoga will layout this view, and the ScrollView will use its frame.size
- * as the contentSize (React Native pattern).
+ * as the contentSize.
  */
 class DCFScrollContentViewComponent: NSObject, DCFComponent {
     required override init() {

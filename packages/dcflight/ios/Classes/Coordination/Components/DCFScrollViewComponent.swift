@@ -20,16 +20,9 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
     func createView(props: [String: Any]) -> UIView {
         let scrollView = DCFScrollView(frame: .zero)
         
-        // Create content view container (will be managed by DCFScrollContentViewComponent)
-        let contentView = UIView()
-        contentView.clipsToBounds = false // Allow children with negative coordinates
-        scrollView.insertContentView(contentView)
-        
-        // Store content view reference for component access
-        objc_setAssociatedObject(scrollView,
-                                 UnsafeRawPointer(bitPattern: "contentView".hashValue)!,
-                                 contentView,
-                                 .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        // Don't create contentView here
+        // Wait for ScrollContentView component to be attached via attachView
+        // This prevents the assertion error when insertContentView is called twice
         
         // Basic setup
         scrollView.scrollView.showsVerticalScrollIndicator = true
@@ -142,76 +135,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
         }
     }
     
-    /// Set children - ScrollView should have ScrollContentView as its only child
-    /// ScrollContentView's view becomes the contentView
-    func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
-        guard let scrollView = view as? DCFScrollView else {
-            return false
-        }
-        
-        // React Native pattern: ScrollView's only child should be ScrollContentView component
-        if childViews.count == 1,
-           let scrollContentView = childViews.first {
-            // Check if this is a ScrollContentView component
-            let componentType = objc_getAssociatedObject(scrollContentView,
-                                                         UnsafeRawPointer(bitPattern: "componentType".hashValue)!) as? String
-            
-            print("🔍 DCFScrollViewComponent.setChildren: childViews.count=\(childViews.count), componentType=\(componentType ?? "nil"), view=\(scrollContentView)")
-            
-            if componentType == "ScrollContentView" {
-                // Remove old manually created contentView
-                if let oldContentView = objc_getAssociatedObject(scrollView,
-                                                                 UnsafeRawPointer(bitPattern: "contentView".hashValue)!) as? UIView,
-                   oldContentView != scrollContentView {
-                    oldContentView.removeFromSuperview()
-                }
-                
-                // CRITICAL: Remove ScrollContentView from DCFScrollView if attachView added it there
-                // ScrollContentView should be added to _scrollView, not DCFScrollView
-                if scrollContentView.superview == scrollView {
-                    scrollContentView.removeFromSuperview()
-                }
-                
-                print("🔍 DCFScrollViewComponent.setChildren: Adding ScrollContentView to ScrollView, currentFrame=\(scrollContentView.frame), superview=\(scrollContentView.superview?.description ?? "nil")")
-                
-                // Use ScrollContentView's view as the contentView (adds to _scrollView)
-                // insertContentView will handle frame restoration and contentSize updates
-                scrollView.insertContentView(scrollContentView)
-                
-                objc_setAssociatedObject(scrollView,
-                                         UnsafeRawPointer(bitPattern: "contentView".hashValue)!,
-                                         scrollContentView,
-                                         .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-                
-                print("✅ DCFScrollViewComponent: Using ScrollContentView component as contentView")
-                print("🔍 DCFScrollViewComponent: ScrollContentView frame=\(scrollContentView.frame), superview=\(scrollContentView.superview?.description ?? "nil")")
-                print("🔍 DCFScrollViewComponent: ScrollView.subviews.count=\(scrollView.scrollView.subviews.count)")
-                
-                // Note: contentSize will be updated by:
-                // 1. insertContentView if frame is already valid
-                // 2. applyLayout when it runs (which happens after setChildren in the batch)
-                
-                return true
-            }
-        }
-        
-        // Fallback: If no ScrollContentView, route children directly to contentView (backwards compat)
-        guard let contentView = objc_getAssociatedObject(scrollView,
-                                                         UnsafeRawPointer(bitPattern: "contentView".hashValue)!) as? UIView else {
-            return false
-        }
-        
-        contentView.subviews.forEach { $0.removeFromSuperview() }
-        for childView in childViews {
-            contentView.addSubview(childView)
-        }
-        
-        DispatchQueue.main.async {
-            scrollView.updateContentSizeFromContentView()
-        }
-        
-        return true
-    }
     
     /// Handle commands
     private func handleCommand(scrollView: DCFScrollView, props: [String: Any]) {
