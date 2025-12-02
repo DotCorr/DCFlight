@@ -1,182 +1,103 @@
-import 'package:dcf_go/style.dart';
-import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
-import 'dart:math' as math;
+import 'package:dcflight/framework/utils/screen_utilities.dart';
+import 'package:dcflight/framework/constants/layout/absolute_layout.dart';
+import 'package:flutter/material.dart' show Colors;
 
 void main() async {
-  await DCFlight.go(app: TestScrollViewScreen());
+  await DCFlight.go(app: DotCorrLanding());
 }
 
-/// Test Screen with ScrollView and Long List
-/// This helps verify if first items are visible
-class TestScrollViewScreen extends DCFStatelessComponent {
+/// DotCorr Landing Page - Matching Web Design
+class DotCorrLanding extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFScrollView(
       layout: DCFLayout(
         flex: 1,
       ),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: Colors.white,
+      ),
       children: [
-        DCFScrollContentView(styleSheet: DCFStyleSheet(backgroundColor: DCFColors.amberAccent),
-          layout: DCFLayout(
-            width: '100%',
-          ),
-          children: [
-            // Header - This should be visible at the top
-            DCFView(
-              layout: DCFLayout(
-                width: '100%',
-                padding: 24,
-              ),
-              styleSheet: DCFStyleSheet(
-                backgroundColor: const Color(0xFF000000),
-              ),
-              children: [
-                DCFText(
-                  content: "ScrollView Test",
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                  styleSheet: DCFStyleSheet(
-                    primaryColor: const Color(0xFFFFFFFF),
-                  ),
-                ),
-                DCFText(
-                  content: "First item should be visible at the top",
-                  textProps: DCFTextProps(
-                    fontSize: 14,
-                  ),
-                  styleSheet: DCFStyleSheet(
-                    primaryColor: const Color(0xFFFFFFFF),
-                  ),
-                ),
-              ],
-            ),
-            // Long list of items - First few should be visible
-            ...List.generate(50, (index) {
-              return DCFView(
-                layout: DCFLayout(
-                  width: '100%',
-                  padding: 16,
-                  marginBottom: 8,
-                ),
-                styleSheet: DCFStyleSheet(
-                  backgroundColor: index % 2 == 0 
-                      ? const Color(0xFFF5F5F5)
-                      : const Color(0xFFFFFFFF),
-                  borderWidth: 1,
-                  borderColor: const Color(0xFFE0E0E0),
-                ),
-                children: [
-                  DCFText(
-                    content: "Item ${index + 1}",
-                    textProps: DCFTextProps(
-                      fontSize: 18,
-                      fontWeight: DCFFontWeight.medium,
-                    ),
-                    styleSheet: DCFStyleSheet(
-                      primaryColor: const Color(0xFF000000),
-                    ),
-                  ),
-                  DCFText(
-                    content: "This is item number ${index + 1} in the list. Scroll to see more items.",
-                    textProps: DCFTextProps(
-                      fontSize: 14,
-                    ),
-                    styleSheet: DCFStyleSheet(
-                      primaryColor: const Color(0xFF666666),
-                    ),
-                  ),
-                ],
-              );
-            }),
-          ],
-        ),
+        NavigationBar(),
+        HeroSection(),
+        // EcosystemSection(), 
+        BuildersAndMachinesSection(),
+        TechnologyEcosystemSection(),
+        AboutSection(),
+        Footer(),
       ],
     );
   }
 }
 
-/// DotCorr Landing Page - Recreated from React/Framer Motion
-class DotCorrLanding extends DCFStatefulComponent {
-  @override
-  DCFComponentNode render() {
-    return DCFScrollView(
-      layout: layouts['root'],
-      children: [
-        DCFScrollContentView(
-          layout: DCFLayout(
-            width: '100%',
-            // Don't set height: '100%' - let it grow with content
-          ),
-          children: [
-            // Navigation
-            NavigationBar(),
-            
-            // Hero Section
-            HeroSection(),
-            
-            // Infrastructure for Builders & Machines
-            BuildersAndMachinesSection(),
-            
-            // Technology Ecosystem
-            TechnologyEcosystemSection(),
-            
-            // About Section
-            AboutSection(),
-            
-            // Footer
-            Footer(),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Navigation Bar Component
 class NavigationBar extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
-    return Motion(
-      initial: { 'opacity': 0, 'y': -20 },
-      animate: { 'opacity': 1, 'y': 0 },
-      transition: Transition(duration: 600),
-      layout: layouts['nav'],
-      styleSheet: styles['nav'],
+    final screenUtils = ScreenUtilities.instance;
+    final safeAreaTop = screenUtils.safeAreaTop;
+    
+    return DCFView(
+      layout: DCFLayout(
+        width: '100%',
+        paddingTop: 16 + safeAreaTop,
+        paddingBottom: 16,
+        paddingHorizontal: 24,
+        flexDirection: DCFFlexDirection.row,
+        justifyContent: DCFJustifyContent.spaceBetween,
+        alignItems: DCFAlign.center,
+      ),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: Colors.white,
+        borderBottomWidth: 1,
+        borderBottomColor: Colors.grey[100]!,
+      ),
       children: [
+        // Logo Area
         DCFView(
-          layout: layouts['navContainer'],
+          layout: DCFLayout(
+            flexDirection: DCFFlexDirection.row,
+            alignItems: DCFAlign.center,
+            gap: 8,
+          ),
           children: [
             DCFView(
-              layout: layouts['navLogo'],
-              children: [
+              layout: DCFLayout(width: 24, height: 24),
+              styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
+            ),
                 DCFText(
                   content: "DotCorr",
                   textProps: DCFTextProps(
                     fontSize: 18,
                     fontWeight: DCFFontWeight.bold,
+                letterSpacing: -0.5,
                   ),
-                  styleSheet: styles['navLogoText'],
+              styleSheet: DCFStyleSheet(primaryColor: Colors.black),
                 ),
               ],
             ),
+        // Links
             DCFView(
-              layout: layouts['navLinks'],
+          layout: DCFLayout(
+            flexDirection: DCFFlexDirection.row,
+            alignItems: DCFAlign.center,
+            gap: 24,
+          ),
               children: [
                 DCFText(
                   content: "The Lab",
-                  textProps: DCFTextProps(fontSize: 14),
-                  styleSheet: styles['navLink'],
-                ),
+              textProps: DCFTextProps(
+                fontSize: 14,
+                fontWeight: DCFFontWeight.medium,
+              ),
+              styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+            ),
+            // GitHub Icon placeholder (text for now)
                 DCFText(
                   content: "GitHub",
-                  textProps: DCFTextProps(fontSize: 14),
-                  styleSheet: styles['navLink'],
-                ),
-              ],
+              textProps: DCFTextProps(fontSize: 14, fontWeight: DCFFontWeight.medium),
+              styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
             ),
           ],
         ),
@@ -185,37 +106,70 @@ class NavigationBar extends DCFStatelessComponent {
   }
 }
 
-/// Hero Section Component
 class HeroSection extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: layouts['hero'],
-      styleSheet: styles['hero'],
+      layout: DCFLayout(
+        width: '100%',
+        paddingTop: 64,
+        paddingBottom: 80,
+        paddingHorizontal: 24,
+        gap: 48,
+      ),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
       children: [
+        // Left Content
         DCFView(
-          layout: layouts['heroContainer'],
+          layout: DCFLayout(width: '100%', gap: 32),
           children: [
-            // Left: Typography & Message
             Motion(
-              initial: { 'opacity': 0, 'y': 20 },
-              animate: { 'opacity': 1, 'y': 0 },
+              initial: {'opacity': 0, 'y': 20},
+              animate: {'opacity': 1, 'y': 0},
               transition: Transition(duration: 800),
-              layout: layouts['heroLeft'],
+              layout: DCFLayout(gap: 24),
               children: [
                 DCFText(
                   content: "Building\nInfrastructure\nFor The Inevitable.",
                   textProps: DCFTextProps(
-                    fontSize: 64,
+                    fontSize: 48, // Closer to web h1
                     fontWeight: DCFFontWeight.medium,
+                    lineHeight: 1.1, // Tighter line height like web
+                    letterSpacing: -1.5,
                   ),
-                  styleSheet: styles['heroTitle'],
+                  styleSheet: DCFStyleSheet(primaryColor: Colors.black),
                 ),
+                
+                // Typewriter Effect Placeholder (simplified for now)
+                DCFView(
+                  layout: DCFLayout(
+                    height: 60,
+                    justifyContent: DCFJustifyContent.center,
+                  ),
+                  children: [
                 TypewriterEffect(),
-                DCFButton(
-                  onPress: (data) {},
-                  styleSheet: styles['heroButton'],
-                  layout: layouts['heroButton'],
+                  ],
+                ),
+
+                DCFView(
+                  layout: DCFLayout(
+                    flexDirection: DCFFlexDirection.row,
+                    alignItems: DCFAlign.center,
+                    marginTop: 16,
+                  ),
+                  children: [
+                    DCFView(
+                      layout: DCFLayout(
+                        paddingHorizontal: 32,
+                        paddingVertical: 16,
+                        flexDirection: DCFFlexDirection.row,
+                        alignItems: DCFAlign.center,
+                        gap: 12,
+                      ),
+                      styleSheet: DCFStyleSheet(
+                        backgroundColor: Colors.black,
+                        borderRadius: 2, // Small radius like web
+                      ),
                   children: [
                     DCFText(
                       content: "Enter The Lab",
@@ -223,47 +177,33 @@ class HeroSection extends DCFStatefulComponent {
                         fontSize: 16,
                         fontWeight: DCFFontWeight.medium,
                       ),
-                      styleSheet: styles['heroButtonText'],
+                          styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+                        ),
+                        // Arrow placeholder
+                        DCFText(
+                          content: "→",
+                          textProps: DCFTextProps(fontSize: 16, fontWeight: DCFFontWeight.medium),
+                          styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
-            
-            // Right: Infrastructure Visualization
-            DCFView(
-              layout: layouts['heroRight'],
-              children: [
-                InfrastructureVisual(),
-              ],
-            ),
           ],
         ),
-        
-        // Ecosystem/Model Compatibility
-        Motion(
-          initial: { 'opacity': 0, 'y': 20 },
-          animate: { 'opacity': 1, 'y': 0 },
-          transition: Transition(delay: 500, duration: 800),
-          layout: layouts['ecosystem'],
+
+        // Right Visual (3D Box effect using Reanimated)
+        DCFView(
+          layout: DCFLayout(
+            width: '100%',
+            height: 400, // Fixed height container for the visual
+            alignItems: DCFAlign.center,
+            justifyContent: DCFJustifyContent.center,
+          ),
           children: [
-            DCFText(
-              content: "Interoperable with leading foundation models",
-              textProps: DCFTextProps(fontSize: 12),
-              styleSheet: styles['ecosystemLabel'],
-            ),
-            DCFView(
-              layout: layouts['ecosystemLogos'],
-              children: [
-                DCFText(content: "OpenAI", styleSheet: styles['ecosystemLogo']),
-                DCFText(content: "Gemini", styleSheet: styles['ecosystemLogo']),
-                DCFText(content: "Anthropic", styleSheet: styles['ecosystemLogo']),
-                DCFText(content: "Meta", styleSheet: styles['ecosystemLogo']),
-                DCFText(content: "Mistral", styleSheet: styles['ecosystemLogo']),
-                DCFText(content: "Cohere", styleSheet: styles['ecosystemLogo']),
-                DCFText(content: "+ Any LLM", styleSheet: styles['ecosystemLogo']),
-              ],
-            ),
+            InfrastructureVisual(),
           ],
         ),
       ],
@@ -271,471 +211,266 @@ class HeroSection extends DCFStatefulComponent {
   }
 }
 
-/// Typewriter Effect Component
 class TypewriterEffect extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    final words = [
-      "Build for Mobile.",
-      "Build for Web.",
-      "Build for AI.",
-      "Build for AGI.",
-      "Build for The Future."
-    ];
-    final index = useState<int>(0);
-    final subIndex = useState<int>(0);
-    final blink = useState<bool>(true);
-    
-    // Typewriter logic would go here with useEffect hooks
-    // For now, showing current word
-    final currentWord = words[index.state];
-    final displayText = currentWord.substring(0, math.min(subIndex.state, currentWord.length));
-    
     return DCFView(
-      layout: layouts['typewriter'],
+      layout: DCFLayout(flexDirection: DCFFlexDirection.row, alignItems: DCFAlign.center),
       children: [
         DCFText(
-          content: "\$ $displayText${blink.state ? '|' : ' '}",
+          content: "\$ Build for Mobile", // Static for stability first
           textProps: DCFTextProps(
             fontSize: 20,
-            fontFamily: 'monospace',
+            fontFamily: "Courier", // Monospace if available
           ),
-          styleSheet: styles['typewriterText'],
+          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+        ),
+        // Cursor
+        ReanimatedView(
+          layout: DCFLayout(width: 10, height: 24, marginLeft: 8),
+          styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
+          animate: {'opacity': 0},
+          transition: Transition(duration: 500, repeat: true, repeatType: 'reverse'), // Blink
+          children: [],
         ),
       ],
     );
   }
 }
 
-/// Infrastructure Visualization Component (3D)
-class InfrastructureVisual extends DCFStatefulComponent {
+class InfrastructureVisual extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
-    final size = 240.0;
-    final towerSize = size * 0.35;
-    final towerOffset = size * 0.15;
-    final towerHeight = 160.0;
+    final size = 200.0;
     
-    return DCFView(
-      layout: layouts['infraContainer'],
+    // Mimicking the 3D structure from web using Reanimated transforms
+    return ReanimatedView(
+      layout: DCFLayout(
+        width: size,
+        height: size,
+        alignItems: DCFAlign.center,
+        justifyContent: DCFJustifyContent.center,
+      ),
+      initial: {'rotateX': 0, 'rotateZ': 0, 'scale': 0.8},
+      animate: {'rotateX': 60, 'rotateZ': 45, 'scale': 1.0}, // Web: rotateX: 60, rotateZ: 45
+      transition: Transition(duration: 2000, curve: AnimationCurve.easeOut),
       children: [
-        // Main 3D Container
-        Motion(
-          initial: { 
-            'opacity': 0, 
-            'rotateX': 60 * (math.pi / 180), 
-            'rotateZ': 45 * (math.pi / 180), 
-            'scale': 0.8 
-          },
-          animate: { 
-            'opacity': 1, 
-            'rotateX': 60 * (math.pi / 180), 
-            'rotateZ': 45 * (math.pi / 180), 
-            'scale': 1 
-          },
-          transition: Transition(
-            duration: 1200,
-            curve: AnimationCurve.easeOut,
-          ),
+        // Base (Black background)
+        DCFView(
           layout: DCFLayout(
             width: size,
             height: size,
             position: DCFPositionType.absolute,
           ),
-          children: [
-            // Base (Black Platform)
-            Base3D(),
-            
-            // Tower (White Extruded)
-            Motion(
-              initial: { 'z': 0 },
-              animate: { 'z': towerHeight },
-              transition: Transition(
-                duration: 1500,
-                delay: 500,
-                type: 'spring',
-                damping: 20,
-              ),
-              layout: DCFLayout(
-                width: towerSize,
-                height: towerSize,
-                position: DCFPositionType.absolute,
-                absoluteLayout: AbsoluteLayout(
-                  left: towerOffset,
-                  top: towerOffset,
-                ),
-              ),
-              children: [
-                Tower3D(towerHeight: towerHeight),
-              ],
-            ),
-            
-            // Orbiting Drones
-            ...List.generate(3, (i) => DroneOrbit(
-              index: i,
-              size: size,
-              delay: i * -3,
-              duration: 10 + (i * 2),
-            )),
-            
-            // Data Streams (SVG lines would go here)
-            DataStreams(size: size),
-            
-            // Energy Particles
-            ...List.generate(2, (i) => EnergyParticle(
-              index: i,
-              towerOffset: towerOffset,
-              towerSize: towerSize,
-              towerHeight: towerHeight,
-              delay: i * 1.25,
-            )),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// 3D Base Component
-class Base3D extends DCFStatelessComponent {
-  @override
-  DCFComponentNode render() {
-    return DCFView(
-      layout: DCFLayout(
-        width: '100%',
-        height: '100%',
-        position: DCFPositionType.absolute,
-      ),
-      styleSheet: DCFStyleSheet(
-        backgroundColor: const Color(0xFF000000),
-      ),
-      children: [
-        // Grid pattern overlay would go here
-        DCFView(
-          layout: DCFLayout(
-            width: '100%',
-            height: '100%',
-            position: DCFPositionType.absolute,
-          ),
           styleSheet: DCFStyleSheet(
-            opacity: 0.3,
-            // Grid background would be set via native
+            backgroundColor: Colors.black,
+            borderWidth: 1,
+            borderColor: Colors.grey[900]!,
           ),
         ),
-      ],
-    );
-  }
-}
-
-/// 3D Tower Component
-class Tower3D extends DCFStatelessComponent {
-  final double towerHeight;
-  
-  Tower3D({required this.towerHeight});
-  
-  @override
-  DCFComponentNode render() {
-    return Motion(
-      animate: {
-        'opacity': [0.1, 0.5, 0.1],
-        'scale': [1, 1.1, 1],
-      },
-      transition: Transition(
-        duration: 2000,
-        repeat: true,
-        curve: AnimationCurve.easeInOut,
-      ),
-      layout: DCFLayout(
-        width: '100%',
-        height: '100%',
-      ),
-      styleSheet: DCFStyleSheet(
-        backgroundColor: const Color(0xFFFFFFFF),
-      ),
-      children: [
-        // Tower faces would be rendered via 3D transforms
-      ],
-    );
-  }
-}
-
-/// Orbiting Drone Component
-class DroneOrbit extends DCFStatelessComponent {
-  final int index;
-  final double size;
-  final int delay;
-  final int duration;
-  
-  DroneOrbit({
-    required this.index,
-    required this.size,
-    required this.delay,
-    required this.duration,
-  });
-  
-  @override
-  DCFComponentNode render() {
-    final orbitRadius = size * 0.6;
-    return Motion(
-      animate: { 'rotateZ': 360 * (math.pi / 180) },
-      transition: Transition(
-        duration: duration * 1000,
-        repeat: true,
-        curve: AnimationCurve.linear,
-        delay: delay * 1000,
-      ),
-      layout: DCFLayout(
-        position: DCFPositionType.absolute,
-        absoluteLayout: AbsoluteLayout.centered(),
-        width: 8,
-        height: 8,
-      ),
-      children: [
-        DCFView(
+        
+        // Tower (White square rising up)
+        // In standard CSS 3D, Z-index/translateZ works. Here we simulate with another view
+        // offset and styled to look like a tower.
+        ReanimatedView(
           layout: DCFLayout(
-            width: 8,
-            height: 8,
-            position: DCFPositionType.absolute,
-            absoluteLayout: AbsoluteLayout(left: orbitRadius),
-          ),
-          styleSheet: DCFStyleSheet(
-            backgroundColor: const Color(0xFFFFFFFF),
-            borderRadius: 2,
-          ),
-          children: [
-            // Scan beam would go here
-            Motion(
-              animate: { 'opacity': [0.2, 0.6, 0.2] },
-              transition: Transition(
-                duration: 2000,
-                repeat: true,
-              ),
-              layout: DCFLayout(
-                width: 80,
-                height: 80,
-                position: DCFPositionType.absolute,
-                absoluteLayout: AbsoluteLayout.centered(),
-              ),
-              styleSheet: DCFStyleSheet(
-                backgroundColor: const Color(0xFF06B6D4),
-                opacity: 0.2,
-                borderRadius: 40,
-              ),
-              children: [],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// Data Streams Component
-class DataStreams extends DCFStatelessComponent {
-  final double size;
-  
-  DataStreams({required this.size});
-  
-  @override
-  DCFComponentNode render() {
-    return DCFView(
-      layout: DCFLayout(
-        width: '100%',
-        height: '100%',
-        position: DCFPositionType.absolute,
-      ),
-      children: [
-        // Horizontal lines
-        ...List.generate(4, (i) => Motion(
-          initial: { 'scaleY': 0, 'opacity': 0 },
-          animate: { 
-            'scaleY': 1, 
-            'opacity': [0.3, 0.8, 0.3] 
-          },
-          transition: Transition(
-            duration: 800,
-            delay: (1000 + (i * 100)).round(),
-            repeat: true,
-            repeatCount: null,
-          ),
-          layout: DCFLayout(
-            width: 2,
-            height: size * 0.5,
+            width: size * 0.35,
+            height: size * 0.35,
             position: DCFPositionType.absolute,
             absoluteLayout: AbsoluteLayout(
-              left: size - (i * 35),
-              top: size * 0.25,
+              top: size * 0.15,
+              left: size * 0.15,
             ),
           ),
           styleSheet: DCFStyleSheet(
-            backgroundColor: const Color(0xFF06B6D4),
-            opacity: 0.8,
+            backgroundColor: Colors.white,
+            shadowColor: Colors.white,
+            shadowRadius: 20,
+            shadowOpacity: 0.4,
           ),
+          initial: {'translateY': 0}, // Simulate Z height with Y translation in this perspective? 
+          // Actually, true 3D might be tricky without perspective container.
           children: [],
-        )),
-        // Vertical lines
-        ...List.generate(4, (i) => Motion(
-          initial: { 'scaleX': 0, 'opacity': 0 },
-          animate: { 
-            'scaleX': 1, 
-            'opacity': [0.3, 0.8, 0.3] 
-          },
-          transition: Transition(
-            duration: 800,
-            delay: (1200 + (i * 100)).round(),
-            repeat: true,
-            repeatCount: null,
-          ),
-          layout: DCFLayout(
-            width: size * 0.5,
-            height: 2,
-            position: DCFPositionType.absolute,
-            absoluteLayout: AbsoluteLayout(
-              left: size * 0.25,
-              top: size - (i * 35),
-            ),
-          ),
-          styleSheet: DCFStyleSheet(
-            backgroundColor: const Color(0xFF06B6D4),
-            opacity: 0.8,
-          ),
-          children: [],
-        )),
+          // Let's keep it simple: it's a white box on a black rotated plane.
+        ),
       ],
     );
   }
 }
 
-/// Energy Particle Component
-class EnergyParticle extends DCFStatelessComponent {
-  final int index;
-  final double towerOffset;
-  final double towerSize;
-  final double towerHeight;
-  final double delay;
-  
-  EnergyParticle({
-    required this.index,
-    required this.towerOffset,
-    required this.towerSize,
-    required this.towerHeight,
-    required this.delay,
-  });
-  
-  @override
-  DCFComponentNode render() {
-    return Motion(
-      animate: {
-        'z': [0, towerHeight + 10, 0],
-        'opacity': [0, 1, 0],
-        'scale': [1, 1.5, 1],
-      },
-      transition: Transition(
-        duration: 2500,
-        repeat: true,
-        delay: (delay * 1000).round(),
-        curve: AnimationCurve.easeInOut,
-      ),
-      layout: DCFLayout(
-        width: 4,
-        height: 4,
-        position: DCFPositionType.absolute,
-        absoluteLayout: AbsoluteLayout(
-          left: towerOffset + towerSize / 2,
-          top: towerOffset + towerSize / 2,
-        ),
-      ),
-      styleSheet: DCFStyleSheet(
-        backgroundColor: const Color(0xFF06B6D4),
-        borderRadius: 2,
-      ),
-      children: [],
-    );
-  }
-}
-
-/// Builders & Machines Section
 class BuildersAndMachinesSection extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: layouts['section'],
-      styleSheet: styles['sectionGray'],
+      layout: DCFLayout(
+        width: '100%',
+        paddingVertical: 128, // py-32 = 128px (matches web)
+        paddingHorizontal: 24,
+        flexDirection: DCFFlexDirection.column,
+      ),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[50]!),
       children: [
-        Motion(
-          initial: { 'opacity': 0, 'y': 20 },
-          whileInView: { 'opacity': 1, 'y': 0 },
-          viewport: ViewportConfig(once: true),
-          transition: Transition(duration: 600),
-          layout: layouts['sectionHeader'],
+        // Header section - mb-20 = 80px
+        DCFView(
+          layout: DCFLayout(
+            width: '100%',
+            marginBottom: 80,
+            flexDirection: DCFFlexDirection.column,
+            gap: 32,
+          ),
           children: [
             DCFText(
               content: "Infrastructure for\nBuilders & Machines",
               textProps: DCFTextProps(
-                fontSize: 48,
+                fontSize: 48, // text-5xl = 48px (matches web)
                 fontWeight: DCFFontWeight.medium,
+                letterSpacing: -1,
+                lineHeight: 1.1,
               ),
-              styleSheet: styles['sectionTitle'],
+              styleSheet: DCFStyleSheet(primaryColor: Colors.black),
             ),
             DCFText(
               content: "We provide the tools to build native applications today and the cognitive architecture for the intelligent systems of tomorrow.",
-              textProps: DCFTextProps(fontSize: 20),
-              styleSheet: styles['sectionDescription'],
+              textProps: DCFTextProps(
+                fontSize: 20, // text-xl = 20px (matches web)
+                lineHeight: 1.6,
+              ),
+              styleSheet: DCFStyleSheet(primaryColor: Colors.grey[500]!),
             ),
           ],
         ),
+        // Cards - gap-8 = 32px
         DCFView(
-          layout: layouts['cardsGrid'],
+          layout: DCFLayout(
+            flexDirection: DCFFlexDirection.column,
+            gap: 32, // gap-8 = 32px (matches web)
+          ),
           children: [
-            // Builders Card
-            Motion(
-              initial: { 'opacity': 0, 'y': 20 },
-              whileInView: { 'opacity': 1, 'y': 0 },
-              whileHover: { 'y': -5 },
-              viewport: ViewportConfig(once: true),
-              transition: Transition(duration: 600, delay: 200),
-              layout: layouts['card'],
-              styleSheet: styles['cardWhite'],
-              children: [
-                DCFText(
-                  content: "For Builders",
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                  styleSheet: styles['cardTitle'],
-                ),
-                DCFText(
-                  content: "Direct access to native platform capabilities. Write Dart once, render true native UI components. No abstractions, no compromises.",
-                  textProps: DCFTextProps(fontSize: 14),
-                  styleSheet: styles['cardDescription'],
-                ),
-              ],
+            _buildCard(
+              "For Builders",
+              "Direct access to native platform capabilities. Write Dart once, render true native UI components. No abstractions, no compromises.",
+              Colors.white,
+              Colors.black,
+              "Explore DCFlight",
             ),
-            // Machines Card
-            Motion(
-              initial: { 'opacity': 0, 'y': 20 },
-              whileInView: { 'opacity': 1, 'y': 0 },
-              whileHover: { 'y': -5 },
-              viewport: ViewportConfig(once: true),
-              transition: Transition(duration: 600, delay: 400),
-              layout: layouts['card'],
-              styleSheet: styles['cardBlack'],
-              children: [
-                DCFText(
-                  content: "For Machines",
-                  textProps: DCFTextProps(
-                    fontSize: 24,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                  styleSheet: styles['cardTitleWhite'],
-                ),
-                DCFText(
-                  content: "The cognitive layer for artificial intelligence. We build the foundational systems required to support autonomous agents and AGI.",
-                  textProps: DCFTextProps(fontSize: 14),
-                  styleSheet: styles['cardDescriptionWhite'],
-                ),
-              ],
+            _buildCard(
+              "For Machines",
+              "The cognitive layer for artificial intelligence. We build the foundational systems required to support autonomous agents and AGI.",
+              Colors.black,
+              Colors.white,
+              "Explore DCCortex",
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  DCFComponentNode _buildCard(String title, String desc, Color bg, Color text, String linkText) {
+    return DCFView(
+      layout: DCFLayout(
+        width: '100%',
+        padding: 40, // p-10 = 40px (matches web)
+        flexDirection: DCFFlexDirection.column,
+        alignItems: DCFAlign.flexStart, // Align items to start
+        flexShrink: 0, // Don't shrink - let content define height
+      ),
+      styleSheet: DCFStyleSheet(
+        backgroundColor: bg,
+        borderWidth: bg == Colors.white ? 1 : 0,
+        borderColor: bg == Colors.white ? Colors.grey[200]! : Colors.transparent,
+        borderRadius: 8,
+        shadowColor: Colors.black,
+        shadowOpacity: bg == Colors.white ? 0.05 : 0.3,
+        shadowRadius: bg == Colors.white ? 4 : 12,
+        shadowOffsetX: 0,
+        shadowOffsetY: bg == Colors.white ? 1 : 4,
+      ),
+      children: [
+        // Icon - matches web w-12 h-12 = 48px
+        DCFView(
+          layout: DCFLayout(
+            width: 48,
+            height: 48,
+            alignItems: DCFAlign.center,
+            justifyContent: DCFJustifyContent.center,
+            marginBottom: 24, // mb-6 = 24px
+          ),
+          styleSheet: DCFStyleSheet(
+            backgroundColor: bg == Colors.white ? Colors.black : Colors.white,
+            borderRadius: 4,
+          ),
+          children: [
+            DCFText(
+              content: bg == Colors.white ? "📱" : "🧠",
+              textProps: DCFTextProps(fontSize: 24),
+              styleSheet: DCFStyleSheet(primaryColor: bg == Colors.white ? Colors.white : Colors.black),
+            ),
+          ],
+        ),
+        // Title - text-2xl font-bold mb-3
+        DCFView(
+          layout: DCFLayout(
+            width: '100%',
+            marginBottom: 12, // mb-3 = 12px
+          ),
+          children: [
+            DCFText(
+              content: title,
+              textProps: DCFTextProps(
+                fontSize: 24, // text-2xl = 24px
+                fontWeight: DCFFontWeight.bold,
+              ),
+              styleSheet: DCFStyleSheet(primaryColor: text),
+            ),
+          ],
+        ),
+        // Description - mb-8 - CRITICAL: Must have width: 100% to wrap properly
+        DCFView(
+          layout: DCFLayout(
+            width: '100%',
+            marginBottom: 32, // mb-8 = 32px
+            flexShrink: 0, // Don't shrink
+          ),
+          children: [
+            DCFText(
+              content: desc,
+              textProps: DCFTextProps(
+                fontSize: 16,
+                lineHeight: 1.5,
+                numberOfLines: 0, // Allow unlimited lines - CRITICAL for multi-line text
+              ),
+              styleSheet: DCFStyleSheet(
+                primaryColor: text == Colors.black ? Colors.grey[500]! : Colors.grey[300]!,
+              ),
+              layout: DCFLayout(
+                width: '100%', // Ensure text can use full width for wrapping
+              ),
+            ),
+          ],
+        ),
+        // Link - inline-flex items-center gap-2
+        DCFView(
+          layout: DCFLayout(
+            width: '100%',
+            flexDirection: DCFFlexDirection.row,
+            alignItems: DCFAlign.center,
+            gap: 8, // gap-2 = 8px
+          ),
+          children: [
+            DCFText(
+              content: linkText,
+              textProps: DCFTextProps(
+                fontSize: 16,
+                fontWeight: DCFFontWeight.medium,
+                numberOfLines: 1, // Single line for link
+              ),
+              styleSheet: DCFStyleSheet(primaryColor: text),
+            ),
+            DCFText(
+              content: "→",
+              textProps: DCFTextProps(fontSize: 16),
+              styleSheet: DCFStyleSheet(primaryColor: text),
             ),
           ],
         ),
@@ -744,177 +479,61 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
   }
 }
 
-/// Technology Ecosystem Section
 class TechnologyEcosystemSection extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
-    final features = [
-      {'title': 'High Performance', 'desc': 'Rust-powered core architecture ensuring maximum efficiency and memory safety at scale.'},
-      {'title': 'Cross Platform', 'desc': 'Deploy native applications to iOS, Android, and Web from a single unified codebase.'},
-      {'title': 'LLM Agnostic', 'desc': 'Plug-and-play compatibility with foundation models from OpenAI, Anthropic, and Llama.'},
-      {'title': 'Vector Native', 'desc': 'Built-in high-performance vector search and graph capabilities for AI memory systems.'},
-    ];
-    
     return DCFView(
-      layout: layouts['section'],
-      styleSheet: styles['section'],
-      children: [
-        Motion(
-          initial: { 'opacity': 0, 'y': 20 },
-          whileInView: { 'opacity': 1, 'y': 0 },
-          viewport: ViewportConfig(once: true),
-          layout: layouts['sectionHeader'],
+      layout: DCFLayout(width: '100%', paddingVertical: 80, paddingHorizontal: 24),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
           children: [
             DCFText(
               content: "Built for the Modern Stack",
-              textProps: DCFTextProps(
-                fontSize: 40,
-                fontWeight: DCFFontWeight.bold,
-              ),
-              styleSheet: styles['sectionTitle'],
-            ),
-            DCFText(
-              content: "Our infrastructure is designed to integrate seamlessly with the technologies that power the world's most ambitious software.",
-              textProps: DCFTextProps(fontSize: 20),
-              styleSheet: styles['sectionDescription'],
-            ),
-          ],
+          textProps: DCFTextProps(fontSize: 32, fontWeight: DCFFontWeight.bold, letterSpacing: -1),
+          styleSheet: DCFStyleSheet(primaryColor: Colors.black),
         ),
-        DCFView(
-          layout: layouts['featuresGrid'],
-          children: features.asMap().entries.map((entry) {
-            final index = entry.key;
-            final feature = entry.value;
-            return Motion(
-              initial: { 'opacity': 0 },
-              whileInView: { 'opacity': 1 },
-              viewport: ViewportConfig(once: true),
-              transition: Transition(delay: index * 100),
-              layout: layouts['featureCard'],
-              styleSheet: styles['featureCard'],
-              children: [
-                DCFText(
-                  content: feature['title']!,
-                  textProps: DCFTextProps(
-                    fontSize: 18,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                  styleSheet: styles['featureTitle'],
-                ),
-                DCFText(
-                  content: feature['desc']!,
-                  textProps: DCFTextProps(fontSize: 12),
-                  styleSheet: styles['featureDescription'],
-                ),
-              ],
-            );
-          }).toList(),
-        ),
+        // Grid items... (Simplified)
       ],
     );
   }
 }
 
-/// About Section
 class AboutSection extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: layouts['section'],
-      styleSheet: styles['sectionDark'],
+      layout: DCFLayout(width: '100%', paddingVertical: 80, paddingHorizontal: 24),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[900]!),
       children: [
-        Motion(
-          initial: { 'opacity': 0, 'y': 20 },
-          whileInView: { 'opacity': 1, 'y': 0 },
-          viewport: ViewportConfig(once: true),
-          transition: Transition(duration: 600),
-          layout: layouts['aboutContainer'],
-          children: [
-            DCFText(
-              content: "About DotCorr",
-              textProps: DCFTextProps(
-                fontSize: 14,
-                fontWeight: DCFFontWeight.medium,
-              ),
-              styleSheet: styles['aboutLabel'],
-            ),
             DCFText(
               content: "Designing the Cognitive Future",
-              textProps: DCFTextProps(
-                fontSize: 32,
-                fontWeight: DCFFontWeight.bold,
-              ),
-              styleSheet: styles['aboutTitle'],
-            ),
-            DCFText(
-              content: "DotCorr is a software design and production company specializing in next-generation infrastructure. Based in the Netherlands, we bridge the gap between today's applications and tomorrow's autonomous systems.",
-              textProps: DCFTextProps(fontSize: 18),
-              styleSheet: styles['aboutDescription'],
-            ),
-            DCFView(
-              layout: layouts['aboutInfo'],
-              children: [
-                DCFText(content: "Location: Netherlands", styleSheet: styles['aboutInfoText']),
-                DCFText(content: "Focus: AI Infrastructure & Mobile", styleSheet: styles['aboutInfoText']),
-                DCFText(content: "Status: Research & Development", styleSheet: styles['aboutInfoText']),
-              ],
-            ),
-          ],
+          textProps: DCFTextProps(fontSize: 32, fontWeight: DCFFontWeight.bold, letterSpacing: -1),
+          styleSheet: DCFStyleSheet(primaryColor: Colors.white),
         ),
       ],
     );
   }
 }
 
-/// Footer Component
 class Footer extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
+    final screenUtils = ScreenUtilities.instance;
+    final safeAreaBottom = screenUtils.safeAreaBottom;
+    
     return DCFView(
-      layout: layouts['footer'],
-      styleSheet: styles['footer'],
-      children: [
-        DCFView(
-          layout: layouts['footerContainer'],
-          children: [
-            DCFView(
-              layout: layouts['footerBrand'],
-              children: [
-                DCFText(
-                  content: "DotCorr",
-                  textProps: DCFTextProps(
-                    fontSize: 18,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                  styleSheet: styles['footerBrandText'],
-                ),
-                DCFText(
-                  content: "Building the cognitive infrastructure for artificial general intelligence and high-performance mobile applications.",
-                  textProps: DCFTextProps(fontSize: 12),
-                  styleSheet: styles['footerDescription'],
-                ),
-              ],
-            ),
-            DCFView(
-              layout: layouts['footerLinks'],
-              children: [
-                DCFText(content: "DCFlight", styleSheet: styles['footerLink']),
-                DCFText(content: "DCCortex", styleSheet: styles['footerLink']),
-                DCFText(content: "Documentation", styleSheet: styles['footerLink']),
-                DCFText(content: "GitHub", styleSheet: styles['footerLink']),
-              ],
-            ),
-          ],
-        ),
-        DCFView(
-          layout: layouts['footerBottom'],
+      layout: DCFLayout(
+        width: '100%',
+        paddingTop: 48,
+        paddingBottom: 32 + safeAreaBottom,
+        paddingHorizontal: 24,
+        gap: 40,
+      ),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
           children: [
             DCFText(
               content: "© 2025 DotCorr. All rights reserved.",
-              textProps: DCFTextProps(fontSize: 12),
-              styleSheet: styles['footerCopyright'],
-            ),
-          ],
+          textProps: DCFTextProps(fontSize: 14),
+          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[500]!),
         ),
       ],
     );
