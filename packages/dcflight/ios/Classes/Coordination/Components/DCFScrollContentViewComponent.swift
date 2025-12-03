@@ -208,12 +208,8 @@ class DCFScrollContentViewComponent: NSObject, DCFComponent {
         return true
     }
     
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         // Content view is laid out by Yoga - no special handling needed
-    }
-    
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize.zero
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {

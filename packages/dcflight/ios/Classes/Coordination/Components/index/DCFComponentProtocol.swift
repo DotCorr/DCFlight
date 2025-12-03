@@ -50,11 +50,9 @@ public protocol DCFComponent {
     /// Apply yoga layout to the view
     func applyLayout(_ view: UIView, layout: YGNodeLayout)
     
-    /// Get intrinsic content size for a view (for text measurement, etc.)
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize
-    
     /// Called when a view is registered with the shadow tree
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)
+    /// Components can set intrinsicContentSize on the shadowView if needed for automatic sizing
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String)
     
     /// Prepare a view for recycling (view pooling)
     /// Called before a view is returned to the pool for reuse

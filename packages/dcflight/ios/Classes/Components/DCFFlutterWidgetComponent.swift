@@ -50,14 +50,7 @@ class DCFFlutterWidgetComponent: NSObject, DCFComponent {
         return true
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        guard let container = view as? FlutterWidgetContainer else { return .zero }
-        let width = (props["width"] as? NSNumber)?.doubleValue ?? 0
-        let height = (props["height"] as? NSNumber)?.doubleValue ?? 0
-        return CGSize(width: CGFloat(width), height: CGFloat(height))
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         guard let container = view as? FlutterWidgetContainer else { return }
         container.onReady(nodeId: nodeId)
     }

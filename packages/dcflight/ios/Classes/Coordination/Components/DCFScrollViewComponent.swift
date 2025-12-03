@@ -121,7 +121,7 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
         print("🔍 DCFScrollViewComponent.applyLayout: Applied frame=\(scrollView.frame), deferring contentSize update until ScrollContentView layout is applied")
     }
     
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         guard let scrollView = view as? DCFScrollView else { return }
         
         objc_setAssociatedObject(view,
@@ -162,10 +162,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
         if let flashScrollIndicators = commandData["flashScrollIndicators"] as? Bool, flashScrollIndicators {
             scrollView.scrollView.flashScrollIndicators()
         }
-    }
-    
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize.zero
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {

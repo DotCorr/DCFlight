@@ -103,7 +103,7 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         return true
     }
     
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         // Store node ID for event callbacks
         if let reanimatedView = view as? PureReanimatedView {
             reanimatedView.nodeId = nodeId
@@ -169,10 +169,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
             x: newFrame.midX,
             y: newFrame.midY
         )
-    }
-    
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {

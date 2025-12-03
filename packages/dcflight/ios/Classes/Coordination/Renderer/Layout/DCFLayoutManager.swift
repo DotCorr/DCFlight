@@ -361,7 +361,9 @@ extension DCFLayoutManager {
         registerView(view, withId: nodeId)
         
         
-        componentInstance.viewRegisteredWithShadowTree(view, nodeId: String(nodeId))
+        if let shadowView = YogaShadowTree.shared.getShadowView(for: nodeId) {
+            componentInstance.viewRegisteredWithShadowTree(view, shadowView: shadowView, nodeId: String(nodeId))
+        }
         
         // NOTE: We do NOT set intrinsicContentSize here in registerView because:
         // 1. registerView is called AFTER children may have been attached in batch updates
