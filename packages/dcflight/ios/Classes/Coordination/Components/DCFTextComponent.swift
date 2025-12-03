@@ -18,223 +18,27 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
-        let label = UILabel()
+        let textView = DCFTextView()
         
-        // CRITICAL: Set default line break mode based on numberOfLines
-        if let numberOfLines = props["numberOfLines"] as? Int {
-            label.numberOfLines = numberOfLines
-            if numberOfLines == 1 {
-                label.lineBreakMode = .byTruncatingTail // Truncate for single line
-            } else {
-                label.lineBreakMode = .byWordWrapping // Wrap for multi-line
-            }
-        } else {
-            label.numberOfLines = 0 // Default: unlimited lines
-            label.lineBreakMode = .byWordWrapping // Default: word wrapping
-        }
+        storeProps(props.mapValues { $0 as Any? }, in: textView)
         
-        label.clipsToBounds = true // CRITICAL: Ensure text respects bounds
+        updateView(textView, withProps: props)
         
-        storeProps(props.mapValues { $0 as Any? }, in: label)
+        textView.applyStyles(props: props)
         
-        if let content = props["content"] as? String {
-            label.text = content
-        }
-        
-        updateView(label, withProps: props)
-        
-        label.applyStyles(props: props)
-        
-        if let textColor = ColorUtilities.getColor(
-            explicitColor: "textColor",
-            semanticColor: "primaryColor",
-            from: props
-        ) {
-            label.textColor = textColor
-        }
-        
-        // Handle letterSpacing and lineHeight on initial creation
-        let hasLetterSpacing = props["letterSpacing"] != nil
-        let hasLineHeight = props["lineHeight"] != nil
-        
-        if hasLetterSpacing || hasLineHeight, let text = label.text {
-            let attributedString = NSMutableAttributedString(string: text)
-            let range = NSRange(location: 0, length: text.count)
-            
-            if let letterSpacing = props["letterSpacing"] as? CGFloat {
-                attributedString.addAttribute(.kern, value: letterSpacing, range: range)
-            }
-            
-            // Apply line height using paragraph style
-            // lineHeight can be a multiplier (e.g., 1.5) or absolute value
-            // If it's less than 10, treat as multiplier; otherwise treat as absolute
-            if let lineHeightValue = props["lineHeight"] as? CGFloat {
-                let paragraphStyle = NSMutableParagraphStyle()
-                let fontSize = props["fontSize"] as? CGFloat ?? UIFont.systemFontSize
-                let absoluteLineHeight: CGFloat
-                
-                if lineHeightValue < 10 {
-                    // Treat as multiplier (e.g., 1.5)
-                    absoluteLineHeight = lineHeightValue * fontSize
-                } else {
-                    // Treat as absolute value (e.g., 24)
-                    absoluteLineHeight = lineHeightValue
-                }
-                
-                paragraphStyle.minimumLineHeight = absoluteLineHeight
-                paragraphStyle.maximumLineHeight = absoluteLineHeight
-                attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
-            }
-            
-            if let textColor = label.textColor {
-                attributedString.addAttribute(.foregroundColor, value: textColor, range: range)
-            }
-            
-            label.attributedText = attributedString
-        }
-        
-        return label
+        return textView
     }
     
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
-        guard let label = view as? UILabel else { 
+        guard let textView = view as? DCFTextView else { 
             return false 
         }
         
-        let existingProps = getStoredProps(from: label)
+        let existingProps = getStoredProps(from: textView)
         let mergedProps = mergeProps(existingProps, with: props.mapValues { $0 as Any? })
-        storeProps(mergedProps, in: label)
+        storeProps(mergedProps, in: textView)
         
-        let nonNullProps = mergedProps.compactMapValues { $0 }
-        
-        if let content = nonNullProps["content"] as? String {
-            label.text = content
-        }
-        
-        let hasAnyFontProp = nonNullProps["fontSize"] != nil || nonNullProps["fontWeight"] != nil || 
-                            nonNullProps["fontFamily"] != nil || nonNullProps["isFontAsset"] != nil
-        
-        if hasAnyFontProp {
-            
-            let currentFont = label.font ?? UIFont.systemFont(ofSize: UIFont.systemFontSize)
-            let finalFontSize = nonNullProps["fontSize"] as? CGFloat ?? currentFont.pointSize
-            
-            var finalFontWeight = UIFont.Weight.regular
-            if let fontWeightString = nonNullProps["fontWeight"] as? String {
-                finalFontWeight = fontWeightFromString(fontWeightString)
-            }
-            
-            let isFontAsset = nonNullProps["isFontAsset"] as? Bool ?? false
-            
-            if let fontFamily = nonNullProps["fontFamily"] as? String {
-                if isFontAsset {
-                    let key = sharedFlutterViewController?.lookupKey(forAsset: fontFamily)
-                    let mainBundle = Bundle.main
-                    let path = mainBundle.path(forResource: key, ofType: nil)
-                    
-                    loadFontFromAsset(fontFamily, path: path, fontSize: finalFontSize, weight: finalFontWeight) { font in
-                        if let font = font {
-                            label.font = font
-                        } else {
-                            label.font = UIFont.systemFont(ofSize: finalFontSize, weight: finalFontWeight)
-                        }
-                    }
-                } else {
-                    if let font = UIFont(name: fontFamily, size: finalFontSize) {
-                        if finalFontWeight != .regular {
-                            let descriptor = font.fontDescriptor.addingAttributes([
-                                .traits: [UIFontDescriptor.TraitKey.weight: finalFontWeight]
-                            ])
-                            label.font = UIFont(descriptor: descriptor, size: finalFontSize)
-                        } else {
-                            label.font = font
-                        }
-                    } else {
-                        label.font = UIFont.systemFont(ofSize: finalFontSize, weight: finalFontWeight)
-                    }
-                }
-            } else {
-                label.font = UIFont.systemFont(ofSize: finalFontSize, weight: finalFontWeight)
-            }
-        }
-
-        if let textAlign = nonNullProps["textAlign"] as? String {
-            switch textAlign {
-            case "center":
-                label.textAlignment = .center
-            case "right":
-                label.textAlignment = .right
-            case "justify":
-                label.textAlignment = .justified
-            default:
-                label.textAlignment = .left
-            }
-        }
-        
-        if let numberOfLines = nonNullProps["numberOfLines"] as? Int {
-            label.numberOfLines = numberOfLines
-            // CRITICAL: For single-line text, use truncation to prevent overflow
-            if numberOfLines == 1 {
-                label.lineBreakMode = .byTruncatingTail
-            } else if numberOfLines == 0 {
-                // For unlimited lines, use word wrapping
-                label.lineBreakMode = .byWordWrapping
-            }
-        }
-        
-        // Handle letterSpacing and lineHeight using NSAttributedString
-        let hasLetterSpacing = nonNullProps["letterSpacing"] != nil
-        let hasLineHeight = nonNullProps["lineHeight"] != nil
-        
-        if hasLetterSpacing || hasLineHeight {
-            let text = label.text ?? ""
-            let attributedString = NSMutableAttributedString(string: text)
-            let range = NSRange(location: 0, length: text.count)
-            
-            // Apply letter spacing (kern)
-            if let letterSpacing = nonNullProps["letterSpacing"] as? CGFloat {
-                attributedString.addAttribute(.kern, value: letterSpacing, range: range)
-            }
-            
-            // Apply line height using paragraph style
-            // lineHeight can be a multiplier (e.g., 1.5) or absolute value
-            // If it's less than 10, treat as multiplier; otherwise treat as absolute
-            if let lineHeightValue = nonNullProps["lineHeight"] as? CGFloat {
-                let paragraphStyle = NSMutableParagraphStyle()
-                let fontSize = label.font?.pointSize ?? UIFont.systemFontSize
-                let absoluteLineHeight: CGFloat
-                
-                if lineHeightValue < 10 {
-                    // Treat as multiplier (e.g., 1.5)
-                    absoluteLineHeight = lineHeightValue * fontSize
-                } else {
-                    // Treat as absolute value (e.g., 24)
-                    absoluteLineHeight = lineHeightValue
-                }
-                
-                paragraphStyle.minimumLineHeight = absoluteLineHeight
-                paragraphStyle.maximumLineHeight = absoluteLineHeight
-                attributedString.addAttribute(.paragraphStyle, value: paragraphStyle, range: range)
-            }
-            
-            label.attributedText = attributedString
-        }
-        
-        label.applyStyles(props: nonNullProps)
-        
-        if let textColor = ColorUtilities.getColor(
-            explicitColor: "textColor",
-            semanticColor: "primaryColor",
-            from: nonNullProps
-        ) {
-            label.textColor = textColor
-            // Update attributed text color if it exists
-            if let attributedText = label.attributedText {
-                let mutableAttributedText = NSMutableAttributedString(attributedString: attributedText)
-                mutableAttributedText.addAttribute(.foregroundColor, value: textColor, range: NSRange(location: 0, length: mutableAttributedText.length))
-                label.attributedText = mutableAttributedText
-            }
-        }
+        textView.applyStyles(props: mergedProps.compactMapValues { $0 })
         
         return true
     }
@@ -243,23 +47,36 @@ class DCFTextComponent: NSObject, DCFComponent {
         let frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
         view.frame = frame
         
-        // CRITICAL: Ensure label respects the frame bounds
-        if let label = view as? UILabel {
-            label.clipsToBounds = true
-            
-            // CRITICAL: Set preferredMaxLayoutWidth to frame width for proper text wrapping
-            // This ensures text wraps within the allocated space, respecting parent padding
-            if frame.width > 0 {
-                label.preferredMaxLayoutWidth = frame.width
-            } else {
-                label.preferredMaxLayoutWidth = CGFloat.greatestFiniteMagnitude
-            }
-            
-            // CRITICAL: Force label to recalculate its layout with the new width constraint
-            // This ensures text wraps correctly after frame is set
-            label.setNeedsLayout()
-            label.layoutIfNeeded()
+        guard let textView = view as? DCFTextView else {
+            return
         }
+        
+        // Get shadow view to retrieve computed textStorage and textFrame
+        guard let viewId = getViewId(from: view),
+              let shadowView = YogaShadowTree.shared.getShadowView(for: viewId) as? DCFTextShadowView else {
+            return
+        }
+        
+        // Update text view with textStorage and textFrame from shadow view
+        // Text storage and frame are set on the view during layout application
+        textView.textStorage = shadowView.computedTextStorage
+        textView.textFrame = shadowView.computedTextFrame
+        textView.contentInset = shadowView.computedContentInset
+        
+        // Disable frame animation for text to prevent visual artifacts
+        UIView.performWithoutAnimation {
+            textView.setNeedsDisplay()
+        }
+    }
+    
+    private func getViewId(from view: UIView) -> Int? {
+        // Find viewId by searching ViewRegistry
+        for (viewId, viewInfo) in ViewRegistry.shared.registry {
+            if viewInfo.view === view {
+                return viewId
+            }
+        }
+        return nil
     }
     
     func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {

@@ -29,8 +29,23 @@ import dcflight
  * - Uses NSLayoutManager for accurate text measurement
  * - Handles text wrapping and truncation correctly
  * - Caches text storage to avoid recomputation
+ * - Supports automatic font size adjustment to fit bounds
  */
 open class DCFTextShadowView: DCFShadowView {
+    
+    // MARK: - Constants
+    
+    private static let kAutoSizeGranularity: CGFloat = 0.001
+    private static let kAutoSizeWidthErrorMargin: CGFloat = 0.01
+    private static let kAutoSizeHeightErrorMargin: CGFloat = 0.01
+    
+    // MARK: - Enums
+    
+    private enum DCFSizeComparison {
+        case tooLarge
+        case tooSmall
+        case withinRange
+    }
     
     // MARK: - Properties
     
@@ -49,6 +64,13 @@ open class DCFTextShadowView: DCFShadowView {
     public var numberOfLines: Int = 0
     public var textAlign: NSTextAlignment = .natural
     public var textColor: UIColor?
+    public var adjustsFontSizeToFit: Bool = false
+    public var minimumFontScale: CGFloat = 0.0
+    
+    // Text storage and frame for rendering (set during layout)
+    public var computedTextStorage: NSTextStorage?
+    public var computedTextFrame: CGRect = .zero
+    public var computedContentInset: UIEdgeInsets = .zero
     
     // MARK: - Initialization
     
@@ -350,6 +372,23 @@ open class DCFTextShadowView: DCFShadowView {
             }
         }
         
+        // Update adjustsFontSizeToFit
+        if let adjustsFontSizeToFitValue = props["adjustsFontSizeToFit"] as? Bool {
+            if adjustsFontSizeToFit != adjustsFontSizeToFitValue {
+                adjustsFontSizeToFit = adjustsFontSizeToFitValue
+                needsDirty = true
+            }
+        }
+        
+        // Update minimumFontScale
+        if let minimumFontScaleValue = props["minimumFontScale"] as? CGFloat {
+            let clampedValue = minimumFontScaleValue >= 0.01 ? minimumFontScaleValue : 0.0
+            if minimumFontScale != clampedValue {
+                minimumFontScale = clampedValue
+                needsDirty = true
+            }
+        }
+        
         if needsDirty {
             dirtyText()
         }
@@ -378,5 +417,200 @@ open class DCFTextShadowView: DCFShadowView {
         // Text props are set through updateTextProps which calls dirtyText()
         // This didSetProps is for layout props only
         super.didSetProps(changedProps)
+    }
+    
+    /**
+     * Override applyLayoutNode to build textStorage and calculate textFrame
+     */
+    public override func applyLayoutNode(_ node: YGNodeRef, viewsWithNewFrame: NSMutableSet, absolutePosition: CGPoint) {
+        // Call super to handle frame calculation
+        super.applyLayoutNode(node, viewsWithNewFrame: viewsWithNewFrame, absolutePosition: absolutePosition)
+        
+        // Build text storage and calculate text frame for rendering
+        let padding = self.paddingAsInsets
+        let width = self.frame.size.width - (padding.left + padding.right)
+        
+        let textStorage = buildTextStorageForWidth(width, widthMode: .exactly)
+        let textFrame = calculateTextFrame(textStorage: textStorage)
+        
+        // Store for use by DCFTextComponent.applyLayout
+        computedTextStorage = textStorage
+        computedTextFrame = textFrame
+        computedContentInset = padding
+    }
+    
+    /**
+     * Calculate text frame from text storage (accounts for padding)
+     */
+    private func calculateTextFrame(textStorage: NSTextStorage) -> CGRect {
+        let padding = self.paddingAsInsets
+        var textFrame = CGRect(origin: .zero, size: self.frame.size).inset(by: padding)
+        
+        if adjustsFontSizeToFit {
+            textFrame = updateStorage(textStorage, toFitFrame: textFrame)
+        }
+        
+        return textFrame
+    }
+    
+    /**
+     * Update text storage to fit within frame by adjusting font size
+     */
+    private func updateStorage(_ textStorage: NSTextStorage, toFitFrame frame: CGRect) -> CGRect {
+        let fits = attemptScale(1.0, inStorage: textStorage, forFrame: frame)
+        let requiredSize: CGSize
+        
+        if fits == .tooLarge {
+            requiredSize = calculateOptimumScaleInFrame(
+                frame,
+                forStorage: textStorage,
+                minScale: minimumFontScale,
+                maxScale: 1.0,
+                prevMid: CGFloat.greatestFiniteMagnitude
+            )
+        } else {
+            requiredSize = calculateSize(textStorage)
+        }
+        
+        // Vertically center draw position for new text sizing
+        var adjustedFrame = frame
+        adjustedFrame.origin.y = paddingAsInsets.top + roundPixelValue((frame.height - requiredSize.height) / 2.0)
+        
+        return adjustedFrame
+    }
+    
+    /**
+     * Calculate optimum font scale using binary search
+     */
+    private func calculateOptimumScaleInFrame(
+        _ frame: CGRect,
+        forStorage textStorage: NSTextStorage,
+        minScale: CGFloat,
+        maxScale: CGFloat,
+        prevMid: CGFloat
+    ) -> CGSize {
+        let midScale = (minScale + maxScale) / 2.0
+        
+        if round(prevMid / Self.kAutoSizeGranularity) == round(midScale / Self.kAutoSizeGranularity) {
+            // Bail because we can't meet error margin
+            return calculateSize(textStorage)
+        }
+        
+        let comparison = attemptScale(midScale, inStorage: textStorage, forFrame: frame)
+        
+        if comparison == .withinRange {
+            return calculateSize(textStorage)
+        } else if comparison == .tooLarge {
+            return calculateOptimumScaleInFrame(
+                frame,
+                forStorage: textStorage,
+                minScale: minScale,
+                maxScale: midScale - Self.kAutoSizeGranularity,
+                prevMid: midScale
+            )
+        } else {
+            return calculateOptimumScaleInFrame(
+                frame,
+                forStorage: textStorage,
+                minScale: midScale + Self.kAutoSizeGranularity,
+                maxScale: maxScale,
+                prevMid: midScale
+            )
+        }
+    }
+    
+    /**
+     * Attempt to scale text storage by given scale factor and check if it fits
+     */
+    private func attemptScale(_ scale: CGFloat, inStorage textStorage: NSTextStorage, forFrame frame: CGRect) -> DCFSizeComparison {
+        guard let layoutManager = textStorage.layoutManagers.first,
+              let textContainer = layoutManager.textContainers.first else {
+            return .tooLarge
+        }
+        
+        let glyphRange = NSRange(location: 0, length: textStorage.length)
+        let originalAttributedString = buildAttributedString()
+        
+        textStorage.beginEditing()
+        textStorage.enumerateAttribute(.font, in: glyphRange, options: []) { (font, range, _) in
+            if let font = font as? UIFont {
+                if let originalFont = originalAttributedString.attribute(.font, at: range.location, effectiveRange: nil) as? UIFont {
+                    let newFont = font.withSize(originalFont.pointSize * scale)
+                    textStorage.removeAttribute(.font, range: range)
+                    textStorage.addAttribute(.font, value: newFont, range: range)
+                }
+            }
+        }
+        textStorage.endEditing()
+        
+        let linesRequired = numberOfLinesRequired(layoutManager)
+        let requiredSize = calculateSize(textStorage)
+        
+        let fitSize = requiredSize.height <= frame.height && requiredSize.width <= frame.width
+        let fitLines = linesRequired <= textContainer.maximumNumberOfLines || textContainer.maximumNumberOfLines == 0
+        
+        if fitLines && fitSize {
+            if (requiredSize.width + (frame.width * Self.kAutoSizeWidthErrorMargin)) > frame.width &&
+               (requiredSize.height + (frame.height * Self.kAutoSizeHeightErrorMargin)) > frame.height {
+                return .withinRange
+            } else {
+                return .tooSmall
+            }
+        } else {
+            return .tooLarge
+        }
+    }
+    
+    /**
+     * Calculate size of text storage
+     */
+    private func calculateSize(_ textStorage: NSTextStorage) -> CGSize {
+        guard let layoutManager = textStorage.layoutManagers.first,
+              let textContainer = layoutManager.textContainers.first else {
+            return .zero
+        }
+        
+        // Set line break mode to word wrapping for size calculation
+        let maxLines = textContainer.maximumNumberOfLines
+        textContainer.lineBreakMode = .byWordWrapping
+        textContainer.maximumNumberOfLines = 0
+        
+        _ = layoutManager.glyphRange(for: textContainer)
+        let requiredSize = layoutManager.usedRect(for: textContainer).size
+        
+        // Restore original settings
+        textContainer.maximumNumberOfLines = maxLines
+        if numberOfLines > 0 {
+            textContainer.lineBreakMode = .byTruncatingTail
+        } else {
+            textContainer.lineBreakMode = .byClipping
+        }
+        
+        return requiredSize
+    }
+    
+    /**
+     * Calculate number of lines required for text storage
+     */
+    private func numberOfLinesRequired(_ layoutManager: NSLayoutManager) -> Int {
+        var numberOfLines = 0
+        var index = 0
+        let numberOfGlyphs = layoutManager.numberOfGlyphs
+        
+        while index < numberOfGlyphs {
+            var lineRange = NSRange()
+            _ = layoutManager.lineFragmentRect(forGlyphAt: index, effectiveRange: &lineRange)
+            index = NSMaxRange(lineRange)
+            numberOfLines += 1
+        }
+        
+        return numberOfLines
+    }
+    
+    /**
+     * Round pixel value helper
+     */
+    private func roundPixelValue(_ value: CGFloat) -> CGFloat {
+        return round(value * UIScreen.main.scale) / UIScreen.main.scale
     }
 }

@@ -6,6 +6,7 @@ This section covers DCFlight's component system, including how to create custom 
 
 - **[Component Protocol](./COMPONENT_PROTOCOL.md)** - Interface for creating custom components
 - **[Component Conventions](./COMPONENT_CONVENTIONS.md)** - Naming, structure, and best practices
+- **[Shadow Views Guide](./SHADOW_VIEWS_GUIDE.md)** - When and how to create custom shadow views
 - **[Event System](./EVENT_SYSTEM.md)** - Handling user interactions and gestures
 - **[Registry System](./REGISTRY_SYSTEM.md)** - Component registration and lifecycle
 - **[Tunnel System](./TUNNEL_SYSTEM.md)** - Cross-component communication

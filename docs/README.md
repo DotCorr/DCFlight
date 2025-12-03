@@ -11,6 +11,7 @@ Framework overview, architecture, and core concepts.
 
 - **[Component Protocol](./components/COMPONENT_PROTOCOL.md)** - How to create custom components
 - **[Component Conventions](./components/COMPONENT_CONVENTIONS.md)** - Naming and structure guidelines
+- **[Shadow Views Guide](./components/SHADOW_VIEWS_GUIDE.md)** - When and how to create custom shadow views
 - **[Event System](./components/EVENT_SYSTEM.md)** - Handling user interactions
 - **[Registry System](./components/REGISTRY_SYSTEM.md)** - Component registration
 - **[Tunnel System](./components/TUNNEL_SYSTEM.md)** - Cross-component communication
@@ -57,7 +58,8 @@ Framework overview, architecture, and core concepts.
 ### For Component Developers
 1. Start with [Component Protocol](./components/COMPONENT_PROTOCOL.md)
 2. Follow [Component Conventions](./components/COMPONENT_CONVENTIONS.md)
-3. Learn the [Event System](./components/EVENT_SYSTEM.md)
+3. Learn [Shadow Views](./components/SHADOW_VIEWS_GUIDE.md) - When you need custom shadow views
+4. Learn the [Event System](./components/EVENT_SYSTEM.md)
 
 ### For App Developers
 1. Read [Framework Overview](./FRAMEWORK_OVERVIEW.md)

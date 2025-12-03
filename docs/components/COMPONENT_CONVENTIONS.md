@@ -100,11 +100,14 @@ public protocol DCFComponent {
     func createView(props: [String: Any]) -> UIView  // ✅ Required
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool  // ✅ Required
     func applyLayout(_ view: UIView, layout: YGNodeLayout)  // ✅ Required
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize  // ✅ Required
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)  // ✅ Required
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String)  // ✅ Required
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any?  // ✅ Required
 }
 ```
+
+**Key Changes:**
+- ✅ `getIntrinsicSize` removed - Components set `intrinsicContentSize` on shadow view if needed
+- ✅ `viewRegisteredWithShadowTree` now receives `shadowView` parameter
 
 **Missing any method = Component won't work!**
 
@@ -114,7 +117,6 @@ public protocol DCFComponent {
 abstract class DCFComponent {
     abstract fun createView(context: Context, props: Map<String, Any?>): View  // ✅ Required
     open fun updateView(view: View, props: Map<String, Any?>): Boolean  // ✅ Override this - framework handles prop merging
-    abstract fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF  // ✅ Required
     abstract fun viewRegisteredWithShadowTree(view: View, nodeId: String)  // ✅ Required
     abstract fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any?  // ✅ Required
 }
@@ -123,6 +125,7 @@ abstract class DCFComponent {
 **Key Changes:**
 - ✅ `updateView` is now `open` (override it directly)
 - ✅ **No `updateViewInternal`** - Removed, use `updateView` instead
+- ✅ **No `getIntrinsicSize`** - Removed, Android handles intrinsic size internally
 - ✅ **Automatic prop merging** - Framework merges new props with existing stored props
 - ✅ **All properties preserved** - Text alignment, font size, colors automatically preserved
 
@@ -332,8 +335,7 @@ Before submitting a component, verify:
 - [ ] `createView` returns correct view type
 - [ ] `updateView` handles all props
 - [ ] `applyLayout` sets frame/bounds correctly
-- [ ] `getIntrinsicSize` returns valid size (≥ 1x1)
-- [ ] `viewRegisteredWithShadowTree` implemented
+- [ ] `viewRegisteredWithShadowTree` implemented (can set `intrinsicContentSize` if needed)
 - [ ] `handleTunnelMethod` implemented (can return `null`)
 
 ### Semantic Colors

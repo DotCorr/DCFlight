@@ -55,11 +55,12 @@ public protocol DCFComponent {
     func createView(props: [String: Any]) -> UIView
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool
     func applyLayout(_ view: UIView, layout: YGNodeLayout)
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String)
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any?
 }
 ```
+
+**Note:** `getIntrinsicSize` was removed from the protocol. Components now set `intrinsicContentSize` directly on the shadow view in `viewRegisteredWithShadowTree` if needed.
 
 ### Android: Abstract Class (Framework-Enforced)
 
@@ -67,7 +68,6 @@ public protocol DCFComponent {
 abstract class DCFComponent {
     abstract fun createView(context: Context, props: Map<String, Any?>): View
     open fun updateView(view: View, props: Map<String, Any?>): Boolean  // Override this - framework handles prop merging automatically
-    abstract fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF
     abstract fun viewRegisteredWithShadowTree(view: View, nodeId: String)
     abstract fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any?
 }
@@ -78,6 +78,7 @@ abstract class DCFComponent {
 - ✅ **Automatic prop merging** - Framework merges new props with existing stored props
 - ✅ **No glue code needed** - No `hasPropChanged()` or `updateViewInternal`
 - ✅ **All properties preserved** - Text alignment, font size, colors, etc. are automatically preserved
+- ✅ **`getIntrinsicSize` removed** - Components now set intrinsic size directly on shadow views if needed
 
 ---
 
@@ -267,97 +268,46 @@ func applyLayout(_ view: UIView, layout: YGNodeLayout) {
 
 ---
 
-### 4. `getIntrinsicSize` - Measure View Size
+### 4. Intrinsic Content Size
 
-**Purpose:** Return the intrinsic content size of the view for layout calculation.
+**Purpose:** Components that know their natural size should set it on the shadow view.
 
-**When called:**
-- During layout calculation
-- When Yoga needs to measure the view
+**How it works:**
+- Components set `intrinsicContentSize` on the shadow view in `viewRegisteredWithShadowTree`
+- Yoga uses this for layout calculation when explicit dimensions aren't set
+- Text components automatically size based on content
+- Views with children size to fit children
+- Views without children use intrinsic size if set
 
 **iOS:**
 ```swift
-func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-    guard let button = view as? UIButton else {
-        return CGSize.zero
+func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
+    // For components with known size (e.g., Image with known dimensions)
+    if let imageView = view as? UIImageView, let image = imageView.image {
+        let size = image.size
+        shadowView.intrinsicContentSize = CGSize(
+            width: max(1, size.width),
+            height: max(1, size.height)
+        )
     }
     
-    let size = button.intrinsicContentSize
-    return CGSize(
-        width: max(1, size.width),
-        height: max(1, size.height)
-    )
+    // Most components don't need to set this - they size based on children or layout props
 }
 ```
 
-**Android (Traditional View):**
+**Android:**
 ```kotlin
-override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-    val button = view as Button
-    
-    // Measure view
-    button.measure(
-        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-    )
-    
-    return PointF(
-        max(1f, button.measuredWidth.toFloat()),
-        max(1f, button.measuredHeight.toFloat())
-    )
-}
-```
-
-**Android (Compose Component):**
-```kotlin
-override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-    val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
-    val composeView = wrapper.composeView
-    
-    // CRITICAL: Yoga calls getIntrinsicSize with emptyMap(), 
-    // so we MUST get props from storedProps
-    val storedProps = getStoredProps(view)
-    val allProps = if (props.isEmpty()) storedProps else props
-    
-    val content = allProps["content"]?.toString() ?: ""
-    if (content.isEmpty()) {
-        return PointF(0f, 0f)
-    }
-    
-    // CRITICAL: Framework ensures ComposeView is composed before this is called
-    // (handled in YogaShadowTree.setupMeasureFunction)
-    // So we can use actual measurement, not estimation
-    wrapper.ensureCompositionReady()
-    
-    // Measure the actual ComposeView
-    val maxWidth = 10000
-    composeView.measure(
-        View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
-        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-    )
-    
-    val measuredWidth = composeView.measuredWidth.toFloat()
-    val measuredHeight = composeView.measuredHeight.toFloat()
-    
-    // Fallback if measurement returns 0 (should be rare)
-    if (measuredWidth == 0f || measuredHeight == 0f) {
-    val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
-        val lines = content.split("\n")
-        val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
-        val estimatedWidth = maxLineLength * fontSize * 0.6f
-        val estimatedHeight = lines.size * fontSize * 1.2f
-        return PointF(estimatedWidth.coerceAtLeast(1f), estimatedHeight.coerceAtLeast(1f))
-    }
-    
-    return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
+override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    // Android handles intrinsic size internally
+    // No explicit shadow view access needed
 }
 ```
 
 **Key Points:**
-- ✅ Return intrinsic content size
-- ✅ Used by Yoga for layout calculation
-- ✅ Return at least 1x1 (never zero)
-- ✅ **For Compose:** Framework ensures composition before `getIntrinsicSize` is called, so use **actual measurement** instead of estimation. See [Android Compose Integration](../ANDROID_COMPOSE_INTEGRATION.md) for details.
+- ✅ Set `intrinsicContentSize` only if component has a known natural size
+- ✅ Text components handle this automatically via `DCFTextShadowView`
+- ✅ Most components don't need to set this - they size based on children or layout props
+- ✅ Only set if the node has no children (Yoga rule)
 
 ---
 
@@ -368,10 +318,11 @@ override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
 **When called:**
 - After view is created and added to hierarchy
 - When view is registered with Yoga
+- Before layout calculation
 
 **iOS:**
 ```swift
-func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
     // Store nodeId if needed
     objc_setAssociatedObject(
         view,
@@ -379,6 +330,14 @@ func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
         nodeId,
         .OBJC_ASSOCIATION_RETAIN_NONATOMIC
     )
+    
+    // Set intrinsic content size if component has known size
+    // Only set if node has no children (Yoga rule)
+    if YGNodeGetChildCount(shadowView.yogaNode) == 0 {
+        if let imageView = view as? UIImageView, let image = imageView.image {
+            shadowView.intrinsicContentSize = image.size
+        }
+    }
 }
 ```
 
@@ -387,12 +346,17 @@ func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
 override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
     // Store nodeId if needed
     view.setTag(R.id.dcf_node_id, nodeId)
+    
+    // Android handles intrinsic size internally
+    // No explicit shadow view access needed
 }
 ```
 
 **Key Points:**
-- ✅ Called after view creation
+- ✅ Called after view creation, before layout
 - ✅ Can store nodeId for reference
+- ✅ Can set `intrinsicContentSize` on shadow view if component has known size
+- ✅ Only set `intrinsicContentSize` if node has no children
 - ✅ Usually minimal implementation needed
 
 ---
@@ -479,7 +443,7 @@ if let primaryColor = props["primaryColor"] as? String {
 
 **Android:**
 ```kotlin
-// In createView and updateViewInternal
+// In createView and updateView
 props["primaryColor"]?.let { color ->
     val colorInt = ColorUtilities.parseColor(color.toString())
     if (colorInt != null) {
@@ -811,39 +775,6 @@ class DCFTextComponent : DCFComponent() {
         }
     }
     
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val wrapper = view as? DCFComposeWrapper ?: return PointF(0f, 0f)
-        val composeView = wrapper.composeView
-        
-        // Framework ensures ComposeView is composed before this is called
-        wrapper.ensureCompositionReady()
-        
-        // Measure the actual ComposeView
-        val maxWidth = 10000
-        composeView.measure(
-            View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-        
-        val measuredWidth = composeView.measuredWidth.toFloat()
-        val measuredHeight = composeView.measuredHeight.toFloat()
-        
-        // Fallback if measurement returns 0 (should be rare)
-        if (measuredWidth == 0f || measuredHeight == 0f) {
-            val storedProps = getStoredProps(view)
-            val allProps = if (props.isEmpty()) storedProps else props
-            val content = allProps["content"]?.toString() ?: ""
-            val fontSize = (allProps["fontSize"] as? Number)?.toFloat() ?: 17f
-            val lines = content.split("\n")
-            val maxLineLength = lines.maxOfOrNull { it.length } ?: content.length
-            val estimatedWidth = maxLineLength * fontSize * 0.6f
-            val estimatedHeight = lines.size * fontSize * 1.2f
-            return PointF(estimatedWidth.coerceAtLeast(1f), estimatedHeight.coerceAtLeast(1f))
-        }
-        
-        return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
-    }
-    
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
         val wrapper = view as? DCFComposeWrapper ?: return
         val composeView = wrapper.composeView
@@ -868,17 +799,18 @@ class DCFTextComponent : DCFComponent() {
 
 ## Compose Integration
 
-DCFlight supports Jetpack Compose for Android components. See [Android Compose Integration](./ANDROID_COMPOSE_INTEGRATION.md) for:
+DCFlight supports Jetpack Compose for Android components. See [Android Compose Integration](../platform/ANDROID_COMPOSE_INTEGRATION.md) for:
 - How ComposeView works with Yoga layout
 - Compose component implementation patterns
-- getIntrinsicSize pattern for Compose
+- Intrinsic size handling for Compose
 - Best practices and troubleshooting
 
-**Key Point:** `ComposeView` extends `View`, so it works natively with Yoga. The framework automatically ensures composition is ready before measurement - use `DCFComposeWrapper` and actual measurement in `getIntrinsicSize`. See [Android Compose Integration](./ANDROID_COMPOSE_INTEGRATION.md) for details.
+**Key Point:** `ComposeView` extends `View`, so it works natively with Yoga. The framework automatically ensures composition is ready before measurement. See [Android Compose Integration](../platform/ANDROID_COMPOSE_INTEGRATION.md) for details.
 
 ## Next Steps
 
-- [Android Compose Integration](./ANDROID_COMPOSE_INTEGRATION.md) - How to use Compose in components
+- [Shadow Views Guide](./SHADOW_VIEWS_GUIDE.md) - When and how to create custom shadow views
+- [Android Compose Integration](../platform/ANDROID_COMPOSE_INTEGRATION.md) - How to use Compose in components
 - [Registry System](./REGISTRY_SYSTEM.md) - How to register components
 - [Event System](./EVENT_SYSTEM.md) - How events work
 - [Component Conventions](./COMPONENT_CONVENTIONS.md) - Requirements and best practices

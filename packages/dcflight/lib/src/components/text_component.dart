@@ -95,6 +95,12 @@ class DCFTextProps {
   /// Line height (line spacing multiplier or absolute value)
   final double? lineHeight;
 
+  /// Whether to automatically adjust font size to fit within bounds
+  final bool? adjustsFontSizeToFit;
+
+  /// Minimum font scale when adjustsFontSizeToFit is enabled (0.0 to 1.0)
+  final double? minimumFontScale;
+
   /// Create text props
   /// 
   /// NOTE: Use StyleSheet.primaryColor for text color instead of color prop
@@ -107,6 +113,8 @@ class DCFTextProps {
     this.numberOfLines,
     this.letterSpacing,
     this.lineHeight,
+    this.adjustsFontSizeToFit,
+    this.minimumFontScale,
   });
 
   /// Convert to props map
@@ -121,6 +129,8 @@ class DCFTextProps {
       if (numberOfLines != null) 'numberOfLines': numberOfLines,
       if (letterSpacing != null) 'letterSpacing': letterSpacing,
       if (lineHeight != null) 'lineHeight': lineHeight,
+      if (adjustsFontSizeToFit != null) 'adjustsFontSizeToFit': adjustsFontSizeToFit,
+      if (minimumFontScale != null) 'minimumFontScale': minimumFontScale,
     };
   }
 }

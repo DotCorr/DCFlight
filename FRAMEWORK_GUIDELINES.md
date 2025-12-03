@@ -74,18 +74,23 @@ class YourComponent : DCFComponent() {
         return view
     }
 
-    override fun updateViewInternal(
-        view: View, 
-        props: Map<String, Any>, 
-        existingProps: Map<String, Any>
-    ): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val yourView = view as? YourCustomView ?: return false
-        // Update logic
+        
+        // Framework automatically merges props
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+        
+        // Update logic with mergedProps
+        mergedProps["yourProp"]?.let { yourView.setYourProperty(it.toString()) }
+        
+        // Apply styles
+        yourView.applyStyles(nonNullProps)
+        
         return true
-    }
-
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        return PointF(0f, 0f)
     }
 }
 ```
@@ -119,12 +124,26 @@ class YourComponent: NSObject, DCFComponent {
         return true
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize.zero
-    }
-    
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
+    }
+    
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
+        // Store nodeId if needed
+        objc_setAssociatedObject(
+            view,
+            UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
+            nodeId,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
+        // Set intrinsic content size if component has known size
+        // Only set if node has no children (Yoga rule)
+        if YGNodeGetChildCount(shadowView.yogaNode) == 0 {
+            if let imageView = view as? UIImageView, let image = imageView.image {
+                shadowView.intrinsicContentSize = image.size
+            }
+        }
     }
 }
 ```
