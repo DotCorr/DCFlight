@@ -59,7 +59,7 @@ class NavigationBar extends DCFStatelessComponent {
           ),
           children: [
             DCFView(
-              layout: DCFLayout(width: 60, height: 50),
+              layout: DCFLayout(width: 24, height: 24),
               styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
             ),
             DCFText(
@@ -401,7 +401,6 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
         width: '100%',
         padding: 40, // p-10 = 40px (matches web)
         flexDirection: DCFFlexDirection.column,
-        
         alignItems: DCFAlign.flexStart, // Align items to start
         flexShrink: 0, // Don't shrink - let content define height
       ),

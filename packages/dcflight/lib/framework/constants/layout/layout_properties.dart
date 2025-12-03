@@ -144,7 +144,7 @@ class DCFLayout extends Equatable {
   /// Internal factory constructor for registered layouts (non-const)
   DCFLayout._withId(
     String layoutId, {
-    this.width = '100%',
+    this.width,
     this.height,
     this.minWidth,
     this.maxWidth,
@@ -209,7 +209,7 @@ class DCFLayout extends Equatable {
   /// This constructor is still supported for backward compatibility but will be removed in a future version.
   // @Deprecated('Use DCFLayout.create() instead for better bridge efficiency. Example: final layouts = DCFLayout.create({"container": DCFLayout(flex: 1)});')
   const DCFLayout({
-    this.width, // Default to 100% width for proper nesting
+    this.width, // No default - let components size naturally
     this.height, // No default height - let flex layout handle it
     this.minWidth,
     this.maxWidth,
