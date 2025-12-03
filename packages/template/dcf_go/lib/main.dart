@@ -11,12 +11,8 @@ class DotCorrLanding extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFScrollView(
-      layout: DCFLayout(
-        flex: 1,
-      ),
-      styleSheet: DCFStyleSheet(
-        backgroundColor: Colors.white,
-      ),
+      layout: DCFLayout(flex: 1),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
       children: [
         NavigationBar(),
         HeroSection(),
@@ -35,7 +31,7 @@ class NavigationBar extends DCFStatelessComponent {
   DCFComponentNode render() {
     final screenUtils = ScreenUtilities.instance;
     final safeAreaTop = screenUtils.safeAreaTop;
-    
+
     return DCFView(
       layout: DCFLayout(
         width: '100%',
@@ -63,7 +59,7 @@ class NavigationBar extends DCFStatelessComponent {
           ),
           children: [
             DCFView(
-              layout: DCFLayout(width: 24, height: 24),
+              layout: DCFLayout(width: 60, height: 50),
               styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
             ),
             DCFText(
@@ -155,16 +151,14 @@ class HeroSection extends DCFStatefulComponent {
                   ),
                   styleSheet: DCFStyleSheet(primaryColor: Colors.black),
                 ),
-                
+
                 // Typewriter Effect Placeholder (simplified for now)
                 DCFView(
                   layout: DCFLayout(
                     height: 60,
                     justifyContent: DCFJustifyContent.center,
                   ),
-                  children: [
-                TypewriterEffect(),
-                  ],
+                  children: [TypewriterEffect()],
                 ),
 
                 DCFView(
@@ -186,19 +180,22 @@ class HeroSection extends DCFStatefulComponent {
                         backgroundColor: Colors.black,
                         borderRadius: 2, // Small radius like web
                       ),
-                  children: [
-                    DCFText(
-                      content: "Enter The Lab",
-                      textProps: DCFTextProps(
-                        fontSize: 16,
-                        fontWeight: DCFFontWeight.medium,
-                      ),
+                      children: [
+                        DCFText(
+                          content: "Enter The Lab",
+                          textProps: DCFTextProps(
+                            fontSize: 16,
+                            fontWeight: DCFFontWeight.medium,
+                          ),
                           styleSheet: DCFStyleSheet(primaryColor: Colors.white),
                         ),
                         // Arrow placeholder
                         DCFText(
                           content: "→",
-                          textProps: DCFTextProps(fontSize: 16, fontWeight: DCFFontWeight.medium),
+                          textProps: DCFTextProps(
+                            fontSize: 16,
+                            fontWeight: DCFFontWeight.medium,
+                          ),
                           styleSheet: DCFStyleSheet(primaryColor: Colors.white),
                         ),
                       ],
@@ -218,9 +215,7 @@ class HeroSection extends DCFStatefulComponent {
             alignItems: DCFAlign.center,
             justifyContent: DCFJustifyContent.center,
           ),
-          children: [
-            InfrastructureVisual(),
-          ],
+          children: [InfrastructureVisual()],
         ),
       ],
     );
@@ -231,7 +226,10 @@ class TypewriterEffect extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: DCFLayout(flexDirection: DCFFlexDirection.row, alignItems: DCFAlign.center),
+      layout: DCFLayout(
+        flexDirection: DCFFlexDirection.row,
+        alignItems: DCFAlign.center,
+      ),
       children: [
         DCFText(
           content: "\$ Build for Mobile", // Static for stability first
@@ -246,7 +244,11 @@ class TypewriterEffect extends DCFStatefulComponent {
           layout: DCFLayout(width: 10, height: 24, marginLeft: 8),
           styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
           animate: {'opacity': 0},
-          transition: Transition(duration: 500, repeat: true, repeatType: 'reverse'), // Blink
+          transition: Transition(
+            duration: 500,
+            repeat: true,
+            repeatType: 'reverse',
+          ), // Blink
           children: [],
         ),
       ],
@@ -258,7 +260,7 @@ class InfrastructureVisual extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     final size = 200.0;
-    
+
     // Mimicking the 3D structure from web using Reanimated transforms
     return ReanimatedView(
       layout: DCFLayout(
@@ -268,7 +270,11 @@ class InfrastructureVisual extends DCFStatelessComponent {
         justifyContent: DCFJustifyContent.center,
       ),
       initial: {'rotateX': 0, 'rotateZ': 0, 'scale': 0.8},
-      animate: {'rotateX': 60, 'rotateZ': 45, 'scale': 1.0}, // Web: rotateX: 60, rotateZ: 45
+      animate: {
+        'rotateX': 60,
+        'rotateZ': 45,
+        'scale': 1.0,
+      }, // Web: rotateX: 60, rotateZ: 45
       transition: Transition(duration: 2000, curve: AnimationCurve.easeOut),
       children: [
         // Base (Black background)
@@ -284,7 +290,7 @@ class InfrastructureVisual extends DCFStatelessComponent {
             borderColor: Colors.grey[900]!,
           ),
         ),
-        
+
         // Tower (White square rising up)
         // In standard CSS 3D, Z-index/translateZ works. Here we simulate with another view
         // offset and styled to look like a tower.
@@ -293,10 +299,7 @@ class InfrastructureVisual extends DCFStatelessComponent {
             width: size * 0.35,
             height: size * 0.35,
             position: DCFPositionType.absolute,
-            absoluteLayout: AbsoluteLayout(
-              top: size * 0.15,
-              left: size * 0.15,
-            ),
+            absoluteLayout: AbsoluteLayout(top: size * 0.15, left: size * 0.15),
           ),
           styleSheet: DCFStyleSheet(
             backgroundColor: Colors.white,
@@ -304,7 +307,9 @@ class InfrastructureVisual extends DCFStatelessComponent {
             shadowRadius: 20,
             shadowOpacity: 0.4,
           ),
-          initial: {'translateY': 0}, // Simulate Z height with Y translation in this perspective? 
+          initial: {
+            'translateY': 0,
+          }, // Simulate Z height with Y translation in this perspective?
           // Actually, true 3D might be tricky without perspective container.
           children: [],
           // Let's keep it simple: it's a white box on a black rotated plane.
@@ -336,7 +341,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           ),
           children: [
             DCFText(
-              layout: DCFLayout(width: '100%',height: 100),
+              layout: DCFLayout(width: '100%', height: 100),
               content: "Infrastructure for\nBuilders & Machines",
               textProps: DCFTextProps(
                 fontSize: 48, // text-5xl = 48px (matches web)
@@ -347,7 +352,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               styleSheet: DCFStyleSheet(primaryColor: Colors.black),
             ),
             DCFText(
-              content: "We provide the tools to build native applications today and the cognitive architecture for the intelligent systems of tomorrow.",
+              content:
+                  "We provide the tools to build native applications today and the cognitive architecture for the intelligent systems of tomorrow.",
               textProps: DCFTextProps(
                 fontSize: 20, // text-xl = 20px (matches web)
                 lineHeight: 1.6,
@@ -383,19 +389,27 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
     );
   }
 
-  DCFComponentNode _buildCard(String title, String desc, Color bg, Color text, String linkText) {
+  DCFComponentNode _buildCard(
+    String title,
+    String desc,
+    Color bg,
+    Color text,
+    String linkText,
+  ) {
     return DCFView(
       layout: DCFLayout(
         width: '100%',
         padding: 40, // p-10 = 40px (matches web)
         flexDirection: DCFFlexDirection.column,
+        
         alignItems: DCFAlign.flexStart, // Align items to start
         flexShrink: 0, // Don't shrink - let content define height
       ),
       styleSheet: DCFStyleSheet(
         backgroundColor: bg,
         borderWidth: bg == Colors.white ? 1 : 0,
-        borderColor: bg == Colors.white ? Colors.grey[200]! : Colors.transparent,
+        borderColor:
+            bg == Colors.white ? Colors.grey[200]! : Colors.transparent,
         borderRadius: 8,
         shadowColor: Colors.black,
         shadowOpacity: bg == Colors.white ? 0.05 : 0.3,
@@ -419,10 +433,11 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           ),
           children: [
             DCFText(
-              
-              content: bg == Colors.white ? "📱" : "🧠",
-              textProps: DCFTextProps(fontSize: 24),
-              styleSheet: DCFStyleSheet(primaryColor: bg == Colors.white ? Colors.white : Colors.black),
+              layout: DCFLayout(width: 48, height: 48, alignItems: DCFAlign.center, justifyContent: DCFJustifyContent.center,),              content: bg == Colors.white ? "📱" : "🧠",
+              textProps: DCFTextProps(fontSize: 24,textAlign: DCFTextAlign.center),
+              styleSheet: DCFStyleSheet(
+                primaryColor: bg == Colors.white ? Colors.white : Colors.black,
+              ),
             ),
           ],
         ),
@@ -456,14 +471,17 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               textProps: DCFTextProps(
                 fontSize: 16,
                 lineHeight: 1.5,
-                numberOfLines: 0, // Allow unlimited lines - CRITICAL for multi-line text
+                numberOfLines:
+                    0, // Allow unlimited lines - CRITICAL for multi-line text
               ),
               styleSheet: DCFStyleSheet(
-                primaryColor: text == Colors.black ? Colors.grey[500]! : Colors.grey[300]!,
+                primaryColor:
+                    text == Colors.black
+                        ? Colors.grey[500]!
+                        : Colors.grey[300]!,
               ),
-              layout: DCFLayout(
-                width: '100%', // Ensure text can use full width for wrapping
-              ),
+              // Remove explicit width - let text size naturally based on parent constraints
+              // Yoga will automatically constrain it to parent's available width (after padding)
             ),
           ],
         ),
@@ -484,7 +502,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               ),
               styleSheet: DCFStyleSheet(primaryColor: text),
               layout: DCFLayout(
-                flexShrink: 0, // Text should not shrink - let it truncate if needed
+                flexShrink:
+                    0, // Text should not shrink - let it truncate if needed
               ),
             ),
             DCFText(
@@ -506,12 +525,20 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: DCFLayout(width: '100%', paddingVertical: 80, paddingHorizontal: 24),
+      layout: DCFLayout(
+        width: '100%',
+        paddingVertical: 80,
+        paddingHorizontal: 24,
+      ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
-          children: [
-            DCFText(
-              content: "Built for the Modern Stack",
-          textProps: DCFTextProps(fontSize: 32, fontWeight: DCFFontWeight.bold, letterSpacing: -1),
+      children: [
+        DCFText(
+          content: "Built for the Modern Stack",
+          textProps: DCFTextProps(
+            fontSize: 32,
+            fontWeight: DCFFontWeight.bold,
+            letterSpacing: -1,
+          ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.black),
         ),
         // Grid items... (Simplified)
@@ -524,12 +551,20 @@ class AboutSection extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFView(
-      layout: DCFLayout(width: '100%', paddingVertical: 80, paddingHorizontal: 24),
+      layout: DCFLayout(
+        width: '100%',
+        paddingVertical: 80,
+        paddingHorizontal: 24,
+      ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[900]!),
       children: [
-            DCFText(
-              content: "Designing the Cognitive Future",
-          textProps: DCFTextProps(fontSize: 32, fontWeight: DCFFontWeight.bold, letterSpacing: -1),
+        DCFText(
+          content: "Designing the Cognitive Future",
+          textProps: DCFTextProps(
+            fontSize: 32,
+            fontWeight: DCFFontWeight.bold,
+            letterSpacing: -1,
+          ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.white),
         ),
       ],
@@ -542,7 +577,7 @@ class Footer extends DCFStatelessComponent {
   DCFComponentNode render() {
     final screenUtils = ScreenUtilities.instance;
     final safeAreaBottom = screenUtils.safeAreaBottom;
-    
+
     return DCFView(
       layout: DCFLayout(
         width: '100%',
@@ -552,9 +587,9 @@ class Footer extends DCFStatelessComponent {
         gap: 40,
       ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
-          children: [
-            DCFText(
-              content: "© 2025 DotCorr. All rights reserved.",
+      children: [
+        DCFText(
+          content: "© 2025 DotCorr. All rights reserved.",
           textProps: DCFTextProps(fontSize: 14),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[500]!),
         ),

@@ -209,7 +209,7 @@ class DCFLayout extends Equatable {
   /// This constructor is still supported for backward compatibility but will be removed in a future version.
   // @Deprecated('Use DCFLayout.create() instead for better bridge efficiency. Example: final layouts = DCFLayout.create({"container": DCFLayout(flex: 1)});')
   const DCFLayout({
-    this.width = '100%', // Default to 100% width for proper nesting
+    this.width, // Default to 100% width for proper nesting
     this.height, // No default height - let flex layout handle it
     this.minWidth,
     this.maxWidth,

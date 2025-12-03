@@ -445,20 +445,6 @@ open class DCFTextShadowView: DCFShadowView {
      */
     private func calculateTextFrame(textStorage: NSTextStorage) -> CGRect {
         let padding = self.paddingAsInsets
-        
-        // When text component has no padding, textFrame should fill the entire view bounds
-        // Yoga has already positioned the text view accounting for parent padding
-        if padding == .zero {
-            var textFrame = CGRect(origin: .zero, size: self.frame.size)
-            
-            if adjustsFontSizeToFit {
-                textFrame = updateStorage(textStorage, toFitFrame: textFrame)
-            }
-            
-            return textFrame
-        }
-        
-        // When text component has padding, inset the frame
         var textFrame = CGRect(origin: .zero, size: self.frame.size).inset(by: padding)
         
         if adjustsFontSizeToFit {
