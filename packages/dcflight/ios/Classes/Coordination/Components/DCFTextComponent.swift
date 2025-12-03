@@ -44,6 +44,7 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
+        // Use the exact frame from Yoga - measurement already accounts for font metrics
         let frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
         view.frame = frame
         

@@ -48,6 +48,10 @@ class DCFTextView: UIView {
         accessibilityTraits = .staticText
         isOpaque = false
         contentMode = .redraw
+        
+        // CRITICAL: Don't clip text - fonts have metrics (ascenders/descenders) that extend
+        // beyond the measured bounds. Text views should not clip to allow full glyph rendering.
+        clipsToBounds = false
     }
     
     override func draw(_ rect: CGRect) {

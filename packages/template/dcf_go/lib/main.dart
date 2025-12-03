@@ -1,7 +1,5 @@
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/utils/screen_utilities.dart';
-import 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 import 'package:flutter/material.dart' show Colors;
 
 void main() async {
@@ -22,7 +20,7 @@ class DotCorrLanding extends DCFStatelessComponent {
       children: [
         NavigationBar(),
         HeroSection(),
-        // EcosystemSection(), 
+        // EcosystemSection(),
         BuildersAndMachinesSection(),
         TechnologyEcosystemSection(),
         AboutSection(),
@@ -421,6 +419,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           ),
           children: [
             DCFText(
+              
               content: bg == Colors.white ? "📱" : "🧠",
               textProps: DCFTextProps(fontSize: 24),
               styleSheet: DCFStyleSheet(primaryColor: bg == Colors.white ? Colors.white : Colors.black),
@@ -471,7 +470,6 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
         // Link - inline-flex items-center gap-2
         DCFView(
           layout: DCFLayout(
-            width: '100%',
             flexDirection: DCFFlexDirection.row,
             alignItems: DCFAlign.center,
             gap: 8, // gap-2 = 8px
@@ -485,11 +483,17 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 numberOfLines: 1, // Single line for link
               ),
               styleSheet: DCFStyleSheet(primaryColor: text),
+              layout: DCFLayout(
+                flexShrink: 0, // Text should not shrink - let it truncate if needed
+              ),
             ),
             DCFText(
               content: "→",
               textProps: DCFTextProps(fontSize: 16),
               styleSheet: DCFStyleSheet(primaryColor: text),
+              layout: DCFLayout(
+                flexShrink: 0, // Arrow should not shrink
+              ),
             ),
           ],
         ),

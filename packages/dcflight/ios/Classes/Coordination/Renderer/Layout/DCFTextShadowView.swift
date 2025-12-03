@@ -102,21 +102,12 @@ open class DCFTextShadowView: DCFShadowView {
     
     /**
      * Custom measure function for text nodes
-     * Accounts for padding and uses NSLayoutManager for accurate measurement
+     * Matches approach: measurement returns text size only, padding handled separately
      */
     private func measureText(node: YGNodeRef?, width: Float, widthMode: YGMeasureMode, height: Float, heightMode: YGMeasureMode) -> YGSize {
-        // Get padding to calculate available width
-        let padding = self.paddingAsInsets
-        let availableWidth: CGFloat
-        
-        if widthMode == .undefined {
-            availableWidth = CGFloat.greatestFiniteMagnitude
-        } else {
-            // Account for padding when measuring
-            availableWidth = max(0, CGFloat(width) - (padding.left + padding.right))
-        }
-        
-        // Build text storage for the available width
+        // Match approach: Yoga passes available width (after padding) to measure function
+        // When widthMode is undefined, use CGFLOAT_MAX for unlimited width
+        let availableWidth: CGFloat = widthMode == .undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(width)
         let textStorage = buildTextStorageForWidth(availableWidth, widthMode: widthMode)
         
         // Get the layout manager and text container
@@ -127,18 +118,25 @@ open class DCFTextShadowView: DCFShadowView {
             return YGSize(width: 1, height: Float(minHeight))
         }
         
-        // Calculate the actual text size
+        // Calculate the actual text size - match approach: use usedRect directly
         let computedSize = layoutManager.usedRect(for: textContainer).size
         
-        // If computed size is zero or invalid, use font-based minimum
-        let minHeight = !fontSize.isNaN ? max(1, fontSize) : 17
-        let finalWidth = max(1, ceil(computedSize.width))
-        let finalHeight = max(CGFloat(minHeight), ceil(computedSize.height))
+        // Round up to pixel boundaries (match approach: RCTCeilPixelValue)
+        let scale = UIScreen.main.scale
+        let roundedWidth = ceil(computedSize.width * scale) / scale
+        let roundedHeight = ceil(computedSize.height * scale) / scale
         
-        // Round up to pixel boundaries
+        // Handle negative letter spacing (match approach)
+        var finalWidth = roundedWidth
+        if !letterSpacing.isNaN && letterSpacing < 0 {
+            finalWidth -= abs(letterSpacing)
+        }
+        
+        // Match approach: return just the text size (no padding added)
+        // Yoga automatically accounts for padding when calculating the final frame
         let result = YGSize(
             width: Float(finalWidth),
-            height: Float(finalHeight)
+            height: Float(roundedHeight)
         )
         
         return result
@@ -176,6 +174,8 @@ open class DCFTextShadowView: DCFShadowView {
         }
         
         textContainer.maximumNumberOfLines = numberOfLines
+        
+        // Match approach: text container size is exactly the width (no buffer)
         textContainer.size = CGSize(
             width: widthMode == .undefined ? CGFloat.greatestFiniteMagnitude : width,
             height: CGFloat.greatestFiniteMagnitude
@@ -441,9 +441,24 @@ open class DCFTextShadowView: DCFShadowView {
     
     /**
      * Calculate text frame from text storage (accounts for padding)
+     * Matches approach: simple inset by padding, no buffers
      */
     private func calculateTextFrame(textStorage: NSTextStorage) -> CGRect {
         let padding = self.paddingAsInsets
+        
+        // When text component has no padding, textFrame should fill the entire view bounds
+        // Yoga has already positioned the text view accounting for parent padding
+        if padding == .zero {
+            var textFrame = CGRect(origin: .zero, size: self.frame.size)
+            
+            if adjustsFontSizeToFit {
+                textFrame = updateStorage(textStorage, toFitFrame: textFrame)
+            }
+            
+            return textFrame
+        }
+        
+        // When text component has padding, inset the frame
         var textFrame = CGRect(origin: .zero, size: self.frame.size).inset(by: padding)
         
         if adjustsFontSizeToFit {
