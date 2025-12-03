@@ -183,4 +183,3 @@ class DCFText extends DCFStatelessComponent
     );
   }
 }
-

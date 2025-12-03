@@ -45,4 +45,3 @@ public class DCFScrollContentShadowView: DCFShadowView {
         frame.origin.x = roundedRight
     }
 }
-

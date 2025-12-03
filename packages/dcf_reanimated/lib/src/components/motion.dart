@@ -421,4 +421,3 @@ class ViewportConfig {
     if (margin != null) 'margin': margin,
   };
 }
-

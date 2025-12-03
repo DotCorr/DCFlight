@@ -174,6 +174,25 @@ class DCFViewManager {
         
         DCFLayoutManager.shared.registerView(view, withNodeId: viewId, componentType: viewType, componentInstance: componentInstance)
         
+        // CRITICAL: Set intrinsic content size for leaf nodes initially
+        // This allows components to automatically size themselves without explicit width/height
+        // Views with children will size based on their children automatically via Yoga flexbox
+        // Only set intrinsic size for leaf nodes (no children) - nodes with children size based on their children
+        if let shadowView = YogaShadowTree.shared.getShadowView(for: viewId),
+           !(shadowView is DCFTextShadowView),
+           YGNodeGetChildCount(shadowView.yogaNode) == 0 {
+            // Get props from the component instance
+            let storedProps = componentInstance.getStoredProps(from: view)
+            let allProps = storedProps.compactMapValues { $0 }
+            
+            let intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: allProps)
+            // Setting intrinsicContentSize will automatically set up the measure function via didSet
+            // This allows components to size themselves automatically
+            if intrinsicSize.width != UIView.noIntrinsicMetric || intrinsicSize.height != UIView.noIntrinsicMetric {
+                shadowView.intrinsicContentSize = intrinsicSize
+            }
+        }
+        
         return true
     }
     
@@ -396,4 +415,3 @@ class DCFViewManager {
         return props.filter { SupportedLayoutsProps.supportedLayoutProps.contains($0.key) }
     }
 }
-

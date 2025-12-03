@@ -184,7 +184,7 @@ class YogaShadowTree {
             
             // Remove from old parent if exists
             if let oldParent = childShadowView.superview {
-                oldParent.removeReactSubview(childShadowView)
+                oldParent.removeSubview(childShadowView)
                 // Re-setup measure function for old parent (might be able to have measure function now)
                 setupMeasureFunction(shadowView: oldParent, componentType: nodeTypes[oldParent.viewId] ?? "View")
             }
@@ -197,8 +197,8 @@ class YogaShadowTree {
             }
             
             // Add to new parent using shadow view's insertSubview method
-            let insertIndex = index ?? parentShadowView.reactSubviews.count
-            parentShadowView.insertReactSubview(childShadowView, atIndex: insertIndex)
+            let insertIndex = index ?? parentShadowView.subviews.count
+            parentShadowView.insertSubview(childShadowView, atIndex: insertIndex)
             
             // Setup measure function for child (only if it has no children)
             setupMeasureFunction(shadowView: childShadowView, componentType: nodeTypes[childViewId] ?? "View")
@@ -222,13 +222,13 @@ class YogaShadowTree {
             
             // Remove from parent if exists
             if let parent = shadowView.superview {
-                parent.removeReactSubview(shadowView)
+                parent.removeSubview(shadowView)
             }
             
             // Remove all children
-            let children = shadowView.reactSubviews
+            let children = shadowView.subviews
             for child in children {
-                shadowView.removeReactSubview(child)
+                shadowView.removeSubview(child)
             }
             
             // Remove from registries
@@ -260,7 +260,7 @@ class YogaShadowTree {
             // All props (layout and text) are set through the same mechanism
             // For Text components, handle text props first
             if let textShadowView = shadowView as? DCFTextShadowView {
-                // Extract text props and set them (equivalent to React Native's generated setters)
+                // Extract text props and set them (equivalent to generated setters)
                 let textProps = ["content", "fontSize", "fontWeight", "fontFamily", "letterSpacing",
                                 "lineHeight", "numberOfLines", "textAlign", "textColor", "primaryColor"]
                 let textPropsDict = props.filter { textProps.contains($0.key) }
@@ -421,9 +421,9 @@ class YogaShadowTree {
         syncQueue.sync {
             // Remove all children from root
             if let root = rootShadowView {
-                let children = root.reactSubviews
+                let children = root.subviews
                 for child in children {
-                    root.removeReactSubview(child)
+                    root.removeSubview(child)
                 }
             }
             
@@ -443,9 +443,9 @@ class YogaShadowTree {
             
             // Remove all children from root
             if let root = rootShadowView {
-                let children = root.reactSubviews
+                let children = root.subviews
                 for child in children {
-                    root.removeReactSubview(child)
+                    root.removeSubview(child)
                 }
             }
             

@@ -190,7 +190,7 @@ open class DCFShadowView: Hashable {
     private var _propagationLifecycle: UpdateLifecycle = .uninitialized
     private var _textLifecycle: UpdateLifecycle = .uninitialized
     private var _lastParentProperties: [String: Any]?
-    private var _reactSubviews: [DCFShadowView] = []
+    private var _subviews: [DCFShadowView] = []
     private var _recomputePadding: Bool = false
     private var _recomputeMargin: Bool = false
     private var _recomputeBorder: Bool = false
@@ -214,12 +214,8 @@ open class DCFShadowView: Hashable {
     // MARK: - Parent-Child Relationships
     
     public private(set) weak var superview: DCFShadowView?
-    public var reactSubviews: [DCFShadowView] {
-        return _reactSubviews
-    }
-    
-    public var reactSuperview: DCFShadowView? {
-        return superview
+    public var subviews: [DCFShadowView] {
+        return _subviews
     }
     
     // MARK: - Yoga Node
@@ -286,7 +282,7 @@ open class DCFShadowView: Hashable {
         return false
     }
     
-    public func insertReactSubview(_ subview: DCFShadowView, atIndex index: Int) {
+    public func insertSubview(_ subview: DCFShadowView, atIndex index: Int) {
         assert(canHaveSubviews(), "Attempt to insert subview inside leaf view.")
         
         // CRITICAL: Remove measure function and clear intrinsic content size BEFORE adding children
@@ -306,19 +302,19 @@ open class DCFShadowView: Hashable {
             YGNodeInsertChild(yogaNode, subview.yogaNode, index)
         }
         
-        _reactSubviews.insert(subview, at: index)
+        _subviews.insert(subview, at: index)
         subview.superview = self
         _didUpdateSubviews = true
         dirtyText()
         dirtyPropagation()
     }
     
-    public func removeReactSubview(_ subview: DCFShadowView) {
+    public func removeSubview(_ subview: DCFShadowView) {
         subview.dirtyText()
         subview.dirtyPropagation()
         _didUpdateSubviews = true
         subview.superview = nil
-        _reactSubviews.removeAll { $0 === subview }
+        _subviews.removeAll { $0 === subview }
         if !isYogaLeafNode() {
             YGNodeRemoveChild(yogaNode, subview.yogaNode)
         }
@@ -418,14 +414,14 @@ open class DCFShadowView: Hashable {
     public func applyLayoutToChildren(_ node: YGNodeRef, viewsWithNewFrame: NSMutableSet, absolutePosition: CGPoint) {
         let childCount = YGNodeGetChildCount(node)
         for i in 0..<Int(childCount) {
-            if let childNode = YGNodeGetChild(node, i), i < _reactSubviews.count {
-                let child = _reactSubviews[i]
+            if let childNode = YGNodeGetChild(node, i), i < _subviews.count {
+                let child = _subviews[i]
                 child.applyLayoutNode(childNode, viewsWithNewFrame: viewsWithNewFrame, absolutePosition: absolutePosition)
             }
         }
     }
     
-    public func didUpdateReactSubviews() {
+    public func didUpdateSubviews() {
         // Does nothing by default
     }
     

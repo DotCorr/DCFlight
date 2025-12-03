@@ -387,7 +387,7 @@ class DCFScrollView extends DCFStatelessComponent
     }
 
     // CRITICAL: Automatically wrap children in ScrollContentView behind the scenes
-    // This matches React Native's pattern where ScrollView automatically wraps content
+    // ScrollView automatically wraps content for proper scrolling behavior
     // Users should NOT use DCFScrollContentView directly - it's internal
     DCFComponentNode contentView;
     
