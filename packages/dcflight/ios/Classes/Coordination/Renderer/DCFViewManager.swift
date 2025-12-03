@@ -155,20 +155,20 @@ class DCFViewManager {
         } else {
             YogaShadowTree.shared.createNode(id: String(viewId), componentType: viewType)
             
-            if !layoutProps.isEmpty {
+            // All props (layout and text) go through the same update mechanism
+            // updateNodeLayoutProps handles both layout and text props for Text components
+            if !layoutProps.isEmpty || (viewType == "Text" && !nonLayoutProps.isEmpty) {
+                // Merge layout and text props for Text components
+                var allProps = layoutProps
+                if viewType == "Text" {
+                    allProps.merge(nonLayoutProps) { (_, new) in new }
+                }
+                
                 DCFLayoutManager.shared.updateNodeWithLayoutProps(
                     nodeId: viewId,
                     componentType: viewType,
-                    props: layoutProps
+                    props: allProps
                 )
-            }
-            
-            // CRITICAL: For Text components, update shadow view text properties immediately
-            // This ensures text measurement uses correct properties from the start
-            if viewType == "Text", !nonLayoutProps.isEmpty {
-                if let textShadowView = YogaShadowTree.shared.getShadowView(for: viewId) as? DCFTextShadowView {
-                    textShadowView.updateTextProps(nonLayoutProps)
-                }
             }
         }
         
@@ -227,6 +227,22 @@ class DCFViewManager {
             
             let componentInstance = componentType.init()
             let success = componentInstance.updateView(view, withProps: nonLayoutProps)
+            
+            // Update intrinsic content size when props change
+            // This allows components to automatically resize when their content changes
+            // Text components have their own custom measure function, so skip them
+            // Only update intrinsic size for leaf nodes (no children) - nodes with children size based on their children
+            if let shadowView = YogaShadowTree.shared.getShadowView(for: viewId),
+               !(shadowView is DCFTextShadowView),
+               YGNodeGetChildCount(shadowView.yogaNode) == 0 {
+                // Get current props from the view
+                let storedProps = componentInstance.getStoredProps(from: view)
+                let allProps = storedProps.compactMapValues { $0 }
+                
+                let intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: allProps)
+                // Setting intrinsicContentSize will automatically update the measure function via didSet
+                shadowView.intrinsicContentSize = intrinsicSize
+            }
             
             if !success {
                 return false

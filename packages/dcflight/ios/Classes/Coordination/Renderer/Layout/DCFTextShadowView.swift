@@ -83,11 +83,6 @@ open class DCFTextShadowView: DCFShadowView {
      * Accounts for padding and uses NSLayoutManager for accurate measurement
      */
     private func measureText(node: YGNodeRef?, width: Float, widthMode: YGMeasureMode, height: Float, heightMode: YGMeasureMode) -> YGSize {
-        // If text is empty, return minimal size
-        if text.isEmpty {
-            return YGSize(width: 1, height: 1)
-        }
-        
         // Get padding to calculate available width
         let padding = self.paddingAsInsets
         let availableWidth: CGFloat
@@ -105,16 +100,23 @@ open class DCFTextShadowView: DCFShadowView {
         // Get the layout manager and text container
         guard let layoutManager = textStorage.layoutManagers.first,
               let textContainer = layoutManager.textContainers.first else {
-            return YGSize(width: 1, height: 1)
+            // Fallback: return minimum size based on font
+            let minHeight = !fontSize.isNaN ? max(1, fontSize) : 17
+            return YGSize(width: 1, height: Float(minHeight))
         }
         
         // Calculate the actual text size
         let computedSize = layoutManager.usedRect(for: textContainer).size
         
-        // Round up to pixel boundaries, ensure minimum size
+        // If computed size is zero or invalid, use font-based minimum
+        let minHeight = !fontSize.isNaN ? max(1, fontSize) : 17
+        let finalWidth = max(1, ceil(computedSize.width))
+        let finalHeight = max(CGFloat(minHeight), ceil(computedSize.height))
+        
+        // Round up to pixel boundaries
         let result = YGSize(
-            width: Float(max(1, ceil(computedSize.width))),
-            height: Float(max(1, ceil(computedSize.height)))
+            width: Float(finalWidth),
+            height: Float(finalHeight)
         )
         
         return result
@@ -177,20 +179,27 @@ open class DCFTextShadowView: DCFShadowView {
             return cached
         }
         
-        let mutableString = NSMutableAttributedString(string: text)
-        let range = NSRange(location: 0, length: text.count)
+        // If text is empty, return empty attributed string with font to get baseline height
+        let textToUse = text.isEmpty ? " " : text
+        let mutableString = NSMutableAttributedString(string: textToUse)
+        let range = NSRange(location: 0, length: textToUse.count)
         
-        // Font
+        // Font - use fontSize from props or default
         var font = UIFont.systemFont(ofSize: 17)
+        let finalFontSize: CGFloat
         if !fontSize.isNaN {
-            font = UIFont.systemFont(ofSize: fontSize)
+            finalFontSize = fontSize
+            font = UIFont.systemFont(ofSize: finalFontSize)
+        } else {
+            finalFontSize = 17
         }
+        
         if let fontWeight = fontWeight {
             let weight = fontWeightFromString(fontWeight)
-            font = UIFont.systemFont(ofSize: font.pointSize, weight: weight)
+            font = UIFont.systemFont(ofSize: finalFontSize, weight: weight)
         }
         if let fontFamily = fontFamily {
-            if let customFont = UIFont(name: fontFamily, size: font.pointSize) {
+            if let customFont = UIFont(name: fontFamily, size: finalFontSize) {
                 font = customFont
             }
         }
@@ -366,15 +375,8 @@ open class DCFTextShadowView: DCFShadowView {
     // MARK: - Overrides
     
     public override func didSetProps(_ changedProps: [String]) {
-        // Check if text-related props changed
-        let textProps = ["content", "fontSize", "fontWeight", "fontFamily", "letterSpacing", 
-                        "lineHeight", "numberOfLines", "textAlign", "textColor", "primaryColor"]
-        
-        if changedProps.contains(where: { textProps.contains($0) }) {
-            dirtyText()
-        }
-        
-        // Call super to handle layout props
+        // Text props are set through updateTextProps which calls dirtyText()
+        // This didSetProps is for layout props only
         super.didSetProps(changedProps)
     }
 }

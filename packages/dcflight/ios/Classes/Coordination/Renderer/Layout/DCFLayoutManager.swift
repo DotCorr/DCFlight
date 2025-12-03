@@ -363,6 +363,12 @@ extension DCFLayoutManager {
         
         componentInstance.viewRegisteredWithShadowTree(view, nodeId: String(nodeId))
         
+        // NOTE: We do NOT set intrinsicContentSize here in registerView because:
+        // 1. registerView is called AFTER children may have been attached in batch updates
+        // 2. Setting intrinsicContentSize on a node with children causes Yoga to crash
+        // 3. Intrinsic size should only be set when we're certain the node is a leaf
+        // Intrinsic size is set in updateView when props change, which happens after the view hierarchy is stable
+        
         if nodeId == 0 {
             triggerLayoutCalculation()
         }

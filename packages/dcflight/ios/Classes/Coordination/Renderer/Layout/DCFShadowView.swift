@@ -147,15 +147,41 @@ open class DCFShadowView: Hashable {
     /**
      * Represents the natural size of the view, which is used when explicit size is not set or is ambiguous.
      * Defaults to `{UIViewNoIntrinsicMetric, UIViewNoIntrinsicMetric}`.
+     * 
+     * CRITICAL: This can only be set on leaf nodes (nodes with no children).
+     * Nodes with children size based on their children, not intrinsic size.
+     * Attempting to set this on a node with children will be silently ignored to prevent crashes.
      */
-    public var intrinsicContentSize: CGSize = CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric) {
-        didSet {
-            if intrinsicContentSize.width == UIView.noIntrinsicMetric && intrinsicContentSize.height == UIView.noIntrinsicMetric {
+    private var _intrinsicContentSize: CGSize = CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+    
+    public var intrinsicContentSize: CGSize {
+        get {
+            return _intrinsicContentSize
+        }
+        set {
+            // CRITICAL: Only allow setting intrinsicContentSize on leaf nodes (no children)
+            // Nodes with children size based on their children, not intrinsic size
+            // Attempting to set this on a node with children will cause Yoga to crash
+            let childCount = YGNodeGetChildCount(yogaNode)
+            guard childCount == 0 else {
+                // Node has children - silently ignore the assignment to prevent crash
+                // This can happen if registerView is called after children are attached
+                return
+            }
+            
+            _intrinsicContentSize = newValue
+            
+            // Set up measure function based on the new value
+            // We do NOT call YGNodeMarkDirty here because:
+            // 1. Yoga will automatically mark nodes dirty when needed during layout calculation
+            // 2. Calling YGNodeMarkDirty on a node that might have children (even if childCount == 0 now)
+            //    can cause crashes if children are added between the check and the mark
+            // 3. The measure function will be called by Yoga when it needs to measure the node
+            if newValue.width == UIView.noIntrinsicMetric && newValue.height == UIView.noIntrinsicMetric {
                 YGNodeSetMeasureFunc(yogaNode, nil)
             } else {
                 YGNodeSetMeasureFunc(yogaNode, shadowViewMeasure)
             }
-            YGNodeMarkDirty(yogaNode)
         }
     }
     
@@ -263,12 +289,20 @@ open class DCFShadowView: Hashable {
     public func insertReactSubview(_ subview: DCFShadowView, atIndex index: Int) {
         assert(canHaveSubviews(), "Attempt to insert subview inside leaf view.")
         
-        // CRITICAL: Remove measure function before adding children
+        // CRITICAL: Remove measure function and clear intrinsic content size BEFORE adding children
         // Yoga rule: Nodes with measure functions cannot have children
+        // Nodes with children size based on their children, not intrinsic size
         if !isYogaLeafNode() {
+            // Clear measure function first
             if YGNodeHasMeasureFunc(yogaNode) {
                 YGNodeSetMeasureFunc(yogaNode, nil)
             }
+            // Directly clear the stored intrinsic content size property
+            // We cannot use the setter here because it checks childCount == 0,
+            // but we're about to add a child, so we need to bypass the setter
+            _intrinsicContentSize = CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+            
+            // NOW add the child to the Yoga node
             YGNodeInsertChild(yogaNode, subview.yogaNode, index)
         }
         

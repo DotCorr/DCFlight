@@ -257,8 +257,29 @@ class YogaShadowTree {
             
             print("🔍 YogaShadowTree: updateNodeLayoutProps for viewId=\(nodeId), props=\(props)")
             
+            // All props (layout and text) are set through the same mechanism
+            // For Text components, handle text props first
+            if let textShadowView = shadowView as? DCFTextShadowView {
+                // Extract text props and set them (equivalent to React Native's generated setters)
+                let textProps = ["content", "fontSize", "fontWeight", "fontFamily", "letterSpacing",
+                                "lineHeight", "numberOfLines", "textAlign", "textColor", "primaryColor"]
+                let textPropsDict = props.filter { textProps.contains($0.key) }
+                
+                if !textPropsDict.isEmpty {
+                    textShadowView.updateTextProps(textPropsDict)
+                    changedProps.append(contentsOf: textPropsDict.keys)
+                }
+            }
+            
             // Apply layout props and track which ones changed
             for (key, value) in props {
+                // Skip text props as they're handled above
+                let textProps = ["content", "fontSize", "fontWeight", "fontFamily", "letterSpacing",
+                                "lineHeight", "numberOfLines", "textAlign", "textColor", "primaryColor"]
+                if textProps.contains(key) {
+                    continue
+                }
+                
                 let changed = applyLayoutProp(shadowView: shadowView, node: yogaNode, key: key, value: value)
                 if changed {
                     changedProps.append(key)
@@ -539,44 +560,20 @@ class YogaShadowTree {
         let yogaNode = shadowView.yogaNode
         let childCount = YGNodeGetChildCount(yogaNode)
         
+        // Text components have their own measure function set in DCFTextShadowView.init
+        // Don't overwrite it
+        if shadowView is DCFTextShadowView {
+            return
+        }
+        
+        // For leaf nodes (no children), components can use intrinsic content size
+        // The intrinsicContentSize property's didSet will automatically set the measure function
+        // when components set it via getIntrinsicSize
         if childCount == 0 {
-            YGNodeSetMeasureFunc(yogaNode) { (yogaNode, width, widthMode, height, heightMode) -> YGSize in
-                guard let context = YGNodeGetContext(yogaNode) else {
-                    return YGSize(width: 0, height: 0)
-                }
-                
-                let shadowView = Unmanaged<DCFShadowView>.fromOpaque(context).takeUnretainedValue()
-                let viewId = shadowView.viewId
-                
-                guard let view = DCFLayoutManager.shared.getView(withId: viewId),
-                      let componentType = YogaShadowTree.shared.nodeTypes[viewId] else {
-                    return YGSize(width: 0, height: 0)
-                }
-                
-                let constraintSize = CGSize(
-                    width: widthMode == YGMeasureMode.undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(width),
-                    height: heightMode == YGMeasureMode.undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(height)
-                )
-                
-                guard let componentInstance = YogaShadowTree.shared.getComponentInstance(for: componentType) else {
-                    return YGSize(width: Float(constraintSize.width), height: Float(constraintSize.height))
-                }
-                
-                var intrinsicSize = CGSize.zero
-                if Thread.isMainThread {
-                    intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: [:])
-                } else {
-                    DispatchQueue.main.sync {
-                        intrinsicSize = componentInstance.getIntrinsicSize(view, forProps: [:])
-                    }
-                }
-                
-                let finalWidth = widthMode == YGMeasureMode.undefined ? intrinsicSize.width : min(intrinsicSize.width, constraintSize.width)
-                let finalHeight = heightMode == YGMeasureMode.undefined ? intrinsicSize.height : min(intrinsicSize.height, constraintSize.height)
-                
-                return YGSize(width: Float(finalWidth), height: Float(finalHeight))
-            }
+            // Measure function will be set automatically when intrinsicContentSize is set
+            // by the component's getIntrinsicSize method
         } else {
+            // Nodes with children cannot have measure functions
             YGNodeSetMeasureFunc(yogaNode, nil)
         }
     }

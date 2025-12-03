@@ -338,6 +338,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           ),
           children: [
             DCFText(
+              layout: DCFLayout(width: '100%',height: 100),
               content: "Infrastructure for\nBuilders & Machines",
               textProps: DCFTextProps(
                 fontSize: 48, // text-5xl = 48px (matches web)

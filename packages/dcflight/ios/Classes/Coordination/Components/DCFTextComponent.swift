@@ -240,20 +240,10 @@ class DCFTextComponent: NSObject, DCFComponent {
     }
     
     func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        // Text measurement is handled by DCFTextShadowView's custom measure function.
-        // 
-        // Why Text is special:
-        // - Text size depends on content and available width (wrapping)
-        // - Padding must be accounted for during measurement
-        // - Requires NSLayoutManager for accurate text layout
-        // 
-        // The shadow view's measure function handles all of this, so we return
-        // a minimal size here to prevent double measurement.
-        guard let label = view as? UILabel else {
-            return CGSize.zero
-        }
-        
-        return CGSize(width: 1, height: 1)
+        // Text measurement is handled by DCFTextShadowView's custom measure function
+        // which uses NSLayoutManager for accurate text layout with wrapping
+        // Return noIntrinsicMetric so Yoga uses the custom measure function
+        return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
