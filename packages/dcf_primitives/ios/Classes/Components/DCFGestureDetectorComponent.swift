@@ -327,19 +327,11 @@ class DCFGestureDetectorComponent: NSObject, DCFComponent, UIGestureRecognizerDe
         propagateEvent(on: view, eventName: eventType, data: eventData)
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        if let child = view.subviews.first {
-            let size = child.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
-            return CGSize(width: max(1, size.width), height: max(1, size.height))
-        }
-        return CGSize.zero
-    }
-    
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
     }
 
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         objc_setAssociatedObject(view,
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
                                nodeId,

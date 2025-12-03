@@ -135,32 +135,15 @@ class DCFTextComponent: NSObject, DCFComponent {
         return true
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        guard let label = view as? UILabel else {
-            return CGSize.zero
-        }
-        
-        let text = label.text ?? ""
-        
-        if text.isEmpty {
-            return CGSize.zero
-        }
-        
-        let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        let size = label.sizeThatFits(maxSize)
-        
-        return CGSize(width: max(1, size.width), height: max(1, size.height))
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
+        objc_setAssociatedObject(view, 
+                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
+                               nodeId,
+                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        objc_setAssociatedObject(view, 
-                               UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
-                               nodeId, 
-                               .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {

@@ -82,20 +82,11 @@ class DCFIconComponent: NSObject, DCFComponent {
         return result
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        guard let imageView = view as? UIImageView else {
-            return CGSize.zero
-        }
-        
-        let size = props["size"] as? CGFloat ?? 24
-        
-        return CGSize(width: size, height: size)
-    }
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
     }
 
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         objc_setAssociatedObject(view,
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
                                nodeId,

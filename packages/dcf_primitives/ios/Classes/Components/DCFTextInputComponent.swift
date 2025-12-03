@@ -328,21 +328,11 @@ class DCFTextInputComponent: NSObject, DCFComponent, UITextFieldDelegate, UIText
         propagateEvent(on: textView, eventName: "onBlur", data: [:])
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        if let textField = view as? UITextField {
-            let size = textField.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
-            return CGSize(width: max(1, size.width), height: max(1, size.height))
-        } else if let textView = view as? UITextView {
-            let size = textView.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
-            return CGSize(width: max(1, size.width), height: max(1, size.height))
-        }
-        return CGSize.zero
-    }
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
     }
 
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         objc_setAssociatedObject(view,
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
                                nodeId,

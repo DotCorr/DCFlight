@@ -153,7 +153,7 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
         }
     }
     
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         guard let scrollView = view as? DCFScrollView else { return }
         
         objc_setAssociatedObject(view,
@@ -253,9 +253,6 @@ class DCFScrollViewComponent: NSObject, DCFComponent {
         }
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize.zero
-    }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
         return nil
