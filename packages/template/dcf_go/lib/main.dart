@@ -284,6 +284,23 @@ class HeroSection extends DCFStatefulComponent {
 }
 
 class TypewriterEffect extends DCFStatefulComponent {
+  // Use instance variables to track active timers and prevent cancellation during reconciliation loops
+  // These persist across effect re-runs, preventing timer cancellation during rapid reconciliations
+  Timer? _typewriterTimer;
+  Timer? _blinkTimer;
+  int _lastSubIndex = -1; // Track last state to detect if timer is still valid
+  int _lastIndex = -1;
+  bool _lastReverse = false;
+  
+  @override
+  void componentWillUnmount() {
+    _typewriterTimer?.cancel();
+    _blinkTimer?.cancel();
+    _typewriterTimer = null;
+    _blinkTimer = null;
+    super.componentWillUnmount();
+  }
+  
   @override
   DCFComponentNode render() {
     final words = [
@@ -301,10 +318,15 @@ class TypewriterEffect extends DCFStatefulComponent {
 
     // Cursor blinking effect - runs independently
     useEffect(() {
-      final timer = Timer.periodic(Duration(milliseconds: 500), (_) {
+      // Cancel previous blink timer if it exists
+      _blinkTimer?.cancel();
+      _blinkTimer = Timer.periodic(Duration(milliseconds: 500), (_) {
         blink.setState(!blink.state);
       });
-      return () => timer.cancel();
+      return () {
+        _blinkTimer?.cancel();
+        _blinkTimer = null;
+      };
     }, dependencies: []);
     
     // Typewriter logic - matches web version behavior
@@ -312,20 +334,47 @@ class TypewriterEffect extends DCFStatefulComponent {
     // For UI thread animations, we'd need worklets, but text updates require bridge calls anyway
     // The framework ensures this effect runs reliably on mount and when dependencies change
     useEffect(() {
-      Timer? timer;
       final currentWord = words[index.state];
       final wordLength = currentWord.length;
       final currentSubIndex = subIndex.state;
       final isReversing = reverse.state;
       
+      // CRITICAL: Only cancel/recreate timer if state actually changed
+      // This prevents timer cancellation during reconciliation loops where state hasn't changed
+      final stateChanged = _lastSubIndex != currentSubIndex || 
+                          _lastIndex != index.state || 
+                          _lastReverse != isReversing;
+      
+      if (!stateChanged && _typewriterTimer != null) {
+        // State hasn't changed and timer exists - don't recreate (prevents cancellation loops)
+        return () {}; // Keep existing timer
+      }
+      
+      // Update tracked state
+      _lastSubIndex = currentSubIndex;
+      _lastIndex = index.state;
+      _lastReverse = isReversing;
+      
+      // Cancel previous timer only if state changed
+      if (stateChanged) {
+        _typewriterTimer?.cancel();
+        _typewriterTimer = null;
+      }
+      
       // If we've typed past the end (like web version checks length + 1), wait then delete
       if (currentSubIndex == wordLength && !isReversing) {
-        timer = Timer(Duration(milliseconds: 2000), () {
+        _typewriterTimer = Timer(Duration(milliseconds: 2000), () {
           if (subIndex.state == wordLength && !reverse.state) {
             reverse.setState(true);
           }
         });
-        return () => timer?.cancel();
+        return () {
+          // Only cancel if this specific timer is still active
+          if (_typewriterTimer != null) {
+            _typewriterTimer?.cancel();
+            _typewriterTimer = null;
+          }
+        };
       }
       
       // If we've deleted everything and reversing, move to next word
@@ -339,7 +388,7 @@ class TypewriterEffect extends DCFStatefulComponent {
       // Default: continue typing or deleting
       // This handles initial state (0, false) and all in-progress states
       final speed = isReversing ? 50 : 100;
-      timer = Timer(Duration(milliseconds: speed), () {
+      _typewriterTimer = Timer(Duration(milliseconds: speed), () {
         // Get fresh state values to avoid stale closures
         final currentReverse = reverse.state;
         final currentSub = subIndex.state;
@@ -357,7 +406,13 @@ class TypewriterEffect extends DCFStatefulComponent {
           }
         }
       });
-      return () => timer?.cancel();
+      return () {
+        // Only cancel if this specific timer is still active
+        if (_typewriterTimer != null) {
+          _typewriterTimer?.cancel();
+          _typewriterTimer = null;
+        }
+      };
     }, dependencies: [subIndex.state, index.state, reverse.state]);
     
     final currentText = words[index.state].substring(0, subIndex.state);
