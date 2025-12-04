@@ -40,7 +40,8 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
         _renderedNode = rawRendered;
       } else {
         // Wrap in View to ensure stable root container
-        // Use flex: 1 to fill parent (works on both iOS and Android)
+        // CRITICAL FIX: Don't force flex: 1 or height: 100% - let content size naturally
+        // This prevents layout issues where wrapped content tries to fill parent incorrectly
         _renderedNode = DCFElement(
           type: 'View',
           elementProps: {
@@ -48,9 +49,8 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
             'flexDirection': 'column',
             'alignItems': 'stretch',
             'justifyContent': 'flex-start',
-            'flex': 1,
-            'height': '100%',
-            'width': '100%',
+            // Removed flex: 1 and height: '100%' to allow natural sizing
+            // Content will size based on its own layout properties
           },
           children: [rawRendered],
         );

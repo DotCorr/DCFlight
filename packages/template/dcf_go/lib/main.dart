@@ -124,79 +124,138 @@ class HeroSection extends DCFStatefulComponent {
     return DCFView(
       layout: DCFLayout(
         width: '100%',
-        paddingTop: 64,
-        paddingBottom: 80,
+        paddingTop: 128, // pt-32 = 128px (matches web)
+        paddingBottom: 80, // pb-20 = 80px (matches web)
         paddingHorizontal: 24,
+        flexDirection: DCFFlexDirection.column,
         gap: 48,
       ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
       children: [
-        // Left Content
+        // Main content row (left text + right visual)
         DCFView(
-          layout: DCFLayout(width: '100%', gap: 32),
+          layout: DCFLayout(
+            width: '100%',
+            flexDirection: DCFFlexDirection.column,
+            gap: 48,
+          ),
           children: [
-            Motion(
-              initial: {'opacity': 0, 'y': 20},
-              animate: {'opacity': 1, 'y': 0},
-              transition: Transition(duration: 800),
-              layout: DCFLayout(gap: 24),
+            // Left Content
+            DCFView(
+              layout: DCFLayout(width: '100%', gap: 32),
               children: [
-                DCFText(
-                  content: "Building\nInfrastructure\nFor The Inevitable.",
-                  textProps: DCFTextProps(
-                    fontSize: 48, // Closer to web h1
-                    fontWeight: DCFFontWeight.medium,
-                    lineHeight: 1.1, // Tighter line height like web
-                    letterSpacing: -1.5,
-                  ),
-                  styleSheet: DCFStyleSheet(primaryColor: Colors.black),
-                ),
-
-                // Typewriter Effect Placeholder (simplified for now)
-                DCFView(
-                  layout: DCFLayout(
-                    height: 60,
-                    justifyContent: DCFJustifyContent.center,
-                  ),
-                  children: [TypewriterEffect()],
-                ),
-
-                DCFView(
-                  layout: DCFLayout(
-                    flexDirection: DCFFlexDirection.row,
-                    alignItems: DCFAlign.center,
-                    marginTop: 16,
-                  ),
+                Motion(
+                  initial: {'opacity': 0, 'y': 20},
+                  animate: {'opacity': 1, 'y': 0},
+                  transition: Transition(duration: 800),
+                  autoStart: true,
+                  layout: DCFLayout(gap: 24),
                   children: [
+                    // Split text to match web styling - "For The" in gray
                     DCFView(
                       layout: DCFLayout(
-                        paddingHorizontal: 32,
-                        paddingVertical: 16,
-                        flexDirection: DCFFlexDirection.row,
-                        alignItems: DCFAlign.center,
-                        gap: 12,
-                      ),
-                      styleSheet: DCFStyleSheet(
-                        backgroundColor: Colors.black,
-                        borderRadius: 2, // Small radius like web
+                        flexDirection: DCFFlexDirection.column,
+                        gap: 0,
                       ),
                       children: [
                         DCFText(
-                          content: "Enter The Lab",
+                          content: "Building",
                           textProps: DCFTextProps(
-                            fontSize: 16,
+                            fontSize: 48,
                             fontWeight: DCFFontWeight.medium,
+                            lineHeight: 1.1,
+                            letterSpacing: -1.5,
                           ),
-                          styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+                          styleSheet: DCFStyleSheet(primaryColor: Colors.black),
                         ),
-                        // Arrow placeholder
                         DCFText(
-                          content: "→",
+                          content: "Infrastructure",
                           textProps: DCFTextProps(
-                            fontSize: 16,
+                            fontSize: 48,
                             fontWeight: DCFFontWeight.medium,
+                            lineHeight: 1.1,
+                            letterSpacing: -1.5,
                           ),
-                          styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+                          styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+                        ),
+                        DCFView(
+                          layout: DCFLayout(
+                            flexDirection: DCFFlexDirection.row,
+                            gap: 0,
+                          ),
+                          children: [
+                            DCFText(
+                              content: "For The ",
+                              textProps: DCFTextProps(
+                                fontSize: 48,
+                                fontWeight: DCFFontWeight.medium,
+                                lineHeight: 1.1,
+                                letterSpacing: -1.5,
+                              ),
+                              styleSheet: DCFStyleSheet(primaryColor: Colors.grey[300]!),
+                            ),
+                            DCFText(
+                              content: "Inevitable.",
+                              textProps: DCFTextProps(
+                                fontSize: 48,
+                                fontWeight: DCFFontWeight.medium,
+                                lineHeight: 1.1,
+                                letterSpacing: -1.5,
+                              ),
+                              styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    // Typewriter Effect
+                    DCFView(
+                      layout: DCFLayout(
+                        height: 80, // h-20 = 80px (matches web)
+                        justifyContent: DCFJustifyContent.center,
+                        marginBottom: 40, // mb-10 = 40px (matches web)
+                      ),
+                      children: [TypewriterEffect()],
+                    ),
+
+                    // Button
+                    DCFView(
+                      layout: DCFLayout(
+                        flexDirection: DCFFlexDirection.row,
+                        alignItems: DCFAlign.center,
+                      ),
+                      children: [
+                        DCFView(
+                          layout: DCFLayout(
+                            paddingHorizontal: 32,
+                            paddingVertical: 16,
+                            flexDirection: DCFFlexDirection.row,
+                            alignItems: DCFAlign.center,
+                            gap: 12,
+                          ),
+                          styleSheet: DCFStyleSheet(
+                            backgroundColor: Colors.black,
+                            borderRadius: 2, // Small radius like web
+                          ),
+                          children: [
+                            DCFText(
+                              content: "Enter The Lab",
+                              textProps: DCFTextProps(
+                                fontSize: 16,
+                                fontWeight: DCFFontWeight.medium,
+                              ),
+                              styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+                            ),
+                            DCFText(
+                              content: "→",
+                              textProps: DCFTextProps(
+                                fontSize: 16,
+                                fontWeight: DCFFontWeight.medium,
+                              ),
+                              styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -204,18 +263,18 @@ class HeroSection extends DCFStatefulComponent {
                 ),
               ],
             ),
-          ],
-        ),
 
-        // Right Visual (3D Box effect using Reanimated)
-        DCFView(
-          layout: DCFLayout(
-            width: '100%',
-            height: 400, // Fixed height container for the visual
-            alignItems: DCFAlign.center,
-            justifyContent: DCFJustifyContent.center,
-          ),
-          children: [InfrastructureVisual()],
+            // Right Visual (3D Box effect using Reanimated)
+            DCFView(
+              layout: DCFLayout(
+                width: '100%',
+                height: 400, // Fixed height container for the visual
+                alignItems: DCFAlign.center,
+                justifyContent: DCFJustifyContent.center,
+              ),
+              children: [InfrastructureVisual()],
+            ),
+          ],
         ),
       ],
     );
@@ -248,7 +307,8 @@ class TypewriterEffect extends DCFStatefulComponent {
             duration: 500,
             repeat: true,
             repeatType: 'reverse',
-          ), // Blink
+          ),
+          autoStart: true, // CRITICAL: Ensure cursor blinks
           children: [],
         ),
       ],
@@ -274,8 +334,12 @@ class InfrastructureVisual extends DCFStatelessComponent {
         'rotateX': 60,
         'rotateZ': 45,
         'scale': 1.0,
-      }, // Web: rotateX: 60, rotateZ: 45
-      transition: Transition(duration: 2000, curve: AnimationCurve.easeOut),
+      },
+      transition: Transition(
+        duration: 2000,
+        curve: AnimationCurve.easeOut,
+      ),
+      autoStart: true,
       children: [
         // Base (Black background)
         DCFView(
@@ -291,9 +355,7 @@ class InfrastructureVisual extends DCFStatelessComponent {
           ),
         ),
 
-        // Tower (White square rising up)
-        // In standard CSS 3D, Z-index/translateZ works. Here we simulate with another view
-        // offset and styled to look like a tower.
+        // Tower (White square rising up with 3D translateZ)
         ReanimatedView(
           layout: DCFLayout(
             width: size * 0.35,
@@ -307,12 +369,15 @@ class InfrastructureVisual extends DCFStatelessComponent {
             shadowRadius: 20,
             shadowOpacity: 0.4,
           ),
-          initial: {
-            'translateY': 0,
-          }, // Simulate Z height with Y translation in this perspective?
-          // Actually, true 3D might be tricky without perspective container.
+          initial: {'translateZ': 0},
+          animate: {'translateZ': 80}, // Tower height in 3D space
+          transition: Transition(
+            duration: 2000,
+            delay: 800,
+            curve: AnimationCurve.easeOut,
+          ),
+          autoStart: true,
           children: [],
-          // Let's keep it simple: it's a white box on a black rotated plane.
         ),
       ],
     );
