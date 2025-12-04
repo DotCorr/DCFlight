@@ -75,6 +75,7 @@ export 'src/components/view_component.dart';
 export 'src/components/text_component.dart';
 export 'src/components/scroll_view_component.dart';
 export 'src/components/scroll_content_view_component.dart';
+export 'src/components/viewport_component.dart';
 import 'package:dcflight/framework/components/component_node.dart';
 
 import 'framework/renderer/engine/engine_api.dart';

@@ -34,5 +34,8 @@ object FrameworkComponentsReg {
         
         DCFComponentRegistry.shared.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
         Log.d(TAG, "✅ Registered ScrollView component")
+        
+        DCFComponentRegistry.shared.registerComponent("Viewport", DCFViewportComponent::class.java)
+        Log.d(TAG, "✅ Registered Viewport component")
     }
 }

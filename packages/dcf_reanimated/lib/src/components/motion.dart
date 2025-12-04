@@ -19,7 +19,6 @@ import 'reanimated_view.dart';
 /// [Motion] provides a powerful, declarative API for animations similar to
 /// Framer Motion's `motion.div`. It supports:
 /// - Initial animations (on mount)
-/// - Viewport-based animations (whileInView)
 /// - Hover animations (whileHover)
 /// - Animation variants
 /// - Staggered animations
@@ -34,18 +33,6 @@ import 'reanimated_view.dart';
 ///   transition: Transition(duration: 800),
 ///   children: [
 ///     DCFText(content: "I animate on mount!"),
-///   ],
-/// )
-/// ```
-/// 
-/// Example with viewport detection:
-/// ```dart
-/// Motion(
-///   initial: { 'opacity': 0, 'scale': 0.8 },
-///   whileInView: { 'opacity': 1, 'scale': 1.0 },
-///   viewport: ViewportConfig(once: true),
-///   children: [
-///     DCFText(content: "I animate when scrolled into view!"),
 ///   ],
 /// )
 /// ```
@@ -76,11 +63,6 @@ class Motion extends DCFStatefulComponent {
   /// Values can be numbers or lists for keyframes
   final Map<String, dynamic>? animate;
 
-  /// Animation values when element enters viewport
-  /// 
-  /// Automatically triggers when element becomes visible in viewport
-  final Map<String, dynamic>? whileInView;
-
   /// Animation values when element is hovered
   /// 
   /// Automatically triggers on hover (mobile: on press)
@@ -91,9 +73,6 @@ class Motion extends DCFStatefulComponent {
 
   /// Animation transition configuration
   final Transition? transition;
-
-  /// Viewport detection configuration
-  final ViewportConfig? viewport;
 
   /// Layout properties for positioning and sizing
   final DCFLayout? layout;
@@ -113,12 +92,6 @@ class Motion extends DCFStatefulComponent {
   /// Called when animation completes
   final void Function()? onAnimationComplete;
 
-  /// Called when element enters viewport
-  final void Function()? onViewportEnter;
-
-  /// Called when element exits viewport
-  final void Function()? onViewportLeave;
-
   /// Additional event handlers
   final Map<String, dynamic>? events;
 
@@ -126,19 +99,15 @@ class Motion extends DCFStatefulComponent {
     required this.children,
     this.initial,
     this.animate,
-    this.whileInView,
     this.whileHover,
     this.whileTap,
     this.transition,
-    this.viewport,
     this.layout,
     this.styleSheet,
     this.autoStart = true,
     this.delay = 0,
     this.onAnimationStart,
     this.onAnimationComplete,
-    this.onViewportEnter,
-    this.onViewportLeave,
     this.events,
     super.key,
   }) {
@@ -162,19 +131,6 @@ class Motion extends DCFStatefulComponent {
     if (onAnimationComplete != null) {
       eventHandlers['onAnimationComplete'] = onAnimationComplete;
     }
-    if (onViewportEnter != null) {
-      eventHandlers['onViewportEnter'] = onViewportEnter;
-    }
-    if (onViewportLeave != null) {
-      eventHandlers['onViewportLeave'] = onViewportLeave;
-    }
-
-    // Use ReanimatedView component directly - no need to create DCFElement!
-    // Pass viewport callbacks so ReanimatedView can use low-level viewport API
-    final allEvents = <String, dynamic>{
-      ...eventHandlers,
-      if (viewport != null) 'viewport': viewport!.toMap(),
-    };
     
     return ReanimatedView(
       animatedStyle: animatedStyle,
@@ -184,7 +140,7 @@ class Motion extends DCFStatefulComponent {
       styleSheet: combinedStyle,
       onAnimationStart: onAnimationStart,
       onAnimationComplete: onAnimationComplete,
-      events: allEvents.isEmpty ? null : allEvents,
+      events: eventHandlers.isEmpty ? null : eventHandlers,
       children: children,
     );
   }
@@ -395,29 +351,5 @@ class Transition {
     if (staggerChildren != null) 'staggerChildren': staggerChildren,
     if (delayChildren != null) 'delayChildren': delayChildren,
     if (repeatType != null) 'repeatType': repeatType,
-  };
-}
-
-/// Viewport detection configuration
-class ViewportConfig {
-  /// Whether to trigger animation only once (default: false = every time)
-  final bool once;
-  
-  /// Amount of element that must be visible (0.0 to 1.0)
-  final double amount;
-  
-  /// Margin around viewport (in pixels or percentage)
-  final String? margin;
-
-  const ViewportConfig({
-    this.once = false,
-    this.amount = 0.0,
-    this.margin,
-  });
-
-  Map<String, dynamic> toMap() => {
-    'once': once,
-    'amount': amount,
-    if (margin != null) 'margin': margin,
   };
 }

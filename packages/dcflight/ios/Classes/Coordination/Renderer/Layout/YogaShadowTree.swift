@@ -1034,7 +1034,25 @@ class YogaShadowTree {
                 return true
             }
             return false
-        case "gap", "rowGap", "columnGap", "direction", "zIndex":
+        case "gap":
+            if let gap = parseDimension(value) {
+                YGNodeStyleSetGap(node, YGGutterAll, gap)
+                return true
+            }
+            return false
+        case "rowGap":
+            if let rowGap = parseDimension(value) {
+                YGNodeStyleSetGap(node, YGGutterRow, rowGap)
+                return true
+            }
+            return false
+        case "columnGap":
+            if let columnGap = parseDimension(value) {
+                YGNodeStyleSetGap(node, YGGutterColumn, columnGap)
+                return true
+            }
+            return false
+        case "direction", "zIndex":
             // These are handled but don't need special processing
             return true
         case "borderWidth":

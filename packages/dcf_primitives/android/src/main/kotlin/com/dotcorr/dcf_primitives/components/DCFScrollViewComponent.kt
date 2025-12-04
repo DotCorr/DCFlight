@@ -88,9 +88,6 @@ class DCFScrollViewComponent : DCFComponent() {
                     )
                 ))
             }
-            
-            // CRITICAL: Built-in viewport detection - check all observed views in this scroll view
-            com.dotcorr.dcflight.utils.DCFViewportObserver.checkViewsInScrollView(scrollView)
         }
         
         // Handle scroll begin/end drag events
@@ -312,9 +309,6 @@ class DCFScrollViewComponent : DCFComponent() {
         // Update content size after layout
         scrollView.post {
             scrollView.updateContentSizeFromYogaLayout()
-            
-            // Also trigger viewport check after content size update
-            com.dotcorr.dcflight.utils.DCFViewportObserver.checkViewsInScrollView(scrollView)
         }
     }
     

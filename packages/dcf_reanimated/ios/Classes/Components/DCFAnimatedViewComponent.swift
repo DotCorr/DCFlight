@@ -48,19 +48,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         // Apply styles
         reanimatedView.applyStyles(props: props)
         
-        // Setup viewport detection if callbacks are registered (low-level API)
-        let hasViewportCallbacks = props["onViewportEnter"] != nil || props["onViewportLeave"] != nil
-        if hasViewportCallbacks {
-            let viewportData = props["viewport"] as? [String: Any]
-            let config = ViewportConfig(
-                once: viewportData?["once"] as? Bool ?? false,
-                amount: viewportData?["amount"] as? Double
-            )
-            DispatchQueue.main.async {
-                DCFViewportObserver.shared.observe(reanimatedView, config: config)
-            }
-        }
-        
         return reanimatedView
     }
     
@@ -84,19 +71,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
                 // Stop animation if autoStart is false and currently animating
                 reanimatedView.stopPureAnimation()
             }
-        }
-        
-        // Handle viewport detection updates (low-level API)
-        let hasViewportCallbacks = props["onViewportEnter"] != nil || props["onViewportLeave"] != nil
-        if hasViewportCallbacks {
-            let viewportData = props["viewport"] as? [String: Any]
-            let config = ViewportConfig(
-                once: viewportData?["once"] as? Bool ?? false,
-                amount: viewportData?["amount"] as? Double
-            )
-            DCFViewportObserver.shared.observe(view, config: config)
-        } else {
-            DCFViewportObserver.shared.unobserve(view)
         }
         
         view.applyStyles(props: props)

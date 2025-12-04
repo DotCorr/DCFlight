@@ -29,20 +29,6 @@ class DCFViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let view = view as? UIView else { return false }
         
-        // Handle viewport detection (low-level API - any view can use it)
-        // Uses DCFViewportObserver from dcflight framework
-        let hasViewportCallbacks = props["onViewportEnter"] != nil || props["onViewportLeave"] != nil
-        if hasViewportCallbacks {
-            let viewportData = props["viewport"] as? [String: Any]
-            let config = ViewportConfig(
-                once: viewportData?["once"] as? Bool ?? false,
-                amount: viewportData?["amount"] as? Double
-            )
-            DCFViewportObserver.shared.observe(view, config: config)
-        } else {
-            DCFViewportObserver.shared.unobserve(view)
-        }
-        
         if let gradientData = props["backgroundGradient"] as? [String: Any] {
             view.applyStyles(props: ["backgroundGradient": gradientData])
         }
@@ -61,12 +47,6 @@ class DCFViewComponent: NSObject, DCFComponent {
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
                                nodeId, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        
-        // Setup viewport detection if callbacks are registered
-        // Check props from associated object or wait for updateView
-        DispatchQueue.main.async {
-            // Viewport detection will be set up in updateView when props are available
-        }
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {

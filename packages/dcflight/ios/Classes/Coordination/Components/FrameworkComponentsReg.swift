@@ -28,5 +28,7 @@ import dcflight
         
         DCFComponentRegistry.shared.registerComponent("ScrollContentView", componentClass: DCFScrollContentViewComponent.self)
         
+        DCFComponentRegistry.shared.registerComponent("Viewport", componentClass: DCFViewportComponent.self)
+        
     }
 }

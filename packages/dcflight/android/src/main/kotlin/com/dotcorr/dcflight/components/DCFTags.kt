@@ -22,7 +22,6 @@ object DCFTags {
     const val HIT_SLOP_LEFT = "dcf_hit_slop_left"
     const val HIT_SLOP_RIGHT = "dcf_hit_slop_right"
     const val TEST_ID = "dcf_test_id"
-    const val VIEWPORT_VISIBLE = "dcf_viewport_visible"
     
     val VIEW_ID_KEY = VIEW_ID.hashCode()
     val EVENT_TYPES_KEY = EVENT_TYPES.hashCode()
@@ -38,6 +37,5 @@ object DCFTags {
     val HIT_SLOP_LEFT_KEY = HIT_SLOP_LEFT.hashCode()
     val HIT_SLOP_RIGHT_KEY = HIT_SLOP_RIGHT.hashCode()
     val TEST_ID_KEY = TEST_ID.hashCode()
-    val VIEWPORT_VISIBLE_KEY = VIEWPORT_VISIBLE.hashCode()
 }
 
