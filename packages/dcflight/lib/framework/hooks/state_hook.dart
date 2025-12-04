@@ -74,8 +74,13 @@ class EffectHook extends Hook {
   EffectHook(this._effect, this._dependencies);
   
   /// Update dependencies - called during reconciliation
+  /// 
+  /// CRITICAL: This is called during reconciliation, but we don't run cleanup here.
+  /// Cleanup only happens in runEffect() when dependencies actually change.
+  /// This prevents unnecessary cleanup during reconciliation loops.
   void updateDependencies(List<dynamic> newDependencies) {
     _dependencies = newDependencies;
+    // Don't run cleanup here - wait for runEffect() to determine if deps actually changed
   }
   
   /// Reset hook state for first mount
@@ -85,18 +90,23 @@ class EffectHook extends Hook {
   void resetForFirstMount() {
     _prevDeps = null;
     // Don't reset _cleanup here - let runEffect() handle cleanup properly
+    // This ensures effects run on first mount even after hot restart
   }
 
   /// Run the effect if needed based on dependency changes
   /// 
   /// Effects always run on first mount (_prevDeps == null).
-  /// After that, they only run when dependencies change.
+  /// After that, they only run when dependencies actually change.
+  /// 
+  /// CRITICAL: This compares dependencies BEFORE running cleanup, preventing
+  /// unnecessary cleanup during reconciliation loops when deps haven't changed.
   void runEffect() {
-    // Always run on first mount, or when dependencies change
-    final shouldRun = _prevDeps == null || !_areEqualDeps(_dependencies, _prevDeps!);
+    // Check if dependencies actually changed BEFORE running cleanup
+    // This prevents unnecessary cleanup during reconciliation loops
+    final depsChanged = _prevDeps == null || !_areEqualDeps(_dependencies, _prevDeps!);
     
-    if (shouldRun) {
-      // Cleanup previous effect if it exists
+    if (depsChanged) {
+      // Dependencies changed - cleanup old effect and run new one
       if (_cleanup != null) {
         try {
           _cleanup!();
@@ -118,6 +128,7 @@ class EffectHook extends Hook {
       // Update previous dependencies to track changes
       _prevDeps = List<dynamic>.from(_dependencies);
     }
+    // If deps haven't changed, do nothing - keep existing cleanup and effect
   }
 
   @override

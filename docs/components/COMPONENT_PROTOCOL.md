@@ -286,10 +286,10 @@ func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nod
     if let imageView = view as? UIImageView, let image = imageView.image {
         let size = image.size
         shadowView.intrinsicContentSize = CGSize(
-            width: max(1, size.width),
-            height: max(1, size.height)
-        )
-    }
+        width: max(1, size.width),
+        height: max(1, size.height)
+    )
+}
     
     // Most components don't need to set this - they size based on children or layout props
 }

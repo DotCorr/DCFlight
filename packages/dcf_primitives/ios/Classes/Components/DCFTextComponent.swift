@@ -138,7 +138,7 @@ class DCFTextComponent: NSObject, DCFComponent {
     func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         objc_setAssociatedObject(view, 
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
-                               nodeId,
+                               nodeId, 
                                .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
