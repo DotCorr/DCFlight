@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' show Colors;
@@ -145,8 +147,8 @@ class HeroSection extends DCFStatefulComponent {
               layout: DCFLayout(width: '100%', gap: 32),
               children: [
                 Motion(
-                  initial: {'opacity': 0, 'y': 20},
-                  animate: {'opacity': 1, 'y': 0},
+                  initial: AnimationProperties(opacity: 0, y: 20),
+                  animate: AnimationProperties(opacity: 1, y: 0),
                   transition: Transition(duration: 800),
                   autoStart: true,
                   layout: DCFLayout(gap: 24),
@@ -284,6 +286,58 @@ class HeroSection extends DCFStatefulComponent {
 class TypewriterEffect extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
+    final words = [
+      "Build for Mobile.",
+      "Build for Web.",
+      "Build for AI.",
+      "Build for AGI.",
+      "Build for The Future."
+    ];
+    
+    final index = useState<int>(0);
+    final subIndex = useState<int>(0);
+    final reverse = useState<bool>(false);
+    
+    // Typewriter logic - start typing immediately
+    useEffect(() {
+      Timer? timer;
+      
+      // If we've typed the full word and not reversing, wait 2 seconds then start deleting
+      if (subIndex.state == words[index.state].length && !reverse.state) {
+        timer = Timer(Duration(milliseconds: 2000), () {
+          reverse.setState(true);
+        });
+        return () => timer?.cancel();
+      }
+      
+      // If we've deleted everything and reversing, move to next word
+      if (subIndex.state == 0 && reverse.state) {
+        reverse.setState(false);
+        index.setState((index.state + 1) % words.length);
+        // Start typing the next word immediately
+        timer = Timer(Duration(milliseconds: 100), () {
+          subIndex.setState(1);
+        });
+        return () => timer?.cancel();
+      }
+      
+      // Type or delete character
+      if (!(subIndex.state == 0 && !reverse.state)) {
+        timer = Timer(Duration(milliseconds: reverse.state ? 50 : 100), () {
+          subIndex.setState(subIndex.state + (reverse.state ? -1 : 1));
+        });
+        return () => timer?.cancel();
+      }
+      
+      // Initial state - start typing first character
+      timer = Timer(Duration(milliseconds: 100), () {
+        subIndex.setState(1);
+      });
+      return () => timer?.cancel();
+    }, dependencies: [subIndex.state, index.state, reverse.state]);
+    
+    final currentText = words[index.state].substring(0, subIndex.state);
+    
     return DCFView(
       layout: DCFLayout(
         flexDirection: DCFFlexDirection.row,
@@ -291,24 +345,36 @@ class TypewriterEffect extends DCFStatefulComponent {
       ),
       children: [
         DCFText(
-          content: "\$ Build for Mobile", // Static for stability first
+          content: "\$ ",
           textProps: DCFTextProps(
             fontSize: 20,
-            fontFamily: "Courier", // Monospace if available
+            fontFamily: "Courier",
+          ),
+          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[400]!),
+        ),
+        DCFText(
+          content: currentText,
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontFamily: "Courier",
           ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
         ),
-        // Cursor
+        // Blinking cursor - positioned right after the text
         ReanimatedView(
-          layout: DCFLayout(width: 10, height: 24, marginLeft: 8),
+          layout: DCFLayout(
+            width: 2, // Thin cursor like web
+            height: 20, // Match text height
+            marginLeft: 2, // Small gap after text
+          ),
           styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
-          animate: {'opacity': 0},
+          animate: AnimationProperties(opacity: 0),
           transition: Transition(
             duration: 500,
             repeat: true,
             repeatType: 'reverse',
           ),
-          autoStart: true, // CRITICAL: Ensure cursor blinks
+          autoStart: true,
           children: [],
         ),
       ],
@@ -329,15 +395,15 @@ class InfrastructureVisual extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
         justifyContent: DCFJustifyContent.center,
       ),
-      initial: {'rotateX': 0, 'rotateZ': 0, 'scale': 0.8},
-      animate: {
-        'rotateX': 60,
-        'rotateZ': 45,
-        'scale': 1.0,
-      },
+      initial: AnimationProperties(rotateX: 0, rotateZ: 0, scale: 0.8),
+      animate: AnimationProperties(
+        rotateX: 60,
+        rotateZ: 45,
+        scale: 1.0,
+      ),
       transition: Transition(
-        duration: 2000,
-        curve: AnimationCurve.easeOut,
+        duration: 2500, // Match web duration
+        cubicBezier: [0.16, 1, 0.3, 1], // Smooth ease-out like web
       ),
       autoStart: true,
       children: [
@@ -369,8 +435,8 @@ class InfrastructureVisual extends DCFStatelessComponent {
             shadowRadius: 20,
             shadowOpacity: 0.4,
           ),
-          initial: {'translateZ': 0},
-          animate: {'translateZ': 80}, // Tower height in 3D space
+          initial: AnimationProperties(translateZ: 0),
+          animate: AnimationProperties(translateZ: 80), // Tower height in 3D space
           transition: Transition(
             duration: 2000,
             delay: 800,

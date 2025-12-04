@@ -11,6 +11,7 @@ import 'package:dcflight/dcflight.dart';
 import '../styles/animated_style.dart';
 import '../values/animation_values.dart';
 import '../enums/animation_enums.dart';
+import '../types/animation_properties.dart';
 import '../helper/init.dart';
 import 'reanimated_view.dart';
 
@@ -53,23 +54,33 @@ class Motion extends DCFStatefulComponent {
 
   /// Initial animation values (applied on mount)
   /// 
-  /// Keys can be: opacity, scale, x, y, z, rotate, rotateX, rotateY, rotateZ
-  /// Values can be numbers or lists for keyframes
-  final Map<String, dynamic>? initial;
+  /// Use [AnimationProperties] for type safety, or Map<String, dynamic> for backwards compatibility
+  final AnimationProperties? initial;
 
   /// Target animation values (animated to on mount)
   /// 
-  /// Keys can be: opacity, scale, x, y, z, rotate, rotateX, rotateY, rotateZ
-  /// Values can be numbers or lists for keyframes
-  final Map<String, dynamic>? animate;
+  /// Use [AnimationProperties] for type safety, or Map<String, dynamic> for backwards compatibility
+  final AnimationProperties? animate;
 
   /// Animation values when element is hovered
   /// 
   /// Automatically triggers on hover (mobile: on press)
-  final Map<String, dynamic>? whileHover;
+  /// Use [AnimationProperties] for type safety, or Map<String, dynamic> for backwards compatibility
+  final AnimationProperties? whileHover;
 
   /// Animation values when element is tapped/pressed
-  final Map<String, dynamic>? whileTap;
+  /// Use [AnimationProperties] for type safety, or Map<String, dynamic> for backwards compatibility
+  final AnimationProperties? whileTap;
+  
+  // Legacy Map support (for backwards compatibility)
+  /// @nodoc - Internal use only
+  final Map<String, dynamic>? _initialMap;
+  /// @nodoc - Internal use only
+  final Map<String, dynamic>? _animateMap;
+  /// @nodoc - Internal use only
+  final Map<String, dynamic>? _whileHoverMap;
+  /// @nodoc - Internal use only
+  final Map<String, dynamic>? _whileTapMap;
 
   /// Animation transition configuration
   final Transition? transition;
@@ -101,6 +112,11 @@ class Motion extends DCFStatefulComponent {
     this.animate,
     this.whileHover,
     this.whileTap,
+    // Legacy Map support (for backwards compatibility)
+    Map<String, dynamic>? initialMap,
+    Map<String, dynamic>? animateMap,
+    Map<String, dynamic>? whileHoverMap,
+    Map<String, dynamic>? whileTapMap,
     this.transition,
     this.layout,
     this.styleSheet,
@@ -110,8 +126,31 @@ class Motion extends DCFStatefulComponent {
     this.onAnimationComplete,
     this.events,
     super.key,
-  }) {
+  }) : _initialMap = initialMap,
+       _animateMap = animateMap,
+       _whileHoverMap = whileHoverMap,
+       _whileTapMap = whileTapMap {
     ReanimatedInit.ensureInitialized();
+  }
+  
+  /// Gets the initial values as a Map (for internal use)
+  Map<String, dynamic>? get _initialMapValue {
+    return initial?.toMap() ?? _initialMap;
+  }
+  
+  /// Gets the animate values as a Map (for internal use)
+  Map<String, dynamic>? get _animateMapValue {
+    return animate?.toMap() ?? _animateMap;
+  }
+  
+  /// Gets the whileHover values as a Map (for internal use)
+  Map<String, dynamic>? get _whileHoverMapValue {
+    return whileHover?.toMap() ?? _whileHoverMap;
+  }
+  
+  /// Gets the whileTap values as a Map (for internal use)
+  Map<String, dynamic>? get _whileTapMapValue {
+    return whileTap?.toMap() ?? _whileTapMap;
   }
 
   @override
@@ -148,7 +187,8 @@ class Motion extends DCFStatefulComponent {
   /// Converts declarative animation props to AnimatedStyle
   AnimatedStyle? _buildAnimatedStyle() {
     // Only build if we have animate prop (initial alone doesn't animate)
-    if (animate == null) return null;
+    final animateMap = _animateMapValue;
+    if (animateMap == null) return null;
 
     final style = AnimatedStyle();
     final trans = transition ?? Transition();
@@ -181,45 +221,45 @@ class Motion extends DCFStatefulComponent {
     }
 
     // Process animate props
-    if (animate != null) {
-      final initialValues = initial ?? {};
+    final initialValues = _initialMapValue ?? {};
+    
+    animateMap.forEach((key, value) {
+      final fromValue = initialValues[key] ?? _getDefaultValue(key);
+      final toValue = value;
       
-      animate!.forEach((key, value) {
-        final fromValue = initialValues[key] ?? _getDefaultValue(key);
-        final toValue = value;
-        
-        switch (key) {
-          case 'opacity':
-            style.opacity(createValue(fromValue, toValue));
-            break;
-          case 'scale':
-            style.transform(scale: createValue(fromValue, toValue));
-            break;
-          case 'x':
-            style.transform(translateX: createValue(fromValue, toValue));
-            break;
-          case 'y':
-            style.transform(translateY: createValue(fromValue, toValue));
-            break;
-          case 'z':
-            style.transform(translateZ: createValue(fromValue, toValue));
-            break;
-          case 'rotate':
-          case 'rotateZ':
-            style.transform(rotationZ: createValue(fromValue, toValue));
-            break;
-          case 'rotateX':
-            style.transform(rotationX: createValue(fromValue, toValue));
-            break;
-          case 'rotateY':
-            style.transform(rotationY: createValue(fromValue, toValue));
-            break;
-        }
-      });
-    }
+      switch (key) {
+        case 'opacity':
+          style.opacity(createValue(fromValue, toValue));
+          break;
+        case 'scale':
+          style.transform(scale: createValue(fromValue, toValue));
+          break;
+        case 'x':
+          style.transform(translateX: createValue(fromValue, toValue));
+          break;
+        case 'y':
+          style.transform(translateY: createValue(fromValue, toValue));
+          break;
+        case 'z':
+          style.transform(translateZ: createValue(fromValue, toValue));
+          break;
+        case 'rotate':
+        case 'rotateZ':
+          style.transform(rotationZ: createValue(fromValue, toValue));
+          break;
+        case 'rotateX':
+          style.transform(rotationX: createValue(fromValue, toValue));
+          break;
+        case 'rotateY':
+          style.transform(rotationY: createValue(fromValue, toValue));
+          break;
+      }
+    });
 
     // Add perspective if needed for 3D
-    if (animate?.containsKey('z') == true || animate?.containsKey('rotateX') == true || animate?.containsKey('rotateY') == true) {
+    if (animateMap.containsKey('z') || 
+        animateMap.containsKey('rotateX') || 
+        animateMap.containsKey('rotateY')) {
       style.transform(perspective: trans.perspective ?? 1000);
     }
 
@@ -320,6 +360,10 @@ class Transition {
 
   /// Repeat type: 'loop' (default), 'reverse', or 'mirror'
   final String? repeatType;
+  
+  /// Custom cubic bezier curve [x1, y1, x2, y2] for custom easing
+  /// Example: [0.16, 1, 0.3, 1] for smooth ease-out
+  final List<double>? cubicBezier;
 
   const Transition({
     this.duration = 300,
@@ -335,6 +379,7 @@ class Transition {
     this.staggerChildren,
     this.delayChildren,
     this.repeatType,
+    this.cubicBezier,
   });
 
   Map<String, dynamic> toMap() => {
@@ -351,5 +396,6 @@ class Transition {
     if (staggerChildren != null) 'staggerChildren': staggerChildren,
     if (delayChildren != null) 'delayChildren': delayChildren,
     if (repeatType != null) 'repeatType': repeatType,
+    if (cubicBezier != null) 'cubicBezier': cubicBezier,
   };
 }

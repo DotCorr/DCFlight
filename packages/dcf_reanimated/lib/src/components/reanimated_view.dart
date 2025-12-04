@@ -10,6 +10,7 @@ library;
 import 'package:dcflight/dcflight.dart';
 import '../styles/animated_style.dart';
 import '../values/animation_values.dart';
+import '../types/animation_properties.dart';
 import '../helper/init.dart';
 import 'motion.dart';
 
@@ -56,15 +57,29 @@ class ReanimatedView extends DCFStatelessComponent {
 
   /// Initial animation values (applied on mount)
   /// 
-  /// Keys can be: opacity, scale, x, y, z, rotate, rotateX, rotateY, rotateZ
-  /// Values can be numbers or lists for keyframes
-  final Map<String, dynamic>? initial;
+  /// Use [AnimationProperties] for type safety, or Map<String, dynamic> for backwards compatibility
+  final AnimationProperties? initial;
+  
+  /// Initial animation values (legacy Map format)
+  final Map<String, dynamic>? _initialMap;
 
   /// Target animation values (animated to on mount)
   /// 
-  /// Keys can be: opacity, scale, x, y, z, rotate, rotateX, rotateY, rotateZ
-  /// Values can be numbers or lists for keyframes
-  final Map<String, dynamic>? animate;
+  /// Use [AnimationProperties] for type safety, or Map<String, dynamic> for backwards compatibility
+  final AnimationProperties? animate;
+  
+  /// Target animation values (legacy Map format)
+  final Map<String, dynamic>? _animateMap;
+  
+  /// Gets the initial values as a Map (for internal use)
+  Map<String, dynamic>? get _initialMapValue {
+    return initial?.toMap() ?? _initialMap;
+  }
+  
+  /// Gets the animate values as a Map (for internal use)
+  Map<String, dynamic>? get _animateMapValue {
+    return animate?.toMap() ?? _animateMap;
+  }
 
   /// Animation transition configuration (used with initial/animate)
   final Transition? transition;
@@ -121,6 +136,9 @@ class ReanimatedView extends DCFStatelessComponent {
     required this.children,
     this.initial,
     this.animate,
+    // Legacy Map support (for backwards compatibility)
+    Map<String, dynamic>? initialMap,
+    Map<String, dynamic>? animateMap,
     this.transition,
     this.animatedStyle,
     this.worklet,
@@ -134,7 +152,8 @@ class ReanimatedView extends DCFStatelessComponent {
     this.onAnimationRepeat,
     this.events,
     super.key,
-  }) {
+  }) : _initialMap = initialMap,
+       _animateMap = animateMap {
     // Ensure DCF Reanimated is initialized before first use
     ReanimatedInit.ensureInitialized();
   }
@@ -198,7 +217,8 @@ class ReanimatedView extends DCFStatelessComponent {
 
   /// Converts initial/animate props to AnimatedStyle (similar to Motion component)
   AnimatedStyle? _buildAnimatedStyleFromInitialAnimate() {
-    if (animate == null) return null;
+    final animateMap = _animateMapValue;
+    if (animateMap == null) return null;
 
     final style = AnimatedStyle();
     final trans = transition ?? Transition();
@@ -231,9 +251,9 @@ class ReanimatedView extends DCFStatelessComponent {
     }
 
     // Process animate props
-    final initialValues = initial ?? {};
+    final initialValues = _initialMapValue ?? {};
     
-    animate!.forEach((key, value) {
+    animateMap.forEach((key, value) {
       final fromValue = initialValues[key] ?? _getDefaultValue(key);
       final toValue = value;
       

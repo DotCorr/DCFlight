@@ -10,6 +10,9 @@ library;
 // Type-safe enums for animation configuration
 export 'src/enums/animation_enums.dart';
 
+// Type-safe animation properties
+export 'src/types/animation_properties.dart';
+
 // Core animation values and configuration
 export 'src/values/animation_values.dart';
 
