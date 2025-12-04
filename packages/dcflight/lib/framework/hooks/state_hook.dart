@@ -77,24 +77,45 @@ class EffectHook extends Hook {
   void updateDependencies(List<dynamic> newDependencies) {
     _dependencies = newDependencies;
   }
+  
+  /// Reset hook state for first mount
+  /// This ensures effects always run on first mount, even if the hook
+  /// was reused from a previous component instance (e.g., after hot restart)
+  /// This is called by the framework when a component mounts for the first time
+  void resetForFirstMount() {
+    _prevDeps = null;
+    // Don't reset _cleanup here - let runEffect() handle cleanup properly
+  }
 
   /// Run the effect if needed based on dependency changes
+  /// 
+  /// Effects always run on first mount (_prevDeps == null).
+  /// After that, they only run when dependencies change.
   void runEffect() {
-    if (_prevDeps == null || !_areEqualDeps(_dependencies, _prevDeps!)) {
-      
+    // Always run on first mount, or when dependencies change
+    final shouldRun = _prevDeps == null || !_areEqualDeps(_dependencies, _prevDeps!);
+    
+    if (shouldRun) {
+      // Cleanup previous effect if it exists
       if (_cleanup != null) {
         try {
           _cleanup!();
         } catch (e) {
+          // Ignore cleanup errors
         }
         _cleanup = null;
       }
 
+      // Run the effect
       try {
-        _cleanup = _effect();
-      } catch (e) {
+        _cleanup = _effect?.call();
+      } catch (e, stackTrace) {
+        // Log effect errors but don't crash
+        print('⚠️ EffectHook: Error running effect: $e');
+        print('Stack trace: $stackTrace');
       }
       
+      // Update previous dependencies to track changes
       _prevDeps = List<dynamic>.from(_dependencies);
     }
   }

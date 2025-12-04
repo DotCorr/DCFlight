@@ -1562,6 +1562,13 @@ class DCFEngine {
               extra: {'ViewId': viewId});
 
           if (node is DCFStatefulComponent && !node.isMounted) {
+            // CRITICAL: Reset effects BEFORE componentDidMount to ensure they run on first mount
+            // This fixes the issue where effects don't run after hot restart
+            // We need to reset effects while isMounted is still false
+            EngineDebugLogger.log(
+                'LIFECYCLE_EFFECTS_RESET', 'Resetting effects for first mount');
+            node.resetEffectsForFirstMount();
+            
             EngineDebugLogger.log('LIFECYCLE_DID_MOUNT',
                 'Calling componentDidMount for StatefulComponent');
             node.componentDidMount();

@@ -64,19 +64,19 @@ class NavigationBar extends DCFStatelessComponent {
               layout: DCFLayout(width: 24, height: 24),
               styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
             ),
-            DCFText(
-              content: "DotCorr",
-              textProps: DCFTextProps(
-                fontSize: 18,
-                fontWeight: DCFFontWeight.bold,
+                DCFText(
+                  content: "DotCorr",
+                  textProps: DCFTextProps(
+                    fontSize: 18,
+                    fontWeight: DCFFontWeight.bold,
                 letterSpacing: -0.5,
-              ),
+                  ),
               styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+                ),
+              ],
             ),
-          ],
-        ),
         // Links - CRITICAL: Add flexShrink and minWidth: 0 to prevent overflow
-        DCFView(
+            DCFView(
           layout: DCFLayout(
             flexDirection: DCFFlexDirection.row,
             alignItems: DCFAlign.center,
@@ -85,9 +85,9 @@ class NavigationBar extends DCFStatelessComponent {
             flexGrow: 0, // Don't grow
             minWidth: 0, // CRITICAL: Allow shrinking below content size
           ),
-          children: [
-            DCFText(
-              content: "The Lab",
+              children: [
+                DCFText(
+                  content: "The Lab",
               textProps: DCFTextProps(
                 fontSize: 14,
                 fontWeight: DCFFontWeight.medium,
@@ -100,8 +100,8 @@ class NavigationBar extends DCFStatelessComponent {
               ),
             ),
             // GitHub Icon placeholder (text for now)
-            DCFText(
-              content: "GitHub",
+                DCFText(
+                  content: "GitHub",
               textProps: DCFTextProps(
                 fontSize: 14,
                 fontWeight: DCFFontWeight.medium,
@@ -196,11 +196,11 @@ class HeroSection extends DCFStatefulComponent {
                               ),
                               styleSheet: DCFStyleSheet(primaryColor: Colors.grey[300]!),
                             ),
-                            DCFText(
+                DCFText(
                               content: "Inevitable.",
-                              textProps: DCFTextProps(
+                  textProps: DCFTextProps(
                                 fontSize: 48,
-                                fontWeight: DCFFontWeight.medium,
+                    fontWeight: DCFFontWeight.medium,
                                 lineHeight: 1.1,
                                 letterSpacing: -1.5,
                               ),
@@ -240,13 +240,13 @@ class HeroSection extends DCFStatefulComponent {
                             backgroundColor: Colors.black,
                             borderRadius: 2, // Small radius like web
                           ),
-                          children: [
-                            DCFText(
-                              content: "Enter The Lab",
-                              textProps: DCFTextProps(
-                                fontSize: 16,
-                                fontWeight: DCFFontWeight.medium,
-                              ),
+                  children: [
+                    DCFText(
+                      content: "Enter The Lab",
+                      textProps: DCFTextProps(
+                        fontSize: 16,
+                        fontWeight: DCFFontWeight.medium,
+                      ),
                               styleSheet: DCFStyleSheet(primaryColor: Colors.white),
                             ),
                             DCFText(
@@ -298,7 +298,7 @@ class TypewriterEffect extends DCFStatefulComponent {
     final subIndex = useState<int>(0);
     final reverse = useState<bool>(false);
     final blink = useState<bool>(true);
-    
+
     // Cursor blinking effect - runs independently
     useEffect(() {
       final timer = Timer.periodic(Duration(milliseconds: 500), (_) {
@@ -307,9 +307,10 @@ class TypewriterEffect extends DCFStatefulComponent {
       return () => timer.cancel();
     }, dependencies: []);
     
-    // Typewriter logic - more reliable with explicit state checks
+    // Typewriter logic - matches web version behavior
     // Note: This runs on Dart thread (like React Native's JS thread)
     // For UI thread animations, we'd need worklets, but text updates require bridge calls anyway
+    // The framework ensures this effect runs reliably on mount and when dependencies change
     useEffect(() {
       Timer? timer;
       final currentWord = words[index.state];
@@ -317,22 +318,9 @@ class TypewriterEffect extends DCFStatefulComponent {
       final currentSubIndex = subIndex.state;
       final isReversing = reverse.state;
       
-      // Initial state - MUST check this first before other conditions
-      // This handles both first mount and hot restart
-      if (currentSubIndex == 0 && !isReversing) {
-        timer = Timer(Duration(milliseconds: 100), () {
-          // Double-check we're still at initial state (race condition protection)
-          if (subIndex.state == 0 && !reverse.state) {
-            subIndex.setState(1);
-          }
-        });
-        return () => timer?.cancel();
-      }
-      
-      // If we've typed the full word and not reversing, wait 2 seconds then start deleting
+      // If we've typed past the end (like web version checks length + 1), wait then delete
       if (currentSubIndex == wordLength && !isReversing) {
         timer = Timer(Duration(milliseconds: 2000), () {
-          // Double-check state hasn't changed (race condition protection)
           if (subIndex.state == wordLength && !reverse.state) {
             reverse.setState(true);
           }
@@ -343,39 +331,33 @@ class TypewriterEffect extends DCFStatefulComponent {
       // If we've deleted everything and reversing, move to next word
       if (currentSubIndex == 0 && isReversing) {
         reverse.setState(false);
-        final nextIndex = (index.state + 1) % words.length;
-        // Change word first, then start typing after a brief delay to prevent layout jump
-        index.setState(nextIndex);
-        // Small delay to let layout settle before starting to type
-        timer = Timer(Duration(milliseconds: 50), () {
-          subIndex.setState(1);
-        });
-        return () => timer?.cancel();
+        index.setState((index.state + 1) % words.length);
+        // Don't set timer here - let the effect re-run with new state
+        return () {};
       }
       
-      // Type or delete character (only if we're not at initial state)
-      if (currentSubIndex > 0 && currentSubIndex < wordLength) {
-        final speed = isReversing ? 50 : 100;
-        timer = Timer(Duration(milliseconds: speed), () {
-          // Use current state values to avoid stale closures
-          final currentReverse = reverse.state;
-          final currentSub = subIndex.state;
-          final currentWordLen = words[index.state].length;
-          
-          if (currentReverse) {
-            if (currentSub > 0) {
-              subIndex.setState(currentSub - 1);
-            }
-          } else {
-            if (currentSub < currentWordLen) {
-              subIndex.setState(currentSub + 1);
-            }
+      // Default: continue typing or deleting
+      // This handles initial state (0, false) and all in-progress states
+      final speed = isReversing ? 50 : 100;
+      timer = Timer(Duration(milliseconds: speed), () {
+        // Get fresh state values to avoid stale closures
+        final currentReverse = reverse.state;
+        final currentSub = subIndex.state;
+        final currentWordLen = words[index.state].length;
+        
+        if (currentReverse) {
+          // Deleting - move backwards
+          if (currentSub > 0) {
+            subIndex.setState(currentSub - 1);
           }
-        });
-        return () => timer?.cancel();
-      }
-      
-      return () {}; // No cleanup needed if no timer was created
+        } else {
+          // Typing - move forwards (including initial state 0 -> 1)
+          if (currentSub < currentWordLen) {
+            subIndex.setState(currentSub + 1);
+          }
+        }
+      });
+      return () => timer?.cancel();
     }, dependencies: [subIndex.state, index.state, reverse.state]);
     
     final currentText = words[index.state].substring(0, subIndex.state);
@@ -385,7 +367,7 @@ class TypewriterEffect extends DCFStatefulComponent {
     // Use a fixed-width container to prevent layout jumps when switching words
     final longestWord = words.reduce((a, b) => a.length > b.length ? a : b);
     final estimatedWidth = longestWord.length * 12.0; // Approximate width per character
-    
+
     return DCFView(
       layout: DCFLayout(
         flexDirection: DCFFlexDirection.row,
@@ -582,14 +564,14 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
       children: [
         // Icon - matches web w-12 h-12 = 48px
         DCFView(
-          layout: DCFLayout(
+            layout: DCFLayout(
             width: 48,
             height: 48,
             alignItems: DCFAlign.center,
             justifyContent: DCFJustifyContent.center,
             marginBottom: 24, // mb-6 = 24px
-          ),
-          styleSheet: DCFStyleSheet(
+            ),
+            styleSheet: DCFStyleSheet(
             backgroundColor: bg == Colors.white ? Colors.black : Colors.white,
             borderRadius: 4,
           ),
@@ -605,7 +587,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
         ),
         // Title - text-2xl font-bold mb-3
         DCFView(
-          layout: DCFLayout(
+      layout: DCFLayout(
             width: '100%',
             marginBottom: 12, // mb-3 = 12px
           ),
@@ -627,10 +609,10 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             marginBottom: 32, // mb-8 = 32px
             flexShrink: 0, // Don't shrink
           ),
-          children: [
-            DCFText(
+              children: [
+                DCFText(
               content: desc,
-              textProps: DCFTextProps(
+                  textProps: DCFTextProps(
                 fontSize: 16,
                 lineHeight: 1.5,
                 numberOfLines:
@@ -644,9 +626,9 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               ),
               // Remove explicit width - let text size naturally based on parent constraints
               // Yoga will automatically constrain it to parent's available width (after padding)
+                ),
+              ],
             ),
-          ],
-        ),
         // Link - inline-flex items-center gap-2
         DCFView(
           layout: DCFLayout(
@@ -654,10 +636,10 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             alignItems: DCFAlign.center,
             gap: 8, // gap-2 = 8px
           ),
-          children: [
-            DCFText(
+              children: [
+                DCFText(
               content: linkText,
-              textProps: DCFTextProps(
+                  textProps: DCFTextProps(
                 fontSize: 16,
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line for link
@@ -667,8 +649,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 flexShrink:
                     0, // Text should not shrink - let it truncate if needed
               ),
-            ),
-            DCFText(
+                ),
+                DCFText(
               content: "→",
               textProps: DCFTextProps(fontSize: 16),
               styleSheet: DCFStyleSheet(primaryColor: text),
@@ -693,12 +675,12 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
         paddingHorizontal: 24,
       ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
-      children: [
-        DCFText(
-          content: "Built for the Modern Stack",
-          textProps: DCFTextProps(
+          children: [
+            DCFText(
+              content: "Built for the Modern Stack",
+              textProps: DCFTextProps(
             fontSize: 32,
-            fontWeight: DCFFontWeight.bold,
+                fontWeight: DCFFontWeight.bold,
             letterSpacing: -1,
           ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.black),
@@ -720,11 +702,11 @@ class AboutSection extends DCFStatelessComponent {
       ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[900]!),
       children: [
-        DCFText(
-          content: "Designing the Cognitive Future",
-          textProps: DCFTextProps(
-            fontSize: 32,
-            fontWeight: DCFFontWeight.bold,
+            DCFText(
+              content: "Designing the Cognitive Future",
+              textProps: DCFTextProps(
+                fontSize: 32,
+                fontWeight: DCFFontWeight.bold,
             letterSpacing: -1,
           ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.white),
@@ -749,9 +731,9 @@ class Footer extends DCFStatelessComponent {
         gap: 40,
       ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
-      children: [
-        DCFText(
-          content: "© 2025 DotCorr. All rights reserved.",
+          children: [
+            DCFText(
+              content: "© 2025 DotCorr. All rights reserved.",
           textProps: DCFTextProps(fontSize: 14),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[500]!),
         ),

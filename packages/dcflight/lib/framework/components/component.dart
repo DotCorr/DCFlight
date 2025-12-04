@@ -245,10 +245,34 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
     return hook;
   }
 
+  /// Reset all effects for first mount
+  /// This is called BEFORE componentDidMount to ensure effects run on first mount
+  /// even after hot restart when hooks might be reused with stale state
+  /// This is called by the engine during component mounting
+  void resetEffectsForFirstMount() {
+    for (var i = 0; i < _hooks.length; i++) {
+      final hook = _hooks[i];
+      if (hook is EffectHook) {
+        // Force effect to run on first mount by resetting _prevDeps
+        hook.resetForFirstMount();
+      }
+    }
+  }
+
+  /// Run effects after render (like React's useEffect)
+  /// 
+  /// This is called after the component is mounted and rendered.
+  /// Effects are guaranteed to run on first mount, and then whenever
+  /// their dependencies change.
+  /// 
+  /// Effects are reset BEFORE componentDidMount is called (in _resetEffectsForFirstMount)
+  /// to ensure they always run on first mount, even after hot restart.
   void runEffectsAfterRender() {
     if (kDebugMode && runtimeType.toString().contains('Portal')) {
     }
 
+    // Run all effect hooks (but not layout or insertion effects)
+    // Effects have already been reset for first mount if needed
     for (var i = 0; i < _hooks.length; i++) {
       final hook = _hooks[i];
       if (hook is EffectHook &&
@@ -256,6 +280,8 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
           hook is! InsertionEffectHook) {
         if (kDebugMode && runtimeType.toString().contains('Portal')) {
         }
+        // runEffect() handles first-run detection internally
+        // _prevDeps was reset to null in _resetEffectsForFirstMount if this is first mount
         hook.runEffect();
       }
     }
