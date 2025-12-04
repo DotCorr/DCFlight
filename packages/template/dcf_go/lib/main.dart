@@ -297,23 +297,42 @@ class TypewriterEffect extends DCFStatefulComponent {
     final index = useState<int>(0);
     final subIndex = useState<int>(0);
     final reverse = useState<bool>(false);
+    final blink = useState<bool>(true);
     
-    // Typewriter logic - start typing immediately
+    // Cursor blinking effect - runs independently
+    useEffect(() {
+      final timer = Timer.periodic(Duration(milliseconds: 500), (_) {
+        blink.setState(!blink.state);
+      });
+      return () => timer.cancel();
+    }, dependencies: []);
+    
+    // Typewriter logic - more reliable with explicit state checks
+    // Note: This runs on Dart thread (like React Native's JS thread)
+    // For UI thread animations, we'd need worklets, but text updates require bridge calls anyway
     useEffect(() {
       Timer? timer;
+      final currentWord = words[index.state];
+      final wordLength = currentWord.length;
+      final currentSubIndex = subIndex.state;
+      final isReversing = reverse.state;
       
       // If we've typed the full word and not reversing, wait 2 seconds then start deleting
-      if (subIndex.state == words[index.state].length && !reverse.state) {
+      if (currentSubIndex == wordLength && !isReversing) {
         timer = Timer(Duration(milliseconds: 2000), () {
-          reverse.setState(true);
+          // Double-check state hasn't changed (race condition protection)
+          if (subIndex.state == wordLength && !reverse.state) {
+            reverse.setState(true);
+          }
         });
         return () => timer?.cancel();
       }
       
       // If we've deleted everything and reversing, move to next word
-      if (subIndex.state == 0 && reverse.state) {
+      if (currentSubIndex == 0 && isReversing) {
         reverse.setState(false);
-        index.setState((index.state + 1) % words.length);
+        final nextIndex = (index.state + 1) % words.length;
+        index.setState(nextIndex);
         // Start typing the next word immediately
         timer = Timer(Duration(milliseconds: 100), () {
           subIndex.setState(1);
@@ -322,22 +341,45 @@ class TypewriterEffect extends DCFStatefulComponent {
       }
       
       // Type or delete character
-      if (!(subIndex.state == 0 && !reverse.state)) {
-        timer = Timer(Duration(milliseconds: reverse.state ? 50 : 100), () {
-          subIndex.setState(subIndex.state + (reverse.state ? -1 : 1));
+      if (currentSubIndex > 0 || !isReversing) {
+        final speed = isReversing ? 50 : 100;
+        timer = Timer(Duration(milliseconds: speed), () {
+          // Use current state values to avoid stale closures
+          final currentReverse = reverse.state;
+          final currentSub = subIndex.state;
+          final currentWordLen = words[index.state].length;
+          
+          if (currentReverse) {
+            if (currentSub > 0) {
+              subIndex.setState(currentSub - 1);
+            }
+          } else {
+            if (currentSub < currentWordLen) {
+              subIndex.setState(currentSub + 1);
+            }
+          }
         });
         return () => timer?.cancel();
       }
       
-      // Initial state - start typing first character
-      timer = Timer(Duration(milliseconds: 100), () {
-        subIndex.setState(1);
-      });
-      return () => timer?.cancel();
+      // Initial state - start typing first character immediately (handles hot restart)
+      if (currentSubIndex == 0 && !isReversing) {
+        timer = Timer(Duration(milliseconds: 100), () {
+          // Double-check we're still at initial state
+          if (subIndex.state == 0 && !reverse.state) {
+            subIndex.setState(1);
+          }
+        });
+        return () => timer?.cancel();
+      }
+      
+      return () {}; // No cleanup needed if no timer was created
     }, dependencies: [subIndex.state, index.state, reverse.state]);
     
     final currentText = words[index.state].substring(0, subIndex.state);
+    final cursorChar = blink.state ? '▊' : ' '; // Use block character for cursor
     
+    // Combine text and cursor in a single text component for proper positioning
     return DCFView(
       layout: DCFLayout(
         flexDirection: DCFFlexDirection.row,
@@ -353,29 +395,12 @@ class TypewriterEffect extends DCFStatefulComponent {
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[400]!),
         ),
         DCFText(
-          content: currentText,
+          content: "$currentText$cursorChar",
           textProps: DCFTextProps(
             fontSize: 20,
             fontFamily: "Courier",
           ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
-        ),
-        // Blinking cursor - positioned right after the text
-        ReanimatedView(
-          layout: DCFLayout(
-            width: 2, // Thin cursor like web
-            height: 20, // Match text height
-            marginLeft: 2, // Small gap after text
-          ),
-          styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
-          animate: AnimationProperties(opacity: 0),
-          transition: Transition(
-            duration: 500,
-            repeat: true,
-            repeatType: 'reverse',
-          ),
-          autoStart: true,
-          children: [],
         ),
       ],
     );
