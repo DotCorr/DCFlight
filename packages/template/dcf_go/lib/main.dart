@@ -317,6 +317,18 @@ class TypewriterEffect extends DCFStatefulComponent {
       final currentSubIndex = subIndex.state;
       final isReversing = reverse.state;
       
+      // Initial state - MUST check this first before other conditions
+      // This handles both first mount and hot restart
+      if (currentSubIndex == 0 && !isReversing) {
+        timer = Timer(Duration(milliseconds: 100), () {
+          // Double-check we're still at initial state (race condition protection)
+          if (subIndex.state == 0 && !reverse.state) {
+            subIndex.setState(1);
+          }
+        });
+        return () => timer?.cancel();
+      }
+      
       // If we've typed the full word and not reversing, wait 2 seconds then start deleting
       if (currentSubIndex == wordLength && !isReversing) {
         timer = Timer(Duration(milliseconds: 2000), () {
@@ -332,16 +344,17 @@ class TypewriterEffect extends DCFStatefulComponent {
       if (currentSubIndex == 0 && isReversing) {
         reverse.setState(false);
         final nextIndex = (index.state + 1) % words.length;
+        // Change word first, then start typing after a brief delay to prevent layout jump
         index.setState(nextIndex);
-        // Start typing the next word immediately
-        timer = Timer(Duration(milliseconds: 100), () {
+        // Small delay to let layout settle before starting to type
+        timer = Timer(Duration(milliseconds: 50), () {
           subIndex.setState(1);
         });
         return () => timer?.cancel();
       }
       
-      // Type or delete character
-      if (currentSubIndex > 0 || !isReversing) {
+      // Type or delete character (only if we're not at initial state)
+      if (currentSubIndex > 0 && currentSubIndex < wordLength) {
         final speed = isReversing ? 50 : 100;
         timer = Timer(Duration(milliseconds: speed), () {
           // Use current state values to avoid stale closures
@@ -362,17 +375,6 @@ class TypewriterEffect extends DCFStatefulComponent {
         return () => timer?.cancel();
       }
       
-      // Initial state - start typing first character immediately (handles hot restart)
-      if (currentSubIndex == 0 && !isReversing) {
-        timer = Timer(Duration(milliseconds: 100), () {
-          // Double-check we're still at initial state
-          if (subIndex.state == 0 && !reverse.state) {
-            subIndex.setState(1);
-          }
-        });
-        return () => timer?.cancel();
-      }
-      
       return () {}; // No cleanup needed if no timer was created
     }, dependencies: [subIndex.state, index.state, reverse.state]);
     
@@ -380,10 +382,15 @@ class TypewriterEffect extends DCFStatefulComponent {
     final cursorChar = blink.state ? '▊' : ' '; // Use block character for cursor
     
     // Combine text and cursor in a single text component for proper positioning
+    // Use a fixed-width container to prevent layout jumps when switching words
+    final longestWord = words.reduce((a, b) => a.length > b.length ? a : b);
+    final estimatedWidth = longestWord.length * 12.0; // Approximate width per character
+    
     return DCFView(
       layout: DCFLayout(
         flexDirection: DCFFlexDirection.row,
         alignItems: DCFAlign.center,
+        minWidth: estimatedWidth, // Prevent layout shifts
       ),
       children: [
         DCFText(
