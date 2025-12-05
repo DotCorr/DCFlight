@@ -82,9 +82,15 @@ open class DCFShadowNode {
     open val availableSize: android.graphics.PointF
         get() {
             val insets = compoundInsets
+            val widthFloat = frame.width().toFloat()
+            val heightFloat = frame.height().toFloat()
+            val leftFloat = insets.left.toFloat()
+            val rightFloat = insets.right.toFloat()
+            val topFloat = insets.top.toFloat()
+            val bottomFloat = insets.bottom.toFloat()
             return android.graphics.PointF(
-                (frame.width().toFloat() - insets.left.toFloat() - insets.right.toFloat()).coerceAtLeast(0f),
-                (frame.height().toFloat() - insets.top.toFloat() - insets.bottom.toFloat()).coerceAtLeast(0f)
+                (widthFloat - leftFloat - rightFloat).coerceAtLeast(0f),
+                (heightFloat - topFloat - bottomFloat).coerceAtLeast(0f)
             )
         }
     

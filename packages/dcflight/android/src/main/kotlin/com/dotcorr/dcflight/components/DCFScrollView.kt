@@ -195,7 +195,8 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         // CRITICAL: If frame is zero, try to restore it from pendingFrame
         // This handles the case where applyLayout hasn't run yet or the frame was reset
         if (contentView.width == 0 || contentView.height == 0) {
-            val pendingFrame = contentView.getTag("pendingFrame".hashCode()) as? Rect
+            val pendingFrameKey = "pendingFrame".hashCode()
+            val pendingFrame = contentView.getTag(pendingFrameKey) as? Rect
             if (pendingFrame != null && pendingFrame.width() > 0 && pendingFrame.height() > 0) {
                 contentView.layout(
                     pendingFrame.left,
@@ -296,7 +297,8 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         
         // CRITICAL: Get the frame that should be restored after addView
         // Android resets the frame to zero when adding a view to a parent
-            val pendingFrame = view.getTag("pendingFrame".hashCode()) as? Rect
+        val pendingFrameKey = "pendingFrame".hashCode()
+        val pendingFrame = view.getTag(pendingFrameKey) as? Rect
         val frameBeforeAdd = Rect(view.left, view.top, view.right, view.bottom)
         
         _contentView = view
@@ -304,10 +306,11 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         // CRITICAL: Store reference to this DCFScrollView on the contentView
         // This allows applyLayout to find the ScrollView even if parent is null
         // Use tag to ensure the reference persists
-            view.setTag(ScrollViewKey.KEY.hashCode(), this)
+        val scrollViewKey = ScrollViewKey.KEY.hashCode()
+        view.setTag(scrollViewKey, this)
         
         // Verify the stored reference was set correctly
-        val storedRef = view.getTag(ScrollViewKey.KEY.hashCode()) as? DCFScrollView
+        val storedRef = view.getTag(scrollViewKey) as? DCFScrollView
         Log.d(TAG, "🔍 DCFScrollView.insertContentView: Stored ScrollView reference, storedRef=${if (storedRef != null) "set" else "nil"}, self=$this")
         
         _scrollView.addView(view)
@@ -335,7 +338,8 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         } else {
             Log.w(TAG, "⚠️ DCFScrollView.insertContentView: No frame to restore - frameBeforeAdd=$frameBeforeAdd, pendingFrame=${pendingFrame?.toString() ?: "nil"} - will wait for applyLayout")
             // Set a flag so applyLayout knows to restore the frame and update contentSize
-            view.setTag("needsFrameRestore".hashCode(), true)
+            val needsFrameRestoreKey = "needsFrameRestore".hashCode()
+            view.setTag(needsFrameRestoreKey, true)
         }
         
         Log.d(TAG, "✅ DCFScrollView.insertContentView: Added view to _scrollView, finalFrame=(${view.left}, ${view.top}, ${view.width}, ${view.height}), parent=${view.parent?.javaClass?.simpleName ?: "nil"}")
@@ -402,8 +406,22 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
     // MARK: - Layout
     
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        require(childCount == 1) { "we should only have exactly one subview" }
-        require(getChildAt(0) == _scrollView) { "our only subview should be a scrollview" }
+        // Defensive check - handle case where _scrollView might not be added yet
+        if (childCount == 0) {
+            Log.w(TAG, "⚠️ DCFScrollView.onLayout: No children, _scrollView not added yet")
+            return
+        }
+        
+        if (childCount != 1) {
+            Log.w(TAG, "⚠️ DCFScrollView.onLayout: Expected 1 child, got $childCount")
+            return
+        }
+        
+        val firstChild = getChildAt(0)
+        if (firstChild != _scrollView) {
+            Log.w(TAG, "⚠️ DCFScrollView.onLayout: First child is not _scrollView (type: ${firstChild.javaClass.simpleName})")
+            return
+        }
         
         _scrollView.layout(0, 0, width, height)
         

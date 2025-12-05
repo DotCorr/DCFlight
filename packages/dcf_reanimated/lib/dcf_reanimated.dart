@@ -25,6 +25,9 @@ export 'src/styles/animated_style.dart';
 // Main animated view component
 export 'src/components/reanimated_view.dart';
 
+// Animated text component (worklet-based)
+export 'src/components/animated_text.dart';
+
 // Framer Motion-style declarative animation component
 export 'src/components/motion.dart';
 

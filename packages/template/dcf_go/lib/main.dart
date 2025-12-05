@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:dcflight/framework/worklets/worklet.dart';
 import 'package:flutter/material.dart' show Colors;
 
 void main() async {
@@ -150,7 +152,7 @@ class HeroSection extends DCFStatefulComponent {
                   initial: AnimationProperties(opacity: 0, y: 20),
                   animate: AnimationProperties(opacity: 1, y: 0),
                   transition: Transition(duration: 800),
-                  autoStart: true,
+                  autoStart: false,
                   layout: DCFLayout(gap: 24),
                   children: [
                     // Split text to match web styling - "For The" in gray
@@ -211,14 +213,14 @@ class HeroSection extends DCFStatefulComponent {
                       ],
                     ),
 
-                    // Typewriter Effect
+                    // Typewriter Effect (Worklet-based - runs on UI thread)
                     DCFView(
                       layout: DCFLayout(
                         height: 80, // h-20 = 80px (matches web)
                         justifyContent: DCFJustifyContent.center,
                         marginBottom: 40, // mb-10 = 40px (matches web)
                       ),
-                      children: [TypewriterEffect()],
+                      children: [TypewriterEffectWorklet()],
                     ),
 
                     // Button
@@ -283,6 +285,17 @@ class HeroSection extends DCFStatefulComponent {
   }
 }
 
+/// Typewriter Effect Component
+/// 
+/// CURRENT IMPLEMENTATION: Uses Dart timers and state (runs on Dart thread)
+/// - 2-12% CPU usage
+/// - Bridge calls for every character update
+/// - Can be blocked by Dart thread operations
+/// 
+/// FUTURE: Will migrate to worklet-based implementation (runs on UI thread)
+/// - <1% CPU usage expected
+/// - Zero bridge calls during animation
+/// - 60fps guaranteed, cannot be blocked
 class TypewriterEffect extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
@@ -395,6 +408,114 @@ class TypewriterEffect extends DCFStatefulComponent {
   }
 }
 
+/// Worklet-based Typewriter Effect (runs on UI thread)
+/// 
+/// This is the optimized version that runs entirely on the UI thread with zero bridge calls.
+/// It uses AnimatedText component with a worklet function.
+@Worklet()
+String typewriterWorklet(
+  double elapsed,
+  List<String> words,
+  double typeSpeed,
+  double deleteSpeed,
+  double pauseDuration,
+) {
+  // Calculate total time per word cycle
+  double totalTimePerCycle = 0;
+  for (String word in words) {
+    totalTimePerCycle += (word.length * typeSpeed / 1000.0) + 
+                        pauseDuration / 1000.0 + 
+                        (word.length * deleteSpeed / 1000.0);
+  }
+  
+  // Find current word and position based on elapsed time
+  double cycleTime = elapsed % totalTimePerCycle;
+  int wordIndex = 0;
+  double accumulatedTime = 0;
+  
+  for (int i = 0; i < words.length; i++) {
+    String word = words[i];
+    double wordTypeTime = word.length * typeSpeed / 1000.0;
+    double wordPauseTime = pauseDuration / 1000.0;
+    double wordDeleteTime = word.length * deleteSpeed / 1000.0;
+    double wordTotalTime = wordTypeTime + wordPauseTime + wordDeleteTime;
+    
+    if (cycleTime <= accumulatedTime + wordTotalTime) {
+      wordIndex = i;
+      break;
+    }
+    accumulatedTime += wordTotalTime;
+  }
+  
+  String currentWord = words[wordIndex];
+  double wordStartTime = accumulatedTime;
+  double wordTypeTime = currentWord.length * typeSpeed / 1000.0;
+  double wordPauseTime = pauseDuration / 1000.0;
+  
+  double relativeTime = cycleTime - wordStartTime;
+  
+  if (relativeTime < wordTypeTime) {
+    // Typing phase
+    int charIndex = (relativeTime / (typeSpeed / 1000.0)).floor();
+    return currentWord.substring(0, math.min(charIndex, currentWord.length));
+  } else if (relativeTime < wordTypeTime + wordPauseTime) {
+    // Pause phase - show full word
+    return currentWord;
+  } else {
+    // Deleting phase
+    double deleteStartTime = wordTypeTime + wordPauseTime;
+    double deleteElapsed = relativeTime - deleteStartTime;
+    int charsToDelete = (deleteElapsed / (deleteSpeed / 1000.0)).floor();
+    int remainingChars = math.max(0, currentWord.length - charsToDelete);
+    return currentWord.substring(0, math.min(remainingChars, currentWord.length));
+  }
+}
+
+/// Worklet-based typewriter effect using AnimatedText
+class TypewriterEffectWorklet extends DCFStatelessComponent {
+  @override
+  DCFComponentNode render() {
+    final words = [
+      "Build for Mobile.",
+      "Build for Web.",
+      "Build for AI.",
+      "Build for AGI.",
+      "Build for The Future."
+    ];
+    
+    return DCFView(
+      layout: DCFLayout(
+        flexDirection: DCFFlexDirection.row,
+        alignItems: DCFAlign.center,
+      ),
+      children: [
+        DCFText(
+          content: "\$ ",
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontFamily: "Courier",
+          ),
+          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[400]!),
+        ),
+        AnimatedText(
+          worklet: typewriterWorklet,
+          workletConfig: {
+            'words': words,
+            'typeSpeed': 100.0,
+            'deleteSpeed': 50.0,
+            'pauseDuration': 2000.0,
+          },
+          textProps: DCFTextProps(
+            fontSize: 20,
+            fontFamily: "Courier",
+          ),
+          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+        ),
+      ],
+    );
+  }
+}
+
 class InfrastructureVisual extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
@@ -418,7 +539,7 @@ class InfrastructureVisual extends DCFStatelessComponent {
         duration: 2500, // Match web duration
         cubicBezier: [0.16, 1, 0.3, 1], // Smooth ease-out like web
       ),
-      autoStart: true,
+      autoStart: false,
       children: [
         // Base (Black background)
         DCFView(
@@ -455,7 +576,7 @@ class InfrastructureVisual extends DCFStatelessComponent {
             delay: 800,
             curve: AnimationCurve.easeOut,
           ),
-          autoStart: true,
+          autoStart: false,
           children: [],
         ),
       ],

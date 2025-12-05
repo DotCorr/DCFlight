@@ -17,7 +17,6 @@ import android.view.ViewGroup
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.extensions.applyStyles
-import kotlin.math.max
 
 // Note: ScrollViewKey is defined in DCFScrollView.kt as a companion object
 // Both files use the same key via ScrollViewKey.KEY
@@ -63,7 +62,8 @@ class DCFScrollContentViewComponent : DCFComponent() {
         
         // CRITICAL: Store the frame in a tag so we can restore it after attachment
         // Android may reset the frame when the view is added to a parent
-        view.setTag("pendingFrame".hashCode(), frame)
+        val pendingFrameKey = "pendingFrame".hashCode()
+        view.setTag(pendingFrameKey, frame)
         
         // CRITICAL: Set frame directly (applyLayout is called on main thread from DCFLayoutManager)
         // Disable layout animations to prevent Android from resetting the frame
@@ -79,7 +79,8 @@ class DCFScrollContentViewComponent : DCFComponent() {
         
         // CRITICAL: Always restore frame if it's zero or doesn't match, regardless of attachment status
         // This handles the case where applyLayout runs before or after setChildren
-        val needsFrameRestore = view.getTag("needsFrameRestore".hashCode()) as? Boolean ?: false
+        val needsFrameRestoreKey = "needsFrameRestore".hashCode()
+        val needsFrameRestore = view.getTag(needsFrameRestoreKey) as? Boolean ?: false
         val actualFrame = Rect(view.left, view.top, view.right, view.bottom)
         if (view.width == 0 || view.height == 0 || actualFrame != frame || needsFrameRestore) {
             view.layout(
@@ -92,7 +93,7 @@ class DCFScrollContentViewComponent : DCFComponent() {
             Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame was zero/mismatch/needsRestore - restored to $frame, actualFrame=$actualFrame")
             
             // Clear the needsFrameRestore flag
-            view.setTag("needsFrameRestore".hashCode(), null)
+            view.setTag(needsFrameRestoreKey, null)
         }
         
         Log.d(TAG, "🔍 DCFScrollContentViewComponent.applyLayout: Set frame=$frame, actualFrame=$actualFrame, parent=${view.parent?.javaClass?.simpleName ?: "nil"}")
@@ -100,7 +101,8 @@ class DCFScrollContentViewComponent : DCFComponent() {
         // CRITICAL: Find ScrollView and update contentSize
         // ALWAYS use stored reference first (set by insertContentView) - this is the most reliable method
         // The stored reference is set BEFORE the view is added to the hierarchy, so it's always available
-        var scrollView = view.getTag(ScrollViewKey.KEY.hashCode()) as? DCFScrollView
+        val scrollViewKey = ScrollViewKey.KEY.hashCode()
+        var scrollView = view.getTag(scrollViewKey) as? DCFScrollView
         
         // Fallback: Try to find through hierarchy if stored reference is nil
         if (scrollView == null) {
@@ -147,7 +149,7 @@ class DCFScrollContentViewComponent : DCFComponent() {
                 Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame was incorrect, restored to $frame, actualFrame=$actualFrame")
             }
             
-            val storedRefSet = view.getTag(ScrollViewKey.KEY.hashCode()) != null
+            val storedRefSet = view.getTag(scrollViewKey) != null
             Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Found ScrollView (stored=$storedRefSet), contentView.frame=$actualFrame, updating contentSize")
             sv.updateContentSizeFromContentView()
         } ?: run {
@@ -170,7 +172,7 @@ class DCFScrollContentViewComponent : DCFComponent() {
                 }
                 
                 // Try to find ScrollView using stored reference first (most reliable)
-                var foundScrollView = contentView.getTag(ScrollViewKey.KEY.hashCode()) as? DCFScrollView
+                var foundScrollView = contentView.getTag(scrollViewKey) as? DCFScrollView
                 
                 // Fallback: Try hierarchy
                 if (foundScrollView == null) {
@@ -202,7 +204,7 @@ class DCFScrollContentViewComponent : DCFComponent() {
                     Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout (async): Found ScrollView, contentView.frame=$actualFrame, updating contentSize")
                     sv.updateContentSizeFromContentView()
                 } ?: run {
-                    val storedRefSet = contentView.getTag(ScrollViewKey.KEY.hashCode()) != null
+                    val storedRefSet = contentView.getTag(scrollViewKey) != null
                     Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout (async): Could not find ScrollView, contentView.parent=${contentView.parent?.javaClass?.simpleName ?: "nil"}, frame=$actualFrame, storedRef=$storedRefSet")
                 }
             }
@@ -221,9 +223,10 @@ class DCFScrollContentViewComponent : DCFComponent() {
         }
         
         // Add new children
+        val viewIdKey = "viewId".hashCode()
         childViews.forEachIndexed { index, childView ->
             // Get viewId from tag
-            val childViewId = childView.getTag("viewId".hashCode()) as? String ?: "unknown"
+            val childViewId = childView.getTag(viewIdKey) as? String ?: "unknown"
             Log.d(TAG, "🔍 DCFScrollContentViewComponent.setChildren: Adding child $index: viewId=$childViewId, frame=(${childView.left}, ${childView.top}, ${childView.width}, ${childView.height}), type=${childView.javaClass.simpleName}")
             if (view is ViewGroup) {
                 view.addView(childView)

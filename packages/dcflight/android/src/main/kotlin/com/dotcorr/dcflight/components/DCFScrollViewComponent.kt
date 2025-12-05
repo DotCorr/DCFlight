@@ -137,7 +137,8 @@ class DCFScrollViewComponent : DCFComponent() {
     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         val scrollView = view as? DCFScrollView ?: return
         
-        view.setTag("nodeId".hashCode(), nodeId)
+        val nodeIdKey = "nodeId".hashCode()
+        view.setTag(nodeIdKey, nodeId)
         
         Handler(Looper.getMainLooper()).post {
             scrollView.updateContentSizeFromContentView()

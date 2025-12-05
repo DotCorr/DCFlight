@@ -1318,6 +1318,13 @@ class YogaShadowTree private constructor() {
             shadowNodes.remove(viewId)
         }
         
+        // Clear nodes and nodeParents (except root)
+        val allNodeIds = nodes.keys.filter { it != "0" }
+        for (nodeId in allNodeIds) {
+            nodes.remove(nodeId)
+            nodeParents.remove(nodeId)
+        }
+        
         // Clear screen roots
         screenRoots.clear()
         screenRootIds.clear()

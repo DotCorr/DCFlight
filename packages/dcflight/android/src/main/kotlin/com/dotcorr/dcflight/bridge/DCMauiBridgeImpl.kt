@@ -18,6 +18,7 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFContentContainerProvider
 import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcflight.components.DCFPropConstants
+import com.dotcorr.dcflight.components.DCFScrollView
 import com.dotcorr.dcflight.Coordinator.DCFViewManager
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import com.dotcorr.dcflight.layout.YogaShadowTree
@@ -267,6 +268,48 @@ class DCMauiBridgeImpl private constructor() {
             if (parentViewGroup == null) {
                 Log.e(TAG, "Parent view '$parentId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
                 return false
+            }
+
+            // CRITICAL: ScrollView special handling
+            // DCFScrollView.insertContentView adds the child (ScrollContentView)
+            // directly to the internal scroll view via insertContentView
+            // IMPORTANT: Only do this when the CHILD is ScrollContentView being attached to ScrollView
+            // The ScrollView itself should be attached normally to its parent
+            if (parentView is DCFScrollView) {
+                val childComponentType = ViewRegistry.shared.getViewType(childId)
+                
+                if (childComponentType == "ScrollContentView") {
+                    // Check if contentView is already set and is the same view
+                    // This prevents duplicate calls to insertContentView
+                    val scrollView = parentView as DCFScrollView
+                    if (scrollView.contentView == childView) {
+                        Log.d(TAG, "🔍 attachView: ScrollContentView already attached, skipping insertContentView")
+                        // Still add to Yoga tree if not already added
+                        childToParent[childId.toString()] = parentId.toString()
+                        viewHierarchy.getOrPut(parentId.toString()) { mutableListOf() }.add(childId.toString())
+                        YogaShadowTree.shared.addChildNode(parentId, childId, index)
+                        return true
+                    }
+                    
+                    Log.d(TAG, "🔍 attachView: Detected ScrollContentView being attached to ScrollView, using insertContentView")
+                    
+                    // Remove from existing parent before attaching
+                    if (childView.parent != null) {
+                        (childView.parent as? ViewGroup)?.removeView(childView)
+                        Log.d(TAG, "Removed child '$childId' from existing parent")
+                    }
+                    
+                    scrollView.insertContentView(childView)
+                    
+                    // Add to Yoga tree for layout
+                    childToParent[childId.toString()] = parentId.toString()
+                    viewHierarchy.getOrPut(parentId.toString()) { mutableListOf() }.add(childId.toString())
+                    YogaShadowTree.shared.addChildNode(parentId, childId, index)
+                    
+                    Log.d(TAG, "✅ attachView: ScrollContentView attached via insertContentView")
+                    return true
+                }
+                // If child is NOT ScrollContentView, fall through to normal attachment
             }
 
             // CRITICAL: Some views (like ScrollView) need children attached to a content container

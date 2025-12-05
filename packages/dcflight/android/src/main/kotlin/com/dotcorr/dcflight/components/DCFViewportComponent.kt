@@ -152,7 +152,8 @@ class DCFViewportComponent : DCFComponent() {
         if (scrollView != null) {
             // Add scroll listener
             val listener = ViewportScrollListener(view, props, this)
-            view.setTag("viewportListener".hashCode(), listener)
+            val viewportListenerKey = "viewportListener".hashCode()
+            view.setTag(viewportListenerKey, listener)
             
             // Register scroll listener (if scroll view supports it)
             // For now, we'll use a ViewTreeObserver for layout changes
@@ -202,11 +203,12 @@ class DCFViewportComponent : DCFComponent() {
         val isVisible = isViewInViewport(view, amount, margin)
         
         // Get previous visibility state
-        val wasVisible = view.getTag("wasInViewport".hashCode()) as? Boolean ?: false
+        val wasInViewportKey = "wasInViewport".hashCode()
+        val wasVisible = view.getTag(wasInViewportKey) as? Boolean ?: false
         
         if (isVisible && !wasVisible) {
             // Entered viewport
-            view.setTag("wasInViewport".hashCode(), true)
+            view.setTag(wasInViewportKey, true)
             
             if (props.containsKey("onViewportEnter")) {
                 propagateEvent(view, "onViewportEnter", mapOf())
@@ -214,7 +216,7 @@ class DCFViewportComponent : DCFComponent() {
         } else if (!isVisible && wasVisible) {
             // Left viewport
             if (!once) {
-                view.setTag("wasInViewport".hashCode(), false)
+                view.setTag(wasInViewportKey, false)
                 
                 if (props.containsKey("onViewportLeave")) {
                     propagateEvent(view, "onViewportLeave", mapOf())

@@ -86,7 +86,8 @@ class DCFTextComponent : DCFComponent() {
     }
     
     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
-        view.setTag("nodeId".hashCode(), nodeId)
+        val nodeIdKey = "nodeId".hashCode()
+        view.setTag(nodeIdKey, nodeId)
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
