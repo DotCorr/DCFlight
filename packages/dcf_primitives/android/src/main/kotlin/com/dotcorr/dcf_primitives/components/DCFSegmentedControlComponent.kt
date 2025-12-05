@@ -255,19 +255,7 @@ class DCFSegmentedControlComponent : DCFComponent() {
         }
     }
     
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val segments = parseSegments(props)
-        val segmentCount = segments.size
-        
-        val minSegmentWidth = 80f
-        val segmentHeight = 40f
-        
-        val totalWidth = minSegmentWidth * segmentCount
-        
-        return PointF(totalWidth, segmentHeight)
-    }
-    
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         val container = view as? LinearLayout ?: return
         val props = getStoredProps(container).filterValues { it != null }.mapValues { it.value!! }
         

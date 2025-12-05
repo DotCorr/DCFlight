@@ -16,10 +16,11 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import androidx.core.view.ViewCompat
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFFrameLayout
 import com.dotcorr.dcflight.components.DCFTags
+import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcflight.extensions.propagateEvent
 
 class DCFViewportComponent : DCFComponent() {
 
@@ -48,7 +49,7 @@ class DCFViewportComponent : DCFComponent() {
         return true
     }
 
-    override fun applyLayout(view: View, layout: com.dotcorr.dcflight.yoga.YGNodeLayout) {
+    override fun applyLayout(view: View, layout: DCFNodeLayout) {
         // Apply layout
         view.layout(
             layout.left.toInt(),
@@ -61,11 +62,7 @@ class DCFViewportComponent : DCFComponent() {
         triggerMeasureCallbacks(view)
     }
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        return PointF(0f, 0f)
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         Log.d(TAG, "Viewport component registered with shadow tree: $nodeId")
         
         val props = getStoredProps(view)
@@ -205,11 +202,11 @@ class DCFViewportComponent : DCFComponent() {
         val isVisible = isViewInViewport(view, amount, margin)
         
         // Get previous visibility state
-        val wasVisible = view.getTag("wasInViewport") as? Boolean ?: false
+        val wasVisible = view.getTag("wasInViewport".hashCode()) as? Boolean ?: false
         
         if (isVisible && !wasVisible) {
             // Entered viewport
-            view.setTag("wasInViewport", true)
+            view.setTag("wasInViewport".hashCode(), true)
             
             if (props.containsKey("onViewportEnter")) {
                 propagateEvent(view, "onViewportEnter", mapOf())
@@ -217,7 +214,7 @@ class DCFViewportComponent : DCFComponent() {
         } else if (!isVisible && wasVisible) {
             // Left viewport
             if (!once) {
-                view.setTag("wasInViewport", false)
+                view.setTag("wasInViewport".hashCode(), false)
                 
                 if (props.containsKey("onViewportLeave")) {
                     propagateEvent(view, "onViewportLeave", mapOf())

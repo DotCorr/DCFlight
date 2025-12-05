@@ -44,6 +44,8 @@ class YogaShadowTree private constructor() {
     private val screenRoots = ConcurrentHashMap<String, YogaNode>()
     private val screenRootIds = mutableSetOf<String>()
     
+    private val shadowNodes = ConcurrentHashMap<Int, DCFShadowNode>()
+    
     private val componentInstances = ConcurrentHashMap<String, DCFComponent>()
     
     // Track views that are being updated and temporarily hidden
@@ -243,8 +245,11 @@ class YogaShadowTree private constructor() {
                         wrapper.ensureCompositionReady()
                     }
                     
-                    // Fallback: Use intrinsic size when constraints are undefined or measurement fails
-                    val intrinsicSize = componentInstance.getIntrinsicSize(view, emptyMap())
+                    // Intrinsic size is handled via shadow node's intrinsicContentSize property
+                    // Components set this via viewRegisteredWithShadowTree
+                    val nodeIdInt = nodeId.toIntOrNull() ?: 0
+                    val shadowNode = shadowNodes[nodeIdInt]
+                    val intrinsicSize = shadowNode?.intrinsicContentSize ?: android.graphics.PointF(0f, 0f)
                     
                     val finalWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
                         intrinsicSize.x
@@ -844,9 +849,9 @@ class YogaShadowTree private constructor() {
             }
             "flexWrap" -> {
                 when (value as? String) {
-                    "nowrap" -> node.setFlexWrap(YogaWrap.NO_WRAP)
-                    "wrap" -> node.setFlexWrap(YogaWrap.WRAP)
-                    "wrapReverse" -> node.setFlexWrap(YogaWrap.WRAP_REVERSE)
+                    "nowrap" -> node.wrap = YogaWrap.NO_WRAP
+                    "wrap" -> node.wrap = YogaWrap.WRAP
+                    "wrapReverse" -> node.wrap = YogaWrap.WRAP_REVERSE
                 }
             }
             "flexGrow" -> {
@@ -1283,5 +1288,42 @@ class YogaShadowTree private constructor() {
                 }
             }
         }
+    }
+    
+    @Synchronized
+    fun getShadowNode(viewId: Int): DCFShadowNode? {
+        return shadowNodes[viewId]
+    }
+    
+    @Synchronized
+    fun clearAll() {
+        isReconciling = true
+        
+        while (isLayoutCalculating) {
+            Thread.sleep(1)
+        }
+        
+        // Remove all children from root
+        rootNode?.let { root ->
+            val childCount = root.childCount
+            for (i in childCount - 1 downTo 0) {
+                val child = root.getChildAt(i)
+                root.removeChildAt(i)
+            }
+        }
+        
+        // Clear all shadow nodes except root
+        val allViewIds = shadowNodes.keys.filter { it != 0 }
+        for (viewId in allViewIds) {
+            shadowNodes.remove(viewId)
+        }
+        
+        // Clear screen roots
+        screenRoots.clear()
+        screenRootIds.clear()
+        nodeTypes.clear()
+        
+        isReconciling = false
+        isLayoutCalculating = false
     }
 }

@@ -141,11 +141,7 @@ class DCFTouchableOpacityComponent : DCFComponent() {
     }
 
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        return PointF(0f, 0f)
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         Log.d(TAG, "TouchableOpacity component registered with shadow tree: $nodeId")
     }
 

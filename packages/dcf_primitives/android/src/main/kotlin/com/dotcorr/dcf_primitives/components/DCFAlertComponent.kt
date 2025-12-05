@@ -271,13 +271,7 @@ class DCFAlertComponent : DCFComponent() {
     }
 
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val frameLayout = view as? FrameLayout ?: return PointF(0f, 0f)
-
-        return PointF(1f, 1f)
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

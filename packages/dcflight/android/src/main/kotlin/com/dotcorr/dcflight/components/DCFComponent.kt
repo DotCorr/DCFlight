@@ -164,18 +164,20 @@ abstract class DCFComponent {
     abstract fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any?
     
     
-    /**
-     * Calculate intrinsic size for the component - MATCH iOS getIntrinsicSize
-     * Used by Yoga layout for measuring leaf nodes
-     * Components MUST implement this
-     */
-    abstract fun getIntrinsicSize(view: View, props: Map<String, Any>): android.graphics.PointF
     
     /**
      * Called when the view is registered with the shadow tree - MATCH iOS
      * Components MUST implement this
      */
-    abstract fun viewRegisteredWithShadowTree(view: View, nodeId: String)
+    abstract fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String)
+    
+    /**
+     * Set children for a view (optional - components can override for custom child routing)
+     * Returns true if handled, false to use default implementation
+     */
+    open fun setChildren(view: View, childViews: List<View>, viewId: String): Boolean {
+        return false
+    }
     
     /**
      * Apply layout to a view - MATCH iOS applyLayout exactly

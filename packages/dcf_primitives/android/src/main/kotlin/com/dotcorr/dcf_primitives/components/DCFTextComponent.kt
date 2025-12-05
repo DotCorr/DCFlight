@@ -110,36 +110,9 @@ class DCFTextComponent : DCFComponent() {
         }
     }
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val textView = view as? TextView ?: return PointF(0f, 0f)
-        
-        val storedProps = getStoredProps(view)
-        val allProps = if (props.isEmpty()) storedProps else props
-        val content = allProps["content"]?.toString() ?: ""
-        
-        if (content.isEmpty()) {
-            return PointF(0f, 0f)
-        }
-        
-        // Match iOS: Use actual measurement, not estimate
-        // iOS: label.sizeThatFits(maxSize) - we do the same with TextView
-        val maxWidth = 10000 // Large but finite width for measurement
-        textView.measure(
-            View.MeasureSpec.makeMeasureSpec(maxWidth, View.MeasureSpec.AT_MOST),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-        
-        val measuredWidth = textView.measuredWidth.toFloat()
-        val measuredHeight = textView.measuredHeight.toFloat()
-        
-        Log.d(TAG, "Measured text '$content': ${measuredWidth}x${measuredHeight}")
-        
-        return PointF(measuredWidth.coerceAtLeast(1f), measuredHeight.coerceAtLeast(1f))
-    }
-
     private var nodeId: String? = null
 
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         this.nodeId = nodeId
     }
     

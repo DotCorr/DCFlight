@@ -192,24 +192,7 @@ class DCFImageComponent : DCFComponent() {
     }
 
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val imageView = view as? ImageView ?: return PointF(0f, 0f)
-
-        val drawable = imageView.drawable
-        if (drawable != null) {
-            val intrinsicWidth = drawable.intrinsicWidth.toFloat()
-            val intrinsicHeight = drawable.intrinsicHeight.toFloat()
-            
-            if (intrinsicWidth > 0 && intrinsicHeight > 0) {
-                Log.d(TAG, "Image intrinsic size: ${intrinsicWidth}x${intrinsicHeight}")
-                return PointF(intrinsicWidth, intrinsicHeight)
-            }
-        }
-
-        return PointF(0f, 0f)
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         Log.d(TAG, "Image component registered with shadow tree: $nodeId")
     }
 

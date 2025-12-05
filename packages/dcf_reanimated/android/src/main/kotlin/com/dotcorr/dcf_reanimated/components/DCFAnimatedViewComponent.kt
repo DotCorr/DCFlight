@@ -115,10 +115,6 @@ class DCFAnimatedViewComponent : DCFComponent() {
         return true
     }
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        return PointF(0f, 0f)
-    }
-
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
         val reanimatedView = view as? PureReanimatedView
         if (reanimatedView == null) {
@@ -166,7 +162,7 @@ class DCFAnimatedViewComponent : DCFComponent() {
         )
     }
 
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         val reanimatedView = view as? PureReanimatedView ?: return
         reanimatedView.nodeId = nodeId
         Log.d(TAG, "ReanimatedView registered with shadow tree: $nodeId")
@@ -642,8 +638,8 @@ class PureAnimationState(
             }
             
             val omega = frequency * 2 * Math.PI.toFloat()
-            val exponential = Math.pow(2.0, (-damping * t).toDouble()).toFloat()
-            val sine = Math.sin((omega * t + Math.acos(damping.toDouble())).toDouble()).toFloat()
+            val exponential = Math.pow(2.0, (-dampingValue * t).toDouble()).toFloat()
+            val sine = Math.sin((omega * t + Math.acos(dampingValue.toDouble())).toDouble()).toFloat()
             
             return 1 - exponential * sine
         }

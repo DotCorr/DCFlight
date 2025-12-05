@@ -21,4 +21,7 @@ export '../../components/error_boundary.dart';
 export '../../hooks/store.dart';
 export '../../hooks/memo_hook.dart';
 export '../../hooks/state_hook.dart';
+export '../../hooks/context_hook.dart';
+export '../../context/context.dart';
+export '../../context/context_provider.dart';
 export 'core/mutator/prop_diff_interceptor.dart';

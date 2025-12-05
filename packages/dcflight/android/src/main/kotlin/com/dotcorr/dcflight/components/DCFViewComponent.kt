@@ -44,12 +44,8 @@ class DCFViewComponent : DCFComponent() {
     }
 
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        return PointF(0f, 0f)
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
-        Log.d(TAG, "View component registered with shadow tree: $nodeId")
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
+        view.setTag("nodeId".hashCode(), nodeId)
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

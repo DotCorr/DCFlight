@@ -215,21 +215,7 @@ class DCFWebViewComponent : DCFComponent() {
     }
 
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val webView = view as? WebView ?: return PointF(0f, 0f)
-
-        webView.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-
-        val measuredWidth = webView.measuredWidth.toFloat()
-        val measuredHeight = webView.measuredHeight.toFloat()
-
-        return PointF(kotlin.math.max(1f, measuredWidth), kotlin.math.max(1f, measuredHeight))
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

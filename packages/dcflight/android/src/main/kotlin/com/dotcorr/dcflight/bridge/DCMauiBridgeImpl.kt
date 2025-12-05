@@ -423,40 +423,53 @@ class DCMauiBridgeImpl private constructor() {
                 return true
             }
 
-            // CRITICAL: Handle DCFContentContainerProvider (like ScrollView)
-            // Children should be attached to the content container, not the parent itself
-            var actualParent: ViewGroup = parentViewGroup
-            if (parentView is DCFContentContainerProvider) {
-                val contentContainer = parentView.getContentContainer()
-                if (contentContainer != null) {
-                    actualParent = contentContainer
-                    Log.d(TAG, "setChildren: Using content container for view '$viewId'")
+            val viewInfo = ViewRegistry.shared.getViewInfo(viewId)
+            if (viewInfo != null) {
+                val componentClass = DCFComponentRegistry.shared.getComponentType(viewInfo.type)
+                if (componentClass != null) {
+                    val componentInstance = componentClass.getDeclaredConstructor().newInstance()
+                    val childViews = registeredChildIds.mapNotNull { ViewRegistry.shared.getView(it) }
+                    
+                    if (componentInstance.setChildren(parentView, childViews, viewId.toString())) {
+                        val viewIdStr = viewId.toString()
+                        val childrenIdsStr = registeredChildIds.map { it.toString() }
+                        viewHierarchy[viewIdStr] = childrenIdsStr.toMutableList()
+                        for (childIdStr in childrenIdsStr) {
+                            childToParent[childIdStr] = viewIdStr
+                        }
+                        
+                        for ((index, childId) in registeredChildIds.withIndex()) {
+                            DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
+                        }
+                        
+                        return true
+                    }
                 }
             }
-
-            // Remove existing children from actual parent
-            actualParent.removeAllViews()
+            
             val viewIdStr = viewId.toString()
-            viewHierarchy[viewIdStr]?.clear()
-
-            registeredChildIds.forEachIndexed { index: Int, childId: Int ->
+            val childrenIdsStr = registeredChildIds.map { it.toString() }
+            val oldChildren = viewHierarchy[viewIdStr] ?: mutableListOf()
+            for (oldChildIdStr in oldChildren) {
+                if (!childrenIdsStr.contains(oldChildIdStr)) {
+                    childToParent.remove(oldChildIdStr)
+                }
+            }
+            
+            viewHierarchy[viewIdStr] = childrenIdsStr.toMutableList()
+            for (childIdStr in childrenIdsStr) {
+                childToParent[childIdStr] = viewIdStr
+            }
+            
+            parentViewGroup.removeAllViews()
+            
+            for ((index, childId) in registeredChildIds.withIndex()) {
                 val childView = ViewRegistry.shared.getView(childId)
                 if (childView != null) {
-                    // CRITICAL: Remove child from its current parent before adding
-                    // This prevents "The specified child already has a parent" error
-                    if (childView.parent != null) {
-                        (childView.parent as? ViewGroup)?.removeView(childView)
-                    }
-                    
-                    actualParent.addView(childView)
-                    val childIdStr = childId.toString()
-                    childToParent[childIdStr] = viewIdStr
-                    viewHierarchy.getOrPut(viewIdStr) { mutableListOf() }.add(childIdStr)
-                    
+                    parentViewGroup.addView(childView, index)
                     DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
                 }
             }
-
             
             true
         } catch (e: Exception) {

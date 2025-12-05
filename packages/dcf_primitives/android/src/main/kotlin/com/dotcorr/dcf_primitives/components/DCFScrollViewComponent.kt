@@ -312,7 +312,7 @@ class DCFScrollViewComponent : DCFComponent() {
         }
     }
     
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         val scrollView = view as? DCFScrollableView
         scrollView?.nodeId = nodeId
         
@@ -400,9 +400,6 @@ class DCFScrollViewComponent : DCFComponent() {
         }
     }
     
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        return PointF(0f, 0f) // ScrollView has no intrinsic size
-    }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
         return null

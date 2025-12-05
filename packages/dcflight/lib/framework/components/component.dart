@@ -7,6 +7,8 @@
 
 import 'package:dcflight/framework/renderer/engine/core/mutator/engine_mutator_extension_reg.dart';
 import 'package:dcflight/framework/renderer/engine/index.dart';
+import 'package:dcflight/framework/hooks/context_hook.dart';
+import 'package:dcflight/framework/context/context.dart';
 import 'package:flutter/foundation.dart';
 
 abstract class DCFStatefulComponent extends DCFComponentNode {
@@ -218,6 +220,43 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
 
     _hookIndex++;
     return hook;
+  }
+
+  /// Consume a context value from the nearest provider ancestor
+  /// 
+  /// Example:
+  /// ```dart
+  /// final ThemeContext = createContext<Theme>();
+  /// 
+  /// class MyComponent extends DCFStatefulComponent {
+  ///   @override
+  ///   DCFComponentNode render() {
+  ///     final theme = useContext(ThemeContext);
+  ///     return DCFText(text: 'Current theme: ${theme.name}');
+  ///   }
+  /// }
+  /// ```
+  /// 
+  /// Throws an exception if no provider is found and no defaultValue was provided.
+  T useContext<T>(DCFContext<T> context) {
+    if (_hookIndex >= _hooks.length) {
+      final hook = ContextHook<T>(context, this);
+      _hooks.add(hook);
+    } else {
+      final existingHook = _hooks[_hookIndex];
+      if (existingHook is ContextHook<T> && existingHook.context == context) {
+        _hookIndex++;
+        return existingHook.value;
+      } else {
+        // Replace with new hook if context changed
+        final hook = ContextHook<T>(context, this);
+        _hooks[_hookIndex] = hook;
+      }
+    }
+
+    final hook = _hooks[_hookIndex] as ContextHook<T>;
+    _hookIndex++;
+    return hook.value;
   }
 
   T useCustomHook<T extends Hook>(String hookName, [List<dynamic>? args]) {

@@ -331,21 +331,7 @@ import com.dotcorr.dcf_primitives.components.DCFPrimitiveTags
      }
  
  
-     override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-         val editText = view as? EditText ?: return PointF(0f, 0f)
- 
-         editText.measure(
-             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-         )
- 
-         val measuredWidth = editText.measuredWidth.toFloat()
-         val measuredHeight = editText.measuredHeight.toFloat()
- 
-         return PointF(max(1f, measuredWidth), max(1f, measuredHeight))
-     }
- 
-     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+     override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
          Log.d("DCFTextInputComponent", "TextInput component registered with shadow tree: $nodeId")
      }
  
