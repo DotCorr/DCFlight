@@ -354,14 +354,18 @@ class DCMauiBridgeImpl private constructor() {
                         Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
                     }
                     
-                    // CRITICAL: Make view visible immediately when attached (matches React Native)
-                    // React Native views are visible by default and remain visible when attached
+                    // CRITICAL: DON'T make view visible here - wait until layout is applied
+                    // This prevents flash of incorrect layout (views at 0,0,0,0 before layout)
+                    // Views will be made visible in applyLayout after correct frame is set
                     val wasInvisible = childView.visibility != View.VISIBLE || childView.alpha < 1.0f
-                    childView.visibility = View.VISIBLE
-                    childView.alpha = 1.0f
+                    // Keep view invisible until layout is applied
+                    if (childId != 0) { // Root view (0) is always visible
+                        childView.visibility = View.INVISIBLE
+                        childView.alpha = 1.0f // Keep alpha at 1.0 so fade-in works when made visible
+                    }
                     
                     if (wasInvisible) {
-                        Log.d(TAG, "✅ attachView: Successfully attached child '$childId' to parent '$parentId', made visible (was invisible)")
+                        Log.d(TAG, "✅ attachView: Successfully attached child '$childId' to parent '$parentId' (kept invisible until layout)")
                     } else {
                         Log.d(TAG, "✅ attachView: Successfully attached child '$childId' to parent '$parentId' (already visible)")
                     }

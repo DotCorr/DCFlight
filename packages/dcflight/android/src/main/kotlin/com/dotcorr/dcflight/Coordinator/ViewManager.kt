@@ -97,20 +97,18 @@ class DCFViewManager private constructor() {
         // ✅ Use pure Kotlin tag keys instead of XML resource IDs
         view.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, viewType)
 
-        // CRITICAL: Match React Native's pattern - views are visible by default
-        // React Native doesn't set views to INVISIBLE initially
-        // Views will be made visible when attached to parent (in attachView)
+        // CRITICAL: Prevent flash - keep views invisible until layout is applied
         // Root view (0) is always visible
         if (viewId == 0) {
             view.visibility = View.VISIBLE
             view.alpha = 1.0f
             Log.d(TAG, "🔍 ViewManager.createView: Root view (viewId=0) created, visibility=${view.visibility}, alpha=${view.alpha}")
         } else {
-            // Non-root views start visible (matches React Native)
-            // They'll remain visible unless explicitly hidden
-            view.visibility = View.VISIBLE
+            // Non-root views start INVISIBLE to prevent flash of incorrect layout
+            // They'll be made visible when layout is applied (in applyLayout)
+            view.visibility = View.INVISIBLE
             view.alpha = 1.0f
-            Log.d(TAG, "🔍 ViewManager.createView: viewId=$viewId created, visibility=${view.visibility}, alpha=${view.alpha} (matches React Native pattern)")
+            Log.d(TAG, "🔍 ViewManager.createView: viewId=$viewId created, visibility=${view.visibility}, alpha=${view.alpha} (will be made visible after layout)")
         }
 
         ViewRegistry.shared.registerView(view, viewId, viewType)

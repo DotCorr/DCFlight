@@ -75,6 +75,15 @@ class DCFTextComponent : DCFComponent() {
         
         Log.d(TAG, "   ✅ Set textLayout on view: ${textView.textLayout != null}, textFrame=${textView.textFrame}, contentInset=${textView.contentInset}")
         
+        // CRITICAL: Ensure parent doesn't clip text view (matches iOS clipsToBounds = false)
+        // Text views should not be clipped to allow full glyph rendering
+        val parent = view.parent as? android.view.ViewGroup
+        if (parent != null) {
+            parent.clipChildren = false
+            parent.clipToPadding = false
+            Log.d(TAG, "   ✅ Disabled clipping on parent ViewGroup for text view")
+        }
+        
         view.post {
             view.invalidate()
             Log.d(TAG, "   ✅ Invalidated view for redraw")

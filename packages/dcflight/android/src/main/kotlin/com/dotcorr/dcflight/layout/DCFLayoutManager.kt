@@ -479,6 +479,14 @@ class DCFLayoutManager private constructor() {
                         )
                     }
                 }
+                
+                // CRITICAL: Make view visible after layout is applied (prevents flash)
+                // This ensures views are visible after their correct layout is set
+                if (view.visibility == View.INVISIBLE && viewId != 0 && layout.width > 0 && layout.height > 0) {
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+                    Log.d(TAG, "✅ Made view $viewId visible after layout application (frame=${layout.left},${layout.top},${layout.width},${layout.height})")
+                }
 
                 // CRITICAL FIX: Don't make visible here - batch visibility after ALL layouts are applied
                 // This prevents flash during reconciliation (views flash when visible but not yet laid out)

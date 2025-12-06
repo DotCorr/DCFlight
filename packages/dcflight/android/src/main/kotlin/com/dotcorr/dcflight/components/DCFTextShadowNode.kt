@@ -160,8 +160,8 @@ open class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
                 letterSpacing = this@DCFTextShadowNode.letterSpacing
             }
             
-            // Apply text color if specified
-            textColor?.let { color = it }
+            // Apply text color - default to black if not specified (matches iOS)
+            color = textColor ?: android.graphics.Color.BLACK
         }
         
         // Cache the result
