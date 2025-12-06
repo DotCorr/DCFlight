@@ -393,7 +393,9 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     private fun startFrameCallback() {
         if (frameCallback != null) return
         
-        frameCallback = Choreographer.FrameCallback { frameTimeNanos ->
+        // CRITICAL: Create callback and store reference before posting
+        // This ensures we have a valid reference even if stopFrameCallback() sets frameCallback to null
+        val callback = Choreographer.FrameCallback { frameTimeNanos ->
             if (!isAnimating) {
                 stopFrameCallback()
                 return@FrameCallback
@@ -411,11 +413,16 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
                 updateAnimations(currentTime, elapsedSeconds)
             }
             
-            // Schedule next frame
-            choreographer.postFrameCallback(frameCallback!!)
+            // Schedule next frame using instance variable with null check
+            // CRITICAL: Check frameCallback is not null before using it (could be null if stopFrameCallback was called)
+            frameCallback?.let { choreographer.postFrameCallback(it) }
         }
         
-        choreographer.postFrameCallback(frameCallback!!)
+        // Store callback in instance variable
+        frameCallback = callback
+        
+        // Post initial frame callback
+        choreographer.postFrameCallback(callback)
     }
     
     private fun stopFrameCallback() {

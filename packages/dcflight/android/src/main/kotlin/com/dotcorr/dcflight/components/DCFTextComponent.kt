@@ -66,12 +66,18 @@ class DCFTextComponent : DCFComponent() {
         val viewId = getViewId(view) ?: return
         val shadowNode = YogaShadowTree.shared.getShadowNode(viewId) as? DCFTextShadowNode ?: return
         
+        Log.d(TAG, "🔍 DCFTextComponent.applyLayout: viewId=$viewId, frame=$frame")
+        Log.d(TAG, "   computedTextLayout=${shadowNode.computedTextLayout != null}, computedTextFrame=${shadowNode.computedTextFrame}, computedContentInset=${shadowNode.computedContentInset}")
+        
         textView.textLayout = shadowNode.computedTextLayout
         textView.textFrame = shadowNode.computedTextFrame
         textView.contentInset = shadowNode.computedContentInset
         
+        Log.d(TAG, "   ✅ Set textLayout on view: ${textView.textLayout != null}, textFrame=${textView.textFrame}, contentInset=${textView.contentInset}")
+        
         view.post {
             view.invalidate()
+            Log.d(TAG, "   ✅ Invalidated view for redraw")
         }
     }
     

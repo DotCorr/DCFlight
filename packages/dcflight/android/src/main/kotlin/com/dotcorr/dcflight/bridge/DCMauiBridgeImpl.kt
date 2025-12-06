@@ -172,8 +172,8 @@ class DCMauiBridgeImpl private constructor() {
                 // CRITICAL: Root view (0) should always be visible
                 // Other views will be made visible after layout is applied
                 if (viewId == 0) {
-                    view.visibility = View.VISIBLE
-                    view.alpha = 1.0f
+                view.visibility = View.VISIBLE
+                view.alpha = 1.0f
                     Log.d(TAG, "✅ createView: Root view (0) made visible immediately")
                 } else {
                     // Non-root views start invisible - will be made visible after layout
@@ -309,12 +309,21 @@ class DCMauiBridgeImpl private constructor() {
                     
                     scrollView.insertContentView(childView)
                     
+                    // CRITICAL: Make view visible immediately when attached (matches React Native)
+                    val wasInvisible = childView.visibility != View.VISIBLE || childView.alpha < 1.0f
+                    childView.visibility = View.VISIBLE
+                    childView.alpha = 1.0f
+                    
                     // Add to Yoga tree for layout
                     childToParent[childId.toString()] = parentId.toString()
                     viewHierarchy.getOrPut(parentId.toString()) { mutableListOf() }.add(childId.toString())
                     YogaShadowTree.shared.addChildNode(parentId, childId, index)
                     
-                    Log.d(TAG, "✅ attachView: ScrollContentView attached via insertContentView")
+                    if (wasInvisible) {
+                        Log.d(TAG, "✅ attachView: ScrollContentView attached via insertContentView, made visible (was invisible)")
+                    } else {
+                        Log.d(TAG, "✅ attachView: ScrollContentView attached via insertContentView (already visible)")
+                    }
                     return true
                 }
                 // If child is NOT ScrollContentView, fall through to normal attachment
@@ -345,7 +354,17 @@ class DCMauiBridgeImpl private constructor() {
                         Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
                     }
                     
-                    Log.d(TAG, "Successfully attached child '$childId' to parent '$parentId'")
+                    // CRITICAL: Make view visible immediately when attached (matches React Native)
+                    // React Native views are visible by default and remain visible when attached
+                    val wasInvisible = childView.visibility != View.VISIBLE || childView.alpha < 1.0f
+                    childView.visibility = View.VISIBLE
+                    childView.alpha = 1.0f
+                    
+                    if (wasInvisible) {
+                        Log.d(TAG, "✅ attachView: Successfully attached child '$childId' to parent '$parentId', made visible (was invisible)")
+                    } else {
+                        Log.d(TAG, "✅ attachView: Successfully attached child '$childId' to parent '$parentId' (already visible)")
+                    }
                 } catch (e: Exception) {
                 Log.e(TAG, "Error in attachment: ${e.message}", e)
                 throw e
@@ -391,8 +410,10 @@ class DCMauiBridgeImpl private constructor() {
     /**
      * Sets the children of a view, replacing any existing children.
      * 
-     * Removes all current children and attaches the new children in the specified order.
-     * Updates the view hierarchy and YogaShadowTree accordingly.
+     * CRITICAL: Matches React Native's NativeViewHierarchyManager.setChildren pattern exactly:
+     * 1. Does NOT call removeAllViews() - just adds children in order
+     * 2. Android's ViewGroup.addView() automatically removes view from previous parent
+     * 3. Throws/logs error if view not found (doesn't silently skip)
      * 
      * @param viewId Unique identifier for the parent view
      * @param childrenIds List of child view identifiers in order
@@ -400,38 +421,23 @@ class DCMauiBridgeImpl private constructor() {
      */
     fun setChildren(viewId: Int, childrenIds: List<Int>): Boolean {
         return try {
+            Log.d(TAG, "🔍 setChildren: START for viewId=$viewId, childrenIds=$childrenIds")
+            
             val parentView = ViewRegistry.shared.getView(viewId)
             
             if (parentView == null) {
-                // This is common during batch updates where setChildren is called before the batch creates the view
-                // Log as warning instead of error to reduce noise, as the batch will likely fix it via attachView
-                Log.w(TAG, "setChildren: parent view '$viewId' not found in registry (likely pending batch creation)")
-                return false
-            }
-            
-            // ✅ FIX: Filter out child views that aren't registered yet (race condition protection)
-            // This prevents crashes when setChildren is called before all views are registered
-            val registeredChildIds = childrenIds.filter { childId ->
-                val exists = ViewRegistry.shared.getView(childId) != null
-                if (!exists) {
-                    Log.w(TAG, "setChildren: Child view '$childId' not yet registered, skipping")
-                }
-                exists
-            }
-            
-            if (registeredChildIds.isEmpty() && childrenIds.isNotEmpty()) {
-                Log.w(TAG, "setChildren: No child views registered yet, deferring setChildren for view '$viewId'")
-                // All children missing - likely a race condition, skip for now
-                // The framework will retry on next update cycle
+                Log.w(TAG, "❌ setChildren: parent view '$viewId' not found in registry (likely pending batch creation)")
                 return false
             }
             
             val parentViewGroup = parentView as? ViewGroup
 
             if (parentViewGroup == null) {
-                Log.e(TAG, "setChildren: Parent view '$viewId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
+                Log.e(TAG, "❌ setChildren: Parent view '$viewId' is not a ViewGroup (type: ${parentView.javaClass.simpleName})")
                 return false
             }
+            
+            Log.d(TAG, "   Parent view type: ${parentView.javaClass.simpleName}, current childCount: ${parentViewGroup.childCount}")
 
             // Check if this is a DCFScreenComponent's FrameLayout (has DCFScreen tag)
             if (parentViewGroup.tag == "DCFScreen") {
@@ -474,57 +480,143 @@ class DCMauiBridgeImpl private constructor() {
                 return true
             }
 
+            // CRITICAL: Match iOS pattern - check for custom component setChildren implementation
             val viewInfo = ViewRegistry.shared.getViewInfo(viewId)
             if (viewInfo != null) {
                 val componentClass = DCFComponentRegistry.shared.getComponentType(viewInfo.type)
                 if (componentClass != null) {
-                    val componentInstance = componentClass.getDeclaredConstructor().newInstance()
-                    val childViews = registeredChildIds.mapNotNull { ViewRegistry.shared.getView(it) }
-                    
-                    if (componentInstance.setChildren(parentView, childViews, viewId.toString())) {
-                        val viewIdStr = viewId.toString()
-                        val childrenIdsStr = registeredChildIds.map { it.toString() }
-                        viewHierarchy[viewIdStr] = childrenIdsStr.toMutableList()
-                        for (childIdStr in childrenIdsStr) {
-                            childToParent[childIdStr] = viewIdStr
+                    // Get component instance (use cached instance, matches iOS pattern)
+                    val componentInstance = getCachedComponentInstance(viewInfo.type)
+                    if (componentInstance != null) {
+                        // CRITICAL: Match React Native - verify ALL children exist before proceeding
+                        // React Native throws exception if view not found, we log error but continue
+                        val missingChildren = childrenIds.filter { ViewRegistry.shared.getView(it) == null }
+                        if (missingChildren.isNotEmpty()) {
+                            Log.e(TAG, "❌ setChildren: Missing child views: $missingChildren (component: ${viewInfo.type})")
+                            // Don't return false - let component.handleChildren handle it or fall through to fallback
                         }
                         
-                        for ((index, childId) in registeredChildIds.withIndex()) {
-                            DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
-                        }
+                        // Get child views (filtered - only registered views, matches iOS compactMap pattern)
+                        val childViews = childrenIds.mapNotNull { ViewRegistry.shared.getView(it) }
                         
-                        return true
+                        Log.d(TAG, "🔍 setChildren: Component '${viewInfo.type}' has custom setChildren, routing ${childViews.size} children (requested ${childrenIds.size})")
+                        
+                        // Call component's setChildren if it exists (matches iOS pattern)
+                        if (componentInstance.setChildren(parentView, childViews, viewId.toString())) {
+                            Log.d(TAG, "✅ setChildren: Component '${viewInfo.type}' handled children routing")
+                            
+                            // CRITICAL: Use ORIGINAL childrenIds for hierarchy tracking (matches iOS)
+                            // This ensures all children are tracked, even if not yet registered
+                            val viewIdStr = viewId.toString()
+                            val childrenIdsStr = childrenIds.map { it.toString() }
+                            viewHierarchy[viewIdStr] = childrenIdsStr.toMutableList()
+                            for (childIdStr in childrenIdsStr) {
+                                childToParent[childIdStr] = viewIdStr
+                            }
+                            
+                            // Update layout manager for registered children only
+                            for ((index, childId) in childrenIds.withIndex()) {
+                                if (ViewRegistry.shared.getView(childId) != null) {
+                                    DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
+                                }
+                            }
+                            
+                            // CRITICAL: Make all child views visible (matches iOS pattern)
+                            childViews.forEach { childView ->
+                                childView.visibility = View.VISIBLE
+                                childView.alpha = 1.0f
+                            }
+                            
+                            Log.d(TAG, "✅ setChildren: Component handled successfully for viewId=$viewId")
+                            return true
+                        } else {
+                            Log.d(TAG, "❌ setChildren: Component '${viewInfo.type}' setChildren returned false, falling back to normal")
+                        }
                     }
                 }
             }
             
+            // CRITICAL: Fallback to React Native's exact pattern
+            // React Native's setChildren does NOT call removeAllViews() - just adds children in order
+            // Android's ViewGroup.addView() automatically removes view from previous parent
+            Log.d(TAG, "⚠️ setChildren: Using React Native pattern (no removeAllViews) for viewId=$viewId")
+            
             val viewIdStr = viewId.toString()
-            val childrenIdsStr = registeredChildIds.map { it.toString() }
+            val childrenIdsStr = childrenIds.map { it.toString() }
+            
+            // Update hierarchy tracking (matches React Native's internal tracking)
             val oldChildren = viewHierarchy[viewIdStr] ?: mutableListOf()
             for (oldChildIdStr in oldChildren) {
                 if (!childrenIdsStr.contains(oldChildIdStr)) {
                     childToParent.remove(oldChildIdStr)
+                    Log.d(TAG, "   Removed old child from hierarchy: $oldChildIdStr")
                 }
             }
             
             viewHierarchy[viewIdStr] = childrenIdsStr.toMutableList()
             for (childIdStr in childrenIdsStr) {
-                childToParent[childIdStr] = viewIdStr
+                    childToParent[childIdStr] = viewIdStr
             }
             
-            parentViewGroup.removeAllViews()
-            
-            for ((index, childId) in registeredChildIds.withIndex()) {
+            // CRITICAL: Match React Native exactly - do NOT call removeAllViews()
+            // Just add children in order - Android's addView() handles parent removal automatically
+            // This is the key difference from our previous implementation!
+            var addedCount = 0
+            var skippedCount = 0
+            for ((index, childId) in childrenIds.withIndex()) {
                 val childView = ViewRegistry.shared.getView(childId)
-                if (childView != null) {
+                if (childView == null) {
+                    // CRITICAL: React Native throws exception here, we log error but continue
+                    Log.e(TAG, "❌ setChildren: Child view '$childId' not found at index $index (React Native would throw)")
+                    skippedCount++
+                    continue
+                }
+                
+                // CRITICAL: Check if view already has a parent
+                val currentParent = childView.parent
+                if (currentParent != null && currentParent != parentViewGroup) {
+                    Log.d(TAG, "   Child $childId already has parent ${currentParent.javaClass.simpleName}, will be moved")
+                    (currentParent as? ViewGroup)?.removeView(childView)
+                }
+                
+                // CRITICAL: Match React Native - just call addView at index
+                // Android will automatically handle reordering if view is already a child
+                try {
                     parentViewGroup.addView(childView, index)
+                    Log.d(TAG, "   ✅ Added child $childId at index $index")
+                    
+                    // CRITICAL: Make child view visible immediately (matches React Native pattern)
+                    childView.visibility = View.VISIBLE
+                    childView.alpha = 1.0f
+                    
                     DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
+                    addedCount++
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ setChildren: Error adding child $childId at index $index", e)
+                    skippedCount++
                 }
             }
             
+            // CRITICAL: Remove any children that are no longer in the list
+            // React Native doesn't do this explicitly, but we need to for correctness
+            val currentChildCount = parentViewGroup.childCount
+            val childrenToRemove = mutableListOf<android.view.View>()
+            for (i in 0 until currentChildCount) {
+                val child = parentViewGroup.getChildAt(i)
+                val childId = child.id
+                if (childId != 0 && !childrenIds.contains(childId)) {
+                    childrenToRemove.add(child)
+                }
+            }
+            for (child in childrenToRemove) {
+                parentViewGroup.removeView(child)
+                Log.d(TAG, "   Removed child ${child.id} (no longer in children list)")
+            }
+            
+            Log.d(TAG, "✅ setChildren: COMPLETE for viewId=$viewId - added: $addedCount, skipped: $skippedCount, removed: ${childrenToRemove.size}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to set children for view: $viewId", e)
+            Log.e(TAG, "❌ setChildren: Failed to set children for view: $viewId", e)
             false
         }
     }
@@ -541,6 +633,9 @@ class DCMauiBridgeImpl private constructor() {
      * @return `true` if all operations succeeded, `false` otherwise
      */
     fun commitBatchUpdate(operations: List<Map<String, Any>>): Boolean {
+        Log.e(TAG, "🔥🔥🔥 commitBatchUpdate: ENTRY POINT - ${operations.size} operations")
+        Log.e(TAG, "🔥🔥🔥 commitBatchUpdate: Thread=${Thread.currentThread().name}, isMainThread=${Looper.getMainLooper().thread == Thread.currentThread()}")
+        
         data class CreateOp(val viewId: Int, val viewType: String, val propsJson: String)
         data class UpdateOp(val viewId: Int, val propsJson: String)
         data class AttachOp(val childId: Int, val parentId: Int, val index: Int)
@@ -781,10 +876,27 @@ class DCMauiBridgeImpl private constructor() {
             Log.d(TAG, "🎯 BATCH_COMMIT: Calling calculateAndApplyLayout...")
             Log.d(TAG, "🎯 BATCH_COMMIT: Before layout - checking all views:")
             ViewRegistry.shared.allViewIds.forEach { viewId ->
-                val view = ViewRegistry.shared.getView(viewId)
+                    val view = ViewRegistry.shared.getView(viewId)
                 Log.d(TAG, "   viewId=$viewId: exists=${view != null}, hasParent=${view?.parent != null}, visibility=${view?.visibility}, alpha=${view?.alpha}, frame=(${view?.left}, ${view?.top}, ${view?.width}, ${view?.height})")
             }
+            
+            // CRITICAL DEBUG: Check if root view exists and is attached
+            val rootViewBeforeLayout = ViewRegistry.shared.getView(0)
+            Log.d(TAG, "🎯 BATCH_COMMIT: Root view before layout: exists=${rootViewBeforeLayout != null}, attached=${rootViewBeforeLayout?.isAttachedToWindow}, dimensions=${rootViewBeforeLayout?.width}x${rootViewBeforeLayout?.height}")
+            
+            // CRITICAL DEBUG: Check Yoga shadow tree state
+            val rootShadowNodeBeforeLayout = YogaShadowTree.shared.getShadowNode(0)
+            Log.d(TAG, "🎯 BATCH_COMMIT: Root shadow node before layout: exists=${rootShadowNodeBeforeLayout != null}, frame=${rootShadowNodeBeforeLayout?.frame}, availableSize=${rootShadowNodeBeforeLayout?.availableSize}")
+            
+            // CRITICAL DEBUG: Check if layout calculation is blocked
+            Log.d(TAG, "🎯 BATCH_COMMIT: About to call calculateAndApplyLayout - screenWidth=$screenWidth, screenHeight=$screenHeight")
+            Log.d(TAG, "🎯 BATCH_COMMIT: Stack trace:")
+            Thread.currentThread().stackTrace.take(10).forEach { 
+                Log.d(TAG, "   at ${it.className}.${it.methodName}(${it.fileName}:${it.lineNumber})")
+            }
+            
             try {
+                Log.d(TAG, "🎯 BATCH_COMMIT: CALLING calculateAndApplyLayout NOW...")
                 val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
                 Log.d(TAG, "🎯 BATCH_COMMIT: calculateAndApplyLayout returned: $layoutSuccess")
                 Log.d(TAG, "🎯 BATCH_COMMIT: After layout - checking all views:")
@@ -816,9 +928,13 @@ class DCMauiBridgeImpl private constructor() {
                 Log.d(TAG, "🎯 BATCH_COMMIT: Invalidated all views for redraw")
             }
             
+            Log.e(TAG, "🔥🔥🔥 commitBatchUpdate: SUCCESS - returning true")
             return true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed during atomic commit", e)
+            Log.e(TAG, "❌❌❌ commitBatchUpdate: FAILED with exception", e)
+            e.printStackTrace()
+            Log.e(TAG, "❌❌❌ Exception type: ${e.javaClass.name}")
+            Log.e(TAG, "❌❌❌ Exception message: ${e.message}")
             return false
         }
     }

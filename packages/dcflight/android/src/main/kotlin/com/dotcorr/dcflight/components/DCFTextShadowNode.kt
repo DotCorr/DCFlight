@@ -99,11 +99,14 @@ open class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             width
         }
         
+        Log.d(TAG, "🔍 measureText: viewId=$viewId, text='$text' (length=${text.length}), availableWidth=$availableWidth, widthMode=$widthMode")
+        
         val textPaint = buildTextPaintForWidth(availableWidth, widthMode)
         
         if (text.isEmpty()) {
             // Fallback: return minimum size based on font
             val minHeight = if (!fontSize.isNaN()) max(1f, fontSize) else 17f
+            Log.w(TAG, "⚠️ measureText: Text is empty for viewId=$viewId, returning min size: 1x$minHeight")
             return YogaMeasureOutput.make(1f, minHeight)
         }
         
@@ -127,6 +130,7 @@ open class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         
         // Match iOS approach: return just the text size (no padding added)
         // Yoga automatically accounts for padding when calculating the final frame
+        Log.d(TAG, "✅ measureText: viewId=$viewId, computed size: ${finalWidth}x${roundedHeight}")
         return YogaMeasureOutput.make(finalWidth, roundedHeight)
     }
     
@@ -199,6 +203,82 @@ open class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             .setEllipsize(ellipsize)
             .setMaxLines(if (numberOfLines > 0) numberOfLines else Int.MAX_VALUE)
             .build()
+    }
+    
+    /**
+     * Override applyLayoutNode to build textLayout and calculate textFrame
+     * Matches iOS DCFTextShadowView.applyLayoutNode exactly
+     */
+    override fun applyLayoutNode(
+        node: YogaNode,
+        viewsWithNewFrame: MutableSet<DCFShadowNode>,
+        absolutePosition: android.graphics.PointF
+    ) {
+        // Call super to handle frame calculation
+        super.applyLayoutNode(node, viewsWithNewFrame, absolutePosition)
+        
+        // CRITICAL: Clamp negative X and Y to 0 for text views (matches iOS behavior)
+        // Yoga may calculate negative positions when centering, but we need to clamp them to 0
+        // This prevents the layout from being rejected by isValidLayoutBounds
+        // iOS doesn't explicitly clamp, but Android's view system requires non-negative positions
+        val originalLeft = frame.left
+        val originalTop = frame.top
+        if (originalLeft < 0 || originalTop < 0) {
+            val width = frame.width()
+            val height = frame.height()
+            val clampedLeft = maxOf(0, originalLeft) // Clamp negative X to 0
+            val clampedTop = maxOf(0, originalTop) // Clamp negative Y to 0
+            frame = Rect(
+                clampedLeft,
+                clampedTop,
+                clampedLeft + width, // Preserve width
+                clampedTop + height // Preserve height
+            )
+            // Add to viewsWithNewFrame so the corrected frame gets applied
+            viewsWithNewFrame.add(this)
+            Log.d(TAG, "✅ DCFTextShadowNode: Clamped frame from ($originalLeft, $originalTop) to ($clampedLeft, $clampedTop) for viewId=$viewId. New frame: $frame")
+        }
+        
+        // Build text layout and calculate text frame for rendering
+        // Use frame width minus padding (matches iOS approach)
+        try {
+            val padding = paddingAsInsets
+            val frameWidth = frame.width()
+            val availableWidth = frameWidth.toFloat() - (padding.left + padding.right).toFloat()
+            
+            Log.d(TAG, "🔍 DCFTextShadowNode.applyLayoutNode: viewId=$viewId, frame=$frame, padding=$padding, availableWidth=$availableWidth")
+            
+            // Build text paint and layout for the final width
+            val textPaint = buildTextPaintForWidth(availableWidth, YogaMeasureMode.EXACTLY)
+            val textLayout = buildTextLayout(textPaint, availableWidth)
+            
+            // Calculate text frame (accounts for padding)
+            val textFrame = calculateTextFrame(textLayout, padding)
+            
+            // Store for use by DCFTextComponent.applyLayout
+            computedTextLayout = textLayout
+            computedTextFrame = textFrame
+            computedContentInset = android.graphics.Rect(padding.left, padding.top, padding.right, padding.bottom)
+            
+            Log.d(TAG, "✅ DCFTextShadowNode.applyLayoutNode: viewId=$viewId, set computedTextLayout (width=${textLayout.width}, height=${textLayout.height}), textFrame=$textFrame, text='${textLayout.text}'")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ DCFTextShadowNode.applyLayoutNode: Error building text layout for viewId=$viewId", e)
+        }
+    }
+    
+    /**
+     * Calculate text frame from text layout (accounts for padding)
+     * Matches iOS calculateTextFrame approach
+     */
+    private fun calculateTextFrame(layout: StaticLayout, padding: android.graphics.Rect): Rect {
+        // Text frame is the content area (inside padding)
+        // Position is relative to the view's frame
+        return Rect(
+            padding.left,
+            padding.top,
+            padding.left + layout.width,
+            padding.top + layout.height
+        )
     }
     
     /**

@@ -58,12 +58,21 @@ class DCFTextView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         
-        val layout = textLayout ?: return
+        android.util.Log.d("DCFTextView", "🔍 onDraw: textLayout=${textLayout != null}, textFrame=$textFrame, view bounds=${left},${top},${right},${bottom}")
+        
+        val layout = textLayout ?: run {
+            android.util.Log.w("DCFTextView", "⚠️ onDraw: textLayout is null, not drawing")
+            return
+        }
+        
+        android.util.Log.d("DCFTextView", "✅ onDraw: Drawing text layout (width=${layout.width}, height=${layout.height}) at textFrame=$textFrame")
         
         canvas.save()
         canvas.translate(textFrame.left.toFloat(), textFrame.top.toFloat())
         layout.draw(canvas)
         canvas.restore()
+        
+        android.util.Log.d("DCFTextView", "✅ onDraw: Text drawn successfully")
     }
     
     override fun toString(): String {
