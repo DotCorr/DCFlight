@@ -14,9 +14,9 @@ void main() async {
 class DotCorrLanding extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
-    return DCFScrollView(
+    return DCFView(
       layout: DCFLayout(flex: 1),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
+      styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
       children: [
         NavigationBar(),
         HeroSection(),
@@ -66,19 +66,19 @@ class NavigationBar extends DCFStatelessComponent {
               layout: DCFLayout(width: 24, height: 24),
               styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
             ),
-                DCFText(
-                  content: "DotCorr",
-                  textProps: DCFTextProps(
-                    fontSize: 18,
-                    fontWeight: DCFFontWeight.bold,
+            DCFText(
+              content: "DotCorr",
+              textProps: DCFTextProps(
+                fontSize: 18,
+                fontWeight: DCFFontWeight.bold,
                 letterSpacing: -0.5,
-                  ),
+              ),
               styleSheet: DCFStyleSheet(primaryColor: Colors.black),
-                ),
-              ],
             ),
+          ],
+        ),
         // Links - CRITICAL: Add flexShrink and minWidth: 0 to prevent overflow
-            DCFView(
+        DCFView(
           layout: DCFLayout(
             flexDirection: DCFFlexDirection.row,
             alignItems: DCFAlign.center,
@@ -87,9 +87,9 @@ class NavigationBar extends DCFStatelessComponent {
             flexGrow: 0, // Don't grow
             minWidth: 0, // CRITICAL: Allow shrinking below content size
           ),
-              children: [
-                DCFText(
-                  content: "The Lab",
+          children: [
+            DCFText(
+              content: "The Lab",
               textProps: DCFTextProps(
                 fontSize: 14,
                 fontWeight: DCFFontWeight.medium,
@@ -102,8 +102,8 @@ class NavigationBar extends DCFStatelessComponent {
               ),
             ),
             // GitHub Icon placeholder (text for now)
-                DCFText(
-                  content: "GitHub",
+            DCFText(
+              content: "GitHub",
               textProps: DCFTextProps(
                 fontSize: 14,
                 fontWeight: DCFFontWeight.medium,
@@ -196,17 +196,21 @@ class HeroSection extends DCFStatefulComponent {
                                 lineHeight: 1.1,
                                 letterSpacing: -1.5,
                               ),
-                              styleSheet: DCFStyleSheet(primaryColor: Colors.grey[300]!),
+                              styleSheet: DCFStyleSheet(
+                                primaryColor: Colors.grey[300]!,
+                              ),
                             ),
-                DCFText(
+                            DCFText(
                               content: "Inevitable.",
-                  textProps: DCFTextProps(
+                              textProps: DCFTextProps(
                                 fontSize: 48,
-                    fontWeight: DCFFontWeight.medium,
+                                fontWeight: DCFFontWeight.medium,
                                 lineHeight: 1.1,
                                 letterSpacing: -1.5,
                               ),
-                              styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+                              styleSheet: DCFStyleSheet(
+                                primaryColor: Colors.black,
+                              ),
                             ),
                           ],
                         ),
@@ -242,14 +246,16 @@ class HeroSection extends DCFStatefulComponent {
                             backgroundColor: Colors.black,
                             borderRadius: 2, // Small radius like web
                           ),
-                  children: [
-                    DCFText(
-                      content: "Enter The Lab",
-                      textProps: DCFTextProps(
-                        fontSize: 16,
-                        fontWeight: DCFFontWeight.medium,
-                      ),
-                              styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+                          children: [
+                            DCFText(
+                              content: "Enter The Lab",
+                              textProps: DCFTextProps(
+                                fontSize: 16,
+                                fontWeight: DCFFontWeight.medium,
+                              ),
+                              styleSheet: DCFStyleSheet(
+                                primaryColor: Colors.white,
+                              ),
                             ),
                             DCFText(
                               content: "→",
@@ -257,7 +263,9 @@ class HeroSection extends DCFStatefulComponent {
                                 fontSize: 16,
                                 fontWeight: DCFFontWeight.medium,
                               ),
-                              styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+                              styleSheet: DCFStyleSheet(
+                                primaryColor: Colors.white,
+                              ),
                             ),
                           ],
                         ),
@@ -286,12 +294,12 @@ class HeroSection extends DCFStatefulComponent {
 }
 
 /// Typewriter Effect Component
-/// 
+///
 /// CURRENT IMPLEMENTATION: Uses Dart timers and state (runs on Dart thread)
 /// - 2-12% CPU usage
 /// - Bridge calls for every character update
 /// - Can be blocked by Dart thread operations
-/// 
+///
 /// FUTURE: Will migrate to worklet-based implementation (runs on UI thread)
 /// - <1% CPU usage expected
 /// - Zero bridge calls during animation
@@ -304,9 +312,9 @@ class TypewriterEffect extends DCFStatefulComponent {
       "Build for Web.",
       "Build for AI.",
       "Build for AGI.",
-      "Build for The Future."
+      "Build for The Future.",
     ];
-    
+
     final index = useState<int>(0);
     final subIndex = useState<int>(0);
     final reverse = useState<bool>(false);
@@ -319,7 +327,7 @@ class TypewriterEffect extends DCFStatefulComponent {
       });
       return () => timer.cancel();
     }, dependencies: []);
-    
+
     // Typewriter logic - matches web version behavior
     // The framework ensures this effect runs reliably on mount and only re-runs when dependencies change
     // This prevents unnecessary cleanup during reconciliation loops
@@ -329,7 +337,7 @@ class TypewriterEffect extends DCFStatefulComponent {
       final wordLength = currentWord.length;
       final currentSubIndex = subIndex.state;
       final isReversing = reverse.state;
-      
+
       // If we've typed past the end, wait then start deleting
       if (currentSubIndex == wordLength && !isReversing) {
         timer = Timer(Duration(milliseconds: 2000), () {
@@ -339,7 +347,7 @@ class TypewriterEffect extends DCFStatefulComponent {
         });
         return () => timer?.cancel();
       }
-      
+
       // If we've deleted everything and reversing, move to next word
       if (currentSubIndex == 0 && isReversing) {
         reverse.setState(false);
@@ -347,7 +355,7 @@ class TypewriterEffect extends DCFStatefulComponent {
         // Don't set timer here - let the effect re-run with new state
         return () {};
       }
-      
+
       // Default: continue typing or deleting
       // This handles initial state (0, false) and all in-progress states
       final speed = isReversing ? 50 : 100;
@@ -356,7 +364,7 @@ class TypewriterEffect extends DCFStatefulComponent {
         final currentReverse = reverse.state;
         final currentSub = subIndex.state;
         final currentWordLen = words[index.state].length;
-        
+
         if (currentReverse) {
           // Deleting - move backwards
           if (currentSub > 0) {
@@ -371,14 +379,16 @@ class TypewriterEffect extends DCFStatefulComponent {
       });
       return () => timer?.cancel();
     }, dependencies: [subIndex.state, index.state, reverse.state]);
-    
+
     final currentText = words[index.state].substring(0, subIndex.state);
-    final cursorChar = blink.state ? '▊' : ' '; // Use block character for cursor
-    
+    final cursorChar =
+        blink.state ? '▊' : ' '; // Use block character for cursor
+
     // Combine text and cursor in a single text component for proper positioning
     // Use a fixed-width container to prevent layout jumps when switching words
     final longestWord = words.reduce((a, b) => a.length > b.length ? a : b);
-    final estimatedWidth = longestWord.length * 12.0; // Approximate width per character
+    final estimatedWidth =
+        longestWord.length * 12.0; // Approximate width per character
 
     return DCFView(
       layout: DCFLayout(
@@ -389,18 +399,12 @@ class TypewriterEffect extends DCFStatefulComponent {
       children: [
         DCFText(
           content: "\$ ",
-          textProps: DCFTextProps(
-            fontSize: 20,
-            fontFamily: "Courier",
-          ),
+          textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[400]!),
         ),
         DCFText(
           content: "$currentText$cursorChar",
-          textProps: DCFTextProps(
-            fontSize: 20,
-            fontFamily: "Courier",
-          ),
+          textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
         ),
       ],
@@ -409,7 +413,7 @@ class TypewriterEffect extends DCFStatefulComponent {
 }
 
 /// Worklet-based Typewriter Effect (runs on UI thread)
-/// 
+///
 /// This is the optimized version that runs entirely on the UI thread with zero bridge calls.
 /// It uses AnimatedText component with a worklet function.
 @Worklet()
@@ -423,37 +427,38 @@ String typewriterWorklet(
   // Calculate total time per word cycle
   double totalTimePerCycle = 0;
   for (String word in words) {
-    totalTimePerCycle += (word.length * typeSpeed / 1000.0) + 
-                        pauseDuration / 1000.0 + 
-                        (word.length * deleteSpeed / 1000.0);
+    totalTimePerCycle +=
+        (word.length * typeSpeed / 1000.0) +
+        pauseDuration / 1000.0 +
+        (word.length * deleteSpeed / 1000.0);
   }
-  
+
   // Find current word and position based on elapsed time
   double cycleTime = elapsed % totalTimePerCycle;
   int wordIndex = 0;
   double accumulatedTime = 0;
-  
+
   for (int i = 0; i < words.length; i++) {
     String word = words[i];
     double wordTypeTime = word.length * typeSpeed / 1000.0;
     double wordPauseTime = pauseDuration / 1000.0;
     double wordDeleteTime = word.length * deleteSpeed / 1000.0;
     double wordTotalTime = wordTypeTime + wordPauseTime + wordDeleteTime;
-    
+
     if (cycleTime <= accumulatedTime + wordTotalTime) {
       wordIndex = i;
       break;
     }
     accumulatedTime += wordTotalTime;
   }
-  
+
   String currentWord = words[wordIndex];
   double wordStartTime = accumulatedTime;
   double wordTypeTime = currentWord.length * typeSpeed / 1000.0;
   double wordPauseTime = pauseDuration / 1000.0;
-  
+
   double relativeTime = cycleTime - wordStartTime;
-  
+
   if (relativeTime < wordTypeTime) {
     // Typing phase
     int charIndex = (relativeTime / (typeSpeed / 1000.0)).floor();
@@ -467,7 +472,10 @@ String typewriterWorklet(
     double deleteElapsed = relativeTime - deleteStartTime;
     int charsToDelete = (deleteElapsed / (deleteSpeed / 1000.0)).floor();
     int remainingChars = math.max(0, currentWord.length - charsToDelete);
-    return currentWord.substring(0, math.min(remainingChars, currentWord.length));
+    return currentWord.substring(
+      0,
+      math.min(remainingChars, currentWord.length),
+    );
   }
 }
 
@@ -480,9 +488,9 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
       "Build for Web.",
       "Build for AI.",
       "Build for AGI.",
-      "Build for The Future."
+      "Build for The Future.",
     ];
-    
+
     return DCFView(
       layout: DCFLayout(
         flexDirection: DCFFlexDirection.row,
@@ -491,10 +499,7 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
       children: [
         DCFText(
           content: "\$ ",
-          textProps: DCFTextProps(
-            fontSize: 20,
-            fontFamily: "Courier",
-          ),
+          textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[400]!),
         ),
         AnimatedText(
@@ -505,10 +510,7 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
             'deleteSpeed': 50.0,
             'pauseDuration': 2000.0,
           },
-          textProps: DCFTextProps(
-            fontSize: 20,
-            fontFamily: "Courier",
-          ),
+          textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
         ),
       ],
@@ -530,11 +532,7 @@ class InfrastructureVisual extends DCFStatelessComponent {
         justifyContent: DCFJustifyContent.center,
       ),
       initial: AnimationProperties(rotateX: 0, rotateZ: 0, scale: 0.8),
-      animate: AnimationProperties(
-        rotateX: 60,
-        rotateZ: 45,
-        scale: 1.0,
-      ),
+      animate: AnimationProperties(rotateX: 60, rotateZ: 45, scale: 1.0),
       transition: Transition(
         duration: 2500, // Match web duration
         cubicBezier: [0.16, 1, 0.3, 1], // Smooth ease-out like web
@@ -570,7 +568,9 @@ class InfrastructureVisual extends DCFStatelessComponent {
             shadowOpacity: 0.4,
           ),
           initial: AnimationProperties(translateZ: 0),
-          animate: AnimationProperties(translateZ: 80), // Tower height in 3D space
+          animate: AnimationProperties(
+            translateZ: 80,
+          ), // Tower height in 3D space
           transition: Transition(
             duration: 2000,
             delay: 800,
@@ -684,21 +684,30 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
       children: [
         // Icon - matches web w-12 h-12 = 48px
         DCFView(
-            layout: DCFLayout(
+          layout: DCFLayout(
             width: 48,
             height: 48,
             alignItems: DCFAlign.center,
             justifyContent: DCFJustifyContent.center,
             marginBottom: 24, // mb-6 = 24px
-            ),
-            styleSheet: DCFStyleSheet(
+          ),
+          styleSheet: DCFStyleSheet(
             backgroundColor: bg == Colors.white ? Colors.black : Colors.white,
             borderRadius: 4,
           ),
           children: [
             DCFText(
-              layout: DCFLayout(width: 48, height: 48, alignItems: DCFAlign.center, justifyContent: DCFJustifyContent.center,),              content: bg == Colors.white ? "📱" : "🧠",
-              textProps: DCFTextProps(fontSize: 24,textAlign: DCFTextAlign.center),
+              layout: DCFLayout(
+                width: 48,
+                height: 48,
+                alignItems: DCFAlign.center,
+                justifyContent: DCFJustifyContent.center,
+              ),
+              content: bg == Colors.white ? "📱" : "🧠",
+              textProps: DCFTextProps(
+                fontSize: 24,
+                textAlign: DCFTextAlign.center,
+              ),
               styleSheet: DCFStyleSheet(
                 primaryColor: bg == Colors.white ? Colors.white : Colors.black,
               ),
@@ -707,7 +716,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
         ),
         // Title - text-2xl font-bold mb-3
         DCFView(
-      layout: DCFLayout(
+          layout: DCFLayout(
             width: '100%',
             marginBottom: 12, // mb-3 = 12px
           ),
@@ -729,10 +738,10 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             marginBottom: 32, // mb-8 = 32px
             flexShrink: 0, // Don't shrink
           ),
-              children: [
-                DCFText(
+          children: [
+            DCFText(
               content: desc,
-                  textProps: DCFTextProps(
+              textProps: DCFTextProps(
                 fontSize: 16,
                 lineHeight: 1.5,
                 numberOfLines:
@@ -746,9 +755,9 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               ),
               // Remove explicit width - let text size naturally based on parent constraints
               // Yoga will automatically constrain it to parent's available width (after padding)
-                ),
-              ],
             ),
+          ],
+        ),
         // Link - inline-flex items-center gap-2
         DCFView(
           layout: DCFLayout(
@@ -756,10 +765,10 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             alignItems: DCFAlign.center,
             gap: 8, // gap-2 = 8px
           ),
-              children: [
-                DCFText(
+          children: [
+            DCFText(
               content: linkText,
-                  textProps: DCFTextProps(
+              textProps: DCFTextProps(
                 fontSize: 16,
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line for link
@@ -769,8 +778,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 flexShrink:
                     0, // Text should not shrink - let it truncate if needed
               ),
-                ),
-                DCFText(
+            ),
+            DCFText(
               content: "→",
               textProps: DCFTextProps(fontSize: 16),
               styleSheet: DCFStyleSheet(primaryColor: text),
@@ -795,12 +804,12 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
         paddingHorizontal: 24,
       ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
-          children: [
-            DCFText(
-              content: "Built for the Modern Stack",
-              textProps: DCFTextProps(
+      children: [
+        DCFText(
+          content: "Built for the Modern Stack",
+          textProps: DCFTextProps(
             fontSize: 32,
-                fontWeight: DCFFontWeight.bold,
+            fontWeight: DCFFontWeight.bold,
             letterSpacing: -1,
           ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.black),
@@ -822,11 +831,11 @@ class AboutSection extends DCFStatelessComponent {
       ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[900]!),
       children: [
-            DCFText(
-              content: "Designing the Cognitive Future",
-              textProps: DCFTextProps(
-                fontSize: 32,
-                fontWeight: DCFFontWeight.bold,
+        DCFText(
+          content: "Designing the Cognitive Future",
+          textProps: DCFTextProps(
+            fontSize: 32,
+            fontWeight: DCFFontWeight.bold,
             letterSpacing: -1,
           ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.white),
@@ -851,9 +860,9 @@ class Footer extends DCFStatelessComponent {
         gap: 40,
       ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
-          children: [
-            DCFText(
-              content: "© 2025 DotCorr. All rights reserved.",
+      children: [
+        DCFText(
+          content: "© 2025 DotCorr. All rights reserved.",
           textProps: DCFTextProps(fontSize: 14),
           styleSheet: DCFStyleSheet(primaryColor: Colors.grey[500]!),
         ),

@@ -169,8 +169,16 @@ class DCMauiBridgeImpl private constructor() {
             val view = ViewRegistry.shared.getView(viewId)
             if (view != null) {
                 views[viewId] = view
-                view.visibility = View.VISIBLE
-                view.alpha = 1.0f
+                // CRITICAL: Root view (0) should always be visible
+                // Other views will be made visible after layout is applied
+                if (viewId == 0) {
+                    view.visibility = View.VISIBLE
+                    view.alpha = 1.0f
+                    Log.d(TAG, "✅ createView: Root view (0) made visible immediately")
+                } else {
+                    // Non-root views start invisible - will be made visible after layout
+                    Log.d(TAG, "🔍 createView: Non-root view (viewId=$viewId) starts invisible, will be made visible after layout")
+                }
             } else {
                 Log.e(TAG, "View '$viewId' was created but not found in registry")
                 return false
@@ -704,7 +712,12 @@ class DCMauiBridgeImpl private constructor() {
             }
             
             attachOps.forEach { op ->
-                attachView(op.childId, op.parentId, op.index)
+                Log.d(TAG, "🔍 BATCH_COMMIT: Attaching viewId=${op.childId} to parentId=${op.parentId} at index=${op.index}")
+                val success = attachView(op.childId, op.parentId, op.index)
+                Log.d(TAG, "   ✅ attachView result: $success")
+                val childView = ViewRegistry.shared.getView(op.childId)
+                val parentView = ViewRegistry.shared.getView(op.parentId)
+                Log.d(TAG, "   After attach: child exists=${childView != null}, hasParent=${childView?.parent != null}, parent exists=${parentView != null}, parent childCount=${(parentView as? ViewGroup)?.childCount}")
             }
             
             // 🔧 FIX: Finally remove ALL old views from parent AFTER layout tree removal
@@ -727,30 +740,69 @@ class DCMauiBridgeImpl private constructor() {
             val screenWidth = displayMetrics.widthPixels.toFloat()
             val screenHeight = displayMetrics.heightPixels.toFloat()
             
+            Log.d(TAG, "🎯 BATCH_COMMIT: Starting layout calculation - screen size: ${screenWidth}x${screenHeight}")
+            
+            // DEBUG: Log view registry state
+            val allViewIds = ViewRegistry.shared.allViewIds
+            Log.d(TAG, "🎯 BATCH_COMMIT: ViewRegistry has ${allViewIds.size} views: $allViewIds")
+            
             val rootView = ViewRegistry.shared.getView(0)
             rootView?.let { root ->
+                Log.d(TAG, "🎯 BATCH_COMMIT: Root view found, measuring...")
+                Log.d(TAG, "🎯 BATCH_COMMIT: Root view current state: left=${root.left}, top=${root.top}, width=${root.width}, height=${root.height}, visibility=${root.visibility}, alpha=${root.alpha}")
+                Log.d(TAG, "🎯 BATCH_COMMIT: Root view attached to window: ${root.isAttachedToWindow}, hasParent=${root.parent != null}, parentType=${root.parent?.javaClass?.simpleName}")
+                Log.d(TAG, "🎯 BATCH_COMMIT: Root view rootView: ${root.rootView != null}, rootViewType=${root.rootView?.javaClass?.simpleName}")
+                
+                // CRITICAL: Ensure root view is visible and has correct dimensions
+                if (root.visibility != View.VISIBLE) {
+                    Log.w(TAG, "⚠️ BATCH_COMMIT: Root view is not VISIBLE! Setting to VISIBLE...")
+                    root.visibility = View.VISIBLE
+                }
+                if (root.alpha < 1.0f) {
+                    Log.w(TAG, "⚠️ BATCH_COMMIT: Root view alpha is ${root.alpha}! Setting to 1.0...")
+                    root.alpha = 1.0f
+                }
+                
                 root.measure(
                     View.MeasureSpec.makeMeasureSpec(screenWidth.toInt(), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(screenHeight.toInt(), View.MeasureSpec.EXACTLY)
                 )
+                Log.d(TAG, "🎯 BATCH_COMMIT: Root view measured: (${root.measuredWidth}, ${root.measuredHeight})")
+            } ?: Log.e(TAG, "🎯 BATCH_COMMIT: Root view (0) not found!")
+            
+            // DEBUG: Log Yoga shadow tree state before layout
+            val rootShadowNode = YogaShadowTree.shared.getShadowNode(0)
+            Log.d(TAG, "🎯 BATCH_COMMIT: Root shadow node exists: ${rootShadowNode != null}")
+            rootShadowNode?.let {
+                Log.d(TAG, "🎯 BATCH_COMMIT: Root shadow node frame: ${it.frame}")
+                Log.d(TAG, "🎯 BATCH_COMMIT: Root shadow node availableSize: ${it.availableSize}")
             }
             
-            YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
-            
-            // Make all views visible after layout (except root which is always visible)
+            Log.d(TAG, "🎯 BATCH_COMMIT: Calling calculateAndApplyLayout...")
+            Log.d(TAG, "🎯 BATCH_COMMIT: Before layout - checking all views:")
             ViewRegistry.shared.allViewIds.forEach { viewId ->
-                if (viewId != 0) { // Root is always visible
+                val view = ViewRegistry.shared.getView(viewId)
+                Log.d(TAG, "   viewId=$viewId: exists=${view != null}, hasParent=${view?.parent != null}, visibility=${view?.visibility}, alpha=${view?.alpha}, frame=(${view?.left}, ${view?.top}, ${view?.width}, ${view?.height})")
+            }
+            try {
+                val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
+                Log.d(TAG, "🎯 BATCH_COMMIT: calculateAndApplyLayout returned: $layoutSuccess")
+                Log.d(TAG, "🎯 BATCH_COMMIT: After layout - checking all views:")
+                ViewRegistry.shared.allViewIds.forEach { viewId ->
                     val view = ViewRegistry.shared.getView(viewId)
-                    view?.let {
-                        if (it.visibility != View.VISIBLE || it.alpha < 1.0f) {
-                            it.visibility = View.VISIBLE
-                            it.alpha = 1.0f
-                        }
-                    }
+                    Log.d(TAG, "   viewId=$viewId: exists=${view != null}, hasParent=${view?.parent != null}, visibility=${view?.visibility}, alpha=${view?.alpha}, frame=(${view?.left}, ${view?.top}, ${view?.width}, ${view?.height})")
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ BATCH_COMMIT: calculateAndApplyLayout threw exception!", e)
+                e.printStackTrace()
+                throw e // Re-throw to prevent silent failure
             }
             
-            // Invalidate all views and trigger a post-layout calculation
+            // CRITICAL: Views are made visible INSIDE calculateAndApplyLayout after layouts are applied
+            // Do NOT make views visible here - it causes a race condition where views are visible but not laid out
+            // This matches iOS behavior where calculateLayoutNow() makes views visible after layout completes
+            
+            // Invalidate all views to ensure they redraw with new layouts
             rootView?.let { root ->
                 fun invalidateAll(v: View) {
                     v.invalidate()
@@ -761,10 +813,7 @@ class DCMauiBridgeImpl private constructor() {
                     }
                 }
                 invalidateAll(root)
-                
-                root.post {
-                    YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
-                }
+                Log.d(TAG, "🎯 BATCH_COMMIT: Invalidated all views for redraw")
             }
             
             return true

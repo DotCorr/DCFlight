@@ -103,9 +103,13 @@ class DCFViewManager private constructor() {
         if (viewId != 0) {
             view.visibility = View.INVISIBLE
             view.alpha = 0f
+            Log.d(TAG, "🔍 ViewManager.createView: viewId=$viewId set to INVISIBLE (will be made visible after layout)")
+        } else {
+            Log.d(TAG, "🔍 ViewManager.createView: Root view (viewId=0) created, visibility=${view.visibility}, alpha=${view.alpha}")
         }
 
         ViewRegistry.shared.registerView(view, viewId, viewType)
+        Log.d(TAG, "✅ ViewManager.createView: viewId=$viewId registered, viewType=$viewType, hasParent=${view.parent != null}, visibility=${view.visibility}")
 
         val isScreen = (viewType == "Screen" || props["presentationStyle"] != null)
         if (isScreen) {

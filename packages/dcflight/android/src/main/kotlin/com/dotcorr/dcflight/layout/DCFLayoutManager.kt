@@ -123,21 +123,85 @@ class DCFLayoutManager private constructor() {
     private fun performAutomaticLayoutCalculation() {
         if (!needsLayoutCalculation.get()) return
 
-        layoutExecutor.execute {
+        // CRITICAL: Set root view frame synchronously on main thread BEFORE layout calculation (matches iOS 1:1)
+        // This ensures root view is correctly positioned when Yoga calculates child positions
+        // We need to do this synchronously to ensure the frame is set before layout calculation starts
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            // Already on main thread, set root view frame synchronously
             val displayMetrics = Resources.getSystem().displayMetrics
             val screenWidth = displayMetrics.widthPixels.toFloat()
             val screenHeight = displayMetrics.heightPixels.toFloat()
+            
+            // Set root view frame first - CRITICAL: Must be exactly (0,0) to fill screen
+            val rootView = getView(0)
+            if (rootView != null) {
+                val rootFrame = Rect(0, 0, screenWidth.toInt(), screenHeight.toInt())
+                if (rootView.left != rootFrame.left || rootView.top != rootFrame.top ||
+                    rootView.width != rootFrame.width() || rootView.height != rootFrame.height()) {
+                    // Measure root view first
+                    rootView.measure(
+                        android.view.View.MeasureSpec.makeMeasureSpec(rootFrame.width(), android.view.View.MeasureSpec.EXACTLY),
+                        android.view.View.MeasureSpec.makeMeasureSpec(rootFrame.height(), android.view.View.MeasureSpec.EXACTLY)
+                    )
+                    // Layout root view
+                    rootView.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
+                    Log.d(TAG, "✅ DCFLayoutManager: Root view frame set to (${rootFrame.left}, ${rootFrame.top}, ${rootFrame.width()}, ${rootFrame.height()})")
+                }
+            }
+            
+            // Now do layout calculation on background thread
+            layoutExecutor.execute {
+                val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
 
-            val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
-
+                mainHandler.post {
+                    needsLayoutCalculation.set(false)
+                    if (success) {
+                        Log.d(TAG, "Layout calculation successful")
+                    } else {
+                        Log.w(TAG, "Layout calculation deferred, rescheduling")
+                        needsLayoutCalculation.set(true)
+                        scheduleLayoutCalculation()
+                    }
+                }
+            }
+        } else {
+            // Not on main thread, post to main thread first
             mainHandler.post {
-                needsLayoutCalculation.set(false)
-                if (success) {
-                    Log.d(TAG, "Layout calculation successful")
-                } else {
-                    Log.w(TAG, "Layout calculation deferred, rescheduling")
-                    needsLayoutCalculation.set(true)
-                    scheduleLayoutCalculation()
+                val displayMetrics = Resources.getSystem().displayMetrics
+                val screenWidth = displayMetrics.widthPixels.toFloat()
+                val screenHeight = displayMetrics.heightPixels.toFloat()
+                
+                // Set root view frame first - CRITICAL: Must be exactly (0,0) to fill screen
+                val rootView = getView(0)
+                if (rootView != null) {
+                    val rootFrame = Rect(0, 0, screenWidth.toInt(), screenHeight.toInt())
+                    if (rootView.left != rootFrame.left || rootView.top != rootFrame.top ||
+                        rootView.width != rootFrame.width() || rootView.height != rootFrame.height()) {
+                        // Measure root view first
+                        rootView.measure(
+                            android.view.View.MeasureSpec.makeMeasureSpec(rootFrame.width(), android.view.View.MeasureSpec.EXACTLY),
+                            android.view.View.MeasureSpec.makeMeasureSpec(rootFrame.height(), android.view.View.MeasureSpec.EXACTLY)
+                        )
+                        // Layout root view
+                        rootView.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
+                        Log.d(TAG, "✅ DCFLayoutManager: Root view frame set to (${rootFrame.left}, ${rootFrame.top}, ${rootFrame.width()}, ${rootFrame.height()})")
+                    }
+                }
+                
+                // Now do layout calculation on background thread
+                layoutExecutor.execute {
+                    val success = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
+
+                    mainHandler.post {
+                        needsLayoutCalculation.set(false)
+                        if (success) {
+                            Log.d(TAG, "Layout calculation successful")
+                        } else {
+                            Log.w(TAG, "Layout calculation deferred, rescheduling")
+                            needsLayoutCalculation.set(true)
+                            scheduleLayoutCalculation()
+                        }
+                    }
                 }
             }
         }

@@ -346,6 +346,7 @@ open class DCFShadowNode {
         // Calculate frame from Yoga layout results
         // Position is relative to parent (layoutX/layoutY)
         // Size is calculated from layout dimensions
+        // MATCH iOS 1:1 - frame uses relative coordinates (relative to parent)
         val absoluteTopLeft = android.graphics.PointF(
             absolutePosition.x + node.layoutX,
             absolutePosition.y + node.layoutY
@@ -356,12 +357,38 @@ open class DCFShadowNode {
             absolutePosition.y + node.layoutY + node.layoutHeight
         )
         
+        // Frame uses relative coordinates (matches iOS 1:1)
+        // x = layoutX (relative to parent)
+        // y = layoutY (relative to parent)
+        // width = absoluteBottomRight.x - absoluteTopLeft.x
+        // height = absoluteBottomRight.y - absoluteTopLeft.y
         val newFrame = Rect(
             roundPixelValue(node.layoutX),
             roundPixelValue(node.layoutY),
-            roundPixelValue(absoluteBottomRight.x),
-            roundPixelValue(absoluteBottomRight.y)
+            roundPixelValue(node.layoutX + node.layoutWidth),
+            roundPixelValue(node.layoutY + node.layoutHeight)
         )
+        
+        // DEBUG: Log ALL frames during layout to trace the issue
+        Log.d(TAG, "🔍 DCFShadowNode.applyLayoutNode: viewId=$viewId")
+        Log.d(TAG, "   Yoga layout: left=${node.layoutX}, top=${node.layoutY}, width=${node.layoutWidth}, height=${node.layoutHeight}")
+        Log.d(TAG, "   absolutePosition=$absolutePosition")
+        Log.d(TAG, "   Calculated relative frame=$newFrame")
+        Log.d(TAG, "   Current frame (before update)=$frame")
+        
+        // Get parent info for debugging
+        val parentNode = node.parent
+        if (parentNode != null) {
+            val parentShadowNode = YogaShadowTree.shared.getShadowNode(parentNode)
+            if (parentShadowNode != null) {
+                Log.d(TAG, "   Parent (viewId=${parentShadowNode.viewId}) frame=${parentShadowNode.frame}")
+                Log.d(TAG, "   Parent Yoga layout: left=${parentNode.layoutX}, top=${parentNode.layoutY}, width=${parentNode.layoutWidth}, height=${parentNode.layoutHeight}")
+            } else {
+                Log.d(TAG, "   Parent shadow node not found")
+            }
+        } else {
+            Log.d(TAG, "   This is the root node (no parent)")
+        }
         
         // DEBUG: Log problematic frames (negative Y or zero height)
         if (newFrame.top < 0 || newFrame.height() == 0) {
@@ -392,11 +419,18 @@ open class DCFShadowNode {
         absolutePosition: android.graphics.PointF
     ) {
         val childCount = node.childCount
+        Log.d(TAG, "🔍 DCFShadowNode.applyLayoutToChildren: viewId=$viewId, childCount=$childCount, current frame=$frame, absolutePosition=$absolutePosition")
+        
         for (i in 0 until childCount) {
-            if (i < _subviews.size) {
-                val child = _subviews[i]
-                val childNode = node.getChildAt(i)
-                child.applyLayoutNode(childNode, viewsWithNewFrame, absolutePosition)
+            val childNode = node.getChildAt(i)
+            // Get shadow node from Yoga node (matches iOS 1:1)
+            // This ensures we traverse all children even if _subviews isn't populated
+            val childShadowNode = YogaShadowTree.shared.getShadowNode(childNode)
+            if (childShadowNode != null) {
+                Log.d(TAG, "   Processing child $i: viewId=${childShadowNode.viewId}, Yoga layout: left=${childNode.layoutX}, top=${childNode.layoutY}, width=${childNode.layoutWidth}, height=${childNode.layoutHeight}")
+                childShadowNode.applyLayoutNode(childNode, viewsWithNewFrame, absolutePosition)
+            } else {
+                Log.w(TAG, "   ⚠️ Child $i shadow node not found for Yoga node")
             }
         }
     }

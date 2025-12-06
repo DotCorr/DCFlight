@@ -9,6 +9,7 @@ package com.dotcorr.dcflight.layout
 
 import android.content.Context
 import android.content.res.Resources
+import android.graphics.PointF
 import android.graphics.Rect
 import android.os.Handler
 import android.os.Looper
@@ -38,6 +39,7 @@ class YogaShadowTree private constructor() {
     }
 
     private var rootNode: YogaNode? = null
+    private var rootShadowNode: DCFRootShadowNode? = null
     internal val nodes = ConcurrentHashMap<String, YogaNode>()
     internal val nodeParents = ConcurrentHashMap<String, String>()
     private val nodeTypes = ConcurrentHashMap<String, String>()
@@ -64,19 +66,28 @@ class YogaShadowTree private constructor() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     init {
-        rootNode = YogaNodeFactory.create().apply {
-            setDirection(YogaDirection.LTR)
-            setFlexDirection(YogaFlexDirection.COLUMN)
+        // Create root shadow node (matches iOS 1:1)
+        val rootViewId = 0
+        val rootShadowNode = DCFRootShadowNode(rootViewId)
+        rootShadowNode.viewName = "View"
 
             val displayMetrics = Resources.getSystem().displayMetrics
-            setWidth(displayMetrics.widthPixels.toFloat())
-            setHeight(displayMetrics.heightPixels.toFloat())
-        }
+        rootShadowNode.availableSize = PointF(
+            displayMetrics.widthPixels.toFloat(),
+            displayMetrics.heightPixels.toFloat()
+        )
         
-        rootNode?.let { root ->
-            nodes["0"] = root
+        // Configure root shadow node's Yoga node with proper defaults
+        val rootYogaNode = rootShadowNode.yogaNode
+        rootYogaNode.setFlexDirection(YogaFlexDirection.COLUMN)
+        rootYogaNode.setDirection(YogaDirection.LTR)
+        rootYogaNode.setFlexShrink(0.0f)
+        
+        this.rootShadowNode = rootShadowNode
+        this.rootNode = rootYogaNode
+        shadowNodes[rootViewId] = rootShadowNode
+        nodes["0"] = rootYogaNode
             nodeTypes["0"] = "View"
-        }
         
         Log.d(TAG, "Initializing YogaShadowTree")
         
@@ -121,8 +132,35 @@ class YogaShadowTree private constructor() {
 
     @Synchronized
     fun createNode(id: String, componentType: String) {
-        val node = YogaNodeFactory.create()
+        val viewId = id.toIntOrNull() ?: return
         
+        // Check if already exists
+        if (shadowNodes[viewId] != null) {
+            Log.d(TAG, "🔍 createNode: viewId=$viewId already exists, skipping")
+            return
+        }
+        
+        Log.d(TAG, "🔍 createNode: Creating node viewId=$viewId, type=$componentType")
+        
+        // Create appropriate shadow node based on component type (matches iOS 1:1)
+        val shadowNode: DCFShadowNode = when (componentType) {
+            "ScrollContentView" -> {
+                DCFScrollContentShadowNode(viewId)
+            }
+            "Text" -> {
+                DCFTextShadowNode(viewId)
+            }
+            else -> {
+                DCFShadowNode(viewId)
+            }
+        }
+        
+        shadowNode.viewName = componentType
+        
+        // Get Yoga node from shadow node
+        val node = shadowNode.yogaNode
+        
+        // Apply default styles
         applyDefaultNodeStyles(node, componentType)
         
         val context = mapOf(
@@ -133,8 +171,14 @@ class YogaShadowTree private constructor() {
         
         nodes[id] = node
         nodeTypes[id] = componentType
+        shadowNodes[viewId] = shadowNode
         
+        Log.d(TAG, "   Created shadow node: viewId=$viewId, initial frame=${shadowNode.frame}, yogaNode style: width=${node.width.value}, height=${node.height.value}")
+        
+        // Setup measure function if needed (Text has its own, so skip for Text)
+        if (componentType != "Text") {
         setupMeasureFunction(id, node)
+        }
     }
 
     @Synchronized
@@ -290,6 +334,13 @@ class YogaShadowTree private constructor() {
             return
         }
         
+        // DEBUG: Log parent and child state before adding
+        val parentShadowNode = shadowNodes[parentId]
+        val childShadowNode = shadowNodes[childId]
+        Log.d(TAG, "🔍 addChildNode: Adding child viewId=$childId to parent viewId=$parentId at index=$index")
+        Log.d(TAG, "   Parent (viewId=$parentId): frame=${parentShadowNode?.frame}, yoga style: width=${parentNode.width.value}, height=${parentNode.height.value}, flexDirection=${parentNode.flexDirection}")
+        Log.d(TAG, "   Child (viewId=$childId): frame=${childShadowNode?.frame}, yoga style: width=${childNode.width.value}, height=${childNode.height.value}")
+        
         nodeParents[childIdStr]?.let { oldParentId ->
             nodes[oldParentId]?.let { oldParentNode ->
                 safeRemoveChildFromParent(oldParentNode, childNode, childIdStr)
@@ -313,7 +364,8 @@ class YogaShadowTree private constructor() {
             
             setupMeasureFunction(childIdStr, childNode)
             
-            Log.d(TAG, "Added child: $childIdStr to parent: $parentIdStr at index: $safeIndex")
+            Log.d(TAG, "✅ Added child: $childIdStr to parent: $parentIdStr at index: $safeIndex")
+            Log.d(TAG, "   After adding: parent childCount=${parentNode.childCount}, child parent=${childNode.parent != null}")
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add child node", e)
@@ -419,30 +471,67 @@ class YogaShadowTree private constructor() {
 
     @Synchronized
     fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
+        Log.d(TAG, "🎯 calculateAndApplyLayout: START - width=$width, height=$height, isReconciling=$isReconciling, isLayoutCalculating=$isLayoutCalculating")
+        Log.d(TAG, "🎯 calculateAndApplyLayout: Thread=${Thread.currentThread().name}, isMainThread=${Looper.getMainLooper().thread == Thread.currentThread()}")
+        
+        // DEBUG: Log shadow tree state
+        Log.d(TAG, "🎯 calculateAndApplyLayout: Shadow tree state:")
+        Log.d(TAG, "   Total nodes: ${nodes.size}")
+        Log.d(TAG, "   Total shadow nodes: ${shadowNodes.size}")
+        Log.d(TAG, "   Root node exists: ${rootNode != null}")
+        Log.d(TAG, "   Root shadow node exists: ${rootShadowNode != null}")
+        
         if (isReconciling) {
-            Log.d(TAG, "Layout calculation deferred - currently reconciling")
+            Log.d(TAG, "⚠️ Layout calculation deferred - currently reconciling")
+            return false
+        }
+        
+        if (isLayoutCalculating) {
+            Log.w(TAG, "⚠️ Layout calculation already in progress, skipping")
             return false
         }
         
         isLayoutCalculating = true
         
         try {
-            val mainRoot = nodes["0"]
-            if (mainRoot == null) {
-                Log.e(TAG, "Root node not found")
+            val rootShadowNode = this.rootShadowNode
+            if (rootShadowNode == null) {
+                Log.e(TAG, "❌ Root shadow node not found")
+                Log.e(TAG, "   Available shadow nodes: ${shadowNodes.keys.sorted()}")
                 return false
             }
             
-            mainRoot.setWidth(width)
-            mainRoot.setHeight(height)
+            Log.d(TAG, "✅ Root shadow node found: viewId=${rootShadowNode.viewId}, current frame=${rootShadowNode.frame}")
+            Log.d(TAG, "   Root Yoga node childCount: ${rootShadowNode.yogaNode.childCount}")
             
-            try {
-                mainRoot.calculateLayout(width, height)
-                Log.d(TAG, "Main root layout calculated successfully")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to calculate main root layout", e)
-                return false
+            // Update root available size FIRST (matches iOS 1:1)
+            rootShadowNode.availableSize = PointF(width, height)
+            Log.d(TAG, "✅ Root availableSize set to ($width, $height)")
+            
+            // CRITICAL: Set root shadow node's frame BEFORE layout calculation (matches iOS 1:1)
+            // This ensures children are positioned correctly relative to a properly sized root
+            // The root shadow node's frame must match the screen size before Yoga calculates child positions
+            rootShadowNode.setRootFrame(width, height)
+            
+            // CRITICAL: Ensure root Yoga node has correct constraints
+            // While iOS doesn't set explicit width/height on root, we need to ensure Yoga uses correct availableSize
+            // The root node's availableSize is already set above, which Yoga will use
+            
+            // Calculate layout using shadow node's collectViewsWithUpdatedFrames (matches iOS 1:1)
+            Log.d(TAG, "🔍 Calling collectViewsWithUpdatedFrames on root shadow node...")
+            val viewsWithNewFrame = rootShadowNode.collectViewsWithUpdatedFrames()
+            Log.d(TAG, "✅ collectViewsWithUpdatedFrames returned ${viewsWithNewFrame.size} views with new frames")
+            
+            if (viewsWithNewFrame.isEmpty()) {
+                Log.w(TAG, "⚠️ WARNING: No views with new frames collected! This might indicate a problem.")
+            } else {
+                Log.d(TAG, "📋 Views with new frames:")
+                viewsWithNewFrame.forEach { shadowNode ->
+                    Log.d(TAG, "   viewId=${shadowNode.viewId}, frame=${shadowNode.frame}")
+                }
             }
+            
+            Log.d(TAG, "✅ Main root layout calculated successfully")
             
             for ((screenId, screenRoot) in screenRoots) {
                 screenRoot.setWidth(width)
@@ -457,22 +546,152 @@ class YogaShadowTree private constructor() {
                 }
             }
             
-            val layoutsToApply = mutableListOf<Pair<String, Rect>>()
-            for ((nodeId, node) in nodes) {
-                val layout = getNodeLayout(nodeId)
-                if (layout != null) {
-                    if (isValidLayoutBounds(layout)) {
-                        layoutsToApply.add(Pair(nodeId, layout))
-                    } else {
-                        Log.w(TAG, "Invalid layout bounds for node $nodeId: $layout")
+            // Apply frames to actual Views (excluding root view which we set explicitly)
+            // CRITICAL: Apply layouts on main thread to match React Native behavior
+            Log.d(TAG, "🔍 Preparing layouts to apply (${viewsWithNewFrame.size} views with new frames)...")
+            val layoutsToApply = mutableListOf<Pair<Int, Rect>>()
+            for (shadowNode in viewsWithNewFrame) {
+                // Skip root view (viewId=0) - we set it explicitly below
+                if (shadowNode.viewId == 0) {
+                    Log.d(TAG, "   Skipping root view (viewId=0)")
+                    continue
+                }
+                
+                // Use the frame calculated in applyLayoutNode (matches iOS 1:1)
+                // Frame is in relative coordinates (relative to parent), which is what applyLayout expects
+                // CRITICAL: For ScrollContentView, the frame may have negative Y, but DCFScrollContentViewComponent.applyLayout
+                // will reset it to (0, 0) when applying to the view (matches iOS behavior)
+                val layout = shadowNode.frame
+                
+                // Check if this view is a descendant of ScrollContentView (allow negative Y for scrollable content)
+                // Traverse up the parent chain to find ScrollContentView
+                val nodeId = shadowNode.viewId.toString()
+                var isScrollContentChild = false
+                var currentParentId: String? = nodeParents[nodeId]
+                while (currentParentId != null) {
+                    if (nodeTypes[currentParentId] == "ScrollContentView") {
+                        isScrollContentChild = true
+                        break
                     }
+                    currentParentId = nodeParents[currentParentId]
+                }
+                
+                if (isValidLayoutBounds(layout, allowNegativeY = isScrollContentChild)) {
+                    layoutsToApply.add(Pair(shadowNode.viewId, layout))
+                    Log.d(TAG, "   ✅ Added layout for viewId=${shadowNode.viewId}: $layout (isScrollContentChild=$isScrollContentChild)")
+                } else {
+                    Log.w(TAG, "   ❌ Invalid layout bounds for node ${shadowNode.viewId}: $layout (isScrollContentChild=$isScrollContentChild)")
                 }
             }
             
+            Log.d(TAG, "📋 Prepared ${layoutsToApply.size} layouts to apply (out of ${viewsWithNewFrame.size} views with new frames)")
             
-            applyLayoutsBatch(layoutsToApply)
+            // Apply all layouts on main thread (matches React Native's UIViewOperationQueue pattern)
+            Log.d(TAG, "🔍 Posting layout application to main thread...")
+            Log.d(TAG, "   Current thread: ${Thread.currentThread().name}")
+            Log.d(TAG, "   Main looper thread: ${Looper.getMainLooper().thread.name}")
+            mainHandler.post {
+                Log.d(TAG, "🎯 Layout application on main thread: START")
+                Log.d(TAG, "   Thread: ${Thread.currentThread().name}, isMainThread=${Looper.getMainLooper().thread == Thread.currentThread()}")
+                
+                // First, ensure root view is properly sized (matches React Native's root view handling)
+                Log.d(TAG, "   🔍 Checking root view (viewId=0)...")
+                val rootView = DCFLayoutManager.shared.getView(0)
+                Log.d(TAG, "   Root view from DCFLayoutManager: ${rootView != null}")
+                if (rootView != null) {
+                    Log.d(TAG, "   Root view current state: left=${rootView.left}, top=${rootView.top}, width=${rootView.width}, height=${rootView.height}, visibility=${rootView.visibility}")
+                    val rootFrame = Rect(0, 0, width.toInt(), height.toInt())
+                    Log.d(TAG, "   ✅ Root view found, current frame: (${rootView.left}, ${rootView.top}, ${rootView.width}, ${rootView.height})")
+                    Log.d(TAG, "   🔍 Target root frame: $rootFrame")
+                    
+                    // Measure root view first (matches React Native's updateLayout pattern)
+                    rootView.measure(
+                        android.view.View.MeasureSpec.makeMeasureSpec(rootFrame.width(), android.view.View.MeasureSpec.EXACTLY),
+                        android.view.View.MeasureSpec.makeMeasureSpec(rootFrame.height(), android.view.View.MeasureSpec.EXACTLY)
+                    )
+                    // Layout root view
+                    if (rootView.left != rootFrame.left || rootView.top != rootFrame.top ||
+                        rootView.width != rootFrame.width() || rootView.height != rootFrame.height()) {
+                        rootView.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
+                        Log.d(TAG, "   ✅ Root view layout updated")
+                    } else {
+                        Log.d(TAG, "   ℹ️ Root view already at correct frame")
+                    }
+                    // Ensure root view is visible
+                    if (rootView.visibility != android.view.View.VISIBLE) {
+                        rootView.visibility = android.view.View.VISIBLE
+                        Log.d(TAG, "   ✅ Root view made visible")
+                    }
+                    if (rootView.alpha < 1.0f) {
+                        rootView.alpha = 1.0f
+                        Log.d(TAG, "   ✅ Root view alpha set to 1.0")
+                    }
+                    Log.d(TAG, "   ✅ Root view (0) verified at (${rootView.left}, ${rootView.top}, ${rootView.width}, ${rootView.height})")
+                } else {
+                    Log.e(TAG, "   ❌ Root view (0) not found in registry!")
+                }
+                
+                // Apply layouts to all child views
+                Log.d(TAG, "   🔍 Applying layouts to ${layoutsToApply.size} child views...")
+                Log.d(TAG, "   DCFLayoutManager viewRegistry has ${DCFLayoutManager.shared.viewRegistry.size} views")
+                var appliedCount = 0
+                var skippedNoView = 0
+                var skippedNoParent = 0
+                for ((viewId, layout) in layoutsToApply) {
+                    val view = DCFLayoutManager.shared.getView(viewId)
+                    Log.d(TAG, "   🔍 Processing viewId=$viewId: view exists=${view != null}, has parent=${view?.parent != null}, layout=$layout")
+                    if (view != null && view.parent != null) {
+                        // Apply layout via DCFLayoutManager
+                        // Frame is in relative coordinates (matches iOS 1:1)
+                        Log.d(TAG, "   🔍 Applying layout to viewId=$viewId: $layout")
+                        DCFLayoutManager.shared.applyLayout(
+                            viewId,
+                            layout.left.toFloat(),
+                            layout.top.toFloat(),
+                            layout.width().toFloat(),
+                            layout.height().toFloat()
+                        )
+                        
+                        // CRITICAL: Ensure view is visible after layout (matches React Native behavior)
+                        // Views should be visible after layout is applied
+                        if (view.visibility != android.view.View.VISIBLE) {
+                            view.visibility = android.view.View.VISIBLE
+                            Log.d(TAG, "      ✅ Made viewId=$viewId visible")
+                        }
+                        if (view.alpha < 1.0f) {
+                            view.alpha = 1.0f
+                            Log.d(TAG, "      ✅ Set viewId=$viewId alpha to 1.0")
+                        }
+                        
+                        appliedCount++
+                        Log.d(TAG, "      ✅ Applied layout to viewId=$viewId")
+                    } else if (view == null) {
+                        skippedNoView++
+                        Log.w(TAG, "   ⚠️ View $viewId not found in registry")
+                    } else if (view.parent == null) {
+                        skippedNoParent++
+                        Log.w(TAG, "   ⚠️ View $viewId has no parent, skipping layout")
+                    }
+                }
+                
+                Log.d(TAG, "   ✅ Applied layout to $appliedCount views out of ${layoutsToApply.size} layouts")
+                if (skippedNoView > 0) {
+                    Log.w(TAG, "   ⚠️ Skipped $skippedNoView views (not found in registry)")
+                }
+                if (skippedNoParent > 0) {
+                    Log.w(TAG, "   ⚠️ Skipped $skippedNoParent views (no parent)")
+                }
+                
+                // DEBUG: Log final state of all views after layout application
+                Log.d(TAG, "   🔍 Final view state after layout application:")
+                DCFLayoutManager.shared.viewRegistry.forEach { (viewId, view) ->
+                    Log.d(TAG, "      viewId=$viewId: visibility=${view.visibility}, alpha=${view.alpha}, frame=(${view.left}, ${view.top}, ${view.width}, ${view.height}), hasParent=${view.parent != null}, isAttached=${view.isAttachedToWindow}")
+                }
+                
+                Log.d(TAG, "🎯 Layout application on main thread: COMPLETE")
+            }
             
-            Log.d(TAG, "Layout calculation and application completed successfully")
+            Log.d(TAG, "✅ Layout calculation and application completed successfully")
             return true
             
         } catch (e: Exception) {
@@ -580,9 +799,27 @@ class YogaShadowTree private constructor() {
         return Rect(left.toInt(), top.toInt(), (left + width).toInt(), (top + height).toInt())
     }
     
-    private fun isValidLayoutBounds(rect: Rect): Boolean {
-        return rect.width() >= 0 && rect.height() >= 0 && 
-               rect.width() < 10000 && rect.height() < 10000
+    private fun isValidLayoutBounds(rect: Rect, allowNegativeY: Boolean = false): Boolean {
+        // Allow very large dimensions for scrollable content (matches iOS behavior)
+        // iOS doesn't have such limits, so we use a very large limit (100 million pixels)
+        // For scrollable content, allow negative X and Y coordinates (children can be positioned outside visible area)
+        val validWidth = rect.width() >= 0 && rect.width() < 100000000
+        val validHeight = rect.height() >= 0 && rect.height() < 100000000
+        val validX = if (allowNegativeY) {
+            // For scrollable content, allow negative X (children can be to the left of visible area)
+            true
+        } else {
+            // For non-scrollable content, X should be non-negative
+            rect.left >= 0
+        }
+        val validY = if (allowNegativeY) {
+            // For scrollable content, allow negative Y (children can be above visible area)
+            true
+        } else {
+            // For non-scrollable content, Y should be non-negative
+            rect.top >= 0
+        }
+        return validWidth && validHeight && validX && validY
     }
 
     private fun validateNodeLayoutConfig(nodeId: String) {
@@ -1293,6 +1530,18 @@ class YogaShadowTree private constructor() {
     @Synchronized
     fun getShadowNode(viewId: Int): DCFShadowNode? {
         return shadowNodes[viewId]
+    }
+    
+    @Synchronized
+    fun getShadowNode(yogaNode: YogaNode): DCFShadowNode? {
+        // Find the nodeId for this YogaNode by searching the nodes map
+        for ((nodeId, node) in nodes) {
+            if (node === yogaNode) {
+                val viewId = nodeId.toIntOrNull() ?: return null
+                return shadowNodes[viewId]
+            }
+        }
+        return null
     }
     
     @Synchronized

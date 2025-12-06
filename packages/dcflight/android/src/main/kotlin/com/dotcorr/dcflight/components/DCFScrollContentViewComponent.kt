@@ -51,10 +51,11 @@ class DCFScrollContentViewComponent : DCFComponent() {
         // Apply Yoga layout to content view
         // The ScrollView will read this view's frame.size to set contentSize
         // CRITICAL: ScrollContentView should always start at (0, 0) relative to ScrollView
-        // Yoga may calculate a negative Y position, but we need to reset it to 0
+        // Yoga may calculate a negative Y position, but we need to reset it to 0 (matches iOS 1:1)
+        // This matches iOS DCFScrollContentViewComponent.applyLayout behavior exactly
         // The height should be determined by children, not constrained
         val frame = Rect(
-            0, // Always start at x=0 relative to ScrollView
+            0, // Always start at x=0 relative to ScrollView (ignore Yoga's calculated left)
             0, // Always start at y=0 relative to ScrollView (ignore Yoga's calculated top)
             kotlin.math.max(0f, layout.width).toInt(), // Use Yoga's calculated width
             kotlin.math.max(0f, layout.height).toInt() // Use Yoga's calculated height (should grow with children)
@@ -66,13 +67,25 @@ class DCFScrollContentViewComponent : DCFComponent() {
         view.setTag(pendingFrameKey, frame)
         
         // CRITICAL: Set frame directly (applyLayout is called on main thread from DCFLayoutManager)
-        // Disable layout animations to prevent Android from resetting the frame
-        view.layout(
-            frame.left,
-            frame.top,
-            frame.right,
-            frame.bottom
-        )
+        // Use measure + layout to ensure frame is applied correctly (matches iOS CATransaction pattern)
+        // Measure first to ensure view has correct size
+        if (frame.width() > 0 && frame.height() > 0) {
+            view.measure(
+                android.view.View.MeasureSpec.makeMeasureSpec(frame.width(), android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(frame.height(), android.view.View.MeasureSpec.EXACTLY)
+            )
+        }
+        
+        // Layout the view at (0, 0) relative to parent
+        // CRITICAL: Even if view doesn't have parent yet, set the frame so it's ready when attached
+        if (view.parent != null || view.rootView != null) {
+            view.layout(
+                frame.left,
+                frame.top,
+                frame.right,
+                frame.bottom
+            )
+        }
         
         // Force layout to ensure frame is applied
         view.requestLayout()
@@ -83,14 +96,25 @@ class DCFScrollContentViewComponent : DCFComponent() {
         val needsFrameRestore = view.getTag(needsFrameRestoreKey) as? Boolean ?: false
         val actualFrame = Rect(view.left, view.top, view.right, view.bottom)
         if (view.width == 0 || view.height == 0 || actualFrame != frame || needsFrameRestore) {
-            view.layout(
-                frame.left,
-                frame.top,
-                frame.right,
-                frame.bottom
-            )
-            view.requestLayout()
-            Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame was zero/mismatch/needsRestore - restored to $frame, actualFrame=$actualFrame")
+            // Retry layout - view might have been attached since last attempt
+            if (view.parent != null || view.rootView != null) {
+                if (frame.width() > 0 && frame.height() > 0) {
+                    view.measure(
+                        android.view.View.MeasureSpec.makeMeasureSpec(frame.width(), android.view.View.MeasureSpec.EXACTLY),
+                        android.view.View.MeasureSpec.makeMeasureSpec(frame.height(), android.view.View.MeasureSpec.EXACTLY)
+                    )
+                }
+                view.layout(
+                    frame.left,
+                    frame.top,
+                    frame.right,
+                    frame.bottom
+                )
+                view.requestLayout()
+                Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame was zero/mismatch/needsRestore - restored to $frame, actualFrame=$actualFrame")
+            } else {
+                Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame needs restore but view has no parent yet - frame=$frame, actualFrame=$actualFrame")
+            }
             
             // Clear the needsFrameRestore flag
             view.setTag(needsFrameRestoreKey, null)
