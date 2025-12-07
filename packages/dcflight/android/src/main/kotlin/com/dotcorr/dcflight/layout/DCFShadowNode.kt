@@ -343,18 +343,53 @@ open class DCFShadowNode {
             return
         }
         
+        // CRITICAL: Validate Yoga layout values before using them
+        // Yoga may return NaN, Infinity, or invalid values if layout calculation failed
+        val layoutX = node.layoutX
+        val layoutY = node.layoutY
+        val layoutWidth = node.layoutWidth
+        val layoutHeight = node.layoutHeight
+        
+        // Check for invalid values (NaN, Infinity, or extremely large values)
+        val isValidLayout = !layoutX.isNaN() && !layoutX.isInfinite() && 
+                           !layoutY.isNaN() && !layoutY.isInfinite() &&
+                           !layoutWidth.isNaN() && !layoutWidth.isInfinite() && layoutWidth >= 0 &&
+                           !layoutHeight.isNaN() && !layoutHeight.isInfinite() && layoutHeight >= 0 &&
+                           layoutX >= -1000000 && layoutX <= 1000000 &&
+                           layoutY >= -1000000 && layoutY <= 1000000
+        
+        if (!isValidLayout) {
+            Log.e(TAG, "❌ Invalid Yoga layout values for viewId=$viewId: layoutX=$layoutX, layoutY=$layoutY, layoutWidth=$layoutWidth, layoutHeight=$layoutHeight")
+            Log.e(TAG, "   Using previous frame as fallback: $frame")
+            // Use previous frame as fallback instead of skipping entirely
+            // This prevents views from disappearing if Yoga calculation fails temporarily
+            if (frame.width() > 0 && frame.height() > 0) {
+                // Keep existing frame if it's valid
+                viewsWithNewFrame.add(this)
+            } else {
+                // If previous frame is also invalid, use a default frame
+                val defaultFrame = Rect(0, 0, 100, 100)
+                if (frame != defaultFrame) {
+                    frame = defaultFrame
+                    viewsWithNewFrame.add(this)
+                }
+            }
+            // Don't process children if parent layout is invalid
+            return
+        }
+        
         // Calculate frame from Yoga layout results
         // Position is relative to parent (layoutX/layoutY)
         // Size is calculated from layout dimensions
         // MATCH iOS 1:1 - frame uses relative coordinates (relative to parent)
         val absoluteTopLeft = android.graphics.PointF(
-            absolutePosition.x + node.layoutX,
-            absolutePosition.y + node.layoutY
+            absolutePosition.x + layoutX,
+            absolutePosition.y + layoutY
         )
         
         val absoluteBottomRight = android.graphics.PointF(
-            absolutePosition.x + node.layoutX + node.layoutWidth,
-            absolutePosition.y + node.layoutY + node.layoutHeight
+            absolutePosition.x + layoutX + layoutWidth,
+            absolutePosition.y + layoutY + layoutHeight
         )
         
         // Frame uses relative coordinates (matches iOS 1:1)
@@ -363,10 +398,10 @@ open class DCFShadowNode {
         // width = absoluteBottomRight.x - absoluteTopLeft.x
         // height = absoluteBottomRight.y - absoluteTopLeft.y
         val newFrame = Rect(
-            roundPixelValue(node.layoutX),
-            roundPixelValue(node.layoutY),
-            roundPixelValue(node.layoutX + node.layoutWidth),
-            roundPixelValue(node.layoutY + node.layoutHeight)
+            roundPixelValue(layoutX),
+            roundPixelValue(layoutY),
+            roundPixelValue(layoutX + layoutWidth),
+            roundPixelValue(layoutY + layoutHeight)
         )
         
         // DEBUG: Log ALL frames during layout to trace the issue
@@ -406,8 +441,8 @@ open class DCFShadowNode {
         }
         
         val newAbsolutePosition = android.graphics.PointF(
-            absolutePosition.x + node.layoutX,
-            absolutePosition.y + node.layoutY
+            absolutePosition.x + layoutX,
+            absolutePosition.y + layoutY
         )
         
         applyLayoutToChildren(node, viewsWithNewFrame, newAbsolutePosition)

@@ -19,8 +19,9 @@ object PrimitivesComponentsReg {
     fun registerComponents() {
         val registry = DCFComponentRegistry.shared
 
-        registry.registerComponent("View", DCFViewComponent::class.java)
-        registry.registerComponent("Text", DCFTextComponent::class.java)
+        // NOTE: View, Text, and ScrollView are CORE framework components
+        // They are registered in FrameworkComponentsReg, NOT here!
+        // Only register primitives that are NOT in the core framework
         registry.registerComponent("Image", DCFImageComponent::class.java)
         registry.registerComponent("TextInput", DCFTextInputComponent::class.java)
         registry.registerComponent("Toggle", DCFToggleComponent::class.java)
@@ -37,7 +38,6 @@ object PrimitivesComponentsReg {
         
         registry.registerComponent("Svg", DCFSvgComponent::class.java)
         registry.registerComponent("DCFIcon", DCFIconComponent::class.java)
-        registry.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
         // Canvas component not needed - using WidgetToDCFAdaptor with CustomPaint directly
         // registry.registerComponent("Canvas", DCFCanvasComponent::class.java)
     }

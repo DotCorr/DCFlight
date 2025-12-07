@@ -151,10 +151,9 @@ class YogaShadowTree private constructor() {
         
         Log.d(TAG, "   Created shadow node: viewId=$viewId, initial frame=${shadowNode.frame}, yogaNode style: width=${node.width.value}, height=${node.height.value}")
         
-        // Setup measure function if needed (Text has its own, so skip for Text)
-        if (componentType != "Text") {
-            setupMeasureFunction(id, node)
-        }
+        // Setup measure function for all components (including Text)
+        // Text nodes need measure functions to be marked as dirty when text changes
+        setupMeasureFunction(id, node)
     }
 
     @Synchronized
@@ -206,8 +205,86 @@ class YogaShadowTree private constructor() {
                         height
                     }
                     
+                    // CRITICAL: Handle Text components specially - use shadow node's collected text
+                    // Text measurement must use the shadow node's getText() to collect text from children
+                    // and create a Layout with proper width constraints (matches React Native RCTText.measure)
+                    val shadowNode = shadowNodes[viewIdInt]
+                    if (componentType == "Text" && shadowNode is com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode) {
+                        val textShadowNode = shadowNode as com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode
+                        val text = textShadowNode.getText()
+                        
+                        if (text.isEmpty()) {
+                            return@setMeasureFunction YogaMeasureOutput.make(0f, 0f)
+                        }
+                        
+                        // Get text properties from shadow node
+                        val fontSize = textShadowNode.getFontSize().toFloat()
+                        val textAlign = textShadowNode.textAlign
+                        val numberOfLines = textShadowNode.numberOfLines
+                        
+                        // Create TextPaint for layout
+                        val paint = android.text.TextPaint(android.text.TextPaint.ANTI_ALIAS_FLAG)
+                        paint.textSize = fontSize
+                        
+                        // Get font style and weight from span
+                        val fontStyle = textShadowNode.getFontStyle()
+                        val fontWeight = textShadowNode.fontWeight
+                        val fontFamily = textShadowNode.fontFamily
+                        val typefaceStyle = if (fontWeight != null) {
+                            when (fontWeight.lowercase()) {
+                                "bold", "700", "800", "900" -> android.graphics.Typeface.BOLD
+                                else -> android.graphics.Typeface.NORMAL
+                            }
+                        } else {
+                            android.graphics.Typeface.NORMAL
+                        }
+                        paint.typeface = if (fontFamily != null) {
+                            android.graphics.Typeface.create(fontFamily, typefaceStyle or fontStyle)
+                        } else {
+                            android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, typefaceStyle or fontStyle)
+                        }
+                        
+                        // Determine layout width based on widthMode
+                        val layoutWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
+                            // For undefined width, use a large value to measure natural width
+                            Integer.MAX_VALUE
+                        } else {
+                            // For EXACTLY or AT_MOST, use the constraint width
+                            constraintWidth.toInt().coerceAtLeast(0)
+                        }
+                        
+                        // Create layout alignment
+                        val alignment = when (textAlign.lowercase()) {
+                            "center" -> android.text.Layout.Alignment.ALIGN_CENTER
+                            "right", "end" -> android.text.Layout.Alignment.ALIGN_OPPOSITE
+                            "left", "start" -> android.text.Layout.Alignment.ALIGN_NORMAL
+                            "justify" -> android.text.Layout.Alignment.ALIGN_NORMAL
+                            else -> android.text.Layout.Alignment.ALIGN_NORMAL
+                        }
+                        
+                        // Create StaticLayout with proper constraints
+                        val layout = android.text.StaticLayout.Builder.obtain(text, 0, text.length, paint, layoutWidth)
+                            .setAlignment(alignment)
+                            .setLineSpacing(0f, 1f)
+                            .setIncludePad(true)
+                            .apply {
+                                if (numberOfLines > 0) {
+                                    setMaxLines(numberOfLines)
+                                    setEllipsize(android.text.TextUtils.TruncateAt.END)
+                                }
+                            }
+                            .build()
+                        
+                        val measuredWidth = layout.width.toFloat()
+                        val measuredHeight = layout.height.toFloat()
+                        
+                        Log.d(TAG, "Measured Text node $nodeId: text length=${text.length}, constraints=${constraintWidth}x${constraintHeight}, layout=${measuredWidth}x${measuredHeight}")
+                        
+                        return@setMeasureFunction YogaMeasureOutput.make(measuredWidth.toFloat(), measuredHeight.toFloat())
+                    }
+                    
                     // CRITICAL: Always try to measure view with constraints when available
-                    // This allows components (Text, Button, etc.) to properly wrap/adapt to constraints
+                    // This allows components (Button, etc.) to properly wrap/adapt to constraints
                     // Works for ALL view types, not just ComposeView - fully modular and scalable
                     if (widthMode != YogaMeasureMode.UNDEFINED || heightMode != YogaMeasureMode.UNDEFINED) {
                         // Measure view with constraints for proper sizing/wrapping
@@ -241,14 +318,9 @@ class YogaShadowTree private constructor() {
                             val measuredWidth = view.measuredWidth.toFloat()
                             val measuredHeight = view.measuredHeight.toFloat()
                             
-                            // Log measurement for debugging text truncation
-                            if (nodeTypes[nodeId] == "Text") {
-                                Log.d(TAG, "Measured Text node $nodeId with constraints: ${constraintWidth}x${constraintHeight} -> ${measuredWidth}x${measuredHeight}")
-                            }
-                            
                             // Use measured size if valid, otherwise fall back to intrinsic
                             if (measuredWidth > 0 && measuredHeight > 0) {
-                                return@setMeasureFunction YogaMeasureOutput.make(measuredWidth, measuredHeight)
+                                return@setMeasureFunction YogaMeasureOutput.make(measuredWidth.toFloat(), measuredHeight.toFloat())
                             }
                         } catch (e: Exception) {
                             // If measurement fails, fall back to intrinsic size
@@ -267,8 +339,7 @@ class YogaShadowTree private constructor() {
                     
                     // Intrinsic size is handled via shadow node's intrinsicContentSize property
                     // Components set this via viewRegisteredWithShadowTree
-                    val nodeIdInt = nodeId.toIntOrNull() ?: 0
-                    val shadowNode = shadowNodes[nodeIdInt]
+                    // Reuse shadowNode from line 211 (already declared for Text component check)
                     val intrinsicSize = shadowNode?.intrinsicContentSize ?: android.graphics.PointF(0f, 0f)
                     
                     val finalWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
@@ -283,7 +354,7 @@ class YogaShadowTree private constructor() {
                         kotlin.math.min(intrinsicSize.y, constraintHeight)
                     }
                     
-                    YogaMeasureOutput.make(finalWidth, finalHeight)
+                    YogaMeasureOutput.make(finalWidth.toFloat(), finalHeight.toFloat())
                 }
             } else {
                 node.setMeasureFunction(null)
@@ -453,9 +524,14 @@ class YogaShadowTree private constructor() {
                         val textValue = value?.toString() ?: ""
                         shadowNode.text = textValue
                         shadowNode.dirtyText()
-                        // CRITICAL: Mark Yoga node as dirty to force re-measurement
-                        node.markLayoutSeen() // Reset layout seen flag
-                        node.dirty() // Mark as dirty to force re-measure
+                        // CRITICAL: Only mark Yoga node as dirty if it's a leaf node (no children)
+                        // Text nodes can have children (virtual text nodes), so we can't call dirty() directly
+                        // Yoga only allows calling dirty() on leaf nodes with custom measure functions
+                        // The dirtyText() propagation will handle notifying parents for non-leaf nodes
+                        if (node.childCount == 0) {
+                            node.markLayoutSeen() // Reset layout seen flag
+                            node.dirty() // Mark as dirty to force re-measure
+                        }
                         Log.d(TAG, "✅ Set text content for viewId=$viewId: '$textValue' (length=${textValue.length})")
                     }
                     "fontSize" -> {
@@ -467,20 +543,12 @@ class YogaShadowTree private constructor() {
                         }
                     }
                     "fontWeight" -> {
-                        if (shadowNode is com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode) {
-                            shadowNode.setFontWeight(value?.toString())
-                        } else {
-                            shadowNode.fontWeight = value?.toString()
-                            shadowNode.dirtyText()
-                        }
+                        shadowNode.fontWeight = value?.toString()
+                        shadowNode.dirtyText()
                     }
                     "fontFamily" -> {
-                        if (shadowNode is com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode) {
-                            shadowNode.setFontFamily(value?.toString())
-                        } else {
-                            shadowNode.fontFamily = value?.toString()
-                            shadowNode.dirtyText()
-                        }
+                        shadowNode.fontFamily = value?.toString()
+                        shadowNode.dirtyText()
                     }
                     "letterSpacing" -> {
                         if (value is Number) {

@@ -7,6 +7,7 @@ import android.text.TextPaint
 import android.text.TextUtils
 import android.view.View
 import com.dotcorr.dcflight.components.DCFComponent
+import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.text.DCFTextView
 import com.dotcorr.dcflight.extensions.applyStyles
@@ -47,43 +48,53 @@ class DCFTextComponent : DCFComponent() {
     }
     
     private fun updateTextView(textView: DCFTextView, props: Map<String, Any?>) {
-        val content = props["content"]?.toString() ?: ""
+        // Try to get collected text from shadow node if available
+        // This ensures we use text collected from children (for nested text styling)
+        val shadowNode = nodeId?.let { id ->
+            com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(id.toIntOrNull() ?: 0)
+        } as? com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode
         
-        val textColor = ColorUtilities.getColor("textColor", "primaryColor", props)
-        val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
-        val fontWeight = props["fontWeight"]?.toString() ?: "normal"
-        val fontFamily = props["fontFamily"]?.toString()
+        val text: CharSequence = if (shadowNode != null) {
+            // Use collected text from shadow node (includes text from children with spans)
+            shadowNode.getText()
+        } else {
+            // Fallback to content prop if shadow node not available yet
+            props["content"]?.toString() ?: ""
+        }
+        
+        if (text.isEmpty()) {
+            textView.textLayout = null
+            return
+        }
+        
         val textAlign = props["textAlign"]?.toString() ?: "start"
         val numberOfLines = (props["numberOfLines"] as? Number)?.toInt() ?: 0
         
+        // Layout will be created with proper width in applyLayout
+        // For now, create a temporary layout for initial rendering
+        // The actual layout will be recreated with correct width during layout application
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
+        // Set default text size (spans will override if needed)
+        val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
         paint.textSize = fontSize
         
-        val typefaceStyle = fontWeightToTypefaceStyle(fontWeight)
-        paint.typeface = if (fontFamily != null) {
-            Typeface.create(fontFamily, typefaceStyle)
-        } else {
-            Typeface.create(Typeface.DEFAULT, typefaceStyle)
-        }
-        
-        if (textColor != null) {
-            paint.color = textColor
-        }
-        
         val alignment = textAlignToLayoutAlignment(textAlign)
-        val maxWidth = 10000
         
-        val layout = if (content.isNotEmpty()) {
-            createTextLayout(
-                content,
-                paint,
-                maxWidth,
-                alignment,
-                numberOfLines
-            )
+        // Use view width if available, otherwise use a large value for initial layout
+        val maxWidth = if (textView.width > 0) {
+            textView.width
         } else {
-            null
+            // Large but finite width for initial layout (will be recreated with correct width in applyLayout)
+            10000
         }
+        
+        val layout = createTextLayout(
+            text,
+            paint,
+            maxWidth,
+            alignment,
+            numberOfLines
+        )
         
         textView.textLayout = layout
         
@@ -105,12 +116,72 @@ class DCFTextComponent : DCFComponent() {
         view.setTag("nodeId".hashCode(), nodeId)
     }
     
+    override fun applyLayout(view: View, layout: DCFNodeLayout) {
+        // First, apply the frame (matches iOS behavior)
+        super.applyLayout(view, layout)
+        
+        // Then, update the text layout with the correct width
+        // This matches iOS DCFTextComponent.applyLayout which updates textStorage and textFrame
+        val textView = view as? DCFTextView ?: return
+        
+        // Get shadow node to retrieve text and styling
+        val shadowNode = nodeId?.let { id ->
+            com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(id.toIntOrNull() ?: 0)
+        } as? com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode
+        
+        if (shadowNode == null) {
+            // Fallback to props if shadow node not available
+            val props = getStoredProps(view)
+            updateTextView(textView, props)
+            return
+        }
+        
+        // Get collected text from shadow node (includes text from children with spans)
+        val spannableText = shadowNode.getText()
+        
+        if (spannableText.isEmpty()) {
+            textView.textLayout = null
+            return
+        }
+        
+        // Get props for styling (spans are already applied to spannableText)
+        val props = getStoredProps(view)
+        val textAlign = props["textAlign"]?.toString() ?: "start"
+        val numberOfLines = (props["numberOfLines"] as? Number)?.toInt() ?: 0
+        
+        // Create paint for layout (spans will override paint properties)
+        val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
+        // Set default text size (spans will override if needed)
+        val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
+        paint.textSize = fontSize
+        
+        val alignment = textAlignToLayoutAlignment(textAlign)
+        
+        // CRITICAL: Use the actual layout width (not a large default)
+        // This ensures the text layout matches the view's actual width
+        val maxWidth = layout.width.toInt().coerceAtLeast(0)
+        
+        // Create layout with correct width and spannable text (spans are preserved)
+        val layoutObj = createTextLayout(
+            spannableText,
+            paint,
+            maxWidth,
+            alignment,
+            numberOfLines
+        )
+        
+        textView.textLayout = layoutObj
+        
+        // Request layout to update measured dimensions
+        textView.requestLayout()
+    }
+    
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
         return null
     }
     
     private fun createTextLayout(
-        text: String,
+        text: CharSequence,
         paint: TextPaint,
         maxWidth: Int,
         alignment: Layout.Alignment,

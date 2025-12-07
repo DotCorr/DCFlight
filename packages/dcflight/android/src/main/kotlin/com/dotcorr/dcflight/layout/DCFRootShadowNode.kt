@@ -97,9 +97,35 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         
         yogaNode.calculateLayout(availableWidth, availableHeight)
         
+        // CRITICAL: Validate root node layout values immediately after calculation
+        val rootLayoutX = yogaNode.layoutX
+        val rootLayoutY = yogaNode.layoutY
+        val rootLayoutWidth = yogaNode.layoutWidth
+        val rootLayoutHeight = yogaNode.layoutHeight
+        
+        val isRootLayoutValid = !rootLayoutX.isNaN() && !rootLayoutX.isInfinite() &&
+                               !rootLayoutY.isNaN() && !rootLayoutY.isInfinite() &&
+                               !rootLayoutWidth.isNaN() && !rootLayoutWidth.isInfinite() && rootLayoutWidth > 0 &&
+                               !rootLayoutHeight.isNaN() && !rootLayoutHeight.isInfinite() && rootLayoutHeight > 0
+        
+        if (!isRootLayoutValid) {
+            Log.e(TAG, "❌❌❌ CRITICAL: Root node has invalid layout values after calculateLayout!")
+            Log.e(TAG, "   layoutX=$rootLayoutX, layoutY=$rootLayoutY, layoutWidth=$rootLayoutWidth, layoutHeight=$rootLayoutHeight")
+            Log.e(TAG, "   availableWidth=$availableWidth, availableHeight=$availableHeight")
+            Log.e(TAG, "   Root Yoga node style: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
+            Log.e(TAG, "   Root Yoga node childCount: ${yogaNode.childCount}")
+            // Use availableSize as fallback for root node
+            val fallbackWidth = if (availableWidth.isNaN() || availableWidth.isInfinite()) 1080f else availableWidth
+            val fallbackHeight = if (availableHeight.isNaN() || availableHeight.isInfinite()) 1920f else availableHeight
+            Log.e(TAG, "   Using fallback root frame: (0, 0, $fallbackWidth, $fallbackHeight)")
+            frame = android.graphics.Rect(0, 0, fallbackWidth.toInt(), fallbackHeight.toInt())
+            // Return empty set - children can't be laid out if root is invalid
+            return emptySet()
+        }
+        
         // DEBUG: Log root node layout after calculation
         Log.d(TAG, "🔍 DCFRootShadowNode: After layout")
-        Log.d(TAG, "   Root node layout: left=${yogaNode.layoutX}, top=${yogaNode.layoutY}, width=${yogaNode.layoutWidth}, height=${yogaNode.layoutHeight}")
+        Log.d(TAG, "   Root node layout: left=$rootLayoutX, top=$rootLayoutY, width=$rootLayoutWidth, height=$rootLayoutHeight")
         Log.d(TAG, "   Root frame AFTER layout calculation: $frame")
         
         // DEBUG: Log ALL children after layout

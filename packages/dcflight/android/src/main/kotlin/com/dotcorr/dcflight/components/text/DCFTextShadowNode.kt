@@ -25,7 +25,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             }
         }
     
-    var fontWeight: String? = null
+    open var fontWeight: String? = null
         set(value) {
             if (field != value) {
                 field = value
@@ -33,7 +33,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             }
         }
     
-    var fontFamily: String? = null
+    open var fontFamily: String? = null
         set(value) {
             if (field != value) {
                 field = value
@@ -108,7 +108,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         isEditable: Boolean
     )
     
-    protected open fun performCollectAttachDetachListeners() {
+    open fun performCollectAttachDetachListeners() {
     }
 }
 

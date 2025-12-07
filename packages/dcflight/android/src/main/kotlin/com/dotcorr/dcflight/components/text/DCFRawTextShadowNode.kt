@@ -5,11 +5,9 @@ import com.dotcorr.dcflight.components.text.DCFTextShadowNode
 
 class DCFRawTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     
-    private var mText: String? = null
-    
     override fun performCollectText(builder: SpannableStringBuilder) {
-        if (mText != null) {
-            builder.append(mText)
+        if (text.isNotEmpty()) {
+            builder.append(text)
         }
     }
     
@@ -23,14 +21,5 @@ class DCFRawTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     
     override fun performCollectAttachDetachListeners() {
     }
-    
-    fun setText(text: String?) {
-        if (mText != text) {
-            mText = text
-            notifyChanged(true)
-        }
-    }
-    
-    fun getText(): String? = mText
 }
 

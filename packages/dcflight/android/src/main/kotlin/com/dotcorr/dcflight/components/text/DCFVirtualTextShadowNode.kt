@@ -10,6 +10,32 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     
     private var mFontStylingSpan: DCFTextStyleSpan = DCFTextStyleSpan.INSTANCE.mutableCopy()
     
+    // Override property setters to update span
+    override var fontFamily: String?
+        get() = super.fontFamily
+        set(value) {
+            if (super.fontFamily != value) {
+                super.fontFamily = value
+                if (mFontStylingSpan.getFontFamily() != value) {
+                    getSpan().setFontFamily(value)
+                    notifyChanged(true)
+                }
+            }
+        }
+    
+    override var fontWeight: String?
+        get() = super.fontWeight
+        set(value) {
+            if (super.fontWeight != value) {
+                super.fontWeight = value
+                val weight = parseFontWeight(value)
+                if (mFontStylingSpan.getFontWeight() != weight) {
+                    getSpan().setFontWeight(weight)
+                    notifyChanged(true)
+                }
+            }
+        }
+    
     override fun canHaveSubviews(): Boolean = true
     
     override fun performCollectText(builder: SpannableStringBuilder) {
@@ -70,20 +96,6 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
         }
     }
     
-    fun setFontFamily(fontFamily: String?) {
-        if (mFontStylingSpan.getFontFamily() != fontFamily) {
-            getSpan().setFontFamily(fontFamily)
-            notifyChanged(true)
-        }
-    }
-    
-    fun setFontWeight(fontWeight: String?) {
-        val weight = parseFontWeight(fontWeight)
-        if (mFontStylingSpan.getFontWeight() != weight) {
-            getSpan().setFontWeight(weight)
-            notifyChanged(true)
-        }
-    }
     
     fun setFontStyle(fontStyle: String?) {
         val style = parseFontStyle(fontStyle)
@@ -129,6 +141,18 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
                 child.performCollectAttachDetachListeners()
             }
         }
+    }
+    
+    /**
+     * Returns a new SpannableStringBuilder that includes all the text and styling information.
+     * This is used to create the Layout for measurement and rendering.
+     * Matches React Native's RCTVirtualText.getText() exactly.
+     */
+    fun getText(): SpannableStringBuilder {
+        val sb = SpannableStringBuilder()
+        collectText(sb)
+        applySpans(sb, isEditable())
+        return sb
     }
 }
 
