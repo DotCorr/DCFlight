@@ -132,42 +132,18 @@ class YogaShadowTree private constructor() {
 
     @Synchronized
     fun createNode(id: String, componentType: String) {
-        val viewId = id.toIntOrNull() ?: return
-        
-        // Check if already exists
-        if (shadowNodes[viewId] != null) {
-            Log.d(TAG, "🔍 createNode: viewId=$viewId already exists, skipping")
-            return
-        }
-        
-        Log.d(TAG, "🔍 createNode: Creating node viewId=$viewId, type=$componentType")
-        
-        // Create appropriate shadow node based on component type (matches iOS 1:1)
-        val shadowNode: DCFShadowNode = when (componentType) {
-            "ScrollContentView" -> {
-                DCFScrollContentShadowNode(viewId)
-            }
-            "Text" -> {
-                DCFTextShadowNode(viewId)
-            }
-            else -> {
-                DCFShadowNode(viewId)
-            }
-        }
-        
-        shadowNode.viewName = componentType
-        
-        // Get Yoga node from shadow node
-        val node = shadowNode.yogaNode
+        val node = YogaNodeFactory.create()
+        val viewId = id.toIntOrNull() ?: 0
         
         // Apply default styles
         applyDefaultNodeStyles(node, componentType)
         
-        val context = mapOf(
-            "nodeId" to id,
-            "componentType" to componentType,
-            "props" to emptyMap<String, Any>()
-        )
+        val shadowNode = if (componentType == "Text") {
+            com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode(viewId)
+        } else {
+            DCFShadowNode(viewId)
+        }
+        shadowNode.viewName = componentType
         
         nodes[id] = node
         nodeTypes[id] = componentType
@@ -177,7 +153,7 @@ class YogaShadowTree private constructor() {
         
         // Setup measure function if needed (Text has its own, so skip for Text)
         if (componentType != "Text") {
-        setupMeasureFunction(id, node)
+            setupMeasureFunction(id, node)
         }
     }
 
@@ -462,7 +438,7 @@ class YogaShadowTree private constructor() {
     fun updateNodeLayoutProps(nodeId: String, props: Map<String, Any?>) {
         val node = nodes[nodeId] ?: return
         val viewId = nodeId.toIntOrNull() ?: return
-        val shadowNode = shadowNodes[viewId]
+        val shadowNode = shadowNodes[viewId] ?: return
         val componentType = nodeTypes[nodeId]
         
         // Framework-level visibility is handled in ViewManager.updateView
@@ -470,7 +446,7 @@ class YogaShadowTree private constructor() {
         
         // CRITICAL: Apply text props to DCFTextShadowNode (matches iOS behavior)
         // Text props must be set on shadow node for measurement to work correctly
-        if (componentType == "Text" && shadowNode is DCFTextShadowNode) {
+        if (componentType == "Text" && shadowNode is com.dotcorr.dcflight.components.text.DCFTextShadowNode) {
             props.forEach { (key, value) ->
                 when (key) {
                     "content" -> {
@@ -483,18 +459,28 @@ class YogaShadowTree private constructor() {
                         Log.d(TAG, "✅ Set text content for viewId=$viewId: '$textValue' (length=${textValue.length})")
                     }
                     "fontSize" -> {
-                        if (value is Number) {
+                        if (value is Number && shadowNode is com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode) {
+                            shadowNode.setFontSize(value.toInt())
+                        } else if (value is Number) {
                             shadowNode.fontSize = value.toFloat()
                             shadowNode.dirtyText()
                         }
                     }
                     "fontWeight" -> {
-                        shadowNode.fontWeight = value?.toString()
-                        shadowNode.dirtyText()
+                        if (shadowNode is com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode) {
+                            shadowNode.setFontWeight(value?.toString())
+                        } else {
+                            shadowNode.fontWeight = value?.toString()
+                            shadowNode.dirtyText()
+                        }
                     }
                     "fontFamily" -> {
-                        shadowNode.fontFamily = value?.toString()
-                        shadowNode.dirtyText()
+                        if (shadowNode is com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode) {
+                            shadowNode.setFontFamily(value?.toString())
+                        } else {
+                            shadowNode.fontFamily = value?.toString()
+                            shadowNode.dirtyText()
+                        }
                     }
                     "letterSpacing" -> {
                         if (value is Number) {

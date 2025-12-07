@@ -29,9 +29,6 @@ object FrameworkComponentsReg {
         DCFComponentRegistry.shared.registerComponent("View", DCFViewComponent::class.java)
         Log.d(TAG, "✅ Registered View component")
         
-        DCFComponentRegistry.shared.registerComponent("Text", DCFTextComponent::class.java)
-        Log.d(TAG, "✅ Registered Text component")
-        
         DCFComponentRegistry.shared.registerComponent("ScrollView", DCFScrollViewComponent::class.java)
         Log.d(TAG, "✅ Registered ScrollView component")
         
@@ -40,5 +37,8 @@ object FrameworkComponentsReg {
         
         DCFComponentRegistry.shared.registerComponent("Viewport", DCFViewportComponent::class.java)
         Log.d(TAG, "✅ Registered Viewport component")
+        
+        DCFComponentRegistry.shared.registerComponent("Text", DCFTextComponent::class.java)
+        Log.d(TAG, "✅ Registered Text component")
     }
 }
