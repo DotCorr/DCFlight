@@ -1,7 +1,6 @@
 package com.dotcorr.dcflight.components
 
 import android.content.Context
-import android.graphics.Typeface
 import android.text.Layout
 import android.text.TextPaint
 import android.text.TextUtils
@@ -11,13 +10,22 @@ import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.text.DCFTextView
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcflight.utils.ColorUtilities
 
+/**
+ * DCFTextComponent - Native Android text rendering using StaticLayout
+ * 
+ * This implementation follows React Native's flat renderer (RCTText) approach:
+ * - Uses StaticLayout for text measurement and rendering (matches React Native's TextLayoutBuilder)
+ * - Draws text manually on canvas (matches React Native's DrawTextLayout)
+ * - Uses custom View with onDraw() to render StaticLayout
+ * 
+ * This matches React Native's flat renderer which uses StaticLayout, not TextView.
+ */
 class DCFTextComponent : DCFComponent() {
 
     companion object {
         private const val TAG = "DCFTextComponent"
-        private const val DEFAULT_FONT_SIZE = 14f
+        private const val DEFAULT_FONT_SIZE = 17f // Match iOS default (iOS uses 17, React Native uses 14)
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
@@ -48,14 +56,16 @@ class DCFTextComponent : DCFComponent() {
     }
     
     private fun updateTextView(textView: DCFTextView, props: Map<String, Any?>) {
-        // Try to get collected text from shadow node if available
-        // This ensures we use text collected from children (for nested text styling)
+        // CRITICAL: Always try to get collected text from shadow node (matches React Native's flat renderer)
+        // Text components always use DCFVirtualTextShadowNode (created in YogaShadowTree.createNode)
         val shadowNode = nodeId?.let { id ->
             com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(id.toIntOrNull() ?: 0)
         } as? com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode
         
         val text: CharSequence = if (shadowNode != null) {
-            // Use collected text from shadow node (includes text from children with spans)
+            // CRITICAL: Use collected text from shadow node (includes text from children with spans)
+            // This matches React Native's RCTVirtualText.getText() - a Spannable with all styling
+            // When shadow tree changes, getText() will return updated text automatically
             shadowNode.getText()
         } else {
             // Fallback to content prop if shadow node not available yet
@@ -67,42 +77,64 @@ class DCFTextComponent : DCFComponent() {
             return
         }
         
-        val textAlign = props["textAlign"]?.toString() ?: "start"
-        val numberOfLines = (props["numberOfLines"] as? Number)?.toInt() ?: 0
+        // CRITICAL: Get font size from shadow node (matches React Native's flat renderer)
+        val fontSize = if (shadowNode != null) {
+            shadowNode.getFontSize().toFloat()
+        } else {
+            (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
+        }
         
-        // Layout will be created with proper width in applyLayout
-        // For now, create a temporary layout for initial rendering
-        // The actual layout will be recreated with correct width during layout application
+        // Create TextPaint for layout (matches React Native's flat renderer)
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
-        // Set default text size (spans will override if needed)
-        val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
         paint.textSize = fontSize
         
+        // Apply letter spacing if specified (available since API 21, matches React Native)
+        val letterSpacing = if (shadowNode != null) {
+            shadowNode.letterSpacing
+        } else {
+            (props["letterSpacing"] as? Number)?.toFloat() ?: 0f
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && !letterSpacing.isNaN() && letterSpacing != 0f) {
+            paint.letterSpacing = letterSpacing / fontSize // Android uses em-based letter spacing
+        }
+        
+        // Get text alignment
+        val textAlign = props["textAlign"]?.toString() ?: "start"
         val alignment = textAlignToLayoutAlignment(textAlign)
         
+        // Get number of lines
+        val numberOfLines = (props["numberOfLines"] as? Number)?.toInt() ?: 0
+        
+        // Get line height
+        val lineHeight = (props["lineHeight"] as? Number)?.toFloat() ?: 0f
+        
         // Use view width if available, otherwise use a large value for initial layout
+        // The actual layout will be recreated with correct width in applyLayout
         val maxWidth = if (textView.width > 0) {
             textView.width
         } else {
-            // Large but finite width for initial layout (will be recreated with correct width in applyLayout)
-            10000
+            10000 // Large but finite width for initial layout
         }
         
+        // Create StaticLayout (matches React Native's flat renderer createTextLayout)
+        // CRITICAL: Use collected text with spans (matches React Native's DrawTextLayout)
         val layout = createTextLayout(
             text,
             paint,
             maxWidth,
             alignment,
-            numberOfLines
+            numberOfLines,
+            lineHeight
         )
         
         textView.textLayout = layout
         
-        if (layout != null) {
-            textView.textFrameLeft = 0f
-            textView.textFrameTop = 0f
-        }
+        // Set text frame position (will be updated in applyLayout with correct padding)
+        textView.textFrameLeft = 0f
+        textView.textFrameTop = 0f
         
+        // CRITICAL: When shadow tree changes, mark node dirty to trigger re-measurement
+        // This matches React Native's flat renderer notifyChanged behavior
         nodeId?.let { id ->
             com.dotcorr.dcflight.layout.DCFLayoutManager.shared.markNodeDirty(id)
             com.dotcorr.dcflight.layout.DCFLayoutManager.shared.triggerLayoutCalculation()
@@ -121,10 +153,12 @@ class DCFTextComponent : DCFComponent() {
         super.applyLayout(view, layout)
         
         // Then, update the text layout with the correct width
-        // This matches iOS DCFTextComponent.applyLayout which updates textStorage and textFrame
+        // This matches React Native's flat renderer which updates layout in collectState
+        // CRITICAL: Always use shadow node's collected text (matches React Native's flat renderer)
         val textView = view as? DCFTextView ?: return
         
         // Get shadow node to retrieve text and styling
+        // CRITICAL: Text components always use DCFVirtualTextShadowNode (created in YogaShadowTree.createNode)
         val shadowNode = nodeId?.let { id ->
             com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(id.toIntOrNull() ?: 0)
         } as? com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode
@@ -136,7 +170,9 @@ class DCFTextComponent : DCFComponent() {
             return
         }
         
-        // Get collected text from shadow node (includes text from children with spans)
+        // CRITICAL: Always get collected text from shadow node (includes text from children with spans)
+        // This matches React Native's flat renderer RCTText.collectState which uses getText()
+        // When shadow tree changes, getText() will return updated text automatically
         val spannableText = shadowNode.getText()
         
         if (spannableText.isEmpty()) {
@@ -144,33 +180,48 @@ class DCFTextComponent : DCFComponent() {
             return
         }
         
-        // Get props for styling (spans are already applied to spannableText)
+        // Get props for styling
         val props = getStoredProps(view)
         val textAlign = props["textAlign"]?.toString() ?: "start"
         val numberOfLines = (props["numberOfLines"] as? Number)?.toInt() ?: 0
+        val lineHeight = (props["lineHeight"] as? Number)?.toFloat() ?: 0f
         
-        // Create paint for layout (spans will override paint properties)
+        // Create paint for layout (spans are already applied to spannableText)
+        // CRITICAL: Use shadow node's font size (matches React Native's flat renderer)
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
-        // Set default text size (spans will override if needed)
-        val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
+        val fontSize = shadowNode.getFontSize().toFloat()
         paint.textSize = fontSize
+        
+        // Apply letter spacing if specified (matches React Native's flat renderer)
+        val letterSpacing = shadowNode.letterSpacing
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && !letterSpacing.isNaN() && letterSpacing != 0f) {
+            paint.letterSpacing = letterSpacing / fontSize
+        }
         
         val alignment = textAlignToLayoutAlignment(textAlign)
         
-        // CRITICAL: Use the actual layout width (not a large default)
-        // This ensures the text layout matches the view's actual width
-        val maxWidth = layout.width.toInt().coerceAtLeast(0)
+        // CRITICAL: Get padding from shadow node to calculate text frame (matches React Native)
+        // React Native's flat renderer: left += getPadding(Spacing.LEFT); top += getPadding(Spacing.TOP)
+        val padding = shadowNode.paddingAsInsets
+        val textFrameLeft = padding.left.toFloat()
+        val textFrameTop = padding.top.toFloat()
+        val textWidth = (layout.width - padding.left - padding.right).toInt().coerceAtLeast(0)
         
-        // Create layout with correct width and spannable text (spans are preserved)
+        // Create layout with correct width (accounting for padding) and spannable text
+        // Matches React Native's flat renderer createTextLayout exactly
+        // CRITICAL: Use collected text with spans (matches React Native's DrawTextLayout)
         val layoutObj = createTextLayout(
             spannableText,
             paint,
-            maxWidth,
+            textWidth,
             alignment,
-            numberOfLines
+            numberOfLines,
+            lineHeight
         )
         
         textView.textLayout = layoutObj
+        textView.textFrameLeft = textFrameLeft
+        textView.textFrameTop = textFrameTop
         
         // Request layout to update measured dimensions
         textView.requestLayout()
@@ -180,39 +231,71 @@ class DCFTextComponent : DCFComponent() {
         return null
     }
     
+    /**
+     * Create StaticLayout matching React Native's flat renderer createTextLayout exactly
+     * React Native uses TextLayoutBuilder, but we use StaticLayout.Builder directly
+     */
     private fun createTextLayout(
         text: CharSequence,
         paint: TextPaint,
         maxWidth: Int,
         alignment: Layout.Alignment,
-        maxLines: Int
+        maxLines: Int,
+        lineHeight: Float = 0f
     ): Layout {
+        // CRITICAL: Match React Native's flat renderer StaticLayout.Builder configuration EXACTLY
+        // React Native flat renderer (RCTText.createTextLayout):
+        // - setEllipsize(ellipsize)
+        // - setMaxLines(maxLines)
+        // - setSingleLine(isSingleLine)
+        // - setText(text)
+        // - setTextSize(textSize)
+        // - setWidth(width, textMeasureMode)
+        // - setTextStyle(textStyle)
+        // - setTextDirection(TextDirectionHeuristicsCompat.FIRSTSTRONG_LTR)
+        // - setIncludeFontPadding(shouldIncludeFontPadding) // true in React Native
+        // - setTextSpacingExtra(extraSpacing)
+        // - setTextSpacingMultiplier(spacingMultiplier)
+        // - setAlignment(textAlignment)
+        
         val builder = android.text.StaticLayout.Builder.obtain(text, 0, text.length, paint, maxWidth)
             .setAlignment(alignment)
-            .setLineSpacing(0f, 1f)
-            .setIncludePad(true)
+            .setIncludePad(true) // CRITICAL: Match React Native - shouldIncludeFontPadding = true
+        
+        // Apply line height if specified
+        // React Native flat renderer (RCTText.setLineHeight):
+        // - If lineHeight is NaN: spacingMult = 1.0f, spacingAdd = 0.0f
+        // - If lineHeight is set: spacingMult = 0.0f, spacingAdd = PixelUtil.toPixelFromSP(lineHeight)
+        // This means: setLineSpacing(spacingAdd, spacingMult)
+        if (lineHeight > 0) {
+            // React Native converts lineHeight using PixelUtil.toPixelFromSP which accounts for font scale
+            // For now, treat lineHeight as pixels directly (matches DCFlight's approach)
+            val absoluteLineHeight = if (lineHeight < 10) {
+                // Treat as multiplier (e.g., 1.6 means 1.6 * fontSize)
+                lineHeight * paint.textSize
+            } else {
+                // Treat as absolute value in pixels
+                lineHeight
+            }
+            // React Native flat renderer: spacingMult = 0.0f, spacingAdd = absoluteLineHeight
+            builder.setLineSpacing(absoluteLineHeight, 0f)
+        } else {
+            // React Native default: spacingMult = 1.0f, spacingAdd = 0.0f
+            builder.setLineSpacing(0f, 1f)
+        }
         
         if (maxLines > 0) {
             builder.setMaxLines(maxLines)
             builder.setEllipsize(TextUtils.TruncateAt.END)
         }
         
-        return builder.build()
-    }
-    
-    private fun fontWeightToTypefaceStyle(weight: String): Int {
-        return when (weight.lowercase()) {
-            "thin", "100" -> Typeface.NORMAL
-            "ultralight", "200" -> Typeface.NORMAL
-            "light", "300" -> Typeface.NORMAL
-            "regular", "normal", "400" -> Typeface.NORMAL
-            "medium", "500" -> Typeface.NORMAL
-            "semibold", "600" -> Typeface.BOLD
-            "bold", "700" -> Typeface.BOLD
-            "heavy", "800" -> Typeface.BOLD
-            "black", "900" -> Typeface.BOLD
-            else -> Typeface.NORMAL
+        // Apply text break strategy (available since API 23, matches React Native)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            builder.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_HIGH_QUALITY)
+            builder.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NORMAL)
         }
+        
+        return builder.build()
     }
     
     private fun textAlignToLayoutAlignment(align: String): Layout.Alignment {

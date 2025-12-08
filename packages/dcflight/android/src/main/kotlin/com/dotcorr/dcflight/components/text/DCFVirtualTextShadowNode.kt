@@ -8,7 +8,16 @@ import com.dotcorr.dcflight.layout.DCFShadowNode
 
 class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     
-    private var mFontStylingSpan: DCFTextStyleSpan = DCFTextStyleSpan.INSTANCE.mutableCopy()
+    companion object {
+        private const val DEFAULT_FONT_SIZE = 17 // Match iOS default (iOS uses 17, React Native uses 14)
+    }
+    
+    private var mFontStylingSpan: DCFTextStyleSpan = DCFTextStyleSpan.INSTANCE.mutableCopy().apply {
+        // CRITICAL: Initialize span with default font size (matches iOS behavior)
+        // iOS defaults to 17, but React Native typically uses 14
+        // This ensures the span has a valid font size even before props are set
+        setFontSize(DEFAULT_FONT_SIZE)
+    }
     
     // Override property setters to update span
     override var fontFamily: String?
@@ -36,9 +45,46 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
             }
         }
     
+    // CRITICAL: Override fontSize property setter to also update span
+    // This ensures span font size stays in sync when fontSize is set directly
+    override var fontSize: Float
+        get() = super.fontSize
+        set(value) {
+            if (super.fontSize != value) {
+                super.fontSize = value
+                val fontSizeInt = value.toInt()
+                if (mFontStylingSpan.getFontSize() != fontSizeInt) {
+                    getSpan().setFontSize(fontSizeInt)
+                    notifyChanged(true)
+                }
+            }
+        }
+    
+    // CRITICAL: Override letterSpacing property setter to also update span
+    // This ensures span letter spacing stays in sync when letterSpacing is set directly
+    override var letterSpacing: Float
+        get() = super.letterSpacing
+        set(value) {
+            if (super.letterSpacing != value) {
+                super.letterSpacing = value
+                if (mFontStylingSpan.getLetterSpacing() != value) {
+                    getSpan().setLetterSpacing(value)
+                    notifyChanged(true)
+                }
+            }
+        }
+    
     override fun canHaveSubviews(): Boolean = true
     
     override fun performCollectText(builder: SpannableStringBuilder) {
+        // CRITICAL: Also collect text from this node itself (matches iOS behavior)
+        // iOS DCFTextShadowView stores text directly on the node, not just in children
+        // This allows text to be set via the "content" prop directly on Text components
+        if (text.isNotEmpty()) {
+            builder.append(text)
+        }
+        
+        // Then collect text from children (for nested Text components)
         for (i in 0 until subviews.size) {
             val child = subviews[i]
             if (child is DCFTextShadowNode) {
@@ -83,6 +129,12 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     }
     
     fun setFontSize(fontSize: Int) {
+        // CRITICAL: Also update the base fontSize property for consistency
+        // This ensures fontSize is available for measurement even if span isn't applied yet
+        if (super.fontSize != fontSize.toFloat()) {
+            super.fontSize = fontSize.toFloat()
+        }
+        
         if (mFontStylingSpan.getFontSize() != fontSize) {
             getSpan().setFontSize(fontSize)
             notifyChanged(true)
@@ -113,7 +165,7 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     fun getFontStyle(): Int = mFontStylingSpan.getFontStyle()
     
     protected fun getDefaultFontSize(): Int {
-        return 14
+        return DEFAULT_FONT_SIZE
     }
     
     private fun parseFontWeight(fontWeight: String?): Int {

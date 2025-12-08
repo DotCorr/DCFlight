@@ -221,6 +221,7 @@ class YogaShadowTree private constructor() {
                         val fontSize = textShadowNode.getFontSize().toFloat()
                         val textAlign = textShadowNode.textAlign
                         val numberOfLines = textShadowNode.numberOfLines
+                        val lineHeight = textShadowNode.lineHeight
                         
                         // Create TextPaint for layout
                         val paint = android.text.TextPaint(android.text.TextPaint.ANTI_ALIAS_FLAG)
@@ -244,6 +245,13 @@ class YogaShadowTree private constructor() {
                             android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, typefaceStyle or fontStyle)
                         }
                         
+                        // CRITICAL: Apply letter spacing if specified (matches iOS behavior)
+                        // Letter spacing is applied directly to TextPaint (available since API 21)
+                        val letterSpacing = textShadowNode.letterSpacing
+                        if (letterSpacing != 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                            paint.letterSpacing = letterSpacing / fontSize // Android uses em-based letter spacing
+                        }
+                        
                         // Determine layout width based on widthMode
                         val layoutWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
                             // For undefined width, use a large value to measure natural width
@@ -263,17 +271,38 @@ class YogaShadowTree private constructor() {
                         }
                         
                         // Create StaticLayout with proper constraints
-                        val layout = android.text.StaticLayout.Builder.obtain(text, 0, text.length, paint, layoutWidth)
+                        val layoutBuilder = android.text.StaticLayout.Builder.obtain(text, 0, text.length, paint, layoutWidth)
                             .setAlignment(alignment)
-                            .setLineSpacing(0f, 1f)
                             .setIncludePad(true)
-                            .apply {
-                                if (numberOfLines > 0) {
-                                    setMaxLines(numberOfLines)
-                                    setEllipsize(android.text.TextUtils.TruncateAt.END)
-                                }
+                        
+                        // CRITICAL: Apply line height if specified (matches iOS behavior)
+                        // Line height can be a multiplier (< 10) or absolute value (>= 10)
+                        if (lineHeight > 0) {
+                            val absoluteLineHeight = if (lineHeight < 10) {
+                                // Treat as multiplier (e.g., 1.6 means 1.6 * fontSize)
+                                lineHeight * fontSize
+                            } else {
+                                // Treat as absolute value in pixels
+                                lineHeight
                             }
-                            .build()
+                            // CRITICAL: Calculate extra spacing based on font's natural line height (ascent + descent + leading)
+                            // iOS sets minimumLineHeight/maximumLineHeight which is the total line height
+                            // Android's setLineSpacing adds extra spacing, so we need: extraSpacing = desiredLineHeight - naturalLineHeight
+                            // naturalLineHeight includes ascent (negative), descent (positive), and leading (positive)
+                            val fontMetrics = paint.fontMetricsInt
+                            val naturalLineHeight = (-fontMetrics.ascent + fontMetrics.descent + fontMetrics.leading).toFloat()
+                            val extraSpacing = absoluteLineHeight - naturalLineHeight
+                            layoutBuilder.setLineSpacing(extraSpacing, 1f)
+                        } else {
+                            layoutBuilder.setLineSpacing(0f, 1f)
+                        }
+                        
+                        if (numberOfLines > 0) {
+                            layoutBuilder.setMaxLines(numberOfLines)
+                            layoutBuilder.setEllipsize(android.text.TextUtils.TruncateAt.END)
+                        }
+                        
+                        val layout = layoutBuilder.build()
                         
                         val measuredWidth = layout.width.toFloat()
                         val measuredHeight = layout.height.toFloat()

@@ -57,13 +57,19 @@ class DCFTextView(context: Context) : View(context) {
     }
     
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        
         val layout = textLayout ?: return
         
+        // CRITICAL: Match React Native's DrawTextLayout.onDraw exactly
+        // React Native: canvas.translate(left, top); mLayout.draw(canvas); canvas.translate(-left, -top);
+        // In our case, left/top are the padding offsets (textFrame position) relative to the view
+        // The view is already positioned correctly by the layout system
+        val left = textFrameLeft
+        val top = textFrameTop
+        
         canvas.save()
-        canvas.translate(textFrameLeft, textFrameTop)
+        canvas.translate(left, top)
         layout.draw(canvas)
+        canvas.translate(-left, -top)
         canvas.restore()
     }
 }

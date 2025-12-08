@@ -15,9 +15,10 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
     private var mFontStyle: Int = Typeface.NORMAL
     private var mFontWeight: Int = Typeface.NORMAL
     private var mFontFamily: String? = null
+    private var mLetterSpacing: Float = 0f
     private var mFrozen: Boolean = false
     
-    companion object {
+      companion object {
         val INSTANCE = DCFTextStyleSpan()
     }
     
@@ -30,6 +31,7 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
         hasUnderline: Boolean,
         hasStrikeThrough: Boolean,
         fontFamily: String?,
+        letterSpacing: Float,
         frozen: Boolean
     ) : this() {
         mTextColor = textColor
@@ -40,6 +42,7 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
         mHasUnderline = hasUnderline
         mHasStrikeThrough = hasStrikeThrough
         mFontFamily = fontFamily
+        mLetterSpacing = letterSpacing
         mFrozen = frozen
     }
     
@@ -53,6 +56,7 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
             mHasUnderline,
             mHasStrikeThrough,
             mFontFamily,
+            mLetterSpacing,
             false
         )
     }
@@ -99,6 +103,12 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
         mFontFamily = fontFamily
     }
     
+    fun getLetterSpacing(): Float = mLetterSpacing
+    
+    fun setLetterSpacing(letterSpacing: Float) {
+        mLetterSpacing = letterSpacing
+    }
+    
     fun hasUnderline(): Boolean = mHasUnderline
     
     fun setHasUnderline(hasUnderline: Boolean) {
@@ -133,6 +143,11 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
     
     override fun updateMeasureState(ds: TextPaint) {
         updateTypeface(ds)
+        // CRITICAL: Apply letter spacing in em units (matches iOS kern attribute behavior)
+        // Android's letterSpacing is in em units (fraction of textSize), so divide by textSize
+        if (mLetterSpacing != 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            ds.letterSpacing = mLetterSpacing / ds.textSize
+        }
     }
     
     private fun getNewStyle(oldStyle: Int): Int {
@@ -164,6 +179,9 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
         
         ds.typeface = typeface
         
+        // CRITICAL: Always apply font size if set (mFontSize > 0)
+        // If not set (mFontSize == -1), don't override the paint's existing textSize
+        // This allows the base TextPaint to set a default, and spans can override if needed
         if (mFontSize > 0) {
             ds.textSize = mFontSize.toFloat()
         }
