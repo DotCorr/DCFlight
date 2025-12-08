@@ -218,14 +218,24 @@ class YogaShadowTree private constructor() {
                         }
                         
                         // Get text properties from shadow node
-                        val fontSize = textShadowNode.getFontSize().toFloat()
+                        // Font size comes in logical points (like iOS), need to convert to SP then to pixels
+                        val fontSizePoints = textShadowNode.getFontSize().toFloat()
                         val textAlign = textShadowNode.textAlign
                         val numberOfLines = textShadowNode.numberOfLines
                         val lineHeight = textShadowNode.lineHeight
                         
+                        // CRITICAL: Convert logical points to SP, then to pixels (matches iOS scaling behavior)
+                        // iOS uses points which auto-scale, Android needs SP for the same behavior
+                        val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+                        val fontSizePixels = android.util.TypedValue.applyDimension(
+                            android.util.TypedValue.COMPLEX_UNIT_SP,
+                            fontSizePoints,
+                            displayMetrics
+                        )
+                        
                         // Create TextPaint for layout
                         val paint = android.text.TextPaint(android.text.TextPaint.ANTI_ALIAS_FLAG)
-                        paint.textSize = fontSize
+                        paint.textSize = fontSizePixels
                         
                         // Get font style and weight from span
                         val fontStyle = textShadowNode.getFontStyle()
@@ -249,7 +259,7 @@ class YogaShadowTree private constructor() {
                         // Letter spacing is applied directly to TextPaint (available since API 21)
                         val letterSpacing = textShadowNode.letterSpacing
                         if (letterSpacing != 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                            paint.letterSpacing = letterSpacing / fontSize // Android uses em-based letter spacing
+                            paint.letterSpacing = letterSpacing / fontSizePixels // Android uses em-based letter spacing
                         }
                         
                         // Determine layout width based on widthMode
@@ -271,31 +281,46 @@ class YogaShadowTree private constructor() {
                         }
                         
                         // Create StaticLayout with proper constraints
+                        // CRITICAL: Match React Native's flat renderer createTextLayout EXACTLY
                         val layoutBuilder = android.text.StaticLayout.Builder.obtain(text, 0, text.length, paint, layoutWidth)
                             .setAlignment(alignment)
-                            .setIncludePad(true)
+                            .setIncludePad(true) // CRITICAL: Match React Native - shouldIncludeFontPadding = true
                         
-                        // CRITICAL: Apply line height if specified (matches iOS behavior)
-                        // Line height can be a multiplier (< 10) or absolute value (>= 10)
+                        // CRITICAL: Match React Native's flat renderer line height handling EXACTLY
+                        // React Native flat renderer (RCTText.setLineHeight):
+                        // - If lineHeight is NaN: spacingMult = 1.0f, spacingAdd = 0.0f
+                        // - If lineHeight is set: spacingMult = 0.0f, spacingAdd = PixelUtil.toPixelFromSP(lineHeight)
+                        // React Native converts lineHeight using PixelUtil.toPixelFromSP which accounts for font scale
+                        // For DCFlight, we treat lineHeight as pixels directly (no SP conversion needed)
+                        val spacingAdd: Float
+                        val spacingMult: Float
+                        
                         if (lineHeight > 0) {
+                            // Line height is set: spacingMult = 0.0f, spacingAdd = absolute line height in pixels
+                            // React Native: spacingAdd = PixelUtil.toPixelFromSP(lineHeight)
+                            // For DCFlight: treat lineHeight as logical points (like iOS), convert to pixels
                             val absoluteLineHeight = if (lineHeight < 10) {
                                 // Treat as multiplier (e.g., 1.6 means 1.6 * fontSize)
-                                lineHeight * fontSize
+                                lineHeight * fontSizePixels
                             } else {
-                                // Treat as absolute value in pixels
-                                lineHeight
+                                // Treat as absolute value in logical points, convert to pixels
+                                android.util.TypedValue.applyDimension(
+                                    android.util.TypedValue.COMPLEX_UNIT_SP,
+                                    lineHeight,
+                                    displayMetrics
+                                )
                             }
-                            // CRITICAL: Calculate extra spacing based on font's natural line height (ascent + descent + leading)
-                            // iOS sets minimumLineHeight/maximumLineHeight which is the total line height
-                            // Android's setLineSpacing adds extra spacing, so we need: extraSpacing = desiredLineHeight - naturalLineHeight
-                            // naturalLineHeight includes ascent (negative), descent (positive), and leading (positive)
-                            val fontMetrics = paint.fontMetricsInt
-                            val naturalLineHeight = (-fontMetrics.ascent + fontMetrics.descent + fontMetrics.leading).toFloat()
-                            val extraSpacing = absoluteLineHeight - naturalLineHeight
-                            layoutBuilder.setLineSpacing(extraSpacing, 1f)
+                            spacingAdd = absoluteLineHeight
+                            spacingMult = 0.0f // CRITICAL: React Native uses 0.0f when lineHeight is set
                         } else {
-                            layoutBuilder.setLineSpacing(0f, 1f)
+                            // Line height not set: spacingMult = 1.0f, spacingAdd = 0.0f
+                            spacingAdd = 0.0f
+                            spacingMult = 1.0f // CRITICAL: React Native default is 1.0f, not 0.0f
                         }
+                        
+                        // CRITICAL: Use spacingAdd and spacingMult exactly as React Native does
+                        // This matches React Native's setTextSpacingExtra and setTextSpacingMultiplier
+                        layoutBuilder.setLineSpacing(spacingAdd, spacingMult)
                         
                         if (numberOfLines > 0) {
                             layoutBuilder.setMaxLines(numberOfLines)

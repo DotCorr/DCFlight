@@ -78,15 +78,25 @@ class DCFTextComponent : DCFComponent() {
         }
         
         // CRITICAL: Get font size from shadow node (matches React Native's flat renderer)
-        val fontSize = if (shadowNode != null) {
+        // Font size comes in logical points (like iOS), need to convert to SP then to pixels
+        val fontSizePoints = if (shadowNode != null) {
             shadowNode.getFontSize().toFloat()
         } else {
             (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
         }
         
+        // CRITICAL: Convert logical points to SP, then to pixels (matches iOS scaling behavior)
+        // iOS uses points which auto-scale, Android needs SP for the same behavior
+        val displayMetrics = textView.context.resources.displayMetrics
+        val fontSizePixels = android.util.TypedValue.applyDimension(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            fontSizePoints,
+            displayMetrics
+        )
+        
         // Create TextPaint for layout (matches React Native's flat renderer)
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
-        paint.textSize = fontSize
+        paint.textSize = fontSizePixels
         
         // Apply letter spacing if specified (available since API 21, matches React Native)
         val letterSpacing = if (shadowNode != null) {
@@ -95,7 +105,7 @@ class DCFTextComponent : DCFComponent() {
             (props["letterSpacing"] as? Number)?.toFloat() ?: 0f
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && !letterSpacing.isNaN() && letterSpacing != 0f) {
-            paint.letterSpacing = letterSpacing / fontSize // Android uses em-based letter spacing
+            paint.letterSpacing = letterSpacing / fontSizePixels // Android uses em-based letter spacing
         }
         
         // Get text alignment
@@ -188,14 +198,22 @@ class DCFTextComponent : DCFComponent() {
         
         // Create paint for layout (spans are already applied to spannableText)
         // CRITICAL: Use shadow node's font size (matches React Native's flat renderer)
+        // Font size comes in logical points (like iOS), need to convert to SP then to pixels
+        val fontSizePoints = shadowNode.getFontSize().toFloat()
+        val displayMetrics = textView.context.resources.displayMetrics
+        val fontSizePixels = android.util.TypedValue.applyDimension(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            fontSizePoints,
+            displayMetrics
+        )
+        
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
-        val fontSize = shadowNode.getFontSize().toFloat()
-        paint.textSize = fontSize
+        paint.textSize = fontSizePixels
         
         // Apply letter spacing if specified (matches React Native's flat renderer)
         val letterSpacing = shadowNode.letterSpacing
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && !letterSpacing.isNaN() && letterSpacing != 0f) {
-            paint.letterSpacing = letterSpacing / fontSize
+            paint.letterSpacing = letterSpacing / fontSizePixels
         }
         
         val alignment = textAlignToLayoutAlignment(textAlign)
@@ -234,6 +252,20 @@ class DCFTextComponent : DCFComponent() {
     /**
      * Create StaticLayout matching React Native's flat renderer createTextLayout exactly
      * React Native uses TextLayoutBuilder, but we use StaticLayout.Builder directly
+     * 
+     * CRITICAL: This must match React Native's RCTText.createTextLayout EXACTLY:
+     * - setEllipsize(ellipsize)
+     * - setMaxLines(maxLines)
+     * - setSingleLine(isSingleLine)
+     * - setText(text)
+     * - setTextSize(textSize)
+     * - setWidth(width, textMeasureMode)
+     * - setTextStyle(textStyle)
+     * - setTextDirection(TextDirectionHeuristicsCompat.FIRSTSTRONG_LTR) - handled by Android automatically
+     * - setIncludeFontPadding(shouldIncludeFontPadding) // true in React Native
+     * - setTextSpacingExtra(extraSpacing) // spacingAdd
+     * - setTextSpacingMultiplier(spacingMultiplier) // spacingMult
+     * - setAlignment(textAlignment)
      */
     private fun createTextLayout(
         text: CharSequence,
@@ -243,46 +275,47 @@ class DCFTextComponent : DCFComponent() {
         maxLines: Int,
         lineHeight: Float = 0f
     ): Layout {
-        // CRITICAL: Match React Native's flat renderer StaticLayout.Builder configuration EXACTLY
-        // React Native flat renderer (RCTText.createTextLayout):
-        // - setEllipsize(ellipsize)
-        // - setMaxLines(maxLines)
-        // - setSingleLine(isSingleLine)
-        // - setText(text)
-        // - setTextSize(textSize)
-        // - setWidth(width, textMeasureMode)
-        // - setTextStyle(textStyle)
-        // - setTextDirection(TextDirectionHeuristicsCompat.FIRSTSTRONG_LTR)
-        // - setIncludeFontPadding(shouldIncludeFontPadding) // true in React Native
-        // - setTextSpacingExtra(extraSpacing)
-        // - setTextSpacingMultiplier(spacingMultiplier)
-        // - setAlignment(textAlignment)
-        
         val builder = android.text.StaticLayout.Builder.obtain(text, 0, text.length, paint, maxWidth)
             .setAlignment(alignment)
             .setIncludePad(true) // CRITICAL: Match React Native - shouldIncludeFontPadding = true
         
-        // Apply line height if specified
+        // CRITICAL: Match React Native's flat renderer line height handling EXACTLY
         // React Native flat renderer (RCTText.setLineHeight):
         // - If lineHeight is NaN: spacingMult = 1.0f, spacingAdd = 0.0f
         // - If lineHeight is set: spacingMult = 0.0f, spacingAdd = PixelUtil.toPixelFromSP(lineHeight)
-        // This means: setLineSpacing(spacingAdd, spacingMult)
+        // React Native converts lineHeight using PixelUtil.toPixelFromSP which accounts for font scale
+        // For DCFlight, we treat lineHeight as pixels directly (no SP conversion needed)
+        val spacingAdd: Float
+        val spacingMult: Float
+        
         if (lineHeight > 0) {
-            // React Native converts lineHeight using PixelUtil.toPixelFromSP which accounts for font scale
-            // For now, treat lineHeight as pixels directly (matches DCFlight's approach)
+            // Line height is set: spacingMult = 0.0f, spacingAdd = absolute line height in pixels
+            // React Native: spacingAdd = PixelUtil.toPixelFromSP(lineHeight)
+            // For DCFlight: treat lineHeight as logical points (like iOS), convert to pixels
             val absoluteLineHeight = if (lineHeight < 10) {
                 // Treat as multiplier (e.g., 1.6 means 1.6 * fontSize)
                 lineHeight * paint.textSize
             } else {
-                // Treat as absolute value in pixels
-                lineHeight
+                // Treat as absolute value in logical points, convert to pixels
+                // Get display metrics for SP conversion
+                val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+                android.util.TypedValue.applyDimension(
+                    android.util.TypedValue.COMPLEX_UNIT_SP,
+                    lineHeight,
+                    displayMetrics
+                )
             }
-            // React Native flat renderer: spacingMult = 0.0f, spacingAdd = absoluteLineHeight
-            builder.setLineSpacing(absoluteLineHeight, 0f)
+            spacingAdd = absoluteLineHeight
+            spacingMult = 0.0f // CRITICAL: React Native uses 0.0f when lineHeight is set
         } else {
-            // React Native default: spacingMult = 1.0f, spacingAdd = 0.0f
-            builder.setLineSpacing(0f, 1f)
+            // Line height not set: spacingMult = 1.0f, spacingAdd = 0.0f
+            spacingAdd = 0.0f
+            spacingMult = 1.0f // CRITICAL: React Native default is 1.0f, not 0.0f
         }
+        
+        // CRITICAL: Use spacingAdd and spacingMult exactly as React Native does
+        // This matches React Native's setTextSpacingExtra and setTextSpacingMultiplier
+        builder.setLineSpacing(spacingAdd, spacingMult)
         
         if (maxLines > 0) {
             builder.setMaxLines(maxLines)
@@ -294,6 +327,11 @@ class DCFTextComponent : DCFComponent() {
             builder.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_HIGH_QUALITY)
             builder.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NORMAL)
         }
+        
+        // CRITICAL: Text direction is handled automatically by Android's StaticLayout
+        // React Native uses TextDirectionHeuristicsCompat.FIRSTSTRONG_LTR, but StaticLayout.Builder
+        // doesn't expose this directly. Android's StaticLayout uses the text's natural direction
+        // which matches FIRSTSTRONG_LTR behavior for most cases.
         
         return builder.build()
     }
