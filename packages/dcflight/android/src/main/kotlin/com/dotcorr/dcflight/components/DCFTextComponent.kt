@@ -78,34 +78,36 @@ class DCFTextComponent : DCFComponent() {
         }
         
         // CRITICAL: Get font size from shadow node (matches React Native's flat renderer)
-        // Font size comes in logical points (like iOS), need to convert to SP then to pixels
-        val fontSizePoints = if (shadowNode != null) {
-            shadowNode.getFontSize().toFloat()
+        // React Native's getFontSize() returns pixels (already converted from SP)
+        // The shadow node stores font size in pixels, not points
+        val fontSizePixels = if (shadowNode != null) {
+            shadowNode.getFontSize().toFloat() // Already in pixels
         } else {
-            (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
+            // Fallback: convert from SP to pixels if no shadow node
+            val fontSizeSp = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
+            val displayMetrics = textView.context.resources.displayMetrics
+            android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_SP,
+                fontSizeSp,
+                displayMetrics
+            )
         }
-        
-        // CRITICAL: Convert logical points to SP, then to pixels (matches iOS scaling behavior)
-        // iOS uses points which auto-scale, Android needs SP for the same behavior
-        val displayMetrics = textView.context.resources.displayMetrics
-        val fontSizePixels = android.util.TypedValue.applyDimension(
-            android.util.TypedValue.COMPLEX_UNIT_SP,
-            fontSizePoints,
-            displayMetrics
-        )
         
         // Create TextPaint for layout (matches React Native's flat renderer)
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
         paint.textSize = fontSizePixels
         
         // Apply letter spacing if specified (available since API 21, matches React Native)
+        // CRITICAL: Letter spacing in React Native is in pixels (from PixelUtil.toPixelFromSP)
+        // Android expects em units (fraction of font size), so divide by font size in pixels
         val letterSpacing = if (shadowNode != null) {
             shadowNode.letterSpacing
         } else {
             (props["letterSpacing"] as? Number)?.toFloat() ?: 0f
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && !letterSpacing.isNaN() && letterSpacing != 0f) {
-            paint.letterSpacing = letterSpacing / fontSizePixels // Android uses em-based letter spacing
+            // React Native converts letter spacing to pixels, Android needs em units
+            paint.letterSpacing = letterSpacing / fontSizePixels
         }
         
         // Get text alignment
@@ -134,7 +136,8 @@ class DCFTextComponent : DCFComponent() {
             maxWidth,
             alignment,
             numberOfLines,
-            lineHeight
+            lineHeight,
+            fontSizePixels // Pass font size in pixels for line height calculation
         )
         
         textView.textLayout = layout
@@ -198,22 +201,17 @@ class DCFTextComponent : DCFComponent() {
         
         // Create paint for layout (spans are already applied to spannableText)
         // CRITICAL: Use shadow node's font size (matches React Native's flat renderer)
-        // Font size comes in logical points (like iOS), need to convert to SP then to pixels
-        val fontSizePoints = shadowNode.getFontSize().toFloat()
-        val displayMetrics = textView.context.resources.displayMetrics
-        val fontSizePixels = android.util.TypedValue.applyDimension(
-            android.util.TypedValue.COMPLEX_UNIT_SP,
-            fontSizePoints,
-            displayMetrics
-        )
+        // React Native's getFontSize() returns pixels (already converted from SP)
+        val fontSizePixels = shadowNode.getFontSize().toFloat() // Already in pixels
         
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
         paint.textSize = fontSizePixels
         
         // Apply letter spacing if specified (matches React Native's flat renderer)
+        // CRITICAL: Letter spacing in React Native is in pixels, Android expects em units
         val letterSpacing = shadowNode.letterSpacing
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && !letterSpacing.isNaN() && letterSpacing != 0f) {
-            paint.letterSpacing = letterSpacing / fontSizePixels
+            paint.letterSpacing = letterSpacing / fontSizePixels // Android uses em-based letter spacing
         }
         
         val alignment = textAlignToLayoutAlignment(textAlign)
@@ -234,7 +232,8 @@ class DCFTextComponent : DCFComponent() {
             textWidth,
             alignment,
             numberOfLines,
-            lineHeight
+            lineHeight,
+            fontSizePixels // Pass font size in pixels for line height calculation
         )
         
         textView.textLayout = layoutObj
@@ -273,7 +272,8 @@ class DCFTextComponent : DCFComponent() {
         maxWidth: Int,
         alignment: Layout.Alignment,
         maxLines: Int,
-        lineHeight: Float = 0f
+        lineHeight: Float = 0f,
+        fontSizePixels: Float = 17f // Font size in pixels (matches React Native)
     ): Layout {
         val builder = android.text.StaticLayout.Builder.obtain(text, 0, text.length, paint, maxWidth)
             .setAlignment(alignment)
@@ -284,20 +284,21 @@ class DCFTextComponent : DCFComponent() {
         // - If lineHeight is NaN: spacingMult = 1.0f, spacingAdd = 0.0f
         // - If lineHeight is set: spacingMult = 0.0f, spacingAdd = PixelUtil.toPixelFromSP(lineHeight)
         // React Native converts lineHeight using PixelUtil.toPixelFromSP which accounts for font scale
-        // For DCFlight, we treat lineHeight as pixels directly (no SP conversion needed)
+        // For DCFlight, we treat lineHeight as logical points (like iOS), convert to pixels
         val spacingAdd: Float
         val spacingMult: Float
         
         if (lineHeight > 0) {
             // Line height is set: spacingMult = 0.0f, spacingAdd = absolute line height in pixels
             // React Native: spacingAdd = PixelUtil.toPixelFromSP(lineHeight)
-            // For DCFlight: treat lineHeight as logical points (like iOS), convert to pixels
+            // CRITICAL: React Native receives lineHeight in SP and converts to pixels
+            // For DCFlight, lineHeight comes in logical points (like iOS), convert to pixels
             val absoluteLineHeight = if (lineHeight < 10) {
-                // Treat as multiplier (e.g., 1.6 means 1.6 * fontSize)
-                lineHeight * paint.textSize
+                // Treat as multiplier (e.g., 1.6 means 1.6 * fontSizePixels)
+                // Use font size in pixels for multiplier (matches React Native behavior)
+                lineHeight * fontSizePixels
             } else {
                 // Treat as absolute value in logical points, convert to pixels
-                // Get display metrics for SP conversion
                 val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
                 android.util.TypedValue.applyDimension(
                     android.util.TypedValue.COMPLEX_UNIT_SP,
@@ -305,6 +306,8 @@ class DCFTextComponent : DCFComponent() {
                     displayMetrics
                 )
             }
+            // CRITICAL: React Native uses spacingMult = 0.0f when lineHeight is set
+            // This means line spacing = spacingAdd (not multiplied by natural line height)
             spacingAdd = absoluteLineHeight
             spacingMult = 0.0f // CRITICAL: React Native uses 0.0f when lineHeight is set
         } else {

@@ -435,8 +435,36 @@ open class DCFShadowNode {
             Log.w(TAG, "   Parent frame=$frame")
         }
         
-        if (frame != newFrame) {
-            frame = newFrame
+        // CRITICAL: Clamp negative positions to 0 for non-scrollable content
+        // Negative positions are only valid for scrollable content (ScrollContentView)
+        // For normal views, negative positions indicate a layout calculation error
+        // Check if this view is a descendant of ScrollContentView (allow negative Y for scrollable content)
+        val nodeId = viewId.toString()
+        var isScrollContentChild = false
+        var currentParent: DCFShadowNode? = superview
+        while (currentParent != null) {
+            if (currentParent.viewName == "ScrollView") {
+                isScrollContentChild = true
+                break
+            }
+            currentParent = currentParent.superview
+        }
+        
+        // Clamp negative positions to 0 for non-scrollable content
+        val clampedFrame = if (!isScrollContentChild && (newFrame.left < 0 || newFrame.top < 0)) {
+            Log.w(TAG, "⚠️ Clamping negative position for viewId=$viewId (not scrollable): left=${newFrame.left}, top=${newFrame.top}")
+            Rect(
+                newFrame.left.coerceAtLeast(0),
+                newFrame.top.coerceAtLeast(0),
+                newFrame.right.coerceAtLeast(newFrame.left.coerceAtLeast(0) + newFrame.width()),
+                newFrame.bottom.coerceAtLeast(newFrame.top.coerceAtLeast(0) + newFrame.height())
+            )
+        } else {
+            newFrame
+        }
+        
+        if (frame != clampedFrame) {
+            frame = clampedFrame
             viewsWithNewFrame.add(this)
         }
         

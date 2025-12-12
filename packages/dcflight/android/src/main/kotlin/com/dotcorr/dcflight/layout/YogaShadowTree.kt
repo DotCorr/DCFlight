@@ -218,20 +218,12 @@ class YogaShadowTree private constructor() {
                         }
                         
                         // Get text properties from shadow node
-                        // Font size comes in logical points (like iOS), need to convert to SP then to pixels
-                        val fontSizePoints = textShadowNode.getFontSize().toFloat()
+                        // CRITICAL: getFontSize() returns pixels (already converted from SP/points)
+                        // The span stores font size in pixels (TextPaint uses pixels)
+                        val fontSizePixels = textShadowNode.getFontSize().toFloat()
                         val textAlign = textShadowNode.textAlign
                         val numberOfLines = textShadowNode.numberOfLines
                         val lineHeight = textShadowNode.lineHeight
-                        
-                        // CRITICAL: Convert logical points to SP, then to pixels (matches iOS scaling behavior)
-                        // iOS uses points which auto-scale, Android needs SP for the same behavior
-                        val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
-                        val fontSizePixels = android.util.TypedValue.applyDimension(
-                            android.util.TypedValue.COMPLEX_UNIT_SP,
-                            fontSizePoints,
-                            displayMetrics
-                        )
                         
                         // Create TextPaint for layout
                         val paint = android.text.TextPaint(android.text.TextPaint.ANTI_ALIAS_FLAG)
@@ -255,20 +247,26 @@ class YogaShadowTree private constructor() {
                             android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, typefaceStyle or fontStyle)
                         }
                         
-                        // CRITICAL: Apply letter spacing if specified (matches iOS behavior)
-                        // Letter spacing is applied directly to TextPaint (available since API 21)
+                        // CRITICAL: Apply letter spacing if specified (matches React Native)
+                        // Letter spacing in React Native is in pixels, Android expects em units
                         val letterSpacing = textShadowNode.letterSpacing
                         if (letterSpacing != 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
                             paint.letterSpacing = letterSpacing / fontSizePixels // Android uses em-based letter spacing
                         }
+                        
+                        // CRITICAL: Get padding from shadow node to adjust layout width (matches iOS behavior)
+                        // iOS receives width AFTER padding has been subtracted by Yoga
+                        // On Android, we need to manually subtract padding from constraint width
+                        val padding = textShadowNode.paddingAsInsets
+                        val adjustedConstraintWidth = (constraintWidth - padding.left - padding.right).coerceAtLeast(0f)
                         
                         // Determine layout width based on widthMode
                         val layoutWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
                             // For undefined width, use a large value to measure natural width
                             Integer.MAX_VALUE
                         } else {
-                            // For EXACTLY or AT_MOST, use the constraint width
-                            constraintWidth.toInt().coerceAtLeast(0)
+                            // For EXACTLY or AT_MOST, use the constraint width (after padding subtraction)
+                            adjustedConstraintWidth.toInt().coerceAtLeast(0)
                         }
                         
                         // Create layout alignment
@@ -296,11 +294,12 @@ class YogaShadowTree private constructor() {
                         val spacingMult: Float
                         
                         if (lineHeight > 0) {
-                            // Line height is set: spacingMult = 0.0f, spacingAdd = absolute line height in pixels
-                            // React Native: spacingAdd = PixelUtil.toPixelFromSP(lineHeight)
-                            // For DCFlight: treat lineHeight as logical points (like iOS), convert to pixels
+                            // Line height is set: calculate absolute line height
+                            // CRITICAL: Match React Native behavior
+                            val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
                             val absoluteLineHeight = if (lineHeight < 10) {
-                                // Treat as multiplier (e.g., 1.6 means 1.6 * fontSize)
+                                // Treat as multiplier (e.g., 1.6 means 1.6 * fontSizePixels)
+                                // Use font size in pixels for multiplier (matches React Native)
                                 lineHeight * fontSizePixels
                             } else {
                                 // Treat as absolute value in logical points, convert to pixels
@@ -310,6 +309,8 @@ class YogaShadowTree private constructor() {
                                     displayMetrics
                                 )
                             }
+                            // CRITICAL: React Native uses spacingMult = 0.0f when lineHeight is set
+                            // This means line spacing = spacingAdd (not multiplied by natural line height)
                             spacingAdd = absoluteLineHeight
                             spacingMult = 0.0f // CRITICAL: React Native uses 0.0f when lineHeight is set
                         } else {
@@ -745,13 +746,14 @@ class YogaShadowTree private constructor() {
                 // will reset it to (0, 0) when applying to the view (matches iOS behavior)
                 val layout = shadowNode.frame
                 
-                // Check if this view is a descendant of ScrollContentView (allow negative Y for scrollable content)
-                // Traverse up the parent chain to find ScrollContentView
+                // Check if this view is a descendant of ScrollView (allow negative Y for scrollable content)
+                // Traverse up the parent chain to find ScrollView
                 val nodeId = shadowNode.viewId.toString()
                 var isScrollContentChild = false
                 var currentParentId: String? = nodeParents[nodeId]
                 while (currentParentId != null) {
-                    if (nodeTypes[currentParentId] == "ScrollContentView") {
+                    val parentType = nodeTypes[currentParentId]
+                    if (parentType == "ScrollView" || parentType == "ScrollContentView") {
                         isScrollContentChild = true
                         break
                     }

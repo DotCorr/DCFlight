@@ -23,6 +23,9 @@ class DCFTextView(context: Context) : View(context) {
     
     init {
         setWillNotDraw(false)
+        // CRITICAL: Set background to transparent so text is visible (matches iOS isOpaque = false)
+        // This prevents black boxes from appearing behind text
+        setBackgroundColor(android.graphics.Color.TRANSPARENT)
     }
     
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

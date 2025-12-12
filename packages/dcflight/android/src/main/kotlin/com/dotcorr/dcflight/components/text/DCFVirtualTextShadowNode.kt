@@ -47,14 +47,23 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     
     // CRITICAL: Override fontSize property setter to also update span
     // This ensures span font size stays in sync when fontSize is set directly
+    // fontSize comes in logical points (like iOS), but span stores pixels (TextPaint uses pixels)
+    // So we need to convert points to pixels before storing in span
     override var fontSize: Float
         get() = super.fontSize
         set(value) {
             if (super.fontSize != value) {
                 super.fontSize = value
-                val fontSizeInt = value.toInt()
-                if (mFontStylingSpan.getFontSize() != fontSizeInt) {
-                    getSpan().setFontSize(fontSizeInt)
+                // Convert points to pixels (like iOS points -> Android pixels)
+                // Points scale with display density, so convert via SP
+                val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+                val fontSizePixels = android.util.TypedValue.applyDimension(
+                    android.util.TypedValue.COMPLEX_UNIT_SP,
+                    value,
+                    displayMetrics
+                ).toInt()
+                if (mFontStylingSpan.getFontSize() != fontSizePixels) {
+                    getSpan().setFontSize(fontSizePixels)
                     notifyChanged(true)
                 }
             }

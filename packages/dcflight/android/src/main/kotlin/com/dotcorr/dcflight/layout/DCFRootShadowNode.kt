@@ -55,6 +55,70 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
     }
     
     /**
+     * Override applyLayoutNode to ensure root frame is always set correctly
+     * Root node should always be at (0, 0) with the correct width/height from Yoga layout
+     * This prevents children from being positioned incorrectly relative to the root
+     */
+    override fun applyLayoutNode(
+        node: YogaNode,
+        viewsWithNewFrame: MutableSet<DCFShadowNode>,
+        absolutePosition: android.graphics.PointF
+    ) {
+        if (!node.hasNewLayout()) {
+            return
+        }
+        
+        require(!node.isDirty) { "Attempt to get layout metrics from dirtied Yoga node." }
+        
+        node.markLayoutSeen()
+        
+        if (node.display == YogaDisplay.NONE) {
+            return
+        }
+        
+        // CRITICAL: Root node should always be at (0, 0) with correct width/height
+        // Yoga should return layoutX=0, layoutY=0 for root, but we ensure it's correct
+        val layoutX = node.layoutX.coerceAtLeast(0f) // Clamp to 0
+        val layoutY = node.layoutY.coerceAtLeast(0f) // Clamp to 0
+        val layoutWidth = node.layoutWidth
+        val layoutHeight = node.layoutHeight
+        
+        // Validate root layout values
+        val isValidLayout = !layoutX.isNaN() && !layoutX.isInfinite() && 
+                           !layoutY.isNaN() && !layoutY.isInfinite() &&
+                           !layoutWidth.isNaN() && !layoutWidth.isInfinite() && layoutWidth > 0 &&
+                           !layoutHeight.isNaN() && !layoutHeight.isInfinite() && layoutHeight > 0
+        
+        if (!isValidLayout) {
+            Log.e(TAG, "❌ Invalid root layout values: layoutX=$layoutX, layoutY=$layoutY, layoutWidth=$layoutWidth, layoutHeight=$layoutHeight")
+            // Use availableSize as fallback
+            val fallbackWidth = if (availableSize.x.isFinite()) availableSize.x.toInt() else 1080
+            val fallbackHeight = if (availableSize.y.isFinite()) availableSize.y.toInt() else 1920
+            val rootFrame = android.graphics.Rect(0, 0, fallbackWidth, fallbackHeight)
+            if (frame != rootFrame) {
+                frame = rootFrame
+                viewsWithNewFrame.add(this)
+            }
+            return
+        }
+        
+        // Root frame should always be at (0, 0) with correct width/height
+        val rootFrame = android.graphics.Rect(0, 0, layoutWidth.toInt(), layoutHeight.toInt())
+        
+        if (frame != rootFrame) {
+            frame = rootFrame
+            viewsWithNewFrame.add(this)
+            Log.d(TAG, "✅ Root frame updated to $rootFrame (from Yoga layout)")
+        }
+        
+        // CRITICAL: Root node's absolute position is always (0, 0)
+        // Children will be positioned relative to this
+        val newAbsolutePosition = android.graphics.PointF(0f, 0f)
+        
+        applyLayoutToChildren(node, viewsWithNewFrame, newAbsolutePosition)
+    }
+    
+    /**
      * Calculate all views whose frame needs updating after layout has been calculated.
      * Returns a set contains the shadow nodes that need updating.
      * Matches iOS collectViewsWithUpdatedFrames exactly
@@ -146,6 +210,7 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         // CRITICAL: Call applyLayoutNode on root first (matches iOS 1:1)
         // This sets the root frame BEFORE calculating children, ensuring parent frame is available
         // iOS does: applyLayoutNode(yogaNode, viewsWithNewFrame: viewsWithNewFrame, absolutePosition: .zero)
+        // The overridden applyLayoutNode will ensure root frame is always set correctly
         applyLayoutNode(yogaNode, viewsWithNewFrame, PointF(0f, 0f))
         
         return viewsWithNewFrame
