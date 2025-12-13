@@ -747,24 +747,14 @@ class YogaShadowTree private constructor() {
                 val layout = shadowNode.frame
                 
                 // Check if this view is a descendant of ScrollView (allow negative Y for scrollable content)
-                // Traverse up the parent chain to find ScrollView
-                val nodeId = shadowNode.viewId.toString()
-                var isScrollContentChild = false
-                var currentParentId: String? = nodeParents[nodeId]
-                while (currentParentId != null) {
-                    val parentType = nodeTypes[currentParentId]
-                    if (parentType == "ScrollView" || parentType == "ScrollContentView") {
-                        isScrollContentChild = true
-                        break
-                    }
-                    currentParentId = nodeParents[currentParentId]
-                }
-                
-                if (isValidLayoutBounds(layout, allowNegativeY = isScrollContentChild)) {
+                // CRITICAL: Match iOS behavior - trust Yoga's layout calculations
+                // We now allow negative positions for all views (matching iOS exactly)
+                // Negative positions are valid in Yoga and may be intentional
+                if (isValidLayoutBounds(layout)) {
                     layoutsToApply.add(Pair(shadowNode.viewId, layout))
-                    Log.d(TAG, "   ✅ Added layout for viewId=${shadowNode.viewId}: $layout (isScrollContentChild=$isScrollContentChild)")
-                    } else {
-                    Log.w(TAG, "   ❌ Invalid layout bounds for node ${shadowNode.viewId}: $layout (isScrollContentChild=$isScrollContentChild)")
+                    Log.d(TAG, "   ✅ Added layout for viewId=${shadowNode.viewId}: $layout")
+                } else {
+                    Log.w(TAG, "   ❌ Invalid layout bounds for node ${shadowNode.viewId}: $layout")
                 }
             }
             
@@ -1108,26 +1098,30 @@ class YogaShadowTree private constructor() {
         return Rect(left.toInt(), top.toInt(), (left + width).toInt(), (top + height).toInt())
     }
     
-    private fun isValidLayoutBounds(rect: Rect, allowNegativeY: Boolean = false): Boolean {
-        // Allow very large dimensions for scrollable content (matches iOS behavior)
-        // iOS doesn't have such limits, so we use a very large limit (100 million pixels)
-        // For scrollable content, allow negative X and Y coordinates (children can be positioned outside visible area)
-        val validWidth = rect.width() >= 0 && rect.width() < 100000000
-        val validHeight = rect.height() >= 0 && rect.height() < 100000000
-        val validX = if (allowNegativeY) {
-            // For scrollable content, allow negative X (children can be to the left of visible area)
-            true
-        } else {
-            // For non-scrollable content, X should be non-negative
-            rect.left >= 0
-        }
-        val validY = if (allowNegativeY) {
-            // For scrollable content, allow negative Y (children can be above visible area)
-            true
-        } else {
-            // For non-scrollable content, Y should be non-negative
-            rect.top >= 0
-        }
+    private fun isValidLayoutBounds(rect: Rect): Boolean {
+        // CRITICAL: Match iOS behavior exactly - trust Yoga's layout calculations
+        // iOS doesn't validate negative positions - it trusts Yoga's calculations
+        // Negative positions are valid in Yoga (e.g., overflow scenarios, intentional positioning)
+        // Android View.layout() can accept negative positions (content just won't be visible, which is correct)
+        // 
+        // Only validate:
+        // 1. Dimensions are non-negative (width/height can't be negative)
+        // 2. Dimensions are finite and reasonable (not NaN, Infinity, or extremely large)
+        // 3. Positions are finite (not NaN or Infinity)
+        // 
+        // DO NOT reject negative positions - they're valid and may be intentional
+        
+        val validWidth = rect.width() >= 0 && rect.width() < 100000000 && 
+                        rect.width().toFloat().isFinite() && !rect.width().toFloat().isNaN()
+        val validHeight = rect.height() >= 0 && rect.height() < 100000000 && 
+                         rect.height().toFloat().isFinite() && !rect.height().toFloat().isNaN()
+        
+        // Positions can be negative, but must be finite
+        val validX = rect.left.toFloat().isFinite() && !rect.left.toFloat().isNaN() &&
+                     rect.left >= -100000000 && rect.left <= 100000000
+        val validY = rect.top.toFloat().isFinite() && !rect.top.toFloat().isNaN() &&
+                     rect.top >= -100000000 && rect.top <= 100000000
+        
         return validWidth && validHeight && validX && validY
     }
 

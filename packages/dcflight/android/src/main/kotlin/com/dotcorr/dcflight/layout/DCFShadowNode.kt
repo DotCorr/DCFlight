@@ -426,45 +426,24 @@ open class DCFShadowNode {
         }
         
         // DEBUG: Log problematic frames (negative Y or zero height)
+        // NOTE: Negative positions are valid in Yoga (e.g., for overflow scenarios)
+        // We match iOS behavior exactly - don't clamp, trust Yoga's calculations
         if (newFrame.top < 0 || newFrame.height() == 0) {
-            Log.w(TAG, "⚠️ DCFShadowNode: viewId=$viewId has problematic frame:")
-            Log.w(TAG, "   Yoga values: left=${node.layoutX}, top=${node.layoutY}, width=${node.layoutWidth}, height=${node.layoutHeight}")
-            Log.w(TAG, "   absolutePosition=$absolutePosition")
-            Log.w(TAG, "   absoluteTopLeft=$absoluteTopLeft, absoluteBottomRight=$absoluteBottomRight")
-            Log.w(TAG, "   Calculated frame=$newFrame")
-            Log.w(TAG, "   Parent frame=$frame")
+            Log.d(TAG, "🔍 DCFShadowNode: viewId=$viewId has frame with negative Y or zero height:")
+            Log.d(TAG, "   Yoga values: left=${node.layoutX}, top=${node.layoutY}, width=${node.layoutWidth}, height=${node.layoutHeight}")
+            Log.d(TAG, "   absolutePosition=$absolutePosition")
+            Log.d(TAG, "   absoluteTopLeft=$absoluteTopLeft, absoluteBottomRight=$absoluteBottomRight")
+            Log.d(TAG, "   Calculated frame=$newFrame")
+            Log.d(TAG, "   Parent frame=$frame")
         }
         
-        // CRITICAL: Clamp negative positions to 0 for non-scrollable content
-        // Negative positions are only valid for scrollable content (ScrollContentView)
-        // For normal views, negative positions indicate a layout calculation error
-        // Check if this view is a descendant of ScrollContentView (allow negative Y for scrollable content)
-        val nodeId = viewId.toString()
-        var isScrollContentChild = false
-        var currentParent: DCFShadowNode? = superview
-        while (currentParent != null) {
-            if (currentParent.viewName == "ScrollView") {
-                isScrollContentChild = true
-                break
-            }
-            currentParent = currentParent.superview
-        }
-        
-        // Clamp negative positions to 0 for non-scrollable content
-        val clampedFrame = if (!isScrollContentChild && (newFrame.left < 0 || newFrame.top < 0)) {
-            Log.w(TAG, "⚠️ Clamping negative position for viewId=$viewId (not scrollable): left=${newFrame.left}, top=${newFrame.top}")
-            Rect(
-                newFrame.left.coerceAtLeast(0),
-                newFrame.top.coerceAtLeast(0),
-                newFrame.right.coerceAtLeast(newFrame.left.coerceAtLeast(0) + newFrame.width()),
-                newFrame.bottom.coerceAtLeast(newFrame.top.coerceAtLeast(0) + newFrame.height())
-            )
-        } else {
-            newFrame
-        }
-        
-        if (frame != clampedFrame) {
-            frame = clampedFrame
+        // CRITICAL: Match iOS behavior exactly - use Yoga's calculated frame without clamping
+        // iOS DCFShadowView.applyLayoutNode does NOT clamp negative positions
+        // Negative positions are valid in Yoga and may be intentional (e.g., overflow, centering)
+        // Android View.layout() can accept negative positions (they just won't be visible)
+        // The key is to trust Yoga's layout calculations, not second-guess them
+        if (frame != newFrame) {
+            frame = newFrame
             viewsWithNewFrame.add(this)
         }
         

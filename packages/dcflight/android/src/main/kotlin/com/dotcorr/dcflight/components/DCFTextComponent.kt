@@ -216,29 +216,35 @@ class DCFTextComponent : DCFComponent() {
         
         val alignment = textAlignToLayoutAlignment(textAlign)
         
-        // CRITICAL: Get padding from shadow node to calculate text frame (matches React Native)
-        // React Native's flat renderer: left += getPadding(Spacing.LEFT); top += getPadding(Spacing.TOP)
-        val padding = shadowNode.paddingAsInsets
-        val textFrameLeft = padding.left.toFloat()
-        val textFrameTop = padding.top.toFloat()
-        val textWidth = (layout.width - padding.left - padding.right).toInt().coerceAtLeast(0)
+        // CRITICAL: Match React Native's flat renderer collectState exactly
+        // React Native line 158: createTextLayout with width = (int) Math.ceil(right - left)
+        // However, React Native's measure (line 94) uses width which Yoga already accounts for padding
+        // The key: layout should wrap text within the available text area (width - padding)
+        // Then we draw it offset by padding (matches React Native line 173-174)
+        // The view itself doesn't clip (getClipBounds returns null), allowing font metrics to render
         
-        // Create layout with correct width (accounting for padding) and spannable text
-        // Matches React Native's flat renderer createTextLayout exactly
-        // CRITICAL: Use collected text with spans (matches React Native's DrawTextLayout)
+        val padding = shadowNode.paddingAsInsets
+        // CRITICAL: Create layout with width AFTER padding (text area width)
+        // This ensures text wraps correctly within the available space
+        // StaticLayout will wrap text within this width
+        val layoutWidth = (layout.width - padding.left - padding.right).toInt().coerceAtLeast(0)
+        
+        // Create layout with full width (matches React Native's flat renderer)
         val layoutObj = createTextLayout(
             spannableText,
             paint,
-            textWidth,
+            layoutWidth,
             alignment,
             numberOfLines,
             lineHeight,
             fontSizePixels // Pass font size in pixels for line height calculation
         )
         
+        // CRITICAL: Draw position is padding offset (matches React Native line 173-174)
+        // React Native: left += getPadding(Spacing.LEFT); top += getPadding(Spacing.TOP)
         textView.textLayout = layoutObj
-        textView.textFrameLeft = textFrameLeft
-        textView.textFrameTop = textFrameTop
+        textView.textFrameLeft = padding.left.toFloat()
+        textView.textFrameTop = padding.top.toFloat()
         
         // Request layout to update measured dimensions
         textView.requestLayout()

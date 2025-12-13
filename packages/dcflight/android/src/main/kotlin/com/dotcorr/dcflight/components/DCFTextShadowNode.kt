@@ -223,29 +223,11 @@ open class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         absolutePosition: android.graphics.PointF
     ) {
         // Call super to handle frame calculation
+        // CRITICAL: Match iOS behavior exactly - don't clamp negative positions
+        // iOS DCFTextShadowView.applyLayoutNode does NOT clamp - it trusts Yoga's calculations
+        // Negative positions are valid and may be intentional (e.g., text overflow, centering)
+        // The frame is already set correctly by super.applyLayoutNode() which matches iOS exactly
         super.applyLayoutNode(node, viewsWithNewFrame, absolutePosition)
-        
-        // CRITICAL: Clamp negative X and Y to 0 for text views (matches iOS behavior)
-        // Yoga may calculate negative positions when centering, but we need to clamp them to 0
-        // This prevents the layout from being rejected by isValidLayoutBounds
-        // iOS doesn't explicitly clamp, but Android's view system requires non-negative positions
-        val originalLeft = frame.left
-        val originalTop = frame.top
-        if (originalLeft < 0 || originalTop < 0) {
-            val width = frame.width()
-            val height = frame.height()
-            val clampedLeft = maxOf(0, originalLeft) // Clamp negative X to 0
-            val clampedTop = maxOf(0, originalTop) // Clamp negative Y to 0
-            frame = Rect(
-                clampedLeft,
-                clampedTop,
-                clampedLeft + width, // Preserve width
-                clampedTop + height // Preserve height
-            )
-            // Add to viewsWithNewFrame so the corrected frame gets applied
-            viewsWithNewFrame.add(this)
-            Log.d(TAG, "✅ DCFTextShadowNode: Clamped frame from ($originalLeft, $originalTop) to ($clampedLeft, $clampedTop) for viewId=$viewId. New frame: $frame")
-        }
         
         // Build text layout and calculate text frame for rendering
         // Use frame width minus padding (matches iOS approach)

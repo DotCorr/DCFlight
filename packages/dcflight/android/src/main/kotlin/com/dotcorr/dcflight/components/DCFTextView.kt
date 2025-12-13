@@ -30,7 +30,7 @@ class DCFTextView @JvmOverloads constructor(
             }
         }
     
-    var textFrame: Rect = Rect(0, 0, 0, 0)
+    var textFrameLeft: Float = 0f
         set(value) {
             if (field != value) {
                 field = value
@@ -38,7 +38,7 @@ class DCFTextView @JvmOverloads constructor(
             }
         }
     
-    var contentInset: Rect = Rect(0, 0, 0, 0)
+    var textFrameTop: Float = 0f
         set(value) {
             if (field != value) {
                 field = value
@@ -58,9 +58,21 @@ class DCFTextView @JvmOverloads constructor(
         // CRITICAL: Ensure view is visible and not clipped
         visibility = View.VISIBLE
         alpha = 1.0f
-        // Note: setClipChildren/setClipToPadding are ViewGroup methods, not available on View
-        // For View, we ensure proper drawing by using StaticLayout which handles text metrics correctly
-        // iOS sets clipsToBounds = false, but on Android View we can't control parent clipping
+        // CRITICAL: Disable clipping to match iOS clipsToBounds = false
+        // Text has font metrics (ascenders/descenders) that extend beyond measured bounds
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            clipToOutline = false
+        }
+    }
+    
+    // CRITICAL: Override getClipBounds to prevent clipping (matches iOS clipsToBounds = false)
+    // This allows text with font metrics (ascenders/descenders) to render fully
+    // Text glyphs can extend beyond their measured bounds (ascenders above, descenders below)
+    // By returning null, we disable view-level clipping, allowing full glyph rendering
+    override fun getClipBounds(): android.graphics.Rect? {
+        // Return null to disable clipping (matches iOS clipsToBounds = false)
+        // This is critical for text rendering - fonts have metrics that extend beyond bounds
+        return null
     }
     
     override fun onDraw(canvas: Canvas) {
@@ -68,10 +80,10 @@ class DCFTextView @JvmOverloads constructor(
         
         // CRITICAL: Match React Native's DrawTextLayout.onDraw exactly
         // React Native: canvas.translate(left, top); mLayout.draw(canvas); canvas.translate(-left, -top);
-        // In our case, left/top are the padding offsets (textFrame position) relative to the view
+        // left/top are the padding offsets (textFrame position) relative to the view
         // The view is already positioned correctly by the layout system
-        val left = textFrame.left.toFloat()
-        val top = textFrame.top.toFloat()
+        val left = textFrameLeft
+        val top = textFrameTop
         
         // Save canvas state to prevent any existing transformations from affecting text drawing
         canvas.save()

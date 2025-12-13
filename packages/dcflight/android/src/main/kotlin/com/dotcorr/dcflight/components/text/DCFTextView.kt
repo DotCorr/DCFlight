@@ -26,38 +26,26 @@ class DCFTextView(context: Context) : View(context) {
         // CRITICAL: Set background to transparent so text is visible (matches iOS isOpaque = false)
         // This prevents black boxes from appearing behind text
         setBackgroundColor(android.graphics.Color.TRANSPARENT)
-    }
-    
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val layout = textLayout
-        if (layout != null) {
-            // Use layout dimensions for measurement
-            val width = layout.width.coerceAtLeast(0)
-            val height = layout.height.coerceAtLeast(0)
-            
-            val widthSize = View.MeasureSpec.getSize(widthMeasureSpec)
-            val widthMode = View.MeasureSpec.getMode(widthMeasureSpec)
-            val heightSize = View.MeasureSpec.getSize(heightMeasureSpec)
-            val heightMode = View.MeasureSpec.getMode(heightMeasureSpec)
-            
-            val measuredWidth = when (widthMode) {
-                View.MeasureSpec.EXACTLY -> widthSize
-                View.MeasureSpec.AT_MOST -> width.coerceAtMost(widthSize)
-                else -> width
-            }
-            
-            val measuredHeight = when (heightMode) {
-                View.MeasureSpec.EXACTLY -> heightSize
-                View.MeasureSpec.AT_MOST -> height.coerceAtMost(heightSize)
-                else -> height
-            }
-            
-            setMeasuredDimension(measuredWidth, measuredHeight)
-        } else {
-            // No layout yet, measure as empty
-            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        // CRITICAL: Disable clipping to match iOS clipsToBounds = false
+        // Text has font metrics (ascenders/descenders) that extend beyond measured bounds
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            clipToOutline = false
         }
     }
+    
+    // CRITICAL: Override getClipBounds to prevent clipping (matches iOS clipsToBounds = false)
+    // This allows text with font metrics (ascenders/descenders) to render fully
+    // Text glyphs can extend beyond their measured bounds (ascenders above, descenders below)
+    // By returning null, we disable view-level clipping, allowing full glyph rendering
+    override fun getClipBounds(): android.graphics.Rect? {
+        // Return null to disable clipping (matches iOS clipsToBounds = false)
+        // This is critical for text rendering - fonts have metrics that extend beyond bounds
+        return null
+    }
+    
+    // CRITICAL: Don't override onMeasure - Yoga already handles measurement via measure function
+    // The measure function returns layout size, and Yoga adds padding to get final view size
+    // Overriding onMeasure would interfere with Yoga's layout calculations
     
     override fun onDraw(canvas: Canvas) {
         val layout = textLayout ?: return
