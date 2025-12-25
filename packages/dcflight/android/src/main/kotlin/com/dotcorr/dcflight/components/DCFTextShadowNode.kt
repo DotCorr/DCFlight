@@ -267,17 +267,27 @@ open class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
     
     /**
      * Calculate text frame from text layout (accounts for padding)
-     * Matches iOS calculateTextFrame approach
+     * Matches iOS calculateTextFrame approach exactly
+     * iOS: var textFrame = CGRect(origin: .zero, size: self.frame.size).inset(by: padding)
+     * This creates a frame with origin at (0, 0) and size matching the view's frame, then insets by padding
+     * So textFrame is the content area (frame size minus padding), positioned at (padding.left, padding.top)
      */
     private fun calculateTextFrame(layout: StaticLayout, padding: android.graphics.Rect): Rect {
-        // Text frame is the content area (inside padding)
-        // Position is relative to the view's frame
-        return Rect(
+        // Match iOS exactly: CGRect(origin: .zero, size: self.frame.size).inset(by: padding)
+        // This gives us the content area (available space for text) inside the padding
+        // Android Rect: frame.width() and frame.height() give us the size
+        val frameWidth = frame.width()
+        val frameHeight = frame.height()
+        val textFrame = android.graphics.Rect(
             padding.left,
             padding.top,
-            padding.left + layout.width,
-            padding.top + layout.height
+            frameWidth - padding.right,
+            frameHeight - padding.bottom
         )
+        
+        // TODO: Handle adjustsFontSizeToFit if needed (iOS does this in updateStorage)
+        // For now, return the content area frame (matches iOS when adjustsFontSizeToFit is false)
+        return textFrame
     }
     
     /**

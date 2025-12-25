@@ -77,9 +77,11 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         }
         
         // CRITICAL: Root node should always be at (0, 0) with correct width/height
-        // Yoga should return layoutX=0, layoutY=0 for root, but we ensure it's correct
-        val layoutX = node.layoutX.coerceAtLeast(0f) // Clamp to 0
-        val layoutY = node.layoutY.coerceAtLeast(0f) // Clamp to 0
+        // Match iOS exactly - use Yoga's layout values directly without clamping
+        // iOS DCFRootShadowView.applyLayoutNode uses YGNodeLayoutGetLeft/Top directly
+        // If Yoga returns non-zero for root, it indicates a setup issue, but we trust Yoga
+        val layoutX = node.layoutX
+        val layoutY = node.layoutY
         val layoutWidth = node.layoutWidth
         val layoutHeight = node.layoutHeight
         
@@ -102,17 +104,28 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             return
         }
         
-        // Root frame should always be at (0, 0) with correct width/height
+        // CRITICAL: Root frame should ALWAYS be at (0, 0) with dimensions matching available size
+        // Match iOS exactly - root frame is always (0, 0, availableWidth, availableHeight)
+        // Yoga should return layoutX=0, layoutY=0 for root, but we enforce it to prevent coordinate system issues
+        // If Yoga returns non-zero for root, it indicates a setup issue, but we correct it here
         val rootFrame = android.graphics.Rect(0, 0, layoutWidth.toInt(), layoutHeight.toInt())
+        
+        // CRITICAL: If Yoga returned non-zero position for root, log a warning but use (0, 0)
+        if (layoutX != 0f || layoutY != 0f) {
+            Log.w(TAG, "⚠️ WARNING: Yoga returned non-zero position for root node: layoutX=$layoutX, layoutY=$layoutY")
+            Log.w(TAG, "   This indicates a Yoga setup issue. Root should always be at (0, 0).")
+            Log.w(TAG, "   Correcting root frame to (0, 0, $layoutWidth, $layoutHeight)")
+        }
         
         if (frame != rootFrame) {
             frame = rootFrame
             viewsWithNewFrame.add(this)
-            Log.d(TAG, "✅ Root frame updated to $rootFrame (from Yoga layout)")
+            Log.d(TAG, "✅ Root frame set to $rootFrame (Yoga layout: left=$layoutX, top=$layoutY, width=$layoutWidth, height=$layoutHeight)")
         }
         
         // CRITICAL: Root node's absolute position is always (0, 0)
         // Children will be positioned relative to this
+        // Match iOS exactly - root's absolutePosition is always .zero
         val newAbsolutePosition = android.graphics.PointF(0f, 0f)
         
         applyLayoutToChildren(node, viewsWithNewFrame, newAbsolutePosition)
@@ -148,6 +161,53 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         Log.d(TAG, "   Root Yoga node justifyContent: ${yogaNode.justifyContent}")
         Log.d(TAG, "   Root Yoga node alignItems: ${yogaNode.alignItems}")
         
+        // CRITICAL: Match iOS behavior exactly - DO NOT set explicit width/height on root Yoga node
+        // iOS DCFRootShadowView does NOT set explicit width/height on the root Yoga node
+        // Instead, it passes availableWidth/availableHeight to YGNodeCalculateLayout, and Yoga determines
+        // the root node's size from those constraints. This is the correct approach that prevents
+        // coordinate system mismatches and negative child positions.
+        // Setting explicit dimensions can cause Yoga to use those instead of the available size,
+        // leading to incorrect layout calculations for children.
+        
+        // CRITICAL: Ensure root node doesn't have explicit dimensions set (clear any that might exist)
+        // This ensures Yoga uses availableWidth/availableHeight passed to calculateLayout
+        // If explicit dimensions are set, Yoga might use those instead, causing coordinate mismatches
+        // Root node should have UNDEFINED or AUTO dimensions so Yoga uses available size from calculateLayout
+        val hasExplicitWidth = yogaNode.width.unit == YogaUnit.POINT || yogaNode.width.unit == YogaUnit.PERCENT
+        val hasExplicitHeight = yogaNode.height.unit == YogaUnit.POINT || yogaNode.height.unit == YogaUnit.PERCENT
+        if (hasExplicitWidth || hasExplicitHeight) {
+            Log.d(TAG, "⚠️ Root Yoga node has explicit dimensions - clearing to match iOS behavior")
+            Log.d(TAG, "   Before: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
+            // Set to AUTO so Yoga uses available size from calculateLayout (matches iOS behavior)
+            yogaNode.setWidthAuto()
+            yogaNode.setHeightAuto()
+            Log.d(TAG, "   After: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
+        }
+        
+        // CRITICAL: Ensure root node's direction is set correctly before calculateLayout
+        // This matches React Native's approach - direction must be set on the Yoga node itself
+        // React Native sets direction via setDirection() before calculateLayout
+        // Always set direction to ensure it's correct (YogaNode doesn't have a readable direction property)
+        yogaNode.setDirection(baseDirection)
+        Log.d(TAG, "🔧 Root Yoga node direction set to $baseDirection")
+        
+        // CRITICAL: Ensure root node has no margins or padding that could affect child positioning
+        // Root node should be at (0, 0) with no insets - margins/padding on root can cause coordinate system issues
+        // Match iOS exactly - root node should have zero margins and padding
+        // Note: We check layout values (computed after layout) as a diagnostic, but the real fix is to ensure
+        // margins/padding are never set on root node in the first place (handled in prop setting code)
+        // This check is just for debugging - if layout margins/padding are non-zero, it indicates a setup issue
+        val rootMarginLeft = yogaNode.getLayoutMargin(YogaEdge.LEFT)
+        val rootMarginTop = yogaNode.getLayoutMargin(YogaEdge.TOP)
+        val rootPaddingLeft = yogaNode.getLayoutPadding(YogaEdge.LEFT)
+        val rootPaddingTop = yogaNode.getLayoutPadding(YogaEdge.TOP)
+        if (rootMarginLeft != 0f || rootMarginTop != 0f || rootPaddingLeft != 0f || rootPaddingTop != 0f) {
+            Log.w(TAG, "⚠️ WARNING: Root node has non-zero layout margins/padding!")
+            Log.w(TAG, "   layoutMarginLeft=$rootMarginLeft, layoutMarginTop=$rootMarginTop, layoutPaddingLeft=$rootPaddingLeft, layoutPaddingTop=$rootPaddingTop")
+            Log.w(TAG, "   This can cause coordinate system issues. Root should have zero margins/padding.")
+            Log.w(TAG, "   This is a diagnostic warning - margins/padding should not be set on root node.")
+        }
+        
         // Log all children before layout
         for (i in 0 until yogaNode.childCount) {
             val child = yogaNode.getChildAt(i)
@@ -162,10 +222,25 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         yogaNode.calculateLayout(availableWidth, availableHeight)
         
         // CRITICAL: Validate root node layout values immediately after calculation
+        // Match iOS behavior exactly - Yoga should calculate root node at (0, 0) with size matching available size
         val rootLayoutX = yogaNode.layoutX
         val rootLayoutY = yogaNode.layoutY
         val rootLayoutWidth = yogaNode.layoutWidth
         val rootLayoutHeight = yogaNode.layoutHeight
+        
+        // CRITICAL: Root node should always be at (0, 0) with dimensions matching available size
+        // If root layout position is not (0, 0), it indicates a fundamental coordinate system issue
+        val rootPositionValid = rootLayoutX == 0f && rootLayoutY == 0f
+        val rootSizeValid = if (!availableWidth.isNaN() && !availableWidth.isInfinite() && availableWidth > 0) {
+            // Allow small floating point differences (within 1 pixel)
+            kotlin.math.abs(rootLayoutWidth - availableWidth) < 1f
+        } else {
+            rootLayoutWidth > 0
+        } && if (!availableHeight.isNaN() && !availableHeight.isInfinite() && availableHeight > 0) {
+            kotlin.math.abs(rootLayoutHeight - availableHeight) < 1f
+        } else {
+            rootLayoutHeight > 0
+        }
         
         val isRootLayoutValid = !rootLayoutX.isNaN() && !rootLayoutX.isInfinite() &&
                                !rootLayoutY.isNaN() && !rootLayoutY.isInfinite() &&
@@ -185,6 +260,22 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             frame = android.graphics.Rect(0, 0, fallbackWidth.toInt(), fallbackHeight.toInt())
             // Return empty set - children can't be laid out if root is invalid
             return emptySet()
+        }
+        
+        // CRITICAL: Warn if root position or size doesn't match expectations
+        // This indicates a coordinate system mismatch that could cause negative child positions
+        if (!rootPositionValid) {
+            Log.e(TAG, "❌❌❌ CRITICAL: Root node position is not (0, 0)! layoutX=$rootLayoutX, layoutY=$rootLayoutY")
+            Log.e(TAG, "   This indicates a serious Yoga layout bug - root should always be at (0, 0)")
+            Log.e(TAG, "   This will cause all children to be positioned incorrectly!")
+            Log.e(TAG, "   Root Yoga node style: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
+            Log.e(TAG, "   Root Yoga node has explicit dimensions: ${yogaNode.width.unit != YogaUnit.UNDEFINED || yogaNode.height.unit != YogaUnit.UNDEFINED}")
+        }
+        if (!rootSizeValid) {
+            Log.w(TAG, "⚠️ WARNING: Root node size doesn't match available size!")
+            Log.w(TAG, "   layoutWidth=$rootLayoutWidth (expected ~$availableWidth), layoutHeight=$rootLayoutHeight (expected ~$availableHeight)")
+            Log.w(TAG, "   Root Yoga node style: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
+            Log.w(TAG, "   This might cause layout issues, but continuing...")
         }
         
         // DEBUG: Log root node layout after calculation

@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/worklets/worklet.dart';
 import 'package:flutter/material.dart' show Colors;
 
 void main() async {

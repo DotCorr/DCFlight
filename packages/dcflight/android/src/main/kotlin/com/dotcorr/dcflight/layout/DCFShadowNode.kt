@@ -393,15 +393,20 @@ open class DCFShadowNode {
         )
         
         // Frame uses relative coordinates (matches iOS 1:1)
-        // x = layoutX (relative to parent)
-        // y = layoutY (relative to parent)
-        // width = absoluteBottomRight.x - absoluteTopLeft.x
-        // height = absoluteBottomRight.y - absoluteTopLeft.y
+        // iOS calculates: CGRect(x: roundPixelValue(layoutX), y: roundPixelValue(layoutY), 
+        //                        width: roundPixelValue(absoluteBottomRight.x - absoluteTopLeft.x),
+        //                        height: roundPixelValue(absoluteBottomRight.y - absoluteTopLeft.y))
+        // We match this exactly - width/height are calculated from absolute positions, then rounded
+        val roundedX = roundPixelValue(layoutX)
+        val roundedY = roundPixelValue(layoutY)
+        val roundedWidth = roundPixelValue(absoluteBottomRight.x - absoluteTopLeft.x)
+        val roundedHeight = roundPixelValue(absoluteBottomRight.y - absoluteTopLeft.y)
+        
         val newFrame = Rect(
-            roundPixelValue(layoutX),
-            roundPixelValue(layoutY),
-            roundPixelValue(layoutX + layoutWidth),
-            roundPixelValue(layoutY + layoutHeight)
+            roundedX.toInt(),
+            roundedY.toInt(),
+            (roundedX + roundedWidth).toInt(),
+            (roundedY + roundedHeight).toInt()
         )
         
         // DEBUG: Log ALL frames during layout to trace the issue
@@ -463,11 +468,24 @@ open class DCFShadowNode {
         val childCount = node.childCount
         Log.d(TAG, "🔍 DCFShadowNode.applyLayoutToChildren: viewId=$viewId, childCount=$childCount, current frame=$frame, absolutePosition=$absolutePosition")
         
+        // CRITICAL: Match iOS exactly - use _subviews array for order, but fall back to Yoga node if needed
+        // iOS: for i in 0..<Int(childCount) {
+        //          if let childNode = YGNodeGetChild(node, i), i < _subviews.count {
+        //              let child = _subviews[i]
+        //              child.applyLayoutNode(childNode, ...)
+        //          }
+        //      }
+        // This ensures children are processed in the correct order matching the view hierarchy
         for (i in 0 until childCount) {
             val childNode = node.getChildAt(i)
-            // Get shadow node from Yoga node (matches iOS 1:1)
-            // This ensures we traverse all children even if _subviews isn't populated
-            val childShadowNode = YogaShadowTree.shared.getShadowNode(childNode)
+            // Try to get shadow node from _subviews first (matches iOS order)
+            val childShadowNode = if (i < _subviews.size) {
+                _subviews[i]
+            } else {
+                // Fallback: get from Yoga node (shouldn't happen if _subviews is in sync)
+                YogaShadowTree.shared.getShadowNode(childNode)
+            }
+            
             if (childShadowNode != null) {
                 Log.d(TAG, "   Processing child $i: viewId=${childShadowNode.viewId}, Yoga layout: left=${childNode.layoutX}, top=${childNode.layoutY}, width=${childNode.layoutWidth}, height=${childNode.layoutHeight}")
                 childShadowNode.applyLayoutNode(childNode, viewsWithNewFrame, absolutePosition)
@@ -645,9 +663,15 @@ open class DCFShadowNode {
     
     // MARK: - Helper Functions
     
-    private fun roundPixelValue(value: Float): Int {
-        // Android uses density-independent pixels, so we round to nearest pixel
-        return value.toInt()
+    /**
+     * Round pixel value to match iOS exactly
+     * iOS: round(value * UIScreen.main.scale) / UIScreen.main.scale
+     * Android: round(value * density) / density
+     * Returns Float to match iOS CGFloat precision
+     */
+    private fun roundPixelValue(value: Float): Float {
+        val density = android.content.res.Resources.getSystem().displayMetrics.density
+        return (kotlin.math.round(value * density) / density)
     }
     
     private fun setYogaValue(value: YogaValue, edge: YogaEdge, setter: (YogaNode, YogaEdge, Float) -> Unit) {

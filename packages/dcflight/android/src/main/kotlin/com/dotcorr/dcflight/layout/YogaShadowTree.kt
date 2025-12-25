@@ -688,19 +688,14 @@ class YogaShadowTree private constructor() {
             Log.d(TAG, "   Root Yoga node childCount: ${rootShadowNode.yogaNode.childCount}")
             
             // Update root available size FIRST (matches iOS 1:1)
+            // CRITICAL: DO NOT set root frame before calculateLayout - let Yoga calculate it
+            // iOS does NOT set root frame before calculateLayout - it lets applyLayoutNode set it from Yoga's calculated values
+            // Setting root frame before calculateLayout can cause coordinate system mismatches and negative child positions
             rootShadowNode.availableSize = PointF(width, height)
             Log.d(TAG, "✅ Root availableSize set to ($width, $height)")
             
-            // CRITICAL: Set root shadow node's frame BEFORE layout calculation (matches iOS 1:1)
-            // This ensures children are positioned correctly relative to a properly sized root
-            // The root shadow node's frame must match the screen size before Yoga calculates child positions
-            rootShadowNode.setRootFrame(width, height)
-            
-            // CRITICAL: Ensure root Yoga node has correct constraints
-            // While iOS doesn't set explicit width/height on root, we need to ensure Yoga uses correct availableSize
-            // The root node's availableSize is already set above, which Yoga will use
-            
             // Calculate layout using shadow node's collectViewsWithUpdatedFrames (matches iOS 1:1)
+            // The root frame will be set by applyLayoutNode from Yoga's calculated values
             Log.d(TAG, "🔍 Calling collectViewsWithUpdatedFrames on root shadow node...")
             val viewsWithNewFrame = rootShadowNode.collectViewsWithUpdatedFrames()
             Log.d(TAG, "✅ collectViewsWithUpdatedFrames returned ${viewsWithNewFrame.size} views with new frames")
