@@ -20,6 +20,44 @@ class RootErrorBoundary extends ErrorBoundary {
   RootErrorBoundary(this._app, {super.key});
 
   @override
+  DCFComponentNode render() {
+    DCFComponentNode content;
+    if (hasError) {
+      content = renderFallback(error!, stackTrace);
+    } else {
+      content = renderContent();
+    }
+    
+    // Wrap in DCFElement directly with layout properties to ensure it fills parent
+    // This prevents the component system from creating an extra wrapper without layout
+    if (content is DCFElement) {
+      // If already a DCFElement, merge layout properties
+      final props = Map<String, dynamic>.from(content.elementProps);
+      props.addAll({
+        'flex': 1,
+        'width': '100%',
+        'height': '100%',
+      });
+      return DCFElement(
+        type: content.type,
+        elementProps: props,
+        children: content.children,
+      );
+    } else {
+      // If it's a component, wrap it in a View with layout properties
+      return DCFElement(
+        type: 'View',
+        elementProps: {
+          'flex': 1,
+          'width': '100%',
+          'height': '100%',
+        },
+        children: [content],
+      );
+    }
+  }
+
+  @override
   DCFComponentNode renderContent() {
     // Wrap app in a DCFView with flex: 1 to ensure it fills the parent
     // This prevents white screen issues when the root view doesn't have proper layout

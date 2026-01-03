@@ -124,7 +124,30 @@ class NavigationBar extends DCFStatelessComponent {
 class HeroSection extends DCFStatefulComponent {
   
   @override
-  DCFComponentNode render() {final showTest = useState<bool>(false);
+  DCFComponentNode render() {
+    final showTest = useState<bool>(false);
+    if (showTest.state) {
+      // CRITICAL: Always return a View wrapper to maintain consistent structure
+      // Returning DCFText directly breaks ScrollView's single-child constraint
+      return DCFView(
+        layout: DCFLayout(
+          width: '100%',
+          paddingTop: 128,
+          paddingBottom: 80,
+          paddingHorizontal: 24,
+          flexDirection: DCFFlexDirection.column,
+          gap: 48,
+        ),
+        styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
+        children: [
+          DCFText(
+            content: "Hello, World!",
+            textProps: DCFTextProps(fontSize: 20),
+            styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+          ),
+        ],
+      );
+    }
     return DCFView(
       layout: DCFLayout(
         width: '100%',

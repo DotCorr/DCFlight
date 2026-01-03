@@ -476,7 +476,7 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         if (childCount == 0) {
             Log.w(TAG, "⚠️ DCFScrollView.onLayout: No children, _scrollView not added yet")
             // Try to recover by adding _scrollView if it exists
-            if (!_scrollView.parent?.equals(this) == true) {
+            if (_scrollView.parent != this) {
                 addView(_scrollView)
             }
             return
@@ -494,7 +494,7 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
                 }
             }
             // Ensure _scrollView is present
-            if (!_scrollView.parent?.equals(this) == true) {
+            if (_scrollView.parent != this) {
                 addView(_scrollView)
             }
             // Only proceed if we now have valid structure
@@ -509,7 +509,7 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
             Log.w(TAG, "⚠️ DCFScrollView.onLayout: First child is not _scrollView (type: ${firstChild.javaClass.simpleName}). Attempting to fix...")
             // Try to recover by removing wrong child and adding _scrollView
             removeViewAt(0)
-            if (!_scrollView.parent?.equals(this) == true) {
+            if (_scrollView.parent != this) {
                 addView(_scrollView)
             }
             // Only proceed if we now have valid structure
