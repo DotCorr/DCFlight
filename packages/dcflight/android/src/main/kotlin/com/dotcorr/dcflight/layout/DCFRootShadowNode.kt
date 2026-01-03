@@ -184,6 +184,14 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             Log.d(TAG, "   After: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
         }
         
+        // CRITICAL: Ensure root node's flex properties allow children to expand
+        // Root node should allow its first child (ScrollView) to expand to fill the screen
+        // Set flexGrow to 1 for root node to ensure it fills available space
+        if (yogaNode.flexGrow != 1.0f) {
+            Log.d(TAG, "🔧 Setting root node flexGrow to 1.0 to ensure it fills available space")
+            yogaNode.setFlexGrow(1.0f)
+        }
+        
         // CRITICAL: Ensure root node's direction is set correctly before calculateLayout
         // This matches React Native's approach - direction must be set on the Yoga node itself
         // React Native sets direction via setDirection() before calculateLayout
@@ -217,6 +225,19 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             Log.d(TAG, "     minWidth=${child.minWidth.value}, minHeight=${child.minHeight.value}")
             Log.d(TAG, "     flexDirection=${child.flexDirection}, justifyContent=${child.justifyContent}, alignItems=${child.alignItems}")
             Log.d(TAG, "     Child frame BEFORE layout: ${childShadowNode?.frame}")
+            
+            // CRITICAL: Ensure root view's first child expands to fill parent
+            // If the child has undefined width/height, it should expand to fill the root
+            // This is especially important for ScrollView which should fill the screen
+            if (i == 0 && child.width.unit == YogaUnit.UNDEFINED && child.height.unit == YogaUnit.UNDEFINED) {
+                Log.d(TAG, "     🔧 Root's first child has undefined dimensions - ensuring it expands to fill parent")
+                // CRITICAL: Set flexGrow to 1.0 to ensure child expands to fill parent
+                // This is necessary for ScrollView to fill the screen
+                if (child.flexGrow != 1.0f) {
+                    Log.d(TAG, "     🔧 Setting first child flexGrow to 1.0 to ensure it expands")
+                    child.setFlexGrow(1.0f)
+                }
+            }
         }
         
         yogaNode.calculateLayout(availableWidth, availableHeight)
