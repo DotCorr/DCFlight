@@ -14,7 +14,13 @@ class DotCorrLanding extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFScrollView(
-      layout: DCFLayout(flex: 1),
+      layout: DCFLayout(
+        flex: 1,
+        width: '100%', // CRITICAL: Explicit width needed for Yoga to calculate child percentages
+        // In Yoga's paradigm, percentage widths (like NavigationBar's width: '100%')
+        // require the parent to have a DEFINED width. flex: 1 alone isn't enough
+        // because Yoga needs to resolve the parent's width before calculating child percentages
+      ),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
       children: [
         NavigationBar(),

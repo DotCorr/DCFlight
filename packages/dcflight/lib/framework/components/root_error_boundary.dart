@@ -28,29 +28,30 @@ class RootErrorBoundary extends ErrorBoundary {
       content = renderContent();
     }
     
-    // Wrap in DCFElement directly with layout properties to ensure it fills parent
-    // This prevents the component system from creating an extra wrapper without layout
+    // Return as DCFElement directly to prevent component system from wrapping
+    // This ensures the root view has proper layout properties (flex: 1, width: 100%)
+    // without creating an extra wrapper layer
     if (content is DCFElement) {
-      // If already a DCFElement, merge layout properties
+      // If already a DCFElement, ensure it has flex: 1 and width: 100%
       final props = Map<String, dynamic>.from(content.elementProps);
-      props.addAll({
-        'flex': 1,
-        'width': '100%',
-        'height': '100%',
-      });
+      if (!props.containsKey('flex')) {
+        props['flex'] = 1;
+      }
+      if (!props.containsKey('width')) {
+        props['width'] = '100%';
+      }
       return DCFElement(
         type: content.type,
         elementProps: props,
         children: content.children,
       );
     } else {
-      // If it's a component, wrap it in a View with layout properties
+      // Wrap in DCFElement with layout properties
       return DCFElement(
         type: 'View',
         elementProps: {
           'flex': 1,
           'width': '100%',
-          'height': '100%',
         },
         children: [content],
       );
@@ -59,16 +60,8 @@ class RootErrorBoundary extends ErrorBoundary {
 
   @override
   DCFComponentNode renderContent() {
-    // Wrap app in a DCFView with flex: 1 to ensure it fills the parent
-    // This prevents white screen issues when the root view doesn't have proper layout
-    return DCFView(
-      layout: DCFLayout(
-        flex: 1,
-        width: '100%',
-        height: '100%',
-      ),
-      children: [_app],
-    );
+    // Return app directly - render() will wrap it with proper layout
+    return _app;
   }
 
   @override

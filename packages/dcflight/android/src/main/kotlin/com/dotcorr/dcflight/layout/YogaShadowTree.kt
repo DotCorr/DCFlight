@@ -687,6 +687,14 @@ class YogaShadowTree private constructor() {
             Log.d(TAG, "✅ Root shadow node found: viewId=${rootShadowNode.viewId}, current frame=${rootShadowNode.frame}")
             Log.d(TAG, "   Root Yoga node childCount: ${rootShadowNode.yogaNode.childCount}")
             
+            // CRITICAL: Log all children of root before layout to debug layout issues
+            Log.d(TAG, "   Root Yoga node children before layout:")
+            for (i in 0 until rootShadowNode.yogaNode.childCount) {
+                val child = rootShadowNode.yogaNode.getChildAt(i)
+                val childShadowNode = getShadowNode(child)
+                Log.d(TAG, "     Child $i: viewId=${childShadowNode?.viewId}, yoga style: width=${child.width.value} (unit=${child.width.unit}), height=${child.height.value} (unit=${child.height.unit})")
+            }
+            
             // Update root available size FIRST (matches iOS 1:1)
             // CRITICAL: DO NOT set root frame before calculateLayout - let Yoga calculate it
             // iOS does NOT set root frame before calculateLayout - it lets applyLayoutNode set it from Yoga's calculated values

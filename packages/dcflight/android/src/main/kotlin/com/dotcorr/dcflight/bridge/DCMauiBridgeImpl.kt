@@ -867,6 +867,17 @@ class DCMauiBridgeImpl private constructor() {
                     View.MeasureSpec.makeMeasureSpec(screenHeight.toInt(), View.MeasureSpec.EXACTLY)
                 )
                 Log.d(TAG, "🎯 BATCH_COMMIT: Root view measured: (${root.measuredWidth}, ${root.measuredHeight})")
+                
+                // CRITICAL: Layout root view BEFORE calling calculateAndApplyLayout
+                // This ensures the root view has correct dimensions when Yoga calculates child layouts
+                val rootFrame = android.graphics.Rect(0, 0, screenWidth.toInt(), screenHeight.toInt())
+                if (root.left != rootFrame.left || root.top != rootFrame.top ||
+                    root.width != rootFrame.width() || root.height != rootFrame.height()) {
+                    root.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
+                    Log.d(TAG, "🎯 BATCH_COMMIT: Root view laid out to: (${root.left}, ${root.top}, ${root.width}, ${root.height})")
+                } else {
+                    Log.d(TAG, "🎯 BATCH_COMMIT: Root view already has correct layout: (${root.left}, ${root.top}, ${root.width}, ${root.height})")
+                }
             } ?: Log.e(TAG, "🎯 BATCH_COMMIT: Root view (0) not found!")
             
             // DEBUG: Log Yoga shadow tree state before layout
