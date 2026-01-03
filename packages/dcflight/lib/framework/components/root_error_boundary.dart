@@ -21,7 +21,16 @@ class RootErrorBoundary extends ErrorBoundary {
 
   @override
   DCFComponentNode renderContent() {
-    return _app;
+    // Wrap app in a DCFView with flex: 1 to ensure it fills the parent
+    // This prevents white screen issues when the root view doesn't have proper layout
+    return DCFView(
+      layout: DCFLayout(
+        flex: 1,
+        width: '100%',
+        height: '100%',
+      ),
+      children: [_app],
+    );
   }
 
   @override
