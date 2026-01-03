@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' show Colors;
@@ -121,8 +122,9 @@ class NavigationBar extends DCFStatelessComponent {
 }
 
 class HeroSection extends DCFStatefulComponent {
+  
   @override
-  DCFComponentNode render() {
+  DCFComponentNode render() {final showTest = useState<bool>(false);
     return DCFView(
       layout: DCFLayout(
         width: '100%',
@@ -232,7 +234,7 @@ class HeroSection extends DCFStatefulComponent {
                         alignItems: DCFAlign.center,
                       ),
                       children: [
-                        DCFView(
+                        DCFButton(
                           layout: DCFLayout(
                             paddingHorizontal: 32,
                             paddingVertical: 16,
@@ -244,6 +246,10 @@ class HeroSection extends DCFStatefulComponent {
                             backgroundColor: Colors.black,
                             borderRadius: 2, // Small radius like web
                           ),
+                          onPress: (data) {
+                            print('🔍🔍🔍 Button pressed');
+                            showTest.setState(!showTest.state);
+                          },
                           children: [
                             DCFText(
                               content: "Enter The Lab",

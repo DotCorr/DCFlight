@@ -126,16 +126,15 @@ open class DCFTextShadowView: DCFShadowView {
         let roundedWidth = ceil(computedSize.width * scale) / scale
         let roundedHeight = ceil(computedSize.height * scale) / scale
         
-        // Handle negative letter spacing (match approach)
-        var finalWidth = roundedWidth
-        if !letterSpacing.isNaN && letterSpacing < 0 {
-            finalWidth -= abs(letterSpacing)
-        }
+        // CRITICAL: Don't subtract letter spacing - usedRect already accounts for it!
+        // The NSLayoutManager's usedRect already includes the letter spacing in its calculation,
+        // so subtracting it again would make the width too small and cause text clipping.
+        // Letter spacing is applied during layout, and usedRect reflects the actual bounding box.
         
         // Match approach: return just the text size (no padding added)
         // Yoga automatically accounts for padding when calculating the final frame
         let result = YGSize(
-            width: Float(finalWidth),
+            width: Float(roundedWidth),
             height: Float(roundedHeight)
         )
         

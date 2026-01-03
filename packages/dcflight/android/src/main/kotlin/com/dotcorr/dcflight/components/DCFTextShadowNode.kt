@@ -122,16 +122,15 @@ open class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         val roundedWidth = ceil(computedWidth * scale) / scale
         val roundedHeight = ceil(computedHeight * scale) / scale
         
-        // Handle negative letter spacing (match iOS)
-        var finalWidth = roundedWidth
-        if (!letterSpacing.isNaN() && letterSpacing < 0) {
-            finalWidth -= kotlin.math.abs(letterSpacing)
-        }
+        // CRITICAL: Don't subtract letter spacing - StaticLayout.width already accounts for it!
+        // The StaticLayout's width already includes the letter spacing in its calculation,
+        // so subtracting it again would make the width too small and cause text clipping.
+        // Letter spacing is applied during layout, and StaticLayout.width reflects the actual bounding box.
         
         // Match iOS approach: return just the text size (no padding added)
         // Yoga automatically accounts for padding when calculating the final frame
-        Log.d(TAG, "✅ measureText: viewId=$viewId, computed size: ${finalWidth}x${roundedHeight}")
-        return YogaMeasureOutput.make(finalWidth, roundedHeight)
+        Log.d(TAG, "✅ measureText: viewId=$viewId, computed size: ${roundedWidth}x${roundedHeight}")
+        return YogaMeasureOutput.make(roundedWidth, roundedHeight)
     }
     
     /**
