@@ -214,15 +214,24 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         
         // CRITICAL: Ensure contentView has proper layout params for NestedScrollView
         // NestedScrollView needs its child to have a defined size for scrolling to work
+        // CRITICAL: NestedScrollView expects MarginLayoutParams, not generic LayoutParams
         val layoutParams = contentView.layoutParams
         if (layoutParams == null || layoutParams.width == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
             // Set layout params to match the actual size from Yoga
-            val newParams = ViewGroup.LayoutParams(
+            // Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
+            val newParams = ViewGroup.MarginLayoutParams(
                 contentView.width.coerceAtLeast(0),
                 contentView.height.coerceAtLeast(0)
             )
             contentView.layoutParams = newParams
             Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Updated layout params to (${newParams.width}, ${newParams.height})")
+        } else if (layoutParams !is ViewGroup.MarginLayoutParams) {
+            // Convert existing LayoutParams to MarginLayoutParams if needed
+            val newParams = ViewGroup.MarginLayoutParams(layoutParams)
+            newParams.width = contentView.width.coerceAtLeast(0)
+            newParams.height = contentView.height.coerceAtLeast(0)
+            contentView.layoutParams = newParams
+            Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Converted LayoutParams to MarginLayoutParams (${newParams.width}, ${newParams.height})")
         }
         
         // Use contentView.frame.size directly
@@ -342,13 +351,15 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         
         if (frameToRestore != null) {
             // Set layout params to match the frame size
-            view.layoutParams = ViewGroup.LayoutParams(
+            // CRITICAL: Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
+            view.layoutParams = ViewGroup.MarginLayoutParams(
                 frameToRestore.width().coerceAtLeast(0),
                 frameToRestore.height().coerceAtLeast(0)
             )
         } else {
             // Use WRAP_CONTENT as fallback - will be updated by applyLayout
-            view.layoutParams = ViewGroup.LayoutParams(
+            // CRITICAL: Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
+            view.layoutParams = ViewGroup.MarginLayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
@@ -367,7 +378,8 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
                 frameToRestore.bottom
             )
             // Update layout params to match actual size
-            view.layoutParams = ViewGroup.LayoutParams(
+            // CRITICAL: Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
+            view.layoutParams = ViewGroup.MarginLayoutParams(
                 frameToRestore.width().coerceAtLeast(0),
                 frameToRestore.height().coerceAtLeast(0)
             )

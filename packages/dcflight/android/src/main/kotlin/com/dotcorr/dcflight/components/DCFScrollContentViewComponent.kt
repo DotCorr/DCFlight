@@ -68,14 +68,16 @@ class DCFScrollContentViewComponent : DCFComponent() {
         
         // CRITICAL: Set layout params to match the frame size
         // This ensures NestedScrollView can properly measure the contentView
+        // CRITICAL: NestedScrollView expects MarginLayoutParams, not generic LayoutParams
         if (frame.width() > 0 && frame.height() > 0) {
-            view.layoutParams = ViewGroup.LayoutParams(
+            view.layoutParams = ViewGroup.MarginLayoutParams(
                 frame.width().coerceAtLeast(0),
                 frame.height().coerceAtLeast(0)
             )
         } else {
             // Use WRAP_CONTENT as fallback
-            view.layoutParams = ViewGroup.LayoutParams(
+            // CRITICAL: Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
+            view.layoutParams = ViewGroup.MarginLayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
