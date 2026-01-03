@@ -32,7 +32,6 @@ object PrimitivesComponentsReg {
 
         registry.registerComponent("Alert", DCFAlertComponent::class.java)
         registry.registerComponent("Dropdown", DCFDropdownComponent::class.java)
-        registry.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
         registry.registerComponent("GestureDetector", DCFGestureDetectorComponent::class.java)
         registry.registerComponent("SegmentedControl", DCFSegmentedControlComponent::class.java)
         

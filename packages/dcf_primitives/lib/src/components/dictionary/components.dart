@@ -5,9 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-export '../button_component.dart';
 export '../image_component.dart';
-export '../touchable_opacity_component.dart';
 export '../gesture_detector_component.dart';
 export '../svg_component.dart';
 export '../icon_component.dart';

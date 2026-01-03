@@ -15,6 +15,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.core.widget.NestedScrollView
 import com.dotcorr.dcflight.components.propagateEvent
 import kotlin.math.max
@@ -213,25 +214,29 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         }
         
         // CRITICAL: Ensure contentView has proper layout params for NestedScrollView
-        // NestedScrollView needs its child to have a defined size for scrolling to work
-        // CRITICAL: NestedScrollView expects MarginLayoutParams, not generic LayoutParams
+        // NestedScrollView extends FrameLayout, so it expects FrameLayout.LayoutParams
+        // FrameLayout.LayoutParams extends MarginLayoutParams, so it supports margins
         val layoutParams = contentView.layoutParams
         if (layoutParams == null || layoutParams.width == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
             // Set layout params to match the actual size from Yoga
-            // Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
-            val newParams = ViewGroup.MarginLayoutParams(
+            // Use FrameLayout.LayoutParams because NestedScrollView (which extends FrameLayout) requires it
+            val newParams = FrameLayout.LayoutParams(
                 contentView.width.coerceAtLeast(0),
                 contentView.height.coerceAtLeast(0)
             )
             contentView.layoutParams = newParams
             Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Updated layout params to (${newParams.width}, ${newParams.height})")
-        } else if (layoutParams !is ViewGroup.MarginLayoutParams) {
-            // Convert existing LayoutParams to MarginLayoutParams if needed
-            val newParams = ViewGroup.MarginLayoutParams(layoutParams)
+        } else if (layoutParams !is android.widget.FrameLayout.LayoutParams) {
+            // Convert existing LayoutParams to FrameLayout.LayoutParams if needed
+            val newParams = if (layoutParams is ViewGroup.MarginLayoutParams) {
+                FrameLayout.LayoutParams(layoutParams)
+            } else {
+                FrameLayout.LayoutParams(layoutParams.width, layoutParams.height)
+            }
             newParams.width = contentView.width.coerceAtLeast(0)
             newParams.height = contentView.height.coerceAtLeast(0)
             contentView.layoutParams = newParams
-            Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Converted LayoutParams to MarginLayoutParams (${newParams.width}, ${newParams.height})")
+            Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Converted LayoutParams to FrameLayout.LayoutParams (${newParams.width}, ${newParams.height})")
         }
         
         // Use contentView.frame.size directly
@@ -351,15 +356,15 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         
         if (frameToRestore != null) {
             // Set layout params to match the frame size
-            // CRITICAL: Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
-            view.layoutParams = ViewGroup.MarginLayoutParams(
+            // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
+            view.layoutParams = FrameLayout.LayoutParams(
                 frameToRestore.width().coerceAtLeast(0),
                 frameToRestore.height().coerceAtLeast(0)
             )
         } else {
             // Use WRAP_CONTENT as fallback - will be updated by applyLayout
-            // CRITICAL: Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
-            view.layoutParams = ViewGroup.MarginLayoutParams(
+            // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
+            view.layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
@@ -378,8 +383,8 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
                 frameToRestore.bottom
             )
             // Update layout params to match actual size
-            // CRITICAL: Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
-            view.layoutParams = ViewGroup.MarginLayoutParams(
+            // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
+            view.layoutParams = android.widget.FrameLayout.LayoutParams(
                 frameToRestore.width().coerceAtLeast(0),
                 frameToRestore.height().coerceAtLeast(0)
             )
@@ -399,9 +404,15 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
     
     /**
      * Remove a subview
+     * CRASH PROTECTION: Convert require to warning to prevent app crashes
      */
     fun removeContentView(subview: View) {
-        require(_contentView == subview) { "Attempted to remove non-existent subview" }
+        if (_contentView != subview) {
+            Log.w(TAG, "⚠️ DCFScrollView.removeContentView: Attempted to remove non-existent subview. Expected: ${_contentView?.javaClass?.simpleName ?: "null"}, Got: ${subview.javaClass.simpleName}")
+            // Don't crash - just return if it's not the contentView
+            return
+        }
+        _scrollView.removeView(subview)
         _contentView = null
     }
     
@@ -458,21 +469,54 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
     // MARK: - Layout
     
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        // CRASH PROTECTION: Convert assertions to warnings to prevent app crashes
+        // React Native-style error handling - log errors instead of crashing
+        
         // Defensive check - handle case where _scrollView might not be added yet
         if (childCount == 0) {
             Log.w(TAG, "⚠️ DCFScrollView.onLayout: No children, _scrollView not added yet")
+            // Try to recover by adding _scrollView if it exists
+            if (!_scrollView.parent?.equals(this) == true) {
+                addView(_scrollView)
+            }
             return
         }
         
         if (childCount != 1) {
-            Log.w(TAG, "⚠️ DCFScrollView.onLayout: Expected 1 child, got $childCount")
-            return
+            Log.w(TAG, "⚠️ DCFScrollView.onLayout: Expected 1 child, got $childCount. This may indicate a reconciliation issue.")
+            // Try to recover by removing extra children and ensuring _scrollView is present
+            while (childCount > 1) {
+                val child = getChildAt(0)
+                if (child != _scrollView) {
+                    removeViewAt(0)
+                } else {
+                    break
+                }
+            }
+            // Ensure _scrollView is present
+            if (!_scrollView.parent?.equals(this) == true) {
+                addView(_scrollView)
+            }
+            // Only proceed if we now have valid structure
+            if (childCount != 1) {
+                Log.e(TAG, "❌ DCFScrollView.onLayout: Could not recover from invalid structure, skipping layout")
+                return
+            }
         }
         
         val firstChild = getChildAt(0)
         if (firstChild != _scrollView) {
-            Log.w(TAG, "⚠️ DCFScrollView.onLayout: First child is not _scrollView (type: ${firstChild.javaClass.simpleName})")
-            return
+            Log.w(TAG, "⚠️ DCFScrollView.onLayout: First child is not _scrollView (type: ${firstChild.javaClass.simpleName}). Attempting to fix...")
+            // Try to recover by removing wrong child and adding _scrollView
+            removeViewAt(0)
+            if (!_scrollView.parent?.equals(this) == true) {
+                addView(_scrollView)
+            }
+            // Only proceed if we now have valid structure
+            if (childCount != 1 || getChildAt(0) != _scrollView) {
+                Log.e(TAG, "❌ DCFScrollView.onLayout: Could not recover from invalid structure, skipping layout")
+                return
+            }
         }
         
         _scrollView.layout(0, 0, width, height)

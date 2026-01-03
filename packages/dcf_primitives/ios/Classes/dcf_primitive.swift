@@ -32,8 +32,6 @@ import dcflight
         DCFComponentRegistry.shared.registerComponent(
             "GestureDetector", componentClass: DCFGestureDetectorComponent.self)
         DCFComponentRegistry.shared.registerComponent(
-            "TouchableOpacity", componentClass: DCFTouchableOpacityComponent.self)
-        DCFComponentRegistry.shared.registerComponent(
             "TextInput", componentClass: DCFTextInputComponent.self)
         DCFComponentRegistry.shared.registerComponent(
             "Dropdown", componentClass: DCFDropdownComponent.self)

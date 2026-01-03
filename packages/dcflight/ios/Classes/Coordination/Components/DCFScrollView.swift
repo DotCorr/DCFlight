@@ -363,9 +363,15 @@ class DCFCustomScrollView: UIScrollView {
     
     /**
      * Remove a subview
+     * CRASH PROTECTION: Convert assertion to warning to prevent app crashes
      */
     public func removeContentView(_ subview: UIView) {
-        assert(_contentView == subview, "Attempted to remove non-existent subview")
+        if _contentView != subview {
+            print("⚠️ DCFScrollView.removeContentView: Attempted to remove non-existent subview. Expected: \(String(describing: _contentView?.description)), Got: \(subview.description)")
+            // Don't crash - just return if it's not the contentView
+            return
+        }
+        subview.removeFromSuperview()
         _contentView = nil
     }
     
@@ -414,8 +420,31 @@ class DCFCustomScrollView: UIScrollView {
     
     public override func layoutSubviews() {
         super.layoutSubviews()
-        assert(self.subviews.count == 1, "we should only have exactly one subview")
-        assert(self.subviews.last == _scrollView, "our only subview should be a scrollview")
+        
+        // CRASH PROTECTION: Convert assertions to warnings to prevent app crashes
+        // React Native-style error handling - log errors instead of crashing
+        if self.subviews.count != 1 {
+            print("⚠️ DCFScrollView.layoutSubviews: Expected 1 subview, got \(self.subviews.count). This may indicate a reconciliation issue.")
+            // Try to recover by removing extra subviews
+            while self.subviews.count > 1 {
+                self.subviews[0].removeFromSuperview()
+            }
+        }
+        
+        if self.subviews.count > 0 && self.subviews.last != _scrollView {
+            print("⚠️ DCFScrollView.layoutSubviews: Expected _scrollView as last subview, got \(type(of: self.subviews.last ?? UIView())). Attempting to fix...")
+            // Try to recover by ensuring _scrollView is present
+            if !self.subviews.contains(_scrollView) {
+                _scrollView.removeFromSuperview()
+                self.addSubview(_scrollView)
+            }
+        }
+        
+        // Only proceed if we have valid structure
+        guard self.subviews.count == 1, self.subviews.last == _scrollView else {
+            print("❌ DCFScrollView.layoutSubviews: Invalid structure, skipping contentSize update")
+            return
+        }
         
         // Update content size from contentView after layout
         updateContentSizeFromContentView()

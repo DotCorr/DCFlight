@@ -75,7 +75,11 @@ export 'src/components/view_component.dart';
 export 'src/components/text_component.dart';
 export 'src/components/scroll_view_component.dart';
 export 'src/components/scroll_content_view_component.dart';
+export 'framework/components/error_boundary.dart';
+export 'framework/components/touchable_opacity_component.dart';
+export 'framework/components/button_component.dart';
 import 'package:dcflight/framework/components/component_node.dart';
+import 'package:dcflight/framework/components/root_error_boundary.dart';
 
 import 'framework/renderer/engine/engine_api.dart';
 import 'framework/renderer/interface/interface.dart';
@@ -138,6 +142,8 @@ class DCFlight {
   }
 
   /// Start the application with the given root component
+  /// The framework automatically wraps the app in an error boundary for crash protection
+  /// (React Native-style - developers don't need to manually wrap their app)
   static Future<void> go({required DCFComponentNode app}) async {
     await _initialize();
 
@@ -154,7 +160,10 @@ class DCFlight {
 
     final vdom = DCFEngineAPI.instance;
 
-    final mainApp = app;
+    // CRASH PROTECTION: Automatically wrap app in error boundary at framework level
+    // This provides React Native-style crash protection without requiring developers
+    // to manually wrap their app components
+    final mainApp = RootErrorBoundary(app);
 
     await vdom.createRoot(mainApp);
 

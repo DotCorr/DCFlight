@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package com.dotcorr.dcf_primitives.components
+package com.dotcorr.dcflight.components
 
 import android.content.Context
 import android.graphics.PointF
@@ -13,8 +13,6 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
-import com.dotcorr.dcflight.components.DCFComponent
-import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
 
@@ -141,11 +139,7 @@ class DCFTouchableOpacityComponent : DCFComponent() {
     }
 
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        return PointF(0f, 0f)
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         Log.d(TAG, "TouchableOpacity component registered with shadow tree: $nodeId")
     }
 

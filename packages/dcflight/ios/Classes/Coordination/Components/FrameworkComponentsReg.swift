@@ -30,5 +30,8 @@ import dcflight
         
         DCFComponentRegistry.shared.registerComponent("Viewport", componentClass: DCFViewportComponent.self)
         
+        // Register TouchableOpacity component (framework-level, used by Button)
+        DCFComponentRegistry.shared.registerComponent("TouchableOpacity", componentClass: DCFTouchableOpacityComponent.self)
+        
     }
 }

@@ -14,6 +14,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.extensions.applyStyles
@@ -68,16 +69,16 @@ class DCFScrollContentViewComponent : DCFComponent() {
         
         // CRITICAL: Set layout params to match the frame size
         // This ensures NestedScrollView can properly measure the contentView
-        // CRITICAL: NestedScrollView expects MarginLayoutParams, not generic LayoutParams
+        // CRITICAL: NestedScrollView extends FrameLayout, so it expects FrameLayout.LayoutParams
         if (frame.width() > 0 && frame.height() > 0) {
-            view.layoutParams = ViewGroup.MarginLayoutParams(
+            view.layoutParams = FrameLayout.LayoutParams(
                 frame.width().coerceAtLeast(0),
                 frame.height().coerceAtLeast(0)
             )
         } else {
             // Use WRAP_CONTENT as fallback
-            // CRITICAL: Use MarginLayoutParams because NestedScrollView.measureChildWithMargins requires it
-            view.layoutParams = ViewGroup.MarginLayoutParams(
+            // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
+            view.layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )

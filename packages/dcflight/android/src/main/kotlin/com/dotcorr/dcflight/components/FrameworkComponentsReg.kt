@@ -40,5 +40,9 @@ object FrameworkComponentsReg {
         
         DCFComponentRegistry.shared.registerComponent("Text", DCFTextComponent::class.java)
         Log.d(TAG, "✅ Registered Text component")
+        
+        // Register TouchableOpacity component (framework-level, used by Button)
+        DCFComponentRegistry.shared.registerComponent("TouchableOpacity", DCFTouchableOpacityComponent::class.java)
+        Log.d(TAG, "✅ Registered TouchableOpacity component")
     }
 }
