@@ -222,3 +222,6 @@ docker-compose.dev.yml
 
 # Audit folder
 audit/
+
+# Analysis and agent-generated files
+agents/

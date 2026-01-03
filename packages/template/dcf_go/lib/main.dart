@@ -12,7 +12,7 @@ void main() async {
 class DotCorrLanding extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
-    return DCFView(
+    return DCFScrollView(
       layout: DCFLayout(flex: 1),
       styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
       children: [
@@ -604,13 +604,14 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           ),
           children: [
             DCFText(
-              layout: DCFLayout(width: '100%', height: 100),
+              layout: DCFLayout(width: '100%'),
               content: "Infrastructure for\nBuilders & Machines",
               textProps: DCFTextProps(
                 fontSize: 48, // text-5xl = 48px (matches web)
                 fontWeight: DCFFontWeight.medium,
                 letterSpacing: -1,
                 lineHeight: 1.1,
+                numberOfLines: 0, // Allow unlimited lines - CRITICAL for multi-line text
               ),
               styleSheet: DCFStyleSheet(primaryColor: Colors.black),
             ),
@@ -724,6 +725,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               textProps: DCFTextProps(
                 fontSize: 24, // text-2xl = 24px
                 fontWeight: DCFFontWeight.bold,
+                textAlign: DCFTextAlign.left, // Left align text
               ),
               styleSheet: DCFStyleSheet(primaryColor: text),
             ),
@@ -744,6 +746,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 lineHeight: 1.5,
                 numberOfLines:
                     0, // Allow unlimited lines - CRITICAL for multi-line text
+                textAlign: DCFTextAlign.left, // Left align text
               ),
               styleSheet: DCFStyleSheet(
                 primaryColor:
@@ -762,6 +765,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             flexDirection: DCFFlexDirection.row,
             alignItems: DCFAlign.center,
             gap: 8, // gap-2 = 8px
+            justifyContent: DCFJustifyContent.flexStart, // Align to start (left)
           ),
           children: [
             DCFText(
@@ -770,6 +774,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 fontSize: 16,
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line for link
+                textAlign: DCFTextAlign.left, // Left align text
               ),
               styleSheet: DCFStyleSheet(primaryColor: text),
               layout: DCFLayout(
@@ -779,7 +784,10 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             ),
             DCFText(
               content: "→",
-              textProps: DCFTextProps(fontSize: 16),
+              textProps: DCFTextProps(
+                fontSize: 16,
+                textAlign: DCFTextAlign.left, // Left align arrow
+              ),
               styleSheet: DCFStyleSheet(primaryColor: text),
               layout: DCFLayout(
                 flexShrink: 0, // Arrow should not shrink

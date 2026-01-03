@@ -163,17 +163,16 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
      * unless you manually reset it back to {0, 0}
      * 
      * contentSize is determined by contentView.frame.size
+     * CRITICAL: Always use contentView's size, not scrollView's size (matches iOS)
      */
     override val contentSize: PointF
         get() {
-            val scrollViewContentSize = PointF(_scrollView.width.toFloat(), _scrollView.height.toFloat())
-            if (scrollViewContentSize.x != 0f || scrollViewContentSize.y != 0f) {
-                return scrollViewContentSize
-            }
-            // Use contentView.frame.size directly
+            // Use contentView.frame.size directly (matches iOS behavior)
             // Yoga has already calculated this, so we just use it
             return _contentView?.let {
-                PointF(it.width.toFloat(), it.height.toFloat())
+                val width = it.width.toFloat()
+                val height = it.height.toFloat()
+                PointF(width, height)
             } ?: PointF(0f, 0f)
         }
     
@@ -184,11 +183,13 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
      * KEY INSIGHT: We use contentView.frame.size directly because
      * ScrollContentView is laid out by Yoga. Yoga calculates the frame.size based on
      * the children's layout, so we just use it directly.
+     * 
+     * CRITICAL: On Android, NestedScrollView automatically sizes based on its child.
+     * We need to ensure the contentView has proper layout params and size.
      */
     fun updateContentSizeFromContentView() {
         val contentView = _contentView ?: run {
             Log.w(TAG, "⚠️ DCFScrollView.updateContentSizeFromContentView: No contentView, setting contentSize to zero")
-            // Android doesn't have direct contentSize setter, handled via layout
             return
         }
         
@@ -204,9 +205,24 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
                     pendingFrame.right,
                     pendingFrame.bottom
                 )
-                contentView.requestLayout()
                 Log.w(TAG, "⚠️ DCFScrollView.updateContentSizeFromContentView: Frame was zero, restored from pendingFrame=$pendingFrame, actualFrame=(${contentView.left}, ${contentView.top}, ${contentView.width}, ${contentView.height})")
+            } else {
+                Log.w(TAG, "⚠️ DCFScrollView.updateContentSizeFromContentView: Frame is zero and no pendingFrame available - will wait for applyLayout")
+                return
             }
+        }
+        
+        // CRITICAL: Ensure contentView has proper layout params for NestedScrollView
+        // NestedScrollView needs its child to have a defined size for scrolling to work
+        val layoutParams = contentView.layoutParams
+        if (layoutParams == null || layoutParams.width == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
+            // Set layout params to match the actual size from Yoga
+            val newParams = ViewGroup.LayoutParams(
+                contentView.width.coerceAtLeast(0),
+                contentView.height.coerceAtLeast(0)
+            )
+            contentView.layoutParams = newParams
+            Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Updated layout params to (${newParams.width}, ${newParams.height})")
         }
         
         // Use contentView.frame.size directly
@@ -214,9 +230,12 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         // DCFScrollContentViewComponent.applyLayout sets contentView.frame from Yoga layout
         val contentSize = PointF(contentView.width.toFloat(), contentView.height.toFloat())
         val childCount = if (contentView is ViewGroup) contentView.childCount else 0
-        Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: contentView.frame=(${contentView.left}, ${contentView.top}, ${contentView.width}, ${contentView.height}), contentSize=$contentSize, current scrollView size=(${_scrollView.width}, ${_scrollView.height}), subviews.count=$childCount")
+        Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: contentView.frame=(${contentView.left}, ${contentView.top}, ${contentView.width}, ${contentView.height}), contentSize=$contentSize, scrollView size=(${_scrollView.width}, ${_scrollView.height}), subviews.count=$childCount")
         
-        // Android handles contentSize via layout, so we request layout update
+        // CRITICAL: Request layout on both contentView and scrollView to ensure proper sizing
+        // This ensures NestedScrollView recalculates its content size based on the child
+        contentView.requestLayout()
+        _scrollView.requestLayout()
         requestLayout()
     }
     
@@ -313,11 +332,8 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         val storedRef = view.getTag(scrollViewKey) as? DCFScrollView
         Log.d(TAG, "🔍 DCFScrollView.insertContentView: Stored ScrollView reference, storedRef=${if (storedRef != null) "set" else "nil"}, self=$this")
         
-        _scrollView.addView(view)
-        
-        // CRITICAL: Restore frame immediately after addView
-        // Android resets the frame when adding to parent, so we restore it from the stored value
-        // Priority: 1) pendingFrame (from applyLayout), 2) frameBeforeAdd (if valid)
+        // CRITICAL: Set layout params BEFORE adding to parent
+        // This ensures NestedScrollView can properly measure the child
         val frameToRestore: Rect? = when {
             pendingFrame != null && pendingFrame.width() > 0 && pendingFrame.height() > 0 -> pendingFrame
             frameBeforeAdd.width() > 0 && frameBeforeAdd.height() > 0 -> frameBeforeAdd
@@ -325,11 +341,35 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         }
         
         if (frameToRestore != null) {
+            // Set layout params to match the frame size
+            view.layoutParams = ViewGroup.LayoutParams(
+                frameToRestore.width().coerceAtLeast(0),
+                frameToRestore.height().coerceAtLeast(0)
+            )
+        } else {
+            // Use WRAP_CONTENT as fallback - will be updated by applyLayout
+            view.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        
+        _scrollView.addView(view)
+        
+        // CRITICAL: Restore frame immediately after addView
+        // Android resets the frame when adding to parent, so we restore it from the stored value
+        // Priority: 1) pendingFrame (from applyLayout), 2) frameBeforeAdd (if valid)
+        if (frameToRestore != null) {
             view.layout(
                 frameToRestore.left,
                 frameToRestore.top,
                 frameToRestore.right,
                 frameToRestore.bottom
+            )
+            // Update layout params to match actual size
+            view.layoutParams = ViewGroup.LayoutParams(
+                frameToRestore.width().coerceAtLeast(0),
+                frameToRestore.height().coerceAtLeast(0)
             )
             view.requestLayout()
             Log.d(TAG, "✅ DCFScrollView.insertContentView: Restored frame=$frameToRestore after addView (was $frameBeforeAdd, pendingFrame=${pendingFrame?.toString() ?: "nil"})")

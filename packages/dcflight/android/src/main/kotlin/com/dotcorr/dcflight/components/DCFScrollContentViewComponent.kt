@@ -66,6 +66,21 @@ class DCFScrollContentViewComponent : DCFComponent() {
         val pendingFrameKey = "pendingFrame".hashCode()
         view.setTag(pendingFrameKey, frame)
         
+        // CRITICAL: Set layout params to match the frame size
+        // This ensures NestedScrollView can properly measure the contentView
+        if (frame.width() > 0 && frame.height() > 0) {
+            view.layoutParams = ViewGroup.LayoutParams(
+                frame.width().coerceAtLeast(0),
+                frame.height().coerceAtLeast(0)
+            )
+        } else {
+            // Use WRAP_CONTENT as fallback
+            view.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        
         // CRITICAL: Set frame directly (applyLayout is called on main thread from DCFLayoutManager)
         // Use measure + layout to ensure frame is applied correctly (matches iOS CATransaction pattern)
         // Measure first to ensure view has correct size
