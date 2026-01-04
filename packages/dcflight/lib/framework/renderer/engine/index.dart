@@ -11,12 +11,12 @@ library;
 
 export 'engine_api.dart';
 export 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dart';
-export '../../components/component.dart';
-export '../../components/fragment.dart';
-export '../../components/component_node.dart';
-export '../../components/dcf_element.dart';
+export '../../../src/components/component.dart';
+export '../../../src/components/fragment.dart';
+export '../../../src/components/component_node.dart';
+export '../../../src/components/dcf_element.dart';
 
-export '../../components/error_boundary.dart';
+export '../../../src/components/error_boundary.dart';
 
 export '../../hooks/store.dart';
 export '../../hooks/memo_hook.dart';

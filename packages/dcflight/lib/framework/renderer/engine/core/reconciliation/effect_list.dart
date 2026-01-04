@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import 'package:dcflight/framework/components/component_node.dart';
+import 'package:dcflight/src/components/component_node.dart';
 
 /// Side effect types (matching React Fiber's effect tags)
 enum EffectType {

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
@@ -16,12 +17,13 @@ class DotCorrLanding extends DCFStatelessComponent {
     return DCFScrollView(
       layout: DCFLayout(
         flex: 1,
-        width: '100%', // CRITICAL: Explicit width needed for Yoga to calculate child percentages
+        width:
+            '100%', // CRITICAL: Explicit width needed for Yoga to calculate child percentages
         // In Yoga's paradigm, percentage widths (like NavigationBar's width: '100%')
         // require the parent to have a DEFINED width. flex: 1 alone isn't enough
         // because Yoga needs to resolve the parent's width before calculating child percentages
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.red),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.blue500),
       children: [
         NavigationBar(),
         HeroSection(),
@@ -58,30 +60,7 @@ class NavigationBar extends DCFStatelessComponent {
       ),
       children: [
         // Logo Area - CRITICAL: Add flexShrink to prevent overflow
-        DCFView(
-          layout: DCFLayout(
-            flexDirection: DCFFlexDirection.row,
-            alignItems: DCFAlign.center,
-            gap: 8,
-            flexShrink: 1, // Allow shrinking to prevent overflow
-            flexGrow: 0, // Don't grow
-          ),
-          children: [
-            DCFView(
-              layout: DCFLayout(width: 24, height: 24),
-              styleSheet: DCFStyleSheet(backgroundColor: Colors.black),
-            ),
-            DCFText(
-              content: "DotCorr",
-              textProps: DCFTextProps(
-                fontSize: 18,
-                fontWeight: DCFFontWeight.bold,
-                letterSpacing: -0.5,
-              ),
-              styleSheet: DCFStyleSheet(primaryColor: Colors.black),
-            ),
-          ],
-        ),
+        DCLogo(size: 20),
         // Links - CRITICAL: Add flexShrink and minWidth: 0 to prevent overflow
         DCFView(
           layout: DCFLayout(
@@ -128,7 +107,6 @@ class NavigationBar extends DCFStatelessComponent {
 }
 
 class HeroSection extends DCFStatefulComponent {
-  
   @override
   DCFComponentNode render() {
     final showTest = useState<bool>(false);
@@ -146,6 +124,21 @@ class HeroSection extends DCFStatefulComponent {
         ),
         styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
         children: [
+          DCFButton(
+            onPress: (data) {
+              showTest.setState(!showTest.state);
+            },
+            children: [
+              DCFText(
+                content: "Value of showTest: $showTest.state",
+                textProps: DCFTextProps(fontSize: 20),
+                styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+              ),
+            ],
+          ),
+
+          DCFSpinner(style: "large"),
+
           DCFText(
             content: "Hello, World!",
             textProps: DCFTextProps(fontSize: 20),
@@ -646,7 +639,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 fontWeight: DCFFontWeight.medium,
                 letterSpacing: -1,
                 lineHeight: 1.1,
-                numberOfLines: 0, // Allow unlimited lines - CRITICAL for multi-line text
+                numberOfLines:
+                    0, // Allow unlimited lines - CRITICAL for multi-line text
               ),
               styleSheet: DCFStyleSheet(primaryColor: Colors.black),
             ),
@@ -731,12 +725,6 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           ),
           children: [
             DCFText(
-              layout: DCFLayout(
-                width: 48,
-                height: 48,
-                alignItems: DCFAlign.center,
-                justifyContent: DCFJustifyContent.center,
-              ),
               content: bg == Colors.white ? "📱" : "🧠",
               textProps: DCFTextProps(
                 fontSize: 24,
@@ -800,7 +788,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             flexDirection: DCFFlexDirection.row,
             alignItems: DCFAlign.center,
             gap: 8, // gap-2 = 8px
-            justifyContent: DCFJustifyContent.flexStart, // Align to start (left)
+            justifyContent:
+                DCFJustifyContent.flexStart, // Align to start (left)
           ),
           children: [
             DCFText(

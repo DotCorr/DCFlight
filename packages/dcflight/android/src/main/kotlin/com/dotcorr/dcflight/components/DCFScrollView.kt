@@ -216,27 +216,43 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         // CRITICAL: Ensure contentView has proper layout params for NestedScrollView
         // NestedScrollView extends FrameLayout, so it expects FrameLayout.LayoutParams
         // FrameLayout.LayoutParams extends MarginLayoutParams, so it supports margins
+        // CRITICAL: For scrolling to work, contentView must have explicit height from Yoga
+        // NestedScrollView compares the child's height to its own height to determine if scrolling is needed
         val layoutParams = contentView.layoutParams
-        if (layoutParams == null || layoutParams.width == ViewGroup.LayoutParams.WRAP_CONTENT || layoutParams.height == ViewGroup.LayoutParams.WRAP_CONTENT) {
-            // Set layout params to match the actual size from Yoga
-            // Use FrameLayout.LayoutParams because NestedScrollView (which extends FrameLayout) requires it
-            val newParams = FrameLayout.LayoutParams(
-                contentView.width.coerceAtLeast(0),
-                contentView.height.coerceAtLeast(0)
-            )
-            contentView.layoutParams = newParams
-            Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Updated layout params to (${newParams.width}, ${newParams.height})")
-        } else if (layoutParams !is android.widget.FrameLayout.LayoutParams) {
-            // Convert existing LayoutParams to FrameLayout.LayoutParams if needed
-            val newParams = if (layoutParams is ViewGroup.MarginLayoutParams) {
-                FrameLayout.LayoutParams(layoutParams)
+        val actualHeight = contentView.height
+        val scrollViewHeight = _scrollView.height
+        
+        // CRITICAL: Always use explicit height from Yoga's calculation (actualHeight)
+        // This ensures NestedScrollView can properly determine if scrolling is needed
+        // If actualHeight is 0 or invalid, use WRAP_CONTENT as fallback
+        if (layoutParams == null || layoutParams !is android.widget.FrameLayout.LayoutParams) {
+            // Create new FrameLayout.LayoutParams with explicit height
+            val newParams = if (actualHeight > 0) {
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    actualHeight.coerceAtLeast(0)
+                )
             } else {
-                FrameLayout.LayoutParams(layoutParams.width, layoutParams.height)
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
             }
-            newParams.width = contentView.width.coerceAtLeast(0)
-            newParams.height = contentView.height.coerceAtLeast(0)
             contentView.layoutParams = newParams
-            Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Converted LayoutParams to FrameLayout.LayoutParams (${newParams.width}, ${newParams.height})")
+            Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Created new FrameLayout.LayoutParams (${newParams.width}, ${newParams.height})")
+        } else {
+            // Update existing layout params to use explicit height
+            val newHeight = if (actualHeight > 0) {
+                actualHeight.coerceAtLeast(0)
+            } else {
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            }
+            // Only update if height changed
+            if (layoutParams.height != newHeight) {
+                layoutParams.height = newHeight
+                contentView.layoutParams = layoutParams
+                Log.d(TAG, "🔍 DCFScrollView.updateContentSizeFromContentView: Updated layout params height to $newHeight (actualHeight=$actualHeight, scrollViewHeight=$scrollViewHeight)")
+            }
         }
         
         // Use contentView.frame.size directly
@@ -357,8 +373,10 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         if (frameToRestore != null) {
             // Set layout params to match the frame size
             // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
+            // CRITICAL: Use MATCH_PARENT for width (scroll view fills parent width)
+            // Use explicit height from Yoga's calculation for height
             view.layoutParams = FrameLayout.LayoutParams(
-                frameToRestore.width().coerceAtLeast(0),
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 frameToRestore.height().coerceAtLeast(0)
             )
         } else {
@@ -384,8 +402,10 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
             )
             // Update layout params to match actual size
             // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
+            // CRITICAL: Use MATCH_PARENT for width (scroll view fills parent width)
+            // Use explicit height from Yoga's calculation for height
             view.layoutParams = android.widget.FrameLayout.LayoutParams(
-                frameToRestore.width().coerceAtLeast(0),
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 frameToRestore.height().coerceAtLeast(0)
             )
             view.requestLayout()

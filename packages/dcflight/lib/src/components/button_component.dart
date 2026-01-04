@@ -6,7 +6,7 @@
  */
 
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/components/touchable_opacity_component.dart';
+import 'package:dcflight/src/components/touchable_opacity_component.dart';
 
 /// Button press callback data
 class DCFButtonPressData {

@@ -49,6 +49,18 @@ class DCFScrollContentViewComponent : DCFComponent() {
     }
     
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
+        // CRITICAL: Ensure ScrollContentView itself is visible
+        // This is essential - if the content view is invisible, children won't be drawn even if they're visible
+        // iOS views are visible by default, but Android views start as INVISIBLE
+        // This must be done BEFORE applying layout to ensure the view is ready to display content
+        if (view.visibility != View.VISIBLE) {
+            view.visibility = View.VISIBLE
+            Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Made ScrollContentView visible")
+        }
+        if (view.alpha < 1.0f) {
+            view.alpha = 1.0f
+        }
+        
         // Apply Yoga layout to content view
         // The ScrollView will read this view's frame.size to set contentSize
         // CRITICAL: ScrollContentView should always start at (0, 0) relative to ScrollView
@@ -70,19 +82,20 @@ class DCFScrollContentViewComponent : DCFComponent() {
         // CRITICAL: Set layout params to match the frame size
         // This ensures NestedScrollView can properly measure the contentView
         // CRITICAL: NestedScrollView extends FrameLayout, so it expects FrameLayout.LayoutParams
-        if (frame.width() > 0 && frame.height() > 0) {
-            view.layoutParams = FrameLayout.LayoutParams(
-                frame.width().coerceAtLeast(0),
-                frame.height().coerceAtLeast(0)
-            )
+        // CRITICAL: For scrolling to work, contentView must have an explicit height from Yoga
+        // NestedScrollView will compare the child's height to its own height to determine if scrolling is needed
+        // Use MATCH_PARENT for width and explicit height from Yoga for height
+        // If height is 0 or invalid, use WRAP_CONTENT as fallback
+        val layoutParamsHeight = if (frame.height() > 0) {
+            frame.height()
         } else {
-            // Use WRAP_CONTENT as fallback
-            // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
-            view.layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+            ViewGroup.LayoutParams.WRAP_CONTENT
         }
+        view.layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            layoutParamsHeight
+        )
+        Log.d(TAG, "🔍 DCFScrollContentViewComponent.applyLayout: Using MATCH_PARENT width and explicit height=$layoutParamsHeight (Yoga frame: width=${frame.width()}, height=${frame.height()})")
         
         // CRITICAL: Set frame directly (applyLayout is called on main thread from DCFLayoutManager)
         // Use measure + layout to ensure frame is applied correctly (matches iOS CATransaction pattern)
@@ -194,6 +207,14 @@ class DCFScrollContentViewComponent : DCFComponent() {
             val storedRefSet = view.getTag(scrollViewKey) != null
             Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Found ScrollView (stored=$storedRefSet), contentView.frame=$actualFrame, updating contentSize")
             sv.updateContentSizeFromContentView()
+            
+            // CRITICAL: Request layout on ScrollView to trigger re-measurement
+            // This ensures NestedScrollView re-measures its child (ScrollContentView)
+            // after Yoga has calculated the layout and set pendingFrame
+            // This is essential because NestedScrollView calls onMeasure() BEFORE layout,
+            // so we need to trigger a re-measure after layout is calculated
+            sv.scrollView.requestLayout()
+            Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Requested layout on ScrollView to trigger re-measurement")
         } ?: run {
             // If not found, the view might not be attached yet or stored reference wasn't set
             // Use async to retry after a brief delay to ensure attachment is complete
@@ -258,6 +279,17 @@ class DCFScrollContentViewComponent : DCFComponent() {
     override fun setChildren(view: View, childViews: List<View>, viewId: String): Boolean {
         Log.d(TAG, "🔍 DCFScrollContentViewComponent.setChildren: Called for viewId=$viewId, childViews.count=${childViews.size}, viewType=${view.javaClass.simpleName}")
         
+        // CRITICAL: Ensure ScrollContentView itself is visible
+        // This is essential - if the content view is invisible, children won't be drawn even if they're visible
+        // iOS views are visible by default, but Android views start as INVISIBLE
+        if (view.visibility != View.VISIBLE) {
+            view.visibility = View.VISIBLE
+            Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Made ScrollContentView (viewId=$viewId) visible")
+        }
+        if (view.alpha < 1.0f) {
+            view.alpha = 1.0f
+        }
+        
         // ScrollContentView should contain all its children directly
         // Remove existing children
         if (view is ViewGroup) {
@@ -269,10 +301,87 @@ class DCFScrollContentViewComponent : DCFComponent() {
         childViews.forEachIndexed { index, childView ->
             // Get viewId from tag
             val childViewId = childView.getTag(viewIdKey) as? String ?: "unknown"
-            Log.d(TAG, "🔍 DCFScrollContentViewComponent.setChildren: Adding child $index: viewId=$childViewId, frame=(${childView.left}, ${childView.top}, ${childView.width}, ${childView.height}), type=${childView.javaClass.simpleName}")
+            Log.d(TAG, "🔍 DCFScrollContentViewComponent.setChildren: Adding child $index: viewId=$childViewId, frame=(${childView.left}, ${childView.top}, ${childView.width}, ${childView.height}), type=${childView.javaClass.simpleName}, visibility=${childView.visibility}, alpha=${childView.alpha}")
             if (view is ViewGroup) {
                 view.addView(childView)
+                
+                // CRITICAL: Make child visible IMMEDIATELY after adding to ScrollContentView
+                // Children are set to INVISIBLE during attachView to prevent flash of incorrect layout
+                // But once they're added to ScrollContentView, they should be visible
+                // This matches iOS behavior where views are visible by default
+                // The layout system (Yoga) will position them correctly
+                // 
+                // CRITICAL: We must make children visible SYNCHRONOUSLY, not in a post block
+                // This is because NestedScrollView calls onMeasure() on ScrollContentView
+                // BEFORE applyLayoutsBatch makes views visible. If children are invisible during
+                // onMeasure(), they won't be measured correctly, causing the ScrollView to think
+                // there's no content (zero height), resulting in a red screen with no content.
+                //
+                // iOS doesn't have this issue because UIScrollView reads contentView.frame.size
+                // AFTER layout (in layoutSubviews), when views are already visible.
+                if (childView.visibility != View.VISIBLE || childView.alpha < 1.0f) {
+                    childView.visibility = View.VISIBLE
+                    childView.alpha = 1.0f
+                    Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Made child $index (viewId=$childViewId) visible immediately after adding to ScrollContentView")
+                }
             }
+        }
+        
+        // CRITICAL: Request layout on content view after adding children
+        // This ensures the content view recalculates its size based on children
+        // Without this, the content view might have zero height, making children invisible
+        view.requestLayout()
+        
+        // CRITICAL: Find ScrollView and update contentSize after children are added
+        // This ensures the scroll view knows the new content size
+        val scrollViewKey = ScrollViewKey.KEY.hashCode()
+        var scrollView = view.getTag(scrollViewKey) as? DCFScrollView
+        
+        // Fallback: Try to find through hierarchy
+        if (scrollView == null) {
+            val parent = view.parent
+            if (parent is DCFCustomScrollView) {
+                val parentParent = parent.parent
+                if (parentParent is DCFScrollView) {
+                    scrollView = parentParent
+                }
+            }
+            
+            if (scrollView == null && parent is DCFScrollView) {
+                scrollView = parent
+            }
+            
+            if (scrollView == null) {
+                var currentView: View? = parent as? View
+                while (currentView != null) {
+                    if (currentView is DCFScrollView) {
+                        scrollView = currentView
+                        break
+                    }
+                    currentView = currentView.parent as? View
+                }
+            }
+        }
+        
+        // Update contentSize if ScrollView found
+        scrollView?.let { sv ->
+            // CRITICAL: Update contentSize immediately (synchronously) to ensure NestedScrollView
+            // gets the correct size. We also post an async update to handle cases where
+            // layout hasn't been calculated yet.
+            sv.updateContentSizeFromContentView()
+            Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Updated ScrollView contentSize immediately after adding children")
+            
+            // Also post async update to handle cases where layout hasn't been calculated yet
+            Handler(Looper.getMainLooper()).post {
+                sv.updateContentSizeFromContentView()
+                // CRITICAL: Request layout on ScrollView to trigger re-measurement
+                // This ensures NestedScrollView re-measures its child (ScrollContentView)
+                // after Yoga has calculated the layout and set pendingFrame
+                sv.scrollView.requestLayout()
+                Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Updated ScrollView contentSize async and requested layout")
+            }
+        } ?: run {
+            Log.w(TAG, "⚠️ DCFScrollContentViewComponent.setChildren: Could not find ScrollView to update contentSize")
         }
         
         val childCount = if (view is ViewGroup) view.childCount else 0

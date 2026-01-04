@@ -8,7 +8,7 @@
 import 'dart:developer' as developer;
 
 import 'package:dcflight/dcflight.dart';
-import 'package:dcflight/framework/components/button_component.dart';
+import 'package:dcflight/src/components/button_component.dart';
 import 'package:flutter/material.dart' show Colors;
 
 /// Framework-level error boundary that automatically wraps the root component

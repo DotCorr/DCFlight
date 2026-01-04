@@ -6,10 +6,10 @@
  */
 
 import 'package:flutter/foundation.dart';
-import 'package:dcflight/framework/components/component.dart';
-import 'package:dcflight/framework/components/fragment.dart';
+import 'package:dcflight/src/components/component.dart';
+import 'package:dcflight/src/components/fragment.dart';
 import 'package:dcflight/framework/renderer/engine/index.dart';
-import 'package:dcflight/framework/components/portal/dcf_portal_target.dart';
+import 'package:dcflight/src/components/portal/dcf_portal_target.dart';
 
 /// Portal component that renders children into a different part of the view tree
 /// Allows rendering children outside the normal parent hierarchy

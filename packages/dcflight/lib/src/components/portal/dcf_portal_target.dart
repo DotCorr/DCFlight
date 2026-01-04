@@ -6,9 +6,9 @@
  */
 
 import 'package:flutter/foundation.dart';
-import 'package:dcflight/framework/components/component.dart';
-import 'package:dcflight/framework/components/dcf_element.dart';
-import 'package:dcflight/framework/components/component_node.dart';
+import 'package:dcflight/src/components/component.dart';
+import 'package:dcflight/src/components/dcf_element.dart';
+import 'package:dcflight/src/components/component_node.dart';
 
 /// Global registry for PortalTarget components
 /// This allows Portal components to find their target by ID

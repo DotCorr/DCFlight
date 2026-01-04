@@ -8,7 +8,7 @@
 
 import 'dart:developer' as developer;
 
-import 'package:dcflight/framework/components/component_node.dart';
+import 'package:dcflight/src/components/component_node.dart';
 
 import 'component.dart';
 

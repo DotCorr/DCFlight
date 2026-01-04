@@ -6,7 +6,7 @@
  */
 
 import 'dart:async';
-import 'package:dcflight/framework/components/component_node.dart';
+import 'package:dcflight/src/components/component_node.dart';
 import 'package:dcflight/framework/renderer/engine/core/scheduling/frame_scheduler.dart';
 
 /// Unit of work for incremental reconciliation

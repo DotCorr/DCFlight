@@ -203,7 +203,10 @@ open class DCFTextShadowView: DCFShadowView {
         // If text is empty, return empty attributed string with font to get baseline height
         let textToUse = text.isEmpty ? " " : text
         let mutableString = NSMutableAttributedString(string: textToUse)
-        let range = NSRange(location: 0, length: textToUse.count)
+        // CRITICAL: Use UTF-16 length for NSRange, not Swift character count
+        // Emojis and other Unicode characters can span multiple UTF-16 code units
+        // Using .count would create incorrect ranges, breaking emoji rendering
+        let range = NSRange(location: 0, length: (textToUse as NSString).length)
         
         // Font - use fontSize from props or default
         var font = UIFont.systemFont(ofSize: 17)

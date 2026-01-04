@@ -22,11 +22,11 @@ import 'package:dcflight/framework/renderer/engine/core/reconciliation/increment
     show IncrementalReconciler;
 import 'package:dcflight/framework/renderer/interface/interface.dart'
     show PlatformInterface;
-import 'package:dcflight/framework/components/component.dart';
-import 'package:dcflight/framework/components/error_boundary.dart';
-import 'package:dcflight/framework/components/dcf_element.dart';
-import 'package:dcflight/framework/components/component_node.dart';
-import 'package:dcflight/framework/components/fragment.dart';
+import 'package:dcflight/src/components/component.dart';
+import 'package:dcflight/src/components/error_boundary.dart';
+import 'package:dcflight/src/components/dcf_element.dart';
+import 'package:dcflight/src/components/component_node.dart';
+import 'package:dcflight/src/components/fragment.dart';
 import 'package:dcflight/framework/utils/flutter_widget_renderer.dart';
 import 'package:dcflight/framework/utils/widget_to_dcf_adaptor.dart';
 
