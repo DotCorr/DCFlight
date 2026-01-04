@@ -303,6 +303,15 @@ class DCFScrollContentViewComponent : DCFComponent() {
             val childViewId = childView.getTag(viewIdKey) as? String ?: "unknown"
             Log.d(TAG, "🔍 DCFScrollContentViewComponent.setChildren: Adding child $index: viewId=$childViewId, frame=(${childView.left}, ${childView.top}, ${childView.width}, ${childView.height}), type=${childView.javaClass.simpleName}, visibility=${childView.visibility}, alpha=${childView.alpha}")
             if (view is ViewGroup) {
+                // CRITICAL: Ensure child has proper layout params before adding
+                // This is essential for correct measurement in onMeasure()
+                if (childView.layoutParams == null) {
+                    childView.layoutParams = ViewGroup.MarginLayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                }
+                
                 view.addView(childView)
                 
                 // CRITICAL: Make child visible IMMEDIATELY after adding to ScrollContentView

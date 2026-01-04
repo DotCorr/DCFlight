@@ -42,21 +42,25 @@ class DCFScrollContentView @JvmOverloads constructor(
     }
     
     /**
-     * CRITICAL: Override onMeasure to measure children normally (React Native approach)
+     * CRITICAL: Override onMeasure to match React Native's ReactViewGroup behavior exactly
+     * 
+     * React Native's approach (ReactViewGroup.onMeasure):
+     * - ALWAYS measure children during onMeasure() (standard Android measurement)
+     * - Sum children's sizes to determine content view size
+     * - Yoga positions children during layout (after measurement)
+     * - Content view size is determined by measuring children, not by Yoga's calculated size
      * 
      * KEY DIFFERENCE FROM iOS:
      * - iOS: UIScrollView reads contentView.frame.size AFTER layout (in layoutSubviews)
      * - Android: NestedScrollView calls onMeasure() DURING measurement, BEFORE layout
      * 
-     * React Native's approach:
-     * - Measure children normally during onMeasure() (standard Android measurement)
-     * - Yoga positions children during layout (after measurement)
-     * - Content view size is determined by measuring children, not by Yoga's calculated size
-     * 
-     * This matches React Native's ReactViewGroup behavior:
+     * React Native's ReactViewGroup:
      * - onMeasure() measures children and reports their total size
      * - onLayout() is overridden to do nothing (Yoga handles layout)
      * - Children are positioned by Yoga during layout, but size is already determined
+     * 
+     * This matches React Native's behavior exactly - we measure children first,
+     * then Yoga positions them later. We don't rely on Yoga's calculated size during measurement.
      */
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val widthMode = android.view.View.MeasureSpec.getMode(widthMeasureSpec)
@@ -64,9 +68,9 @@ class DCFScrollContentView @JvmOverloads constructor(
         val heightMode = android.view.View.MeasureSpec.getMode(heightMeasureSpec)
         val heightSize = android.view.View.MeasureSpec.getSize(heightMeasureSpec)
         
-        // CRITICAL: Make all children visible BEFORE measuring
+        // CRITICAL: Make all children visible BEFORE measuring (React Native approach)
         // Children are set to INVISIBLE during attachView to prevent flash
-        // But we need them visible for accurate measurement (React Native approach)
+        // But we need them visible for accurate measurement
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             if (child.visibility == android.view.View.INVISIBLE) {
@@ -75,7 +79,7 @@ class DCFScrollContentView @JvmOverloads constructor(
             }
         }
         
-        // Measure width
+        // Measure width (React Native approach - always measure children)
         val measuredWidth = when (widthMode) {
             android.view.View.MeasureSpec.EXACTLY -> widthSize
             android.view.View.MeasureSpec.AT_MOST -> {
@@ -84,7 +88,10 @@ class DCFScrollContentView @JvmOverloads constructor(
                 for (i in 0 until childCount) {
                     val child = getChildAt(i)
                     if (child.visibility != android.view.View.GONE) {
-                        val childLayoutParams = child.layoutParams
+                        val childLayoutParams = child.layoutParams ?: ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
                         val childWidthMeasureSpec = android.view.ViewGroup.getChildMeasureSpec(
                             widthMeasureSpec,
                             paddingLeft + paddingRight,
@@ -107,7 +114,10 @@ class DCFScrollContentView @JvmOverloads constructor(
                 for (i in 0 until childCount) {
                     val child = getChildAt(i)
                     if (child.visibility != android.view.View.GONE) {
-                        val childLayoutParams = child.layoutParams
+                        val childLayoutParams = child.layoutParams ?: ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
                         val childWidthMeasureSpec = android.view.ViewGroup.getChildMeasureSpec(
                             widthMeasureSpec,
                             paddingLeft + paddingRight,
@@ -126,7 +136,7 @@ class DCFScrollContentView @JvmOverloads constructor(
             }
         }
         
-        // Measure height
+        // Measure height (React Native approach - always measure children, sum heights for vertical scrolling)
         val measuredHeight = when (heightMode) {
             android.view.View.MeasureSpec.EXACTLY -> heightSize
             android.view.View.MeasureSpec.AT_MOST -> {
@@ -136,7 +146,10 @@ class DCFScrollContentView @JvmOverloads constructor(
                 for (i in 0 until childCount) {
                     val child = getChildAt(i)
                     if (child.visibility != android.view.View.GONE) {
-                        val childLayoutParams = child.layoutParams
+                        val childLayoutParams = child.layoutParams ?: ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
                         val childWidthMeasureSpec = android.view.ViewGroup.getChildMeasureSpec(
                             android.view.View.MeasureSpec.makeMeasureSpec(measuredWidth, android.view.View.MeasureSpec.EXACTLY),
                             paddingLeft + paddingRight,
@@ -159,7 +172,10 @@ class DCFScrollContentView @JvmOverloads constructor(
                 for (i in 0 until childCount) {
                     val child = getChildAt(i)
                     if (child.visibility != android.view.View.GONE) {
-                        val childLayoutParams = child.layoutParams
+                        val childLayoutParams = child.layoutParams ?: ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        )
                         val childWidthMeasureSpec = android.view.ViewGroup.getChildMeasureSpec(
                             android.view.View.MeasureSpec.makeMeasureSpec(measuredWidth, android.view.View.MeasureSpec.EXACTLY),
                             paddingLeft + paddingRight,
@@ -178,7 +194,7 @@ class DCFScrollContentView @JvmOverloads constructor(
             }
         }
         
-        android.util.Log.d(TAG, "🔍 onMeasure: Measured size: width=$measuredWidth, height=$measuredHeight (childCount=$childCount, widthMode=$widthMode, heightMode=$heightMode)")
+        android.util.Log.d(TAG, "🔍 onMeasure (React Native mode): Measured size: width=$measuredWidth, height=$measuredHeight (childCount=$childCount, widthMode=$widthMode, heightMode=$heightMode)")
         
         setMeasuredDimension(measuredWidth, measuredHeight)
     }
