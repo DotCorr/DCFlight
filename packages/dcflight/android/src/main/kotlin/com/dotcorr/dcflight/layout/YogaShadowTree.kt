@@ -708,6 +708,38 @@ class YogaShadowTree private constructor() {
             val viewsWithNewFrame = rootShadowNode.collectViewsWithUpdatedFrames()
             Log.d(TAG, "✅ collectViewsWithUpdatedFrames returned ${viewsWithNewFrame.size} views with new frames")
             
+            // CRITICAL FIX: Set pendingFrame on all views with new frames IMMEDIATELY on main thread
+            // This ensures pendingFrame is available when NestedScrollView.onMeasure() is called
+            // The issue: NestedScrollView.onMeasure() is called during layout pass, but pendingFrame
+            // was only set later in component.applyLayout(). By setting it here synchronously on main
+            // thread BEFORE posting layouts, we ensure it's available BEFORE measurement happens
+            // This is the key fix for the Android scrolling issue - rotation works because it triggers
+            // a full layout pass where pendingFrame is already set, but initial render doesn't
+            if (viewsWithNewFrame.isNotEmpty()) {
+                // Use CountDownLatch to ensure pendingFrame is set synchronously on main thread
+                val latch = java.util.concurrent.CountDownLatch(1)
+                mainHandler.post {
+                    try {
+                        for (shadowNode in viewsWithNewFrame) {
+                            val view = DCFLayoutManager.shared.getView(shadowNode.viewId)
+                            if (view != null && shadowNode.frame.width() > 0 && shadowNode.frame.height() > 0) {
+                                val pendingFrameKey = "pendingFrame".hashCode()
+                                view.setTag(pendingFrameKey, shadowNode.frame)
+                                Log.d(TAG, "✅ YogaShadowTree: Set pendingFrame=${shadowNode.frame} on viewId=${shadowNode.viewId} (synchronously on main thread, before measurement)")
+                            }
+                        }
+                    } finally {
+                        latch.countDown()
+                    }
+                }
+                // Wait for pendingFrame to be set on main thread (with timeout to prevent deadlock)
+                try {
+                    latch.await(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+                } catch (e: InterruptedException) {
+                    Log.w(TAG, "⚠️ Interrupted while waiting for pendingFrame to be set", e)
+                }
+            }
+            
             if (viewsWithNewFrame.isEmpty()) {
                 Log.w(TAG, "⚠️ WARNING: No views with new frames collected! This might indicate a problem.")
             } else {

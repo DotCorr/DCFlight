@@ -153,7 +153,7 @@ class DCFScrollContentViewComponent : DCFComponent() {
         
         Log.d(TAG, "🔍 DCFScrollContentViewComponent.applyLayout: Set frame=$frame, actualFrame=$actualFrame, parent=${view.parent?.javaClass?.simpleName ?: "nil"}")
         
-        // CRITICAL: Find ScrollView and update contentSize
+        // CRITICAL: Find ScrollView and update contentSize AND expectedContentHeight
         // ALWAYS use stored reference first (set by insertContentView) - this is the most reliable method
         // The stored reference is set BEFORE the view is added to the hierarchy, so it's always available
         val scrollViewKey = ScrollViewKey.KEY.hashCode()
@@ -188,7 +188,7 @@ class DCFScrollContentViewComponent : DCFComponent() {
             }
         }
         
-        // Update contentSize if ScrollView found
+        // Update contentSize AND expectedContentHeight if ScrollView found
         scrollView?.let { sv ->
             // CRITICAL: Ensure frame is correct before updating contentSize
             // The frame might have been reset by Android, so restore it if needed
@@ -204,6 +204,14 @@ class DCFScrollContentViewComponent : DCFComponent() {
                 Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame was incorrect, restored to $frame, actualFrame=$actualFrame")
             }
             
+            // CRITICAL: Set expectedContentHeight on DCFCustomScrollView
+            // This is the key fix - it tells the scroll view the expected content height
+            // BEFORE measurement happens, so NestedScrollView knows the correct size
+            if (frame.height() > 0) {
+                sv.scrollView.expectedContentHeight = frame.height()
+                Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Set expectedContentHeight=${frame.height()} on DCFCustomScrollView")
+            }
+            
             val storedRefSet = view.getTag(scrollViewKey) != null
             Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Found ScrollView (stored=$storedRefSet), contentView.frame=$actualFrame, updating contentSize")
             sv.updateContentSizeFromContentView()
@@ -213,8 +221,9 @@ class DCFScrollContentViewComponent : DCFComponent() {
             // after Yoga has calculated the layout and set pendingFrame
             // This is essential because NestedScrollView calls onMeasure() BEFORE layout,
             // so we need to trigger a re-measure after layout is calculated
+            sv.scrollView.forceLayout()
             sv.scrollView.requestLayout()
-            Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Requested layout on ScrollView to trigger re-measurement")
+            Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Requested forceLayout+requestLayout on ScrollView to trigger re-measurement")
         } ?: run {
             // If not found, the view might not be attached yet or stored reference wasn't set
             // Use async to retry after a brief delay to ensure attachment is complete
@@ -264,8 +273,18 @@ class DCFScrollContentViewComponent : DCFComponent() {
                 }
                 
                 foundScrollView?.let { sv ->
+                    // CRITICAL: Set expectedContentHeight in async callback as well
+                    if (frame.height() > 0) {
+                        sv.scrollView.expectedContentHeight = frame.height()
+                        Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout (async): Set expectedContentHeight=${frame.height()}")
+                    }
+                    
                     Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout (async): Found ScrollView, contentView.frame=$actualFrame, updating contentSize")
                     sv.updateContentSizeFromContentView()
+                    
+                    // Force re-measurement
+                    sv.scrollView.forceLayout()
+                    sv.scrollView.requestLayout()
                 } ?: run {
                     val storedRefSet = contentView.getTag(scrollViewKey) != null
                     Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout (async): Could not find ScrollView, contentView.parent=${contentView.parent?.javaClass?.simpleName ?: "nil"}, frame=$actualFrame, storedRef=$storedRefSet")
@@ -294,6 +313,37 @@ class DCFScrollContentViewComponent : DCFComponent() {
         // Remove existing children
         if (view is ViewGroup) {
             view.removeAllViews()
+        }
+        
+        // CRITICAL: Find ScrollView BEFORE adding children
+        // This allows us to set expectedContentHeight immediately after children are added
+        val scrollViewKey = ScrollViewKey.KEY.hashCode()
+        var scrollView = view.getTag(scrollViewKey) as? DCFScrollView
+        
+        // Fallback: Try to find through hierarchy
+        if (scrollView == null) {
+            val parent = view.parent
+            if (parent is DCFCustomScrollView) {
+                val parentParent = parent.parent
+                if (parentParent is DCFScrollView) {
+                    scrollView = parentParent
+                }
+            }
+            
+            if (scrollView == null && parent is DCFScrollView) {
+                scrollView = parent
+            }
+            
+            if (scrollView == null) {
+                var currentView: View? = parent as? View
+                while (currentView != null) {
+                    if (currentView is DCFScrollView) {
+                        scrollView = currentView
+                        break
+                    }
+                    currentView = currentView.parent as? View
+                }
+            }
         }
         
         // Add new children
@@ -341,53 +391,35 @@ class DCFScrollContentViewComponent : DCFComponent() {
         // Without this, the content view might have zero height, making children invisible
         view.requestLayout()
         
-        // CRITICAL: Find ScrollView and update contentSize after children are added
-        // This ensures the scroll view knows the new content size
-        val scrollViewKey = ScrollViewKey.KEY.hashCode()
-        var scrollView = view.getTag(scrollViewKey) as? DCFScrollView
-        
-        // Fallback: Try to find through hierarchy
-        if (scrollView == null) {
-            val parent = view.parent
-            if (parent is DCFCustomScrollView) {
-                val parentParent = parent.parent
-                if (parentParent is DCFScrollView) {
-                    scrollView = parentParent
-                }
-            }
-            
-            if (scrollView == null && parent is DCFScrollView) {
-                scrollView = parent
-            }
-            
-            if (scrollView == null) {
-                var currentView: View? = parent as? View
-                while (currentView != null) {
-                    if (currentView is DCFScrollView) {
-                        scrollView = currentView
-                        break
-                    }
-                    currentView = currentView.parent as? View
-                }
-            }
-        }
-        
         // Update contentSize if ScrollView found
         scrollView?.let { sv ->
-            // CRITICAL: Update contentSize immediately (synchronously) to ensure NestedScrollView
-            // gets the correct size. We also post an async update to handle cases where
-            // layout hasn't been calculated yet.
-            sv.updateContentSizeFromContentView()
-            Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Updated ScrollView contentSize immediately after adding children")
+            // CRITICAL FIX: Don't try to measure children here - they haven't been laid out by Yoga yet
+            // Instead, rely on onMeasure() to use pendingFrame when it's available
+            // The key insight: setChildren() is called BEFORE calculateAndApplyLayout(),
+            // so pendingFrame isn't set yet. We need to wait for calculateAndApplyLayout()
+            // to set pendingFrame, then onMeasure() will use it.
+            // 
+            // Rotation works because pendingFrame is already set from the previous layout pass.
+            // 
+            // The solution: Just request layout and let onMeasure() handle measurement
+            // using pendingFrame when it's available (set by calculateAndApplyLayout).
+            Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Added ${childViews.size} children, requesting layout (pendingFrame will be set by calculateAndApplyLayout)")
             
-            // Also post async update to handle cases where layout hasn't been calculated yet
+            // Request layout to trigger re-measurement after pendingFrame is set
+            // This ensures NestedScrollView re-measures its child after Yoga calculates layout
+            view.forceLayout()
+            view.requestLayout()
+            sv.scrollView.forceLayout()
+            sv.scrollView.requestLayout()
+            
+            // Post async update to handle cases where layout calculation happens after this
             Handler(Looper.getMainLooper()).post {
                 sv.updateContentSizeFromContentView()
-                // CRITICAL: Request layout on ScrollView to trigger re-measurement
-                // This ensures NestedScrollView re-measures its child (ScrollContentView)
-                // after Yoga has calculated the layout and set pendingFrame
+                sv.scrollView.forceLayout()
                 sv.scrollView.requestLayout()
-                Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Updated ScrollView contentSize async and requested layout")
+                view.forceLayout()
+                view.requestLayout()
+                Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Updated ScrollView contentSize async after layout calculation")
             }
         } ?: run {
             Log.w(TAG, "⚠️ DCFScrollContentViewComponent.setChildren: Could not find ScrollView to update contentSize")

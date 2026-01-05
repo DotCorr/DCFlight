@@ -450,6 +450,44 @@ open class DCFShadowNode {
         if (frame != newFrame) {
             frame = newFrame
             viewsWithNewFrame.add(this)
+            
+            // CRITICAL FIX: Set pendingFrame synchronously on the main thread IMMEDIATELY after calculating frame
+            // This ensures pendingFrame is available when onMeasure() is called, even if it's called
+            // before applyLayout() runs. This is the key fix for the Android scrolling issue.
+            // Rotation works because pendingFrame is already set from the previous layout pass.
+            // 
+            // We use runBlocking with a coroutine to set pendingFrame on the main thread synchronously.
+            // This ensures it's set BEFORE any measurement happens.
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                // Already on main thread, set pendingFrame directly
+                val view = com.dotcorr.dcflight.layout.DCFLayoutManager.shared.getView(viewId)
+                if (view != null && newFrame.width() > 0 && newFrame.height() > 0) {
+                    val pendingFrameKey = "pendingFrame".hashCode()
+                    view.setTag(pendingFrameKey, newFrame)
+                    Log.d(TAG, "✅ DCFShadowNode.applyLayoutNode: Set pendingFrame=$newFrame on viewId=$viewId (synchronously on main thread)")
+                }
+            } else {
+                // Not on main thread, use CountDownLatch to set synchronously
+                val latch = java.util.concurrent.CountDownLatch(1)
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    try {
+                        val view = com.dotcorr.dcflight.layout.DCFLayoutManager.shared.getView(viewId)
+                        if (view != null && newFrame.width() > 0 && newFrame.height() > 0) {
+                            val pendingFrameKey = "pendingFrame".hashCode()
+                            view.setTag(pendingFrameKey, newFrame)
+                            Log.d(TAG, "✅ DCFShadowNode.applyLayoutNode: Set pendingFrame=$newFrame on viewId=$viewId (synchronously via CountDownLatch)")
+                        }
+                    } finally {
+                        latch.countDown()
+                    }
+                }
+                // Wait for pendingFrame to be set (with timeout to prevent deadlock)
+                try {
+                    latch.await(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+                } catch (e: InterruptedException) {
+                    Log.w(TAG, "⚠️ Interrupted while waiting for pendingFrame to be set", e)
+                }
+            }
         }
         
         val newAbsolutePosition = android.graphics.PointF(
