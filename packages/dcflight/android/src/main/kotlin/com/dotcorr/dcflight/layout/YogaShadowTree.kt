@@ -151,9 +151,11 @@ class YogaShadowTree private constructor() {
         
         Log.d(TAG, "   Created shadow node: viewId=$viewId, initial frame=${shadowNode.frame}, yogaNode style: width=${node.width.value}, height=${node.height.value}")
         
-        // Setup measure function for all components (including Text)
-        // Text nodes need measure functions to be marked as dirty when text changes
-        setupMeasureFunction(id, node)
+        // CRITICAL: Text components set their own measure function in DCFTextShadowNode.init
+        // Don't override it here - it uses getText() to collect text from children with spans
+        if (componentType != "Text") {
+            setupMeasureFunction(id, node)
+        }
     }
 
     @Synchronized
@@ -570,23 +572,18 @@ class YogaShadowTree private constructor() {
         // Framework-level visibility is handled in ViewManager.updateView
         // No prop-specific logic needed here - framework handles all updates uniformly
         
-        // CRITICAL: Apply text props to DCFTextShadowNode (matches iOS behavior)
+        // CRITICAL: Apply text props to DCFVirtualTextShadowNode (matches iOS behavior)
         // Text props must be set on shadow node for measurement to work correctly
-        if (componentType == "Text" && shadowNode is com.dotcorr.dcflight.components.text.DCFTextShadowNode) {
+        if (componentType == "Text" && shadowNode is com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode) {
             props.forEach { (key, value) ->
                 when (key) {
                     "content" -> {
                         val textValue = value?.toString() ?: ""
                         shadowNode.text = textValue
+                        // CRITICAL: dirtyText() propagates up the tree and notifyChanged() will handle
+                        // marking the top-level text node dirty if it's a leaf node
+                        // Don't manually call node.dirty() here - let notifyChanged() handle it
                         shadowNode.dirtyText()
-                        // CRITICAL: Only mark Yoga node as dirty if it's a leaf node (no children)
-                        // Text nodes can have children (virtual text nodes), so we can't call dirty() directly
-                        // Yoga only allows calling dirty() on leaf nodes with custom measure functions
-                        // The dirtyText() propagation will handle notifying parents for non-leaf nodes
-                        if (node.childCount == 0) {
-                            node.markLayoutSeen() // Reset layout seen flag
-                            node.dirty() // Mark as dirty to force re-measure
-                        }
                         Log.d(TAG, "✅ Set text content for viewId=$viewId: '$textValue' (length=${textValue.length})")
                     }
                     "fontSize" -> {

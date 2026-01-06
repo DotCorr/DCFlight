@@ -2,13 +2,13 @@ package com.dotcorr.dcflight.components.text
 
 import android.content.Context
 import android.graphics.Canvas
-import android.text.Layout
+import android.text.StaticLayout
 import android.view.View
 
 class DCFTextView(context: Context) : View(context) {
     
-    private var _textLayout: Layout? = null
-    var textLayout: Layout?
+    private var _textLayout: StaticLayout? = null
+    var textLayout: StaticLayout?
         get() = _textLayout
         set(value) {
             if (_textLayout != value) {
