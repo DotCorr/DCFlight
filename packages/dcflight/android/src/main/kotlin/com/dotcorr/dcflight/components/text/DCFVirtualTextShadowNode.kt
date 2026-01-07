@@ -9,14 +9,21 @@ import com.dotcorr.dcflight.layout.DCFShadowNode
 class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     
     companion object {
-        private const val DEFAULT_FONT_SIZE = 17 // Match iOS default (iOS uses 17, React Native uses 14)
+        private const val DEFAULT_FONT_SIZE_SP = 17f // Match iOS default (iOS uses 17, React Native uses 14)
     }
     
     private var mFontStylingSpan: DCFTextStyleSpan = DCFTextStyleSpan.INSTANCE.mutableCopy().apply {
-        // CRITICAL: Initialize span with default font size (matches iOS behavior)
-        // iOS defaults to 17, but React Native typically uses 14
+        // CRITICAL: Initialize span with default font size converted from SP to pixels
+        // iOS defaults to 17 SP, but React Native typically uses 14 SP
+        // The span stores font size in pixels, so we need to convert SP to pixels
         // This ensures the span has a valid font size even before props are set
-        setFontSize(DEFAULT_FONT_SIZE)
+        val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+        val defaultFontSizePixels = android.util.TypedValue.applyDimension(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            DEFAULT_FONT_SIZE_SP,
+            displayMetrics
+        ).toInt()
+        setFontSize(defaultFontSizePixels)
     }
     
     // Override property setters to update span
@@ -174,7 +181,13 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     fun getFontStyle(): Int = mFontStylingSpan.getFontStyle()
     
     protected fun getDefaultFontSize(): Int {
-        return DEFAULT_FONT_SIZE
+        // Convert SP to pixels (span stores font size in pixels)
+        val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+        return android.util.TypedValue.applyDimension(
+            android.util.TypedValue.COMPLEX_UNIT_SP,
+            DEFAULT_FONT_SIZE_SP,
+            displayMetrics
+        ).toInt()
     }
     
     private fun parseFontWeight(fontWeight: String?): Int {

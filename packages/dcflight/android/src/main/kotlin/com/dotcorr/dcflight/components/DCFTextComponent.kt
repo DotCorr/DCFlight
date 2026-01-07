@@ -185,8 +185,20 @@ class DCFTextComponent : DCFComponent() {
         }
         
         // Get font size
+        // CRITICAL: Use fontSize property (logical points) and convert to pixels
+        // This matches applyLayout and measureText which also use fontSize property
         val fontSizePixels = if (shadowNode != null) {
-            shadowNode.getFontSize().toFloat()
+            val fontSizeLogicalPoints = shadowNode.fontSize
+            val displayMetrics = textView.context.resources.displayMetrics
+            if (fontSizeLogicalPoints > 0) {
+                android.util.TypedValue.applyDimension(
+                    android.util.TypedValue.COMPLEX_UNIT_SP,
+                    fontSizeLogicalPoints,
+                    displayMetrics
+                )
+            } else {
+                17f * displayMetrics.scaledDensity
+            }
         } else {
             val fontSizeSp = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
             val displayMetrics = textView.context.resources.displayMetrics
