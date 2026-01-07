@@ -56,9 +56,9 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: Colors.white,
+        backgroundColor: DCFColors.white,
         borderBottomWidth: 1,
-        borderBottomColor: Colors.grey[100]!,
+        borderBottomColor: DCFColors.gray100,
       ),
       children: [
         // Logo Area - CRITICAL: Add flexShrink to prevent overflow
@@ -81,7 +81,7 @@ class NavigationBar extends DCFStatelessComponent {
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line with truncation
               ),
-              styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
               layout: DCFLayout(
                 flexShrink: 1, // Allow text to shrink
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
@@ -95,7 +95,7 @@ class NavigationBar extends DCFStatelessComponent {
                 fontWeight: DCFFontWeight.medium,
                 numberOfLines: 1, // Single line with truncation
               ),
-              styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
               layout: DCFLayout(
                 flexShrink: 1, // Allow text to shrink
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
@@ -124,7 +124,7 @@ class HeroSection extends DCFStatefulComponent {
           flexDirection: DCFFlexDirection.column,
           gap: 48,
         ),
-        styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
+        styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
         children: [
           DCFButton(
             onPress: (data) {
@@ -134,7 +134,7 @@ class HeroSection extends DCFStatefulComponent {
               DCFText(
                 content: "Value of showTest: $showTest.state",
                 textProps: DCFTextProps(fontSize: 20),
-                styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+                styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
               ),
             ],
           ),
@@ -144,7 +144,7 @@ class HeroSection extends DCFStatefulComponent {
           DCFText(
             content: "Hello, World!",
             textProps: DCFTextProps(fontSize: 20),
-            styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+            styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
           ),
         ],
       );
@@ -158,7 +158,7 @@ class HeroSection extends DCFStatefulComponent {
         flexDirection: DCFFlexDirection.column,
         gap: 48,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
       children: [
         // Main content row (left text + right visual)
         DCFView(
@@ -194,7 +194,7 @@ class HeroSection extends DCFStatefulComponent {
                             lineHeight: 1.1,
                             letterSpacing: -1.5,
                           ),
-                          styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+                          styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
                         ),
                         DCFText(
                           content: "Infrastructure",
@@ -204,7 +204,7 @@ class HeroSection extends DCFStatefulComponent {
                             lineHeight: 1.1,
                             letterSpacing: -1.5,
                           ),
-                          styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+                          styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
                         ),
                         DCFView(
                           layout: DCFLayout(
@@ -221,7 +221,7 @@ class HeroSection extends DCFStatefulComponent {
                                 letterSpacing: -1.5,
                               ),
                               styleSheet: DCFStyleSheet(
-                                primaryColor: Colors.grey[300]!,
+                                primaryColor: DCFColors.gray300,
                               ),
                             ),
                             DCFText(
@@ -233,7 +233,7 @@ class HeroSection extends DCFStatefulComponent {
                                 letterSpacing: -1.5,
                               ),
                               styleSheet: DCFStyleSheet(
-                                primaryColor: Colors.black,
+                                primaryColor: DCFColors.black,
                               ),
                             ),
                           ],
@@ -267,7 +267,7 @@ class HeroSection extends DCFStatefulComponent {
                             gap: 12,
                           ),
                           styleSheet: DCFStyleSheet(
-                            backgroundColor: Colors.red,
+                            backgroundColor: DCFColors.red,
                             borderRadius: 2, // Small radius like web
                           ),
                           onPress: (data) {
@@ -282,7 +282,7 @@ class HeroSection extends DCFStatefulComponent {
                                 fontWeight: DCFFontWeight.medium,
                               ),
                               styleSheet: DCFStyleSheet(
-                                primaryColor: Colors.white,
+                                primaryColor: DCFColors.white,
                               ),
                             ),
                             DCFText(
@@ -292,7 +292,7 @@ class HeroSection extends DCFStatefulComponent {
                                 fontWeight: DCFFontWeight.medium,
                               ),
                               styleSheet: DCFStyleSheet(
-                                primaryColor: Colors.white,
+                                primaryColor: DCFColors.white,
                               ),
                             ),
                           ],
@@ -428,12 +428,12 @@ class TypewriterEffect extends DCFStatefulComponent {
         DCFText(
           content: "\$ ",
           textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
-          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[400]!),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
         DCFText(
           content: "$currentText$cursorChar",
           textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
-          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
         ),
       ],
     );
@@ -528,7 +528,7 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
         DCFText(
           content: "\$ ",
           textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
-          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[400]!),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray400),
         ),
         AnimatedText(
           worklet: typewriterWorklet,
@@ -539,7 +539,7 @@ class TypewriterEffectWorklet extends DCFStatelessComponent {
             'pauseDuration': 2000.0,
           },
           textProps: DCFTextProps(fontSize: 20, fontFamily: "Courier"),
-          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[600]!),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
         ),
       ],
     );
@@ -575,9 +575,9 @@ class InfrastructureVisual extends DCFStatelessComponent {
             position: DCFPositionType.absolute,
           ),
           styleSheet: DCFStyleSheet(
-            backgroundColor: Colors.black,
+            backgroundColor: DCFColors.black,
             borderWidth: 1,
-            borderColor: Colors.grey[900]!,
+            borderColor: DCFColors.gray900,
           ),
         ),
 
@@ -590,8 +590,8 @@ class InfrastructureVisual extends DCFStatelessComponent {
             absoluteLayout: AbsoluteLayout(top: size * 0.15, left: size * 0.15),
           ),
           styleSheet: DCFStyleSheet(
-            backgroundColor: Colors.white,
-            shadowColor: Colors.white,
+            backgroundColor: DCFColors.white,
+            shadowColor: DCFColors.white,
             shadowRadius: 20,
             shadowOpacity: 0.4,
           ),
@@ -622,7 +622,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
         paddingHorizontal: 24,
         flexDirection: DCFFlexDirection.column,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[50]!),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray50),
       children: [
         // Header section - mb-20 = 80px
         DCFView(
@@ -644,7 +644,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 numberOfLines:
                     0, // Allow unlimited lines - CRITICAL for multi-line text
               ),
-              styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
             ),
             DCFText(
               content:
@@ -653,7 +653,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 fontSize: 20, // text-xl = 20px (matches web)
                 lineHeight: 1.6,
               ),
-              styleSheet: DCFStyleSheet(primaryColor: Colors.grey[500]!),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray500),
             ),
           ],
         ),
@@ -667,15 +667,15 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             _buildCard(
               "For Builders",
               "Direct access to native platform capabilities. Write Dart once, render true native UI components. No abstractions, no compromises.",
-              Colors.white,
-              Colors.black,
+              DCFColors.white,
+              DCFColors.black,
               "Explore DCFlight",
             ),
             _buildCard(
               "For Machines",
               "The cognitive layer for artificial intelligence. We build the foundational systems required to support autonomous agents and AGI.",
-              Colors.black,
-              Colors.white,
+              DCFColors.black,
+              DCFColors.white,
               "Explore DCCortex",
             ),
           ],
@@ -701,15 +701,15 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
       ),
       styleSheet: DCFStyleSheet(
         backgroundColor: bg,
-        borderWidth: bg == Colors.white ? 1 : 0,
+        borderWidth: bg == DCFColors.white ? 1 : 0,
         borderColor:
-            bg == Colors.white ? Colors.grey[200]! : Colors.transparent,
+            bg == DCFColors.white ? DCFColors.gray200 : DCFColors.transparent,
         borderRadius: 8,
-        shadowColor: Colors.black,
-        shadowOpacity: bg == Colors.white ? 0.05 : 0.3,
-        shadowRadius: bg == Colors.white ? 4 : 12,
+        shadowColor: DCFColors.black,
+        shadowOpacity: bg == DCFColors.white ? 0.05 : 0.3,
+        shadowRadius: bg == DCFColors.white ? 4 : 12,
         shadowOffsetX: 0,
-        shadowOffsetY: bg == Colors.white ? 1 : 4,
+        shadowOffsetY: bg == DCFColors.white ? 1 : 4,
       ),
       children: [
         // Icon - matches web w-12 h-12 = 48px
@@ -722,18 +722,18 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             marginBottom: 24, // mb-6 = 24px
           ),
           styleSheet: DCFStyleSheet(
-            backgroundColor: bg == Colors.white ? Colors.black : Colors.white,
+            backgroundColor: bg == DCFColors.white ? DCFColors.black : DCFColors.white,
             borderRadius: 4,
           ),
           children: [
             DCFText(
-              content: bg == Colors.white ? "📱" : "🧠",
+              content: bg == DCFColors.white ? "📱" : "🧠",
               textProps: DCFTextProps(
                 fontSize: 24,
                 textAlign: DCFTextAlign.center,
               ),
               styleSheet: DCFStyleSheet(
-                primaryColor: bg == Colors.white ? Colors.white : Colors.black,
+                primaryColor: bg == DCFColors.white ? DCFColors.white : DCFColors.black,
               ),
             ),
           ],
@@ -775,9 +775,9 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               ),
               styleSheet: DCFStyleSheet(
                 primaryColor:
-                    text == Colors.black
-                        ? Colors.grey[500]!
-                        : Colors.grey[300]!,
+                    text == DCFColors.black
+                        ? DCFColors.gray500
+                        : DCFColors.gray300,
               ),
               // Remove explicit width - let text size naturally based on parent constraints
               // Yoga will automatically constrain it to parent's available width (after padding)
@@ -835,7 +835,7 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
         paddingVertical: 80,
         paddingHorizontal: 24,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
       children: [
         DCFText(
           content: "Built for the Modern Stack",
@@ -844,7 +844,7 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
             fontWeight: DCFFontWeight.bold,
             letterSpacing: -1,
           ),
-          styleSheet: DCFStyleSheet(primaryColor: Colors.black),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
         ),
      
       ],
@@ -861,7 +861,7 @@ class AboutSection extends DCFStatelessComponent {
         paddingVertical: 80,
         paddingHorizontal: 24,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.grey[900]!),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.grey[900]!),
       children: [
         DCFText(
           content: "Designing the Cognitive Future",
@@ -870,7 +870,7 @@ class AboutSection extends DCFStatelessComponent {
             fontWeight: DCFFontWeight.bold,
             letterSpacing: -1,
           ),
-          styleSheet: DCFStyleSheet(primaryColor: Colors.white),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
         ),
       ],
     );
@@ -891,12 +891,12 @@ class Footer extends DCFStatelessComponent {
         paddingHorizontal: 24,
         gap: 40,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: Colors.white),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
       children: [
         DCFText(
           content: "© 2025 DotCorr. All rights reserved.",
           textProps: DCFTextProps(fontSize: 14),
-          styleSheet: DCFStyleSheet(primaryColor: Colors.grey[500]!),
+          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray500),
         ),
       ],
     );

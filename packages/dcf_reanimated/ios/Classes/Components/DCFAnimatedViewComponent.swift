@@ -263,10 +263,10 @@ class WorkletInterpreter {
             
         case "clamp":
             if let num = obj as? NSNumber, arguments.count >= 2,
-               let min = (arguments[0] as? NSNumber)?.doubleValue,
-               let max = (arguments[1] as? NSNumber)?.doubleValue {
+               let minValue = (arguments[0] as? NSNumber)?.doubleValue,
+               let maxValue = (arguments[1] as? NSNumber)?.doubleValue {
                 let value = num.doubleValue
-                return max(min, min(max, value))
+                return max(minValue, min(maxValue, value))
             }
             return obj
             
