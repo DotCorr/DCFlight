@@ -9,13 +9,14 @@ library;
 
 import 'package:dcflight/framework/renderer/interface/interface.dart';
 import 'package:dcflight/framework/renderer/interface/tunnel.dart';
+import 'compiler/runtime_registry.dart';
+import 'compiler/runtime_interpreter.dart';
 
 /// Annotation to mark functions as worklets that run on the UI thread.
 ///
 /// Worklets enable **running Dart code directly on the native UI thread**,
 /// providing zero bridge calls during execution. This is similar to React Native
-/// Reanimated's worklet system, but more general-purpose - not just for animations.
-///
+
 /// **Key Benefits:**
 /// - ✅ Zero bridge calls during execution
 /// - ✅ Runs on UI thread (60fps guaranteed)
@@ -196,6 +197,11 @@ class WorkletExecutor {
     String executionMode = 'frame',
     int? executionInterval,
   }) {
+    // Compile the worklet to IR (for runtime interpretation)
+    final registry = WorkletRegistry();
+    final workletId = registry.register(worklet);
+    final compilationResult = registry.getCompilationResult(workletId);
+    
     final id = 'worklet_${_workletCounter++}';
     
     // Get function source code
@@ -204,15 +210,22 @@ class WorkletExecutor {
     // Extract function information
     final functionInfo = _parseFunction(functionString);
     
-    // Serialize function body
-    // In production, this could be:
-    // 1. AST serialization (for interpretation)
-    // 2. Compiled bytecode (for JIT execution)
-    // 3. Native code compilation (for AOT execution)
+    // Check if compilation was successful
+    final isCompiled = compilationResult?.success ?? false;
+    
+    // Serialize function body for RUNTIME INTERPRETATION (no rebuild needed!)
     final serializedFunction = {
       'source': functionString,
       'body': functionInfo['body'] ?? '',
-      'type': 'dart_function', // 'dart_function', 'compiled', 'ast', 'native'
+      'type': 'interpretable', // Native will interpret IR at runtime
+      if (isCompiled && compilationResult != null && compilationResult.ir != null) ...{
+        // Include IR for runtime interpretation (like React Native Reanimated!)
+        'ir': WorkletRuntimeInterpreter.serializeIR(compilationResult.ir!),
+        'workletId': workletId,
+        // Also include generated code for reference (optional)
+        'kotlinCode': compilationResult.kotlinCode,
+        'swiftCode': compilationResult.swiftCode,
+      },
     };
     
     return WorkletConfig(
@@ -220,7 +233,7 @@ class WorkletExecutor {
       serializedFunction: serializedFunction,
       parameters: functionInfo['parameters'] as List<WorkletParameter>,
       returnType: functionInfo['returnType'] as String,
-      isCompiled: false,
+      isCompiled: isCompiled,
       executionMode: executionMode,
       executionInterval: executionInterval,
     );

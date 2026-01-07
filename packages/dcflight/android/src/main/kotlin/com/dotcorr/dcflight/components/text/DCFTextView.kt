@@ -13,8 +13,12 @@ class DCFTextView(context: Context) : View(context) {
         set(value) {
             if (_textLayout != value) {
                 _textLayout = value
+                android.util.Log.d("DCFTextView", "🎨 Layout set: ${if (value != null) "width=${value.width}, height=${value.height}, lineCount=${value.lineCount}" else "NULL"}")
+                // Force measure and layout update
                 requestLayout()
                 invalidate()
+                // Post invalidate to ensure it happens
+                postInvalidate()
             }
         }
     
@@ -48,7 +52,14 @@ class DCFTextView(context: Context) : View(context) {
     // Overriding onMeasure would interfere with Yoga's layout calculations
     
     override fun onDraw(canvas: Canvas) {
-        val layout = textLayout ?: return
+        val layout = textLayout
+        
+        if (layout == null) {
+            android.util.Log.w("DCFTextView", "⚠️ onDraw called but layout is NULL")
+            return
+        }
+        
+        android.util.Log.d("DCFTextView", "🖼️ onDraw: layout width=${layout.width}, height=${layout.height}, text='${layout.text}'")
         
         // CRITICAL: Match React Native's DrawTextLayout.onDraw exactly
         // React Native: canvas.translate(left, top); mLayout.draw(canvas); canvas.translate(-left, -top);
@@ -57,11 +68,14 @@ class DCFTextView(context: Context) : View(context) {
         val left = textFrameLeft
         val top = textFrameTop
         
+        android.util.Log.d("DCFTextView", "📍 Drawing at position: left=$left, top=$top")
+        
         canvas.save()
         canvas.translate(left, top)
         layout.draw(canvas)
         canvas.translate(-left, -top)
         canvas.restore()
+        
+        android.util.Log.d("DCFTextView", "✅ onDraw complete")
     }
 }
-

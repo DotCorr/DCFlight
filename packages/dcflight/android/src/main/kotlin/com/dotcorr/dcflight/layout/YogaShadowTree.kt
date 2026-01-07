@@ -132,12 +132,10 @@ class YogaShadowTree private constructor() {
 
     @Synchronized
     fun createNode(id: String, componentType: String) {
-        val node = YogaNodeFactory.create()
         val viewId = id.toIntOrNull() ?: 0
         
-        // Apply default styles
-        applyDefaultNodeStyles(node, componentType)
-        
+        // CRITICAL: Create shadow node FIRST - it creates its own yogaNode
+        // We must use the shadow node's yogaNode, not create a separate one
         val shadowNode = if (componentType == "Text") {
             com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode(viewId)
         } else {
@@ -145,11 +143,17 @@ class YogaShadowTree private constructor() {
         }
         shadowNode.viewName = componentType
         
+        // Use the shadow node's yogaNode (not a separate one)
+        val node = shadowNode.yogaNode
+        
+        // Apply default styles to the shadow node's yogaNode
+        applyDefaultNodeStyles(node, componentType)
+        
         nodes[id] = node
         nodeTypes[id] = componentType
         shadowNodes[viewId] = shadowNode
         
-        Log.d(TAG, "   Created shadow node: viewId=$viewId, initial frame=${shadowNode.frame}, yogaNode style: width=${node.width.value}, height=${node.height.value}")
+        Log.d(TAG, "   Created shadow node: viewId=$viewId, initial frame=${shadowNode.frame}, yogaNode style: width=${node.width.value}, height=${node.height.value}, isMeasureDefined=${node.isMeasureDefined}")
         
         // CRITICAL: Text components set their own measure function in DCFTextShadowNode.init
         // Don't override it here - it uses getText() to collect text from children with spans
@@ -580,18 +584,24 @@ class YogaShadowTree private constructor() {
                     "content" -> {
                         val textValue = value?.toString() ?: ""
                         shadowNode.text = textValue
-                        // CRITICAL: dirtyText() propagates up the tree and notifyChanged() will handle
-                        // marking the top-level text node dirty if it's a leaf node
-                        // Don't manually call node.dirty() here - let notifyChanged() handle it
+                        // CRITICAL: The text setter now marks the Yoga node as dirty
+                        // Also call dirtyText() to propagate up the tree
                         shadowNode.dirtyText()
-                        Log.d(TAG, "✅ Set text content for viewId=$viewId: '$textValue' (length=${textValue.length})")
+                        // Verify measure function is set
+                        val node = nodes[nodeId]
+                        if (node != null) {
+                            Log.d(TAG, "✅ Set text content for viewId=$viewId: '$textValue' (length=${textValue.length}), isMeasureDefined=${node.isMeasureDefined}, childCount=${node.childCount}")
+                        } else {
+                            Log.w(TAG, "⚠️ Node not found for viewId=$viewId")
+                        }
                     }
                     "fontSize" -> {
-                        if (value is Number && shadowNode is com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode) {
-                            shadowNode.setFontSize(value.toInt())
-                        } else if (value is Number) {
+                        if (value is Number) {
+                            // CRITICAL: fontSize comes in as logical points (Float), not pixels
+                            // Use the property setter which automatically converts points to pixels
+                            // and updates the span correctly
                             shadowNode.fontSize = value.toFloat()
-                            shadowNode.dirtyText()
+                            // dirtyText() is called by the property setter via notifyChanged()
                         }
                     }
                     "fontWeight" -> {
@@ -1295,13 +1305,15 @@ class YogaShadowTree private constructor() {
     }
 
     private fun applyDefaultNodeStyles(node: YogaNode, nodeType: String) {
+        // Match iOS exactly - only set flexDirection and flexShrink based on useWebDefaults
+        // Don't set justify-content, align-items, or align-content by default
+        // Yoga's defaults handle undefined dimensions automatically
         if (useWebDefaults) {
             node.setFlexDirection(YogaFlexDirection.ROW)
-            node.setAlignContent(YogaAlign.STRETCH)
             node.setFlexShrink(1.0f)
         } else {
+            // Default: column direction, no flex shrink
             node.setFlexDirection(YogaFlexDirection.COLUMN)
-            node.setAlignContent(YogaAlign.FLEX_START)
             node.setFlexShrink(0.0f)
         }
         
@@ -1309,10 +1321,9 @@ class YogaShadowTree private constructor() {
         if (nodeType == "ScrollView") {
             node.setJustifyContent(YogaJustify.FLEX_START)
             node.setAlignItems(YogaAlign.FLEX_START)
-        } else {
-            node.setJustifyContent(YogaJustify.CENTER)
-            node.setAlignItems(YogaAlign.CENTER)
         }
+        // Don't set justify-content or align-items for other components - let Yoga use defaults
+        // This allows components to inherit proper sizing behavior automatically
     }
 
 

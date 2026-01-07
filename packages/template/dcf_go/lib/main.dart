@@ -1,13 +1,15 @@
 import 'dart:math' as math;
 
 
+import 'package:dcf_go/worklet_test.dart';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' show Colors;
 
 void main() async {
-  await DCFlight.go(app: DotCorrLanding());
+  
+  await DCFlight.go(app: WorkletTest());
 }
 
 /// DotCorr Landing Page - Matching Web Design

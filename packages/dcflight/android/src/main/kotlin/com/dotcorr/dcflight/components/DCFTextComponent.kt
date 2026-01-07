@@ -1,5 +1,8 @@
-
-// Text flow is:
+// AGENT READ THIS FIRST:
+// 
+// This file MUST work with DCFVirtualTextShadowNode in components.text package
+// 
+// The flow is:
 // 1. Bridge calls createView() with props Map
 // 2. DCFTextComponent creates DCFTextView
 // 3. Bridge calls viewRegisteredWithShadowTree() - HERE we transfer props to shadow node
@@ -146,6 +149,12 @@ class DCFTextComponent : DCFComponent() {
         val primaryColor = props["primaryColor"]
         if (primaryColor is Number) {
             shadowNode.setTextColor(primaryColor.toDouble())
+        } else {
+            // Also check textColor prop
+            val textColor = props["textColor"]
+            if (textColor is Number) {
+                shadowNode.setTextColor(textColor.toDouble())
+            }
         }
         
         android.util.Log.d(TAG, "✅ All props transferred to shadow node")
@@ -257,15 +266,18 @@ class DCFTextComponent : DCFComponent() {
         
         updateShadowNodeProps(props)
         
-        // NOW update the view with text from shadow node
+        // Initial text setup - applyLayout will be called later for final positioning
         val textView = view as? DCFTextView
         if (textView != null) {
+            android.util.Log.d(TAG, "📝 Initial updateTextView call from viewRegisteredWithShadowTree")
             updateTextView(textView, props)
         }
     }
     
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
         super.applyLayout(view, layout)
+        
+        android.util.Log.d(TAG, "📐 applyLayout called: width=${layout.width}, height=${layout.height}")
         
         val textView = view as? DCFTextView ?: return
         val shadowNode = nodeId?.toIntOrNull()?.let { viewId ->
@@ -300,13 +312,70 @@ class DCFTextComponent : DCFComponent() {
             paint.letterSpacing = letterSpacing / fontSizePixels
         }
         
+        // CRITICAL: Account for padding when creating text layout (matches iOS behavior)
+        // iOS: let width = self.frame.size.width - (padding.left + padding.right)
+        val padding = shadowNode.paddingAsInsets
+        var layoutWidth = (layout.width - padding.left - padding.right).toInt().coerceAtLeast(0)
+        
+        // CRITICAL: If layoutWidth is 0 but we have text, use the view's actual width as fallback
+        // This can happen if Yoga calculated 0 width due to parent constraints, but the view
+        // might have been laid out with a different size. We need to render the text even if
+        // the layout width is 0, otherwise text will be invisible.
+        if (layoutWidth == 0 && spannableText.isNotEmpty()) {
+            val viewWidth = textView.width
+            if (viewWidth > 0) {
+                layoutWidth = (viewWidth - padding.left - padding.right).coerceAtLeast(0)
+                android.util.Log.w(TAG, "⚠️ Layout width is 0, using view width=$viewWidth (layoutWidth=$layoutWidth)")
+            } else {
+                // Last resort: use a large width to allow text to measure its natural width
+                // This matches iOS behavior where text can measure its natural width even if
+                // the constraint is 0
+                layoutWidth = Int.MAX_VALUE
+                android.util.Log.w(TAG, "⚠️ Layout width and view width are both 0, using Int.MAX_VALUE for text measurement")
+            }
+        }
+        
+        // Apply font family and weight to paint
+        val fontWeightValue = shadowNode.fontWeight
+        val fontFamilyValue = shadowNode.fontFamily
+        val typefaceStyle = if (fontWeightValue != null) {
+            when (fontWeightValue.lowercase()) {
+                "bold", "700", "800", "900" -> android.graphics.Typeface.BOLD
+                else -> android.graphics.Typeface.NORMAL
+            }
+        } else {
+            android.graphics.Typeface.NORMAL
+        }
+        paint.typeface = if (fontFamilyValue != null) {
+            android.graphics.Typeface.create(fontFamilyValue, typefaceStyle)
+        } else {
+            android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, typefaceStyle)
+        }
+        
+        // Apply text color from shadow node's span
+        // The spans in spannableText will apply color during drawing, but we need a default for measurement
+        val textColorSpan = if (shadowNode is DCFVirtualTextShadowNode) {
+            val span = shadowNode.getSpan()
+            val colorValue = span.getTextColor()
+            if (!java.lang.Double.isNaN(colorValue)) {
+                // Convert Double color to Int color (ARGB32 integer stored as Double)
+                val colorInt = colorValue.toLong().toInt()
+                paint.color = colorInt
+            } else {
+                // Fallback to black if no color specified
+                paint.color = android.graphics.Color.BLACK
+            }
+        } else {
+            // Fallback to black if no color specified
+            paint.color = android.graphics.Color.BLACK
+        }
+        
         val alignment = textAlignToLayoutAlignment(textAlign)
-        val viewWidth = (layout.width).toInt()
         
         val textLayout = createTextLayout(
             spannableText,
             paint,
-            viewWidth,
+            layoutWidth,
             alignment,
             numberOfLines,
             lineHeight,
@@ -314,8 +383,10 @@ class DCFTextComponent : DCFComponent() {
         )
         
         textView.textLayout = textLayout
-        textView.textFrameLeft = 0f
-        textView.textFrameTop = 0f
+        // CRITICAL: Set text frame offsets to padding (matches iOS computedContentInset)
+        // Text is drawn at (padding.left, padding.top) relative to view origin
+        textView.textFrameLeft = padding.left.toFloat()
+        textView.textFrameTop = padding.top.toFloat()
         textView.requestLayout()
         textView.invalidate()
     }
