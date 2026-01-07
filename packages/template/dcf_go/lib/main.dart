@@ -9,7 +9,7 @@ import 'package:flutter/material.dart' show Colors;
 
 void main() async {
   
-  await DCFlight.go(app: WorkletTest());
+  await DCFlight.go(app: DotCorrLanding());
 }
 
 /// DotCorr Landing Page - Matching Web Design
@@ -267,7 +267,7 @@ class HeroSection extends DCFStatefulComponent {
                             gap: 12,
                           ),
                           styleSheet: DCFStyleSheet(
-                            backgroundColor: Colors.black,
+                            backgroundColor: Colors.red,
                             borderRadius: 2, // Small radius like web
                           ),
                           onPress: (data) {
@@ -846,7 +846,7 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
           ),
           styleSheet: DCFStyleSheet(primaryColor: Colors.black),
         ),
-        // Grid items... (Simplified)
+     
       ],
     );
   }

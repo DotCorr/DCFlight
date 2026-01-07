@@ -110,10 +110,11 @@ class DCFTextComponent : DCFComponent() {
         
         // Transfer styling props
         val fontSize = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
-        if (shadowNode.fontSize != fontSize) {
-            shadowNode.fontSize = fontSize
-            android.util.Log.d(TAG, "✅ fontSize set to $fontSize")
-        }
+        // CRITICAL: Always set fontSize, even if it matches the current value
+        // This ensures the span is updated correctly, especially on first initialization
+        // The property setter will handle the conversion and span update
+        shadowNode.fontSize = fontSize
+        android.util.Log.d(TAG, "✅ fontSize set to $fontSize (current shadowNode.fontSize=${shadowNode.fontSize})")
         
         val fontWeight = props["fontWeight"]?.toString()
         if (shadowNode.fontWeight != fontWeight) {
@@ -342,25 +343,17 @@ class DCFTextComponent : DCFComponent() {
         
         // CRITICAL: Account for padding when creating text layout (matches iOS behavior)
         // iOS: let width = self.frame.size.width - (padding.left + padding.right)
+        // CRITICAL: Use Yoga's calculated width directly - don't override it with fallbacks
+        // If Yoga calculated 0 width, that's the constraint we must respect to prevent overflow
         val padding = shadowNode.paddingAsInsets
         var layoutWidth = (layout.width - padding.left - padding.right).toInt().coerceAtLeast(0)
         
-        // CRITICAL: If layoutWidth is 0 but we have text, use the view's actual width as fallback
-        // This can happen if Yoga calculated 0 width due to parent constraints, but the view
-        // might have been laid out with a different size. We need to render the text even if
-        // the layout width is 0, otherwise text will be invisible.
-        if (layoutWidth == 0 && spannableText.isNotEmpty()) {
-            val viewWidth = textView.width
-            if (viewWidth > 0) {
-                layoutWidth = (viewWidth - padding.left - padding.right).coerceAtLeast(0)
-                android.util.Log.w(TAG, "⚠️ Layout width is 0, using view width=$viewWidth (layoutWidth=$layoutWidth)")
-            } else {
-                // Last resort: use a large width to allow text to measure its natural width
-                // This matches iOS behavior where text can measure its natural width even if
-                // the constraint is 0
-                layoutWidth = Int.MAX_VALUE
-                android.util.Log.w(TAG, "⚠️ Layout width and view width are both 0, using Int.MAX_VALUE for text measurement")
-            }
+        // CRITICAL: If layoutWidth is 0, use at least 1 for StaticLayout creation (it requires > 0)
+        // But the text will be clipped/not visible, which is correct when Yoga constrains to 0
+        // This prevents overflow and respects Yoga's layout constraints
+        if (layoutWidth == 0) {
+            layoutWidth = 1 // Minimum width for StaticLayout, but text will be clipped
+            android.util.Log.d(TAG, "📏 Layout width is 0, using 1 for StaticLayout (text will be clipped)")
         }
         
         // Apply font family and weight to paint
