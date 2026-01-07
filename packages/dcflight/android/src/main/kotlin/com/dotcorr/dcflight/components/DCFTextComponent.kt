@@ -235,13 +235,48 @@ class DCFTextComponent : DCFComponent() {
         val lineHeight = (props["lineHeight"] as? Number)?.toFloat() ?: 0f
         
         // Calculate max width
-        val maxWidth = if (textView.width > 0) {
-            textView.width
-        } else {
-            10000
+        // CRITICAL: Try multiple sources in order of preference:
+        // 1. Actual view width (if laid out) - most accurate
+        // 2. Shadow node's Yoga layout width (if calculated) - accurate after layout
+        // 3. Parent's width constraint (if available) - reasonable estimate
+        // 4. Screen width as last resort (prevents overflow on small devices, much better than 10000)
+        val maxWidth: Int = when {
+            textView.width > 0 -> {
+                // View has been laid out - use actual width
+                textView.width
+            }
+            shadowNode != null -> {
+                // Try to get width from Yoga layout (may be 0 if not laid out yet)
+                val yogaWidth = shadowNode.yogaNode.layoutWidth
+                if (yogaWidth > 0) {
+                    // Account for padding
+                    val padding = shadowNode.paddingAsInsets
+                    (yogaWidth - padding.left - padding.right).toInt().coerceAtLeast(1)
+                } else {
+                    // Yoga layout not calculated yet - try parent constraint
+                    val parentNode = shadowNode.yogaNode.parent
+                    if (parentNode != null && parentNode.layoutWidth > 0) {
+                        // Use parent's width as constraint (account for parent padding)
+                        // CRITICAL: layoutWidth is Float, so convert padding to Float for calculation
+                        val parentPadding = shadowNode.superview?.paddingAsInsets
+                        val parentPaddingLeft = parentPadding?.left?.toFloat() ?: 0f
+                        val parentPaddingRight = parentPadding?.right?.toFloat() ?: 0f
+                        (parentNode.layoutWidth - parentPaddingLeft - parentPaddingRight).toInt().coerceAtLeast(1)
+                    } else {
+                        // Last resort: use screen width (prevents overflow, much better than 10000)
+                        val displayMetrics = textView.context.resources.displayMetrics
+                        displayMetrics.widthPixels
+                    }
+                }
+            }
+            else -> {
+                // No shadow node - use screen width as reasonable fallback
+                val displayMetrics = textView.context.resources.displayMetrics
+                displayMetrics.widthPixels
+            }
         }
         
-        android.util.Log.d(TAG, "📏 Creating layout with maxWidth=$maxWidth, alignment=$alignment")
+        android.util.Log.d(TAG, "📏 Creating layout with maxWidth=$maxWidth (viewWidth=${textView.width}, yogaWidth=${shadowNode?.yogaNode?.layoutWidth}), alignment=$alignment")
         
         // Create layout
         val layout = createTextLayout(

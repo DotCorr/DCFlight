@@ -182,6 +182,7 @@ class HeroSection extends DCFStatefulComponent {
                     // Split text to match web styling - "For The" in gray
                     DCFView(
                       layout: DCFLayout(
+                        width: '100%', // CRITICAL: Constrain width to prevent overflow
                         flexDirection: DCFFlexDirection.column,
                         gap: 0,
                       ),
@@ -208,11 +209,15 @@ class HeroSection extends DCFStatefulComponent {
                         ),
                         DCFView(
                           layout: DCFLayout(
+                            width: '100%', // CRITICAL: Constrain row width to prevent overflow
                             flexDirection: DCFFlexDirection.row,
                             gap: 0,
+                            flexWrap: DCFWrap.wrap, // Allow wrapping on small devices
                           ),
                           children: [
                             DCFText(
+                              // Layout constraints (flexShrink, minWidth) are now applied automatically
+                              // by DCFText component to prevent overflow - no need to specify manually
                               content: "For The ",
                               textProps: DCFTextProps(
                                 fontSize: 48,
@@ -225,6 +230,8 @@ class HeroSection extends DCFStatefulComponent {
                               ),
                             ),
                             DCFText(
+                              // Layout constraints (flexShrink, minWidth) are now applied automatically
+                              // by DCFText component to prevent overflow - no need to specify manually
                               content: "Inevitable.",
                               textProps: DCFTextProps(
                                 fontSize: 48,

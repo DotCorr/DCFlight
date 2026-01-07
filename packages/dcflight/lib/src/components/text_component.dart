@@ -177,10 +177,19 @@ class DCFText extends DCFStatelessComponent
     final defaultTextStyleSheet = const DCFStyleSheet(backgroundColor: DCFColors.transparent);
     final mergedStyleSheet = defaultTextStyleSheet.merge(styleSheet);
     
+    // CRITICAL: Apply default layout constraints to prevent text overflow on small devices
+    // These defaults ensure text can shrink and wrap properly, especially on Android
+    // User-provided layout values will override these defaults (via merge)
+    const defaultTextLayout = DCFLayout(
+      flexShrink: 1, // Allow text to shrink when space is limited
+      minWidth: 0, // CRITICAL: Allow shrinking below content size to prevent overflow
+    );
+    final mergedLayout = defaultTextLayout.merge(layout);
+    
     Map<String, dynamic> props = {
       'content': content,
       ...textProps.toMap(),
-      ...layout.toMap(),
+      ...mergedLayout.toMap(), // Use merged layout with overflow-prevention defaults
       ...mergedStyleSheet.toMap(),
       if (textColor != null) 'textColor': DCFColors.toNativeString(textColor!),
       ...(events ?? {}),
