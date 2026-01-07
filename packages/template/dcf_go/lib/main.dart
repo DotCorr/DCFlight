@@ -861,7 +861,7 @@ class AboutSection extends DCFStatelessComponent {
         paddingVertical: 80,
         paddingHorizontal: 24,
       ),
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.grey[900]!),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray900),
       children: [
         DCFText(
           content: "Designing the Cognitive Future",

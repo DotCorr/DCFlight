@@ -42,12 +42,6 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
     ): Long {
         android.util.Log.d("DCFTextShadowNode", "📏 measureText called: viewId=$viewId, width=$width, widthMode=$widthMode, height=$height, heightMode=$heightMode")
         
-        // CRITICAL: Maximum reasonable width for text measurement
-        // This prevents text from measuring with extremely large widths (like Int.MAX_VALUE)
-        // which can cause overflow and incorrect wrapping
-        // 10000px is reasonable for most screens and allows text to wrap properly
-        val MAX_REASONABLE_WIDTH = 10000
-        
         // Get text with all spans applied
         val spannedText = if (this is DCFVirtualTextShadowNode) {
             (this as DCFVirtualTextShadowNode).getText()
@@ -115,30 +109,14 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         // CRITICAL: Yoga passes available width (after padding) to measure function
         // We should NOT subtract padding again - this matches iOS behavior exactly
         // iOS: let availableWidth: CGFloat = widthMode == .undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(width)
-        // Match iOS exactly - use width directly when not undefined, even if it's 0
-        // When widthMode is EXACTLY and width is 0, we must respect that constraint and return 0
-        // CRITICAL: For very large constraints (like from parents without explicit width),
-        // cap the available width to prevent text from measuring with extremely large widths
-        // This prevents overflow while still allowing text to wrap properly
+        // Match iOS exactly - use width directly when not undefined
         val availableWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
-            // For UNDEFINED, use a large but reasonable width to allow text to measure its natural size
-            // but prevent overflow from extremely long text
-            MAX_REASONABLE_WIDTH
+            // For UNDEFINED, use a large width to allow text to measure its natural size
+            Int.MAX_VALUE
         } else {
             // Use width directly - Yoga already subtracted padding
-            // CRITICAL: If width is 0, we still need to measure with at least 1 to get height
-            // But we'll return 0 width to respect the constraint
-            val rawWidth = width.toInt().coerceAtLeast(0)
-            if (rawWidth == 0) {
-                // Use 1 for measurement to get height, but we'll return 0 width
-                1
-            } else if (rawWidth > MAX_REASONABLE_WIDTH && widthMode == YogaMeasureMode.AT_MOST) {
-                // For AT_MOST with very large constraints, cap to prevent overflow
-                // This ensures text wraps properly even when parent doesn't have explicit width
-                MAX_REASONABLE_WIDTH
-            } else {
-                rawWidth
-            }
+            // If width is 0, use 1 for measurement to get height
+            width.toInt().coerceAtLeast(1)
         }
         
         android.util.Log.d("DCFTextShadowNode", "📐 Creating layout with availableWidth=$availableWidth (constraint width=$width, widthMode=$widthMode), fontSize=$fontSizePixels")
@@ -204,53 +182,20 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             0f
         }
         
-        // CRITICAL: Clamp actualUsedWidth to availableWidth to prevent overflow
-        // iOS's NSLayoutManager automatically constrains text to the container width,
-        // but StaticLayout might allow a line to exceed availableWidth if a word is too long
-        // We must clamp to ensure the measured width never exceeds the constraint
-        val clampedUsedWidth = kotlin.math.min(actualUsedWidth, availableWidth.toFloat())
-        
-        android.util.Log.d("DCFTextShadowNode", "✅ Layout created: containerWidth=${layout.width}, actualUsedWidth=$actualUsedWidth, clampedUsedWidth=$clampedUsedWidth, height=${layout.height}, lineCount=${layout.lineCount}, availableWidth=$availableWidth")
+        android.util.Log.d("DCFTextShadowNode", "✅ Layout created: containerWidth=${layout.width}, actualUsedWidth=$actualUsedWidth, height=${layout.height}, lineCount=${layout.lineCount}, availableWidth=$availableWidth")
         
         // Round up to pixel boundaries (matches iOS RCTCeilPixelValue)
         val scale = android.content.res.Resources.getSystem().displayMetrics.density
-        val roundedWidth = kotlin.math.ceil(clampedUsedWidth * scale) / scale
+        val roundedWidth = kotlin.math.ceil(actualUsedWidth * scale) / scale
         val roundedHeight = kotlin.math.ceil(layout.height * scale) / scale
         
-        // CRITICAL: Match iOS behavior exactly - return measured size, but respect constraints
-        // iOS DCFTextShadowView.measureText returns the actual used width (computedSize.width)
-        // which is already constrained by the available width in the text container
-        // For AT_MOST mode, we should return min(measuredWidth, constraintWidth)
-        // For EXACTLY mode, we should return min(measuredWidth, constraintWidth) to prevent overflow
-        // For UNDEFINED mode, we return the measured width (intrinsic size)
-        val finalWidth = when {
-            widthMode == YogaMeasureMode.EXACTLY && width <= 0 -> {
-                // CRITICAL: If constraint is exactly 0, return 0 to respect the constraint
-                // This prevents overflow when parent constrains text to 0 width
-                0f
-            }
-            roundedWidth <= 0 -> {
-                // If measured width is 0 (empty text), return 0
-                0f
-            }
-            widthMode == YogaMeasureMode.AT_MOST -> {
-                // For AT_MOST, return the minimum of measured width and constraint width
-                // StaticLayout already wrapped the text to fit within availableWidth,
-                // but we clamp to be safe and prevent overflow
-                // CRITICAL: Also cap to MAX_REASONABLE_WIDTH to prevent overflow from very large constraints
-                val maxWidth = kotlin.math.min(width, MAX_REASONABLE_WIDTH.toFloat())
-                kotlin.math.min(roundedWidth.toFloat(), maxWidth)
-            }
-            widthMode == YogaMeasureMode.EXACTLY -> {
-                // CRITICAL: For EXACTLY mode, clamp to the constraint width to prevent overflow
-                // iOS's NSLayoutManager automatically constrains to container width, so usedRect never exceeds it
-                // But StaticLayout might allow overflow, so we must clamp explicitly
-                kotlin.math.min(roundedWidth.toFloat(), width)
-            }
-            else -> {
-                // For UNDEFINED, return the measured width (intrinsic size)
-                roundedWidth.toFloat()
-            }
+        // Return measured size naturally - let Yoga handle constraints
+        val finalWidth = if (widthMode == YogaMeasureMode.EXACTLY && width <= 0) {
+            // If constraint is exactly 0, return 0 to respect the constraint
+            0f
+        } else {
+            // Return the actual measured width
+            roundedWidth.toFloat()
         }
         
         // For height, always return the measured height (matches iOS behavior)

@@ -555,15 +555,22 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
             print("⚠️ WORKLET: No IR found, will use pattern matching for text worklets")
         }
         
-        self.workletConfig = workletData
+        // Merge returnType from config into workletData if provided (for AnimatedText compatibility)
+        var mergedWorkletData = workletData
+        if let config = config, let configReturnType = config["returnType"] as? String {
+            mergedWorkletData["returnType"] = configReturnType
+            print("🔧 WORKLET: Merged returnType from config: \(configReturnType)")
+        }
+        
+        self.workletConfig = mergedWorkletData
         self.workletExecutionConfig = config
         self.isUsingWorklet = true
         
         // Clear animation config when using worklet
         currentAnimations.removeAll()
         
-        // Check return type
-        let returnType = workletData["returnType"] as? String ?? "dynamic"
+        // Check return type (from workletData or config)
+        let returnType = mergedWorkletData["returnType"] as? String ?? config?["returnType"] as? String ?? "dynamic"
         let updateTextChild = config?["updateTextChild"] as? Bool ?? false
         print("🔧 WORKLET: returnType=\(returnType), updateTextChild=\(updateTextChild)")
         print("🔧 WORKLET: isUsingWorklet set to true")
@@ -1040,11 +1047,16 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
      * Uses runtime type checking and method invocation to avoid direct type dependencies.
      */
     private func updateChildText(_ text: String) {
+        print("🔍 WORKLET: updateChildText called with text='\(text)', subviews count=\(subviews.count)")
+        
         // Find child text views using runtime type checking
         for subview in subviews {
             // Check if this is a DCFTextView using runtime class name (avoids import issues)
             let className = String(describing: type(of: subview))
+            print("🔍 WORKLET: Checking subview type: \(className)")
+            
             if className.contains("DCFTextView") {
+                print("✅ WORKLET: Found DCFTextView!")
                 // Get the viewId from ViewRegistry or associated object
                 var viewId: Int? = nil
                 
@@ -1052,6 +1064,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
                 for (id, viewInfo) in ViewRegistry.shared.registry {
                     if viewInfo.view === subview {
                         viewId = id
+                        print("✅ WORKLET: Found viewId=\(id) from ViewRegistry")
                         break
                     }
                 }
@@ -1060,47 +1073,83 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
                 if viewId == nil {
                     if let viewIdString = objc_getAssociatedObject(subview, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String {
                         viewId = Int(viewIdString)
+                        print("✅ WORKLET: Found viewId=\(viewIdString) from associated object")
                     }
                 }
                 
                 if let viewId = viewId {
+                    print("🔍 WORKLET: Attempting to update text for viewId=\(viewId)")
                     // Access YogaShadowTree through runtime
                     // Use the module-qualified class name for Swift classes
                     let shadowTreeClassName = "dcflight.YogaShadowTree"
                     if let shadowTreeClass = NSClassFromString(shadowTreeClassName) as? NSObject.Type {
+                        print("✅ WORKLET: Found YogaShadowTree class")
                         // Get shared instance using value(forKey:)
                         if let shared = shadowTreeClass.value(forKey: "shared") as? NSObject {
+                            print("✅ WORKLET: Got YogaShadowTree shared instance")
                             // Call getShadowView(for:) using performSelector
                             // Swift method getShadowView(for:) becomes getShadowViewFor: in Objective-C
                             let selector = NSSelectorFromString("getShadowViewFor:")
                             if shared.responds(to: selector) {
+                                print("✅ WORKLET: Calling getShadowViewFor: with viewId=\(viewId)")
                                 // Use perform(_:with:) which returns Unmanaged<AnyObject>?
                                 let result = shared.perform(selector, with: viewId)
                                 if let result = result {
                                     let shadowView = result.takeUnretainedValue() as AnyObject
                                     // Check if it's a DCFTextShadowView and update text property
                                     let shadowClassName = String(describing: type(of: shadowView))
+                                    print("🔍 WORKLET: Shadow view type: \(shadowClassName)")
                                     if shadowClassName.contains("DCFTextShadowView") {
+                                        print("✅ WORKLET: Found DCFTextShadowView, updating text to '\(text)'")
                                         // Update text property using KVC
                                         shadowView.setValue(text, forKey: "text")
+                                        
+                                        // Try to trigger dirtyText or similar method to force layout
+                                        if let shadowViewObj = shadowView as? NSObject {
+                                            let dirtySelector = NSSelectorFromString("dirtyText")
+                                            if shadowViewObj.responds(to: dirtySelector) {
+                                                shadowViewObj.perform(dirtySelector)
+                                                print("✅ WORKLET: Called dirtyText() on shadow view")
+                                            }
+                                        }
+                                        
+                                        // Force layout update
+                                        subview.setNeedsLayout()
+                                        subview.layoutIfNeeded()
+                                        setNeedsLayout()
+                                        layoutIfNeeded()
                                         
                                         // Force redraw
                                         subview.setNeedsDisplay()
                                         setNeedsDisplay()
                                         
-                                        print("✅ WORKLET: Updated text to '\(text)' on UI thread")
+                                        print("✅ WORKLET: Updated text to '\(text)' on UI thread (viewId=\(viewId))")
                                         return
+                                    } else {
+                                        print("⚠️ WORKLET: Shadow view is not DCFTextShadowView, type=\(shadowClassName)")
                                     }
+                                } else {
+                                    print("⚠️ WORKLET: getShadowViewFor: returned nil")
                                 }
+                            } else {
+                                print("⚠️ WORKLET: YogaShadowTree does not respond to getShadowViewFor:")
                             }
+                        } else {
+                            print("⚠️ WORKLET: Could not get YogaShadowTree shared instance")
                         }
+                    } else {
+                        print("⚠️ WORKLET: Could not find YogaShadowTree class")
                     }
+                } else {
+                    print("⚠️ WORKLET: Could not find viewId for DCFTextView")
                 }
             }
             
             // Recursively check children (in case text is nested)
             updateChildTextRecursive(subview, text: text)
         }
+        
+        print("⚠️ WORKLET: No text view found to update!")
     }
     
     private func updateChildTextRecursive(_ parent: UIView, text: String) {
