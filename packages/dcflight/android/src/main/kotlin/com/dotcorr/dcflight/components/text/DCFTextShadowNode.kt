@@ -139,6 +139,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         }
         
         // Build StaticLayout with line height support
+        // CRITICAL: Match createTextLayout in DCFTextComponent exactly
         val builder = StaticLayout.Builder
             .obtain(spannedText, 0, spannedText.length, paint, availableWidth)
             .setAlignment(alignment)
@@ -146,10 +147,12 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             .setMaxLines(if (numberOfLines > 0) numberOfLines else Int.MAX_VALUE)
             .setEllipsize(if (numberOfLines > 0) android.text.TextUtils.TruncateAt.END else null)
         
-        // Apply line height if specified (matches iOS behavior)
+        // Apply line height if specified (matches iOS behavior and DCFTextComponent.createTextLayout)
+        val spacingAdd: Float
+        val spacingMult: Float
         if (lineHeight > 0) {
             val absoluteLineHeight = if (lineHeight < 10) {
-                // Treat as multiplier
+                // Treat as multiplier (matches DCFTextComponent.createTextLayout)
                 lineHeight * fontSizePixels
             } else {
                 // Treat as absolute value
@@ -160,8 +163,13 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
                     displayMetrics
                 )
             }
-            builder.setLineSpacing(absoluteLineHeight, 0.0f)
+            spacingAdd = absoluteLineHeight
+            spacingMult = 0.0f
+        } else {
+            spacingAdd = 0.0f
+            spacingMult = 1.0f
         }
+        builder.setLineSpacing(spacingAdd, spacingMult)
         
         val layout = builder.build()
         

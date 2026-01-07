@@ -566,7 +566,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
             
             switch targetProperty {
             case "opacity":
-                self.alpha = CGFloat(floatValue.clamped(to: 0...1))
+                self.alpha = CGFloat(max(0, min(1, floatValue)))
             case "scale":
                 self.transform = CGAffineTransform(scaleX: CGFloat(floatValue), y: CGFloat(floatValue))
             case "scaleX":

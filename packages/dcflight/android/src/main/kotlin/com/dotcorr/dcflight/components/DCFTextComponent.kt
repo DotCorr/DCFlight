@@ -280,11 +280,15 @@ class DCFTextComponent : DCFComponent() {
         android.util.Log.d(TAG, "📐 applyLayout called: width=${layout.width}, height=${layout.height}")
         
         val textView = view as? DCFTextView ?: return
-        val shadowNode = nodeId?.toIntOrNull()?.let { viewId ->
+        
+        // CRITICAL: Retrieve nodeId from view tag (component instances may be reused)
+        val viewNodeId = nodeId ?: view.getTag("nodeId".hashCode())?.toString()
+        val shadowNode = viewNodeId?.toIntOrNull()?.let { viewId ->
             com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
         } as? DCFVirtualTextShadowNode
         
         if (shadowNode == null) {
+            android.util.Log.w(TAG, "⚠️ Shadow node NULL in applyLayout, nodeId=$viewNodeId")
             val props = getStoredProps(view)
             updateTextView(textView, props)
             return
@@ -302,7 +306,19 @@ class DCFTextComponent : DCFComponent() {
         val numberOfLines = (props["numberOfLines"] as? Number)?.toInt() ?: 0
         val lineHeight = (props["lineHeight"] as? Number)?.toFloat() ?: 0f
         
-        val fontSizePixels = shadowNode.getFontSize().toFloat()
+        // CRITICAL: Use fontSize property (logical points) and convert to pixels
+        // This matches measureText which also uses fontSize property
+        val fontSizeLogicalPoints = shadowNode.fontSize
+        val displayMetrics = textView.context.resources.displayMetrics
+        val fontSizePixels = if (fontSizeLogicalPoints > 0) {
+            android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_SP,
+                fontSizeLogicalPoints,
+                displayMetrics
+            )
+        } else {
+            17f * displayMetrics.scaledDensity
+        }
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
         paint.textSize = fontSizePixels
         paint.color = android.graphics.Color.BLACK
