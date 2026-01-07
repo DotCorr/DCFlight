@@ -311,6 +311,24 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         print("🔍 REANIMATED: isPureReanimated = \(props["isPureReanimated"] ?? "nil")")
         print("🔍 REANIMATED: worklet = \(props["worklet"] != nil ? "exists" : "nil")")
         print("🔍 REANIMATED: workletConfig = \(props["workletConfig"] != nil ? "exists" : "nil")")
+        print("🔍 REANIMATED: autoStart = \(props["autoStart"] ?? "nil")")
+        
+        // Print worklet structure if it exists
+        if let workletData = props["worklet"] as? [String: Any] {
+            print("🔍 REANIMATED: worklet keys: \(Array(workletData.keys))")
+            if let functionData = workletData["function"] as? [String: Any] {
+                print("🔍 REANIMATED: function keys: \(Array(functionData.keys))")
+            }
+            if let returnType = workletData["returnType"] as? String {
+                print("🔍 REANIMATED: returnType = \(returnType)")
+            }
+        }
+        
+        // Print workletConfig structure if it exists
+        if let workletConfig = props["workletConfig"] as? [String: Any] {
+            print("🔍 REANIMATED: workletConfig keys: \(Array(workletConfig.keys))")
+            print("🔍 REANIMATED: workletConfig content: \(workletConfig)")
+        }
         
         let reanimatedView = PureReanimatedView()
         
@@ -322,10 +340,15 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
             if let workletData = props["worklet"] as? [String: Any] {
                 let workletConfig = props["workletConfig"] as? [String: Any]
                 print("🎯 PURE REANIMATED: Found worklet in props, configuring...")
+                print("🎯 PURE REANIMATED: workletData type: \(type(of: workletData))")
+                print("🎯 PURE REANIMATED: workletConfig: \(workletConfig ?? [:])")
                 reanimatedView.configureWorklet(workletData, workletConfig)
             } else if let animatedStyle = props["animatedStyle"] as? [String: Any] {
                 // Fall back to animated style
+                print("🎯 PURE REANIMATED: No worklet found, using animatedStyle")
                 reanimatedView.configurePureAnimation(animatedStyle)
+            } else {
+                print("⚠️ PURE REANIMATED: No worklet or animatedStyle found!")
             }
             
             // Auto-start if configured (default: true for AnimatedText)
@@ -348,6 +371,8 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
             } else {
                 print("⏸️ PURE REANIMATED: autoStart=false, animation not starting automatically")
             }
+        } else {
+            print("⚠️ REANIMATED: isPureReanimated is false or missing!")
         }
         
         // Apply styles
@@ -465,6 +490,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     private var animationConfig: [String: Any] = [:]
     private var displayLink: CADisplayLink?
     private var animationStartTime: CFTimeInterval = 0
+    private var frameCount = 0
     var isAnimating = false
     
     // MARK: - DCFLayoutIndependent Protocol
@@ -506,7 +532,8 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     func configureWorklet(_ workletData: [String: Any], _ config: [String: Any]?) {
         print("🔧 WORKLET: Configuring worklet for pure UI thread execution")
-        print("🔧 WORKLET: workletData keys: \(workletData.keys)")
+        print("🔧 WORKLET: workletData keys: \(Array(workletData.keys))")
+        print("🔧 WORKLET: workletData full: \(workletData)")
         print("🔧 WORKLET: config: \(config ?? [:])")
         
         // Check if worklet is compiled
@@ -514,12 +541,18 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         let isCompiled = workletData["isCompiled"] as? Bool ?? false
         let workletType = functionData?["type"] as? String ?? "dart_function"
         
+        print("🔧 WORKLET: functionData exists: \(functionData != nil)")
+        print("🔧 WORKLET: isCompiled: \(isCompiled)")
+        print("🔧 WORKLET: workletType: \(workletType)")
+        
         // Check if worklet has IR for runtime interpretation
         let ir = functionData?["ir"] as? [String: Any]
         if ir != nil || workletType == "interpretable" {
             let workletId = functionData?["workletId"] as? String
             print("✅ WORKLET: Interpretable worklet detected! workletId=\(workletId ?? "unknown")")
             print("📝 WORKLET: IR available for runtime interpretation (no rebuild needed!)")
+        } else {
+            print("⚠️ WORKLET: No IR found, will use pattern matching for text worklets")
         }
         
         self.workletConfig = workletData
@@ -533,6 +566,9 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         let returnType = workletData["returnType"] as? String ?? "dynamic"
         let updateTextChild = config?["updateTextChild"] as? Bool ?? false
         print("🔧 WORKLET: returnType=\(returnType), updateTextChild=\(updateTextChild)")
+        print("🔧 WORKLET: isUsingWorklet set to true")
+        print("🔧 WORKLET: workletConfig stored: \(workletConfig != nil)")
+        print("🔧 WORKLET: workletExecutionConfig stored: \(workletExecutionConfig != nil)")
     }
     
     func updateWorklet(_ workletData: [String: Any], _ config: [String: Any]?) {
@@ -627,17 +663,28 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     /// Start pure UI thread animation - NO BRIDGE CALLS
     func startPureAnimation() {
+        print("🚀 PURE REANIMATED: startPureAnimation called")
+        print("🚀 PURE REANIMATED: isUsingWorklet=\(isUsingWorklet)")
+        print("🚀 PURE REANIMATED: workletConfig exists=\(workletConfig != nil)")
+        print("🚀 PURE REANIMATED: workletExecutionConfig exists=\(workletExecutionConfig != nil)")
+        print("🚀 PURE REANIMATED: currentAnimations count=\(currentAnimations.count)")
+        
         if isUsingWorklet {
             // For worklets, we need workletConfig (the serialized function) to exist
             // workletExecutionConfig (the parameters) is optional
             if workletConfig == nil {
-                print("⚠️ PURE REANIMATED: No worklet configured")
-                return
-            }
+                print("⚠️ PURE REANIMATED: No worklet configured - cannot start animation")
+            return
+        }
             // Text worklets run continuously (no duration), so we always start
             print("🚀 PURE REANIMATED: Starting worklet animation (workletConfig exists)")
+            if let worklet = workletConfig {
+                let returnType = worklet["returnType"] as? String ?? "dynamic"
+                let updateTextChild = workletExecutionConfig?["updateTextChild"] as? Bool ?? false
+                print("🚀 PURE REANIMATED: Worklet returnType=\(returnType), updateTextChild=\(updateTextChild)")
+            }
         } else if currentAnimations.isEmpty {
-            print("⚠️ PURE REANIMATED: No animations configured")
+            print("⚠️ PURE REANIMATED: No animations configured - cannot start")
             return
         }
         
@@ -656,6 +703,8 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         // Reset animation state
         animationStartTime = CACurrentMediaTime()
         isAnimating = true
+        
+        print("🚀 PURE REANIMATED: isAnimating set to true, animationStartTime=\(animationStartTime)")
         
         // Fire animation start event
         fireAnimationEvent(eventType: "onAnimationStart")
@@ -745,6 +794,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     @objc private func updatePureAnimationFrame() {
         guard isAnimating else {
+            print("⏸️ PURE REANIMATED: Animation stopped, stopping display link")
             stopDisplayLink()
             return
         }
@@ -755,6 +805,13 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         
         // Execute worklet if configured
         if isUsingWorklet, let worklet = workletConfig {
+            if frameCount == 0 {
+                print("🎬 WORKLET: First frame - elapsed=\(elapsedSeconds), isUsingWorklet=\(isUsingWorklet)")
+            }
+            frameCount += 1
+            if frameCount % 60 == 0 { // Log every second (60fps)
+                print("🎬 WORKLET: Frame \(frameCount), elapsed=\(elapsedSeconds)")
+            }
             executeWorklet(elapsed: elapsedSeconds, worklet: worklet)
             return
         }
@@ -838,7 +895,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         // Legacy fallback - if we get here, worklet wasn't interpretable
         // This shouldn't happen with proper IR, but handle gracefully
         print("⚠️ WORKLET: No IR found, cannot execute worklet")
-        stopPureAnimation()
+            stopPureAnimation()
     }
     
     
@@ -917,6 +974,10 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
             return
         }
         
+        if frameCount == 1 {
+            print("📝 WORKLET: First execution - elapsed=\(elapsed), words=\(words.count), typeSpeed=\(typeSpeed), deleteSpeed=\(deleteSpeed), pauseDuration=\(pauseDuration)")
+        }
+        
         // Calculate total time per word cycle
         var totalTimePerCycle: Double = 0.0
         for word in words {
@@ -963,6 +1024,11 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
             let charsToDelete = Int(deleteElapsed / deleteSpeed)
             let remainingChars = max(currentWord.count - charsToDelete, 0)
             resultText = String(currentWord.prefix(remainingChars))
+        }
+        
+        // Log every 10 frames to avoid spam
+        if frameCount % 10 == 0 {
+            print("📝 WORKLET: Updating text to '\(resultText)' (elapsed=\(elapsed), wordIndex=\(wordIndex), charCount=\(resultText.count))")
         }
         
         // Update child text component directly on UI thread

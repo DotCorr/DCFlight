@@ -26,6 +26,7 @@ import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.text.DCFTextView
 import com.dotcorr.dcflight.components.text.DCFVirtualTextShadowNode
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcflight.utils.ColorUtilities
 
 class DCFTextComponent : DCFComponent() {
 
@@ -116,46 +117,44 @@ class DCFTextComponent : DCFComponent() {
         shadowNode.fontSize = fontSize
         android.util.Log.d(TAG, "✅ fontSize set to $fontSize (current shadowNode.fontSize=${shadowNode.fontSize})")
         
+        // Transfer fontWeight - property setter handles span update
         val fontWeight = props["fontWeight"]?.toString()
-        if (shadowNode.fontWeight != fontWeight) {
-            shadowNode.fontWeight = fontWeight
-        }
+        shadowNode.fontWeight = fontWeight
         
+        // Transfer fontFamily - property setter handles span update
         val fontFamily = props["fontFamily"]?.toString()
-        if (shadowNode.fontFamily != fontFamily) {
-            shadowNode.fontFamily = fontFamily
-        }
+        shadowNode.fontFamily = fontFamily
         
+        // Transfer letterSpacing - property setter handles span update
         val letterSpacing = (props["letterSpacing"] as? Number)?.toFloat() ?: 0f
-        if (shadowNode.letterSpacing != letterSpacing) {
-            shadowNode.letterSpacing = letterSpacing
-        }
+        shadowNode.letterSpacing = letterSpacing
         
+        // Transfer lineHeight - property setter handles span update
         val lineHeight = (props["lineHeight"] as? Number)?.toFloat() ?: 0f
-        if (shadowNode.lineHeight != lineHeight) {
-            shadowNode.lineHeight = lineHeight
-        }
+        shadowNode.lineHeight = lineHeight
         
+        // Transfer numberOfLines - property setter handles span update
         val numberOfLines = (props["numberOfLines"] as? Number)?.toInt() ?: 0
-        if (shadowNode.numberOfLines != numberOfLines) {
-            shadowNode.numberOfLines = numberOfLines
-        }
+        shadowNode.numberOfLines = numberOfLines
         
+        // Transfer textAlign - property setter handles span update
         val textAlign = props["textAlign"]?.toString() ?: "start"
-        if (shadowNode.textAlign != textAlign) {
-            shadowNode.textAlign = textAlign
-        }
+        shadowNode.textAlign = textAlign
         
-        // Transfer color if present
-        val primaryColor = props["primaryColor"]
-        if (primaryColor is Number) {
-            shadowNode.setTextColor(primaryColor.toDouble())
+        // Transfer color if present - use ColorUtilities like iOS does
+        // iOS: ColorUtilities.getColor(explicitColor: "textColor", semanticColor: "primaryColor", from: props)
+        val colorInt = ColorUtilities.getColor(
+            explicitColor = "textColor",
+            semanticColor = "primaryColor",
+            props = props
+        )
+        if (colorInt != null) {
+            // Convert Int color to Double (ARGB32 integer stored as Double, matching iOS behavior)
+            val colorDouble = colorInt.toLong().toDouble()
+            shadowNode.setTextColor(colorDouble)
+            android.util.Log.d(TAG, "✅ Text color set: ${ColorUtilities.hexString(colorInt)}")
         } else {
-            // Also check textColor prop
-            val textColor = props["textColor"]
-            if (textColor is Number) {
-                shadowNode.setTextColor(textColor.toDouble())
-            }
+            android.util.Log.d(TAG, "⚠️ No text color found in props")
         }
         
         android.util.Log.d(TAG, "✅ All props transferred to shadow node")
@@ -181,8 +180,8 @@ class DCFTextComponent : DCFComponent() {
         
         if (text.isEmpty()) {
             android.util.Log.w(TAG, "⚠️ Text is empty, setting textLayout to null")
-            textView.textLayout = null
-            return
+                textView.textLayout = null
+                return
         }
         
         // Get font size
@@ -213,8 +212,8 @@ class DCFTextComponent : DCFComponent() {
         android.util.Log.d(TAG, "🔤 Font size: ${fontSizePixels}px")
         
         // Create paint
-        val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
-        paint.textSize = fontSizePixels
+            val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
+            paint.textSize = fontSizePixels
         paint.color = android.graphics.Color.BLACK // Ensure visible
         
         // Apply letter spacing
