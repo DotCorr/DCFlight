@@ -8,50 +8,52 @@
 import 'dart:async';
 import 'package:dcflight/dcflight.dart';
 
-/// Stateful component that listens to OS-level changes (font scale, language, etc.)
+/// Stateful component that listens to system-level changes (font scale, language, theme, etc.)
 /// and triggers re-renders when they occur.
 /// 
-/// This wraps the app root to ensure OS-level changes trigger state updates,
-/// which cause the entire app to re-render with new values.
+/// This wraps the app root to ensure system-level changes trigger state updates,
+/// which cause components with `_systemVersion` in props to re-render and update.
 /// 
-/// **Important**: Only triggers on font scale changes, NOT layout changes.
-/// Layout changes (width/height) are handled natively and don't require rebuilds.
+/// **How it works:**
+/// 1. Listens to `SystemStateManager.version` changes
+/// 2. When version changes, triggers component re-render via `scheduleUpdate()`
+/// 3. Components re-render with new `_systemVersion` in props
+/// 4. Reconciliation detects prop change and sends update to native
+/// 5. Native components detect `_systemVersion` change and force re-measurement
+/// 
+/// **Future-proof:** Works for any system change (font scale, language, theme, accessibility)
+/// as long as `SystemStateManager.onSystemChange()` is called.
 class CoreWrapper extends DCFStatefulComponent {
   final DCFComponentNode _child;
-  int _updateCounter = 0;
-  double _previousFontScale = 1.0;
+  int _previousSystemVersion = 0;
   
   CoreWrapper(this._child, {super.key});
   
   @override
   DCFComponentNode render() {
-    //Only trigger updates when font scale changes, not layout changes
+    // Track system state version and trigger re-render when it changes
     useEffect(() {
-      // Initialize previous font scale
-      _previousFontScale = ScreenUtilities.instance.fontScale;
+      // Initialize previous version
+      _previousSystemVersion = SystemStateManager.version;
       
+      // Listen to dimension changes (which includes font scale changes)
+      // When SystemStateManager.onSystemChange() is called, version increments
+      // We check version on each dimension change event to detect system changes
       StreamSubscription<void>? subscription;
       subscription = ScreenUtilities.instance.dimensionChanges.listen((_) {
-        // Check if font scale actually changed (not just layout)
-        final currentFontScale = ScreenUtilities.instance.fontScale;
-        
-        if (currentFontScale != _previousFontScale) {
-          print('🔄 CoreWrapper: Font scale changed: $_previousFontScale → $currentFontScale');
-          _previousFontScale = currentFontScale;
-          
-          // Only trigger update when font scale changes
-          // Layout changes are handled natively, no rebuild needed
-          _updateCounter++;
+        final currentVersion = SystemStateManager.version;
+        if (currentVersion != _previousSystemVersion) {
+          print('🔄 CoreWrapper: System state version changed: $_previousSystemVersion → $currentVersion');
+          _previousSystemVersion = currentVersion;
           scheduleUpdate();
-          print('✅ CoreWrapper: Update scheduled for font scale change, counter=$_updateCounter');
-        } else {
-          // Layout change only - skip rebuild (handled natively)
-          print('⏭️ CoreWrapper: Layout change detected, skipping rebuild (handled natively)');
+          print('✅ CoreWrapper: Update scheduled for system state change');
         }
+        // Note: Layout-only changes (no system version change) are handled natively
+        // and don't require rebuilds, so we skip scheduleUpdate() in that case
       });
     
       return () {
-        print('🔄 CoreWrapper: Cleaning up dimension change listener...');
+        print('🔄 CoreWrapper: Cleaning up system state listener...');
         subscription?.cancel();
       };
     }, dependencies: []); // Empty deps = run once on mount, cleanup on unmount

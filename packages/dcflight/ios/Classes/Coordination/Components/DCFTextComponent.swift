@@ -36,9 +36,38 @@ class DCFTextComponent: NSObject, DCFComponent {
         
         let existingProps = getStoredProps(from: textView)
         let mergedProps = mergeProps(existingProps, with: props.mapValues { $0 as Any? })
+        
+        // 🔥 CRITICAL: Check if _systemVersion changed - this indicates system font scale or other system settings changed
+        // When _systemVersion changes, we MUST force a re-measurement because the system font scale affects text rendering
+        let oldSystemVersion = existingProps["_systemVersion"] as? NSNumber
+        let newSystemVersion = mergedProps["_systemVersion"] as? NSNumber
+        let systemVersionChanged = oldSystemVersion != nil && newSystemVersion != nil && oldSystemVersion != newSystemVersion
+        
+        if systemVersionChanged {
+            print("🔄 DCFTextComponent: System version changed: \(oldSystemVersion?.intValue ?? 0) → \(newSystemVersion?.intValue ?? 0) - forcing re-measurement")
+        }
+        
         storeProps(mergedProps, in: textView)
         
         textView.applyStyles(props: mergedProps.compactMapValues { $0 })
+        
+        // 🔥 CRITICAL: When system version changes, force layout recalculation
+        // This ensures Yoga recalculates text size with new font scale
+        if systemVersionChanged {
+            print("🔄 DCFTextComponent: Requesting layout recalculation due to system version change")
+            // Force shadow view to recompute text storage with new font scale
+            if let viewId = getViewId(from: textView),
+               let shadowView = YogaShadowTree.shared.getShadowView(for: viewId) as? DCFTextShadowView {
+                // Mark shadow view as dirty to force recomputation
+                // This will clear cached text storage and mark Yoga node as dirty
+                shadowView.dirtyText()
+            }
+            // Request layout recalculation
+            textView.setNeedsLayout()
+            textView.setNeedsDisplay()
+            // Trigger layout calculation to apply changes
+            DCFLayoutManager.shared.triggerLayoutCalculation()
+        }
         
         return true
     }

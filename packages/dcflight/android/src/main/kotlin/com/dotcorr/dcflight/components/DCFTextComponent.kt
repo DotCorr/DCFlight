@@ -60,6 +60,17 @@ class DCFTextComponent : DCFComponent() {
         
         val existingProps = getStoredProps(view)
         val mergedProps = mergeProps(existingProps, props)
+        
+        // 🔥 CRITICAL: Check if _systemVersion changed - this indicates system font scale or other system settings changed
+        // When _systemVersion changes, we MUST force a re-measurement because the system font scale affects text rendering
+        val oldSystemVersion = existingProps["_systemVersion"] as? Number
+        val newSystemVersion = mergedProps["_systemVersion"] as? Number
+        val systemVersionChanged = oldSystemVersion != null && newSystemVersion != null && oldSystemVersion != newSystemVersion
+        
+        if (systemVersionChanged) {
+            android.util.Log.d(TAG, "🔄 System version changed: $oldSystemVersion → $newSystemVersion - forcing re-measurement and layout recalculation")
+        }
+        
         storeProps(textView, mergedProps)
         
         // CRITICAL: Update shadow node props FIRST
@@ -69,6 +80,15 @@ class DCFTextComponent : DCFComponent() {
         val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
         updateTextView(textView, nonNullProps)
         textView.applyStyles(nonNullProps)
+        
+        // 🔥 CRITICAL: When system version changes, force layout recalculation
+        // This ensures Yoga recalculates text size with new font scale
+        if (systemVersionChanged) {
+            android.util.Log.d(TAG, "🔄 Requesting layout recalculation due to system version change")
+            textView.requestLayout()
+            // Also invalidate to ensure redraw
+            textView.invalidate()
+        }
         
         return true
     }

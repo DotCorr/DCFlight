@@ -29,6 +29,7 @@ import 'package:dcflight/src/components/component_node.dart';
 import 'package:dcflight/src/components/fragment.dart';
 import 'package:dcflight/framework/utils/flutter_widget_renderer.dart';
 import 'package:dcflight/framework/utils/widget_to_dcf_adaptor.dart';
+import 'package:dcflight/framework/utils/system_state_manager.dart';
 
 /// Enhanced Virtual DOM with priority-based update scheduling
 class DCFEngine {
@@ -2340,7 +2341,18 @@ class DCFEngine {
 
       registerComponent(newNode);
 
+      // 🔥 CRITICAL: Check if system state changed - if so, invalidate cache to force fresh render
       final oldRenderedNode = oldNode.renderedNode;
+      if (oldRenderedNode is DCFElement) {
+        final oldSystemVersion = oldRenderedNode.elementProps['_systemVersion'];
+        final currentSystemVersion = SystemStateManager.version;
+        if (oldSystemVersion != null && oldSystemVersion != currentSystemVersion) {
+          // System state changed - clear cache to force fresh render with new _systemVersion
+          print('🔄 STATELESS: System state changed ($oldSystemVersion → $currentSystemVersion), invalidating cache');
+          newNode.renderedNode = null; // Clear cache using public setter
+        }
+      }
+
       final newRenderedNode = newNode.renderedNode;
 
       print(
@@ -4332,6 +4344,23 @@ class DCFEngine {
             '  Mapped node type: ${_nodesByViewId[oldElement.nativeViewId!]?.runtimeType}');
         print(
             '  Mapped node == newElement: ${_nodesByViewId[oldElement.nativeViewId!] == newElement}');
+      }
+
+      // DEBUG: Log prop comparison for Text components (system version tracking)
+      if (oldElement.type == 'Text') {
+        final oldSystemVersion = oldElement.elementProps['_systemVersion'];
+        final newSystemVersion = newElement.elementProps['_systemVersion'];
+        print('📝 RECONCILE: Text props comparison:');
+        print('  Old _systemVersion: $oldSystemVersion');
+        print('  New _systemVersion: $newSystemVersion');
+        print('  SystemStateManager.version: ${SystemStateManager.version}');
+        print('  Changed props: ${changedProps.keys.toList()}');
+        print('  Changed props count: ${changedProps.length}');
+        if (oldSystemVersion != newSystemVersion) {
+          print('  ✅ _systemVersion changed - should trigger update!');
+        } else {
+          print('  ❌ _systemVersion unchanged - no update triggered');
+        }
       }
 
       if (propsToSend.isNotEmpty) {
