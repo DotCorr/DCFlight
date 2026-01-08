@@ -47,10 +47,48 @@ abstract class DCFComponentNode {
   void unmount();
 
   /// Called when the node is mounted (lifecycle method)
+  /// 
+  /// **INTERNAL USE ONLY** - Framework components may override this for internal functionality.
+  /// 
+  /// **For developers**: Use `useEffect`, `useLayoutEffect`, or `useInsertionEffect` hooks instead
+  /// for lifecycle management. These hooks provide better control and are the recommended approach.
+  /// 
+  /// Example:
+  /// ```dart
+  /// @override
+  /// DCFComponentNode render() {
+  ///   useEffect(() {
+  ///     // Side effect on mount
+  ///     return () {
+  ///       // Cleanup on unmount
+  ///     };
+  ///   }, dependencies: []);
+  ///   return DCFView(...);
+  /// }
+  /// ```
   void componentDidMount() {
   }
 
   /// Called when the node will unmount (lifecycle method)
+  /// 
+  /// **INTERNAL USE ONLY** - Framework components may override this for internal functionality.
+  /// 
+  /// **For developers**: Use `useEffect` hook with a cleanup function instead.
+  /// The cleanup function returned from `useEffect` will be called automatically on unmount.
+  /// 
+  /// Example:
+  /// ```dart
+  /// @override
+  /// DCFComponentNode render() {
+  ///   useEffect(() {
+  ///     // Setup
+  ///     return () {
+  ///       // Cleanup - called automatically on unmount
+  ///     };
+  ///   }, dependencies: []);
+  ///   return DCFView(...);
+  /// }
+  /// ```
   void componentWillUnmount() {
   }
 

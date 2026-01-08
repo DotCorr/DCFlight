@@ -75,11 +75,19 @@ abstract class DCFStatefulComponent extends DCFComponentNode {
 
   bool get isMounted => _isMounted;
 
+  /// **INTERNAL USE ONLY** - Called by the framework engine during mounting.
+  /// 
+  /// **For developers**: Use `useEffect`, `useLayoutEffect`, or `useInsertionEffect` hooks
+  /// for lifecycle management instead of overriding this method.
   @override
   void componentDidMount() {
     _isMounted = true;
   }
 
+  /// **INTERNAL USE ONLY** - Called by the framework engine during unmounting.
+  /// 
+  /// **For developers**: Use `useEffect` hook with a cleanup function instead.
+  /// The cleanup function returned from `useEffect` will be called automatically on unmount.
   @override
   void componentWillUnmount() {
     for (final hook in _hooks) {
@@ -400,11 +408,19 @@ abstract class DCFStatelessComponent extends DCFComponentNode {
 
   bool get isMounted => _isMounted;
 
+  /// **INTERNAL USE ONLY** - Called by the framework engine during mounting.
+  /// 
+  /// **For developers**: Use `useEffect`, `useLayoutEffect`, or `useInsertionEffect` hooks
+  /// for lifecycle management instead of overriding this method.
   @override
   void componentDidMount() {
     _isMounted = true;
   }
 
+  /// **INTERNAL USE ONLY** - Called by the framework engine during unmounting.
+  /// 
+  /// **For developers**: Use `useEffect` hook with a cleanup function instead.
+  /// The cleanup function returned from `useEffect` will be called automatically on unmount.
   @override
   void componentWillUnmount() {
     _isMounted = false;

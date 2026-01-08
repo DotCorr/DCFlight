@@ -13,10 +13,7 @@ class DotCorrLanding extends DCFStatelessComponent {
   @override
   DCFComponentNode render() {
     return DCFScrollView(
-      layout: DCFLayout(
-        width: '100%',
-        height: '100%',
-      ),
+      layout: DCFLayout(width: '100%', height: '100%'),
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
       children: [
         NavigationBar(),
@@ -103,7 +100,7 @@ class NavigationBar extends DCFStatelessComponent {
 class HeroSection extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-        final showTest = useState<bool>(false);
+    final showTest = useState<bool>(false);
     final textLength = "Value of showTest: $showTest.state";
 
     if (showTest.state) {
@@ -127,15 +124,11 @@ class HeroSection extends DCFStatefulComponent {
             children: [
               DCFText(
                 content: textLength,
-                textProps: DCFTextProps (fontSize: 20),
+                textProps: DCFTextProps(fontSize: 20),
                 styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
               ),
             ],
-            layout: DCFLayout(
-              width: '100%',
-              height: 50,
-              padding: 2,
-            ),
+            layout: DCFLayout(width: '100%', height: 50, padding: 2),
           ),
 
           DCFSpinner(style: "large"),
@@ -660,7 +653,6 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
             ),
             DCFText(
-             
               content:
                   "We provide the tools to build native applications today and the cognitive architecture for the intelligent systems of tomorrow.",
               textProps: DCFTextProps(
