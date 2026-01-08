@@ -267,6 +267,7 @@ class HeroSection extends DCFStatefulComponent {
                       children: [
                         DCFButton(
                           layout: DCFLayout(
+                           
                             paddingHorizontal: 32,
                             paddingVertical: 16,
                             flexDirection: DCFFlexDirection.row,
@@ -753,6 +754,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           ),
           children: [
             DCFText(
+              
               content: title,
               textProps: DCFTextProps(
                 fontSize: 24, // text-2xl = 24px
