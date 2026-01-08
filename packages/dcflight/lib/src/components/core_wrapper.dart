@@ -14,31 +14,42 @@ import 'package:dcflight/dcflight.dart';
 /// This wraps the app root to ensure OS-level changes trigger state updates,
 /// which cause the entire app to re-render with new values.
 /// 
+/// **Important**: Only triggers on font scale changes, NOT layout changes.
+/// Layout changes (width/height) are handled natively and don't require rebuilds.
 class CoreWrapper extends DCFStatefulComponent {
   final DCFComponentNode _child;
   int _updateCounter = 0;
+  double _previousFontScale = 1.0;
   
   CoreWrapper(this._child, {super.key});
   
   @override
   DCFComponentNode render() {
-    // Use useEffect to subscribe to dimension changes (React-style)
-    // This ensures the subscription is properly managed and re-runs when needed
+    //Only trigger updates when font scale changes, not layout changes
     useEffect(() {
-      print('🔄 CoreWrapper: Setting up dimension change listener...');
+      // Initialize previous font scale
+      _previousFontScale = ScreenUtilities.instance.fontScale;
       
       StreamSubscription<void>? subscription;
       subscription = ScreenUtilities.instance.dimensionChanges.listen((_) {
-        print('🔄 CoreWrapper: Dimension change detected, triggering update...');
-        // Simple state update - increment counter to force re-render
-        // This will trigger a re-render of this component, which will reconcile
-        // its rendered node (the child), propagating changes through the entire tree
-        _updateCounter++;
-        scheduleUpdate();
-        print('✅ CoreWrapper: Update scheduled, counter=$_updateCounter');
+        // Check if font scale actually changed (not just layout)
+        final currentFontScale = ScreenUtilities.instance.fontScale;
+        
+        if (currentFontScale != _previousFontScale) {
+          print('🔄 CoreWrapper: Font scale changed: $_previousFontScale → $currentFontScale');
+          _previousFontScale = currentFontScale;
+          
+          // Only trigger update when font scale changes
+          // Layout changes are handled natively, no rebuild needed
+          _updateCounter++;
+          scheduleUpdate();
+          print('✅ CoreWrapper: Update scheduled for font scale change, counter=$_updateCounter');
+        } else {
+          // Layout change only - skip rebuild (handled natively)
+          print('⏭️ CoreWrapper: Layout change detected, skipping rebuild (handled natively)');
+        }
       });
-      
-      // Return cleanup function (React-style)
+    
       return () {
         print('🔄 CoreWrapper: Cleaning up dimension change listener...');
         subscription?.cancel();
