@@ -765,7 +765,12 @@ class DCMauiBridgeImpl private constructor() {
                 // 🔧 CRITICAL: Remove from layout tree FIRST (before creates)
                 // This ensures old view is not in layout tree when new view is added
                 Log.d(TAG, "🗑️ ANDROID_BATCH: Removing viewId=${op.viewId} from layout tree (BEFORE creates)")
-                YogaShadowTree.shared.removeNode(op.viewId.toString())
+                try {
+                    YogaShadowTree.shared.removeNode(op.viewId.toString())
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error removing node ${op.viewId} from layout tree", e)
+                    // Continue with cleanup even if removeNode fails
+                }
                 
                 // Remove from registry (but keep in hierarchy for now)
                 ViewRegistry.shared.removeView(op.viewId)
@@ -773,23 +778,48 @@ class DCMauiBridgeImpl private constructor() {
                 views.remove(op.viewId)
                 
                 // Clean up tracking recursively
-                fun cleanupTrackingRecursively(parentId: Int) {
+                // CRITICAL: Collect all child IDs first, then remove them
+                // This prevents issues if removeNode defers due to layout calculation
+                val childrenToRemove = mutableListOf<Int>()
+                fun collectChildrenToRemove(parentId: Int) {
                     val parentIdStr = parentId.toString()
                     val children = viewHierarchy[parentIdStr] ?: return
                     children.forEach { childIdStr ->
                         val childId = childIdStr.toIntOrNull()
                         if (childId != null) {
-                            // Remove child from layout tree too
-                            YogaShadowTree.shared.removeNode(childIdStr)
-                            ViewRegistry.shared.removeView(childId)
-                            DCFLayoutManager.shared.unregisterView(childId)
-                            views.remove(childId)
-                            cleanupTrackingRecursively(childId)
+                            childrenToRemove.add(childId)
+                            collectChildrenToRemove(childId)
                         }
                     }
-                    viewHierarchy[parentIdStr]?.clear()
                 }
-                cleanupTrackingRecursively(op.viewId)
+                collectChildrenToRemove(op.viewId)
+                
+                // Now remove all children (in reverse order to handle dependencies)
+                childrenToRemove.reversed().forEach { childId ->
+                    val childIdStr = childId.toString()
+                    try {
+                        YogaShadowTree.shared.removeNode(childIdStr)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error removing node $childIdStr from layout tree", e)
+                    }
+                    ViewRegistry.shared.removeView(childId)
+                    DCFLayoutManager.shared.unregisterView(childId)
+                    views.remove(childId)
+                }
+                
+                // Clear hierarchy after all removals
+                fun clearHierarchy(parentId: Int) {
+                    val parentIdStr = parentId.toString()
+                    viewHierarchy[parentIdStr]?.clear()
+                    val children = viewHierarchy[parentIdStr] ?: return
+                    children.forEach { childIdStr ->
+                        val childId = childIdStr.toIntOrNull()
+                        if (childId != null) {
+                            clearHierarchy(childId)
+                        }
+                    }
+                }
+                clearHierarchy(op.viewId)
                 cleanupHierarchyReferences(op.viewId.toString())
             }
             
