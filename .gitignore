@@ -219,3 +219,9 @@ Thumbs.db
 # Docker
 Dockerfile.dev
 docker-compose.dev.yml
+
+# Audit folder
+audit/
+
+# Analysis and agent-generated files
+agents/

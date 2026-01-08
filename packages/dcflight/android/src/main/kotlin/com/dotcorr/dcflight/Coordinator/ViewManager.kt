@@ -97,15 +97,22 @@ class DCFViewManager private constructor() {
         // ✅ Use pure Kotlin tag keys instead of XML resource IDs
         view.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, viewType)
 
-        // CRITICAL FIX: Start views invisible to prevent flash during reconciliation
-        // Visibility will be set in batch after all layouts are applied
+        // CRITICAL: Prevent flash - keep views invisible until layout is applied
         // Root view (0) is always visible
-        if (viewId != 0) {
+        if (viewId == 0) {
+            view.visibility = View.VISIBLE
+            view.alpha = 1.0f
+            Log.d(TAG, "🔍 ViewManager.createView: Root view (viewId=0) created, visibility=${view.visibility}, alpha=${view.alpha}")
+        } else {
+            // Non-root views start INVISIBLE to prevent flash of incorrect layout
+            // They'll be made visible when layout is applied (in applyLayout)
             view.visibility = View.INVISIBLE
-            view.alpha = 0f
+            view.alpha = 1.0f
+            Log.d(TAG, "🔍 ViewManager.createView: viewId=$viewId created, visibility=${view.visibility}, alpha=${view.alpha} (will be made visible after layout)")
         }
 
         ViewRegistry.shared.registerView(view, viewId, viewType)
+        Log.d(TAG, "✅ ViewManager.createView: viewId=$viewId registered, viewType=$viewType, hasParent=${view.parent != null}, visibility=${view.visibility}")
 
         val isScreen = (viewType == "Screen" || props["presentationStyle"] != null)
         if (isScreen) {
@@ -132,16 +139,6 @@ class DCFViewManager private constructor() {
 
         val view = viewInfo.view
         val type = viewInfo.type
-
-        // CRITICAL FRAMEWORK FIX: Hide view during ANY update to prevent flash
-        // Framework handles this uniformly - no prop-specific edge cases needed
-        // View will be shown again after layout completes in applyLayoutsBatch
-        if (view.visibility == View.VISIBLE && props.isNotEmpty()) {
-            view.visibility = View.INVISIBLE
-            view.alpha = 0f
-            YogaShadowTree.shared.markViewHiddenForUpdate(viewId.toString())
-            Log.d(TAG, "Temporarily hid view $viewId during update (framework-level fix)")
-        }
 
         if (!YogaShadowTree.shared.isScreenRoot(viewId.toString())) {
             YogaShadowTree.shared.updateNodeLayoutProps(viewId.toString(), props)
@@ -216,16 +213,6 @@ class DCFViewManager private constructor() {
 
         if (childView.parent != null) {
             (childView.parent as? ViewGroup)?.removeView(childView)
-        }
-
-        // CRITICAL FIX: If parent is visible but child is invisible (newly created),
-        // temporarily hide parent to prevent flash when child is attached
-        // Parent will be made visible again after all layouts complete
-        if (parentView.visibility == View.VISIBLE && childView.visibility == View.INVISIBLE) {
-            parentView.visibility = View.INVISIBLE
-            parentView.alpha = 0f
-            YogaShadowTree.shared.markViewHiddenForUpdate(parentId.toString())
-            Log.d(TAG, "Temporarily hid parent $parentId during child attachment")
         }
 
         if (index >= 0 && index <= parentViewGroup.childCount) {

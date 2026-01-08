@@ -18,12 +18,12 @@ import dcflight
         UIView.performSwizzling()
         DCFSvgComponent.initializeSVGKit()
 
-        DCFComponentRegistry.shared.registerComponent("View", componentClass: DCFViewComponent.self)
-        DCFComponentRegistry.shared.registerComponent("Text", componentClass: DCFTextComponent.self)
+        // NOTE: View, Text, ScrollView, and ScrollContentView are CORE framework components
+        // They are registered in FrameworkComponentsReg, NOT here!
+
+        // Only register primitives that are NOT in the core framework
         DCFComponentRegistry.shared.registerComponent(
             "Image", componentClass: DCFImageComponent.self)
-        DCFComponentRegistry.shared.registerComponent(
-            "ScrollView", componentClass: DCFScrollViewComponent.self)
 
         DCFComponentRegistry.shared.registerComponent("Svg", componentClass: DCFSvgComponent.self)
         DCFComponentRegistry.shared.registerComponent(
@@ -31,8 +31,6 @@ import dcflight
 
         DCFComponentRegistry.shared.registerComponent(
             "GestureDetector", componentClass: DCFGestureDetectorComponent.self)
-        DCFComponentRegistry.shared.registerComponent(
-            "TouchableOpacity", componentClass: DCFTouchableOpacityComponent.self)
         DCFComponentRegistry.shared.registerComponent(
             "TextInput", componentClass: DCFTextInputComponent.self)
         DCFComponentRegistry.shared.registerComponent(

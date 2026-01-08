@@ -53,11 +53,7 @@ class DCFAlertComponent: NSObject, DCFComponent {
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize.zero
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
     }
     
     

@@ -68,14 +68,7 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         return true
     }
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val container = view as? FlutterWidgetContainer ?: return PointF(0f, 0f)
-        val width = (props["width"] as? Number)?.toFloat() ?: 0f
-        val height = (props["height"] as? Number)?.toFloat() ?: 0f
-        return PointF(width, height)
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         android.util.Log.d(TAG, "🎨 viewRegisteredWithShadowTree - nodeId: $nodeId")
         val container = view as? FlutterWidgetContainer
         container?.onReady(nodeId)

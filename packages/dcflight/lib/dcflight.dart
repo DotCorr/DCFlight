@@ -54,7 +54,7 @@ export 'framework/devtools/hot_reload_listener.dart';
 
 export 'framework/renderer/interface/interface.dart';
 export 'framework/renderer/interface/interface_impl.dart';
-
+export 'framework/worklets/worklet.dart';
 export 'framework/constants/layout/yoga_enums.dart';
 export 'framework/constants/layout/layout_properties.dart';
 export 'framework/constants/layout/layout_config.dart';
@@ -63,15 +63,27 @@ export 'framework/constants/style/style_properties.dart';
 export 'framework/constants/style/color_utils.dart';
 
 export 'framework/utils/screen_utilities.dart';
+export 'framework/utils/font_scale.dart';
+export 'framework/utils/system_state_manager.dart';
 export 'framework/utils/dcf_logger.dart';
 
 export 'framework/devtools/hot_restart.dart';
 export 'framework/protocol/component_registry.dart';
 export 'framework/protocol/plugin_protocol.dart';
-export 'framework/components/portal/dcf_portal.dart';
-export 'framework/components/portal/dcf_portal_target.dart';
+export 'src/components/portal/dcf_portal.dart';
+export 'src/components/portal/dcf_portal_target.dart';
 export 'framework/utils/widget_to_dcf_adaptor.dart';
-import 'package:dcflight/framework/components/component_node.dart';
+export 'src/components/view_component.dart';
+export 'src/components/text_component.dart';
+export 'src/components/scroll_view_component.dart';
+// export 'src/components/scroll_content_view_component.dart';
+export 'src/components/dc_logo.dart';
+export 'src/components/error_boundary.dart';
+export 'src/components/touchable_opacity_component.dart';
+export 'src/components/button_component.dart';
+import 'package:dcflight/src/components/component_node.dart';
+import 'package:dcflight/src/components/root_error_boundary.dart';
+import 'package:dcflight/src/components/core_wrapper.dart';
 
 import 'framework/renderer/engine/engine_api.dart';
 import 'framework/renderer/interface/interface.dart';
@@ -99,7 +111,8 @@ class DCFlight {
   static Future<bool> _initialize() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    final bridge = NativeBridgeFactory.create();
+    // Use singleton instance to ensure event handler is set on the same instance
+    final bridge = PlatformInterface.instance;
     await bridge.initialize();
 
     ScreenUtilities.instance.refreshDimensions();
@@ -133,6 +146,8 @@ class DCFlight {
   }
 
   /// Start the application with the given root component
+  /// The framework automatically wraps the app in an error boundary for crash protection
+  /// (React Native-style - developers don't need to manually wrap their app)
   static Future<void> go({required DCFComponentNode app}) async {
     await _initialize();
 
@@ -149,11 +164,20 @@ class DCFlight {
 
     final vdom = DCFEngineAPI.instance;
 
-    final mainApp = app;
+    // CRASH PROTECTION: Automatically wrap app in error boundary at framework level
+    // This provides React Native-style crash protection without requiring developers
+    // to manually wrap their app components
+    // 
+    // Core Wrapper: Wrap in SystemChangeListener to listen to OS-level changes
+    // (font scale, language, etc.) and trigger re-renders when they occur
+    final coreWrapper = CoreWrapper(app);
+    final mainApp = RootErrorBoundary(coreWrapper);
 
     await vdom.createRoot(mainApp);
 
-    if (wasHotRestart) {}
+    if (wasHotRestart) {
+      print('🔥 DCFlight: Hot restart detected');
+    }
 
     vdom.isReady.whenComplete(() async {});
   }

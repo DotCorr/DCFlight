@@ -10,8 +10,14 @@ library;
 // Type-safe enums for animation configuration
 export 'src/enums/animation_enums.dart';
 
+// Type-safe animation properties
+export 'src/types/animation_properties.dart';
+
 // Core animation values and configuration
 export 'src/values/animation_values.dart';
+
+// Mutable animated values for React Native Skia-style animations (AnimatedValue)
+export 'src/values/shared_value.dart';
 
 // Animated styles and property management
 export 'src/styles/animated_style.dart';
@@ -19,10 +25,13 @@ export 'src/styles/animated_style.dart';
 // Main animated view component
 export 'src/components/reanimated_view.dart';
 
-// Canvas and GPU components
-export 'src/components/canvas_component.dart';
-export 'src/components/gpu_component.dart';
-export 'src/components/confetti_component.dart';
+// Animated text component (worklet-based)
+export 'src/components/animated_text.dart';
+
+// Framer Motion-style declarative animation component
+export 'src/components/motion.dart';
+
+export 'src/hooks/skia_hooks.dart';
 
 // Animation hooks for StatefulComponent
 export 'src/hooks/animation_hooks.dart';
@@ -30,8 +39,12 @@ export 'src/hooks/animation_hooks.dart';
 // Pre-configured animation presets
 export 'src/presets/animation_presets.dart';
 
+// Stagger utilities for sequential animations
+export 'src/utils/stagger.dart';
+
 // Component dictionary for DCFlight registration
 export 'src/dictionary/components.dart';
 
 // Plugin registration
 export 'src/dcf_reanimated_plugin.dart';
+

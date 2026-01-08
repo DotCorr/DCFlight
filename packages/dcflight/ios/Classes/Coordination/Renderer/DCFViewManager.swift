@@ -28,11 +28,11 @@ class SupportedLayoutsProps {
     ]
 }
 
-typealias ViewTypeInfo = (view: UIView, type: String)
+public typealias ViewTypeInfo = (view: UIView, type: String)
 
 /// Registry for storing and managing view references.
-class ViewRegistry {
-    static let shared = ViewRegistry()
+public class ViewRegistry {
+    public static let shared = ViewRegistry()
     
     public var registry = [Int: ViewTypeInfo]()
     
@@ -44,7 +44,7 @@ class ViewRegistry {
     ///   - view: The view to register
     ///   - id: Unique identifier for the view
     ///   - type: Component type (e.g., "View", "Text")
-    func registerView(_ view: UIView, id: Int, type: String) {
+    public func registerView(_ view: UIView, id: Int, type: String) {
         registry[id] = (view, type)
         
         DCFLayoutManager.shared.registerView(view, withId: id)
@@ -54,7 +54,7 @@ class ViewRegistry {
     /// 
     /// - Parameter id: Unique identifier for the view
     /// - Returns: Tuple containing the view and type, or `nil` if not found
-    func getViewInfo(id: Int) -> ViewTypeInfo? {
+    public func getViewInfo(id: Int) -> ViewTypeInfo? {
         return registry[id]
     }
     
@@ -62,7 +62,7 @@ class ViewRegistry {
     /// 
     /// - Parameter id: Unique identifier for the view
     /// - Returns: The view, or `nil` if not found
-    func getView(id: Int) -> UIView? {
+    public func getView(id: Int) -> UIView? {
         return registry[id]?.view
     }
     
@@ -103,7 +103,12 @@ class DCFViewManager {
     /// - Returns: `true` if the view was created successfully, `false` otherwise
     func createView(viewId: Int, viewType: String, props: [String: Any]) -> Bool {
         guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
+            print("⚠️ DCFViewManager: Component type '\(viewType)' not found. Registered types: \(DCFComponentRegistry.shared.registeredTypes)")
             return false
+        }
+        
+        if viewType == "GPU" || viewType == "Canvas" {
+            print("✅ DCFViewManager: Creating \(viewType) component - viewId: \(viewId)")
         }
         
         let componentInstance = componentType.init()
@@ -125,26 +130,44 @@ class DCFViewManager {
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
         
+        // Store component instance on view for setChildren and other component methods
+        objc_setAssociatedObject(
+            view,
+            UnsafeRawPointer(bitPattern: "componentInstance".hashValue)!,
+            componentInstance,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        
         ViewRegistry.shared.registerView(view, id: viewId, type: viewType)
         
         let isScreen = (viewType == "Screen" || props["presentationStyle"] != nil)
         
+        // Separate layout props from non-layout props
+        let layoutProps = extractLayoutProps(from: props)
+        let nonLayoutProps = props.filter { !layoutProps.keys.contains($0.key) }
+        
         if isScreen {
             YogaShadowTree.shared.createScreenRoot(id: String(viewId), componentType: viewType)
             
-            let layoutProps = extractLayoutProps(from: props)
             if !layoutProps.isEmpty {
                 YogaShadowTree.shared.updateNodeLayoutProps(nodeId: String(viewId), props: layoutProps)
             }
         } else {
             YogaShadowTree.shared.createNode(id: String(viewId), componentType: viewType)
             
-            let layoutProps = extractLayoutProps(from: props)
-            if !layoutProps.isEmpty {
+            // All props (layout and text) go through the same update mechanism
+            // updateNodeLayoutProps handles both layout and text props for Text components
+            if !layoutProps.isEmpty || (viewType == "Text" && !nonLayoutProps.isEmpty) {
+                // Merge layout and text props for Text components
+                var allProps = layoutProps
+                if viewType == "Text" {
+                    allProps.merge(nonLayoutProps) { (_, new) in new }
+                }
+                
                 DCFLayoutManager.shared.updateNodeWithLayoutProps(
                     nodeId: viewId,
                     componentType: viewType,
-                    props: layoutProps
+                    props: allProps
                 )
             }
         }
@@ -192,6 +215,14 @@ class DCFViewManager {
         if !nonLayoutProps.isEmpty {
             guard let componentType = DCFComponentRegistry.shared.getComponentType(for: viewType) else {
                 return false
+            }
+            
+            // For Text components, update shadow view text properties.
+            // Text properties must be set on the shadow view for accurate measurement.
+            if viewType == "Text" {
+                if let textShadowView = YogaShadowTree.shared.getShadowView(for: viewId) as? DCFTextShadowView {
+                    textShadowView.updateTextProps(nonLayoutProps)
+                }
             }
             
             let componentInstance = componentType.init()
@@ -261,15 +292,63 @@ class DCFViewManager {
             childView.removeFromSuperview()
         }
         
-        // Check if parent is already the superview
-        if childView.superview == parentView {
+        // CRITICAL: ScrollView special handling
+        // DCFScrollView.insertContentView adds the child (ScrollContentView)
+        // directly to the internal scroll view via insertContentView
+        // IMPORTANT: Only do this when the CHILD is ScrollContentView being attached to ScrollView
+        // The ScrollView itself should be attached normally to its parent
+        if let scrollView = parentView as? DCFScrollView {
+            // Check if the child is a ScrollContentView component
+            let childComponentType = objc_getAssociatedObject(childView,
+                                                               UnsafeRawPointer(bitPattern: "componentType".hashValue)!) as? String
+            
+            if childComponentType == "ScrollContentView" {
+                // Check if contentView is already set and is the same view
+                // This prevents duplicate calls to insertContentView
+                if let existingContentView = scrollView.contentView, existingContentView == childView {
+                    print("🔍 attachView: ScrollContentView already attached, skipping insertContentView")
+                    // Still add to Yoga tree if not already added
+                    if !childIsScreen {
+                        DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+                    }
+                    return true
+                }
+                
+                print("🔍 attachView: Detected ScrollContentView being attached to ScrollView, using insertContentView")
+                scrollView.insertContentView(childView)
+                
+                // Store content view reference for component access
+                objc_setAssociatedObject(scrollView,
+                                         UnsafeRawPointer(bitPattern: "contentView".hashValue)!,
+                                         childView,
+                                         .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                
+                // Add to Yoga tree for layout
+                if !childIsScreen {
+                    DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
+                }
+                
+                print("✅ attachView: ScrollContentView attached via insertContentView")
+                return true
+            }
+            // If child is NOT ScrollContentView, fall through to normal attachment
+            // This allows ScrollView to be attached to its parent normally
+        }
+        
+        // Components handle their own child routing via setChildren
+        // No hardcoded routing needed here - let components handle it
+        var targetView = parentView
+        
+        // Check if child is already attached to target view
+        if childView.superview == targetView {
             return true
         }
         
-        if index >= 0 && index < parentView.subviews.count {
-            parentView.insertSubview(childView, at: index)
+        // Attach to target view (either parentView or custom container like contentView)
+        if index >= 0 && index < targetView.subviews.count {
+            targetView.insertSubview(childView, at: index)
         } else {
-            parentView.addSubview(childView)
+            targetView.addSubview(childView)
         }
         
         if !childIsScreen {

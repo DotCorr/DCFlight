@@ -128,22 +128,7 @@ class DCFIconComponent : DCFComponent() {
     }
 
     
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val imageView = view as? ImageView ?: return PointF(0f, 0f)
-        
-        val size = props["size"]?.let {
-            when (it) {
-                is Number -> it.toFloat()
-                is String -> it.toFloatOrNull() ?: 24f
-                else -> 24f
-            }
-        } ?: 24f
-        
-        return PointF(size, size)
-    }
-
-    
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

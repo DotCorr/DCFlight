@@ -25,6 +25,14 @@ open class DCFFrameLayout @JvmOverloads constructor(
     companion object {
         private const val TAG = "DCFFrameLayout"
     }
+    
+    init {
+        // CRITICAL: Don't clip children to allow text with font metrics to render fully
+        // Text views have ascenders/descenders that extend beyond measured bounds
+        // This matches iOS behavior where parent views don't clip text children
+        clipChildren = false
+        clipToPadding = false
+    }
 
     private val manuallyPositionedChildren = mutableSetOf<View>()
 

@@ -73,8 +73,8 @@ android {
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.runtime:runtime'
 
-        // Yoga layout engine - Updated to 2.0+ for gap support
-        implementation 'com.facebook.yoga:yoga:2.0.0'
+        // Yoga layout engine - Updated to 3.2.1 to match iOS version (latest: https://github.com/facebook/yoga/releases/tag/v3.2.1)
+        implementation 'com.facebook.yoga:yoga:3.2.1'
         implementation 'com.facebook.soloader:soloader:0.10.4'
 
         // Coroutines for async operations

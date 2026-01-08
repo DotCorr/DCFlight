@@ -19,6 +19,7 @@ import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
+import com.dotcorr.dcf_reanimated.components.WorkletInterpreter
 import java.util.concurrent.TimeUnit
 
 /**
@@ -34,6 +35,12 @@ class DCFAnimatedViewComponent : DCFComponent() {
     }
 
     override fun createView(context: Context, props: Map<String, Any?>): View {
+        // Debug: Print all props to see what we're receiving
+        Log.d(TAG, "🔍 REANIMATED: createView called with props keys: ${props.keys}")
+        Log.d(TAG, "🔍 REANIMATED: isPureReanimated = ${props["isPureReanimated"]}")
+        Log.d(TAG, "🔍 REANIMATED: worklet = ${if (props["worklet"] != null) "exists" else "nil"}")
+        Log.d(TAG, "🔍 REANIMATED: workletConfig = ${if (props["workletConfig"] != null) "exists" else "nil"}")
+        
         val reanimatedView = PureReanimatedView(context)
         
         reanimatedView.setTag(DCFTags.COMPONENT_TYPE_KEY, "ReanimatedView")
@@ -53,9 +60,8 @@ class DCFAnimatedViewComponent : DCFComponent() {
                 reanimatedView.configurePureAnimation(animatedStyle)
             }
             
-            // Auto-start only if explicitly configured (default: false)
-            // This prevents animations from starting automatically on initial render
-            val autoStart = props["autoStart"] as? Boolean ?: false
+            // Auto-start if configured (default: true for AnimatedText, false for ReanimatedView)
+            val autoStart = props["autoStart"] as? Boolean ?: true
             val startDelay = props["startDelay"] as? Int ?: 0
             
             if (autoStart) {
@@ -115,10 +121,6 @@ class DCFAnimatedViewComponent : DCFComponent() {
         return true
     }
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        return PointF(0f, 0f)
-    }
-
     override fun applyLayout(view: View, layout: DCFNodeLayout) {
         val reanimatedView = view as? PureReanimatedView
         if (reanimatedView == null) {
@@ -166,7 +168,7 @@ class DCFAnimatedViewComponent : DCFComponent() {
         )
     }
 
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
         val reanimatedView = view as? PureReanimatedView ?: return
         reanimatedView.nodeId = nodeId
         Log.d(TAG, "ReanimatedView registered with shadow tree: $nodeId")
@@ -221,6 +223,20 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     
     fun configureWorklet(workletData: Map<String, Any?>, config: Map<String, Any?>?) {
         Log.d(TAG, "🔧 WORKLET: Configuring worklet for pure UI thread execution")
+        
+        // Check if worklet is compiled
+        val functionData = workletData["function"] as? Map<*, *>
+        val isCompiled = workletData["isCompiled"] as? Boolean ?: false
+        val workletType = functionData?.get("type") as? String ?: "dart_function"
+        
+        // Check if worklet has IR for runtime interpretation
+        val ir = functionData?.get("ir") as? Map<*, *>
+        if (ir != null || workletType == "interpretable") {
+            val workletId = functionData?.get("workletId") as? String
+            Log.d(TAG, "✅ WORKLET: Interpretable worklet detected! workletId=$workletId")
+            Log.d(TAG, "📝 WORKLET: IR available for runtime interpretation (no rebuild needed!)")
+        }
+        
         this.workletConfig = workletData
         this.workletExecutionConfig = config
         this.isUsingWorklet = true
@@ -249,16 +265,38 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         this.animationConfig = animatedStyle
         this.isUsingWorklet = false
         
+        // Parse perspective if provided
+        if (animatedStyle["perspective"] is Number) {
+            val perspective = (animatedStyle["perspective"] as Number).toFloat()
+            // Set camera distance for 3D perspective effect
+            cameraDistance = perspective
+        }
+        
         // Parse animation configurations
         currentAnimations.clear()
         
-        for ((property, config) in animatedStyle) {
-            if (config is Map<*, *>) {
-                currentAnimations[property] = PureAnimationState(
-                    property = property,
-                    config = config as Map<String, Any?>,
-                    view = this
-                )
+        // Handle animations dictionary
+        val animations = animatedStyle["animations"] as? Map<*, *>
+        if (animations != null) {
+            for ((property, config) in animations) {
+                if (config is Map<*, *>) {
+                    currentAnimations[property as String] = PureAnimationState(
+                        property = property as String,
+                        config = config as Map<String, Any?>,
+                        view = this
+                    )
+                }
+            }
+        } else {
+            // Legacy format: animations at top level
+            for ((property, config) in animatedStyle) {
+                if (property != "perspective" && property != "preserve3d" && config is Map<*, *>) {
+                    currentAnimations[property] = PureAnimationState(
+                        property = property,
+                        config = config as Map<String, Any?>,
+                        view = this
+                    )
+                }
             }
         }
     }
@@ -281,17 +319,47 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     fun startPureAnimation() {
         if (isAnimating) return
         
-        if (isUsingWorklet && workletConfig == null) {
-            Log.w(TAG, "⚠️ PURE REANIMATED: No worklet configured")
-            return
-        }
-        
-        if (!isUsingWorklet && currentAnimations.isEmpty()) {
+        if (isUsingWorklet) {
+            // For worklets, we need workletConfig (the serialized function) to exist
+            // workletExecutionConfig (the parameters) is optional
+            if (workletConfig == null) {
+                Log.w(TAG, "⚠️ PURE REANIMATED: No worklet configured")
+                return
+            }
+            // Text worklets run continuously (no duration), so we always start
+            Log.d(TAG, "🚀 PURE REANIMATED: Starting worklet animation (workletConfig exists)")
+        } else if (currentAnimations.isEmpty()) {
             Log.w(TAG, "⚠️ PURE REANIMATED: No animations configured")
             return
         }
-        
+
+        // CRITICAL: Apply initial values BEFORE starting animation
+        // This ensures the view starts in the correct state
+        if (!isUsingWorklet) {
+            for ((_, animationState) in currentAnimations) {
+                // Apply initial value immediately (before animation starts)
+                animationState.applyInitialValue()
+            }
+        }
+
         Log.d(TAG, "🚀 PURE REANIMATED: Starting pure UI thread animation")
+        
+        // 🔥 CRITICAL: Set pivot points BEFORE animation starts to prevent "walking" or "eclipse" effects
+        // This ensures transforms are applied from the center of the view
+        if (width > 0 && height > 0) {
+            pivotX = width / 2f
+            pivotY = height / 2f
+        }
+        
+        // 🔥 CRITICAL: Also set pivot points for all children to prevent text from moving
+        // This is especially important for text views inside the animated container
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (child.width > 0 && child.height > 0) {
+                child.pivotX = child.width / 2f
+                child.pivotY = child.height / 2f
+            }
+        }
         
         isAnimating = true
         animationStartTime = System.nanoTime()
@@ -324,12 +392,21 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
      * Synchronize layout after animation stops to prevent off-center content
      */
     private fun synchronizeLayoutAfterAnimation() {
-        // CRITICAL: When animation stops, ensure pivot point is at center
+        // 🔥 CRITICAL: When animation stops, ensure pivot point is at center
         // This prevents content from appearing off-center when transforms are active
         // The pivot point determines where transforms are applied from
         if (width > 0 && height > 0) {
             pivotX = width / 2f
             pivotY = height / 2f
+        }
+        
+        // 🔥 CRITICAL: Also reset pivot points for children
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (child.width > 0 && child.height > 0) {
+                child.pivotX = child.width / 2f
+                child.pivotY = child.height / 2f
+            }
         }
     }
     
@@ -340,7 +417,9 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     private fun startFrameCallback() {
         if (frameCallback != null) return
         
-        frameCallback = Choreographer.FrameCallback { frameTimeNanos ->
+        // CRITICAL: Create callback and store reference before posting
+        // This ensures we have a valid reference even if stopFrameCallback() sets frameCallback to null
+        val callback = Choreographer.FrameCallback { frameTimeNanos ->
             if (!isAnimating) {
                 stopFrameCallback()
                 return@FrameCallback
@@ -358,11 +437,16 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
                 updateAnimations(currentTime, elapsedSeconds)
             }
             
-            // Schedule next frame
-            choreographer.postFrameCallback(frameCallback!!)
+            // Schedule next frame using instance variable with null check
+            // CRITICAL: Check frameCallback is not null before using it (could be null if stopFrameCallback was called)
+            frameCallback?.let { choreographer.postFrameCallback(it) }
         }
         
-        choreographer.postFrameCallback(frameCallback!!)
+        // Store callback in instance variable
+        frameCallback = callback
+        
+        // Post initial frame callback
+        choreographer.postFrameCallback(callback)
     }
     
     private fun stopFrameCallback() {
@@ -408,36 +492,232 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     private fun executeWorklet(elapsed: Double, worklet: Map<String, Any?>) {
         // Get worklet configuration
         val functionData = worklet["function"] as? Map<*, *>
-        val source = functionData?.get("source") as? String
+        val returnType = worklet["returnType"] as? String ?: "dynamic"
+        val updateTextChild = workletExecutionConfig?.get("updateTextChild") as? Boolean ?: false
+        val isCompiled = worklet["isCompiled"] as? Boolean ?: false
+        val workletType = functionData?.get("type") as? String ?: "dart_function"
         
-        if (source == null) {
-            Log.w(TAG, "⚠️ WORKLET: Invalid worklet configuration")
-            stopPureAnimation()
+        // Check if this is an interpretable worklet (runtime execution - NO REBUILD NEEDED!)
+        val ir = functionData?.get("ir") as? Map<*, *>
+        if (ir != null || workletType == "interpretable") {
+            Log.d(TAG, "🚀 WORKLET: Executing worklet at runtime (no rebuild needed!)")
+            
+            // For text worklets, use existing pattern matching (works perfectly)
+            if (returnType == "String" && updateTextChild) {
+                executeTextWorklet(elapsed, worklet)
+                return
+            }
+            
+            // For numeric worklets, interpret IR at runtime (like React Native Reanimated!)
+            if (ir != null) {
+                val result = WorkletInterpreter.execute(
+                    ir as Map<String, Any?>,
+                    elapsed,
+                    workletExecutionConfig
+                )
+                if (result != null) {
+                    Log.d(TAG, "✅ WORKLET: Successfully executed worklet at runtime")
+                    applyWorkletResult(result, returnType)
+                    return
+                }
+            }
+            
+            // Fall back to pattern matching if interpretation failed
+            Log.d(TAG, "⚠️ WORKLET: Could not interpret worklet, falling back to pattern matching")
+        }
+        
+        // Check if this is a text-updating worklet (like typewriter)
+        if (returnType == "String" && updateTextChild) {
+            executeTextWorklet(elapsed, worklet)
             return
         }
         
-        // Get duration from config (default: 2000ms)
-        val duration = ((workletExecutionConfig?.get("duration") as? Number)?.toDouble() ?: 2000.0) / 1000.0
+        // Legacy fallback - if we get here, worklet wasn't interpretable
+        // This shouldn't happen with proper IR, but handle gracefully
+        Log.w(TAG, "⚠️ WORKLET: No IR found, cannot execute worklet")
+        stopPureAnimation()
+    }
+    
+    
+    /**
+     * Apply worklet result to view based on return type and target property
+     */
+    private fun applyWorkletResult(result: Any?, returnType: String) {
+        when (returnType) {
+            "double", "int" -> {
+                val value = (result as? Number)?.toFloat() ?: return
+                
+                // Check if there's a target property in config
+                val targetProperty = workletExecutionConfig?.get("targetProperty") as? String
+                
+                when (targetProperty) {
+                    "opacity" -> alpha = value.coerceIn(0f, 1f)
+                    "scale" -> {
+                        scaleX = value
+                        scaleY = value
+                    }
+                    "scaleX" -> scaleX = value
+                    "scaleY" -> scaleY = value
+                    "translateX" -> translationX = value
+                    "translateY" -> translationY = value
+                    "rotation" -> rotation = value
+                    "rotationX" -> rotationX = value
+                    "rotationY" -> rotationY = value
+                    "rotationZ" -> rotation = value
+                    null -> {
+                        // Default: apply as scale if no property specified
+                        scaleX = value
+                        scaleY = value
+                    }
+                    else -> {
+                        Log.d(TAG, "🔄 WORKLET: Unknown target property '$targetProperty', applying as scale")
+                        scaleX = value
+                        scaleY = value
+                    }
+                }
+            }
+            "String" -> {
+                // String results are handled by executeTextWorklet
+                // This shouldn't be called for String worklets
+            }
+            else -> {
+                Log.d(TAG, "🔄 WORKLET: Result type $returnType not yet handled")
+            }
+        }
+    }
+    
+    /**
+     * Execute a text-returning worklet (e.g., typewriter effect) on UI thread.
+     * This runs entirely natively without bridge calls.
+     * 
+     * For text worklets, we run continuously (no duration limit) to allow
+     * infinite loops like typewriter effects.
+     */
+    private fun executeTextWorklet(elapsed: Double, worklet: Map<String, Any?>) {
+        // Get worklet config parameters
+        val words = (workletExecutionConfig?.get("words") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+        val typeSpeed = ((workletExecutionConfig?.get("typeSpeed") as? Number)?.toDouble() ?: 100.0) / 1000.0 // Convert ms to seconds
+        val deleteSpeed = ((workletExecutionConfig?.get("deleteSpeed") as? Number)?.toDouble() ?: 50.0) / 1000.0
+        val pauseDuration = ((workletExecutionConfig?.get("pauseDuration") as? Number)?.toDouble() ?: 2000.0) / 1000.0
         
-        // Check if worklet should complete
-        if (elapsed >= duration) {
-            stopPureAnimation()
+        if (words.isEmpty()) {
+            Log.w(TAG, "⚠️ WORKLET: No words provided for typewriter worklet")
             return
         }
         
-        // Execute worklet (simplified - in production would use compiled code or interpreter)
-        // For now, we'll use a simple evaluation approach
-        val progress = elapsed / duration
-        val normalizedTime = progress
+        // Calculate total time per word cycle
+        var totalTimePerCycle = 0.0
+        for (word in words) {
+            totalTimePerCycle += (word.length * typeSpeed) + pauseDuration + (word.length * deleteSpeed)
+        }
         
-        // Apply worklet result to view (simplified example)
-        // In production, the worklet function would be properly executed
-        val scale = (1.0 + Math.sin(normalizedTime * Math.PI * 2) * 0.1).toFloat()
-        scaleX = scale
-        scaleY = scale
+        // Find current word and position based on elapsed time
+        val cycleTime = elapsed % totalTimePerCycle
+        var wordIndex = 0
+        var accumulatedTime = 0.0
         
-        // Note: In production, the worklet function would be properly executed
-        // This is a simplified placeholder that demonstrates the concept
+        for (i in words.indices) {
+            val word = words[i]
+            val wordTypeTime = word.length * typeSpeed
+            val wordPauseTime = pauseDuration
+            val wordDeleteTime = word.length * deleteSpeed
+            val wordTotalTime = wordTypeTime + wordPauseTime + wordDeleteTime
+            
+            if (cycleTime <= accumulatedTime + wordTotalTime) {
+                wordIndex = i
+                break
+            }
+            accumulatedTime += wordTotalTime
+        }
+        
+        val currentWord = words[wordIndex]
+        val wordStartTime = accumulatedTime
+        val wordTypeTime = currentWord.length * typeSpeed
+        val wordPauseTime = pauseDuration
+        
+        val relativeTime = cycleTime - wordStartTime
+        
+        val resultText = when {
+            relativeTime < wordTypeTime -> {
+                // Typing phase
+                val charIndex = (relativeTime / typeSpeed).toInt().coerceAtMost(currentWord.length)
+                currentWord.substring(0, charIndex)
+            }
+            relativeTime < wordTypeTime + wordPauseTime -> {
+                // Pause phase - show full word
+                currentWord
+            }
+            else -> {
+                // Deleting phase
+                val deleteStartTime = wordTypeTime + wordPauseTime
+                val deleteElapsed = relativeTime - deleteStartTime
+                val charsToDelete = (deleteElapsed / deleteSpeed).toInt()
+                val remainingChars = (currentWord.length - charsToDelete).coerceAtLeast(0)
+                currentWord.substring(0, remainingChars)
+            }
+        }
+        
+        // Update child text component directly on UI thread
+        updateChildText(resultText)
+    }
+    
+    /**
+     * Update child text component directly from UI thread (zero bridge calls).
+     */
+    private fun updateChildText(text: String) {
+        // Find child DCFTextView
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            
+            // Check if this is a DCFTextView (from DCFTextComponent)
+            if (child.javaClass.simpleName == "DCFTextView") {
+                // Get the viewId to find the shadow node
+                val viewId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
+                if (viewId != null) {
+                    // Update shadow node text directly (this updates the layout)
+                    val shadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
+                    if (shadowNode is com.dotcorr.dcflight.components.text.DCFTextShadowNode) {
+                        // Update text on shadow node (this will trigger layout recalculation via dirtyText())
+                        // Setting text automatically calls dirtyText() which marks the node as dirty
+                        shadowNode.text = text
+                        
+                        // Force invalidate to trigger redraw
+                        child.invalidate()
+                        invalidate()
+                        
+                        Log.d(TAG, "✅ WORKLET: Updated text to '$text' on UI thread")
+                        return
+                    }
+                }
+            }
+            
+            // Recursively check children (in case text is nested)
+            if (child is android.view.ViewGroup) {
+                updateChildTextRecursive(child, text)
+            }
+        }
+    }
+    
+    private fun updateChildTextRecursive(parent: android.view.ViewGroup, text: String) {
+        for (i in 0 until parent.childCount) {
+            val child = parent.getChildAt(i)
+            if (child.javaClass.simpleName == "DCFTextView") {
+                val viewId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
+                if (viewId != null) {
+                    val shadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
+                    if (shadowNode is com.dotcorr.dcflight.components.text.DCFTextShadowNode) {
+                        // Setting text automatically calls dirtyText() which marks the node as dirty
+                        shadowNode.text = text
+                        child.invalidate()
+                        parent.invalidate()
+                        return
+                    }
+                }
+            }
+            if (child is android.view.ViewGroup) {
+                updateChildTextRecursive(child, text)
+            }
+        }
     }
     
     // ============================================================================
@@ -478,12 +758,20 @@ class PureAnimationState(
     private val config: Map<String, Any?>,
     private val view: View
 ) {
-    private val fromValue: Float
+    val fromValue: Float // Made public for initial value application
     private val toValue: Float
+    private val keyframes: List<Float>? // Support keyframe animations
     private val duration: Long
     private val delay: Long
     private val isRepeating: Boolean
     private val repeatCount: Int?
+    private val damping: Double? // Spring damping
+    private val stiffness: Double? // Spring stiffness
+    
+    /// Apply initial value to view (before animation starts)
+    fun applyInitialValue() {
+        applyAnimationValue(fromValue)
+    }
     
     private var cycleCount = 0
     private var isReversing = false
@@ -492,8 +780,24 @@ class PureAnimationState(
     private val curve: (Float) -> Float
     
     init {
-        fromValue = ((config["from"] as? Number)?.toDouble() ?: 0.0).toFloat()
-        toValue = ((config["to"] as? Number)?.toDouble() ?: 1.0).toFloat()
+        // Parse keyframes if present, otherwise use from/to
+        if (config["keyframes"] is List<*>) {
+            val keyframesList = config["keyframes"] as List<*>
+            keyframes = keyframesList.mapNotNull { 
+                when (it) {
+                    is Number -> it.toDouble().toFloat()
+                    is Double -> it.toFloat()
+                    is Float -> it
+                    else -> null
+                }
+            }
+            fromValue = keyframes?.firstOrNull() ?: 0f
+            toValue = keyframes?.lastOrNull() ?: 1f
+        } else {
+            keyframes = null
+            fromValue = ((config["from"] as? Number)?.toDouble() ?: 0.0).toFloat()
+            toValue = ((config["to"] as? Number)?.toDouble() ?: 1.0).toFloat()
+        }
         
         val durationMs = (config["duration"] as? Number)?.toInt() ?: 300
         duration = durationMs.toLong()
@@ -504,18 +808,26 @@ class PureAnimationState(
         isRepeating = config["repeat"] as? Boolean ?: false
         repeatCount = config["repeatCount"] as? Int
         
+        // Parse spring parameters
+        damping = (config["damping"] as? Number)?.toDouble()
+        stiffness = (config["stiffness"] as? Number)?.toDouble()
+        
         // Parse curve - support all curves from iOS
         val curveString = (config["curve"] as? String ?: "easeInOut").lowercase()
-        curve = getCurveFunction(curveString)
+        curve = getCurveFunction(curveString, damping, stiffness)
         
-        Log.d("PureAnimationState", "🎯 $property from $fromValue to $toValue over ${duration}ms with curve $curveString")
+        if (keyframes != null) {
+            Log.d("PureAnimationState", "🎯 $property keyframes ${keyframes} over ${duration}ms with curve $curveString")
+        } else {
+            Log.d("PureAnimationState", "🎯 $property from $fromValue to $toValue over ${duration}ms with curve $curveString")
+        }
     }
     
     companion object {
         /**
          * Get easing curve function - matches iOS implementation
          */
-        fun getCurveFunction(curveString: String): (Float) -> Float {
+        fun getCurveFunction(curveString: String, damping: Double? = null, stiffness: Double? = null): (Float) -> Float {
             return when (curveString.lowercase()) {
                 "linear" -> { t -> t }
                 "easein" -> { t -> t * t }
@@ -527,7 +839,7 @@ class PureAnimationState(
                         1 - 2 * (1 - t) * (1 - t)
                     }
                 }
-                "spring" -> { t -> springCurve(t) }
+                "spring" -> { t -> springCurve(t, damping, stiffness) }
                 "bouncein" -> { t -> bounceInCurve(t) }
                 "bounceout" -> { t -> bounceOutCurve(t) }
                 "elasticin" -> { t -> elasticInCurve(t) }
@@ -543,17 +855,18 @@ class PureAnimationState(
             }
         }
         
-        private fun springCurve(t: Float): Float {
-            val damping = 0.8f
-            val frequency = 8.0f
+        private fun springCurve(t: Float, damping: Double? = null, stiffness: Double? = null): Float {
+            val dampingValue = (damping ?: 0.8).toFloat()
+            val stiffnessValue = (stiffness ?: 300.0).toFloat()
+            val frequency = Math.sqrt((stiffnessValue / 1.0).toDouble()).toFloat() // Mass = 1.0
             
             if (t == 0f || t == 1f) {
                 return t
             }
             
             val omega = frequency * 2 * Math.PI.toFloat()
-            val exponential = Math.pow(2.0, (-damping * t).toDouble()).toFloat()
-            val sine = Math.sin((omega * t + Math.acos(damping.toDouble())).toDouble()).toFloat()
+            val exponential = Math.pow(2.0, (-dampingValue * t).toDouble()).toFloat()
+            val sine = Math.sin((omega * t + Math.acos(dampingValue.toDouble())).toDouble()).toFloat()
             
             return 1 - exponential * sine
         }
@@ -609,10 +922,31 @@ class PureAnimationState(
         val progress = (cycleElapsedMs.toFloat() / duration).coerceIn(0f, 1f)
         val easedProgress = curve(progress)
         
-        // Calculate current value
-        val currentFromValue = if (isReversing) toValue else fromValue
-        val currentToValue = if (isReversing) fromValue else toValue
-        val currentValue = currentFromValue + (currentToValue - currentFromValue) * easedProgress
+        // Calculate current value - support keyframes
+        val currentValue: Float = if (keyframes != null) {
+            // Keyframe animation: interpolate between keyframes
+            val keyframeCount = keyframes!!.size
+            if (keyframeCount == 1) {
+                keyframes!![0]
+            } else {
+                val segmentProgress = progress * (keyframeCount - 1)
+                val segmentIndex = segmentProgress.toInt()
+                val segmentT = segmentProgress - segmentIndex
+                
+                if (segmentIndex >= keyframeCount - 1) {
+                    keyframes!![keyframeCount - 1]
+                } else {
+                    val fromKeyframe = keyframes!![segmentIndex]
+                    val toKeyframe = keyframes!![segmentIndex + 1]
+                    fromKeyframe + (toKeyframe - fromKeyframe) * segmentT
+                }
+            }
+        } else {
+            // Standard from/to animation
+            val currentFromValue = if (isReversing) toValue else fromValue
+            val currentToValue = if (isReversing) fromValue else toValue
+            currentFromValue + (currentToValue - currentFromValue) * easedProgress
+        }
         
         // Apply to view
         applyAnimationValue(currentValue)
@@ -645,6 +979,20 @@ class PureAnimationState(
                 view.scaleX = value
                 view.scaleY = value
             }
+            "scaleX" -> view.scaleX = value
+            "scaleY" -> view.scaleY = value
+            "translateX" -> view.translationX = value
+            "translateY" -> view.translationY = value
+            "translateZ" -> {
+                // 3D translation requires elevation on Android
+                view.translationZ = value
+                // Also set elevation for proper 3D effect
+                view.elevation = value
+            }
+            "rotation" -> view.rotation = value
+            "rotationX" -> view.rotationX = value
+            "rotationY" -> view.rotationY = value
+            "rotationZ" -> view.rotation = value
             "scaleX" -> view.scaleX = value
             "scaleY" -> view.scaleY = value
             "translateX" -> view.translationX = value

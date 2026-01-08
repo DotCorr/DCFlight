@@ -36,6 +36,7 @@ object DCFScreenUtilities {
     private var density: Float = 1f
     private var scaledDensity: Float = 1f
     private var densityDpi: Int = DisplayMetrics.DENSITY_DEFAULT
+    private var previousFontScale: Float = 1.0f
 
     /**
      * Singleton instance
@@ -86,22 +87,40 @@ object DCFScreenUtilities {
 
             val metrics = ctx.resources.displayMetrics
             displayMetrics = metrics
-            density = metrics.density
-            scaledDensity = metrics.scaledDensity
+            val newDensity = metrics.density
+            val newScaledDensity = metrics.scaledDensity
             densityDpi = metrics.densityDpi
+            
+            // Check if font scale changed (system font size preference changed)
+            val newFontScale = if (newDensity != 0f) newScaledDensity / newDensity else 1.0f
+            val fontScaleChanged = newFontScale != previousFontScale
+            
+            density = newDensity
+            scaledDensity = newScaledDensity
+            
+            if (fontScaleChanged) {
+                Log.d(TAG, "📝 Font scale changed: $previousFontScale → $newFontScale")
+                previousFontScale = newFontScale
+                // Font scale change will be handled by notifyDimensionChange which includes fontScale
+            } else {
+                previousFontScale = newFontScale
+            }
 
-            Log.d(TAG, "Display metrics updated: ${screenWidth}x${screenHeight}, density: $density")
+            Log.d(TAG, "Display metrics updated: ${screenWidth}x${screenHeight}, density: $density, fontScale: $newFontScale")
         }
     }
 
     /**
      * 🚀 CRITICAL FIX: Refresh screen dimensions for rotation handling
      * This was missing - needed for device rotation support!
+     * 
+     * Note: Font scale changes are detected and notified to Dart,
+     * which triggers a full app re-render (React Native-style).
+     * No need to manually invalidate text nodes here.
      */
     fun refreshScreenDimensions() {
         Log.d(TAG, "Refreshing screen dimensions for configuration change")
         updateDisplayMetrics()
-        
         notifyDimensionChange()
     }
 
@@ -156,15 +175,26 @@ object DCFScreenUtilities {
     }
 
     /**
+     * Get font scale factor (system font size preference)
+     * Similar to React Native's PixelRatio.getFontScale()
+     * Returns scaledDensity / density, which represents the system font size multiplier
+     */
+    fun getFontScale(): Float {
+        return if (density != 0f) scaledDensity / density else 1.0f
+    }
+
+    /**
      * Get current screen dimensions
      */
     fun getScreenDimensions(): Map<String, Any> {
+        val fontScale = getFontScale()
         return mapOf(
-            "width" to screenWidth.toDouble(),
-            "height" to screenHeight.toDouble(),
+            "width" to convertPxToDp(screenWidth).toDouble(),
+            "height" to convertPxToDp(screenHeight).toDouble(),
             "widthDp" to convertPxToDp(screenWidth),
             "heightDp" to convertPxToDp(screenHeight),
             "scale" to density.toDouble(),
+            "fontScale" to fontScale.toDouble(),
             "statusBarHeight" to 0.0,
             "safeAreaTop" to 0.0,
             "safeAreaBottom" to 0.0,

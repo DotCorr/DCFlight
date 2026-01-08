@@ -25,7 +25,7 @@ public protocol DCFLayoutIndependent {
     /// Returns true if layout updates should be skipped for this view.
     /// 
     /// When true, Yoga will skip applying layout to this view, making it
-    /// layout-independent (similar to React Native Reanimated's approach).
+    /// layout-independent (allows views to opt-out of Yoga layout updates).
     /// 
     /// This is useful for:
     /// - Animated views that use transforms (prevents anchor point recalculation)
@@ -50,11 +50,9 @@ public protocol DCFComponent {
     /// Apply yoga layout to the view
     func applyLayout(_ view: UIView, layout: YGNodeLayout)
     
-    /// Get intrinsic content size for a view (for text measurement, etc.)
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize
-    
     /// Called when a view is registered with the shadow tree
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String)
+    /// Components can set intrinsicContentSize on the shadowView if needed for automatic sizing
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String)
     
     /// Prepare a view for recycling (view pooling)
     /// Called before a view is returned to the pool for reuse
@@ -63,6 +61,10 @@ public protocol DCFComponent {
     
     /// Handle tunnel method calls from Dart
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any?
+    
+    /// Set children for a view (optional - components can override for custom child routing)
+    /// Returns true if handled, false to use default implementation
+    func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool
 }
 
 /// Layout information from a Yoga node
@@ -81,6 +83,14 @@ public struct YGNodeLayout {
 }
 
 public extension DCFComponent {
+    
+    // MARK: - Children Management (Default Implementation)
+    
+    /// Default implementation: Return false to use normal child attachment
+    /// Components can override this to route children to custom containers (e.g., ScrollView contentView)
+    func setChildren(_ view: UIView, childViews: [UIView], viewId: String) -> Bool {
+        return false
+    }
     
     // MARK: - View Recycling (Default Implementation)
     
@@ -125,9 +135,9 @@ public extension DCFComponent {
         view.subviews.forEach { $0.removeFromSuperview() }
     }
     
-    // MARK: - Props Management (React Native Pattern)
+    // MARK: - Props Management
     
-    /// Store props in view's associated object for merging on updates (React Native pattern)
+    /// Store props in view's associated object for merging on updates
     /// This ensures properties are preserved across partial updates
     func storeProps(_ props: [String: Any?], in view: UIView) {
         objc_setAssociatedObject(view,
@@ -141,7 +151,7 @@ public extension DCFComponent {
         return objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "dcf_stored_props".hashValue)!) as? [String: Any?] ?? [:]
     }
     
-    /// Merge existing props with updates (React Native pattern)
+    /// Merge existing props with updates
     /// - Null values remove props
     /// - Non-null values update props
     /// - Missing props are preserved
@@ -192,7 +202,9 @@ public func propagateEvent(on view: UIView, eventName: String, data eventData: [
     
     guard let callback = objc_getAssociatedObject(view, UnsafeRawPointer(bitPattern: "eventCallback".hashValue)!) 
             as? (String, String, [String: Any]) -> Void else {
-        print("⚠️ propagateEvent: No event callback found for view \(view)")
+        if eventName != "onContentSizeChange" && eventName != "onScroll" {
+            print("⚠️ propagateEvent: No event callback found for view \(view) (event: \(eventName))")
+        }
         return
     }
     

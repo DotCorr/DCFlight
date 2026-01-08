@@ -129,13 +129,18 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         DispatchQueue.main.async {
             guard let componentClass = DCFComponentRegistry.shared.getComponent(componentType) else {
+                print("❌ iOS Bridge: Component \(componentType) not registered")
                 result(FlutterError(code: "COMPONENT_NOT_FOUND", message: "Component \(componentType) not registered", details: nil))
                 return
             }
             
+            print("✅ iOS Bridge: Found component class \(componentClass) for \(componentType). Dispatching \(method)...")
+            
             if let response = componentClass.handleTunnelMethod(method, params: params) {
+                print("✅ iOS Bridge: \(method) handled successfully")
                 result(response)
             } else {
+                print("⚠️ iOS Bridge: Method \(method) not handled by \(componentType)")
                 result(FlutterError(code: "METHOD_NOT_FOUND", message: "Method \(method) not found on \(componentType)", details: nil))
             }
         }
@@ -287,6 +292,8 @@ class DCMauiBridgeMethodChannel: NSObject {
     }
     
     private func handleSetChildren(_ args: [String: Any], result: @escaping FlutterResult) {
+        print("🚨 METHOD_CHANNEL: handleSetChildren called with args: \(args)")
+        
         let viewId: Int?
         if let viewIdInt = args["viewId"] as? Int {
             viewId = viewIdInt
@@ -307,12 +314,17 @@ class DCMauiBridgeMethodChannel: NSObject {
         
         guard let viewId = viewId,
               let childrenIds = childrenIds else {
+            print("❌ METHOD_CHANNEL: Invalid setChildren parameters - viewId=\(String(describing: viewId)), childrenIds=\(String(describing: childrenIds))")
             result(FlutterError(code: "CHILDREN_ERROR", message: "Invalid children parameters", details: nil))
             return
         }
         
+        print("🚨 METHOD_CHANNEL: Calling setChildren for viewId=\(viewId) with \(childrenIds.count) children")
+        
         DispatchQueue.main.async {
+            print("🚨 METHOD_CHANNEL: Inside DispatchQueue.main.async, calling DCMauiBridgeImpl.setChildren")
             let success = DCMauiBridgeImpl.shared.setChildren(viewId: viewId, childrenIds: childrenIds)
+            print("🚨 METHOD_CHANNEL: setChildren returned: \(success)")
             result(success)
         }
     }
@@ -421,49 +433,6 @@ extension ViewRegistry {
     }
 }
 
-extension YogaShadowTree {
-    /// Clears all nodes from the shadow tree except the root node.
-    /// 
-    /// This method is used during hot restart cleanup to prevent layout stacking.
-    /// It removes all non-root nodes, clears root node children, resets root dimensions
-    /// to current window bounds, and clears all parent mappings.
-    func clearAll() {
-        // CRITICAL: Reset reconciliation flag first to prevent blocking layout
-        resetFlags()
-        
-        // Remove all non-root nodes (this will set isReconciling temporarily, but we reset it after)
-        let nodeIds = Array(nodes.keys)
-        for nodeId in nodeIds {
-            if nodeId != "0" && nodeId != "root" {
-                removeNode(nodeId: nodeId)
-            }
-        }
-        
-        // CRITICAL: Reset flags again after removeNode calls (they set isReconciling=true)
-        resetFlags()
-        
-        // Clear root node's children to prevent stacking after hot restart
-        clearRootNodeChildren()
-        
-        // Reset root node dimensions to current window bounds
-        let windowBounds: CGRect
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first {
-            windowBounds = window.bounds
-        } else {
-            windowBounds = UIScreen.main.bounds
-        }
-        resetRootNodeDimensions(width: Float(windowBounds.width), height: Float(windowBounds.height))
-        
-        // Clear all parent mappings and screen roots
-        clearAllMappings()
-        
-        // Final reset to ensure flags are clear
-        resetFlags()
-        
-        print("✅ YogaShadowTree: clearAll completed - isReconciling=false, isLayoutCalculating=false")
-    }
-}
 
 extension DCFLayoutManager {
     func clearAll() {

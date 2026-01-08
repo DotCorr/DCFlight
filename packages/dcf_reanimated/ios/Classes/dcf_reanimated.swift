@@ -20,17 +20,5 @@ import dcflight
             "ReanimatedView",
             componentClass: DCFAnimatedViewComponent.self
         )
-        
-        // Register Canvas component
-        DCFComponentRegistry.shared.registerComponent(
-            "Canvas",
-            componentClass: DCFCanvasComponent.self
-        )
-        
-        // Register GPU component
-        DCFComponentRegistry.shared.registerComponent(
-            "GPU",
-            componentClass: DCFGPUComponent.self
-        )
     }
 }

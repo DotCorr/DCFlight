@@ -207,20 +207,7 @@ class DCFSegmentedControlComponent: NSObject, DCFComponent {
         
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        guard let segmentedControl = view as? UISegmentedControl else {
-            return CGSize(width: 200, height: 32)
-        }
-        
-        let intrinsicSize = segmentedControl.intrinsicContentSize
-        
-        let width = max(intrinsicSize.width, 100)
-        let height = max(intrinsicSize.height, 32)
-        
-        return CGSize(width: width, height: height)
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
     }
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
         return nil

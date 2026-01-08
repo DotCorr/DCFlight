@@ -193,25 +193,11 @@ extension DCFSvgComponent {
         _ = svgKitInitialized
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        guard let imageView = view as? UIImageView else {
-            return CGSize.zero
-        }
-        
-        if let image = imageView.image {
-            let size = image.size
-            if size.width > 0 && size.height > 0 {
-                return size
-            }
-        }
-        
-        return CGSize.zero
-    }
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
     }
 
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         objc_setAssociatedObject(view,
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!,
                                nodeId,

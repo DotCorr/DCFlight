@@ -1663,20 +1663,16 @@ class DCFScreenComponent: NSObject, DCFComponent {
 
         screenContainer.contentView.subviews.forEach { $0.removeFromSuperview() }
 
+        // CRITICAL: Only add subviews here - DO NOT set frames or autoresizingMask
+        // Frames will be set by applyLayout based on Yoga's calculated positions
+        // Setting frame here would override Yoga's layout calculations and cause overlapping
         for childView in childViews {
             screenContainer.contentView.addSubview(childView)
-            childView.frame = screenContainer.contentView.bounds
-            childView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            // Disable autoresizing - Yoga controls layout
+            childView.translatesAutoresizingMaskIntoConstraints = false
+            childView.autoresizingMask = []
             childView.isHidden = false
             childView.alpha = 1.0
-        }
-
-        screenContainer.contentView.setNeedsLayout()
-        screenContainer.contentView.layoutIfNeeded()
-
-        for childView in childViews {
-            childView.setNeedsLayout()
-            childView.layoutIfNeeded()
         }
 
         return true
@@ -1730,14 +1726,16 @@ class ScreenContainer {
         self.route = route
         self.presentationStyle = presentationStyle
 
-        self.viewController = UIViewController()
+        // React Native pattern: Use DCFWrapperViewController to wrap content view
+        // This ensures proper layout guide caching and auto-insets refresh
         self.contentView = UIView()
         self.contentView.backgroundColor = UIColor.clear
         self.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
 
-        self.viewController.view = contentView
+        // Wrap content view in DCFWrapperViewController (React Native pattern)
+        self.viewController = DCFWrapperViewController(contentView: contentView)
 
-        print("📱 ScreenContainer: Created '\(route)' with style '\(presentationStyle)'")
+        print("📱 ScreenContainer: Created '\(route)' with style '\(presentationStyle)' using DCFWrapperViewController")
     }
 
     deinit {
@@ -2607,11 +2605,7 @@ extension DCFScreenComponent {
         view.frame = CGRect(x: layout.left, y: layout.top, width: layout.width, height: layout.height)
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize.zero
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         objc_setAssociatedObject(view, 
                                UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
                                nodeId, 

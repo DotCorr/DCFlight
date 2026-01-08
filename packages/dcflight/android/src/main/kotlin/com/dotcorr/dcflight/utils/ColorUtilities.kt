@@ -84,15 +84,23 @@ object ColorUtilities {
         
         var cleanHexString = hexString.trimStart('#')
         
-        try {
-            val intValue = cleanHexString.toLongOrNull()
-            if (intValue != null && intValue >= 0) {
-                if (intValue == 0L) {
-                    return Color.TRANSPARENT
+        // CRITICAL: Only try to parse as integer if it doesn't look like a hex string
+        // Hex strings contain only 0-9, a-f, A-F and are typically 3, 6, or 8 characters
+        // If it's already a valid hex string, don't convert it to decimal first
+        val isHexString = cleanHexString.matches(Regex("[0-9a-fA-F]+")) && 
+                          (cleanHexString.length == 3 || cleanHexString.length == 6 || cleanHexString.length == 8)
+        
+        if (!isHexString) {
+            try {
+                val intValue = cleanHexString.toLongOrNull()
+                if (intValue != null && intValue >= 0) {
+                    if (intValue == 0L) {
+                        return Color.TRANSPARENT
+                    }
+                    cleanHexString = String.format("%08x", intValue)
                 }
-                cleanHexString = String.format("%08x", intValue)
+            } catch (e: Exception) {
             }
-        } catch (e: Exception) {
         }
         
         getNamedColor(cleanHexString.lowercase())?.let {

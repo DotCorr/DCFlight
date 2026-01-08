@@ -13,11 +13,12 @@ import 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 class _DCFLayoutRegistry {
   static final _DCFLayoutRegistry instance = _DCFLayoutRegistry._();
   _DCFLayoutRegistry._();
-  
-  final Map<String, DCFLayout> _layouts = {}; // Maps ID -> original layout (without ID)
+
+  final Map<String, DCFLayout> _layouts =
+      {}; // Maps ID -> original layout (without ID)
   final Map<DCFLayout, String> _layoutToId = {};
   int _nextId = 1;
-  
+
   /// Register a layout and return its ID
   /// Stores the ORIGINAL layout (without ID) to avoid recursion in toMap()
   String register(String name, DCFLayout layout) {
@@ -25,33 +26,33 @@ class _DCFLayoutRegistry {
     if (_layoutToId.containsKey(layout)) {
       return _layoutToId[layout]!;
     }
-    
+
     // Generate new ID
     final id = 'dcf_layout_$_nextId';
     _nextId++;
-    
+
     // Store ORIGINAL layout (without ID) to avoid recursion when resolving
     _layouts[id] = layout;
     _layoutToId[layout] = id;
-    
+
     return id;
   }
-  
+
   /// Get layout by ID
   DCFLayout? get(String id) {
     return _layouts[id];
   }
-  
+
   /// Get ID for a layout (if registered)
   String? getId(DCFLayout layout) {
     return _layoutToId[layout];
   }
-  
+
   /// Check if layout is registered
   bool isRegistered(DCFLayout layout) {
     return _layoutToId.containsKey(layout);
   }
-  
+
   /// Clear all registered layouts (for testing/debugging)
   void clear() {
     _layouts.clear();
@@ -119,13 +120,31 @@ class DCFLayout extends Equatable {
   final dynamic rowGap;
   final dynamic columnGap;
 
+  final dynamic start;
+  final dynamic end;
+
+  final dynamic marginStart;
+  final dynamic marginEnd;
+
+  final dynamic paddingStart;
+  final dynamic paddingEnd;
+
+  final int? zIndex;
+
+  final dynamic borderTopWidth;
+  final dynamic borderRightWidth;
+  final dynamic borderBottomWidth;
+  final dynamic borderLeftWidth;
+  final dynamic borderStartWidth;
+  final dynamic borderEndWidth;
+
   @Deprecated("Use borderWidth from style instead")
   final dynamic borderWidth;
 
   /// Internal factory constructor for registered layouts (non-const)
   DCFLayout._withId(
     String layoutId, {
-    this.width = '100%',
+    this.width,
     this.height,
     this.minWidth,
     this.maxWidth,
@@ -152,11 +171,11 @@ class DCFLayout extends Equatable {
     this.scaleX,
     this.scaleY,
     this.flexDirection = DCFFlexDirection.column,
-    this.justifyContent = DCFJustifyContent.center,
-    this.alignItems = DCFAlign.center,
+    this.justifyContent,
+    this.alignItems,
     this.alignSelf,
     this.alignContent,
-    this.flexWrap = DCFWrap.nowrap,
+    this.flexWrap = DCFWrap.wrap,
     this.flex,
     this.flexGrow,
     this.flexShrink,
@@ -168,16 +187,29 @@ class DCFLayout extends Equatable {
     this.gap,
     this.rowGap,
     this.columnGap,
+    this.start,
+    this.end,
+    this.marginStart,
+    this.marginEnd,
+    this.paddingStart,
+    this.paddingEnd,
+    this.zIndex,
+    this.borderTopWidth,
+    this.borderRightWidth,
+    this.borderBottomWidth,
+    this.borderLeftWidth,
+    this.borderStartWidth,
+    this.borderEndWidth,
     this.borderWidth,
   }) : _layoutId = layoutId;
 
   /// Create layout props with the specified values
-  /// 
+  ///
   /// @Deprecated Use DCFLayout.create() instead for better performance
   /// This constructor is still supported for backward compatibility but will be removed in a future version.
-  @Deprecated('Use DCFLayout.create() instead for better bridge efficiency. Example: final layouts = DCFLayout.create({"container": DCFLayout(flex: 1)});')
+  // @Deprecated('Use DCFLayout.create() instead for better bridge efficiency. Example: final layouts = DCFLayout.create({"container": DCFLayout(flex: 1)});')
   const DCFLayout({
-    this.width = '100%', // Default to 100% width for proper nesting
+    this.width, // No default - let components size naturally
     this.height, // No default height - let flex layout handle it
     this.minWidth,
     this.maxWidth,
@@ -204,8 +236,9 @@ class DCFLayout extends Equatable {
     this.scaleX,
     this.scaleY,
     this.flexDirection = DCFFlexDirection.column,
-    this.justifyContent = DCFJustifyContent.center, // Default to center like iOS
-    this.alignItems = DCFAlign.center, // Default to center like iOS 
+    this.justifyContent =
+        DCFJustifyContent.center, // Default to center like iOS
+    this.alignItems = DCFAlign.center, // Default to center like iOS
     this.alignSelf,
     this.alignContent, // No default - let parent control content alignment
     this.flexWrap = DCFWrap.nowrap,
@@ -220,11 +253,24 @@ class DCFLayout extends Equatable {
     this.gap,
     this.rowGap,
     this.columnGap,
+    this.start,
+    this.end,
+    this.marginStart,
+    this.marginEnd,
+    this.paddingStart,
+    this.paddingEnd,
+    this.zIndex,
+    this.borderTopWidth,
+    this.borderRightWidth,
+    this.borderBottomWidth,
+    this.borderLeftWidth,
+    this.borderStartWidth,
+    this.borderEndWidth,
     this.borderWidth,
   }) : _layoutId = null;
 
-  /// Create a Layout registry (React Native StyleSheet.create() pattern)
-  /// 
+  /// Create a Layout registry
+  ///
   /// **Performance Benefits:**
   /// - **Bridge Efficiency**: Registered layouts are cached and assigned unique IDs.
   ///   Instead of sending full layout objects over the Flutter-native bridge on every render,
@@ -233,7 +279,7 @@ class DCFLayout extends Equatable {
   ///   reducing object allocation and garbage collection pressure.
   /// - **Early Validation**: Layout properties are validated at creation time,
   ///   catching errors early rather than at render time.
-  /// 
+  ///
   /// **Usage:**
   /// ```dart
   /// // Define layouts once (outside render method)
@@ -241,11 +287,11 @@ class DCFLayout extends Equatable {
   ///   'container': DCFLayout(flex: 1, padding: 20),
   ///   'row': DCFLayout(flexDirection: DCFFlexDirection.row),
   /// });
-  /// 
+  ///
   /// // In render():
   /// DCFView(layout: layouts['container'])
   /// ```
-  /// 
+  ///
   /// **See Also:** [StyleSheet.create() Documentation](../../docs/STYLESHEET_API.md)
   static DCFLayoutRegistry create(Map<String, DCFLayout> layouts) {
     final registry = DCFLayoutRegistry._();
@@ -297,6 +343,19 @@ class DCFLayout extends Equatable {
         gap: entry.value.gap,
         rowGap: entry.value.rowGap,
         columnGap: entry.value.columnGap,
+        start: entry.value.start,
+        end: entry.value.end,
+        marginStart: entry.value.marginStart,
+        marginEnd: entry.value.marginEnd,
+        paddingStart: entry.value.paddingStart,
+        paddingEnd: entry.value.paddingEnd,
+        zIndex: entry.value.zIndex,
+        borderTopWidth: entry.value.borderTopWidth,
+        borderRightWidth: entry.value.borderRightWidth,
+        borderBottomWidth: entry.value.borderBottomWidth,
+        borderLeftWidth: entry.value.borderLeftWidth,
+        borderStartWidth: entry.value.borderStartWidth,
+        borderEndWidth: entry.value.borderEndWidth,
         borderWidth: entry.value.borderWidth,
       );
     }
@@ -348,11 +407,24 @@ class DCFLayout extends Equatable {
         gap != null ||
         rowGap != null ||
         columnGap != null ||
+        start != null ||
+        end != null ||
+        marginStart != null ||
+        marginEnd != null ||
+        paddingStart != null ||
+        paddingEnd != null ||
+        zIndex != null ||
+        borderTopWidth != null ||
+        borderRightWidth != null ||
+        borderBottomWidth != null ||
+        borderLeftWidth != null ||
+        borderStartWidth != null ||
+        borderEndWidth != null ||
         borderWidth != null;
   }
 
   /// Convert layout props to a map for serialization
-  /// 
+  ///
   /// If layout is registered via DCFLayout.create(), resolves ID to full object for native compatibility
   Map<String, dynamic> toMap() {
     // If registered, resolve ID to full layout object (native side doesn't support IDs yet)
@@ -364,7 +436,7 @@ class DCFLayout extends Equatable {
       }
       // Fallback: if ID not found, continue with current layout
     }
-    
+
     // Serialize full layout object
     final map = <String, dynamic>{};
 
@@ -448,6 +520,23 @@ class DCFLayout extends Equatable {
     if (rowGap != null) map['rowGap'] = rowGap;
     if (columnGap != null) map['columnGap'] = columnGap;
 
+    if (start != null) map['start'] = start;
+    if (end != null) map['end'] = end;
+
+    if (marginStart != null) map['marginStart'] = marginStart;
+    if (marginEnd != null) map['marginEnd'] = marginEnd;
+
+    if (paddingStart != null) map['paddingStart'] = paddingStart;
+    if (paddingEnd != null) map['paddingEnd'] = paddingEnd;
+
+    if (zIndex != null) map['zIndex'] = zIndex;
+
+    if (borderTopWidth != null) map['borderTopWidth'] = borderTopWidth;
+    if (borderRightWidth != null) map['borderRightWidth'] = borderRightWidth;
+    if (borderBottomWidth != null) map['borderBottomWidth'] = borderBottomWidth;
+    if (borderLeftWidth != null) map['borderLeftWidth'] = borderLeftWidth;
+    if (borderStartWidth != null) map['borderStartWidth'] = borderStartWidth;
+    if (borderEndWidth != null) map['borderEndWidth'] = borderEndWidth;
     if (borderWidth != null) map['borderWidth'] = borderWidth;
 
     return map;
@@ -499,6 +588,19 @@ class DCFLayout extends Equatable {
       gap: other.gap ?? gap,
       rowGap: other.rowGap ?? rowGap,
       columnGap: other.columnGap ?? columnGap,
+      start: other.start ?? start,
+      end: other.end ?? end,
+      marginStart: other.marginStart ?? marginStart,
+      marginEnd: other.marginEnd ?? marginEnd,
+      paddingStart: other.paddingStart ?? paddingStart,
+      paddingEnd: other.paddingEnd ?? paddingEnd,
+      zIndex: other.zIndex ?? zIndex,
+      borderTopWidth: other.borderTopWidth ?? borderTopWidth,
+      borderRightWidth: other.borderRightWidth ?? borderRightWidth,
+      borderBottomWidth: other.borderBottomWidth ?? borderBottomWidth,
+      borderLeftWidth: other.borderLeftWidth ?? borderLeftWidth,
+      borderStartWidth: other.borderStartWidth ?? borderStartWidth,
+      borderEndWidth: other.borderEndWidth ?? borderEndWidth,
       borderWidth: other.borderWidth ?? borderWidth,
     );
   }
@@ -548,6 +650,19 @@ class DCFLayout extends Equatable {
     dynamic gap,
     dynamic rowGap,
     dynamic columnGap,
+    dynamic start,
+    dynamic end,
+    dynamic marginStart,
+    dynamic marginEnd,
+    dynamic paddingStart,
+    dynamic paddingEnd,
+    int? zIndex,
+    dynamic borderTopWidth,
+    dynamic borderRightWidth,
+    dynamic borderBottomWidth,
+    dynamic borderLeftWidth,
+    dynamic borderStartWidth,
+    dynamic borderEndWidth,
     dynamic borderWidth,
   }) {
     return DCFLayout(
@@ -594,6 +709,19 @@ class DCFLayout extends Equatable {
       gap: gap ?? this.gap,
       rowGap: rowGap ?? this.rowGap,
       columnGap: columnGap ?? this.columnGap,
+      start: start ?? this.start,
+      end: end ?? this.end,
+      marginStart: marginStart ?? this.marginStart,
+      marginEnd: marginEnd ?? this.marginEnd,
+      paddingStart: paddingStart ?? this.paddingStart,
+      paddingEnd: paddingEnd ?? this.paddingEnd,
+      zIndex: zIndex ?? this.zIndex,
+      borderTopWidth: borderTopWidth ?? this.borderTopWidth,
+      borderRightWidth: borderRightWidth ?? this.borderRightWidth,
+      borderBottomWidth: borderBottomWidth ?? this.borderBottomWidth,
+      borderLeftWidth: borderLeftWidth ?? this.borderLeftWidth,
+      borderStartWidth: borderStartWidth ?? this.borderStartWidth,
+      borderEndWidth: borderEndWidth ?? this.borderEndWidth,
       borderWidth: borderWidth ?? this.borderWidth,
     );
   }
@@ -643,6 +771,19 @@ class DCFLayout extends Equatable {
     'gap',
     'rowGap',
     'columnGap',
+    'start',
+    'end',
+    'marginStart',
+    'marginEnd',
+    'paddingStart',
+    'paddingEnd',
+    'zIndex',
+    'borderTopWidth',
+    'borderRightWidth',
+    'borderBottomWidth',
+    'borderLeftWidth',
+    'borderStartWidth',
+    'borderEndWidth',
     'borderWidth',
   ];
 
@@ -722,6 +863,19 @@ class DCFLayout extends Equatable {
         gap,
         rowGap,
         columnGap,
+        start,
+        end,
+        marginStart,
+        marginEnd,
+        paddingStart,
+        paddingEnd,
+        zIndex,
+        borderTopWidth,
+        borderRightWidth,
+        borderBottomWidth,
+        borderLeftWidth,
+        borderStartWidth,
+        borderEndWidth,
         borderWidth,
         _layoutId,
       ];
@@ -729,7 +883,7 @@ class DCFLayout extends Equatable {
 
 /// Layout registry returned by DCFLayout.create()
 /// Provides type-safe access to registered layouts by name
-/// 
+///
 /// Supports both bracket notation and dot notation:
 /// ```dart
 /// _layouts['buttonRow']  // Bracket notation
@@ -737,35 +891,40 @@ class DCFLayout extends Equatable {
 /// ```
 class DCFLayoutRegistry {
   final Map<String, DCFLayout> _layouts = {};
-  
+
   DCFLayoutRegistry._();
-  
+
   /// Get a registered layout by name (bracket notation)
   DCFLayout operator [](String name) {
     final layout = _layouts[name];
     if (layout == null) {
-      throw ArgumentError('Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
+      throw ArgumentError(
+          'Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
     }
     return layout;
   }
-  
+
   /// Type-safe dot notation access (e.g., _layouts.buttonRow)
   /// Uses noSuchMethod to provide dynamic property access
   @override
   dynamic noSuchMethod(Invocation invocation) {
     if (invocation.isGetter) {
-      final name = invocation.memberName.toString().replaceFirst(RegExp(r'^Symbol\("'), '').replaceFirst(RegExp(r'"\)$'), '');
+      final name = invocation.memberName
+          .toString()
+          .replaceFirst(RegExp(r'^Symbol\("'), '')
+          .replaceFirst(RegExp(r'"\)$'), '');
       if (_layouts.containsKey(name)) {
         return _layouts[name] as DCFLayout;
       }
-      throw ArgumentError('Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
+      throw ArgumentError(
+          'Layout "$name" not found in registry. Available layouts: ${_layouts.keys.join(", ")}');
     }
     return super.noSuchMethod(invocation);
   }
-  
+
   /// Check if a layout exists in the registry
   bool containsKey(String name) => _layouts.containsKey(name);
-  
+
   /// Get all registered layout names
   Iterable<String> get keys => _layouts.keys;
 }

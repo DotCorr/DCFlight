@@ -66,9 +66,33 @@ public class DCFLayoutManager {
     private func performAutomaticLayoutCalculation() {
         guard needsLayoutCalculation else { return }
         
-        layoutQueue.async {
+        // CRITICAL: Set root view frame on main thread BEFORE layout calculation
+        // This ensures root view is correctly positioned when Yoga calculates child positions
+        DispatchQueue.main.async {
             let screenBounds = UIScreen.main.bounds
             
+            // Set root view frame first - CRITICAL: Must be exactly (0,0) to fill window
+            // This ensures all children are positioned correctly relative to window origin
+            if let rootView = self.getView(withId: 0) {
+                // Get actual window bounds (not safe area)
+                let windowBounds: CGRect
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first {
+                    windowBounds = window.bounds
+                } else {
+                    windowBounds = screenBounds
+                }
+                
+                let rootFrame = CGRect(x: 0, y: 0, width: windowBounds.width, height: windowBounds.height)
+                if !rootView.frame.equalTo(rootFrame) {
+                    rootView.frame = rootFrame
+                    rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                    print("✅ DCFLayoutManager: Root view frame set to \(rootFrame) on main thread (window.bounds)")
+                }
+            }
+            
+            // Now do layout calculation on background thread
+            self.layoutQueue.async {
             let success = YogaShadowTree.shared.calculateAndApplyLayout(
                 width: screenBounds.width,
                 height: screenBounds.height
@@ -82,6 +106,7 @@ public class DCFLayoutManager {
                     print("⚠️ DCFLayoutManager: Layout calculation deferred, rescheduling")
                     self.needsLayoutCalculation = true
                     self.scheduleLayoutCalculation()
+                    }
                 }
             }
         }
@@ -168,26 +193,50 @@ public class DCFLayoutManager {
             height: max(1, height)
         )
         
+        // Create YGNodeLayout for component's applyLayout method
+        let layout = YGNodeLayout(
+            left: left,
+            top: top,
+            width: width,
+            height: height
+        )
+        
         // Use global layout animation settings if duration not specified
         let effectiveDuration = animationDuration > 0 ? animationDuration : 
             (layoutAnimationEnabled ? layoutAnimationDuration : 0.0)
         
+        // Get component type and instance to call component's applyLayout
+        let componentType = YogaShadowTree.shared.getComponentType(for: viewId)
+        let applyLayoutBlock = {
+            // Check if component has custom applyLayout implementation
+            // If so, let it handle the frame entirely (e.g., ScrollContentView needs custom frame handling)
+            if let componentType = componentType,
+               let componentInstance = YogaShadowTree.shared.getComponentInstance(for: componentType) {
+                // For components with custom applyLayout, let them handle the frame
+                // This prevents race conditions where applyLayoutDirectly and component.applyLayout both set the frame
+                componentInstance.applyLayout(view, layout: layout)
+            } else {
+                // For components without custom applyLayout, use the default direct frame application
+                self.applyLayoutDirectly(to: view, frame: frame)
+            }
+        }
+        
         if Thread.isMainThread {
             if effectiveDuration > 0 {
                 UIView.animate(withDuration: effectiveDuration) {
-                    self.applyLayoutDirectly(to: view, frame: frame)
+                    applyLayoutBlock()
                 }
             } else {
-                self.applyLayoutDirectly(to: view, frame: frame)
+                applyLayoutBlock()
             }
         } else {
             DispatchQueue.main.async {
                 if effectiveDuration > 0 {
                     UIView.animate(withDuration: effectiveDuration) {
-                        self.applyLayoutDirectly(to: view, frame: frame)
+                        applyLayoutBlock()
                     }
                 } else {
-                    self.applyLayoutDirectly(to: view, frame: frame)
+                    applyLayoutBlock()
                 }
             }
         }
@@ -312,7 +361,15 @@ extension DCFLayoutManager {
         registerView(view, withId: nodeId)
         
         
-        componentInstance.viewRegisteredWithShadowTree(view, nodeId: String(nodeId))
+        if let shadowView = YogaShadowTree.shared.getShadowView(for: nodeId) {
+            componentInstance.viewRegisteredWithShadowTree(view, shadowView: shadowView, nodeId: String(nodeId))
+        }
+        
+        // NOTE: We do NOT set intrinsicContentSize here in registerView because:
+        // 1. registerView is called AFTER children may have been attached in batch updates
+        // 2. Setting intrinsicContentSize on a node with children causes Yoga to crash
+        // 3. Intrinsic size should only be set when we're certain the node is a leaf
+        // Intrinsic size is set in updateView when props change, which happens after the view hierarchy is stable
         
         if nodeId == 0 {
             triggerLayoutCalculation()

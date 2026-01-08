@@ -140,31 +140,7 @@ class DCFSvgComponent : DCFComponent() {
     }
 
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val imageView = view as? ImageView ?: return PointF(0f, 0f)
-
-        val drawable = imageView.drawable
-        if (drawable != null) {
-            val intrinsicWidth = drawable.intrinsicWidth.toFloat()
-            val intrinsicHeight = drawable.intrinsicHeight.toFloat()
-            
-            if (intrinsicWidth > 0 && intrinsicHeight > 0) {
-                return PointF(intrinsicWidth, intrinsicHeight)
-            }
-        }
-
-        imageView.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-
-        val measuredWidth = imageView.measuredWidth.toFloat()
-        val measuredHeight = imageView.measuredHeight.toFloat()
-
-        return PointF(kotlin.math.max(1f, measuredWidth), kotlin.math.max(1f, measuredHeight))
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

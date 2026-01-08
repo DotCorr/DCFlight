@@ -7,10 +7,298 @@
 
 import UIKit
 import dcflight
+import ObjectiveC
+import Foundation
+import Darwin
 
-// ============================================================================
-// PURE REANIMATED COMPONENT - ZERO BRIDGE CALLS DURING ANIMATION
-// ============================================================================
+/**
+ * Runtime interpreter for worklets - executes IR directly without rebuilding!
+ * 
+ * This is like React Native Reanimated - worklets run at runtime by interpreting
+ * the IR (Intermediate Representation) sent from Dart.
+ * 
+ * NO REBUILD NEEDED - just write @Worklet and it works!
+ */
+class WorkletInterpreter {
+    
+    /**
+     * Execute a worklet by interpreting its IR
+     * 
+     * @param ir The serialized IR from Dart
+     * @param elapsed Elapsed time (first parameter, usually)
+     * @param config Additional parameters from workletConfig
+     * @return The result of worklet execution
+     */
+    static func execute(_ ir: [String: Any], elapsed: CFTimeInterval, config: [String: Any]?) -> Any? {
+        guard let body = ir["body"] as? [String: Any] else { return nil }
+        let returnType = ir["returnType"] as? String ?? "dynamic"
+        
+        // Build context with elapsed time and config parameters
+        var context: [String: Any] = [
+            "elapsed": elapsed
+        ]
+        
+        // Add parameters from config
+        if let config = config {
+            for (key, value) in config {
+                context[key] = value
+            }
+        }
+        
+        // Interpret the body
+        guard let result = interpretNode(body, context: context) else { return nil }
+        
+        // Convert result to appropriate type
+        switch returnType {
+        case "double", "int":
+            return (result as? NSNumber)?.doubleValue ?? 0.0
+        case "String":
+            return (result as? String) ?? ""
+        case "bool":
+            return (result as? Bool) ?? false
+        default:
+            return result
+        }
+    }
+    
+    /**
+     * Interpret a single IR node
+     */
+    private static func interpretNode(_ node: [String: Any], context: [String: Any]) -> Any? {
+        guard let type = node["type"] as? String else { return nil }
+        
+        switch type {
+        case "literal":
+            let value = node["value"]
+            let valueType = node["valueType"] as? String ?? "dynamic"
+            switch valueType {
+            case "double":
+                return (value as? NSNumber)?.doubleValue ?? 0.0
+            case "int":
+                return (value as? NSNumber)?.intValue ?? 0
+            case "String":
+                return (value as? String) ?? ""
+            case "bool":
+                return (value as? Bool) ?? false
+            default:
+                return value
+            }
+            
+        case "variable":
+            guard let name = node["name"] as? String else { return nil }
+            return context[name] ?? 0.0
+            
+        case "binaryOp":
+            guard let operatorStr = node["operator"] as? String,
+                  let leftNode = node["left"] as? [String: Any],
+                  let rightNode = node["right"] as? [String: Any],
+                  let left = interpretNode(leftNode, context: context) as? NSNumber,
+                  let right = interpretNode(rightNode, context: context) as? NSNumber else {
+                return nil
+            }
+            
+            let leftDouble = left.doubleValue
+            let rightDouble = right.doubleValue
+            
+            switch operatorStr {
+            case "add": return leftDouble + rightDouble
+            case "subtract": return leftDouble - rightDouble
+            case "multiply": return leftDouble * rightDouble
+            case "divide": return rightDouble != 0 ? leftDouble / rightDouble : 0.0
+            case "modulo": return leftDouble.truncatingRemainder(dividingBy: rightDouble)
+            case "equals": return leftDouble == rightDouble ? 1.0 : 0.0
+            case "notEquals": return leftDouble != rightDouble ? 1.0 : 0.0
+            case "lessThan": return leftDouble < rightDouble ? 1.0 : 0.0
+            case "greaterThan": return leftDouble > rightDouble ? 1.0 : 0.0
+            case "lessThanOrEqual": return leftDouble <= rightDouble ? 1.0 : 0.0
+            case "greaterThanOrEqual": return leftDouble >= rightDouble ? 1.0 : 0.0
+            case "and": return (leftDouble != 0 && rightDouble != 0) ? 1.0 : 0.0
+            case "or": return (leftDouble != 0 || rightDouble != 0) ? 1.0 : 0.0
+            default:
+                print("⚠️ WORKLET: Unknown binary operator: \(operatorStr)")
+                return 0.0
+            }
+            
+        case "unaryOp":
+            guard let operatorStr = node["operator"] as? String,
+                  let operandNode = node["operand"] as? [String: Any],
+                  let operand = interpretNode(operandNode, context: context) as? NSNumber else {
+                return nil
+            }
+            
+            let operandDouble = operand.doubleValue
+            
+            switch operatorStr {
+            case "negate": return -operandDouble
+            case "not": return operandDouble == 0 ? 1.0 : 0.0
+            default:
+                print("⚠️ WORKLET: Unknown unary operator: \(operatorStr)")
+                return operandDouble
+            }
+            
+        case "functionCall":
+            guard let functionName = node["functionName"] as? String,
+                  let argumentsNodes = node["arguments"] as? [[String: Any]] else {
+                return nil
+            }
+            
+            let arguments = argumentsNodes.compactMap { interpretNode($0, context: context) }
+            
+            // Handle math functions
+            if functionName.hasPrefix("Math.") {
+                let funcName = String(functionName.dropFirst(5))
+                return executeMathFunction(funcName, arguments: arguments)
+            } else if functionName.contains(".") {
+                // Handle property access
+                return executePropertyAccess(functionName, arguments: arguments, context: context)
+            } else {
+                return executeMathFunction(functionName, arguments: arguments)
+            }
+            
+        case "conditional":
+            guard let conditionNode = node["condition"] as? [String: Any],
+                  let thenBranch = node["thenBranch"] as? [String: Any] else {
+                return nil
+            }
+            
+            let condition = interpretNode(conditionNode, context: context) as? NSNumber
+            let conditionValue = condition?.doubleValue ?? 0.0
+            
+            if conditionValue != 0 {
+                return interpretNode(thenBranch, context: context)
+            } else if let elseBranch = node["elseBranch"] as? [String: Any] {
+                return interpretNode(elseBranch, context: context)
+            } else {
+                return nil
+            }
+            
+        case "returnStatement":
+            if let expression = node["expression"] as? [String: Any] {
+                return interpretNode(expression, context: context)
+            }
+            return nil
+            
+        default:
+            print("⚠️ WORKLET: Unknown node type: \(type)")
+            return nil
+        }
+    }
+    
+    /**
+     * Execute a math function
+     */
+    private static func executeMathFunction(_ functionName: String, arguments: [Any]) -> Double {
+        let args = arguments.compactMap { ($0 as? NSNumber)?.doubleValue }
+        
+        switch functionName {
+        case "sin": return args.isEmpty ? 0.0 : sin(args[0])
+        case "cos": return args.isEmpty ? 0.0 : cos(args[0])
+        case "tan": return args.isEmpty ? 0.0 : tan(args[0])
+        case "asin": return args.isEmpty ? 0.0 : asin(args[0])
+        case "acos": return args.isEmpty ? 0.0 : acos(args[0])
+        case "atan": return args.isEmpty ? 0.0 : atan(args[0])
+        case "atan2": return args.count >= 2 ? atan2(args[0], args[1]) : 0.0
+        case "exp": return args.isEmpty ? 0.0 : exp(args[0])
+        case "log": return args.isEmpty ? 0.0 : log(args[0])
+        case "log10": return args.isEmpty ? 0.0 : log10(args[0])
+        case "sqrt": return args.isEmpty ? 0.0 : sqrt(args[0])
+        case "pow": return args.count >= 2 ? pow(args[0], args[1]) : 0.0
+        case "abs": return args.isEmpty ? 0.0 : abs(args[0])
+        case "max": return args.max() ?? 0.0
+        case "min": return args.min() ?? 0.0
+        case "floor": return args.isEmpty ? 0.0 : floor(args[0])
+        case "ceil": return args.isEmpty ? 0.0 : ceil(args[0])
+        case "round": return args.isEmpty ? 0.0 : round(args[0])
+        default:
+            print("⚠️ WORKLET: Unknown math function: \(functionName)")
+            return 0.0
+        }
+    }
+    
+    /**
+     * Execute property access (list.length, string.substring, etc.)
+     */
+    private static func executePropertyAccess(_ propertyAccess: String, arguments: [Any], context: [String: Any]) -> Any? {
+        let parts = propertyAccess.split(separator: ".")
+        guard parts.count == 2 else { return nil }
+        
+        let objectName = String(parts[0])
+        let property = String(parts[1])
+        guard let obj = context[objectName] else { return nil }
+        
+        switch property {
+        case "length":
+            if let list = obj as? [Any] {
+                return Double(list.count)
+            } else if let str = obj as? String {
+                return Double(str.count)
+            }
+            return 0.0
+            
+        case "substring":
+            guard let str = obj as? String else { return "" }
+            if arguments.count >= 1, let start = (arguments[0] as? NSNumber)?.intValue {
+                if arguments.count >= 2, let end = (arguments[1] as? NSNumber)?.intValue {
+                    let startIdx = str.index(str.startIndex, offsetBy: max(0, min(start, str.count)))
+                    let endIdx = str.index(str.startIndex, offsetBy: max(0, min(end, str.count)))
+                    return String(str[startIdx..<endIdx])
+                } else {
+                    let startIdx = str.index(str.startIndex, offsetBy: max(0, min(start, str.count)))
+                    return String(str[startIdx...])
+                }
+            }
+            return str
+            
+        case "[]":
+            // Index access
+            if arguments.count >= 1, let index = (arguments[0] as? NSNumber)?.intValue {
+                if let list = obj as? [Any], index >= 0 && index < list.count {
+                    return list[index]
+                } else if let str = obj as? String, index >= 0 && index < str.count {
+                    let idx = str.index(str.startIndex, offsetBy: index)
+                    return String(str[idx])
+                }
+            }
+            return nil
+            
+        case "clamp":
+            if let num = obj as? NSNumber, arguments.count >= 2,
+               let minValue = (arguments[0] as? NSNumber)?.doubleValue,
+               let maxValue = (arguments[1] as? NSNumber)?.doubleValue {
+                let value = num.doubleValue
+                return max(minValue, min(maxValue, value))
+            }
+            return obj
+            
+        case "floor":
+            if let num = obj as? NSNumber {
+                return floor(num.doubleValue)
+            }
+            return obj
+            
+        case "ceil":
+            if let num = obj as? NSNumber {
+                return ceil(num.doubleValue)
+            }
+            return obj
+            
+        case "round":
+            if let num = obj as? NSNumber {
+                return round(num.doubleValue)
+            }
+            return obj
+            
+        case "abs":
+            if let num = obj as? NSNumber {
+                return abs(num.doubleValue)
+            }
+            return obj
+            
+        default:
+            return nil
+        }
+    }
+}
 
 class DCFAnimatedViewComponent: NSObject, DCFComponent {
     required override init() {
@@ -18,6 +306,30 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     }
     
     func createView(props: [String: Any]) -> UIView {
+        // Debug: Print all props to see what we're receiving
+        print("🔍 REANIMATED: createView called with props keys: \(Array(props.keys))")
+        print("🔍 REANIMATED: isPureReanimated = \(props["isPureReanimated"] ?? "nil")")
+        print("🔍 REANIMATED: worklet = \(props["worklet"] != nil ? "exists" : "nil")")
+        print("🔍 REANIMATED: workletConfig = \(props["workletConfig"] != nil ? "exists" : "nil")")
+        print("🔍 REANIMATED: autoStart = \(props["autoStart"] ?? "nil")")
+        
+        // Print worklet structure if it exists
+        if let workletData = props["worklet"] as? [String: Any] {
+            print("🔍 REANIMATED: worklet keys: \(Array(workletData.keys))")
+            if let functionData = workletData["function"] as? [String: Any] {
+                print("🔍 REANIMATED: function keys: \(Array(functionData.keys))")
+            }
+            if let returnType = workletData["returnType"] as? String {
+                print("🔍 REANIMATED: returnType = \(returnType)")
+            }
+        }
+        
+        // Print workletConfig structure if it exists
+        if let workletConfig = props["workletConfig"] as? [String: Any] {
+            print("🔍 REANIMATED: workletConfig keys: \(Array(workletConfig.keys))")
+            print("🔍 REANIMATED: workletConfig content: \(workletConfig)")
+        }
+        
         let reanimatedView = PureReanimatedView()
         
         // Configure everything from props immediately - NO BRIDGE CALLS
@@ -27,25 +339,40 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
             // Configure worklet if provided (takes precedence)
             if let workletData = props["worklet"] as? [String: Any] {
                 let workletConfig = props["workletConfig"] as? [String: Any]
+                print("🎯 PURE REANIMATED: Found worklet in props, configuring...")
+                print("🎯 PURE REANIMATED: workletData type: \(type(of: workletData))")
+                print("🎯 PURE REANIMATED: workletConfig: \(workletConfig ?? [:])")
                 reanimatedView.configureWorklet(workletData, workletConfig)
             } else if let animatedStyle = props["animatedStyle"] as? [String: Any] {
                 // Fall back to animated style
+                print("🎯 PURE REANIMATED: No worklet found, using animatedStyle")
                 reanimatedView.configurePureAnimation(animatedStyle)
+            } else {
+                print("⚠️ PURE REANIMATED: No worklet or animatedStyle found!")
             }
             
-            // Auto-start if configured (default: false for explicit control)
-            let autoStart = props["autoStart"] as? Bool ?? false
+            // Auto-start if configured (default: true for AnimatedText)
+            let autoStart = props["autoStart"] as? Bool ?? true
             let startDelay = props["startDelay"] as? Int ?? 0
+            
+            print("🎯 PURE REANIMATED: autoStart=\(autoStart), startDelay=\(startDelay)")
             
             if autoStart {
                 if startDelay > 0 {
+                    print("⏳ PURE REANIMATED: Delaying animation start by \(startDelay)ms")
                     DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(startDelay)) {
+                        print("🚀 PURE REANIMATED: Starting animation after delay")
                         reanimatedView.startPureAnimation()
                     }
                 } else {
+                    print("🚀 PURE REANIMATED: Starting animation immediately")
                     reanimatedView.startPureAnimation()
                 }
+            } else {
+                print("⏸️ PURE REANIMATED: autoStart=false, animation not starting automatically")
             }
+        } else {
+            print("⚠️ REANIMATED: isPureReanimated is false or missing!")
         }
         
         // Apply styles
@@ -80,7 +407,7 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         return true
     }
     
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
         // Store node ID for event callbacks
         if let reanimatedView = view as? PureReanimatedView {
             reanimatedView.nodeId = nodeId
@@ -148,10 +475,6 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
         )
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
-    }
-    
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
         return nil
     }
@@ -167,6 +490,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     private var animationConfig: [String: Any] = [:]
     private var displayLink: CADisplayLink?
     private var animationStartTime: CFTimeInterval = 0
+    private var frameCount = 0
     var isAnimating = false
     
     // MARK: - DCFLayoutIndependent Protocol
@@ -208,12 +532,50 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     func configureWorklet(_ workletData: [String: Any], _ config: [String: Any]?) {
         print("🔧 WORKLET: Configuring worklet for pure UI thread execution")
-        self.workletConfig = workletData
+        print("🔧 WORKLET: workletData keys: \(Array(workletData.keys))")
+        print("🔧 WORKLET: workletData full: \(workletData)")
+        print("🔧 WORKLET: config: \(config ?? [:])")
+        
+        // Check if worklet is compiled
+        let functionData = workletData["function"] as? [String: Any]
+        let isCompiled = workletData["isCompiled"] as? Bool ?? false
+        let workletType = functionData?["type"] as? String ?? "dart_function"
+        
+        print("🔧 WORKLET: functionData exists: \(functionData != nil)")
+        print("🔧 WORKLET: isCompiled: \(isCompiled)")
+        print("🔧 WORKLET: workletType: \(workletType)")
+        
+        // Check if worklet has IR for runtime interpretation
+        let ir = functionData?["ir"] as? [String: Any]
+        if ir != nil || workletType == "interpretable" {
+            let workletId = functionData?["workletId"] as? String
+            print("✅ WORKLET: Interpretable worklet detected! workletId=\(workletId ?? "unknown")")
+            print("📝 WORKLET: IR available for runtime interpretation (no rebuild needed!)")
+        } else {
+            print("⚠️ WORKLET: No IR found, will use pattern matching for text worklets")
+        }
+        
+        // Merge returnType from config into workletData if provided (for AnimatedText compatibility)
+        var mergedWorkletData = workletData
+        if let config = config, let configReturnType = config["returnType"] as? String {
+            mergedWorkletData["returnType"] = configReturnType
+            print("🔧 WORKLET: Merged returnType from config: \(configReturnType)")
+        }
+        
+        self.workletConfig = mergedWorkletData
         self.workletExecutionConfig = config
         self.isUsingWorklet = true
         
         // Clear animation config when using worklet
         currentAnimations.removeAll()
+        
+        // Check return type (from workletData or config)
+        let returnType = mergedWorkletData["returnType"] as? String ?? config?["returnType"] as? String ?? "dynamic"
+        let updateTextChild = config?["updateTextChild"] as? Bool ?? false
+        print("🔧 WORKLET: returnType=\(returnType), updateTextChild=\(updateTextChild)")
+        print("🔧 WORKLET: isUsingWorklet set to true")
+        print("🔧 WORKLET: workletConfig stored: \(workletConfig != nil)")
+        print("🔧 WORKLET: workletExecutionConfig stored: \(workletExecutionConfig != nil)")
     }
     
     func updateWorklet(_ workletData: [String: Any], _ config: [String: Any]?) {
@@ -232,16 +594,38 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         print("🎯 PURE REANIMATED: Configuring animation from props")
         self.animationConfig = animatedStyle
         
+        // Parse perspective if provided
+        if let perspective = animatedStyle["perspective"] as? Double {
+            // Set perspective on layer's sublayerTransform
+            var transform = CATransform3DIdentity
+            transform.m34 = -1.0 / CGFloat(perspective)
+            self.layer.sublayerTransform = transform
+        }
+        
         // Parse animation configurations
         currentAnimations.removeAll()
         
-        for (property, config) in animatedStyle {
-            if let animConfig = config as? [String: Any] {
-                currentAnimations[property] = PureAnimationState(
-                    property: property,
-                    config: animConfig,
-                    view: self
-                )
+        // Handle animations dictionary
+        if let animations = animatedStyle["animations"] as? [String: Any] {
+            for (property, config) in animations {
+                if let animConfig = config as? [String: Any] {
+                    currentAnimations[property] = PureAnimationState(
+                        property: property,
+                        config: animConfig,
+                        view: self
+                    )
+                }
+            }
+        } else {
+            // Legacy format: animations at top level
+            for (property, config) in animatedStyle {
+                if property != "perspective" && property != "preserve3d", let animConfig = config as? [String: Any] {
+                    currentAnimations[property] = PureAnimationState(
+                        property: property,
+                        config: animConfig,
+                        view: self
+                    )
+                }
             }
         }
     }
@@ -286,14 +670,39 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     /// Start pure UI thread animation - NO BRIDGE CALLS
     func startPureAnimation() {
-        if isUsingWorklet && workletConfig == nil {
-            print("⚠️ PURE REANIMATED: No worklet configured")
+        print("🚀 PURE REANIMATED: startPureAnimation called")
+        print("🚀 PURE REANIMATED: isUsingWorklet=\(isUsingWorklet)")
+        print("🚀 PURE REANIMATED: workletConfig exists=\(workletConfig != nil)")
+        print("🚀 PURE REANIMATED: workletExecutionConfig exists=\(workletExecutionConfig != nil)")
+        print("🚀 PURE REANIMATED: currentAnimations count=\(currentAnimations.count)")
+        
+        if isUsingWorklet {
+            // For worklets, we need workletConfig (the serialized function) to exist
+            // workletExecutionConfig (the parameters) is optional
+            if workletConfig == nil {
+                print("⚠️ PURE REANIMATED: No worklet configured - cannot start animation")
+            return
+        }
+            // Text worklets run continuously (no duration), so we always start
+            print("🚀 PURE REANIMATED: Starting worklet animation (workletConfig exists)")
+            if let worklet = workletConfig {
+                let returnType = worklet["returnType"] as? String ?? "dynamic"
+                let updateTextChild = workletExecutionConfig?["updateTextChild"] as? Bool ?? false
+                print("🚀 PURE REANIMATED: Worklet returnType=\(returnType), updateTextChild=\(updateTextChild)")
+            }
+        } else if currentAnimations.isEmpty {
+            print("⚠️ PURE REANIMATED: No animations configured - cannot start")
             return
         }
         
-        if !isUsingWorklet && currentAnimations.isEmpty {
-            print("⚠️ PURE REANIMATED: No animations configured")
-            return
+        // CRITICAL: Apply initial values BEFORE starting animation
+        // This ensures the view starts in the correct state
+        if !isUsingWorklet {
+            for (_, animationState) in currentAnimations {
+                // Apply initial value immediately (before animation starts)
+                let initialValue = animationState.fromValue
+                animationState.applyInitialValue(initialValue, to: self)
+            }
         }
         
         print("🚀 PURE REANIMATED: Starting pure UI thread animation")
@@ -301,6 +710,8 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         // Reset animation state
         animationStartTime = CACurrentMediaTime()
         isAnimating = true
+        
+        print("🚀 PURE REANIMATED: isAnimating set to true, animationStartTime=\(animationStartTime)")
         
         // Fire animation start event
         fireAnimationEvent(eventType: "onAnimationStart")
@@ -390,6 +801,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     @objc private func updatePureAnimationFrame() {
         guard isAnimating else {
+            print("⏸️ PURE REANIMATED: Animation stopped, stopping display link")
             stopDisplayLink()
             return
         }
@@ -400,6 +812,13 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         
         // Execute worklet if configured
         if isUsingWorklet, let worklet = workletConfig {
+            if frameCount == 0 {
+                print("🎬 WORKLET: First frame - elapsed=\(elapsedSeconds), isUsingWorklet=\(isUsingWorklet)")
+            }
+            frameCount += 1
+            if frameCount % 60 == 0 { // Log every second (60fps)
+                print("🎬 WORKLET: Frame \(frameCount), elapsed=\(elapsedSeconds)")
+            }
             executeWorklet(elapsed: elapsedSeconds, worklet: worklet)
             return
         }
@@ -434,37 +853,350 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     private func executeWorklet(elapsed: CFTimeInterval, worklet: [String: Any]) {
         // Get worklet configuration
-        guard let functionData = worklet["function"] as? [String: Any] else {
+        let returnType = worklet["returnType"] as? String ?? "dynamic"
+        let updateTextChild = workletExecutionConfig?["updateTextChild"] as? Bool ?? false
+        let isCompiled = worklet["isCompiled"] as? Bool ?? false
+        let functionData = worklet["function"] as? [String: Any]
+        let workletType = functionData?["type"] as? String ?? "dart_function"
+        
+        print("🔄 WORKLET: Executing worklet - returnType=\(returnType), updateTextChild=\(updateTextChild), elapsed=\(elapsed)")
+        
+        // Check if this is an interpretable worklet (runtime execution - NO REBUILD NEEDED!)
+        let ir = functionData?["ir"] as? [String: Any]
+        if ir != nil || workletType == "interpretable" {
+            print("🚀 WORKLET: Executing worklet at runtime (no rebuild needed!)")
+            
+            // For text worklets, use existing pattern matching (works perfectly)
+            if returnType == "String" && updateTextChild {
+                executeTextWorklet(elapsed: elapsed, worklet: worklet)
+                return
+            }
+            
+            // For numeric worklets, interpret IR at runtime (like React Native Reanimated!)
+            if let ir = ir {
+                if let result = WorkletInterpreter.execute(ir, elapsed: elapsed, config: workletExecutionConfig) {
+                    print("✅ WORKLET: Successfully executed worklet at runtime")
+                    applyWorkletResult(result, returnType: returnType)
+                    return
+                }
+            }
+            
+            // Fall back to pattern matching if interpretation failed
+            print("⚠️ WORKLET: Could not interpret worklet, falling back to pattern matching")
+        }
+        
+        // Check if this is a text-updating worklet (like typewriter)
+        if returnType == "String" && updateTextChild {
+            print("✅ WORKLET: Detected text worklet, executing typewriter logic")
+            executeTextWorklet(elapsed: elapsed, worklet: worklet)
+            return
+        }
+        
+        // For numeric worklets, check if we have a source (legacy support)
+        guard let functionData = functionData else {
             print("⚠️ WORKLET: Invalid worklet configuration")
             stopPureAnimation()
             return
         }
         
-        // Get duration from config or use default
-        let duration = (workletExecutionConfig?["duration"] as? Double ?? 2000.0) / 1000.0
-        
-        // Check if worklet should complete
-        if elapsed >= duration {
+        // Legacy fallback - if we get here, worklet wasn't interpretable
+        // This shouldn't happen with proper IR, but handle gracefully
+        print("⚠️ WORKLET: No IR found, cannot execute worklet")
             stopPureAnimation()
+    }
+    
+    
+    /**
+     * Apply worklet result to view based on return type and target property
+     */
+    private func applyWorkletResult(_ result: Any?, returnType: String) {
+        switch returnType {
+        case "double", "int":
+            guard let value = result as? NSNumber else { return }
+            let floatValue = value.floatValue
+            
+            // Check if there's a target property in config
+            let targetProperty = workletExecutionConfig?["targetProperty"] as? String
+            
+            switch targetProperty {
+            case "opacity":
+                self.alpha = CGFloat(max(0, min(1, floatValue)))
+            case "scale":
+                self.transform = CGAffineTransform(scaleX: CGFloat(floatValue), y: CGFloat(floatValue))
+            case "scaleX":
+                var transform = self.transform
+                transform.a = CGFloat(floatValue)
+                self.transform = transform
+            case "scaleY":
+                var transform = self.transform
+                transform.d = CGFloat(floatValue)
+                self.transform = transform
+            case "translateX":
+                var transform = self.transform
+                transform.tx = CGFloat(floatValue)
+                self.transform = transform
+            case "translateY":
+                var transform = self.transform
+                transform.ty = CGFloat(floatValue)
+                self.transform = transform
+            case "rotation", "rotationZ":
+                self.transform = CGAffineTransform(rotationAngle: CGFloat(floatValue))
+            case "rotationX":
+                var transform = self.layer.transform
+                transform = CATransform3DRotate(transform, CGFloat(floatValue), 1, 0, 0)
+                self.layer.transform = transform
+            case "rotationY":
+                var transform = self.layer.transform
+                transform = CATransform3DRotate(transform, CGFloat(floatValue), 0, 1, 0)
+                self.layer.transform = transform
+            case nil:
+                // Default: apply as scale if no property specified
+                self.transform = CGAffineTransform(scaleX: CGFloat(floatValue), y: CGFloat(floatValue))
+            default:
+                print("🔄 WORKLET: Unknown target property '\(targetProperty ?? "nil")', applying as scale")
+                self.transform = CGAffineTransform(scaleX: CGFloat(floatValue), y: CGFloat(floatValue))
+            }
+        case "String":
+            // String results are handled by executeTextWorklet
+            // This shouldn't be called for String worklets
+            break
+        default:
+            print("🔄 WORKLET: Result type \(returnType) not yet handled")
+        }
+    }
+    
+    /**
+     * Execute a text-returning worklet (e.g., typewriter effect) on UI thread.
+     * This runs entirely natively without bridge calls.
+     */
+    private func executeTextWorklet(elapsed: CFTimeInterval, worklet: [String: Any]) {
+        // Get worklet config parameters
+        let words = (workletExecutionConfig?["words"] as? [Any])?.compactMap { $0 as? String } ?? []
+        let typeSpeed = ((workletExecutionConfig?["typeSpeed"] as? Double) ?? 100.0) / 1000.0 // Convert ms to seconds
+        let deleteSpeed = ((workletExecutionConfig?["deleteSpeed"] as? Double) ?? 50.0) / 1000.0
+        let pauseDuration = ((workletExecutionConfig?["pauseDuration"] as? Double) ?? 2000.0) / 1000.0
+        
+        if words.isEmpty {
+            print("⚠️ WORKLET: No words provided for typewriter worklet")
             return
         }
         
-        // Execute worklet (simplified - in production would use compiled code or interpreter)
-        // For now, this is a placeholder - the actual worklet execution would happen here
-        // The worklet function would be properly executed based on the serialized function data
-        
-        // Apply worklet result to view (simplified example)
-        // In production, the worklet function would be properly executed
-        if let result = functionData["result"] as? Double {
-            // Apply result to view properties based on worklet configuration
-            // This is a simplified example
+        if frameCount == 1 {
+            print("📝 WORKLET: First execution - elapsed=\(elapsed), words=\(words.count), typeSpeed=\(typeSpeed), deleteSpeed=\(deleteSpeed), pauseDuration=\(pauseDuration)")
         }
         
-        // Note: In production, the worklet function would be properly executed
-        // This would involve either:
-        // 1. Compiling the worklet to native code
-        // 2. Using an interpreter to execute the serialized function
-        // 3. Using a JIT compiler for dynamic execution
+        // Calculate total time per word cycle
+        var totalTimePerCycle: Double = 0.0
+        for word in words {
+            totalTimePerCycle += (Double(word.count) * typeSpeed) + pauseDuration + (Double(word.count) * deleteSpeed)
+        }
+        
+        // Find current word and position based on elapsed time
+        let cycleTime = elapsed.truncatingRemainder(dividingBy: totalTimePerCycle)
+        var wordIndex = 0
+        var accumulatedTime: Double = 0.0
+        
+        for (i, word) in words.enumerated() {
+            let wordTypeTime = Double(word.count) * typeSpeed
+            let wordPauseTime = pauseDuration
+            let wordDeleteTime = Double(word.count) * deleteSpeed
+            let wordTotalTime = wordTypeTime + wordPauseTime + wordDeleteTime
+            
+            if cycleTime <= accumulatedTime + wordTotalTime {
+                wordIndex = i
+                break
+            }
+            accumulatedTime += wordTotalTime
+        }
+        
+        let currentWord = words[wordIndex]
+        let wordStartTime = accumulatedTime
+        let wordTypeTime = Double(currentWord.count) * typeSpeed
+        let wordPauseTime = pauseDuration
+        
+        let relativeTime = cycleTime - wordStartTime
+        
+        let resultText: String
+        if relativeTime < wordTypeTime {
+            // Typing phase
+            let charIndex = min(Int(relativeTime / typeSpeed), currentWord.count)
+            resultText = String(currentWord.prefix(charIndex))
+        } else if relativeTime < wordTypeTime + wordPauseTime {
+            // Pause phase - show full word
+            resultText = currentWord
+        } else {
+            // Deleting phase
+            let deleteStartTime = wordTypeTime + wordPauseTime
+            let deleteElapsed = relativeTime - deleteStartTime
+            let charsToDelete = Int(deleteElapsed / deleteSpeed)
+            let remainingChars = max(currentWord.count - charsToDelete, 0)
+            resultText = String(currentWord.prefix(remainingChars))
+        }
+        
+        // Log every 10 frames to avoid spam
+        if frameCount % 10 == 0 {
+            print("📝 WORKLET: Updating text to '\(resultText)' (elapsed=\(elapsed), wordIndex=\(wordIndex), charCount=\(resultText.count))")
+        }
+        
+        // Update child text component directly on UI thread
+        updateChildText(resultText)
+    }
+    
+    /**
+     * Update child text component directly from UI thread (zero bridge calls).
+     * Uses runtime type checking and method invocation to avoid direct type dependencies.
+     */
+    private func updateChildText(_ text: String) {
+        print("🔍 WORKLET: updateChildText called with text='\(text)', subviews count=\(subviews.count)")
+        
+        // Find child text views using runtime type checking
+        for subview in subviews {
+            // Check if this is a DCFTextView using runtime class name (avoids import issues)
+            let className = String(describing: type(of: subview))
+            print("🔍 WORKLET: Checking subview type: \(className)")
+            
+            if className.contains("DCFTextView") {
+                print("✅ WORKLET: Found DCFTextView!")
+                // Get the viewId from ViewRegistry or associated object
+                var viewId: Int? = nil
+                
+                // Try to get from ViewRegistry first
+                for (id, viewInfo) in ViewRegistry.shared.registry {
+                    if viewInfo.view === subview {
+                        viewId = id
+                        print("✅ WORKLET: Found viewId=\(id) from ViewRegistry")
+                        break
+                    }
+                }
+                
+                // Fallback: try to get from associated object
+                if viewId == nil {
+                    if let viewIdString = objc_getAssociatedObject(subview, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String {
+                        viewId = Int(viewIdString)
+                        print("✅ WORKLET: Found viewId=\(viewIdString) from associated object")
+                    }
+                }
+                
+                if let viewId = viewId {
+                    print("🔍 WORKLET: Attempting to update text for viewId=\(viewId)")
+                    // Access YogaShadowTree through runtime
+                    // Use the module-qualified class name for Swift classes
+                    let shadowTreeClassName = "dcflight.YogaShadowTree"
+                    if let shadowTreeClass = NSClassFromString(shadowTreeClassName) as? NSObject.Type {
+                        print("✅ WORKLET: Found YogaShadowTree class")
+                        // Get shared instance using value(forKey:)
+                        if let shared = shadowTreeClass.value(forKey: "shared") as? NSObject {
+                            print("✅ WORKLET: Got YogaShadowTree shared instance")
+                            // Call getShadowView(for:) using performSelector
+                            // Swift method getShadowView(for:) becomes getShadowViewFor: in Objective-C
+                            let selector = NSSelectorFromString("getShadowViewFor:")
+                            if shared.responds(to: selector) {
+                                print("✅ WORKLET: Calling getShadowViewFor: with viewId=\(viewId)")
+                                // Use perform(_:with:) which returns Unmanaged<AnyObject>?
+                                let result = shared.perform(selector, with: viewId)
+                                if let result = result {
+                                    let shadowView = result.takeUnretainedValue() as AnyObject
+                                    // Check if it's a DCFTextShadowView and update text property
+                                    let shadowClassName = String(describing: type(of: shadowView))
+                                    print("🔍 WORKLET: Shadow view type: \(shadowClassName)")
+                                    if shadowClassName.contains("DCFTextShadowView") {
+                                        print("✅ WORKLET: Found DCFTextShadowView, updating text to '\(text)'")
+                                        // Update text property using KVC
+                                        shadowView.setValue(text, forKey: "text")
+                                        
+                                        // Try to trigger dirtyText or similar method to force layout
+                                        if let shadowViewObj = shadowView as? NSObject {
+                                            let dirtySelector = NSSelectorFromString("dirtyText")
+                                            if shadowViewObj.responds(to: dirtySelector) {
+                                                shadowViewObj.perform(dirtySelector)
+                                                print("✅ WORKLET: Called dirtyText() on shadow view")
+                                            }
+                                        }
+                                        
+                                        // Force layout update
+                                        subview.setNeedsLayout()
+                                        subview.layoutIfNeeded()
+                                        setNeedsLayout()
+                                        layoutIfNeeded()
+                                        
+                                        // Force redraw
+                                        subview.setNeedsDisplay()
+                                        setNeedsDisplay()
+                                        
+                                        print("✅ WORKLET: Updated text to '\(text)' on UI thread (viewId=\(viewId))")
+                                        return
+                                    } else {
+                                        print("⚠️ WORKLET: Shadow view is not DCFTextShadowView, type=\(shadowClassName)")
+                                    }
+                                } else {
+                                    print("⚠️ WORKLET: getShadowViewFor: returned nil")
+                                }
+                            } else {
+                                print("⚠️ WORKLET: YogaShadowTree does not respond to getShadowViewFor:")
+                            }
+                        } else {
+                            print("⚠️ WORKLET: Could not get YogaShadowTree shared instance")
+                        }
+                    } else {
+                        print("⚠️ WORKLET: Could not find YogaShadowTree class")
+                    }
+                } else {
+                    print("⚠️ WORKLET: Could not find viewId for DCFTextView")
+                }
+            }
+            
+            // Recursively check children (in case text is nested)
+            updateChildTextRecursive(subview, text: text)
+        }
+        
+        print("⚠️ WORKLET: No text view found to update!")
+    }
+    
+    private func updateChildTextRecursive(_ parent: UIView, text: String) {
+        for subview in parent.subviews {
+            let className = String(describing: type(of: subview))
+            if className.contains("DCFTextView") {
+                var viewId: Int? = nil
+                
+                // Try to get from ViewRegistry first
+                for (id, viewInfo) in ViewRegistry.shared.registry {
+                    if viewInfo.view === subview {
+                        viewId = id
+                        break
+                    }
+                }
+                
+                // Fallback: try to get from associated object
+                if viewId == nil {
+                    if let viewIdString = objc_getAssociatedObject(subview, UnsafeRawPointer(bitPattern: "viewId".hashValue)!) as? String {
+                        viewId = Int(viewIdString)
+                    }
+                }
+                
+                if let viewId = viewId {
+                    let shadowTreeClassName = "dcflight.YogaShadowTree"
+                    if let shadowTreeClass = NSClassFromString(shadowTreeClassName) as? NSObject.Type {
+                        if let shared = shadowTreeClass.value(forKey: "shared") as? NSObject {
+                            let selector = NSSelectorFromString("getShadowViewFor:")
+                            if shared.responds(to: selector) {
+                                let result = shared.perform(selector, with: viewId)
+                                if let result = result {
+                                    let shadowView = result.takeUnretainedValue() as AnyObject
+                                    let shadowClassName = String(describing: type(of: shadowView))
+                                    if shadowClassName.contains("DCFTextShadowView") {
+                                        shadowView.setValue(text, forKey: "text")
+                                        subview.setNeedsDisplay()
+                                        parent.setNeedsDisplay()
+                                        return
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            updateChildTextRecursive(subview, text: text)
+        }
     }
     
     // ============================================================================
@@ -511,26 +1243,42 @@ struct PureAnimationResult {
 
 class PureAnimationState {
     let property: String
-    private let fromValue: CGFloat
+    let fromValue: CGFloat // Made public for initial value application
     private let toValue: CGFloat
+    private let keyframes: [CGFloat]? // Support keyframe animations
     private let duration: TimeInterval
     private let delay: TimeInterval
     private let curve: (Double) -> Double
     private let isRepeating: Bool
     private let repeatCount: Int?
+    private let repeatType: String? // 'loop', 'reverse', 'mirror'
+    private let damping: Double? // Spring damping
+    private let stiffness: Double? // Spring stiffness
     
     private weak var view: UIView?
     private var cycleCount = 0
     private var isReversing = false
     private var cycleStartTime: CFTimeInterval = 0
     
+    /// Apply initial value to view (before animation starts)
+    func applyInitialValue(_ value: CGFloat, to view: UIView) {
+        applyAnimationValue(value, to: view)
+    }
+    
     init(property: String, config: [String: Any], view: UIView) {
         self.property = property
         self.view = view
         
-        // Parse configuration
-        self.fromValue = CGFloat(config["from"] as? Double ?? 0.0)
-        self.toValue = CGFloat(config["to"] as? Double ?? 1.0)
+        // Parse keyframes if present, otherwise use from/to
+        if let keyframesArray = config["keyframes"] as? [Double] {
+            self.keyframes = keyframesArray.map { CGFloat($0) }
+            self.fromValue = self.keyframes!.first ?? 0.0
+            self.toValue = self.keyframes!.last ?? 1.0
+        } else {
+            self.keyframes = nil
+            self.fromValue = CGFloat(config["from"] as? Double ?? 0.0)
+            self.toValue = CGFloat(config["to"] as? Double ?? 1.0)
+        }
         
         let durationMs = config["duration"] as? Int ?? 300
         self.duration = TimeInterval(durationMs) / 1000.0
@@ -540,12 +1288,21 @@ class PureAnimationState {
         
         self.isRepeating = config["repeat"] as? Bool ?? false
         self.repeatCount = config["repeatCount"] as? Int
+        self.repeatType = config["repeatType"] as? String ?? "loop" // Default to 'loop'
+        
+        // Parse spring parameters
+        self.damping = config["damping"] as? Double
+        self.stiffness = config["stiffness"] as? Double
         
         // Parse curve
         let curveString = config["curve"] as? String ?? "easeInOut"
-        self.curve = PureAnimationState.getCurveFunction(curveString)
+        self.curve = PureAnimationState.getCurveFunction(curveString, damping: damping, stiffness: stiffness)
         
-        print("🎯 PURE ANIMATION STATE: \(property) from \(fromValue) to \(toValue) over \(duration)s")
+        if let keyframes = keyframes {
+            print("🎯 PURE ANIMATION STATE: \(property) keyframes \(keyframes) over \(duration)s")
+        } else {
+            print("🎯 PURE ANIMATION STATE: \(property) from \(fromValue) to \(toValue) over \(duration)s")
+        }
     }
     
     /// Update animation state - PURE UI THREAD
@@ -569,10 +1326,32 @@ class PureAnimationState {
         let progress = min(1.0, elapsed / duration)
         let easedProgress = curve(progress)
         
-        // Calculate current value
-        let currentFromValue = isReversing ? toValue : fromValue
-        let currentToValue = isReversing ? fromValue : toValue
-        let currentValue = currentFromValue + (currentToValue - currentFromValue) * CGFloat(easedProgress)
+        // Calculate current value - support keyframes
+        let currentValue: CGFloat
+        if let keyframes = keyframes {
+            // Keyframe animation: interpolate between keyframes
+            let keyframeCount = keyframes.count
+            if keyframeCount == 1 {
+                currentValue = keyframes[0]
+            } else {
+                let segmentProgress = progress * Double(keyframeCount - 1)
+                let segmentIndex = Int(segmentProgress)
+                let segmentT = segmentProgress - Double(segmentIndex)
+                
+                if segmentIndex >= keyframeCount - 1 {
+                    currentValue = keyframes[keyframeCount - 1]
+                } else {
+                    let fromKeyframe = keyframes[segmentIndex]
+                    let toKeyframe = keyframes[segmentIndex + 1]
+                    currentValue = fromKeyframe + (toKeyframe - fromKeyframe) * CGFloat(segmentT)
+                }
+            }
+        } else {
+            // Standard from/to animation
+            let currentFromValue = isReversing ? toValue : fromValue
+            let currentToValue = isReversing ? fromValue : toValue
+            currentValue = currentFromValue + (currentToValue - currentFromValue) * CGFloat(easedProgress)
+        }
         
         // Apply to view
         applyAnimationValue(currentValue, to: view)
@@ -590,7 +1369,21 @@ class PureAnimationState {
                 
                 if shouldContinue {
                     cycleCount += 1
-                    isReversing.toggle() // Reverse for ping-pong effect
+                    
+                    // Handle different repeat types
+                    let repeatTypeValue = repeatType ?? "loop"
+                    switch repeatTypeValue {
+                    case "reverse", "mirror":
+                        // Ping-pong: reverse direction
+                        isReversing.toggle()
+                    case "loop":
+                        // Loop: restart from beginning
+                        isReversing = false
+                    default:
+                        // Default to loop behavior
+                        isReversing = false
+                    }
+                    
                     // Reset cycle start time for smooth repeat
                     cycleStartTime = currentTime
                     return PureAnimationResult(isActive: true, didRepeat: true)
@@ -622,9 +1415,21 @@ class PureAnimationState {
         case "rotation":
             view.transform = CGAffineTransform(rotationAngle: value)
         case "rotationX":
-            view.layer.transform = CATransform3DMakeRotation(value, 1, 0, 0)
+            var transform = view.layer.transform
+            transform = CATransform3DRotate(transform, value, 1, 0, 0)
+            view.layer.transform = transform
         case "rotationY":
-            view.layer.transform = CATransform3DMakeRotation(value, 0, 1, 0)
+            var transform = view.layer.transform
+            transform = CATransform3DRotate(transform, value, 0, 1, 0)
+            view.layer.transform = transform
+        case "rotationZ":
+            var transform = view.layer.transform
+            transform = CATransform3DRotate(transform, value, 0, 0, 1)
+            view.layer.transform = transform
+        case "translateZ":
+            var transform = view.layer.transform
+            transform = CATransform3DTranslate(transform, 0, 0, value)
+            view.layer.transform = transform
             
         // Opacity
         case "opacity":
@@ -658,7 +1463,7 @@ class PureAnimationState {
     }
     
     /// Get easing curve function
-    static func getCurveFunction(_ curveString: String) -> (Double) -> Double {
+    static func getCurveFunction(_ curveString: String, damping: Double? = nil, stiffness: Double? = nil) -> (Double) -> Double {
         switch curveString.lowercased() {
         case "linear":
             return { $0 }
@@ -669,24 +1474,25 @@ class PureAnimationState {
         case "easeinout":
             return { $0 < 0.5 ? 2 * $0 * $0 : 1 - 2 * (1 - $0) * (1 - $0) }
         case "spring":
-            return springCurve
+            return { t in springCurve(t, damping: damping, stiffness: stiffness) }
         default:
             return { $0 < 0.5 ? 2 * $0 * $0 : 1 - 2 * (1 - $0) * (1 - $0) } // Default to easeInOut
         }
     }
     
-    /// Spring curve implementation
-    static func springCurve(_ t: Double) -> Double {
-        let damping = 0.8
-        let frequency = 8.0
+    /// Spring curve implementation with configurable damping and stiffness
+    static func springCurve(_ t: Double, damping: Double? = nil, stiffness: Double? = nil) -> Double {
+        let dampingValue = damping ?? 0.8
+        let stiffnessValue = stiffness ?? 300.0
+        let frequency = sqrt(stiffnessValue / 1.0) // Mass = 1.0
         
         if t == 0 || t == 1 {
             return t
         }
         
         let omega = frequency * 2 * Double.pi
-        let exponential = pow(2, -damping * t)
-        let sine = sin((omega * t) + acos(damping))
+        let exponential = pow(2, -dampingValue * t)
+        let sine = sin((omega * t) + acos(dampingValue))
         
         return 1 - exponential * sine
     }

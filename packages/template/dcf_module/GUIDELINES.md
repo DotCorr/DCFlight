@@ -44,25 +44,25 @@ class YourComponent : DCFComponent() {
         return view
     }
 
-    override fun updateViewInternal(
-        view: View, 
-        props: Map<String, Any>, 
-        existingProps: Map<String, Any>
-    ): Boolean {
+    override fun updateView(view: View, props: Map<String, Any?>): Boolean {
         val yourView = view as? YourCustomView ?: return false
         
-        // Update view properties based on props
-        props["yourProp"]?.let { value ->
-            yourView.setYourProperty(value)
+        // Framework automatically merges props with existing stored props
+        val existingProps = getStoredProps(view)
+        val mergedProps = mergeProps(existingProps, props)
+        storeProps(view, mergedProps)
+        
+        val nonNullProps = mergedProps.filterValues { it != null }.mapValues { it.value!! }
+        
+        // Update view properties based on merged props
+        mergedProps["yourProp"]?.let { value ->
+            yourView.setYourProperty(value.toString())
         }
         
+        // Apply styles
+        yourView.applyStyles(nonNullProps)
+        
         return true
-    }
-
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        // Return the natural size of your component
-        // Return PointF(0f, 0f) if size should be determined by layout
-        return PointF(0f, 0f)
     }
 
     override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
@@ -81,10 +81,11 @@ class YourComponent : DCFComponent() {
 - **Extend `DCFComponent`**: All components must extend `DCFComponent`
 - **Package Structure**: Place components in `com.dotcorr.{module_name}.components`
 - **R Import**: Use `com.dotcorr.{module_name}.R` for resource IDs
-- **Props Handling**: Use `hasPropChanged()` to check if a prop changed
+- **Props Handling**: Framework automatically merges props - use `mergedProps` from `mergeProps()`
 - **View Updates**: Always check view type with `as?` before casting
-- **Touch Handling**: For touchable components with children, make views `clickable`, `focusable`, and `focusableInTouchMode` to receive touches
+- **Touch Handling**: Framework automatically enables touch handling when event listeners are registered
 - **Event Data**: Include `timestamp` (milliseconds) and `fromUser` in event data for type-safe callbacks
+- **Intrinsic Size**: Removed from protocol - components set `intrinsicContentSize` on shadow view if needed
 
 ---
 
@@ -138,15 +139,6 @@ class YourComponent: NSObject, DCFComponent {
         return true
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        guard let yourView = view as? YourCustomView else {
-            return CGSize.zero
-        }
-        
-        // Return natural size or CGSize.zero if layout should determine size
-        return CGSize.zero
-    }
-    
     func applyLayout(_ view: UIView, layout: YGNodeLayout) {
         view.frame = CGRect(
             x: layout.left, 
@@ -156,14 +148,22 @@ class YourComponent: NSObject, DCFComponent {
         )
     }
     
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
-        // Optional: Store node ID with the view
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
+        // Store node ID with the view
         objc_setAssociatedObject(
             view, 
             UnsafeRawPointer(bitPattern: "nodeId".hashValue)!, 
             nodeId, 
             .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
+        
+        // Set intrinsic content size if component has known size
+        // Only set if node has no children (Yoga rule)
+        if YGNodeGetChildCount(shadowView.yogaNode) == 0 {
+            if let imageView = view as? UIImageView, let image = imageView.image {
+                shadowView.intrinsicContentSize = image.size
+            }
+        }
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
@@ -177,10 +177,11 @@ class YourComponent: NSObject, DCFComponent {
 
 - **Implement `DCFComponent` Protocol**: All components must implement `DCFComponent`
 - **Props Storage**: Use `storeProps()` and `getStoredProps()` to manage props
-- **Props Merging**: Use `mergeProps()` to merge existing and new props
+- **Props Merging**: Use `mergeProps()` to merge existing and new props - framework handles this automatically
 - **Style Application**: Always call `applyStyles()` to apply layout and style props
 - **View Type Checking**: Always use `guard let` to safely cast views
 - **Component References**: For touchable components with children, use **strong** component references (not weak) and store in `NSMapTable` to prevent deallocation
+- **Intrinsic Size**: Set `intrinsicContentSize` on shadow view in `viewRegisteredWithShadowTree` if component has known size (only if node has no children)
 
 ---
 
@@ -346,15 +347,15 @@ YourComponent(
 
 ### Props Not Updating
 
-- Ensure `updateViewInternal` (Android) or `updateView` (iOS) is implemented
+- Ensure `updateView` is implemented correctly
 - Check that props are being passed correctly from Dart
-- Verify `hasPropChanged()` logic (Android)
+- Verify that `mergeProps()` is being used to preserve existing props (Android)
 
 ### Layout Issues
 
 - Ensure `applyStyles()` is called (iOS)
 - Check that layout props are included in Dart component
-- Verify `getIntrinsicSize` implementation
+- Verify `intrinsicContentSize` is set on shadow view if component has known size
 
 ---
 

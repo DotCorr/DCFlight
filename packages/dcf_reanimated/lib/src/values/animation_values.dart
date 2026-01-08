@@ -17,6 +17,8 @@ import '../enums/animation_enums.dart';
 /// [ReanimatedValue] defines how a single property should be animated,
 /// including start/end values, duration, curve, and repeat behavior.
 /// 
+/// Supports keyframe animations via [keyframes] parameter.
+/// 
 /// Example:
 /// ```dart
 /// ReanimatedValue(
@@ -26,12 +28,25 @@ import '../enums/animation_enums.dart';
 ///   curve: 'easeInOut',
 /// )
 /// ```
+/// 
+/// Example with keyframes:
+/// ```dart
+/// ReanimatedValue(
+///   keyframes: [0.0, 1.0, 0.0],
+///   duration: 300,
+///   repeat: true,
+/// )
+/// ```
 class ReanimatedValue {
   /// Starting value for the animation
-  final double from;
+  final double? from;
   
   /// Ending value for the animation
-  final double to;
+  final double? to;
+  
+  /// Keyframe values for multi-step animations
+  /// If provided, [from] and [to] are ignored
+  final List<double>? keyframes;
   
   /// Animation duration in milliseconds
   final int duration;
@@ -57,27 +72,41 @@ class ReanimatedValue {
 
   /// Creates a new animation value configuration.
   /// 
-  /// All parameters except [from] and [to] have sensible defaults.
+  /// Either provide [from] and [to], or [keyframes], but not both.
   const ReanimatedValue({
-    required this.from,
-    required this.to,
+    this.from,
+    this.to,
+    this.keyframes,
     this.duration = 300,
     this.curve = AnimationCurve.easeInOut,
     this.delay = 0,
     this.repeat = false,
     this.repeatCount,
-  });
+  }) : assert(
+    (from != null && to != null && keyframes == null) ||
+    (keyframes != null && from == null && to == null),
+    'Must provide either (from, to) or keyframes, but not both',
+  );
 
   /// Converts this animation configuration to a map for native bridge communication.
-  Map<String, dynamic> toMap() => {
-        'from': from,
-        'to': to,
-        'duration': duration,
-        'curve': curve.value,
-        'delay': delay,
-        'repeat': repeat,
-        if (repeatCount != null) 'repeatCount': repeatCount,
-      };
+  Map<String, dynamic> toMap() {
+    final map = <String, dynamic>{
+      'duration': duration,
+      'curve': curve.value,
+      'delay': delay,
+      'repeat': repeat,
+      if (repeatCount != null) 'repeatCount': repeatCount,
+    };
+    
+    if (keyframes != null) {
+      map['keyframes'] = keyframes;
+    } else {
+      map['from'] = from;
+      map['to'] = to;
+    }
+    
+    return map;
+  }
 }
 
 /// A reactive animation value that can be animated on the pure UI thread.
@@ -127,7 +156,7 @@ class SharedValue {
     int delay = 0,
   }) {
     return ReanimatedValue(
-      from: _config.to, // Current value becomes starting point
+      from: _config.to ?? _config.keyframes?.last,
       to: toValue,
       duration: duration,
       curve: curve,
@@ -154,7 +183,7 @@ class SharedValue {
     int delay = 0,
   }) {
     return ReanimatedValue(
-      from: _config.to,
+      from: _config.to ?? _config.keyframes?.last,
       to: toValue,
       duration: _calculateSpringDuration(damping, stiffness),
       curve: AnimationCurve.spring,
@@ -183,7 +212,7 @@ class SharedValue {
     int? numberOfReps,
   }) {
     return ReanimatedValue(
-      from: _config.to,
+      from: _config.to ?? _config.keyframes?.last,
       to: toValue,
       duration: duration,
       curve: curve,

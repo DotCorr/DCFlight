@@ -118,21 +118,7 @@ class DCFDropdownComponent : DCFComponent() {
         }
     }
 
-    override fun getIntrinsicSize(view: View, props: Map<String, Any>): PointF {
-        val spinner = view as? Spinner ?: return PointF(0f, 0f)
-
-        spinner.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-
-        val measuredWidth = spinner.measuredWidth.toFloat()
-        val measuredHeight = spinner.measuredHeight.toFloat()
-
-        return PointF(kotlin.math.max(1f, measuredWidth), kotlin.math.max(1f, measuredHeight))
-    }
-
-    override fun viewRegisteredWithShadowTree(view: View, nodeId: String) {
+    override fun viewRegisteredWithShadowTree(view: View, shadowNode: com.dotcorr.dcflight.layout.DCFShadowNode, nodeId: String) {
     }
 
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

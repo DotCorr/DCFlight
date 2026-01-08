@@ -111,11 +111,7 @@ class DCFWebViewComponent: NSObject, DCFComponent {
         )
     }
     
-    func getIntrinsicSize(_ view: UIView, forProps props: [String: Any]) -> CGSize {
-        return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
-    }
-    
-    func viewRegisteredWithShadowTree(_ view: UIView, nodeId: String) {
+    func viewRegisteredWithShadowTree(_ view: UIView, shadowView: DCFShadowView, nodeId: String) {
     }
     
     private func loadContent(webView: WKWebView, props: [String: Any]) {

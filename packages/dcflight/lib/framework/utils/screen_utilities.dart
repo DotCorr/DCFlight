@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:flutter/services.dart';
+import 'package:dcflight/framework/utils/system_state_manager.dart';
 
 /// Utility class for handling screen dimensions and orientation changes
 /// Enhanced with window size change detection for iPad multitasking
@@ -30,8 +31,11 @@ class ScreenUtilities {
   /// Current screen height
   double _screenHeight = 0.0;
 
-  /// Scale factor from native side
+  /// Scale factor from native side (pixel ratio)
   double _scaleFactor = 1.0;
+
+  /// Font scale factor (system font size preference)
+  double _fontScale = 1.0;
 
   /// Status bar height
   double _statusBarHeight = 0.0;
@@ -61,6 +65,8 @@ class ScreenUtilities {
 
         final newWidth = args['width'] as double;
         final newHeight = args['height'] as double;
+        final oldFontScale = _fontScale;
+        final newFontScale = args['fontScale'] as double? ?? 1.0;
 
         if (newWidth != _screenWidth || newHeight != _screenHeight) {
           _previousWidth = _screenWidth;
@@ -69,6 +75,7 @@ class ScreenUtilities {
           _screenWidth = newWidth;
           _screenHeight = newHeight;
           _scaleFactor = args['scale'] as double;
+          _fontScale = newFontScale;
           _statusBarHeight = args['statusBarHeight'] as double;
           _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
           _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
@@ -81,6 +88,20 @@ class ScreenUtilities {
               name: 'ScreenUtilities');
 
           _notifyDimensionChangeListeners();
+        } else if (oldFontScale != newFontScale) {
+          // Font scale changed without dimension change (system font size change)
+          _fontScale = newFontScale;
+          developer.log(
+              'Font scale changed: $oldFontScale → $newFontScale',
+              name: 'ScreenUtilities');
+          
+          // Notify SystemStateManager of font scale change
+          // This increments the system version, causing components with _systemVersion
+          // in props to be updated during reconciliation
+          SystemStateManager.onSystemChange(fontScale: true);
+          
+          // Notify listeners - SystemChangeListener will trigger re-render
+          _notifyDimensionChangeListeners();
         }
         return null;
         
@@ -89,6 +110,8 @@ class ScreenUtilities {
         
         final newWidth = args['width'] as double;
         final newHeight = args['height'] as double;
+        final oldFontScale = _fontScale;
+        final newFontScale = args['fontScale'] as double? ?? 1.0;
         
         if (newWidth != _screenWidth || newHeight != _screenHeight) {
           _previousWidth = _screenWidth;
@@ -97,6 +120,7 @@ class ScreenUtilities {
           _screenWidth = newWidth;
           _screenHeight = newHeight;
           _scaleFactor = args['scale'] as double;
+          _fontScale = newFontScale;
           _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
           _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
           _safeAreaLeft = args['safeAreaLeft'] as double? ?? 0.0;
@@ -106,6 +130,20 @@ class ScreenUtilities {
               'Window size changed: ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
               name: 'ScreenUtilities');
 
+          _notifyDimensionChangeListeners();
+        } else if (oldFontScale != newFontScale) {
+          // Font scale changed without dimension change (system font size change)
+          _fontScale = newFontScale;
+          developer.log(
+              'Font scale changed: $oldFontScale → $newFontScale',
+              name: 'ScreenUtilities');
+          
+          // Notify SystemStateManager of font scale change
+          // This increments the system version, causing components with _systemVersion
+          // in props to be updated during reconciliation
+          SystemStateManager.onSystemChange(fontScale: true);
+          
+          // Notify listeners - SystemChangeListener will trigger re-render
           _notifyDimensionChangeListeners();
         }
         return null;
@@ -143,6 +181,7 @@ class ScreenUtilities {
         _screenWidth = result['width'] as double;
         _screenHeight = result['height'] as double;
         _scaleFactor = result['scale'] as double;
+        _fontScale = result['fontScale'] as double? ?? 1.0;
         _statusBarHeight = result['statusBarHeight'] as double;
         _safeAreaTop = result['safeAreaTop'] as double? ?? 0.0;
         _safeAreaBottom = result['safeAreaBottom'] as double? ?? 0.0;
@@ -201,8 +240,15 @@ class ScreenUtilities {
   /// Get the current screen height
   double get screenHeight => _screenHeight;
 
-  /// Get the scale factor
+  /// Get the scale factor (pixel ratio)
   double get scaleFactor => _scaleFactor;
+
+  /// Get the font scale factor (system font size preference)
+  /// Similar to React Native's PixelRatio.getFontScale()
+  double get fontScale => _fontScale;
+
+  /// Get scale (alias for scaleFactor, matches React Native's useWindowDimensions)
+  double get scale => _scaleFactor;
 
   /// Get the status bar height
   double get statusBarHeight => _statusBarHeight;

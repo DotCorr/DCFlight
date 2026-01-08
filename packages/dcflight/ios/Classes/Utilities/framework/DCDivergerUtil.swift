@@ -30,76 +30,89 @@ import Flutter
             print("⚠️ DCDivergerUtil: GeneratedPluginRegistrant not found (plugins may already be registered)")
         }
         
-        let flutterVC = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
-        flutterEngine.viewController = flutterVC
-        sharedFlutterViewController = flutterVC
+        // 🚀 PERFORMANCE: Only create FlutterViewController if ENABLE_FLUTTER_VIEW flag is set
+        // This saves ~300MB memory and 30% CPU when Flutter widgets aren't used
+        let enableFlutterView = UserDefaults.standard.bool(forKey: "ENABLE_FLUTTER_VIEW")
         
-        // Set up method channel for Flutter widget rendering
-        let flutterWidgetChannel = FlutterMethodChannel(
-            name: "dcflight/flutter_widget",
-            binaryMessenger: flutterEngine.binaryMessenger
-        )
-        flutterWidgetChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
-            if call.method == "enableFlutterViewRendering" {
-                // Make FlutterView visible and add to window
-                // Use the window from rootViewController (works on all iOS versions)
-                guard let window = self.window ?? UIApplication.shared.windows.first else {
-                    result(FlutterError(code: "NO_WINDOW", message: "No window available", details: nil))
-                    return
+        var flutterVC: FlutterViewController? = nil
+        if enableFlutterView {
+            flutterVC = FlutterViewController(engine: flutterEngine, nibName: nil, bundle: nil)
+            flutterEngine.viewController = flutterVC
+            sharedFlutterViewController = flutterVC
+            print("✅ DCDivergerUtil: FlutterViewController created (ENABLE_FLUTTER_VIEW=true)")
+        } else {
+            sharedFlutterViewController = nil
+            print("⚡ DCDivergerUtil: FlutterViewController DISABLED (ENABLE_FLUTTER_VIEW=false) - Saving memory & CPU")
+        }
+        
+        // Set up method channel for Flutter widget rendering (only if FlutterView is enabled)
+        if enableFlutterView, let flutterVC = flutterVC {
+            let flutterWidgetChannel = FlutterMethodChannel(
+                name: "dcflight/flutter_widget",
+                binaryMessenger: flutterEngine.binaryMessenger
+            )
+            flutterWidgetChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
+                if call.method == "enableFlutterViewRendering" {
+                    // Make FlutterView visible and add to window
+                    // Use the window from rootViewController (works on all iOS versions)
+                    guard let window = self.window ?? UIApplication.shared.windows.first else {
+                        result(FlutterError(code: "NO_WINDOW", message: "No window available", details: nil))
+                        return
+                    }
+                    
+                    // Add FlutterView to window if not already added
+                    if flutterVC.view.superview == nil {
+                        window.addSubview(flutterVC.view)
+                        // Initially set to zero size - will be updated when widgets are rendered
+                        flutterVC.view.frame = CGRect.zero
+                        flutterVC.view.autoresizingMask = [] // No autoresizing - we control size manually
+                    }
+                    
+                    // Make FlutterView visible, transparent, and interactive
+                    // Flutter's hit-testing will handle touches - interactive widgets consume touches,
+                    // non-interactive areas allow touches to pass through to DCF components
+                    flutterVC.view.isHidden = false
+                    flutterVC.view.backgroundColor = .clear
+                    flutterVC.view.isUserInteractionEnabled = true // Enable interaction for Flutter widgets
+                    
+                    // Ensure FlutterView is on top for proper rendering and hit-testing
+                    window.bringSubviewToFront(flutterVC.view)
+                    
+                    print("✅ DCDivergerUtil: FlutterView enabled for rendering (transparent, interactive)")
+                    print("   FlutterView frame: \(flutterVC.view.frame)")
+                    print("   FlutterView isHidden: \(flutterVC.view.isHidden)")
+                    print("   FlutterView backgroundColor: \(flutterVC.view.backgroundColor?.description ?? "nil")")
+                    print("   FlutterView superview: \(flutterVC.view.superview != nil ? "exists" : "nil")")
+                    result(true)
+                } else if call.method == "updateFlutterViewFrame" {
+                    // Update FlutterView frame to match union of all widget frames
+                    guard let args = call.arguments as? [String: Any],
+                          let x = args["x"] as? Double,
+                          let y = args["y"] as? Double,
+                          let width = args["width"] as? Double,
+                          let height = args["height"] as? Double else {
+                        result(FlutterError(code: "INVALID_ARGS", message: "Invalid frame parameters", details: nil))
+                        return
+                    }
+                    
+                    // Use the window from rootViewController (works on all iOS versions)
+                    guard let window = self.window ?? UIApplication.shared.windows.first else {
+                        result(FlutterError(code: "NO_WINDOW", message: "No window available", details: nil))
+                        return
+                    }
+                    
+                    // Update FlutterView frame to match the union of all widget frames
+                    let newFrame = CGRect(x: x, y: y, width: width, height: height)
+                    flutterVC.view.frame = newFrame
+                    flutterVC.view.isHidden = false // Ensure it's visible when frame is set
+                    
+                    print("✅ DCDivergerUtil: Updated FlutterView frame to: \(newFrame)")
+                    print("   FlutterView isHidden: \(flutterVC.view.isHidden)")
+                    print("   FlutterView superview: \(flutterVC.view.superview != nil ? "exists" : "nil")")
+                    result(true)
+                } else {
+                    result(FlutterMethodNotImplemented)
                 }
-                
-                // Add FlutterView to window if not already added
-                if flutterVC.view.superview == nil {
-                    window.addSubview(flutterVC.view)
-                    // Initially set to zero size - will be updated when widgets are rendered
-                    flutterVC.view.frame = CGRect.zero
-                    flutterVC.view.autoresizingMask = [] // No autoresizing - we control size manually
-                }
-                
-                // Make FlutterView visible, transparent, and interactive
-                // Flutter's hit-testing will handle touches - interactive widgets consume touches,
-                // non-interactive areas allow touches to pass through to DCF components
-                flutterVC.view.isHidden = false
-                flutterVC.view.backgroundColor = .clear
-                flutterVC.view.isUserInteractionEnabled = true // Enable interaction for Flutter widgets
-                
-                // Ensure FlutterView is on top for proper rendering and hit-testing
-                window.bringSubviewToFront(flutterVC.view)
-                
-                print("✅ DCDivergerUtil: FlutterView enabled for rendering (transparent, interactive)")
-                print("   FlutterView frame: \(flutterVC.view.frame)")
-                print("   FlutterView isHidden: \(flutterVC.view.isHidden)")
-                print("   FlutterView backgroundColor: \(flutterVC.view.backgroundColor?.description ?? "nil")")
-                print("   FlutterView superview: \(flutterVC.view.superview != nil ? "exists" : "nil")")
-                result(true)
-            } else if call.method == "updateFlutterViewFrame" {
-                // Update FlutterView frame to match union of all widget frames
-                guard let args = call.arguments as? [String: Any],
-                      let x = args["x"] as? Double,
-                      let y = args["y"] as? Double,
-                      let width = args["width"] as? Double,
-                      let height = args["height"] as? Double else {
-                    result(FlutterError(code: "INVALID_ARGS", message: "Invalid frame parameters", details: nil))
-                    return
-                }
-                
-                // Use the window from rootViewController (works on all iOS versions)
-                guard let window = self.window ?? UIApplication.shared.windows.first else {
-                    result(FlutterError(code: "NO_WINDOW", message: "No window available", details: nil))
-                    return
-                }
-                
-                // Update FlutterView frame to match the union of all widget frames
-                let newFrame = CGRect(x: x, y: y, width: width, height: height)
-                flutterVC.view.frame = newFrame
-                flutterVC.view.isHidden = false // Ensure it's visible when frame is set
-                
-                print("✅ DCDivergerUtil: Updated FlutterView frame to: \(newFrame)")
-                print("   FlutterView isHidden: \(flutterVC.view.isHidden)")
-                print("   FlutterView superview: \(flutterVC.view.superview != nil ? "exists" : "nil")")
-                result(true)
-            } else {
-                result(FlutterMethodNotImplemented)
             }
         }
         
@@ -110,6 +123,14 @@ import Flutter
         let nativeRootVC = UIViewController()
         nativeRootVC.view.backgroundColor = .white
         nativeRootVC.title = "Root View (DCFlight)"
+        
+        // CRITICAL: Disable automatic safe area adjustments
+        // We want the root view to fill the entire window starting from (0,0)
+        if #available(iOS 11.0, *) {
+            nativeRootVC.view.insetsLayoutMarginsFromSafeArea = false
+        }
+        nativeRootVC.automaticallyAdjustsScrollViewInsets = false
+        
         guard let window = self.window else {
             print("❌ DCFlight: No window available to set rootViewController")
             return
@@ -119,7 +140,8 @@ import Flutter
         
         // Pre-add FlutterView to window (hidden initially) so it's ready when widgets render
         // This ensures the FlutterView is available before enableFlutterViewRendering is called
-        if flutterVC.view.superview == nil {
+        // Only if FlutterView is enabled
+        if enableFlutterView, let flutterVC = flutterVC, flutterVC.view.superview == nil {
             window.addSubview(flutterVC.view)
             flutterVC.view.frame = CGRect.zero
             flutterVC.view.isHidden = true // Hidden until enableFlutterViewRendering is called
@@ -136,6 +158,23 @@ import Flutter
         // Ensure root view is visible
         rootView.isHidden = false
         rootView.alpha = 1.0
+        
+        // CRITICAL: Set root view frame to fill window bounds immediately
+        // This ensures children are positioned correctly from the start
+        // Use window.bounds (not safe area) to fill entire screen from (0,0)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            // CRITICAL: Set frame to window.bounds (not safeAreaLayoutGuide)
+            // This ensures root view starts at (0,0) and fills entire window
+            rootView.frame = CGRect(x: 0, y: 0, width: window.bounds.width, height: window.bounds.height)
+            rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            print("✅ DCDivergerUtil: Root view frame set to window.bounds: \(rootView.frame)")
+        } else {
+            let screenBounds = UIScreen.main.bounds
+            rootView.frame = CGRect(x: 0, y: 0, width: screenBounds.width, height: screenBounds.height)
+            rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            print("✅ DCDivergerUtil: Root view frame set to screen.bounds: \(rootView.frame)")
+        }
         
         DCMauiBridgeImpl.shared.registerView(rootView, withId: 0)
         DCFScreenUtilities.shared.initialize(with: flutterEngine.binaryMessenger)

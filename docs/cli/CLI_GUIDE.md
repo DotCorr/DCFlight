@@ -211,17 +211,31 @@ All package operations are logged to `.dcflight/analytics/package_usage.json`:
 ## 🎯 Best Practices
 
 ### Project Structure
+
+When you create a new DCFlight app, you get the following structure:
+
 ```
-my_dcflight_app/
+my_app/
 ├── lib/
-│   ├── main.dart
-│   ├── components/
-│   └── screens/
-├── assets/
-├── .dcflight/
-│   └── analytics/
-│       └── package_usage.json
-└── pubspec.yaml
+│   └── main.dart              # Entry point - your app component
+├── android/                    # Android native code
+│   ├── app/
+│   │   └── src/
+│   │       └── main/
+│   │           └── kotlin/
+│   │               └── MainActivity.kt
+│   └── build.gradle.kts
+├── ios/                        # iOS native code
+│   ├── Runner/
+│   │   ├── AppDelegate.swift
+│   │   └── Info.plist
+│   └── Podfile
+├── assets/                     # Static assets
+│   └── dcf/
+│       └── dcf.png            # App icon
+├── pubspec.yaml                # Dart dependencies
+├── analysis_options.yaml       # Linter configuration
+└── README.md
 ```
 
 ### Package Management

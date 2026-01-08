@@ -55,11 +55,37 @@ extension UIView {
             }
         }
 
+        // Handle border colors - check individual sides first, then general
+        var borderColor: CGColor? = nil
         if let borderColorStr = props["borderColor"] as? String {
-            layer.borderColor = ColorUtilities.color(fromHexString: borderColorStr)?.cgColor
+            borderColor = ColorUtilities.color(fromHexString: borderColorStr)?.cgColor
+        } else if let borderTopColorStr = props["borderTopColor"] as? String {
+            borderColor = ColorUtilities.color(fromHexString: borderTopColorStr)?.cgColor
+        } else if let borderRightColorStr = props["borderRightColor"] as? String {
+            borderColor = ColorUtilities.color(fromHexString: borderRightColorStr)?.cgColor
+        } else if let borderBottomColorStr = props["borderBottomColor"] as? String {
+            borderColor = ColorUtilities.color(fromHexString: borderBottomColorStr)?.cgColor
+        } else if let borderLeftColorStr = props["borderLeftColor"] as? String {
+            borderColor = ColorUtilities.color(fromHexString: borderLeftColorStr)?.cgColor
+        }
+        if let borderColor = borderColor {
+            layer.borderColor = borderColor
         }
 
-        if let borderWidth = props["borderWidth"] as? CGFloat {
+        // Handle border widths - check individual sides first, then general
+        var borderWidth: CGFloat? = nil
+        if let width = props["borderWidth"] as? CGFloat {
+            borderWidth = width
+        } else if let width = props["borderTopWidth"] as? CGFloat {
+            borderWidth = width
+        } else if let width = props["borderRightWidth"] as? CGFloat {
+            borderWidth = width
+        } else if let width = props["borderBottomWidth"] as? CGFloat {
+            borderWidth = width
+        } else if let width = props["borderLeftWidth"] as? CGFloat {
+            borderWidth = width
+        }
+        if let borderWidth = borderWidth {
             layer.borderWidth = borderWidth
             self.clipsToBounds = true
         }

@@ -21,6 +21,7 @@ class DCFScreenUtilities {
     private var _safeAreaBottom: CGFloat = 0
     private var _safeAreaLeft: CGFloat = 0
     private var _safeAreaRight: CGFloat = 0
+    private var _fontScale: CGFloat = 1.0
     
     private var dimensionChangeListeners: [() -> Void] = []
     
@@ -31,6 +32,65 @@ class DCFScreenUtilities {
             name: UIDevice.orientationDidChangeNotification,
             object: nil
         )
+        
+        // Listen for font size changes
+        if #available(iOS 10.0, *) {
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(contentSizeCategoryChanged),
+                name: UIContentSizeCategory.didChangeNotification,
+                object: nil
+            )
+        }
+        
+        updateFontScale()
+    }
+    
+    @objc private func contentSizeCategoryChanged() {
+        updateFontScale()
+        // Notify Dart of font scale change - Dart will trigger full app re-render
+        // React Native-style: OS-level changes trigger app re-render, not manual node invalidation
+        notifyDartOfDimensionChange()
+    }
+    
+    private func updateFontScale() {
+        if #available(iOS 10.0, *) {
+            let contentSize = UIApplication.shared.preferredContentSizeCategory
+            // Map UIContentSizeCategory to scale factor
+            // Default (medium) = 1.0, larger sizes increase the scale
+            let scale: CGFloat
+            switch contentSize {
+            case .extraSmall:
+                scale = 0.823
+            case .small:
+                scale = 0.882
+            case .medium:
+                scale = 1.0
+            case .large:
+                scale = 1.118
+            case .extraLarge:
+                scale = 1.235
+            case .extraExtraLarge:
+                scale = 1.353
+            case .extraExtraExtraLarge:
+                scale = 1.471
+            case .accessibilityMedium:
+                scale = 1.647
+            case .accessibilityLarge:
+                scale = 1.765
+            case .accessibilityExtraLarge:
+                scale = 1.882
+            case .accessibilityExtraExtraLarge:
+                scale = 2.0
+            case .accessibilityExtraExtraExtraLarge:
+                scale = 2.118
+            default:
+                scale = 1.0
+            }
+            _fontScale = scale
+        } else {
+            _fontScale = 1.0
+        }
     }
     
     func initialize(with binaryMessenger: FlutterBinaryMessenger) {
@@ -114,6 +174,7 @@ class DCFScreenUtilities {
             "width": _screenWidth,
             "height": _screenHeight,
             "scale": UIScreen.main.scale,
+            "fontScale": _fontScale,
             "statusBarHeight": UIApplication.shared.statusBarFrame.height,
             "safeAreaTop": _safeAreaTop,
             "safeAreaBottom": _safeAreaBottom,
@@ -140,6 +201,7 @@ class DCFScreenUtilities {
                     "width": self._screenWidth,
                     "height": self._screenHeight,
                     "scale": UIScreen.main.scale,
+                    "fontScale": self._fontScale,
                     "statusBarHeight": UIApplication.shared.statusBarFrame.height,
                     "safeAreaTop": self._safeAreaTop,
                     "safeAreaBottom": self._safeAreaBottom,
@@ -186,6 +248,10 @@ class DCFScreenUtilities {
     
     var safeAreaRight: CGFloat {
         return _safeAreaRight
+    }
+    
+    var fontScale: CGFloat {
+        return _fontScale
     }
     
     private func getSafeAreaInsets() -> UIEdgeInsets {
