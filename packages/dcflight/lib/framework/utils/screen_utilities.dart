@@ -121,6 +121,7 @@ class ScreenUtilities {
           _screenHeight = newHeight;
           _scaleFactor = args['scale'] as double;
           _fontScale = newFontScale;
+          _statusBarHeight = args['statusBarHeight'] as double? ?? 0.0;
           _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
           _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
           _safeAreaLeft = args['safeAreaLeft'] as double? ?? 0.0;

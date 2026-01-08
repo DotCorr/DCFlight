@@ -242,6 +242,9 @@ object DCDivergerUtil {
                 root.alpha = 1.0f
                 com.dotcorr.dcflight.layout.ViewRegistry.shared.registerView(root, 0, "View")
                 DCFLayoutManager.shared.registerView(root, 0)
+                
+                // 🔥 CRITICAL: Set root view in DCFScreenUtilities for safe area calculations
+                DCFScreenUtilities.setRootView(root)
             }
 
             Log.d(TAG, "DCFlight systems initialized")
