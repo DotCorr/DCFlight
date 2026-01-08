@@ -156,15 +156,26 @@ object DCFScreenUtilities {
     }
 
     /**
+     * Get font scale factor (system font size preference)
+     * Similar to React Native's PixelRatio.getFontScale()
+     * Returns scaledDensity / density, which represents the system font size multiplier
+     */
+    fun getFontScale(): Float {
+        return if (density != 0f) scaledDensity / density else 1.0f
+    }
+
+    /**
      * Get current screen dimensions
      */
     fun getScreenDimensions(): Map<String, Any> {
+        val fontScale = getFontScale()
         return mapOf(
             "width" to convertPxToDp(screenWidth).toDouble(),
             "height" to convertPxToDp(screenHeight).toDouble(),
             "widthDp" to convertPxToDp(screenWidth),
             "heightDp" to convertPxToDp(screenHeight),
             "scale" to density.toDouble(),
+            "fontScale" to fontScale.toDouble(),
             "statusBarHeight" to 0.0,
             "safeAreaTop" to 0.0,
             "safeAreaBottom" to 0.0,

@@ -13,7 +13,7 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
     private var mHasStrikeThrough: Boolean = false
     private var mFontSize: Int = -1
     private var mFontStyle: Int = Typeface.NORMAL
-    private var mFontWeight: Int = Typeface.NORMAL
+    private var mFontWeight: Int = 400 // Default to regular (400) to match iOS default
     private var mFontFamily: String? = null
     private var mLetterSpacing: Float = 0f
     private var mFrozen: Boolean = false
@@ -171,7 +171,8 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
         // Weight 400 (regular) is the default and should be explicitly applied to match iOS
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             // mFontWeight is now a numeric weight (0-1000), not a style flag
-            val weight = mFontWeight.coerceIn(0, 1000)
+            // CRITICAL: If weight is 0 (uninitialized/legacy), default to 400 (regular) to match iOS
+            val weight = if (mFontWeight == 0) 400 else mFontWeight.coerceIn(0, 1000)
             if (mFontFamily != null) {
                 // First create base Typeface from font family string, then apply weight
                 val baseTypeface = Typeface.create(mFontFamily, Typeface.NORMAL)

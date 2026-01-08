@@ -63,6 +63,7 @@ export 'framework/constants/style/style_properties.dart';
 export 'framework/constants/style/color_utils.dart';
 
 export 'framework/utils/screen_utilities.dart';
+export 'framework/utils/font_scale.dart';
 export 'framework/utils/dcf_logger.dart';
 
 export 'framework/devtools/hot_restart.dart';

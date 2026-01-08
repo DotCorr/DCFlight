@@ -9,21 +9,23 @@ import com.dotcorr.dcflight.layout.DCFShadowNode
 class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     
     companion object {
-        private const val DEFAULT_FONT_SIZE_SP = 17f // Match iOS default (iOS uses 17, React Native uses 14)
+        private const val DEFAULT_FONT_SIZE = 17f // Match iOS default (17 points/SP)
     }
     
     private var mFontStylingSpan: DCFTextStyleSpan = DCFTextStyleSpan.INSTANCE.mutableCopy().apply {
         // CRITICAL: Initialize span with default font size converted from SP to pixels
-        // iOS defaults to 17 SP, but React Native typically uses 14 SP
-        // The span stores font size in pixels, so we need to convert SP to pixels
-        // This ensures the span has a valid font size even before props are set
+        // Use SP (scaled pixels) like React Native - scales with screen density AND system font size
+        // This ensures consistency with React Native's behavior
         val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
         val defaultFontSizePixels = android.util.TypedValue.applyDimension(
             android.util.TypedValue.COMPLEX_UNIT_SP,
-            DEFAULT_FONT_SIZE_SP,
+            DEFAULT_FONT_SIZE,
             displayMetrics
         ).toInt()
         setFontSize(defaultFontSizePixels)
+        // CRITICAL: Initialize with default font weight 400 (regular) to match iOS
+        // This ensures text without explicit fontWeight renders at normal thickness
+        setFontWeight(400)
     }
     
     // Override property setters to update span
@@ -61,11 +63,9 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
         set(value) {
             super.fontSize = value
             // CRITICAL: Always convert and update span when property is set
-            // This ensures the span is always in sync with the property, even if the SP value
-            // matches the default. The span is what's actually used for rendering, so it must
-            // be updated whenever the property changes.
-            // Convert points to pixels (like iOS points -> Android pixels)
-            // Points scale with display density, so convert via SP
+            // This ensures the span is always in sync with the property
+            // Convert points to pixels using SP (like React Native)
+            // SP scales with both screen density AND system font size settings
             val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
             val fontSizePixels = android.util.TypedValue.applyDimension(
                 android.util.TypedValue.COMPLEX_UNIT_SP,
@@ -189,10 +189,11 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     
     protected fun getDefaultFontSize(): Int {
         // Convert SP to pixels (span stores font size in pixels)
+        // Use SP (scaled pixels) like React Native
         val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
         return android.util.TypedValue.applyDimension(
             android.util.TypedValue.COMPLEX_UNIT_SP,
-            DEFAULT_FONT_SIZE_SP,
+            DEFAULT_FONT_SIZE,
             displayMetrics
         ).toInt()
     }

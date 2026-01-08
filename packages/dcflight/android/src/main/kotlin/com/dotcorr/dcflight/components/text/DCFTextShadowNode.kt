@@ -53,15 +53,20 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         
         if (spannedText.isEmpty()) {
             val minHeight = if (fontSize > 0) {
-                // Convert from logical points (SP) to pixels
+                // Convert from logical points to pixels using SP (like React Native)
                 val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
                 android.util.TypedValue.applyDimension(
                     android.util.TypedValue.COMPLEX_UNIT_SP,
                     fontSize,
                     displayMetrics
                 )
-            } else {
-                17f * android.content.res.Resources.getSystem().displayMetrics.scaledDensity
+             } else {
+                val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+                android.util.TypedValue.applyDimension(
+                    android.util.TypedValue.COMPLEX_UNIT_SP,
+                    17f,
+                    displayMetrics
+                )
             }
             android.util.Log.d("DCFTextShadowNode", "⚠️ Empty text, returning min size: 1x$minHeight")
             return YogaMeasureOutput.make(1f, minHeight)
@@ -70,7 +75,9 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         // Create TextPaint with font properties
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
         val fontSizePixels = if (fontSize > 0) {
-            // Convert from logical points (SP) to pixels
+            // Convert from logical points to pixels using SP (like React Native)
+            // SP scales with both screen density AND system font size settings
+            // This ensures consistency with React Native's behavior
             val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
             android.util.TypedValue.applyDimension(
                 android.util.TypedValue.COMPLEX_UNIT_SP,
@@ -78,7 +85,12 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
                 displayMetrics
             )
         } else {
-            17f * android.content.res.Resources.getSystem().displayMetrics.scaledDensity
+            val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+            android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_SP,
+                17f,
+                displayMetrics
+            )
         }
         paint.textSize = fontSizePixels
         
@@ -242,14 +254,11 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         val finalHeight = if (roundedHeight <= 0) {
             // If height is 0, use font size as minimum (matches iOS fallback)
             val minHeight = if (fontSize > 0) {
+                // Use DP (density pixels) instead of SP to match iOS behavior
                 val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
-                android.util.TypedValue.applyDimension(
-                    android.util.TypedValue.COMPLEX_UNIT_SP,
-                    fontSize,
-                    displayMetrics
-                )
+                fontSize * displayMetrics.density
              } else {
-                17f * android.content.res.Resources.getSystem().displayMetrics.scaledDensity
+                17f * android.content.res.Resources.getSystem().displayMetrics.density
             }
             android.util.Log.w("DCFTextShadowNode", "⚠️ Layout height is 0, using minimum height of $minHeight")
             minHeight

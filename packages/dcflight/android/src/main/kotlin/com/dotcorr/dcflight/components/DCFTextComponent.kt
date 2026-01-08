@@ -185,8 +185,8 @@ class DCFTextComponent : DCFComponent() {
         }
         
         // Get font size
-        // CRITICAL: Use fontSize property (logical points) and convert to pixels
-        // This matches applyLayout and measureText which also use fontSize property
+        // CRITICAL: Use fontSize property (logical points) and convert to pixels using SP
+        // This matches React Native's behavior - SP scales with screen density AND system font size
         val fontSizePixels = if (shadowNode != null) {
             val fontSizeLogicalPoints = shadowNode.fontSize
             val displayMetrics = textView.context.resources.displayMetrics
@@ -197,14 +197,18 @@ class DCFTextComponent : DCFComponent() {
                     displayMetrics
                 )
             } else {
-                17f * displayMetrics.scaledDensity
+                android.util.TypedValue.applyDimension(
+                    android.util.TypedValue.COMPLEX_UNIT_SP,
+                    17f,
+                    displayMetrics
+                )
             }
         } else {
-            val fontSizeSp = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
+            val fontSizePoints = (props["fontSize"] as? Number)?.toFloat() ?: DEFAULT_FONT_SIZE
             val displayMetrics = textView.context.resources.displayMetrics
             android.util.TypedValue.applyDimension(
                 android.util.TypedValue.COMPLEX_UNIT_SP,
-                fontSizeSp,
+                fontSizePoints,
                 displayMetrics
             )
         }
@@ -355,6 +359,7 @@ class DCFTextComponent : DCFComponent() {
         
         // CRITICAL: Use fontSize property (logical points) and convert to pixels
         // This matches measureText which also uses fontSize property
+        // Use SP (scaled pixels) like React Native - scales with screen density AND system font size
         val fontSizeLogicalPoints = shadowNode.fontSize
         val displayMetrics = textView.context.resources.displayMetrics
         val fontSizePixels = if (fontSizeLogicalPoints > 0) {
@@ -364,7 +369,11 @@ class DCFTextComponent : DCFComponent() {
                 displayMetrics
             )
         } else {
-            17f * displayMetrics.scaledDensity
+            android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_SP,
+                17f,
+                displayMetrics
+            )
         }
         val paint = TextPaint(TextPaint.ANTI_ALIAS_FLAG)
         paint.textSize = fontSizePixels

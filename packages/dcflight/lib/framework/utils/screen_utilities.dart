@@ -30,8 +30,11 @@ class ScreenUtilities {
   /// Current screen height
   double _screenHeight = 0.0;
 
-  /// Scale factor from native side
+  /// Scale factor from native side (pixel ratio)
   double _scaleFactor = 1.0;
+
+  /// Font scale factor (system font size preference)
+  double _fontScale = 1.0;
 
   /// Status bar height
   double _statusBarHeight = 0.0;
@@ -69,6 +72,7 @@ class ScreenUtilities {
           _screenWidth = newWidth;
           _screenHeight = newHeight;
           _scaleFactor = args['scale'] as double;
+          _fontScale = args['fontScale'] as double? ?? 1.0;
           _statusBarHeight = args['statusBarHeight'] as double;
           _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
           _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
@@ -97,6 +101,7 @@ class ScreenUtilities {
           _screenWidth = newWidth;
           _screenHeight = newHeight;
           _scaleFactor = args['scale'] as double;
+          _fontScale = args['fontScale'] as double? ?? 1.0;
           _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
           _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
           _safeAreaLeft = args['safeAreaLeft'] as double? ?? 0.0;
@@ -143,6 +148,7 @@ class ScreenUtilities {
         _screenWidth = result['width'] as double;
         _screenHeight = result['height'] as double;
         _scaleFactor = result['scale'] as double;
+        _fontScale = result['fontScale'] as double? ?? 1.0;
         _statusBarHeight = result['statusBarHeight'] as double;
         _safeAreaTop = result['safeAreaTop'] as double? ?? 0.0;
         _safeAreaBottom = result['safeAreaBottom'] as double? ?? 0.0;
@@ -201,8 +207,15 @@ class ScreenUtilities {
   /// Get the current screen height
   double get screenHeight => _screenHeight;
 
-  /// Get the scale factor
+  /// Get the scale factor (pixel ratio)
   double get scaleFactor => _scaleFactor;
+
+  /// Get the font scale factor (system font size preference)
+  /// Similar to React Native's PixelRatio.getFontScale()
+  double get fontScale => _fontScale;
+
+  /// Get scale (alias for scaleFactor, matches React Native's useWindowDimensions)
+  double get scale => _scaleFactor;
 
   /// Get the status bar height
   double get statusBarHeight => _statusBarHeight;

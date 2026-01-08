@@ -114,7 +114,10 @@ open class DCFTextShadowView: DCFShadowView {
         guard let layoutManager = textStorage.layoutManagers.first,
               let textContainer = layoutManager.textContainers.first else {
             // Fallback: return minimum size based on font
-            let minHeight = !fontSize.isNaN ? max(1, fontSize) : 17
+            // Apply font scale to match Android's SP scaling behavior
+            let fontScale = DCFScreenUtilities.shared.fontScale
+            let baseFontSize = !fontSize.isNaN ? fontSize : 17
+            let minHeight = max(1, baseFontSize * fontScale)
             return YGSize(width: 1, height: Float(minHeight))
         }
         
@@ -209,13 +212,17 @@ open class DCFTextShadowView: DCFShadowView {
         let range = NSRange(location: 0, length: (textToUse as NSString).length)
         
         // Font - use fontSize from props or default
+        // CRITICAL: Apply font scale to match Android's SP behavior
+        // Android SP scales with system font size, so iOS should too for consistency
+        let fontScale = DCFScreenUtilities.shared.fontScale
         var font = UIFont.systemFont(ofSize: 17)
         let finalFontSize: CGFloat
         if !fontSize.isNaN {
-            finalFontSize = fontSize
+            // Apply font scale to match Android's SP scaling behavior
+            finalFontSize = fontSize * fontScale
             font = UIFont.systemFont(ofSize: finalFontSize)
         } else {
-            finalFontSize = 17
+            finalFontSize = 17 * fontScale
         }
         
         if let fontWeight = fontWeight {
