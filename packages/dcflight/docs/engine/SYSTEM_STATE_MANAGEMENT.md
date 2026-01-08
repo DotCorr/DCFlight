@@ -66,58 +66,99 @@ Native update triggered 🎉
 
 ## How It Works
 
-### Architecture Diagram
+### Complete Flow Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│              System Change Detected                          │
-│  (Font scale, language, theme, accessibility, etc.)        │
+│  1. User Changes System Setting (e.g., font size)          │
+│     Native OS → Flutter Method Channel                      │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         SystemStateManager.onSystemChange()                 │
-│                                                             │
-│  _version++ (e.g., 0 → 1)                                   │
-│  Logs change type for debugging                             │
+│  2. ScreenUtilities Detects Change                         │
+│     _handleMethodCall() or refreshDimensions()             │
+│     SystemStateManager.onSystemChange(fontScale: true)     │
+│     _version++ (e.g., 4 → 5)                               │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Component Re-render Triggered                       │
-│  (via CoreWrapper, state update, etc.)                     │
+│  3. dimensionChanges Stream Fires                          │
+│     CoreWrapper listens to dimensionChanges                │
+│     Checks: SystemStateManager.version changed?             │
+│     If yes → scheduleUpdate() triggers re-render           │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Component.render()                                  │
-│                                                             │
-│  props = {                                                  │
-│    ...otherProps,                                           │
-│    '_systemVersion': SystemStateManager.version  ← Includes │
-│  }                                                          │
+│  4. Components Re-render                                    │
+│     DCFText.render() called again                          │
+│     Includes: '_systemVersion': 5 (was 4)                  │
+│     Stateless cache invalidated if version changed          │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Reconciliation                                      │
-│                                                             │
-│  _diffProps(oldProps, newProps)                             │
-│    Old: { fontSize: 17, _systemVersion: 0 }                │
-│    New: { fontSize: 17, _systemVersion: 1 }                │
-│                                                             │
-│  Result: { '_systemVersion': 1 }  ← Change detected!      │
+│  5. Reconciliation Detects Prop Change                      │
+│     _diffProps(oldProps, newProps)                          │
+│     Old: { fontSize: 17, _systemVersion: 4 }               │
+│     New: { fontSize: 17, _systemVersion: 5 }               │
+│     Result: { '_systemVersion': 5 } ← Change detected!    │
 └────────────────────────┬────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Native Update                                       │
-│                                                             │
-│  updateView(viewId, { '_systemVersion': 1 })               │
-│    ↓                                                        │
-│  Native re-measures/re-renders with new system settings    │
+│  6. Update Sent to Native                                  │
+│     updateView(viewId, { '_systemVersion': 5 })             │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  7. Native Detects _systemVersion Change                    │
+│     DCFTextComponent.updateView() detects change            │
+│     Forces re-measurement:                                  │
+│     - Android: requestLayout() + invalidate()                │
+│     - iOS: dirtyText() + triggerLayoutCalculation()       │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  8. Text Re-measured with New Font Scale                   │
+│     SP units automatically scale (17 * 1.235 = 20.995px)   │
+│     Layout recalculated, view invalidated                   │
+│     UI updates! 🎉                                          │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Key Components
+
+#### 1. SystemStateManager
+- **Global version counter** that increments on system changes
+- Called by `ScreenUtilities` when font scale changes
+- Components read `SystemStateManager.version` to include in props
+
+#### 2. CoreWrapper
+- **Wraps app root** and listens to `dimensionChanges` stream
+- **Checks if `SystemStateManager.version` changed** on each event
+- **Triggers re-render** via `scheduleUpdate()` when version changes
+- **Critical**: Without this, components wouldn't re-render, so `_systemVersion` wouldn't update
+
+#### 3. Component Props (_systemVersion)
+- Components include `'_systemVersion': SystemStateManager.version` in props
+- When version increments, prop value changes
+- Reconciliation detects prop change and sends update to native
+
+#### 4. Stateless Component Cache Invalidation
+- During reconciliation, if `_systemVersion` changed, stateless component cache is cleared
+- Forces fresh `render()` call with new `_systemVersion` value
+- Ensures props are updated even for cached components
+
+#### 5. Native Detection & Re-measurement
+- Native `updateView()` detects `_systemVersion` prop changed
+- Forces layout recalculation to re-measure text with new font scale
+- Android: `requestLayout()` + `invalidate()`
+- iOS: `dirtyText()` + `triggerLayoutCalculation()`
 
 ---
 
@@ -151,12 +192,16 @@ class MyTextComponent extends DCFStatelessComponent {
 #### Step 2: Component Automatically Updates
 
 When any system change occurs:
-- `SystemStateManager.version` increments
-- Your component's `_systemVersion` prop changes
-- Reconciliation detects the change
-- Native update is triggered automatically
+1. `SystemStateManager.onSystemChange()` is called → Version increments
+2. `CoreWrapper` detects version change → Triggers re-render
+3. Your component's `render()` is called → Includes new `_systemVersion` in props
+4. Reconciliation detects prop change → Sends update to native
+5. Native detects `_systemVersion` change → Forces re-measurement
+6. UI updates automatically! 🎉
 
 **No additional code needed!** The component will automatically update when system settings change.
+
+**Note:** `CoreWrapper` is automatically included when using `DCFlight.go()`, so you don't need to manually wrap your app.
 
 ---
 
@@ -189,12 +234,24 @@ SystemStateManager.onSystemChange(
 #### Current Integration Points
 
 **Font Scale Changes:**
-- `ScreenUtilities._handleMethodCall()` automatically calls `SystemStateManager.onSystemChange(fontScale: true)` when font scale changes
+- `ScreenUtilities._handleMethodCall()` and `refreshDimensions()` automatically call `SystemStateManager.onSystemChange(fontScale: true)` when font scale changes
+- This happens when native OS notifies Flutter via method channel
+
+**CoreWrapper Integration:**
+- Automatically wraps app root when using `DCFlight.go()`
+- Listens to `dimensionChanges` stream
+- Checks `SystemStateManager.version` on each event
+- Triggers re-render when version changes
+
+**Native Component Integration:**
+- `DCFTextComponent.updateView()` (Android & iOS) detects `_systemVersion` changes
+- Forces re-measurement when version changes
+- Text is re-measured with new font scale automatically
 
 **Future Integration Points:**
-- Language changes: Call in localization handler
-- Theme changes: Call in theme change listener
-- Accessibility: Call in accessibility settings listener
+- Language changes: Call `SystemStateManager.onSystemChange(language: true)` in localization handler
+- Theme changes: Call `SystemStateManager.onSystemChange(theme: true)` in theme change listener
+- Accessibility: Call `SystemStateManager.onSystemChange(accessibility: true)` in accessibility settings listener
 
 ---
 
@@ -373,8 +430,10 @@ void onAccessibilityChanged() {
    - `_systemVersion` is for **system-level** changes only
    - Use regular state management for user interactions
 
-4. **Don't forget to trigger re-render**
-   - `onSystemChange()` increments version, but you still need to trigger component re-render (via `CoreWrapper`, state update, etc.)
+4. **CoreWrapper is required**
+   - `onSystemChange()` increments version, but components need to re-render to include new `_systemVersion` in props
+   - `CoreWrapper` automatically handles this when using `DCFlight.go()`
+   - If not using `DCFlight.go()`, ensure `CoreWrapper` wraps your app root
 
 ---
 
@@ -458,8 +517,10 @@ Resets the version counter to 0. Useful for testing or hot restart.
    ```
 
 2. Verify component re-renders:
-   - Check if `CoreWrapper` or state update triggers re-render
-   - `_systemVersion` only works if component re-renders
+   - Check if `CoreWrapper` is wrapping your app (automatic with `DCFlight.go()`)
+   - Check logs: "🔄 CoreWrapper: System state version changed..."
+   - `_systemVersion` only works if component re-renders with new version value
+   - Stateless components: Cache is automatically invalidated when `_systemVersion` changes
 
 3. Verify prop is included:
    ```dart
@@ -482,9 +543,18 @@ Resets the version counter to 0. Useful for testing or hot restart.
 **SystemStateManager** enables efficient, automatic updates for system-dependent components:
 
 1. **Include `_systemVersion`** in component props
-2. **Call `onSystemChange()`** when system changes detected
-3. **Component automatically updates** via signal-inspired reconciliation
-4. **Minimal overhead** - just 1 integer prop per component
+2. **Call `onSystemChange()`** when system changes detected (already done for font scale)
+3. **CoreWrapper** detects version change and triggers re-render (automatic with `DCFlight.go()`)
+4. **Components re-render** with new `_systemVersion` in props
+5. **Reconciliation** detects prop change and sends update to native
+6. **Native** detects `_systemVersion` change and forces re-measurement
+7. **UI updates automatically!** 🎉
 
-This works seamlessly with DCFlight's signal-inspired reconciliation model, ensuring components update when system settings change while maintaining optimal performance.
+**Minimal overhead:**
+- 1 integer prop per component (`_systemVersion`)
+- O(1) version increment
+- Only components with `_systemVersion` are affected
+- Native efficiently handles re-measurement
+
+This works seamlessly with DCFlight's signal-inspired reconciliation model, ensuring components update when system settings change while maintaining optimal performance. The magic is in the **version counter** that increments on system changes, causing props to change, which triggers reconciliation, which updates native, which re-measures components!
 
