@@ -193,6 +193,10 @@ class DCFText extends DCFStatelessComponent
       ...mergedLayout.toMap(), // Use merged layout with overflow-prevention defaults
       ...mergedStyleSheet.toMap(),
       if (textColor != null) 'textColor': DCFColors.toNativeString(textColor!),
+      // Include system state version to trigger updates on system changes
+      // (font scale, language, theme, etc.) even when props don't change
+      // This ensures reconciliation detects system changes and updates native views
+      '_systemVersion': SystemStateManager.version,
       ...(events ?? {}),
     };
 

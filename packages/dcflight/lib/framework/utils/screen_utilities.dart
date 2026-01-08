@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:flutter/services.dart';
+import 'package:dcflight/framework/utils/system_state_manager.dart';
 
 /// Utility class for handling screen dimensions and orientation changes
 /// Enhanced with window size change detection for iPad multitasking
@@ -94,6 +95,11 @@ class ScreenUtilities {
               'Font scale changed: $oldFontScale → $newFontScale',
               name: 'ScreenUtilities');
           
+          // Notify SystemStateManager of font scale change
+          // This increments the system version, causing components with _systemVersion
+          // in props to be updated during reconciliation
+          SystemStateManager.onSystemChange(fontScale: true);
+          
           // Notify listeners - SystemChangeListener will trigger re-render
           _notifyDimensionChangeListeners();
         }
@@ -131,6 +137,11 @@ class ScreenUtilities {
           developer.log(
               'Font scale changed: $oldFontScale → $newFontScale',
               name: 'ScreenUtilities');
+          
+          // Notify SystemStateManager of font scale change
+          // This increments the system version, causing components with _systemVersion
+          // in props to be updated during reconciliation
+          SystemStateManager.onSystemChange(fontScale: true);
           
           // Notify listeners - SystemChangeListener will trigger re-render
           _notifyDimensionChangeListeners();

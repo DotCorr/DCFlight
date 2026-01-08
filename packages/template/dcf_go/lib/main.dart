@@ -762,7 +762,6 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               ),
               styleSheet: DCFStyleSheet(
                 primaryColor: text,
-                backgroundColor: DCFColors.amber,
               ),
             ),
           ],
