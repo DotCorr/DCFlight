@@ -21,6 +21,7 @@ import com.dotcorr.dcflight.components.DCFComponent
 import com.dotcorr.dcflight.components.DCFComponentRegistry
 import com.dotcorr.dcflight.components.DCFComposeWrapper
 import com.dotcorr.dcflight.components.DCFLayoutIndependent
+import com.dotcorr.dcflight.components.DCFScrollView
 import com.dotcorr.dcflight.utils.DCFScreenUtilities
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
@@ -1023,6 +1024,28 @@ class YogaShadowTree private constructor() {
                 }
                 if (madeVisibleCount > 0) {
                     Log.d(TAG, "   ✅ Made $madeVisibleCount additional views visible (final visibility pass)")
+                }
+                
+                // 🔥 CRITICAL: Update ScrollView content sizes after layout calculation
+                // This fixes the timing issue where ScrollView children don't appear initially
+                // ScrollView content size needs to be updated AFTER Yoga calculates layouts
+                // because setChildren() is called BEFORE layout calculation
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        DCFLayoutManager.shared.viewRegistry.forEach { (viewId, view) ->
+                            // Check if this is a ScrollView by looking for the ScrollViewKey tag
+                            val scrollViewKey = "DCFScrollView_ScrollViewKey".hashCode()
+                            val scrollView = view.getTag(scrollViewKey) as? DCFScrollView
+                            scrollView?.let { sv ->
+                                sv.updateContentSizeFromContentView()
+                                sv.scrollView.forceLayout()
+                                sv.scrollView.requestLayout()
+                                Log.d(TAG, "   ✅ Updated ScrollView content size for viewId=$viewId after layout calculation")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "   ❌ Error updating ScrollView content sizes", e)
+                    }
                 }
                 
                 // DEBUG: Log final state of all views after layout application

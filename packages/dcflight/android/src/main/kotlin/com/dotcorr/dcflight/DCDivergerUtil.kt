@@ -153,9 +153,19 @@ object DCDivergerUtil {
 
     private fun setupNativeContainer(activity: Activity) {
         try {
+            // 🔥 CRITICAL: Check if root view exists AND is properly attached
+            // If it exists but isn't attached, we need to recreate it
             if (rootView != null) {
-                Log.d(TAG, "Native container already exists, preserving UI state")
-                return
+                val isAttached = rootView!!.isAttachedToWindow
+                val hasParent = rootView!!.parent != null
+                if (isAttached && hasParent) {
+                    Log.d(TAG, "Native container already exists and attached, preserving UI state")
+                    return
+                } else {
+                    Log.w(TAG, "⚠️ Root view exists but not attached (isAttached=$isAttached, hasParent=$hasParent) - recreating")
+                    // Clean up the old root view
+                    rootView = null
+                }
             }
 
             rootView = DCFFrameLayout(activity).apply {

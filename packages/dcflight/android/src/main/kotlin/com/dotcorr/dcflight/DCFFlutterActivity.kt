@@ -68,16 +68,63 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
         
         if (!isFrameworkDiverged) {
+            // First launch - always diverge
             Log.d(TAG, "First start - diverging to native UI")
             divergeToFlightSafely()
         } else {
-            Log.d(TAG, "Activity restarted - preserving existing native UI")
+            // App resumed - check if views still exist
+            val rootViewExists = try {
+                val rootView = com.dotcorr.dcflight.layout.ViewRegistry.shared.getView(0)
+                rootView != null && rootView.isAttachedToWindow
+            } catch (e: Exception) {
+                false
+            }
+            
+            if (!rootViewExists) {
+                Log.w(TAG, "⚠️ Root view missing despite divergence flag - re-diverging")
+                isFrameworkDiverged = false // Reset flag to allow re-divergence
+                divergeToFlightSafely()
+            } else {
+                Log.d(TAG, "Activity restarted - preserving existing native UI")
+                // Ensure root view is visible and properly attached
+                ensureRootViewVisible()
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+        
+        // 🔥 CRITICAL: Ensure root view is visible and properly attached on resume
+        // This fixes cases where views exist but aren't visible or attached
+        ensureRootViewVisible()
+    }
+    
+    /**
+     * Ensure root view is visible and properly attached
+     * This is called on resume to fix timing issues
+     */
+    private fun ensureRootViewVisible() {
+        try {
+            val rootView = com.dotcorr.dcflight.layout.ViewRegistry.shared.getView(0)
+            if (rootView != null) {
+                if (!rootView.isAttachedToWindow) {
+                    Log.w(TAG, "⚠️ Root view not attached on resume - re-attaching")
+                    val contentView = findViewById<ViewGroup>(android.R.id.content)
+                    if (rootView.parent == null && contentView != null) {
+                        contentView.addView(rootView)
+                    }
+                }
+                if (rootView.visibility != View.VISIBLE) {
+                    Log.w(TAG, "⚠️ Root view not visible on resume - making visible")
+                    rootView.visibility = View.VISIBLE
+                    rootView.alpha = 1.0f
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to ensure root view visible", e)
+        }
     }
 
     override fun onPause() {
@@ -92,6 +139,7 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
     
     /**
      * Safely diverge to native UI after Flutter engine is ready
+     * 🔥 CRITICAL: This method handles timing issues by waiting for engine readiness
      */
     private fun divergeToFlightSafely() {
         try {
@@ -99,9 +147,29 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
             
             val engine = flutterEngine
             if (engine != null) {
+                Log.d(TAG, "✅ Flutter engine available - diverging immediately")
                 divergeToFlight(engine)
             } else {
-                Log.e(TAG, "Flutter engine not available for divergence")
+                Log.w(TAG, "⏳ Flutter engine not available yet - retrying...")
+                // Retry after a short delay (max 5 attempts = 1 second max wait)
+                var attempts = 0
+                val maxAttempts = 5
+                val handler = android.os.Handler(android.os.Looper.getMainLooper())
+                val retryCheck = object : Runnable {
+                    override fun run() {
+                        val retryEngine = flutterEngine
+                        if (retryEngine != null) {
+                            Log.d(TAG, "✅ Flutter engine available after retry - diverging")
+                            divergeToFlight(retryEngine)
+                        } else if (attempts < maxAttempts) {
+                            attempts++
+                            handler.postDelayed(this, 200)
+                        } else {
+                            Log.e(TAG, "❌ Flutter engine not available after ${maxAttempts * 200}ms - cannot diverge")
+                        }
+                    }
+                }
+                handler.postDelayed(retryCheck, 200)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to diverge to native UI safely", e)
@@ -199,7 +267,15 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
     override fun onDestroy() {
         super.onDestroy()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
-        Log.d(TAG, "🧹 Activity destroyed")
+        
+        // 🔥 CRITICAL: Reset divergence flag if activity is finishing (back button pressed)
+        // This ensures we re-divergence when app is reopened
+        if (isFinishing) {
+            Log.d(TAG, "🧹 Activity finishing - resetting divergence flag")
+            isFrameworkDiverged = false
+        } else {
+            Log.d(TAG, "🧹 Activity destroyed (configuration change) - preserving state")
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
