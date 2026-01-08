@@ -56,7 +56,7 @@ class OpacityExamples extends DCFStatelessComponent {
           endY: 1.0,
         ),
       ),
-      children: [
+      scrollContent: [
         DCFText(
           content: 'Opacity Examples',
           textProps: DCFTextProps(

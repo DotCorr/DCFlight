@@ -26,7 +26,21 @@ class AppRoot extends DCFStatefulComponent {
     return DCFView(
       layout: DCFLayout(width: '100%', height: '100%'),
       children: [
-        // Toggle Button - positioned absolutely in top-right
+        
+        // Content
+        if (showExamples.state)
+          StyleSheetExamplesScreen(
+            onBack: () {
+              showExamples.setState(false);
+            },
+          )
+        else
+          DotCorrLanding(
+            onToggleExamples: () {
+              showExamples.setState(true);
+            },
+          ),
+          // Toggle Button - positioned absolutely in top-right
         // Testing if absolute positioning works correctly on iOS
         DCFView(
           layout: DCFLayout(
@@ -35,7 +49,7 @@ class AppRoot extends DCFStatefulComponent {
               top: buttonTop,
               right: 20,
             ),
-            zIndex: 1000,
+       
           ),
           children: [
             DCFTouchableOpacity(
@@ -68,19 +82,6 @@ class AppRoot extends DCFStatefulComponent {
             ),
           ],
         ),
-        // Content
-        if (showExamples.state)
-          StyleSheetExamplesScreen(
-            onBack: () {
-              showExamples.setState(false);
-            },
-          )
-        else
-          DotCorrLanding(
-            onToggleExamples: () {
-              showExamples.setState(true);
-            },
-          ),
       ],
     );
   }
@@ -97,7 +98,7 @@ class DotCorrLanding extends DCFStatelessComponent {
     return DCFScrollView(
       layout: DCFLayout(width: '100%', height: '100%'),
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
-      children: [
+      scrollContent: [
         NavigationBar(onToggleExamples: onToggleExamples),
         HeroSection(),
         // EcosystemSection(),
@@ -176,8 +177,7 @@ class NavigationBar extends DCFStatelessComponent {
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
               ),
             ),
-            // StyleSheet Examples Button - REMOVED to test absolute positioning
-            // The absolutely positioned button in AppRoot should handle this now
+  
           ],
         ),
       ],

@@ -30,7 +30,7 @@ class StyleSheetExamplesScreen extends DCFStatelessComponent {
     return DCFScrollView(
       layout: layouts['container']!,
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
-      children: [
+      scrollContent: [
         // Back Button
         if (onBack != null)
           DCFTouchableOpacity(

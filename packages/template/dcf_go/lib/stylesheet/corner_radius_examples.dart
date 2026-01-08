@@ -47,7 +47,7 @@ class CornerRadiusExamples extends DCFStatelessComponent {
     return DCFScrollView(
       layout: layouts['container']!,
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.gray100),
-      children: [
+      scrollContent: [
         DCFText(
           content: 'Corner Radius Examples',
           textProps: DCFTextProps(

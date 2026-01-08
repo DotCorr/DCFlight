@@ -775,31 +775,19 @@ class DCMauiBridgeImpl private constructor() {
                 // Clean up tracking recursively
                 fun cleanupTrackingRecursively(parentId: Int) {
                     val parentIdStr = parentId.toString()
-                    val children = viewHierarchy[parentIdStr]?.toList() ?: return // Create copy to avoid concurrent modification
-                    viewHierarchy[parentIdStr]?.clear() // Clear first to prevent re-entry
+                    val children = viewHierarchy[parentIdStr] ?: return
                     children.forEach { childIdStr ->
                         val childId = childIdStr.toIntOrNull()
                         if (childId != null) {
                             // Remove child from layout tree too
-                            try {
-                                YogaShadowTree.shared.removeNode(childIdStr)
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Error removing node $childIdStr from layout tree", e)
-                            }
-                            try {
-                                ViewRegistry.shared.removeView(childId)
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Error removing view $childId from registry", e)
-                            }
-                            try {
-                                DCFLayoutManager.shared.unregisterView(childId)
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Error unregistering view $childId", e)
-                            }
-                            views.remove(childId) // Remove from views map
+                            YogaShadowTree.shared.removeNode(childIdStr)
+                            ViewRegistry.shared.removeView(childId)
+                            DCFLayoutManager.shared.unregisterView(childId)
+                            views.remove(childId)
                             cleanupTrackingRecursively(childId)
                         }
                     }
+                    viewHierarchy[parentIdStr]?.clear()
                 }
                 cleanupTrackingRecursively(op.viewId)
                 cleanupHierarchyReferences(op.viewId.toString())
@@ -838,21 +826,14 @@ class DCMauiBridgeImpl private constructor() {
             if (viewsToRemoveSet.isNotEmpty()) {
                 Log.d(TAG, "🗑️ ANDROID_BATCH: Removing ${viewsToRemoveSet.size} old views from parent (after layout tree removal)")
                 viewsToRemoveSet.forEach { view ->
-                    try {
-                        val parentView = view.parent as? android.view.ViewGroup
-                        if (parentView != null && view.parent != null) {
-                            parentView.removeView(view)
-                            Log.d(TAG, "✅ ANDROID_BATCH: View removed from parent")
-                        } else {
-                            Log.d(TAG, "⚠️ ANDROID_BATCH: View already removed from parent or parent is null")
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "⚠️ ANDROID_BATCH: Error removing view from parent", e)
+                    val parentView = view.parent as? android.view.ViewGroup
+                    if (parentView != null) {
+                        parentView.removeView(view)
+                        Log.d(TAG, "✅ ANDROID_BATCH: View removed from parent")
                     }
                 }
-                // CRITICAL: Clear the set to release references and allow GC
                 viewsToRemoveSet.clear()
-                Log.d(TAG, "✅ ANDROID_BATCH: All old views removed from parent and references cleared")
+                Log.d(TAG, "✅ ANDROID_BATCH: All old views removed from parent")
             }
             
             eventOps.forEach { op ->
