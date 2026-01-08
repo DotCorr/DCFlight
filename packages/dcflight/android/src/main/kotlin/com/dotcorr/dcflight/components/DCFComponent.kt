@@ -192,6 +192,14 @@ abstract class DCFComponent {
      * @param layout Layout information from Yoga (left, top, width, height)
      */
     open fun applyLayout(view: View, layout: DCFNodeLayout) {
+        // DEBUG: Log container layout to diagnose background expansion issue
+        val viewId = view.getTag(DCFTags.VIEW_ID_KEY) as? Int
+        val nodeId = view.getTag("nodeId".hashCode())?.toString()
+        val componentType = view.getTag(DCFTags.COMPONENT_TYPE_KEY) as? String ?: "Unknown"
+        android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] applyLayout: component=$componentType, viewId=$viewId, nodeId=$nodeId")
+        android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] layout: left=${layout.left}, top=${layout.top}, width=${layout.width}, height=${layout.height}")
+        android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] view current: width=${view.width}, height=${view.height}, measuredWidth=${view.measuredWidth}, measuredHeight=${view.measuredHeight}")
+        
         // Match iOS exactly: just set the frame, nothing else
         // Framework handles all transforms, lifecycle, state - components don't need to know
         view.layout(
@@ -200,6 +208,24 @@ abstract class DCFComponent {
             (layout.left + layout.width).toInt(),
             (layout.top + layout.height).toInt()
         )
+        
+        android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] view after layout: width=${view.width}, height=${view.height}")
+        
+        // Check if this container has text children
+        if (view is android.view.ViewGroup) {
+            var textChildCount = 0
+            for (i in 0 until view.childCount) {
+                val child = view.getChildAt(i)
+                if (child.getTag(DCFTags.COMPONENT_TYPE_KEY) == "Text") {
+                    textChildCount++
+                    val childViewId = child.getTag(DCFTags.VIEW_ID_KEY) as? Int
+                    android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] Text child $i: viewId=$childViewId, width=${child.width}, height=${child.height}")
+                }
+            }
+            if (textChildCount > 0) {
+                android.util.Log.d("DCFComponent", "🔍 [CONTAINER LAYOUT] Container has $textChildCount text children")
+            }
+        }
     }
     
     /**

@@ -242,6 +242,16 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         
         android.util.Log.d("DCFTextShadowNode", "📊 Returning measure output: width=$finalWidth (measured=$roundedWidth), height=$finalHeight (widthMode=$widthMode, constraintWidth=$width)")
         
+        // DEBUG: Log parent state to diagnose container expansion issue
+        val parentYogaNode = yogaNode.parent
+        if (parentYogaNode != null) {
+            val parentShadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(parentYogaNode)
+            if (parentShadowNode != null) {
+                android.util.Log.d("DCFTextShadowNode", "🔍 [MEASURE DEBUG] Parent viewId=${parentShadowNode.viewId}, parent Yoga width=${parentYogaNode.layoutWidth}, height=${parentYogaNode.layoutHeight}")
+                android.util.Log.d("DCFTextShadowNode", "🔍 [MEASURE DEBUG] Text measured: width=$finalWidth, height=$finalHeight, parent constraint: width=$width")
+            }
+        }
+        
         // Return just the text size (no padding added)
         // Yoga automatically accounts for padding when calculating the final frame
         return YogaMeasureOutput.make(finalWidth, finalHeight)
@@ -250,7 +260,9 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
     var text: String = ""
         set(value) {
             if (field != value) {
+                val oldValue = field
                 field = value
+                android.util.Log.d("DCFTextShadowNode", "🔍 [TEXT CHANGE] viewId=$viewId, text changed from '$oldValue' to '$value'")
                 dirtyText()
                 // CRITICAL: Mark Yoga node as dirty so measure function is called
                 // This ensures Yoga will re-measure the text when it changes
@@ -258,6 +270,15 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
                     yogaNode.markLayoutSeen()
                     yogaNode.dirty()
                     android.util.Log.d("DCFTextShadowNode", "✅ Marked Yoga node dirty for viewId=$viewId after text change")
+                    
+                    // DEBUG: Check parent state
+                    val parentYogaNode = yogaNode.parent
+                    if (parentYogaNode != null) {
+                        val parentShadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(parentYogaNode)
+                        if (parentShadowNode != null) {
+                            android.util.Log.d("DCFTextShadowNode", "🔍 [TEXT CHANGE] Parent viewId=${parentShadowNode.viewId}, parent isDirty=${parentYogaNode.isDirty}")
+                        }
+                    }
                 }
             }
         }

@@ -444,6 +444,32 @@ class DCFTextComponent : DCFComponent() {
         textView.textFrameTop = padding.top.toFloat()
         textView.requestLayout()
         textView.invalidate()
+        
+        // DEBUG: Log parent container state to diagnose background expansion issue
+        val parent = textView.parent
+        if (parent is android.view.View) {
+            val parentViewId = parent.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
+            val parentNodeId = parent.getTag("nodeId".hashCode())?.toString()
+            android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] applyLayout: textView viewId=$viewNodeId, layout=(${layout.width}x${layout.height})")
+            android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent: type=${parent.javaClass.simpleName}, viewId=$parentViewId, nodeId=$parentNodeId")
+            android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent size: width=${parent.width}, height=${parent.height}, measuredWidth=${parent.measuredWidth}, measuredHeight=${parent.measuredHeight}")
+            android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] TextView size: width=${textView.width}, height=${textView.height}, measuredWidth=${textView.measuredWidth}, measuredHeight=${textView.measuredHeight}")
+            
+            // Check if parent has a shadow node
+            if (parentNodeId != null) {
+                val parentShadowNode = parentNodeId.toIntOrNull()?.let { viewId ->
+                    com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
+                }
+                if (parentShadowNode != null) {
+                    android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent Yoga: width=${parentShadowNode.yogaNode.layoutWidth}, height=${parentShadowNode.yogaNode.layoutHeight}")
+                    android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent frame: ${parentShadowNode.frame}")
+                } else {
+                    android.util.Log.w(TAG, "⚠️ [CONTAINER DEBUG] Parent shadow node NOT found for nodeId=$parentNodeId")
+                }
+            }
+        } else {
+            android.util.Log.w(TAG, "⚠️ [CONTAINER DEBUG] Parent is not a View, type=${parent?.javaClass?.simpleName}")
+        }
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {

@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-
 import 'package:dcf_go/worklet_test.dart';
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
@@ -8,7 +7,6 @@ import 'package:dcflight/dcflight.dart';
 import 'package:flutter/material.dart' show Colors;
 
 void main() async {
-  
   await DCFlight.go(app: DotCorrLanding());
 }
 
@@ -174,7 +172,8 @@ class HeroSection extends DCFStatefulComponent {
                     // Split text to match web styling - "For The" in gray
                     DCFView(
                       layout: DCFLayout(
-                        width: '100%', // CRITICAL: Constrain width to prevent overflow
+                        width:
+                            '100%', // CRITICAL: Constrain width to prevent overflow
                         flexDirection: DCFFlexDirection.column,
                         gap: 0,
                       ),
@@ -187,7 +186,9 @@ class HeroSection extends DCFStatefulComponent {
                             lineHeight: 1.1,
                             letterSpacing: -1.5,
                           ),
-                          styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
+                          styleSheet: DCFStyleSheet(
+                            primaryColor: DCFColors.black,
+                          ),
                         ),
                         DCFText(
                           content: "Infrastructure",
@@ -197,14 +198,18 @@ class HeroSection extends DCFStatefulComponent {
                             lineHeight: 1.1,
                             letterSpacing: -1.5,
                           ),
-                          styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
+                          styleSheet: DCFStyleSheet(
+                            primaryColor: DCFColors.black,
+                          ),
                         ),
                         DCFView(
                           layout: DCFLayout(
-                            width: '100%', // CRITICAL: Constrain row width to prevent overflow
+                            width:
+                                '100%', // CRITICAL: Constrain row width to prevent overflow
                             flexDirection: DCFFlexDirection.row,
                             gap: 0,
-                            flexWrap: DCFWrap.wrap, // Allow wrapping on small devices
+                            flexWrap:
+                                DCFWrap.wrap, // Allow wrapping on small devices
                           ),
                           children: [
                             DCFText(
@@ -259,7 +264,6 @@ class HeroSection extends DCFStatefulComponent {
                       children: [
                         DCFButton(
                           layout: DCFLayout(
-                           
                             paddingHorizontal: 32,
                             paddingVertical: 16,
                             flexDirection: DCFFlexDirection.row,
@@ -672,7 +676,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               "Explore DCFlight",
             ),
             _buildCard(
-              "For Machines",
+              "For MachinesTestTestTestTestTest",
               "The cognitive layer for artificial intelligence. We build the foundational systems required to support autonomous agents and AGI.",
               DCFColors.black,
               DCFColors.white,
@@ -722,7 +726,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
             marginBottom: 24, // mb-6 = 24px
           ),
           styleSheet: DCFStyleSheet(
-            backgroundColor: bg == DCFColors.white ? DCFColors.black : DCFColors.white,
+            backgroundColor:
+                bg == DCFColors.white ? DCFColors.black : DCFColors.white,
             borderRadius: 4,
           ),
           children: [
@@ -733,7 +738,8 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 textAlign: DCFTextAlign.center,
               ),
               styleSheet: DCFStyleSheet(
-                primaryColor: bg == DCFColors.white ? DCFColors.white : DCFColors.black,
+                primaryColor:
+                    bg == DCFColors.white ? DCFColors.white : DCFColors.black,
               ),
             ),
           ],
@@ -746,14 +752,16 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
           ),
           children: [
             DCFText(
-              
               content: title,
               textProps: DCFTextProps(
                 fontSize: 24, // text-2xl = 24px
                 fontWeight: DCFFontWeight.bold,
                 textAlign: DCFTextAlign.left, // Left align text
               ),
-              styleSheet: DCFStyleSheet(primaryColor: text,backgroundColor: DCFColors.amber),
+              styleSheet: DCFStyleSheet(
+                primaryColor: text,
+                backgroundColor: DCFColors.amber,
+              ),
             ),
           ],
         ),
@@ -847,7 +855,6 @@ class TechnologyEcosystemSection extends DCFStatelessComponent {
           ),
           styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
         ),
-     
       ],
     );
   }
