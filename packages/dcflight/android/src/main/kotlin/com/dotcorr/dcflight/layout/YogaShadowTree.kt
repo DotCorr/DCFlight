@@ -252,10 +252,17 @@ class YogaShadowTree private constructor() {
                         }
                         
                         // CRITICAL: Apply letter spacing if specified (matches React Native)
-                        // Letter spacing in React Native is in pixels, Android expects em units
+                        // 🔥 CRITICAL: letterSpacing from Dart is in logical points (same units as fontSize)
+                        // Convert to pixels using SP (same scale as fontSize), then to em units
                         val letterSpacing = textShadowNode.letterSpacing
                         if (letterSpacing != 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                            paint.letterSpacing = letterSpacing / fontSizePixels // Android uses em-based letter spacing
+                            val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+                            val letterSpacingPixels = android.util.TypedValue.applyDimension(
+                                android.util.TypedValue.COMPLEX_UNIT_SP,
+                                letterSpacing,
+                                displayMetrics
+                            )
+                            paint.letterSpacing = letterSpacingPixels / fontSizePixels // Android uses em-based letter spacing
                         }
                         
                         // CRITICAL: Get padding from shadow node to adjust layout width (matches iOS behavior)

@@ -124,10 +124,18 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         }
         
         // Apply letter spacing if specified (matches iOS behavior)
+        // 🔥 CRITICAL: letterSpacing from Dart is in logical points (same units as fontSize)
+        // Convert to pixels using SP (same scale as fontSize), then to em units
         val letterSpacingValue = letterSpacing
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && 
             !letterSpacingValue.isNaN() && letterSpacingValue != 0f) {
-            paint.letterSpacing = letterSpacingValue / fontSizePixels
+            val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+            val letterSpacingPixels = android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_SP,
+                letterSpacingValue,
+                displayMetrics
+            )
+            paint.letterSpacing = letterSpacingPixels / fontSizePixels
         }
         
         // CRITICAL: Yoga passes available width (after padding) to measure function

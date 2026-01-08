@@ -143,10 +143,18 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
     
     override fun updateMeasureState(ds: TextPaint) {
         updateTypeface(ds)
-        // CRITICAL: Apply letter spacing in em units (matches iOS kern attribute behavior)
-        // Android's letterSpacing is in em units (fraction of textSize), so divide by textSize
+        // 🔥 CRITICAL: Apply letter spacing in em units (matches iOS kern attribute behavior)
+        // mLetterSpacing is in logical points (same units as fontSize from Dart)
+        // ds.textSize is already in pixels (scaled)
+        // We need to convert mLetterSpacing to pixels using SP (same scale as fontSize), then to em units
         if (mLetterSpacing != 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            ds.letterSpacing = mLetterSpacing / ds.textSize
+            val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+            val letterSpacingPixels = android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_SP,
+                mLetterSpacing,
+                displayMetrics
+            )
+            ds.letterSpacing = letterSpacingPixels / ds.textSize
         }
     }
     

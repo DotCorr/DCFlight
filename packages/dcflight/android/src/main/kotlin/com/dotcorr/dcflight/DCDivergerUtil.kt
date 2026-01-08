@@ -165,6 +165,13 @@ object DCDivergerUtil {
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
                 
+                // CRITICAL: Disable automatic system window insets (matches iOS behavior)
+                // We want the root view to fill the entire window starting from (0,0)
+                // Individual components will add safe area padding manually via ScreenUtilities
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
+                    setFitsSystemWindows(false)
+                }
+                
                 // Attach lifecycle owner for Compose support
                 if (activity is LifecycleOwner) {
                     try {

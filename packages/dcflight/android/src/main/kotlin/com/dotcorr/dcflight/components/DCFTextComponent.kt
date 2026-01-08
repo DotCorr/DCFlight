@@ -241,13 +241,28 @@ class DCFTextComponent : DCFComponent() {
         paint.color = android.graphics.Color.BLACK // Ensure visible
         
         // Apply letter spacing
+        // 🔥 CRITICAL: letterSpacing from Dart is in logical points (same units as fontSize)
+        // We need to convert it to pixels using the same scale factor as fontSize, then to em units
+        // Example: fontSize=48pt, letterSpacing=-1.5pt, scale=1.235
+        //   fontSizePixels = 48 * 1.235 = 59.28px
+        //   letterSpacingPixels = -1.5 * 1.235 = -1.8525px
+        //   letterSpacingEm = -1.8525 / 59.28 = -0.031 em
         val letterSpacing = if (shadowNode != null) {
             shadowNode.letterSpacing
         } else {
             (props["letterSpacing"] as? Number)?.toFloat() ?: 0f
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && !letterSpacing.isNaN() && letterSpacing != 0f) {
-            paint.letterSpacing = letterSpacing / fontSizePixels
+            // Convert letterSpacing from logical points to pixels using SP (same as fontSize)
+            val displayMetrics = textView.context.resources.displayMetrics
+            val letterSpacingPixels = android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_SP,
+                letterSpacing,
+                displayMetrics
+            )
+            // Convert to em units (Android's letterSpacing is in em units)
+            paint.letterSpacing = letterSpacingPixels / fontSizePixels
+            android.util.Log.d(TAG, "📏 Letter spacing: ${letterSpacing}pt → ${letterSpacingPixels}px → ${paint.letterSpacing}em (fontSize=${fontSizePixels}px)")
         }
         
         // Get alignment
@@ -399,9 +414,16 @@ class DCFTextComponent : DCFComponent() {
         paint.textSize = fontSizePixels
         paint.color = android.graphics.Color.BLACK
         
+        // 🔥 CRITICAL: letterSpacing from Dart is in logical points (same units as fontSize)
+        // Convert to pixels using SP (same scale as fontSize), then to em units
         val letterSpacing = shadowNode.letterSpacing
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && !letterSpacing.isNaN() && letterSpacing != 0f) {
-            paint.letterSpacing = letterSpacing / fontSizePixels
+            val letterSpacingPixels = android.util.TypedValue.applyDimension(
+                android.util.TypedValue.COMPLEX_UNIT_SP,
+                letterSpacing,
+                displayMetrics
+            )
+            paint.letterSpacing = letterSpacingPixels / fontSizePixels
         }
         
         // CRITICAL: Account for padding when creating text layout (matches iOS behavior)
