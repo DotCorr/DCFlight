@@ -55,39 +55,49 @@ extension UIView {
             }
         }
 
-        // Handle border colors - check individual sides first, then general
-        var borderColor: CGColor? = nil
-        if let borderColorStr = props["borderColor"] as? String {
-            borderColor = ColorUtilities.color(fromHexString: borderColorStr)?.cgColor
-        } else if let borderTopColorStr = props["borderTopColor"] as? String {
-            borderColor = ColorUtilities.color(fromHexString: borderTopColorStr)?.cgColor
-        } else if let borderRightColorStr = props["borderRightColor"] as? String {
-            borderColor = ColorUtilities.color(fromHexString: borderRightColorStr)?.cgColor
-        } else if let borderBottomColorStr = props["borderBottomColor"] as? String {
-            borderColor = ColorUtilities.color(fromHexString: borderBottomColorStr)?.cgColor
-        } else if let borderLeftColorStr = props["borderLeftColor"] as? String {
-            borderColor = ColorUtilities.color(fromHexString: borderLeftColorStr)?.cgColor
-        }
-        if let borderColor = borderColor {
-            layer.borderColor = borderColor
-        }
-
-        // Handle border widths - check individual sides first, then general
-        var borderWidth: CGFloat? = nil
-        if let width = props["borderWidth"] as? CGFloat {
-            borderWidth = width
-        } else if let width = props["borderTopWidth"] as? CGFloat {
-            borderWidth = width
-        } else if let width = props["borderRightWidth"] as? CGFloat {
-            borderWidth = width
-        } else if let width = props["borderBottomWidth"] as? CGFloat {
-            borderWidth = width
-        } else if let width = props["borderLeftWidth"] as? CGFloat {
-            borderWidth = width
-        }
-        if let borderWidth = borderWidth {
-            layer.borderWidth = borderWidth
+        // Handle borders - support individual sides for consistency with Android
+        // Check if individual border sides are specified
+        let borderTopWidth = (props["borderTopWidth"] as? CGFloat) ?? 0
+        let borderRightWidth = (props["borderRightWidth"] as? CGFloat) ?? 0
+        let borderBottomWidth = (props["borderBottomWidth"] as? CGFloat) ?? 0
+        let borderLeftWidth = (props["borderLeftWidth"] as? CGFloat) ?? 0
+        let generalBorderWidth = (props["borderWidth"] as? CGFloat) ?? 0
+        
+        let borderTopColor = (props["borderTopColor"] as? String).flatMap { ColorUtilities.color(fromHexString: $0)?.cgColor }
+        let borderRightColor = (props["borderRightColor"] as? String).flatMap { ColorUtilities.color(fromHexString: $0)?.cgColor }
+        let borderBottomColor = (props["borderBottomColor"] as? String).flatMap { ColorUtilities.color(fromHexString: $0)?.cgColor }
+        let borderLeftColor = (props["borderLeftColor"] as? String).flatMap { ColorUtilities.color(fromHexString: $0)?.cgColor }
+        let generalBorderColor = (props["borderColor"] as? String).flatMap { ColorUtilities.color(fromHexString: $0)?.cgColor }
+        
+        // Determine if we have individual border sides
+        let hasIndividualBorders = borderTopWidth > 0 || borderRightWidth > 0 || borderBottomWidth > 0 || borderLeftWidth > 0 ||
+                                   borderTopColor != nil || borderRightColor != nil || borderBottomColor != nil || borderLeftColor != nil
+        
+        if hasIndividualBorders {
+            // Use CAShapeLayer for individual border sides
+            applyIndividualBorders(
+                topWidth: generalBorderWidth > 0 ? generalBorderWidth : borderTopWidth,
+                rightWidth: generalBorderWidth > 0 ? generalBorderWidth : borderRightWidth,
+                bottomWidth: generalBorderWidth > 0 ? generalBorderWidth : borderBottomWidth,
+                leftWidth: generalBorderWidth > 0 ? generalBorderWidth : borderLeftWidth,
+                topColor: generalBorderColor ?? borderTopColor,
+                rightColor: generalBorderColor ?? borderRightColor,
+                bottomColor: generalBorderColor ?? borderBottomColor,
+                leftColor: generalBorderColor ?? borderLeftColor,
+                cornerRadius: finalCornerRadius
+            )
             self.clipsToBounds = true
+        } else if generalBorderWidth > 0 {
+            // Use native CALayer for uniform borders (more efficient)
+            if let borderColor = generalBorderColor {
+                layer.borderColor = borderColor
+            }
+            layer.borderWidth = generalBorderWidth
+            self.clipsToBounds = true
+        } else {
+            // Remove any existing border layers
+            layer.borderWidth = 0
+            removeBorderLayers()
         }
 
         if let backgroundColorStr = props["backgroundColor"] as? String {
@@ -304,6 +314,65 @@ extension UIView {
                 self.isUserInteractionEnabled = true
             }
         }
+        
+        // Transforms - match Android behavior exactly
+        var rotation: CGFloat = 0
+        var translateX: CGFloat = 0
+        var translateY: CGFloat = 0
+        var scaleX: CGFloat = 1
+        var scaleY: CGFloat = 1
+        var hasTransforms = false
+        
+        if let rotate = props["rotateInDegrees"] as? CGFloat {
+            rotation = rotate
+            hasTransforms = true
+        }
+        
+        if let tx = props["translateX"] as? CGFloat {
+            translateX = tx
+            hasTransforms = true
+        }
+        
+        if let ty = props["translateY"] as? CGFloat {
+            translateY = ty
+            hasTransforms = true
+        }
+        
+        if let scale = props["scale"] as? CGFloat {
+            scaleX = scale
+            scaleY = scale
+            hasTransforms = true
+        }
+        
+        if let sx = props["scaleX"] as? CGFloat {
+            scaleX = sx
+            hasTransforms = true
+        }
+        
+        if let sy = props["scaleY"] as? CGFloat {
+            scaleY = sy
+            hasTransforms = true
+        }
+        
+        if hasTransforms {
+            // Apply pivot at center for rotation (matches Android)
+            // Use frame instead of bounds to handle zero-size views
+            layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            if !frame.isEmpty {
+                layer.position = CGPoint(x: frame.midX, y: frame.midY)
+            }
+            
+            // Apply transforms
+            var transform = CATransform3DIdentity
+            transform = CATransform3DTranslate(transform, translateX, translateY, 0)
+            transform = CATransform3DRotate(transform, rotation * .pi / 180, 0, 0, 1)
+            transform = CATransform3DScale(transform, scaleX, scaleY, 1)
+            layer.transform = transform
+        } else {
+            // Reset transforms if none specified (matches Android)
+            layer.transform = CATransform3DIdentity
+            layer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        }
     }
 
     /// Apply adaptive background color based on view type and iOS version
@@ -331,6 +400,102 @@ extension UIView {
         }
     }
 
+    /// Apply individual border sides using CAShapeLayer
+    /// This ensures consistent behavior with Android when individual border sides are specified
+    private func applyIndividualBorders(
+        topWidth: CGFloat, rightWidth: CGFloat, bottomWidth: CGFloat, leftWidth: CGFloat,
+        topColor: CGColor?, rightColor: CGColor?, bottomColor: CGColor?, leftColor: CGColor?,
+        cornerRadius: CGFloat
+    ) {
+        // Remove existing border layers
+        removeBorderLayers()
+        
+        // Only create layers for sides that have width > 0
+        let bounds = self.bounds
+        guard !bounds.isEmpty else {
+            // Store border config for later when bounds are available
+            let borderConfig: [String: Any] = [
+                "topWidth": topWidth,
+                "rightWidth": rightWidth,
+                "bottomWidth": bottomWidth,
+                "leftWidth": leftWidth,
+                "topColor": topColor != nil ? UIColor(cgColor: topColor!) : NSNull(),
+                "rightColor": rightColor != nil ? UIColor(cgColor: rightColor!) : NSNull(),
+                "bottomColor": bottomColor != nil ? UIColor(cgColor: bottomColor!) : NSNull(),
+                "leftColor": leftColor != nil ? UIColor(cgColor: leftColor!) : NSNull(),
+                "cornerRadius": cornerRadius
+            ]
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "pendingBorderConfig".hashValue)!,
+                borderConfig, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            return
+        }
+        
+        // Top border
+        if topWidth > 0, let color = topColor {
+            let topLayer = CAShapeLayer()
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: cornerRadius, y: topWidth / 2))
+            path.addLine(to: CGPoint(x: bounds.width - cornerRadius, y: topWidth / 2))
+            topLayer.path = path.cgPath
+            topLayer.strokeColor = color
+            topLayer.lineWidth = topWidth
+            topLayer.fillColor = nil
+            topLayer.name = "borderTop"
+            layer.addSublayer(topLayer)
+        }
+        
+        // Right border
+        if rightWidth > 0, let color = rightColor {
+            let rightLayer = CAShapeLayer()
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: bounds.width - rightWidth / 2, y: cornerRadius))
+            path.addLine(to: CGPoint(x: bounds.width - rightWidth / 2, y: bounds.height - cornerRadius))
+            rightLayer.path = path.cgPath
+            rightLayer.strokeColor = color
+            rightLayer.lineWidth = rightWidth
+            rightLayer.fillColor = nil
+            rightLayer.name = "borderRight"
+            layer.addSublayer(rightLayer)
+        }
+        
+        // Bottom border
+        if bottomWidth > 0, let color = bottomColor {
+            let bottomLayer = CAShapeLayer()
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: cornerRadius, y: bounds.height - bottomWidth / 2))
+            path.addLine(to: CGPoint(x: bounds.width - cornerRadius, y: bounds.height - bottomWidth / 2))
+            bottomLayer.path = path.cgPath
+            bottomLayer.strokeColor = color
+            bottomLayer.lineWidth = bottomWidth
+            bottomLayer.fillColor = nil
+            bottomLayer.name = "borderBottom"
+            layer.addSublayer(bottomLayer)
+        }
+        
+        // Left border
+        if leftWidth > 0, let color = leftColor {
+            let leftLayer = CAShapeLayer()
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: leftWidth / 2, y: cornerRadius))
+            path.addLine(to: CGPoint(x: leftWidth / 2, y: bounds.height - cornerRadius))
+            leftLayer.path = path.cgPath
+            leftLayer.strokeColor = color
+            leftLayer.lineWidth = leftWidth
+            leftLayer.fillColor = nil
+            leftLayer.name = "borderLeft"
+            layer.addSublayer(leftLayer)
+        }
+    }
+    
+    /// Remove all border layers
+    private func removeBorderLayers() {
+        layer.sublayers?.filter { $0.name?.hasPrefix("border") == true }.forEach { $0.removeFromSuperlayer() }
+        objc_setAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "pendingBorderConfig".hashValue)!,
+            nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    
     /// CRITICAL FIX: Apply gradient background with proper corner radius support
     private func applyGradientBackground(
         gradientData: [String: Any], cornerRadius: CGFloat? = nil, cornerMask: CACornerMask? = nil
@@ -449,6 +614,32 @@ extension UIView {
 }
 
 extension UIView {
+    /// Update border layers when view bounds change
+    @objc private func updateBorderLayers() {
+        guard !bounds.isEmpty else { return }
+        
+        if let borderConfig = objc_getAssociatedObject(
+            self, UnsafeRawPointer(bitPattern: "pendingBorderConfig".hashValue)!) as? [String: Any]
+        {
+            let topWidth = (borderConfig["topWidth"] as? CGFloat) ?? 0
+            let rightWidth = (borderConfig["rightWidth"] as? CGFloat) ?? 0
+            let bottomWidth = (borderConfig["bottomWidth"] as? CGFloat) ?? 0
+            let leftWidth = (borderConfig["leftWidth"] as? CGFloat) ?? 0
+            let cornerRadius = (borderConfig["cornerRadius"] as? CGFloat) ?? 0
+            
+            let topColor = (borderConfig["topColor"] as? UIColor)?.cgColor
+            let rightColor = (borderConfig["rightColor"] as? UIColor)?.cgColor
+            let bottomColor = (borderConfig["bottomColor"] as? UIColor)?.cgColor
+            let leftColor = (borderConfig["leftColor"] as? UIColor)?.cgColor
+            
+            applyIndividualBorders(
+                topWidth: topWidth, rightWidth: rightWidth, bottomWidth: bottomWidth, leftWidth: leftWidth,
+                topColor: topColor, rightColor: rightColor, bottomColor: bottomColor, leftColor: leftColor,
+                cornerRadius: cornerRadius
+            )
+        }
+    }
+    
     /// Update gradient layer frame when view bounds change
     @objc public func updateGradientFrame() {
         guard !bounds.isEmpty else { return }  // Skip empty bounds
@@ -505,12 +696,13 @@ extension UIView {
         }
     }
 
-    /// Override layoutSubviews to ensure gradient frames are updated
+    /// Override layoutSubviews to ensure gradient frames and borders are updated
     @objc private func swizzled_layoutSubviews() {
         swizzled_layoutSubviews()  // Call original implementation
 
         DispatchQueue.main.async { [weak self] in
             self?.updateGradientFrame()
+            self?.updateBorderLayers()
         }
     }
 }

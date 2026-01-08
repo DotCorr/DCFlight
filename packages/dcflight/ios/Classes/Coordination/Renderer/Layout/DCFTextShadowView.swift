@@ -195,6 +195,35 @@ open class DCFTextShadowView: DCFShadowView {
     }
     
     /**
+     * Convert numeric font weight (100-900) to UIFont.Weight constant
+     * This ensures we use the system's actual font weights instead of synthetic ones
+     */
+    private func fontWeightFromNumeric(_ weight: Int) -> UIFont.Weight {
+        switch weight {
+        case 100: return .ultraLight
+        case 200: return .thin
+        case 300: return .light
+        case 400: return .regular
+        case 500: return .medium
+        case 600: return .semibold
+        case 700: return .bold
+        case 800: return .heavy
+        case 900: return .black
+        default:
+            // For weights between standard values, map to nearest
+            if weight < 150 { return .ultraLight }
+            else if weight < 250 { return .thin }
+            else if weight < 350 { return .light }
+            else if weight < 450 { return .regular }
+            else if weight < 550 { return .medium }
+            else if weight < 650 { return .semibold }
+            else if weight < 750 { return .bold }
+            else if weight < 850 { return .heavy }
+            else { return .black }
+        }
+    }
+    
+    /**
      * Build attributed string from text properties
      */
     private func buildAttributedString() -> NSAttributedString {
@@ -226,11 +255,9 @@ open class DCFTextShadowView: DCFShadowView {
         }
         
         if let fontWeight = fontWeight {
-            // Convert numeric weight (100-900) directly to UIFont.Weight CGFloat
-            // Map 100-900 range to iOS weight range (-1.0 to 1.0 approximately)
-            // Linear mapping: (weight - 400) / 500.0 gives us -0.6 to 1.0 range
-            let normalizedWeight = CGFloat(fontWeight - 400) / 500.0
-            let uiWeight = UIFont.Weight(rawValue: normalizedWeight)
+            // Convert numeric weight (100-900) to proper UIFont.Weight constants
+            // This ensures we use the system's actual bold font instead of synthetic weights
+            let uiWeight = fontWeightFromNumeric(fontWeight)
             font = UIFont.systemFont(ofSize: finalFontSize, weight: uiWeight)
         }
         if let fontFamily = fontFamily {

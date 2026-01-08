@@ -45,7 +45,7 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.green,
+        backgroundColor: DCFColors.white,
         borderBottomWidth: 1,
         borderBottomColor: DCFColors.gray100,
       ),
@@ -118,6 +118,7 @@ class HeroSection extends DCFStatefulComponent {
         styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
         children: [
           DCFButton(
+            styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
             onPress: (data) {
               showTest.setState(!showTest.state);
             },
