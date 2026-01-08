@@ -85,18 +85,31 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         // Apply font family and weight to paint (matches iOS behavior)
         val fontWeightValue = fontWeight
         val fontFamilyValue = fontFamily
-        val typefaceStyle = if (fontWeightValue != null) {
-            when (fontWeightValue.lowercase()) {
-                "bold", "700", "800", "900" -> android.graphics.Typeface.BOLD
-                else -> android.graphics.Typeface.NORMAL
+        
+        // Use numeric font weights (API 26+) to match iOS behavior
+        // iOS medium weight (500) should render as medium, not normal
+        paint.typeface = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val weight = fontWeightToNumericWeight(fontWeightValue)
+            if (fontFamilyValue != null) {
+                android.graphics.Typeface.create(fontFamilyValue, weight, false)
+            } else {
+                android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, weight, false)
             }
         } else {
-            android.graphics.Typeface.NORMAL
-        }
-        paint.typeface = if (fontFamilyValue != null) {
-            android.graphics.Typeface.create(fontFamilyValue, typefaceStyle)
-        } else {
-            android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, typefaceStyle)
+            // Fallback for older Android versions
+            val typefaceStyle = if (fontWeightValue != null) {
+                when (fontWeightValue.lowercase()) {
+                    "bold", "700", "800", "900" -> android.graphics.Typeface.BOLD
+                    else -> android.graphics.Typeface.NORMAL
+                }
+            } else {
+                android.graphics.Typeface.NORMAL
+            }
+            if (fontFamilyValue != null) {
+                android.graphics.Typeface.create(fontFamilyValue, typefaceStyle)
+            } else {
+                android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, typefaceStyle)
+            }
         }
         
         // Apply letter spacing if specified (matches iOS behavior)
@@ -343,6 +356,27 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
                 dirtyText()
             }
         }
+    
+    /**
+     * Convert font weight string to numeric weight (0-1000)
+     * Matches iOS UIFont.Weight mapping
+     */
+    private fun fontWeightToNumericWeight(weight: String?): Int {
+        if (weight == null) return 400 // Regular/default
+        
+        return when (weight.lowercase()) {
+            "thin", "100" -> 100
+            "ultralight", "200" -> 200
+            "light", "300" -> 300
+            "regular", "normal", "400" -> 400
+            "medium", "500" -> 500 // CRITICAL: Medium should be 500, not 400 (normal)
+            "semibold", "600" -> 600
+            "bold", "700" -> 700
+            "heavy", "800" -> 800
+            "black", "900" -> 900
+            else -> 400 // Default to regular
+        }
+    }
     
     /**
      * Propagates changes up to top-level text node without dirtying current node.

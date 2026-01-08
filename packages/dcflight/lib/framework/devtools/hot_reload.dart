@@ -52,29 +52,50 @@ class HotReloadDetector {
 
   /// Handle hot reload - this is called when actual hot reload occurs
   Future<void> handleHotReload() async {
-    if (!kDebugMode) return;
+    if (!kDebugMode) {
+      print('⚠️ Hot reload called but not in debug mode');
+      return;
+    }
     
     print('🔥 DCFlight HotReloadDetector.handleHotReload() called');
     DCFLogger.debug('🔥 REAL Hot reload detected! Triggering VDOM tree re-render...', 'HOT_RELOAD');
     
     try {
-      await Future.delayed(Duration(milliseconds: 50));
+      // Small delay to ensure any pending operations complete
+      await Future.delayed(Duration(milliseconds: 100));
       
+      print('🔥 Calling _triggerVDOMHotReload()...');
       await _triggerVDOMHotReload();
       
+      print('✅ VDOM hot reload completed successfully');
       DCFLogger.debug('✅ VDOM hot reload completed successfully', 'HOT_RELOAD');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Failed to handle hot reload: $e');
+      print('❌ Stack trace: $stackTrace');
       DCFLogger.error('Failed to handle hot reload: $e', tag: 'HOT_RELOAD');
     }
   }
 
   /// Trigger a complete VDOM tree re-render for hot reload
   Future<void> _triggerVDOMHotReload() async {
-    final vdom = DCFEngineAPI.instance;
+    print('🔥 _triggerVDOMHotReload() called');
     
-    await vdom.isReady;
-    
-    await vdom.forceFullTreeReRender();
+    try {
+      final vdom = DCFEngineAPI.instance;
+      print('🔥 Got DCFEngineAPI instance');
+      
+      print('🔥 Waiting for engine to be ready...');
+      await vdom.isReady;
+      print('✅ Engine is ready');
+      
+      print('🔥 Calling forceFullTreeReRender()...');
+      await vdom.forceFullTreeReRender();
+      print('✅ forceFullTreeReRender() completed');
+    } catch (e, stackTrace) {
+      print('❌ Error in _triggerVDOMHotReload(): $e');
+      print('❌ Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 }
 

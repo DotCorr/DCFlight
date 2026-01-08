@@ -4059,15 +4059,30 @@ class DCFEngine {
         'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
 
     try {
-      for (final component in _statefulComponents.values) {
-        _scheduleComponentUpdate(component);
+      // Temporarily disable isolate reconciliation for hot reloads
+      // This ensures we use regular reconciliation which is more reliable for hot reloads
+      final wasConcurrentEnabled = _concurrentEnabled;
+      _concurrentEnabled = false;
+      
+      print('🔥 HOT_RELOAD: Disabled isolate reconciliation for hot reload');
+      
+      try {
+        for (final component in _statefulComponents.values) {
+          _scheduleComponentUpdate(component);
+        }
+
+        await _processPendingUpdates();
+
+        EngineDebugLogger.log(
+            'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
+      } finally {
+        // Restore original concurrent setting
+        _concurrentEnabled = wasConcurrentEnabled;
+        print('🔥 HOT_RELOAD: Restored isolate reconciliation setting: $_concurrentEnabled');
       }
-
-      await _processPendingUpdates();
-
-      EngineDebugLogger.log(
-          'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ HOT_RELOAD: Failed to complete hot reload: $e');
+      print('❌ HOT_RELOAD: Stack trace: $stackTrace');
       EngineDebugLogger.log(
           'HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');
       rethrow;
