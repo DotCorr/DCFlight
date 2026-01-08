@@ -413,6 +413,55 @@ fun View.applyStyles(props: Map<String, Any>) {
         }
     }
 
+    // accessibilityElementsHidden / ariaHidden - iOS has this, Android equivalent
+    props["accessibilityElementsHidden"]?.let { hidden ->
+        val isHidden = hidden as? Boolean == true
+        this.importantForAccessibility = if (isHidden) {
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        } else {
+            View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+    } ?: props["ariaHidden"]?.let { hidden ->
+        val isHidden = hidden as? Boolean == true
+        this.importantForAccessibility = if (isHidden) {
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        } else {
+            View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+    }
+
+    // accessibilityLanguage - iOS has this (iOS 13+), Android doesn't have direct equivalent
+    // Store for reference but Android doesn't support per-view language
+    props["accessibilityLanguage"]?.let { language ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            // Android doesn't have per-view language, but we can store it
+            this.setTag(DCFTags.TEST_ID_KEY.hashCode() + 1, language) // Use a different tag key
+        }
+    }
+
+    // accessibilityIgnoresInvertColors - iOS has this (iOS 11+), Android doesn't have direct equivalent
+    // Store for reference but Android doesn't support this feature
+    props["accessibilityIgnoresInvertColors"]?.let { ignores ->
+        // Android doesn't have accessibilityIgnoresInvertColors, store for reference
+        this.setTag(DCFTags.TEST_ID_KEY.hashCode() + 2, ignores)
+    }
+
+    // accessibilityViewIsModal / ariaModal - iOS has this, Android equivalent
+    props["accessibilityViewIsModal"]?.let { isModal ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // Android doesn't have exact equivalent, but we can use importantForAccessibility
+            if (isModal as? Boolean == true) {
+                this.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            }
+        }
+    } ?: props["ariaModal"]?.let { isModal ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (isModal as? Boolean == true) {
+                this.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            }
+        }
+    }
+
     if (accessibilityDelegate != null) {
         this.accessibilityDelegate = accessibilityDelegate
     }

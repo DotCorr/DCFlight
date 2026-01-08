@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:equatable/equatable.dart';
 import 'gradient.dart';
+export 'gradient.dart'; // Export DCFGradient for use in examples
 import 'hit_slop.dart';
 import '../../theme/dcf_theme.dart';
 

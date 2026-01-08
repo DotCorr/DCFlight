@@ -3,20 +3,102 @@ import 'dart:math' as math;
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:dcf_go/stylesheet/style_sheet_examples_screen.dart';
 
 void main() async {
-  await DCFlight.go(app: DotCorrLanding());
+  await DCFlight.go(app: AppRoot());
+}
+
+/// App Root - Handles navigation between landing page and StyleSheet examples
+class AppRoot extends DCFStatefulComponent {
+  AppRoot({super.key});
+
+  @override
+  DCFComponentNode render() {
+    final showExamples = useState<bool>(false);
+    final screenUtils = ScreenUtilities.instance;
+    final safeAreaTop = screenUtils.safeAreaTop;
+    
+    // Position button below NavigationBar (which is ~72px tall including safe area)
+    // Use a fixed offset that works on both iOS and Android
+    final buttonTop = safeAreaTop + 72;
+    
+    return DCFView(
+      layout: DCFLayout(width: '100%', height: '100%'),
+      children: [
+        // Toggle Button - positioned absolutely in top-right
+        // Testing if absolute positioning works correctly on iOS
+        DCFView(
+          layout: DCFLayout(
+            position: DCFPositionType.absolute,
+            absoluteLayout: AbsoluteLayout(
+              top: buttonTop,
+              right: 20,
+            ),
+            zIndex: 1000,
+          ),
+          children: [
+            DCFTouchableOpacity(
+              onPress: (data) {
+                showExamples.setState(!showExamples.state);
+              },
+              styleSheet: DCFStyleSheet(
+                backgroundColor: DCFColors.blue500,
+                borderRadius: 8,
+                shadowColor: DCFColors.black,
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                shadowOffsetX: 0,
+                shadowOffsetY: 3,
+              ),
+              layout: DCFLayout(
+                padding: 12,
+                minWidth: 120, // Ensure button has minimum width
+              ),
+              children: [
+                DCFText(
+                  content: showExamples.state ? '← Landing' : 'Examples →',
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                    fontWeight: DCFFontWeight.bold,
+                  ),
+                  styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                ),
+              ],
+            ),
+          ],
+        ),
+        // Content
+        if (showExamples.state)
+          StyleSheetExamplesScreen(
+            onBack: () {
+              showExamples.setState(false);
+            },
+          )
+        else
+          DotCorrLanding(
+            onToggleExamples: () {
+              showExamples.setState(true);
+            },
+          ),
+      ],
+    );
+  }
 }
 
 /// DotCorr Landing Page - Matching Web Design
 class DotCorrLanding extends DCFStatelessComponent {
+  final VoidCallback? onToggleExamples;
+  
+  DotCorrLanding({this.onToggleExamples, super.key});
+
   @override
   DCFComponentNode render() {
     return DCFScrollView(
       layout: DCFLayout(width: '100%', height: '100%'),
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
       children: [
-        NavigationBar(),
+        NavigationBar(onToggleExamples: onToggleExamples),
         HeroSection(),
         // EcosystemSection(),
         BuildersAndMachinesSection(),
@@ -29,6 +111,10 @@ class DotCorrLanding extends DCFStatelessComponent {
 }
 
 class NavigationBar extends DCFStatelessComponent {
+  final VoidCallback? onToggleExamples;
+  
+  NavigationBar({this.onToggleExamples, super.key});
+
   @override
   DCFComponentNode render() {
     final screenUtils = ScreenUtilities.instance;
@@ -90,6 +176,8 @@ class NavigationBar extends DCFStatelessComponent {
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
               ),
             ),
+            // StyleSheet Examples Button - REMOVED to test absolute positioning
+            // The absolutely positioned button in AppRoot should handle this now
           ],
         ),
       ],

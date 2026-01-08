@@ -296,6 +296,28 @@ extension UIView {
             self.accessibilityViewIsModal = ariaModal
         }
 
+        // accessibilityLiveRegion / ariaLive - Android has this, iOS doesn't have direct equivalent
+        // iOS doesn't have a direct equivalent, but we can store it for reference
+        if let liveRegion = props["accessibilityLiveRegion"] as? String {
+            // iOS doesn't have accessibilityLiveRegion, but we store it for consistency
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "accessibilityLiveRegion".hashValue)!,
+                liveRegion, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        } else if let ariaLive = props["ariaLive"] as? String {
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "accessibilityLiveRegion".hashValue)!,
+                ariaLive, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+
+        // importantForAccessibility - Android has this, iOS doesn't have direct equivalent
+        // iOS uses isAccessibilityElement, but importantForAccessibility is Android-specific
+        if let important = props["importantForAccessibility"] as? String {
+            // Store for reference, but iOS doesn't have this concept
+            objc_setAssociatedObject(
+                self, UnsafeRawPointer(bitPattern: "importantForAccessibility".hashValue)!,
+                important, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+
         if let testID = props["testID"] as? String {
             self.accessibilityIdentifier = testID
         }
