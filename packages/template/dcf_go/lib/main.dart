@@ -46,7 +46,7 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.white,
+        backgroundColor: DCFColors.red,
         borderBottomWidth: 1,
         borderBottomColor: DCFColors.gray100,
       ),
@@ -101,7 +101,9 @@ class NavigationBar extends DCFStatelessComponent {
 class HeroSection extends DCFStatefulComponent {
   @override
   DCFComponentNode render() {
-    final showTest = useState<bool>(false);
+        final showTest = useState<bool>(false);
+    final textLength = "Value of showTest: $showTest.state";
+
     if (showTest.state) {
       // CRITICAL: Always return a View wrapper to maintain consistent structure
       // Returning DCFText directly breaks ScrollView's single-child constraint
@@ -122,11 +124,16 @@ class HeroSection extends DCFStatefulComponent {
             },
             children: [
               DCFText(
-                content: "Value of showTest: $showTest.state",
-                textProps: DCFTextProps(fontSize: 20),
+                content: textLength,
+                textProps: DCFTextProps (fontSize: 20),
                 styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
               ),
             ],
+            layout: DCFLayout(
+              width: '100%',
+              height: 50,
+              padding: 2,
+            ),
           ),
 
           DCFSpinner(style: "large"),
@@ -651,6 +658,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
             ),
             DCFText(
+             
               content:
                   "We provide the tools to build native applications today and the cognitive architecture for the intelligent systems of tomorrow.",
               textProps: DCFTextProps(
@@ -676,7 +684,7 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
               "Explore DCFlight",
             ),
             _buildCard(
-              "For MachinesTestTestTestTestTest",
+              "For Machines",
               "The cognitive layer for artificial intelligence. We build the foundational systems required to support autonomous agents and AGI.",
               DCFColors.black,
               DCFColors.white,

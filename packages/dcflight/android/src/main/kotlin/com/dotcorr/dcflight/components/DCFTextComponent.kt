@@ -519,7 +519,7 @@ class DCFTextComponent : DCFComponent() {
         
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             builder.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_HIGH_QUALITY)
-            builder.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NORMAL)
+            builder.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE)
         }
         
         return builder.build()

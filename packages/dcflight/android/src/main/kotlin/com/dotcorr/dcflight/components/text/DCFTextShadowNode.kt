@@ -185,6 +185,11 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         }
         builder.setLineSpacing(spacingAdd, spacingMult)
         
+        // Disable hyphenation (users can add hyphens manually if needed)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            builder.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE)
+        }
+        
         val layout = builder.build()
         
         // CRITICAL: Calculate actual used width (longest line width) instead of container width
