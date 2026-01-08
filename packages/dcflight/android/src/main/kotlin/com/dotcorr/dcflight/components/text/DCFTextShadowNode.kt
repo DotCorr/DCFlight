@@ -86,10 +86,10 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         val fontWeightValue = fontWeight
         val fontFamilyValue = fontFamily
         
-        // Use numeric font weights (API 26+) to match iOS behavior
-        // iOS medium weight (500) should render as medium, not normal
+        // Use numeric font weights (API 26+) - fontWeight is now numeric (100-900) from Dart
+        // When fontWeight is null, use 400 (regular) to match iOS default
         paint.typeface = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            val weight = fontWeightToNumericWeight(fontWeightValue)
+            val weight = fontWeightValue ?: 400 // Default to regular (400) if not set
             // First create base Typeface from font family string, then apply weight
             val baseTypeface = if (fontFamilyValue != null) {
                 android.graphics.Typeface.create(fontFamilyValue, android.graphics.Typeface.NORMAL)
@@ -98,12 +98,9 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             }
             android.graphics.Typeface.create(baseTypeface, weight, false)
         } else {
-            // Fallback for older Android versions
-            val typefaceStyle = if (fontWeightValue != null) {
-                when (fontWeightValue.lowercase()) {
-                    "bold", "700", "800", "900" -> android.graphics.Typeface.BOLD
-                    else -> android.graphics.Typeface.NORMAL
-                }
+            // Fallback for older Android versions - convert numeric weight to style flags
+            val typefaceStyle = if (fontWeightValue != null && fontWeightValue >= 700) {
+                android.graphics.Typeface.BOLD
             } else {
                 android.graphics.Typeface.NORMAL
             }
@@ -311,7 +308,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             }
         }
     
-    open var fontWeight: String? = null
+    open var fontWeight: Int? = null
         set(value) {
             if (field != value) {
                 field = value
@@ -358,27 +355,6 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
                 dirtyText()
             }
         }
-    
-    /**
-     * Convert font weight string to numeric weight (0-1000)
-     * Matches iOS UIFont.Weight mapping
-     */
-    private fun fontWeightToNumericWeight(weight: String?): Int {
-        if (weight == null) return 400 // Regular/default
-        
-        return when (weight.lowercase()) {
-            "thin", "100" -> 100
-            "ultralight", "200" -> 200
-            "light", "300" -> 300
-            "regular", "normal", "400" -> 400
-            "medium", "500" -> 500 // CRITICAL: Medium should be 500, not 400 (normal)
-            "semibold", "600" -> 600
-            "bold", "700" -> 700
-            "heavy", "800" -> 800
-            "black", "900" -> 900
-            else -> 400 // Default to regular
-        }
-    }
     
     /**
      * Propagates changes up to top-level text node without dirtying current node.

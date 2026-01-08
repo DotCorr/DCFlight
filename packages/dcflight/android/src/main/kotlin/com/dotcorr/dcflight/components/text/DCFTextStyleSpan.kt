@@ -167,6 +167,8 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
         val isItalic = (mFontStyle and Typeface.ITALIC) != 0
         
         // Use numeric font weights (API 26+) to match iOS behavior
+        // CRITICAL: Always use numeric weight API on API 26+ to ensure consistent rendering
+        // Weight 400 (regular) is the default and should be explicitly applied to match iOS
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             // mFontWeight is now a numeric weight (0-1000), not a style flag
             val weight = mFontWeight.coerceIn(0, 1000)

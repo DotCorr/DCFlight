@@ -19,27 +19,28 @@ enum DCFFontWeight {
   heavy,
   black;
 
-  /// Convert to string value for native side
-  String get value {
+  /// Convert to numeric weight (100-900) for native side
+  /// Both iOS and Android use numeric weights directly
+  int get numericWeight {
     switch (this) {
       case DCFFontWeight.thin:
-        return 'thin';
+        return 100;
       case DCFFontWeight.ultraLight:
-        return 'ultraLight';
+        return 200;
       case DCFFontWeight.light:
-        return 'light';
+        return 300;
       case DCFFontWeight.regular:
-        return 'regular';
+        return 400;
       case DCFFontWeight.medium:
-        return 'medium';
+        return 500;
       case DCFFontWeight.semibold:
-        return 'semibold';
+        return 600;
       case DCFFontWeight.bold:
-        return 'bold';
+        return 700;
       case DCFFontWeight.heavy:
-        return 'heavy';
+        return 800;
       case DCFFontWeight.black:
-        return 'black';
+        return 900;
     }
   }
 }
@@ -121,7 +122,7 @@ class DCFTextProps {
   Map<String, dynamic> toMap() {
     return {
       if (fontSize != null) 'fontSize': fontSize,
-      if (fontWeight != null) 'fontWeight': fontWeight!.value,
+      if (fontWeight != null) 'fontWeight': fontWeight!.numericWeight,
       if (fontFamily != null) 'fontFamily': fontFamily,
       if (isFontAsset) 'isFontAsset': isFontAsset,
       // Color removed - use StyleSheet.primaryColor instead

@@ -239,11 +239,9 @@ class YogaShadowTree private constructor() {
                         val fontStyle = textShadowNode.getFontStyle()
                         val fontWeight = textShadowNode.fontWeight
                         val fontFamily = textShadowNode.fontFamily
-                        val typefaceStyle = if (fontWeight != null) {
-                            when (fontWeight.lowercase()) {
-                                "bold", "700", "800", "900" -> android.graphics.Typeface.BOLD
-                                else -> android.graphics.Typeface.NORMAL
-                            }
+                        // fontWeight is now numeric (100-900) from Dart
+                        val typefaceStyle = if (fontWeight != null && fontWeight >= 700) {
+                            android.graphics.Typeface.BOLD
                         } else {
                             android.graphics.Typeface.NORMAL
                         }
@@ -605,7 +603,8 @@ class YogaShadowTree private constructor() {
                         }
                     }
                     "fontWeight" -> {
-                        shadowNode.fontWeight = value?.toString()
+                        // fontWeight is now numeric (100-900) from Dart
+                        shadowNode.fontWeight = (value as? Number)?.toInt()
                         shadowNode.dirtyText()
                     }
                     "fontFamily" -> {

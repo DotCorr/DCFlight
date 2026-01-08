@@ -57,7 +57,7 @@ open class DCFTextShadowView: DCFShadowView {
     // Text properties
     public var text: String = ""
     public var fontSize: CGFloat = CGFloat.nan
-    public var fontWeight: String?
+    public var fontWeight: Int? // Numeric weight (100-900) from Dart
     public var fontFamily: String?
     public var letterSpacing: CGFloat = CGFloat.nan
     public var lineHeight: CGFloat = 0.0
@@ -219,8 +219,12 @@ open class DCFTextShadowView: DCFShadowView {
         }
         
         if let fontWeight = fontWeight {
-            let weight = fontWeightFromString(fontWeight)
-            font = UIFont.systemFont(ofSize: finalFontSize, weight: weight)
+            // Convert numeric weight (100-900) directly to UIFont.Weight CGFloat
+            // Map 100-900 range to iOS weight range (-1.0 to 1.0 approximately)
+            // Linear mapping: (weight - 400) / 500.0 gives us -0.6 to 1.0 range
+            let normalizedWeight = CGFloat(fontWeight - 400) / 500.0
+            let uiWeight = UIFont.Weight(rawValue: normalizedWeight)
+            font = UIFont.systemFont(ofSize: finalFontSize, weight: uiWeight)
         }
         if let fontFamily = fontFamily {
             if let customFont = UIFont(name: fontFamily, size: finalFontSize) {
@@ -268,24 +272,6 @@ open class DCFTextShadowView: DCFShadowView {
     }
     
     /**
-     * Convert fontWeight string to UIFont.Weight
-     */
-    private func fontWeightFromString(_ weight: String) -> UIFont.Weight {
-        switch weight.lowercased() {
-        case "thin": return .thin
-        case "ultralight": return .ultraLight
-        case "light": return .light
-        case "regular", "normal", "400": return .regular
-        case "medium": return .medium
-        case "semibold": return .semibold
-        case "bold": return .bold
-        case "heavy": return .heavy
-        case "black": return .black
-        default: return .regular
-        }
-    }
-    
-    /**
      * Update text properties from props dictionary
      * Called when text props are updated from Dart
      */
@@ -306,8 +292,14 @@ open class DCFTextShadowView: DCFShadowView {
             }
         }
         
-        // Update fontWeight
-        if let fontWeightValue = props["fontWeight"] as? String {
+        // Update fontWeight - now expects numeric weight (100-900) from Dart
+        if let fontWeightValue = props["fontWeight"] as? CGFloat {
+            let weightInt = Int(fontWeightValue)
+            if fontWeight != weightInt {
+                fontWeight = weightInt
+                needsDirty = true
+            }
+        } else if let fontWeightValue = props["fontWeight"] as? Int {
             if fontWeight != fontWeightValue {
                 fontWeight = fontWeightValue
                 needsDirty = true
