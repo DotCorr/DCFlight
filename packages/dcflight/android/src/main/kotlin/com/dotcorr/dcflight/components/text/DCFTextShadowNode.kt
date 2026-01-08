@@ -110,7 +110,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         // We should NOT subtract padding again - this matches iOS behavior exactly
         // iOS: let availableWidth: CGFloat = widthMode == .undefined ? CGFloat.greatestFiniteMagnitude : CGFloat(width)
         // Match iOS exactly - use width directly when not undefined
-        val availableWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
+        val constraintWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
             // For UNDEFINED, use a large width to allow text to measure its natural size
             Int.MAX_VALUE
         } else {
@@ -119,7 +119,29 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             width.toInt().coerceAtLeast(1)
         }
         
-        android.util.Log.d("DCFTextShadowNode", "📐 Creating layout with availableWidth=$availableWidth (constraint width=$width, widthMode=$widthMode), fontSize=$fontSizePixels")
+        // CRITICAL: Measure text width first to determine if it fits on one line
+        // If text fits within constraint, use actual text width for layout (prevents clipping)
+        // If text exceeds constraint, use constraint width (allows wrapping)
+        val desiredWidth = android.text.Layout.getDesiredWidth(spannedText, paint)
+        val textFitsOnOneLine = !desiredWidth.isNaN() && desiredWidth <= constraintWidth
+        
+        // Determine layout width: use actual text width if it fits, otherwise use constraint
+        val layoutWidth = if (widthMode == YogaMeasureMode.UNDEFINED) {
+            // For UNDEFINED, use desired width (or constraint if NaN)
+            if (desiredWidth.isNaN()) {
+                constraintWidth
+            } else {
+                kotlin.math.ceil(desiredWidth).toInt().coerceAtLeast(1)
+            }
+        } else if (textFitsOnOneLine) {
+            // Text fits on one line - use actual text width so view matches layout width
+            kotlin.math.ceil(desiredWidth).toInt().coerceAtLeast(1)
+        } else {
+            // Text will wrap - use constraint width
+            constraintWidth
+        }
+        
+        android.util.Log.d("DCFTextShadowNode", "📐 Creating layout: desiredWidth=$desiredWidth, constraintWidth=$constraintWidth, layoutWidth=$layoutWidth (widthMode=$widthMode), fontSize=$fontSizePixels")
         
         // Get text alignment
         val alignment = when (textAlign.lowercase()) {
@@ -131,9 +153,9 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         }
         
         // Build StaticLayout with line height support
-        // CRITICAL: Match createTextLayout in DCFTextComponent exactly
+        // CRITICAL: Use layoutWidth (actual text width if fits, constraint if wraps) so view matches
         val builder = StaticLayout.Builder
-            .obtain(spannedText, 0, spannedText.length, paint, availableWidth)
+            .obtain(spannedText, 0, spannedText.length, paint, layoutWidth)
             .setAlignment(alignment)
             .setIncludePad(true)
             .setMaxLines(if (numberOfLines > 0) numberOfLines else Int.MAX_VALUE)
@@ -182,7 +204,7 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             0f
         }
         
-        android.util.Log.d("DCFTextShadowNode", "✅ Layout created: containerWidth=${layout.width}, actualUsedWidth=$actualUsedWidth, height=${layout.height}, lineCount=${layout.lineCount}, availableWidth=$availableWidth")
+        android.util.Log.d("DCFTextShadowNode", "✅ Layout created: containerWidth=${layout.width}, actualUsedWidth=$actualUsedWidth, height=${layout.height}, lineCount=${layout.lineCount}, layoutWidth=$layoutWidth, constraintWidth=$constraintWidth")
         
         // Round up to pixel boundaries (matches iOS RCTCeilPixelValue)
         val scale = android.content.res.Resources.getSystem().displayMetrics.density
