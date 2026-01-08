@@ -736,13 +736,14 @@ class DCMauiBridgeImpl private constructor() {
             
             // 🔧 FIX: Delete views FIRST but defer view removal from parent to prevent layout shifts
             // We remove from registry/layout tree but keep views in hierarchy until creates are done
-            val viewsToRemove = mutableListOf<android.view.View>()
+            // Use a Set to avoid duplicates and ensure proper cleanup
+            val viewsToRemoveSet = mutableSetOf<android.view.View>()
             
             // Collect all views to remove (parent + children) without removing from parent yet
             fun collectViewsToRemove(parentId: Int) {
                 val view = ViewRegistry.shared.getView(parentId)
                 if (view != null) {
-                    viewsToRemove.add(view)
+                    viewsToRemoveSet.add(view)
                 }
                 val parentIdStr = parentId.toString()
                 val children = viewHierarchy[parentIdStr] ?: return
@@ -774,18 +775,31 @@ class DCMauiBridgeImpl private constructor() {
                 // Clean up tracking recursively
                 fun cleanupTrackingRecursively(parentId: Int) {
                     val parentIdStr = parentId.toString()
-                    val children = viewHierarchy[parentIdStr] ?: return
+                    val children = viewHierarchy[parentIdStr]?.toList() ?: return // Create copy to avoid concurrent modification
+                    viewHierarchy[parentIdStr]?.clear() // Clear first to prevent re-entry
                     children.forEach { childIdStr ->
                         val childId = childIdStr.toIntOrNull()
                         if (childId != null) {
                             // Remove child from layout tree too
-                            YogaShadowTree.shared.removeNode(childIdStr)
-                            ViewRegistry.shared.removeView(childId)
-                            DCFLayoutManager.shared.unregisterView(childId)
+                            try {
+                                YogaShadowTree.shared.removeNode(childIdStr)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Error removing node $childIdStr from layout tree", e)
+                            }
+                            try {
+                                ViewRegistry.shared.removeView(childId)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Error removing view $childId from registry", e)
+                            }
+                            try {
+                                DCFLayoutManager.shared.unregisterView(childId)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Error unregistering view $childId", e)
+                            }
+                            views.remove(childId) // Remove from views map
                             cleanupTrackingRecursively(childId)
                         }
                     }
-                    viewHierarchy[parentIdStr]?.clear()
                 }
                 cleanupTrackingRecursively(op.viewId)
                 cleanupHierarchyReferences(op.viewId.toString())
@@ -821,14 +835,24 @@ class DCMauiBridgeImpl private constructor() {
             
             // 🔧 FIX: Finally remove ALL old views from parent AFTER layout tree removal
             // This ensures layout is stable before removing from hierarchy
-            if (viewsToRemove.isNotEmpty()) {
-                Log.d(TAG, "🗑️ ANDROID_BATCH: Removing ${viewsToRemove.size} old views from parent (after layout tree removal)")
-                viewsToRemove.forEach { view ->
-                    val parentView = view.parent as? android.view.ViewGroup
-                    parentView?.removeView(view)
-                    Log.d(TAG, "✅ ANDROID_BATCH: View removed from parent")
+            if (viewsToRemoveSet.isNotEmpty()) {
+                Log.d(TAG, "🗑️ ANDROID_BATCH: Removing ${viewsToRemoveSet.size} old views from parent (after layout tree removal)")
+                viewsToRemoveSet.forEach { view ->
+                    try {
+                        val parentView = view.parent as? android.view.ViewGroup
+                        if (parentView != null && view.parent != null) {
+                            parentView.removeView(view)
+                            Log.d(TAG, "✅ ANDROID_BATCH: View removed from parent")
+                        } else {
+                            Log.d(TAG, "⚠️ ANDROID_BATCH: View already removed from parent or parent is null")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ ANDROID_BATCH: Error removing view from parent", e)
+                    }
                 }
-                Log.d(TAG, "✅ ANDROID_BATCH: All ${viewsToRemove.size} old views removed from parent")
+                // CRITICAL: Clear the set to release references and allow GC
+                viewsToRemoveSet.clear()
+                Log.d(TAG, "✅ ANDROID_BATCH: All old views removed from parent and references cleared")
             }
             
             eventOps.forEach { op ->
