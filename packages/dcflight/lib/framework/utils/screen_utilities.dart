@@ -64,6 +64,8 @@ class ScreenUtilities {
 
         final newWidth = args['width'] as double;
         final newHeight = args['height'] as double;
+        final oldFontScale = _fontScale;
+        final newFontScale = args['fontScale'] as double? ?? 1.0;
 
         if (newWidth != _screenWidth || newHeight != _screenHeight) {
           _previousWidth = _screenWidth;
@@ -72,7 +74,7 @@ class ScreenUtilities {
           _screenWidth = newWidth;
           _screenHeight = newHeight;
           _scaleFactor = args['scale'] as double;
-          _fontScale = args['fontScale'] as double? ?? 1.0;
+          _fontScale = newFontScale;
           _statusBarHeight = args['statusBarHeight'] as double;
           _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
           _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
@@ -85,6 +87,15 @@ class ScreenUtilities {
               name: 'ScreenUtilities');
 
           _notifyDimensionChangeListeners();
+        } else if (oldFontScale != newFontScale) {
+          // Font scale changed without dimension change (system font size change)
+          _fontScale = newFontScale;
+          developer.log(
+              'Font scale changed: $oldFontScale → $newFontScale',
+              name: 'ScreenUtilities');
+          
+          // Notify listeners - SystemChangeListener will trigger re-render
+          _notifyDimensionChangeListeners();
         }
         return null;
         
@@ -93,6 +104,8 @@ class ScreenUtilities {
         
         final newWidth = args['width'] as double;
         final newHeight = args['height'] as double;
+        final oldFontScale = _fontScale;
+        final newFontScale = args['fontScale'] as double? ?? 1.0;
         
         if (newWidth != _screenWidth || newHeight != _screenHeight) {
           _previousWidth = _screenWidth;
@@ -101,7 +114,7 @@ class ScreenUtilities {
           _screenWidth = newWidth;
           _screenHeight = newHeight;
           _scaleFactor = args['scale'] as double;
-          _fontScale = args['fontScale'] as double? ?? 1.0;
+          _fontScale = newFontScale;
           _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
           _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
           _safeAreaLeft = args['safeAreaLeft'] as double? ?? 0.0;
@@ -111,6 +124,15 @@ class ScreenUtilities {
               'Window size changed: ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
               name: 'ScreenUtilities');
 
+          _notifyDimensionChangeListeners();
+        } else if (oldFontScale != newFontScale) {
+          // Font scale changed without dimension change (system font size change)
+          _fontScale = newFontScale;
+          developer.log(
+              'Font scale changed: $oldFontScale → $newFontScale',
+              name: 'ScreenUtilities');
+          
+          // Notify listeners - SystemChangeListener will trigger re-render
           _notifyDimensionChangeListeners();
         }
         return null;

@@ -82,6 +82,7 @@ export 'src/components/touchable_opacity_component.dart';
 export 'src/components/button_component.dart';
 import 'package:dcflight/src/components/component_node.dart';
 import 'package:dcflight/src/components/root_error_boundary.dart';
+import 'package:dcflight/src/components/core_wrapper.dart';
 
 import 'framework/renderer/engine/engine_api.dart';
 import 'framework/renderer/interface/interface.dart';
@@ -165,11 +166,17 @@ class DCFlight {
     // CRASH PROTECTION: Automatically wrap app in error boundary at framework level
     // This provides React Native-style crash protection without requiring developers
     // to manually wrap their app components
-    final mainApp = RootErrorBoundary(app);
+    // 
+    // Core Wrapper: Wrap in SystemChangeListener to listen to OS-level changes
+    // (font scale, language, etc.) and trigger re-renders when they occur
+    final coreWrapper = CoreWrapper(app);
+    final mainApp = RootErrorBoundary(coreWrapper);
 
     await vdom.createRoot(mainApp);
 
-    if (wasHotRestart) {}
+    if (wasHotRestart) {
+      print('🔥 DCFlight: Hot restart detected');
+    }
 
     vdom.isReady.whenComplete(() async {});
   }

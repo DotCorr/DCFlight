@@ -1103,5 +1103,25 @@ class YogaShadowTree {
         }
         return nil
     }
+    
+    // MARK: - Text Node Invalidation
+    
+    /**
+     * Invalidate all text nodes to force re-measurement with new font scale
+     * Called when system font size changes
+     */
+    func invalidateAllTextNodes() {
+        syncQueue.sync {
+            var textNodeCount = 0
+            for (_, shadowView) in shadowViewRegistry {
+                if let textShadowView = shadowView as? DCFTextShadowView {
+                    // Clear cached text storage and mark as dirty
+                    textShadowView.dirtyText()
+                    textNodeCount += 1
+                }
+            }
+            print("📝 YogaShadowTree: Marked \(textNodeCount) text nodes as dirty for font scale change")
+        }
+    }
 }
 

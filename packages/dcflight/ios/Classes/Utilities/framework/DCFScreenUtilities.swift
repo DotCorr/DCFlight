@@ -48,6 +48,8 @@ class DCFScreenUtilities {
     
     @objc private func contentSizeCategoryChanged() {
         updateFontScale()
+        // Notify Dart of font scale change - Dart will trigger full app re-render
+        // React Native-style: OS-level changes trigger app re-render, not manual node invalidation
         notifyDartOfDimensionChange()
     }
     
