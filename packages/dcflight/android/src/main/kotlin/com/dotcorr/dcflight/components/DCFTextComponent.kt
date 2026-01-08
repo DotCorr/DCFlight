@@ -398,11 +398,13 @@ class DCFTextComponent : DCFComponent() {
         // iOS medium weight (500) should render as medium, not normal
         paint.typeface = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             val weight = fontWeightToNumericWeight(fontWeightValue)
-            if (fontFamilyValue != null) {
-                android.graphics.Typeface.create(fontFamilyValue, weight, false)
+            // First create base Typeface from font family string, then apply weight
+            val baseTypeface = if (fontFamilyValue != null) {
+                android.graphics.Typeface.create(fontFamilyValue, android.graphics.Typeface.NORMAL)
             } else {
-                android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, weight, false)
+                android.graphics.Typeface.DEFAULT
             }
+            android.graphics.Typeface.create(baseTypeface, weight, false)
         } else {
             // Fallback for older Android versions
             val typefaceStyle = if (fontWeightValue != null) {

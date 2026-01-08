@@ -153,11 +153,7 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
     private fun getNewStyle(oldStyle: Int): Int {
         var newStyle = oldStyle
         
-        when (mFontWeight) {
-            Typeface.BOLD -> newStyle = newStyle or Typeface.BOLD
-            Typeface.NORMAL -> newStyle = newStyle and Typeface.BOLD.inv()
-        }
-        
+        // Handle italic style
         when (mFontStyle) {
             Typeface.ITALIC -> newStyle = newStyle or Typeface.ITALIC
             Typeface.NORMAL -> newStyle = newStyle and Typeface.ITALIC.inv()
@@ -168,13 +164,39 @@ class DCFTextStyleSpan private constructor() : MetricAffectingSpan() {
     
     private fun updateTypeface(ds: TextPaint) {
         var typeface: Typeface? = null
+        val isItalic = (mFontStyle and Typeface.ITALIC) != 0
         
-        if (mFontFamily != null) {
-            typeface = Typeface.create(mFontFamily, getNewStyle(Typeface.NORMAL))
+        // Use numeric font weights (API 26+) to match iOS behavior
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            // mFontWeight is now a numeric weight (0-1000), not a style flag
+            val weight = mFontWeight.coerceIn(0, 1000)
+            if (mFontFamily != null) {
+                // First create base Typeface from font family string, then apply weight
+                val baseTypeface = Typeface.create(mFontFamily, Typeface.NORMAL)
+                typeface = Typeface.create(baseTypeface, weight, isItalic)
+            } else {
+                val oldTypeface = ds.typeface
+                if (oldTypeface != null) {
+                    // Try to preserve the base typeface while applying weight
+                    typeface = Typeface.create(oldTypeface, weight, isItalic)
+                } else {
+                    typeface = Typeface.create(Typeface.DEFAULT, weight, isItalic)
+                }
+            }
         } else {
-            val oldTypeface = ds.typeface
-            val oldStyle = oldTypeface?.style ?: Typeface.NORMAL
-            typeface = Typeface.create(oldTypeface, getNewStyle(oldStyle))
+            // Fallback for older Android versions - convert weight to style flags
+            val styleFlags = when {
+                mFontWeight >= 700 -> Typeface.BOLD
+                else -> Typeface.NORMAL
+            } or (if (isItalic) Typeface.ITALIC else Typeface.NORMAL)
+            
+            if (mFontFamily != null) {
+                typeface = Typeface.create(mFontFamily, styleFlags)
+            } else {
+                val oldTypeface = ds.typeface
+                val oldStyle = oldTypeface?.style ?: Typeface.NORMAL
+                typeface = Typeface.create(oldTypeface, getNewStyle(oldStyle) or (styleFlags and Typeface.BOLD))
+            }
         }
         
         ds.typeface = typeface

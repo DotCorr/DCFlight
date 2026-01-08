@@ -333,12 +333,29 @@ class DCFEngine {
       if (_workerPorts.length > index && index < _workerPorts.length) {
         print(
             '✅ ISOLATES: Worker isolate $index ready (total: ${_workerPorts.length})');
-        print('✅ ISOLATES: Worker isolate $index ready and port received');
+        // Ensure isolate is marked as available
+        if (index < _workerAvailable.length) {
+          _workerAvailable[index] = true;
+        } else {
+          while (_workerAvailable.length <= index) {
+            _workerAvailable.add(true);
+          }
+        }
+        print('✅ ISOLATES: Worker isolate $index ready and port received, marked as available');
         return true;
       } else if (_workerPorts.length > 0) {
         // Port was received but index might be different - this is okay
+        // Find the actual index of the newly received port
+        final actualIndex = _workerPorts.length - 1;
+        if (actualIndex < _workerAvailable.length) {
+          _workerAvailable[actualIndex] = true;
+        } else {
+          while (_workerAvailable.length <= actualIndex) {
+            _workerAvailable.add(true);
+          }
+        }
         print(
-            '✅ ISOLATES: Worker isolate spawned (port received, total: ${_workerPorts.length})');
+            '✅ ISOLATES: Worker isolate spawned (port received at index $actualIndex, total: ${_workerPorts.length}), marked as available');
         return true;
       } else {
         print(
@@ -2546,12 +2563,14 @@ class DCFEngine {
       // Find available isolate or spawn one if needed
       int isolateIndex = -1;
       // Check existing workers - iterate over ports length to ensure we check all
+      // CRITICAL: Only check isolates that have both a port AND are marked as available
       for (int i = 0; i < _workerPorts.length; i++) {
         // Ensure availability list is sized correctly
         if (i >= _workerAvailable.length) {
           _workerAvailable.add(true);
         }
-        if (_workerAvailable[i]) {
+        // Only consider isolate available if it has a port AND is marked available
+        if (i < _workerPorts.length && _workerAvailable[i]) {
           isolateIndex = i;
           break;
         }
@@ -2565,8 +2584,15 @@ class DCFEngine {
           print(
               '✅ ISOLATES: Worker spawned successfully, finding available isolate...');
           // Find the newly spawned isolate - check from the end backwards
+          // Make sure the isolate has a port and is marked as available
           for (int i = _workerPorts.length - 1; i >= 0; i--) {
-            if (i < _workerAvailable.length && _workerAvailable[i]) {
+            // Ensure availability list is sized correctly
+            if (i >= _workerAvailable.length) {
+              _workerAvailable.add(true);
+            }
+            if (i < _workerPorts.length && 
+                i < _workerAvailable.length && 
+                _workerAvailable[i]) {
               isolateIndex = i;
               break;
             }
@@ -2577,7 +2603,7 @@ class DCFEngine {
       if (isolateIndex == -1) {
         // Fallback to regular reconciliation if no isolates available
         print(
-            '⚠️ ISOLATES: No isolates available, falling back to regular reconciliation');
+            '⚠️ ISOLATES: No isolates available (${_workerPorts.length} ports, ${_workerAvailable.length} availability flags), falling back to regular reconciliation');
         EngineDebugLogger.logReconcile('ISOLATE_FALLBACK', oldNode, newNode,
             reason: 'No isolates available, using regular reconciliation');
         // Throw to trigger fallback in _reconcile
@@ -2850,14 +2876,18 @@ class DCFEngine {
 
                   if (oldChild is DCFStatefulComponent ||
                       oldChild is DCFStatelessComponent) {
-                    oldRendered = oldChild.renderedNode as DCFElement?;
+                    // Safe cast: check if renderedNode is actually a DCFElement
+                    final rendered = oldChild.renderedNode;
+                    oldRendered = rendered is DCFElement ? rendered : null;
                   } else if (oldChild is DCFElement) {
                     oldRendered = oldChild;
                   }
 
                   if (newChild is DCFStatefulComponent ||
                       newChild is DCFStatelessComponent) {
-                    newRendered = newChild.renderedNode as DCFElement?;
+                    // Safe cast: check if renderedNode is actually a DCFElement
+                    final rendered = newChild.renderedNode;
+                    newRendered = rendered is DCFElement ? rendered : null;
                   } else if (newChild is DCFElement) {
                     newRendered = newChild;
                   }
@@ -3066,14 +3096,18 @@ class DCFEngine {
 
                   if (oldChild is DCFStatefulComponent ||
                       oldChild is DCFStatelessComponent) {
-                    oldRendered = oldChild.renderedNode as DCFElement?;
+                    // Safe cast: check if renderedNode is actually a DCFElement
+                    final rendered = oldChild.renderedNode;
+                    oldRendered = rendered is DCFElement ? rendered : null;
                   } else if (oldChild is DCFElement) {
                     oldRendered = oldChild;
                   }
 
                   if (newChild is DCFStatefulComponent ||
                       newChild is DCFStatelessComponent) {
-                    newRendered = newChild.renderedNode as DCFElement?;
+                    // Safe cast: check if renderedNode is actually a DCFElement
+                    final rendered = newChild.renderedNode;
+                    newRendered = rendered is DCFElement ? rendered : null;
                   } else if (newChild is DCFElement) {
                     newRendered = newChild;
                   }
@@ -4050,38 +4084,39 @@ class DCFEngine {
   /// This re-executes all render() methods while preserving navigation state
   Future<void> forceFullTreeReRender() async {
     if (rootComponent == null) {
+      print('❌ HOT_RELOAD: No root component to re-render');
       EngineDebugLogger.log(
           'HOT_RELOAD_ERROR', 'No root component to re-render');
       return;
     }
 
+    print('🔥🔥🔥 HOT_RELOAD: Starting full tree re-render 🔥🔥🔥');
     EngineDebugLogger.log(
         'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
 
     try {
-      // Temporarily disable isolate reconciliation for hot reloads
-      // This ensures we use regular reconciliation which is more reliable for hot reloads
-      final wasConcurrentEnabled = _concurrentEnabled;
-      _concurrentEnabled = false;
-      
-      print('🔥 HOT_RELOAD: Disabled isolate reconciliation for hot reload');
-      
-      try {
-        for (final component in _statefulComponents.values) {
-          _scheduleComponentUpdate(component);
-        }
-
-        await _processPendingUpdates();
-
-        EngineDebugLogger.log(
-            'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
-      } finally {
-        // Restore original concurrent setting
-        _concurrentEnabled = wasConcurrentEnabled;
-        print('🔥 HOT_RELOAD: Restored isolate reconciliation setting: $_concurrentEnabled');
+      // Ensure isolates are ready before hot reload
+      // This helps avoid "No isolates available" errors
+      if (_concurrentEnabled && _workerPorts.isEmpty && _workerIsolates.length < _maxWorkers) {
+        print('🔥 HOT_RELOAD: Ensuring isolates are ready...');
+        await _preSpawnIsolates();
+        // Give isolates a moment to send their ports
+        await Future.delayed(Duration(milliseconds: 100));
       }
+      
+      print('🔥 HOT_RELOAD: Scheduling updates for ${_statefulComponents.length} components...');
+      for (final component in _statefulComponents.values) {
+        _scheduleComponentUpdate(component);
+      }
+
+      print('🔥 HOT_RELOAD: Processing pending updates...');
+      await _processPendingUpdates();
+
+      print('✅✅✅ HOT_RELOAD: Full tree re-render completed successfully ✅✅✅');
+      EngineDebugLogger.log(
+          'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
     } catch (e, stackTrace) {
-      print('❌ HOT_RELOAD: Failed to complete hot reload: $e');
+      print('❌❌❌ HOT_RELOAD: Failed to complete hot reload: $e');
       print('❌ HOT_RELOAD: Stack trace: $stackTrace');
       EngineDebugLogger.log(
           'HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');

@@ -198,11 +198,22 @@ class DCFVirtualTextShadowNode(viewId: Int) : DCFTextShadowNode(viewId) {
     }
     
     private fun parseFontWeight(fontWeight: String?): Int {
-        if (fontWeight == null) return Typeface.NORMAL
+        if (fontWeight == null) return 400 // Regular/default weight
         
+        // Return numeric weight (0-1000) to match iOS behavior
+        // For API 26+, this will be used with Typeface.create(family, weight, italic)
+        // For older APIs, we'll convert to style flags in DCFTextStyleSpan
         return when (fontWeight.lowercase()) {
-            "bold", "700", "800", "900" -> Typeface.BOLD
-            else -> Typeface.NORMAL
+            "thin", "100" -> 100
+            "ultralight", "200" -> 200
+            "light", "300" -> 300
+            "regular", "normal", "400" -> 400
+            "medium", "500" -> 500 // CRITICAL: Medium should be 500, not 400 (normal)
+            "semibold", "600" -> 600
+            "bold", "700" -> 700
+            "heavy", "800" -> 800
+            "black", "900" -> 900
+            else -> 400 // Default to regular
         }
     }
     

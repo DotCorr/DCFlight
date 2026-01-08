@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:dcflight/framework/renderer/engine/engine_api.dart';
 import 'package:dcflight/framework/utils/dcf_logger.dart';
 
@@ -53,10 +54,12 @@ class HotReloadDetector {
   /// Handle hot reload - this is called when actual hot reload occurs
   Future<void> handleHotReload() async {
     if (!kDebugMode) {
+      debugPrint('⚠️ Hot reload called but not in debug mode');
       print('⚠️ Hot reload called but not in debug mode');
       return;
     }
     
+    debugPrint('🔥🔥🔥 DCFlight HotReloadDetector.handleHotReload() called 🔥🔥🔥');
     print('🔥 DCFlight HotReloadDetector.handleHotReload() called');
     DCFLogger.debug('🔥 REAL Hot reload detected! Triggering VDOM tree re-render...', 'HOT_RELOAD');
     
@@ -64,12 +67,16 @@ class HotReloadDetector {
       // Small delay to ensure any pending operations complete
       await Future.delayed(Duration(milliseconds: 100));
       
+      debugPrint('🔥 Calling _triggerVDOMHotReload()...');
       print('🔥 Calling _triggerVDOMHotReload()...');
       await _triggerVDOMHotReload();
       
+      debugPrint('✅✅✅ VDOM hot reload completed successfully ✅✅✅');
       print('✅ VDOM hot reload completed successfully');
       DCFLogger.debug('✅ VDOM hot reload completed successfully', 'HOT_RELOAD');
     } catch (e, stackTrace) {
+      debugPrint('❌❌❌ Failed to handle hot reload: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       print('❌ Failed to handle hot reload: $e');
       print('❌ Stack trace: $stackTrace');
       DCFLogger.error('Failed to handle hot reload: $e', tag: 'HOT_RELOAD');
@@ -78,20 +85,28 @@ class HotReloadDetector {
 
   /// Trigger a complete VDOM tree re-render for hot reload
   Future<void> _triggerVDOMHotReload() async {
+    debugPrint('🔥 _triggerVDOMHotReload() called');
     print('🔥 _triggerVDOMHotReload() called');
     
     try {
       final vdom = DCFEngineAPI.instance;
+      debugPrint('🔥 Got DCFEngineAPI instance');
       print('🔥 Got DCFEngineAPI instance');
       
+      debugPrint('🔥 Waiting for engine to be ready...');
       print('🔥 Waiting for engine to be ready...');
       await vdom.isReady;
+      debugPrint('✅ Engine is ready');
       print('✅ Engine is ready');
       
+      debugPrint('🔥🔥🔥 Calling forceFullTreeReRender()... 🔥🔥🔥');
       print('🔥 Calling forceFullTreeReRender()...');
       await vdom.forceFullTreeReRender();
+      debugPrint('✅✅✅ forceFullTreeReRender() completed ✅✅✅');
       print('✅ forceFullTreeReRender() completed');
     } catch (e, stackTrace) {
+      debugPrint('❌❌❌ Error in _triggerVDOMHotReload(): $e');
+      debugPrint('❌ Stack trace: $stackTrace');
       print('❌ Error in _triggerVDOMHotReload(): $e');
       print('❌ Stack trace: $stackTrace');
       rethrow;
@@ -138,11 +153,21 @@ class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
 /// Global function to manually trigger hot reload for testing
 /// Call this from your development tools or debug console
 void triggerManualHotReload() {
+  // Use debugPrint for better visibility on iOS
+  debugPrint('🔥🔥🔥 triggerManualHotReload() called 🔥🔥🔥');
   print('🔥 triggerManualHotReload() called');
   if (kDebugMode) {
+    debugPrint('🔥 Calling HotReloadDetector.instance.handleHotReload()');
     print('🔥 Calling HotReloadDetector.instance.handleHotReload()');
-    HotReloadDetector.instance.handleHotReload();
+    // Don't await - fire and forget to avoid blocking HTTP response
+    HotReloadDetector.instance.handleHotReload().catchError((e, stackTrace) {
+      debugPrint('❌❌❌ Hot reload error: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
+      print('❌ Hot reload error: $e');
+      print('❌ Stack trace: $stackTrace');
+    });
   } else {
+    debugPrint('🔥 Not in debug mode, skipping hot reload');
     print('🔥 Not in debug mode, skipping hot reload');
   }
 }
