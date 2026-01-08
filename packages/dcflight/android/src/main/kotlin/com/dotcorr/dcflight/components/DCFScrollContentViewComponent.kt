@@ -216,13 +216,25 @@ class DCFScrollContentViewComponent : DCFComponent() {
             Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Found ScrollView (stored=$storedRefSet), contentView.frame=$actualFrame, updating contentSize")
             sv.updateContentSizeFromContentView()
             
-            // CRITICAL: Request layout on ScrollView to trigger re-measurement
-            // This ensures NestedScrollView re-measures its child (ScrollContentView)
-            // after Yoga has calculated the layout and set pendingFrame
-            // This is essential because NestedScrollView calls onMeasure() BEFORE layout,
-            // so we need to trigger a re-measure after layout is calculated
+            // 🔥 CRITICAL: Force complete re-measurement cycle on ScrollView
+            // This ensures NestedScrollView re-measures its child (ScrollContentView) after pendingFrame is set
+            // We need to force layout on both contentView and ScrollView to ensure measurement happens
+            // Post to next frame to ensure it happens after current layout pass completes
+            view.forceLayout()
+            view.requestLayout()
             sv.scrollView.forceLayout()
             sv.scrollView.requestLayout()
+            
+            // Also post async to ensure re-measurement happens in next layout pass
+            // This is critical because if ScrollView already measured with 0 height,
+            // we need to force it to re-measure in the next frame
+            Handler(Looper.getMainLooper()).post {
+                view.forceLayout()
+                view.requestLayout()
+                sv.scrollView.forceLayout()
+                sv.scrollView.requestLayout()
+                Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Forced re-measurement on ScrollView after pendingFrame was set")
+            }
             Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Requested forceLayout+requestLayout on ScrollView to trigger re-measurement")
         } ?: run {
             // If not found, the view might not be attached yet or stored reference wasn't set
@@ -386,43 +398,22 @@ class DCFScrollContentViewComponent : DCFComponent() {
             }
         }
         
-        // CRITICAL: Request layout on content view after adding children
-        // This ensures the content view recalculates its size based on children
-        // Without this, the content view might have zero height, making children invisible
-        view.requestLayout()
+        // 🔥 CRITICAL: DO NOT call requestLayout() here!
+        // The issue: setChildren() is called BEFORE calculateAndApplyLayout()
+        // If we call requestLayout() here, it triggers measurement BEFORE pendingFrame is set
+        // This causes ScrollView to measure with 0 height, and it won't re-measure later
+        // 
+        // Solution: Let applyLayout() handle requestLayout() AFTER pendingFrame is set
+        // applyLayout() is called AFTER calculateAndApplyLayout(), so pendingFrame will be available
+        // 
+        // Rotation works because pendingFrame is already set from previous layout pass
+        Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Added ${childViews.size} children (NOT requesting layout - will be done in applyLayout() after pendingFrame is set)")
         
-        // Update contentSize if ScrollView found
+        // Only update if ScrollView found, but don't trigger measurement yet
         scrollView?.let { sv ->
-            // CRITICAL FIX: Don't try to measure children here - they haven't been laid out by Yoga yet
-            // Instead, rely on onMeasure() to use pendingFrame when it's available
-            // The key insight: setChildren() is called BEFORE calculateAndApplyLayout(),
-            // so pendingFrame isn't set yet. We need to wait for calculateAndApplyLayout()
-            // to set pendingFrame, then onMeasure() will use it.
-            // 
-            // Rotation works because pendingFrame is already set from the previous layout pass.
-            // 
-            // The solution: Just request layout and let onMeasure() handle measurement
-            // using pendingFrame when it's available (set by calculateAndApplyLayout).
-            Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Added ${childViews.size} children, requesting layout (pendingFrame will be set by calculateAndApplyLayout)")
-            
-            // Request layout to trigger re-measurement after pendingFrame is set
-            // This ensures NestedScrollView re-measures its child after Yoga calculates layout
-            view.forceLayout()
-            view.requestLayout()
-            sv.scrollView.forceLayout()
-            sv.scrollView.requestLayout()
-            
-            // Post async update to handle cases where layout calculation happens after this
-            Handler(Looper.getMainLooper()).post {
-                sv.updateContentSizeFromContentView()
-                sv.scrollView.forceLayout()
-                sv.scrollView.requestLayout()
-                view.forceLayout()
-                view.requestLayout()
-                Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Updated ScrollView contentSize async after layout calculation")
-            }
+            Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: ScrollView found, will update contentSize in applyLayout() after pendingFrame is set")
         } ?: run {
-            Log.w(TAG, "⚠️ DCFScrollContentViewComponent.setChildren: Could not find ScrollView to update contentSize")
+            Log.w(TAG, "⚠️ DCFScrollContentViewComponent.setChildren: Could not find ScrollView")
         }
         
         val childCount = if (view is ViewGroup) view.childCount else 0

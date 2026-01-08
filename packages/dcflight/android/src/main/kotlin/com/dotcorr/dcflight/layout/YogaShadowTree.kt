@@ -740,6 +740,44 @@ class YogaShadowTree private constructor() {
                                 val pendingFrameKey = "pendingFrame".hashCode()
                                 view.setTag(pendingFrameKey, shadowNode.frame)
                                 Log.d(TAG, "✅ YogaShadowTree: Set pendingFrame=${shadowNode.frame} on viewId=${shadowNode.viewId} (synchronously on main thread, before measurement)")
+                                
+                                // 🔥 CRITICAL: If this is a ScrollContentView, set expectedContentHeight immediately
+                                // This ensures ScrollView knows the correct height BEFORE it measures
+                                // The issue: applyLayout() sets expectedContentHeight, but it's called AFTER layouts are applied
+                                // ScrollView might measure DURING layout application, before applyLayout() is called
+                                // By setting it here when pendingFrame is set, we ensure it's available for measurement
+                                // Check both by tag (if attached) and by type (if not attached yet)
+                                val scrollViewKey = "DCFScrollView_ScrollViewKey".hashCode()
+                                var scrollView = view.getTag(scrollViewKey) as? com.dotcorr.dcflight.components.DCFScrollView
+                                
+                                // Fallback: Try to find through hierarchy if tag not set yet
+                                // ScrollContentView -> DCFCustomScrollView -> DCFScrollView
+                                if (scrollView == null) {
+                                    var parent: android.view.ViewParent? = view.parent
+                                    while (parent != null) {
+                                        // Check if parent is DCFCustomScrollView, then get its parent DCFScrollView
+                                        if (parent is com.dotcorr.dcflight.components.DCFCustomScrollView) {
+                                            val parentParent = parent.parent
+                                            if (parentParent is com.dotcorr.dcflight.components.DCFScrollView) {
+                                                scrollView = parentParent as com.dotcorr.dcflight.components.DCFScrollView
+                                                break
+                                            }
+                                        }
+                                        // Also check if parent is directly DCFScrollView
+                                        if (parent is com.dotcorr.dcflight.components.DCFScrollView) {
+                                            scrollView = parent as com.dotcorr.dcflight.components.DCFScrollView
+                                            break
+                                        }
+                                        parent = parent.parent
+                                    }
+                                }
+                                
+                                scrollView?.let { sv ->
+                                    if (shadowNode.frame.height() > 0) {
+                                        sv.scrollView.expectedContentHeight = shadowNode.frame.height().toInt()
+                                        Log.d(TAG, "✅ YogaShadowTree: Set expectedContentHeight=${shadowNode.frame.height()} on ScrollView for viewId=${shadowNode.viewId} (synchronously, before measurement)")
+                                    }
+                                }
                             }
                         }
                     } finally {
@@ -1024,28 +1062,6 @@ class YogaShadowTree private constructor() {
                 }
                 if (madeVisibleCount > 0) {
                     Log.d(TAG, "   ✅ Made $madeVisibleCount additional views visible (final visibility pass)")
-                }
-                
-                // 🔥 CRITICAL: Update ScrollView content sizes after layout calculation
-                // This fixes the timing issue where ScrollView children don't appear initially
-                // ScrollView content size needs to be updated AFTER Yoga calculates layouts
-                // because setChildren() is called BEFORE layout calculation
-                Handler(Looper.getMainLooper()).post {
-                    try {
-                        DCFLayoutManager.shared.viewRegistry.forEach { (viewId, view) ->
-                            // Check if this is a ScrollView by looking for the ScrollViewKey tag
-                            val scrollViewKey = "DCFScrollView_ScrollViewKey".hashCode()
-                            val scrollView = view.getTag(scrollViewKey) as? DCFScrollView
-                            scrollView?.let { sv ->
-                                sv.updateContentSizeFromContentView()
-                                sv.scrollView.forceLayout()
-                                sv.scrollView.requestLayout()
-                                Log.d(TAG, "   ✅ Updated ScrollView content size for viewId=$viewId after layout calculation")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "   ❌ Error updating ScrollView content sizes", e)
-                    }
                 }
                 
                 // DEBUG: Log final state of all views after layout application
