@@ -3,7 +3,7 @@
 ## Overview
 
 DCFlight VDOM implements **React Fiber-inspired concurrent features** optimized for mobile, including:
-- **Isolate-based parallel reconciliation** for heavy trees (50+ nodes)
+- **Isolate-based parallel reconciliation** for heavy trees (20+ nodes)
 - **Incremental rendering** with deadline-based scheduling
 - **Dual trees** (Current/WorkInProgress) for safe updates
 - **Effect list** for atomic commit phase
@@ -15,15 +15,16 @@ DCFlight VDOM implements **React Fiber-inspired concurrent features** optimized 
 
 ### Overview
 
-For heavy reconciliation tasks (50+ nodes), DCFlight uses **2 pre-spawned worker isolates** to perform parallel tree diffing in the background, keeping the main thread responsive.
+For heavy reconciliation tasks (20+ nodes), DCFlight uses **2 pre-spawned worker isolates** to perform parallel tree diffing in the background, keeping the main thread responsive.
 
 ### How It Works
 
 1. **Pre-Spawned Workers**: 2 worker isolates pre-spawned at engine startup (ready immediately)
-2. **Automatic Detection**: Trees with 50+ nodes automatically use isolates
+2. **Automatic Detection**: Trees with 20+ nodes automatically use isolates (lowered from 50 for better performance)
 3. **Parallel Diffing**: Tree diffing happens in background isolate
 4. **Smart Reconciliation**: Element-level reconciliation when components render to same element type
 5. **Main Thread Application**: All UI updates applied on main thread (safe)
+6. **Direct Replacement**: For very large trees (100+ nodes) with low structural similarity (<20%), uses direct replacement instead of reconciliation - enables instant navigation
 
 ### Benefits
 
@@ -33,21 +34,35 @@ For heavy reconciliation tasks (50+ nodes), DCFlight uses **2 pre-spawned worker
 - **Safety**: All native view updates on main thread (no race conditions)
 - **No Spawning Delay**: Pre-spawned workers ready immediately (no on-demand spawning overhead)
 - **Smart Reconciliation**: Element-level reconciliation prevents unnecessary view replacement
+- **Instant Navigation**: Direct replacement for large dissimilar trees (100+ nodes, <20% similarity) makes screen transitions instant
+- **Lower Threshold**: 20-node threshold (down from 50) means more trees benefit from parallel processing
 
 ### Implementation
 
 ```dart
-// Automatic detection
+// Automatic detection (20+ nodes)
 if (!isInitialRender && _shouldUseIsolateReconciliation(oldNode, newNode)) {
   await _reconcileWithIsolate(oldNode, newNode);
   return; // Done, diff applied on main thread
+}
+
+// Direct replacement for large dissimilar trees (100+ nodes, <20% similarity)
+if (!isInitialRender) {
+  final nodeCount = _countNodeChildren(oldNode) + _countNodeChildren(newNode);
+  if (nodeCount >= 100) {
+    final similarity = _computeStructuralSimilarity(oldNode, newNode);
+    if (similarity < 0.2) {
+      await _replaceNode(oldNode, newNode); // Instant navigation
+      return;
+    }
+  }
 }
 
 // Fallback to regular reconciliation
 await _reconcileRegular(oldNode, newNode);
 ```
 
-**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 2064-2160)
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 1805-1841, 2456-2481)
 
 ---
 
@@ -353,7 +368,8 @@ final stats = engine.getConcurrentStats();
 
 **DCFlight implements React Fiber-inspired concurrent features** optimized for mobile:
 
-- ✅ **Isolate-based parallel reconciliation** - YES (50+ nodes)
+- ✅ **Isolate-based parallel reconciliation** - YES (20+ nodes, lowered from 50)
+- ✅ **Direct replacement optimization** - YES (100+ nodes, <20% similarity) - instant navigation
 - ✅ **Incremental rendering** - YES (deadline-based)
 - ✅ **Dual trees** - YES (Current/WorkInProgress)
 - ✅ **Effect list** - YES (atomic commit phase)
@@ -364,15 +380,18 @@ final stats = engine.getConcurrentStats();
 - ✅ **LRU cache** - YES (with eviction)
 - ✅ **Error recovery** - YES (retry strategies)
 - ✅ **Performance monitoring** - YES
+- ✅ **Optimized logging** - YES (debug logs removed for production)
 - ❌ **Time slicing** - NO (not needed - faster per operation)
 - ❌ **Suspense** - NO (not needed - mobile handles async differently)
 
 **DCFlight's concurrent mode matches React Fiber's capabilities** while being optimized for mobile:
-- Isolate-based parallel reconciliation for heavy trees
+- Isolate-based parallel reconciliation for heavy trees (20+ nodes)
+- Direct replacement for large dissimilar trees enables instant navigation
 - Incremental rendering with frame-aware scheduling
 - Dual trees and effect list for safe, atomic updates
 - Faster per operation (no pause/resume overhead)
 - Better suited for mobile performance requirements
+- Production-ready performance (debug logging removed)
 
 ---
 

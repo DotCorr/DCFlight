@@ -1168,7 +1168,6 @@ class DCFEngine {
 
   /// O(m) where m = component tree depth - Update a component by its ID
   Future<void> _updateComponentById(String componentId) async {
-    print('🔍 UPDATE_COMPONENT: _updateComponentById called for $componentId');
     EngineDebugLogger.log('COMPONENT_UPDATE_START',
         'Starting update for component: $componentId');
 
@@ -1231,40 +1230,16 @@ class DCFEngine {
 
       final previousRenderedNode = _previousRenderedNodes[componentId];
       if (previousRenderedNode != null) {
-        print('🔍 UPDATE_COMPONENT: Starting reconciliation');
-        print('🔍 UPDATE_COMPONENT: Component type: ${component.runtimeType}');
-        print(
-            '🔍 UPDATE_COMPONENT: Previous node type: ${previousRenderedNode.runtimeType}');
-        print(
-            '🔍 UPDATE_COMPONENT: New node type: ${newRenderedNode.runtimeType}');
-
         // Comprehensive type checking - handle all valid reconciliation cases
         bool canReconcile = false;
         if (previousRenderedNode is DCFElement &&
             newRenderedNode is DCFElement) {
-          print('🔍 UPDATE_COMPONENT: Both are DCFElement!');
-          print(
-              '🔍 UPDATE_COMPONENT: Previous element type: ${previousRenderedNode.type}');
-          print(
-              '🔍 UPDATE_COMPONENT: New element type: ${newRenderedNode.type}');
           canReconcile = true;
         } else if (previousRenderedNode is DCFStatelessComponent &&
             newRenderedNode is DCFStatelessComponent) {
-          print('🔍 UPDATE_COMPONENT: Both are DCFStatelessComponent!');
-          print(
-              '🔍 UPDATE_COMPONENT: Previous: ${previousRenderedNode.runtimeType}');
-          print('🔍 UPDATE_COMPONENT: New: ${newRenderedNode.runtimeType}');
-          print(
-              '🔍 UPDATE_COMPONENT: Previous renderedNode: ${previousRenderedNode.renderedNode?.runtimeType}');
-          print(
-              '🔍 UPDATE_COMPONENT: New renderedNode: ${newRenderedNode.renderedNode?.runtimeType}');
           canReconcile = true;
         } else if (previousRenderedNode is DCFStatefulComponent &&
             newRenderedNode is DCFStatefulComponent) {
-          print('🔍 UPDATE_COMPONENT: Both are DCFStatefulComponent!');
-          print(
-              '🔍 UPDATE_COMPONENT: Previous: ${previousRenderedNode.runtimeType}');
-          print('🔍 UPDATE_COMPONENT: New: ${newRenderedNode.runtimeType}');
           canReconcile = true;
         } else {
           // Mixed types - this can happen when a component's render() returns different types
@@ -1291,14 +1266,10 @@ class DCFEngine {
 
         if (previousRenderedNode.effectiveNativeViewId == null ||
             parentViewId == null) {
-          print(
-              '🔍 UPDATE_COMPONENT: Using fallback path - previousViewId: ${previousRenderedNode.effectiveNativeViewId}, parentViewId: $parentViewId');
           EngineDebugLogger.log('RECONCILE_FALLBACK',
               'Using fallback reconciliation due to missing IDs');
-          print('🔍 UPDATE_COMPONENT: Calling _reconcile (fallback path)...');
           await _reconcile(
               previousRenderedNode, newRenderedNode); // O(tree size)
-          print('🔍 UPDATE_COMPONENT: _reconcile completed (fallback path)');
 
           if (previousRenderedNode.effectiveNativeViewId != null) {
             component.contentViewId =
@@ -1307,14 +1278,11 @@ class DCFEngine {
         } else {
           EngineDebugLogger.log(
               'RECONCILE_NORMAL', 'Performing normal reconciliation');
-          print('🔍 UPDATE_COMPONENT: Calling _reconcile...');
           try {
             await _reconcile(
                 previousRenderedNode, newRenderedNode); // O(tree size)
-            print('🔍 UPDATE_COMPONENT: _reconcile completed successfully');
           } catch (e, stackTrace) {
-            print('❌ UPDATE_COMPONENT: _reconcile failed: $e');
-            print('❌ UPDATE_COMPONENT: Stack trace: $stackTrace');
+            EngineDebugLogger.log('RECONCILE_ERROR', 'Reconciliation failed: $e');
             rethrow;
           }
           component.contentViewId = previousRenderedNode.effectiveNativeViewId;
@@ -1863,7 +1831,6 @@ class DCFEngine {
         
         if (structuralSimilarity != null && structuralSimilarity < 0.2) {
           // Trees are very different (< 20% similar) - use direct replace for instant navigation
-          print('🚀 RECONCILE: Large tree ($nodeCount nodes) with low similarity ($structuralSimilarity) - Using direct replace for instant navigation');
           EngineDebugLogger.logReconcile(
               'REPLACE_LARGE_TREE', oldNode, newNode,
               reason: 'Large tree with low structural similarity - direct replace');
@@ -1876,7 +1843,6 @@ class DCFEngine {
     // 🔥 CRITICAL: Check structural shock flag FIRST, before any position key computation
     // This prevents position-based matching from incorrectly matching old components
     if (_isStructuralShock) {
-      print('🔍 RECONCILE: Structural shock detected, replacing');
       EngineDebugLogger.logReconcile(
           'REPLACE_STRUCTURAL_SHOCK', oldNode, newNode,
           reason: 'Structural shock active - forcing full replacement');
@@ -1971,9 +1937,6 @@ class DCFEngine {
       print(
           '🔍 RECONCILE: Both are DCFElement - oldType: ${oldNode.type}, newType: ${newNode.type}');
       if (oldNode.type != newNode.type) {
-        print(
-            '🔍 RECONCILE: Element type changed: ${oldNode.type} → ${newNode.type}');
-        print('⚛️  RECONCILE: Using full replacement (unmount + mount)');
 
         EngineDebugLogger.logReconcile('REPLACE_ELEMENT_TYPE', oldNode, newNode,
             reason: 'Different element types - full replacement');
@@ -2030,7 +1993,6 @@ class DCFEngine {
                   'Significant children count difference - forcing replacement');
           await _replaceNode(oldNode, newNode);
         } else {
-          print('🔍 RECONCILE: Same element type, calling _reconcileElement');
           EngineDebugLogger.logReconcile('UPDATE_ELEMENT', oldNode, newNode,
               reason: 'Same element type - updating props and children');
 
@@ -2042,15 +2004,12 @@ class DCFEngine {
           ));
 
           await _reconcileElement(oldNode, newNode);
-          print('🔍 RECONCILE: _reconcileElement completed');
         }
       }
     } else if (oldNode is DCFStatefulComponent &&
         newNode is DCFStatefulComponent) {
       // Different component classes mean different components entirely
       if (oldNode.runtimeType != newNode.runtimeType) {
-        print(
-            '🔍 RECONCILE: Different StatefulComponent types: ${oldNode.runtimeType} → ${newNode.runtimeType}');
         EngineDebugLogger.logReconcile(
             'REPLACE_COMPONENT_TYPE', oldNode, newNode,
             reason: 'Different StatefulComponent types - full replacement');
@@ -2059,7 +2018,6 @@ class DCFEngine {
       }
 
       if (identical(oldNode, newNode)) {
-        print('🔍 RECONCILE: Same StatefulComponent instance - skipping');
         newNode.nativeViewId = oldNode.nativeViewId;
         newNode.contentViewId = oldNode.contentViewId;
         newNode.parent = oldNode.parent;
@@ -2070,8 +2028,6 @@ class DCFEngine {
 
         return;
       }
-
-      print('🔍 RECONCILE: Different StatefulComponent instances (same type)');
       EngineDebugLogger.logReconcile('UPDATE_STATEFUL', oldNode, newNode,
           reason: 'Reconciling StatefulComponent');
 
@@ -2245,9 +2201,6 @@ class DCFEngine {
       // Different component classes (e.g., DCFView vs DCFScrollView) mean different components
       // We need to reconcile their RENDERED elements, not the components themselves
       if (oldNode.runtimeType != newNode.runtimeType) {
-        print(
-            '🔍 RECONCILE: Different StatelessComponent types: ${oldNode.runtimeType} → ${newNode.runtimeType}');
-        print('🔍 RECONCILE: Reconciling rendered elements instead');
         EngineDebugLogger.logReconcile(
             'RECONCILE_STATELESS_VIA_ELEMENTS', oldNode, newNode,
             reason:
@@ -3322,12 +3275,6 @@ class DCFEngine {
     }
 
     final parentViewId = _findParentViewId(oldNode);
-    print('🔍 REPLACE: Parent chain for oldNode:');
-    print(
-        '🔍 REPLACE: oldNode type: ${oldNode.runtimeType}, viewId: ${oldNode.effectiveNativeViewId}');
-    print(
-        '🔍 REPLACE: oldNode.parent type: ${oldNode.parent?.runtimeType}, viewId: ${oldNode.parent?.effectiveNativeViewId}');
-    print('🔍 REPLACE: Found parentViewId: $parentViewId');
 
     if (parentViewId == null) {
       EngineDebugLogger.log(
@@ -3408,8 +3355,6 @@ class DCFEngine {
       if (isElementTypeChange) {
         // For element type changes, we MUST generate a new view ID
         // because the old view will be deleted and we can't reuse its ID
-        print(
-            '🔄 REPLACE: Element type change detected - generating new view ID');
         EngineDebugLogger.log('REPLACE_NEW_VIEW_ID',
             'Generating new view ID for element type change',
             extra: {
@@ -3481,8 +3426,6 @@ class DCFEngine {
       // which causes the "imaginary margin" / layout shift issue
       // The delete is queued, so the old view stays in hierarchy until batch commit
       // but it will be removed from layout tree BEFORE new views are created
-      print(
-          '🔍 REPLACE: Queuing delete FIRST for viewId=$oldViewId (before creating new view)');
       EngineDebugLogger.logBridge('DELETE_VIEW', oldViewId);
       await _nativeBridge.deleteView(oldViewId);
 
@@ -3509,17 +3452,10 @@ class DCFEngine {
 
       collectChildViewIds(oldNode);
 
-      EngineDebugLogger.log('REPLACE_COLLECTED_CHILDREN',
-          'Collected ${childViewIds.length} child view IDs for cleanup',
-          extra: {'ChildViewIds': childViewIds});
-
       // Create the new view - delete is already queued, so batch will process delete first
       // This ensures old view is removed from layout tree before new view is added
-      print(
-          '🔍 REPLACE: Creating new view at parentViewId=$parentViewId, index=$index (delete already queued)');
       final newViewId = await renderToNative(newNode,
           parentViewId: parentViewId, index: index);
-      print('🔍 REPLACE: New view created with viewId=$newViewId');
 
       // 🔧 FIX: Clean up child view IDs from _nodesByViewId after parent is deleted
       // Android's deleteView will handle recursive deletion of native views,
@@ -3616,21 +3552,17 @@ class DCFEngine {
           if (renderedElement is DCFElement &&
               renderedElement.eventTypes.isNotEmpty) {
             final actualEventTypes = renderedElement.eventTypes;
-            // Always register - renderToNative might have done it, but double-registration is safe
-            // and ensures events work even if renderToNative's registration failed
-            EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', newViewId,
-                data: {'EventTypes': actualEventTypes});
-            await _nativeBridge.addEventListeners(newViewId, actualEventTypes);
-            print(
-                '✅ REPLACE: Event listeners registered for component viewId=$newViewId, eventTypes=$actualEventTypes');
+          // Always register - renderToNative might have done it, but double-registration is safe
+          // and ensures events work even if renderToNative's registration failed
+          EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', newViewId,
+              data: {'EventTypes': actualEventTypes});
+          await _nativeBridge.addEventListeners(newViewId, actualEventTypes);
           } else if (newNode is DCFElement && newNode.eventTypes.isNotEmpty) {
             // For direct element replacement, ensure events are registered
             EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', newViewId,
                 data: {'EventTypes': newNode.eventTypes});
             await _nativeBridge.addEventListeners(
                 newViewId, newNode.eventTypes);
-            print(
-                '✅ REPLACE: Event listeners registered for element viewId=$newViewId, eventTypes=${newNode.eventTypes}');
           }
         }
 
@@ -3959,15 +3891,9 @@ class DCFEngine {
       // Clear rendering set to ensure clean state for first render
       _nodesBeingRendered.clear();
 
-      print('🔥 Engine.createRoot: Starting batch update...');
       await _nativeBridge.startBatchUpdate();
-      print(
-          '🔥 Engine.createRoot: Batch update started, rendering root component...');
       final viewId = await renderToNative(component, parentViewId: 0);
-      print(
-          '🔥 Engine.createRoot: Root component rendered, viewId=$viewId, committing batch...');
       await _nativeBridge.commitBatchUpdate();
-      print('🔥 Engine.createRoot: Batch committed');
 
       setRootComponent(component);
 
@@ -3999,7 +3925,6 @@ class DCFEngine {
   Future<void> commitBatchUpdate() async {
     await isReady;
     if (_batchUpdateInProgress) {
-      print('🔥 Engine.commitBatchUpdate: Starting commit...');
       _batchUpdateInProgress = false;
 
       // Commit phase: Process all effects
@@ -4011,13 +3936,7 @@ class DCFEngine {
         _workInProgressTree = null;
       }
 
-      print(
-          '🔥 Engine.commitBatchUpdate: Calling native bridge commitBatchUpdate...');
       await _nativeBridge.commitBatchUpdate();
-      print(
-          '🔥 Engine.commitBatchUpdate: Native bridge commitBatchUpdate completed');
-    } else {
-      print('⚠️ Engine.commitBatchUpdate: No batch update in progress');
     }
   }
 
@@ -4320,41 +4239,6 @@ class DCFEngine {
           ? Map<String, dynamic>.from(newElement.elementProps) // Send all props
           : changedProps; // Send only changed props
 
-      // DEBUG: Log prop comparison for button components
-      if (oldElement.type == 'Button') {
-        print('🔥 RECONCILE: Button props comparison:');
-        print('  Old title: ${oldElement.elementProps["title"]}');
-        print('  New title: ${newElement.elementProps["title"]}');
-        print('  Changed props: ${changedProps.keys.toList()}');
-        print('  Changed props count: ${changedProps.length}');
-        print('  Structural shock: $_isStructuralShock');
-        print('  Props to send: ${propsToSend.keys.toList()}');
-        print(
-            '  Old onPress: ${oldElement.elementProps.containsKey("onPress")} (${oldElement.elementProps["onPress"] is Function})');
-        print(
-            '  New onPress: ${newElement.elementProps.containsKey("onPress")} (${newElement.elementProps["onPress"] is Function})');
-        print(
-            '  Mapped node type: ${_nodesByViewId[oldElement.nativeViewId!]?.runtimeType}');
-        print(
-            '  Mapped node == newElement: ${_nodesByViewId[oldElement.nativeViewId!] == newElement}');
-      }
-
-      // DEBUG: Log prop comparison for Text components (system version tracking)
-      if (oldElement.type == 'Text') {
-        final oldSystemVersion = oldElement.elementProps['_systemVersion'];
-        final newSystemVersion = newElement.elementProps['_systemVersion'];
-        print('📝 RECONCILE: Text props comparison:');
-        print('  Old _systemVersion: $oldSystemVersion');
-        print('  New _systemVersion: $newSystemVersion');
-        print('  SystemStateManager.version: ${SystemStateManager.version}');
-        print('  Changed props: ${changedProps.keys.toList()}');
-        print('  Changed props count: ${changedProps.length}');
-        if (oldSystemVersion != newSystemVersion) {
-          print('  ✅ _systemVersion changed - should trigger update!');
-        } else {
-          print('  ❌ _systemVersion unchanged - no update triggered');
-        }
-      }
 
       if (propsToSend.isNotEmpty) {
         EngineDebugLogger.logBridge('UPDATE_VIEW', oldElement.nativeViewId!,
@@ -4393,17 +4277,10 @@ class DCFEngine {
           _nodesByViewId[oldElement.nativeViewId!] = newElement;
         }
       } else {
-        print('🔍 RECONCILE_ELEMENT: No prop changes detected');
         EngineDebugLogger.log(
             'RECONCILE_NO_PROP_CHANGES', 'No prop changes detected');
       }
-    } else {
-      print(
-          '🔍 RECONCILE_ELEMENT: oldElement has no viewId (null) - skipping prop updates');
     }
-
-    print(
-        '🔍 RECONCILE_ELEMENT: Starting children reconciliation - oldChildren: ${oldElement.children.length}, newChildren: ${newElement.children.length}');
     EngineDebugLogger.log(
         'RECONCILE_CHILDREN_START', 'Starting children reconciliation',
         extra: {
@@ -4425,7 +4302,6 @@ class DCFEngine {
     }
 
     await _reconcileChildren(oldElement, newElement);
-    print('🔍 RECONCILE_ELEMENT: Children reconciliation completed');
 
     // CRITICAL: After children reconciliation, verify ALL child mappings are correct
     // This fixes the root cause: when SafeArea re-renders, child reconciliation
