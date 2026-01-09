@@ -722,7 +722,45 @@ class YogaShadowTree private constructor() {
                                 
                                 scrollView?.let { sv ->
                                     if (shadowNode.frame.height() > 0) {
-                                        sv.scrollView.expectedContentHeight = shadowNode.frame.height().toInt()
+                                        val newHeight = shadowNode.frame.height().toInt()
+                                        val customScrollView = sv.scrollView
+                                        val oldHeight = customScrollView.expectedContentHeight
+                                        val wasPlaceholder = oldHeight > 0 && oldHeight == view.context.resources.displayMetrics.heightPixels
+                                        
+                                        // 🔥 CRITICAL: Update content view's layout params BEFORE setting expectedContentHeight
+                                        // This ensures the content view has the correct size when ScrollView re-measures
+                                        // This fixes the red background issue when navigating to examples
+                                        if (view.layoutParams != null) {
+                                            view.layoutParams.height = newHeight
+                                            view.layoutParams.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                                        } else {
+                                            view.layoutParams = android.widget.FrameLayout.LayoutParams(
+                                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                                newHeight
+                                            )
+                                        }
+                                        
+                                        // 🔥 CRITICAL: Always set expectedContentHeight, even if it's the same
+                                        // This ensures ScrollView re-measures if it measured to 0 before
+                                        customScrollView.expectedContentHeight = newHeight
+                                        Log.d(TAG, "✅ YogaShadowTree: Set expectedContentHeight=$newHeight on ScrollView (synchronously, before measurement, layout params updated, wasPlaceholder=$wasPlaceholder)")
+                                        
+                                        // 🔥 CRITICAL: Force full layout pass if ScrollView already measured OR if updating from placeholder
+                                        // This fixes the red background issue when navigating to examples
+                                        // The ScrollView might have measured before pendingFrame was set, so we need to re-measure AND re-layout
+                                        if (customScrollView.measuredHeight == 0 || wasPlaceholder) {
+                                            Log.d(TAG, "✅ YogaShadowTree: Forcing full layout pass (measuredHeight=${customScrollView.measuredHeight}, wasPlaceholder=$wasPlaceholder, newHeight=$newHeight)")
+                                            // Use post to ensure layout params are applied before re-measurement
+                                            customScrollView.post {
+                                                // Force full layout pass: invalidate + requestLayout
+                                                customScrollView.invalidate()
+                                                customScrollView.requestLayout()
+                                                // Also request layout on parent DCFScrollView wrapper to ensure it's laid out
+                                                // The wrapper's onLayout will call updateContentSizeFromContentView automatically
+                                                sv.requestLayout()
+                                                Log.d(TAG, "✅ YogaShadowTree: Requested layout for ScrollView (wrapper's onLayout will update content size)")
+                                            }
+                                        }
                                     }
                                 }
                             }

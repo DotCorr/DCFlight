@@ -59,14 +59,32 @@ class DCFCustomScrollView(context: Context) : NestedScrollView(context) {
         get() = _expectedContentHeight
         set(value) {
             if (_expectedContentHeight != value) {
+                val wasPlaceholder = _expectedContentHeight > 0 && _expectedContentHeight == context.resources.displayMetrics.heightPixels
+                val isRealValue = value > 0 && value != context.resources.displayMetrics.heightPixels
                 _expectedContentHeight = value
                 
                 // CRITICAL: Only trigger re-layout if we're NOT currently measuring
                 // This prevents infinite layout loops where setting expectedContentHeight
                 // triggers requestLayout() which calls onMeasure() which sets expectedContentHeight again
                 if (value > 0 && !isMeasuring) {
-                    // Single layout request - no recursive calls
-                    requestLayout()
+                    // 🔥 CRITICAL: If we're updating from placeholder to real value, force full layout pass
+                    // This ensures ScrollView properly updates content size when real height is available
+                    // This fixes the red background issue - placeholder prevents red, real value ensures correct size
+                    if (wasPlaceholder && isRealValue) {
+                        // Force full layout pass: invalidate + requestLayout
+                        invalidate()
+                        requestLayout()
+                        // Also force layout on parent DCFScrollView to ensure content size is updated
+                        (parent as? DCFScrollView)?.let { parentScrollView ->
+                            parentScrollView.post {
+                                parentScrollView.updateContentSizeFromContentView()
+                            }
+                        }
+                        Log.d("DCFCustomScrollView", "✅ expectedContentHeight: Updated from placeholder to real value=$value, forcing full layout pass")
+                    } else {
+                        // Normal update - just request layout
+                        requestLayout()
+                    }
                 }
             }
         }
@@ -126,6 +144,31 @@ class DCFCustomScrollView(context: Context) : NestedScrollView(context) {
                 // We're already measuring, so we don't want to trigger another layout request
                 if (child.measuredHeight > 0 && _expectedContentHeight != child.measuredHeight) {
                     _expectedContentHeight = child.measuredHeight
+                    Log.d("DCFCustomScrollView", "✅ measureChildWithMargins: Captured expectedContentHeight=${child.measuredHeight} from child measurement (fallback)")
+                } else if (child.measuredHeight == 0 && _expectedContentHeight == 0) {
+                    // 🔥 CRITICAL FIX: If both are 0, use screen height as placeholder to prevent red background
+                    // This is the red background issue - measurement happened before pendingFrame was set
+                    // By using screen height as placeholder, we prevent the ScrollView from measuring to 0
+                    // When the real height is available (from pendingFrame), it will be updated
+                    val placeholderHeight = context.resources.displayMetrics.heightPixels
+                    _expectedContentHeight = placeholderHeight
+                    Log.d("DCFCustomScrollView", "✅ measureChildWithMargins: Both measured to 0, using placeholder height=$placeholderHeight to prevent red background (will be updated when pendingFrame is set)")
+                    
+                    // Re-measure child with placeholder height so it doesn't measure to 0
+                    val lp = child.layoutParams as? MarginLayoutParams ?: MarginLayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    val childWidthMeasureSpec = getChildMeasureSpec(
+                        parentWidthMeasureSpec,
+                        paddingLeft + paddingRight + lp.leftMargin + lp.rightMargin + widthUsed,
+                        lp.width
+                    )
+                    val childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(
+                        placeholderHeight,
+                        MeasureSpec.AT_MOST  // Use AT_MOST so child can be smaller if needed
+                    )
+                    child.measure(childWidthMeasureSpec, childHeightMeasureSpec)
                 }
             }
         } finally {
@@ -302,6 +345,26 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
     fun updateContentSizeFromContentView() {
         val contentView = _contentView ?: run {
             Log.w(TAG, "⚠️ DCFScrollView.updateContentSizeFromContentView: No contentView, setting contentSize to zero")
+            return
+        }
+        
+        // 🔥 CRITICAL: If DCFScrollView wrapper hasn't been laid out yet, request layout first
+        // This fixes the red background issue - the wrapper must be laid out before we can set content size
+        // The logs show scrollView size=(0, 0), meaning the wrapper hasn't been laid out
+        // Check both measured dimensions and actual layout dimensions
+        val isMeasured = width > 0 && height > 0
+        val isLaidOut = left != 0 || top != 0 || right != 0 || bottom != 0 || (width > 0 && height > 0 && measuredWidth == width && measuredHeight == height)
+        
+        if (!isMeasured || !isLaidOut) {
+            Log.d(TAG, "✅ DCFScrollView.updateContentSizeFromContentView: Wrapper not ready (measured=$isMeasured, laidOut=$isLaidOut, size=$width x $height, measured=$measuredWidth x $measuredHeight), requesting layout first")
+            requestLayout()
+            // Schedule updateContentSizeFromContentView to run after layout
+            // Use a double post to ensure layout has completed
+            post {
+                post {
+                    updateContentSizeFromContentView()
+                }
+            }
             return
         }
         
@@ -486,10 +549,22 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
             // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
             // CRITICAL: Use MATCH_PARENT for width (scroll view fills parent width)
             // Use explicit height from Yoga's calculation for height
+            val height = frameToRestore.height().coerceAtLeast(0)
             view.layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                frameToRestore.height().coerceAtLeast(0)
+                height
             )
+            
+            // 🔥 CRITICAL: Set expectedContentHeight IMMEDIATELY when frame is available
+            // This ensures ScrollView knows the correct height BEFORE it measures
+            // This fixes the issue where navigation to examples shows red background
+            // The issue: During direct replacement, a new ScrollView is created, and it measures
+            // before applyLayout() sets expectedContentHeight. By setting it here, we ensure
+            // it's available for the first measurement.
+            if (height > 0 && _scrollView.expectedContentHeight != height) {
+                _scrollView.expectedContentHeight = height
+                Log.d(TAG, "✅ DCFScrollView.insertContentView: Set expectedContentHeight=$height from frameToRestore (BEFORE addView)")
+            }
         } else {
             // Use WRAP_CONTENT as fallback - will be updated by applyLayout
             // CRITICAL: Use FrameLayout.LayoutParams because NestedScrollView extends FrameLayout
@@ -521,6 +596,15 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
             )
             view.requestLayout()
             Log.d(TAG, "✅ DCFScrollView.insertContentView: Restored frame=$frameToRestore after addView (was $frameBeforeAdd, pendingFrame=${pendingFrame?.toString() ?: "nil"})")
+            
+            // 🔥 CRITICAL: Ensure expectedContentHeight is set AFTER addView as well
+            // This handles the case where frameToRestore wasn't available before addView
+            val height = frameToRestore.height().coerceAtLeast(0)
+            if (height > 0 && _scrollView.expectedContentHeight != height) {
+                _scrollView.expectedContentHeight = height
+                Log.d(TAG, "✅ DCFScrollView.insertContentView: Set expectedContentHeight=$height from frameToRestore (AFTER addView)")
+            }
+            
             // Update contentSize immediately since frame is valid
             updateContentSizeFromContentView()
         } else {
@@ -609,8 +693,15 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
             // Try to recover by adding _scrollView if it exists
             if (_scrollView.parent != this) {
                 addView(_scrollView)
+                Log.d(TAG, "✅ DCFScrollView.onLayout: Added _scrollView, continuing with layout")
+                // Continue with layout instead of returning - this fixes the red background issue
+                // The wrapper needs to be laid out even if _scrollView was just added
+            } else {
+                // _scrollView is already a child but childCount is 0 - this shouldn't happen
+                // But if it does, return early to avoid crashes
+                Log.e(TAG, "❌ DCFScrollView.onLayout: childCount is 0 but _scrollView.parent == this, skipping layout")
+                return
             }
-            return
         }
         
         if (childCount != 1) {
@@ -652,7 +743,9 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         
         _scrollView.layout(0, 0, width, height)
         
-        // Update content size from contentView after layout
+        // 🔥 CRITICAL: Update content size from contentView after layout
+        // This ensures content size is set when the wrapper is laid out
+        // This fixes the red background issue - content size is updated when wrapper has proper dimensions
         updateContentSizeFromContentView()
     }
     

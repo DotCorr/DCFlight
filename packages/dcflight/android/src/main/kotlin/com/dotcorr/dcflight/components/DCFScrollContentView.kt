@@ -254,6 +254,9 @@ class DCFScrollContentView @JvmOverloads constructor(
         
         
         // CRITICAL FIX: Set expectedContentHeight on parent NestedScrollView if not already set
+        // 🔥 CRITICAL: Set expectedContentHeight on parent NestedScrollView
+        // This ensures that if NestedScrollView measures again, it will use the correct height
+        // This is especially important when onMeasure() is called BEFORE pendingFrame is set
         // Only set if different to prevent layout loops
         if (measuredHeight > 0) {
             var parentView: android.view.ViewParent? = parent
@@ -262,15 +265,32 @@ class DCFScrollContentView @JvmOverloads constructor(
                     val scrollView = parentView as androidx.core.widget.NestedScrollView
                     if (scrollView is com.dotcorr.dcflight.components.DCFCustomScrollView) {
                         val customScrollView = scrollView as com.dotcorr.dcflight.components.DCFCustomScrollView
-                        // Only set if different - prevents infinite loops
-                        if (customScrollView.expectedContentHeight != measuredHeight) {
+                        // CRITICAL: Always set if expectedContentHeight is 0 (initial measurement)
+                        // This ensures we have SOME height even if pendingFrame isn't available yet
+                        // This fixes the red background issue when navigating to examples
+                        if (customScrollView.expectedContentHeight == 0) {
                             customScrollView.expectedContentHeight = measuredHeight
+                            android.util.Log.d("DCFScrollContentView", "✅ onMeasure (fallback): Set expectedContentHeight=$measuredHeight from measured children (initial measurement, pendingFrame not available)")
+                        } else if (customScrollView.expectedContentHeight != measuredHeight) {
+                            // Only update if significantly different (more than 10% difference)
+                            // This prevents layout loops while still allowing updates
+                            val difference = kotlin.math.abs(customScrollView.expectedContentHeight - measuredHeight)
+                            val threshold = customScrollView.expectedContentHeight / 10
+                            if (difference > threshold) {
+                                customScrollView.expectedContentHeight = measuredHeight
+                                android.util.Log.d("DCFScrollContentView", "✅ onMeasure (fallback): Updated expectedContentHeight=$measuredHeight from measured children (significant change, pendingFrame not available)")
+                            }
                         }
                     }
                     break
                 }
                 parentView = parentView.parent
             }
+        } else if (measuredHeight == 0 && childCount > 0) {
+            // CRITICAL: If we measured to 0 but have children, something is wrong
+            // This can happen if children are invisible or not properly set up
+            // Log a warning but don't set expectedContentHeight to 0 (keep previous value if any)
+            android.util.Log.w("DCFScrollContentView", "⚠️ onMeasure (fallback): Measured to 0 height but have $childCount children - children may not be visible or properly set up")
         }
         
         setMeasuredDimension(measuredWidth, measuredHeight)
