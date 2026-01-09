@@ -247,7 +247,6 @@ class YogaShadowTree {
     func updateNodeLayoutProps(nodeId: String, props: [String: Any]) {
         guard let viewId = Int(nodeId),
               let shadowView = shadowViewRegistry[viewId] else {
-            print("⚠️ YogaShadowTree: updateNodeLayoutProps - viewId=\(nodeId) not found")
             return
         }
         
@@ -255,7 +254,6 @@ class YogaShadowTree {
             let yogaNode = shadowView.yogaNode
             var changedProps: [String] = []
             
-            print("🔍 YogaShadowTree: updateNodeLayoutProps for viewId=\(nodeId), props=\(props)")
             
             // All props (layout and text) are set through the same mechanism
             // For Text components, handle text props first
@@ -299,7 +297,6 @@ class YogaShadowTree {
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
         let result = syncQueue.sync { () -> (Bool, Set<DCFShadowView>, Int, Int) in
             if isReconciling {
-                print("⚠️ YogaShadowTree: Layout calculation blocked - reconciliation in progress")
                 return (false, Set<DCFShadowView>(), 0, 0)
             }
             
@@ -307,7 +304,6 @@ class YogaShadowTree {
             defer { isLayoutCalculating = false }
             
             guard let rootShadowView = rootShadowView else {
-                print("❌ YogaShadowTree: Root shadow view not found")
                 return (false, Set<DCFShadowView>(), 0, 0)
             }
             
@@ -351,7 +347,6 @@ class YogaShadowTree {
                 
                 // DEBUG: Log first few children to diagnose positioning issues
                 if shadowView.viewId <= 3 {
-                    print("🔍 YogaShadowTree: viewId=\(shadowView.viewId) frame=\(shadowView.frame)")
                 }
                 
                 DCFLayoutManager.shared.applyLayout(
@@ -377,15 +372,12 @@ class YogaShadowTree {
                 if let rootView = DCFLayoutManager.shared.getView(withId: 0) {
                     let rootFrame = CGRect(x: 0, y: 0, width: width, height: height)
                     if !rootView.frame.equalTo(rootFrame) {
-                        print("⚠️ YogaShadowTree: Root view frame was incorrect after layout: \(rootView.frame), correcting to \(rootFrame)")
                         rootView.frame = rootFrame
                         rootView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
                     }
-                    print("✅ YogaShadowTree: Root view (0) verified at \(rootView.frame)")
                 }
             }
             
-            print("✅ YogaShadowTree: Applied layout to \(appliedCount) views out of \(totalViews) shadow views")
         }
         
         return success
@@ -604,12 +596,10 @@ class YogaShadowTree {
         case "width":
             if let width = parseDimension(value) {
                 YGNodeStyleSetWidth(node, width)
-                print("🔍 YogaShadowTree: Applied width=\(width) to node")
                 return true
             } else if let strValue = value as? String, strValue.hasSuffix("%"),
                      let percentValue = Float(strValue.dropLast()) {
                 YGNodeStyleSetWidthPercent(node, percentValue)
-                print("🔍 YogaShadowTree: Applied width=\(percentValue)% to node")
                 return true
             }
             return false

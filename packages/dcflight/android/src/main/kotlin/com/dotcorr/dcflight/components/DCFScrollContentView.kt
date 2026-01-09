@@ -91,10 +91,9 @@ class DCFScrollContentView @JvmOverloads constructor(
                 else -> pendingFrame.height()
             }
             
-            android.util.Log.d(TAG, "✅ onMeasure: Using pendingFrame from Yoga: width=$measuredWidth, height=$measuredHeight (pendingFrame=$pendingFrame, childCount=$childCount)")
             
             // CRITICAL: Set expectedContentHeight on parent NestedScrollView
-            // This ensures measureChildWithMargins() uses the correct height
+            // Only set if different to prevent layout loops
             if (measuredHeight > 0) {
                 var parentView: android.view.ViewParent? = parent
                 while (parentView != null) {
@@ -102,9 +101,9 @@ class DCFScrollContentView @JvmOverloads constructor(
                         val scrollView = parentView as androidx.core.widget.NestedScrollView
                         if (scrollView is com.dotcorr.dcflight.components.DCFCustomScrollView) {
                             val customScrollView = scrollView as com.dotcorr.dcflight.components.DCFCustomScrollView
-                            if (customScrollView.expectedContentHeight == 0 || customScrollView.expectedContentHeight != measuredHeight) {
+                            // Only set if different - prevents infinite loops
+                            if (customScrollView.expectedContentHeight != measuredHeight) {
                                 customScrollView.expectedContentHeight = measuredHeight
-                                android.util.Log.d(TAG, "✅ DCFScrollContentView.onMeasure: Set expectedContentHeight=$measuredHeight from pendingFrame")
                             }
                         }
                         break
@@ -253,38 +252,9 @@ class DCFScrollContentView @JvmOverloads constructor(
             }
         }
         
-        android.util.Log.d(TAG, "🔍 onMeasure (fallback - measuring children): Measured size: width=$measuredWidth, height=$measuredHeight (childCount=$childCount, widthMode=$widthMode, heightMode=$heightMode)")
-        
-        // CRITICAL FIX: If measuredHeight is 0 but we have children, force a re-measurement
-        // This handles the case where children haven't been measured yet (they might be newly added)
-        // We post a re-measurement request to ensure it happens after the current layout pass
-        if (measuredHeight == 0 && childCount > 0) {
-            android.util.Log.w(TAG, "⚠️ DCFScrollContentView.onMeasure: Measured height is 0 but childCount=$childCount, children might not be ready yet. Requesting re-measurement...")
-            
-            // Post a re-measurement request to ensure it happens after children are ready
-            post {
-                // Force re-measurement of this view and its parent
-                forceLayout()
-                requestLayout()
-                
-                // Also force parent NestedScrollView to re-measure
-                var parentView: android.view.ViewParent? = parent
-                while (parentView != null) {
-                    if (parentView is androidx.core.widget.NestedScrollView) {
-                        val scrollView = parentView as androidx.core.widget.NestedScrollView
-                        scrollView.forceLayout()
-                        scrollView.requestLayout()
-                        android.util.Log.d(TAG, "✅ DCFScrollContentView.onMeasure: Requested re-measurement on NestedScrollView")
-                        break
-                    }
-                    parentView = parentView.parent
-                }
-            }
-        }
         
         // CRITICAL FIX: Set expectedContentHeight on parent NestedScrollView if not already set
-        // This ensures that if setChildren() didn't set it (e.g., children measured as 0 initially),
-        // we set it here when we have a valid measured height
+        // Only set if different to prevent layout loops
         if (measuredHeight > 0) {
             var parentView: android.view.ViewParent? = parent
             while (parentView != null) {
@@ -292,9 +262,9 @@ class DCFScrollContentView @JvmOverloads constructor(
                     val scrollView = parentView as androidx.core.widget.NestedScrollView
                     if (scrollView is com.dotcorr.dcflight.components.DCFCustomScrollView) {
                         val customScrollView = scrollView as com.dotcorr.dcflight.components.DCFCustomScrollView
-                        if (customScrollView.expectedContentHeight == 0 || customScrollView.expectedContentHeight != measuredHeight) {
+                        // Only set if different - prevents infinite loops
+                        if (customScrollView.expectedContentHeight != measuredHeight) {
                             customScrollView.expectedContentHeight = measuredHeight
-                            android.util.Log.d(TAG, "✅ DCFScrollContentView.onMeasure: Set expectedContentHeight=$measuredHeight on DCFCustomScrollView (fallback)")
                         }
                     }
                     break

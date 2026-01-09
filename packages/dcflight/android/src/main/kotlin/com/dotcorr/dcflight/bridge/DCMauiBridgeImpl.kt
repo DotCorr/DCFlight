@@ -637,9 +637,6 @@ class DCMauiBridgeImpl private constructor() {
      * @return `true` if all operations succeeded, `false` otherwise
      */
     fun commitBatchUpdate(operations: List<Map<String, Any>>): Boolean {
-        Log.e(TAG, "🔥🔥🔥 commitBatchUpdate: ENTRY POINT - ${operations.size} operations")
-        Log.e(TAG, "🔥🔥🔥 commitBatchUpdate: Thread=${Thread.currentThread().name}, isMainThread=${Looper.getMainLooper().thread == Thread.currentThread()}")
-        
         data class CreateOp(val viewId: Int, val viewType: String, val propsJson: String)
         data class UpdateOp(val viewId: Int, val propsJson: String)
         data class AttachOp(val childId: Int, val parentId: Int, val index: Int)
@@ -663,7 +660,6 @@ class DCMauiBridgeImpl private constructor() {
                 "deleteView" -> {
                     val viewId = (operation["viewId"] as? Number)?.toInt() ?: (operation["viewId"] as? Int)
                     if (viewId != null) {
-                        Log.d(TAG, "🗑️ ANDROID_BATCH: Parsed deleteView operation for viewId: $viewId")
                         deleteOps.add(DeleteOp(viewId))
                     }
                 }
@@ -732,8 +728,6 @@ class DCMauiBridgeImpl private constructor() {
         }
         
         try {
-            Log.d(TAG, "📊 ANDROID_BATCH: Processing batch - deletes: ${deleteOps.size}, creates: ${createOps.size}, updates: ${updateOps.size}, setChildren: ${setChildrenOps.size}, attaches: ${attachOps.size}")
-            
             // 🔧 FIX: Delete views FIRST but defer view removal from parent to prevent layout shifts
             // We remove from registry/layout tree but keep views in hierarchy until creates are done
             // Use a Set to avoid duplicates and ensure proper cleanup
@@ -759,12 +753,10 @@ class DCMauiBridgeImpl private constructor() {
             // This prevents both old and new views from being in the layout tree simultaneously,
             // which causes the "imaginary margin" / layout shift issue
             deleteOps.forEach { op ->
-                Log.d(TAG, "🗑️ ANDROID_BATCH: Processing delete for viewId=${op.viewId}")
                 collectViewsToRemove(op.viewId)
                 
                 // 🔧 CRITICAL: Remove from layout tree FIRST (before creates)
                 // This ensures old view is not in layout tree when new view is added
-                Log.d(TAG, "🗑️ ANDROID_BATCH: Removing viewId=${op.viewId} from layout tree (BEFORE creates)")
                 try {
                     YogaShadowTree.shared.removeNode(op.viewId.toString())
                 } catch (e: Exception) {
@@ -795,23 +787,34 @@ class DCMauiBridgeImpl private constructor() {
                 collectChildrenToRemove(op.viewId)
                 
                 // Now remove all children (in reverse order to handle dependencies)
+                // CRITICAL: Wrap each removal in try-catch to prevent one failure from blocking others
                 childrenToRemove.reversed().forEach { childId ->
                     val childIdStr = childId.toString()
                     try {
                         YogaShadowTree.shared.removeNode(childIdStr)
                     } catch (e: Exception) {
                         Log.w(TAG, "Error removing node $childIdStr from layout tree", e)
+                        // Continue with other removals
                     }
-                    ViewRegistry.shared.removeView(childId)
-                    DCFLayoutManager.shared.unregisterView(childId)
-                    views.remove(childId)
+                    try {
+                        ViewRegistry.shared.removeView(childId)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error removing view $childId from registry", e)
+                    }
+                    try {
+                        DCFLayoutManager.shared.unregisterView(childId)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error unregistering view $childId", e)
+                    }
+                    views.remove(childId) // Safe - just removes from map
                 }
                 
                 // Clear hierarchy after all removals
+                // CRITICAL: Get children list BEFORE clearing to avoid concurrent modification
                 fun clearHierarchy(parentId: Int) {
                     val parentIdStr = parentId.toString()
-                    viewHierarchy[parentIdStr]?.clear()
-                    val children = viewHierarchy[parentIdStr] ?: return
+                    val children = viewHierarchy[parentIdStr]?.toList() ?: emptyList() // Copy list before clearing
+                    viewHierarchy[parentIdStr]?.clear() // Clear after getting copy
                     children.forEach { childIdStr ->
                         val childId = childIdStr.toIntOrNull()
                         if (childId != null) {
@@ -819,51 +822,65 @@ class DCMauiBridgeImpl private constructor() {
                         }
                     }
                 }
-                clearHierarchy(op.viewId)
-                cleanupHierarchyReferences(op.viewId.toString())
-            }
-            
-            if (deleteOps.isNotEmpty()) {
-                Log.d(TAG, "🗑️ ANDROID_BATCH: Delete phase completed - ${deleteOps.size} views removed from layout tree and registry")
+                try {
+                    clearHierarchy(op.viewId)
+                    cleanupHierarchyReferences(op.viewId.toString())
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error clearing hierarchy for viewId=${op.viewId}", e)
+                    // Continue - hierarchy cleanup is not critical
+                }
             }
             
             // Execute phase - process all operations
+            // CRITICAL: Wrap each operation in try-catch to prevent one failure from blocking others
             // Now create new views - old views are already removed from layout tree
             createOps.forEach { op ->
-                createView(op.viewId, op.viewType, op.propsJson)
+                try {
+                    createView(op.viewId, op.viewType, op.propsJson)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error creating view ${op.viewId} of type ${op.viewType}", e)
+                    // Continue with other operations
+                }
             }
             
             updateOps.forEach { op ->
-                updateView(op.viewId, op.propsJson)
+                try {
+                    updateView(op.viewId, op.propsJson)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error updating view ${op.viewId}", e)
+                    // Continue with other operations
+                }
             }
             
             // Process setChildren before attachView to ensure base hierarchy is correct
             setChildrenOps.forEach { op ->
-                setChildren(op.viewId, op.childrenIds)
+                try {
+                    setChildren(op.viewId, op.childrenIds)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error setting children for view ${op.viewId}", e)
+                    // Continue with other operations
+                }
             }
             
             attachOps.forEach { op ->
-                Log.d(TAG, "🔍 BATCH_COMMIT: Attaching viewId=${op.childId} to parentId=${op.parentId} at index=${op.index}")
-                val success = attachView(op.childId, op.parentId, op.index)
-                Log.d(TAG, "   ✅ attachView result: $success")
-                val childView = ViewRegistry.shared.getView(op.childId)
-                val parentView = ViewRegistry.shared.getView(op.parentId)
-                Log.d(TAG, "   After attach: child exists=${childView != null}, hasParent=${childView?.parent != null}, parent exists=${parentView != null}, parent childCount=${(parentView as? ViewGroup)?.childCount}")
+                try {
+                    attachView(op.childId, op.parentId, op.index)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error attaching view ${op.childId} to parent ${op.parentId}", e)
+                    // Continue with other operations
+                }
             }
             
             // 🔧 FIX: Finally remove ALL old views from parent AFTER layout tree removal
             // This ensures layout is stable before removing from hierarchy
             if (viewsToRemoveSet.isNotEmpty()) {
-                Log.d(TAG, "🗑️ ANDROID_BATCH: Removing ${viewsToRemoveSet.size} old views from parent (after layout tree removal)")
                 viewsToRemoveSet.forEach { view ->
                     val parentView = view.parent as? android.view.ViewGroup
                     if (parentView != null) {
                         parentView.removeView(view)
-                        Log.d(TAG, "✅ ANDROID_BATCH: View removed from parent")
                     }
                 }
                 viewsToRemoveSet.clear()
-                Log.d(TAG, "✅ ANDROID_BATCH: All old views removed from parent")
             }
             
             eventOps.forEach { op ->
@@ -874,26 +891,13 @@ class DCMauiBridgeImpl private constructor() {
             val screenWidth = displayMetrics.widthPixels.toFloat()
             val screenHeight = displayMetrics.heightPixels.toFloat()
             
-            Log.d(TAG, "🎯 BATCH_COMMIT: Starting layout calculation - screen size: ${screenWidth}x${screenHeight}")
-            
-            // DEBUG: Log view registry state
-            val allViewIds = ViewRegistry.shared.allViewIds
-            Log.d(TAG, "🎯 BATCH_COMMIT: ViewRegistry has ${allViewIds.size} views: $allViewIds")
-            
             val rootView = ViewRegistry.shared.getView(0)
             rootView?.let { root ->
-                Log.d(TAG, "🎯 BATCH_COMMIT: Root view found, measuring...")
-                Log.d(TAG, "🎯 BATCH_COMMIT: Root view current state: left=${root.left}, top=${root.top}, width=${root.width}, height=${root.height}, visibility=${root.visibility}, alpha=${root.alpha}")
-                Log.d(TAG, "🎯 BATCH_COMMIT: Root view attached to window: ${root.isAttachedToWindow}, hasParent=${root.parent != null}, parentType=${root.parent?.javaClass?.simpleName}")
-                Log.d(TAG, "🎯 BATCH_COMMIT: Root view rootView: ${root.rootView != null}, rootViewType=${root.rootView?.javaClass?.simpleName}")
-                
                 // CRITICAL: Ensure root view is visible and has correct dimensions
                 if (root.visibility != View.VISIBLE) {
-                    Log.w(TAG, "⚠️ BATCH_COMMIT: Root view is not VISIBLE! Setting to VISIBLE...")
                     root.visibility = View.VISIBLE
                 }
                 if (root.alpha < 1.0f) {
-                    Log.w(TAG, "⚠️ BATCH_COMMIT: Root view alpha is ${root.alpha}! Setting to 1.0...")
                     root.alpha = 1.0f
                 }
                 
@@ -901,7 +905,6 @@ class DCMauiBridgeImpl private constructor() {
                     View.MeasureSpec.makeMeasureSpec(screenWidth.toInt(), View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(screenHeight.toInt(), View.MeasureSpec.EXACTLY)
                 )
-                Log.d(TAG, "🎯 BATCH_COMMIT: Root view measured: (${root.measuredWidth}, ${root.measuredHeight})")
                 
                 // CRITICAL: Layout root view BEFORE calling calculateAndApplyLayout
                 // This ensures the root view has correct dimensions when Yoga calculates child layouts
@@ -909,55 +912,24 @@ class DCMauiBridgeImpl private constructor() {
                 if (root.left != rootFrame.left || root.top != rootFrame.top ||
                     root.width != rootFrame.width() || root.height != rootFrame.height()) {
                     root.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
-                    Log.d(TAG, "🎯 BATCH_COMMIT: Root view laid out to: (${root.left}, ${root.top}, ${root.width}, ${root.height})")
-                } else {
-                    Log.d(TAG, "🎯 BATCH_COMMIT: Root view already has correct layout: (${root.left}, ${root.top}, ${root.width}, ${root.height})")
                 }
-            } ?: Log.e(TAG, "🎯 BATCH_COMMIT: Root view (0) not found!")
-            
-            // DEBUG: Log Yoga shadow tree state before layout
-            val rootShadowNode = YogaShadowTree.shared.getShadowNode(0)
-            Log.d(TAG, "🎯 BATCH_COMMIT: Root shadow node exists: ${rootShadowNode != null}")
-            rootShadowNode?.let {
-                Log.d(TAG, "🎯 BATCH_COMMIT: Root shadow node frame: ${it.frame}")
-                Log.d(TAG, "🎯 BATCH_COMMIT: Root shadow node availableSize: ${it.availableSize}")
+            } ?: run {
+                Log.e(TAG, "Root view (0) not found!")
             }
             
-            Log.d(TAG, "🎯 BATCH_COMMIT: Calling calculateAndApplyLayout...")
-            Log.d(TAG, "🎯 BATCH_COMMIT: Before layout - checking all views:")
-            ViewRegistry.shared.allViewIds.forEach { viewId ->
-                    val view = ViewRegistry.shared.getView(viewId)
-                Log.d(TAG, "   viewId=$viewId: exists=${view != null}, hasParent=${view?.parent != null}, visibility=${view?.visibility}, alpha=${view?.alpha}, frame=(${view?.left}, ${view?.top}, ${view?.width}, ${view?.height})")
-            }
-            
-            // CRITICAL DEBUG: Check if root view exists and is attached
-            val rootViewBeforeLayout = ViewRegistry.shared.getView(0)
-            Log.d(TAG, "🎯 BATCH_COMMIT: Root view before layout: exists=${rootViewBeforeLayout != null}, attached=${rootViewBeforeLayout?.isAttachedToWindow}, dimensions=${rootViewBeforeLayout?.width}x${rootViewBeforeLayout?.height}")
-            
-            // CRITICAL DEBUG: Check Yoga shadow tree state
-            val rootShadowNodeBeforeLayout = YogaShadowTree.shared.getShadowNode(0)
-            Log.d(TAG, "🎯 BATCH_COMMIT: Root shadow node before layout: exists=${rootShadowNodeBeforeLayout != null}, frame=${rootShadowNodeBeforeLayout?.frame}, availableSize=${rootShadowNodeBeforeLayout?.availableSize}")
-            
-            // CRITICAL DEBUG: Check if layout calculation is blocked
-            Log.d(TAG, "🎯 BATCH_COMMIT: About to call calculateAndApplyLayout - screenWidth=$screenWidth, screenHeight=$screenHeight")
-            Log.d(TAG, "🎯 BATCH_COMMIT: Stack trace:")
-            Thread.currentThread().stackTrace.take(10).forEach { 
-                Log.d(TAG, "   at ${it.className}.${it.methodName}(${it.fileName}:${it.lineNumber})")
-            }
-            
+            // CRITICAL: Layout calculation must never hang or throw uncaught exceptions
+            // If it fails, we continue - views will be laid out on next frame
+            // This ensures button presses and other interactions remain snappy
             try {
-                Log.d(TAG, "🎯 BATCH_COMMIT: CALLING calculateAndApplyLayout NOW...")
                 val layoutSuccess = YogaShadowTree.shared.calculateAndApplyLayout(screenWidth, screenHeight)
-                Log.d(TAG, "🎯 BATCH_COMMIT: calculateAndApplyLayout returned: $layoutSuccess")
-                Log.d(TAG, "🎯 BATCH_COMMIT: After layout - checking all views:")
-                ViewRegistry.shared.allViewIds.forEach { viewId ->
-                    val view = ViewRegistry.shared.getView(viewId)
-                    Log.d(TAG, "   viewId=$viewId: exists=${view != null}, hasParent=${view?.parent != null}, visibility=${view?.visibility}, alpha=${view?.alpha}, frame=(${view?.left}, ${view?.top}, ${view?.width}, ${view?.height})")
+                if (!layoutSuccess) {
+                    // Layout may be deferred - not a fatal error, will happen next frame
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ BATCH_COMMIT: calculateAndApplyLayout threw exception!", e)
-                e.printStackTrace()
-                throw e // Re-throw to prevent silent failure
+                // CRITICAL: Don't re-throw - log and continue
+                // A layout failure shouldn't crash the app or block the batch update
+                Log.e(TAG, "calculateAndApplyLayout threw exception (non-fatal)", e)
+                // Continue - views will be laid out on next frame or next batch update
             }
             
             // CRITICAL: Views are made visible INSIDE calculateAndApplyLayout after layouts are applied
@@ -965,26 +937,37 @@ class DCMauiBridgeImpl private constructor() {
             // This matches iOS behavior where calculateLayoutNow() makes views visible after layout completes
             
             // Invalidate all views to ensure they redraw with new layouts
+            // CRITICAL: Wrap in try-catch to prevent crashes during invalidation
             rootView?.let { root ->
-                fun invalidateAll(v: View) {
-                    v.invalidate()
-                    if (v is ViewGroup) {
-                        for (i in 0 until v.childCount) {
-                            invalidateAll(v.getChildAt(i))
+                try {
+                    fun invalidateAll(v: View) {
+                        try {
+                            v.invalidate()
+                            if (v is ViewGroup) {
+                                for (i in 0 until v.childCount) {
+                                    try {
+                                        invalidateAll(v.getChildAt(i))
+                                    } catch (e: Exception) {
+                                        Log.w(TAG, "Error invalidating child at index $i", e)
+                                        // Continue with other children
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error invalidating view", e)
+                            // Continue with other views
                         }
                     }
+                    invalidateAll(root)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error during view invalidation (non-fatal)", e)
+                    // Continue - invalidation is not critical for app functionality
                 }
-                invalidateAll(root)
-                Log.d(TAG, "🎯 BATCH_COMMIT: Invalidated all views for redraw")
             }
             
-            Log.e(TAG, "🔥🔥🔥 commitBatchUpdate: SUCCESS - returning true")
             return true
         } catch (e: Exception) {
-            Log.e(TAG, "❌❌❌ commitBatchUpdate: FAILED with exception", e)
-            e.printStackTrace()
-            Log.e(TAG, "❌❌❌ Exception type: ${e.javaClass.name}")
-            Log.e(TAG, "❌❌❌ Exception message: ${e.message}")
+            Log.e(TAG, "commitBatchUpdate failed with exception", e)
             return false
         }
     }
@@ -1006,14 +989,12 @@ class DCMauiBridgeImpl private constructor() {
     }
 
     fun clearAll() {
-        Log.d(TAG, "🔥 DCF_ENGINE: Clearing DCMauiBridgeImpl")
         try {
             childToParent.clear()
             viewHierarchy.clear()
             componentInstanceCache.clear()
-            Log.d(TAG, "🔥 DCF_ENGINE: DCMauiBridgeImpl cleared successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "🔥 DCF_ENGINE: Error clearing DCMauiBridgeImpl", e)
+            Log.e(TAG, "Error clearing DCMauiBridgeImpl", e)
         }
     }
 

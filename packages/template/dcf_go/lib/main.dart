@@ -97,7 +97,7 @@ class DotCorrLanding extends DCFStatelessComponent {
   DCFComponentNode render() {
     return DCFScrollView(
       layout: DCFLayout(width: '100%', height: '100%'),
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
       scrollContent: [
         NavigationBar(onToggleExamples: onToggleExamples),
         HeroSection(),
@@ -206,7 +206,7 @@ class HeroSection extends DCFStatefulComponent {
         styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
         children: [
           DCFButton(
-            styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
+            styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
             onPress: (data) {
               showTest.setState(!showTest.state);
             },
@@ -214,7 +214,7 @@ class HeroSection extends DCFStatefulComponent {
               DCFText(
                 content: textLength,
                 textProps: DCFTextProps(fontSize: 20),
-                styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
+                styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
               ),
             ],
             layout: DCFLayout(width: '100%', height: 50, padding: 2),
@@ -362,7 +362,7 @@ class HeroSection extends DCFStatefulComponent {
                             gap: 12,
                           ),
                           styleSheet: DCFStyleSheet(
-                            backgroundColor: DCFColors.red,
+                            backgroundColor: DCFColors.black,
                             borderRadius: 2, // Small radius like web
                           ),
                           onPress: (data) {

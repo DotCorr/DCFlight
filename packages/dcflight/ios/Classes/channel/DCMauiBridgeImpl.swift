@@ -517,8 +517,6 @@ import Foundation
         
         // Execute phase - process all operations with minimal overhead
         do {
-            print("📊 iOS_BATCH: Processing batch - deletes: \(deleteOps.count), creates: \(createOps.count), updates: \(updateOps.count), attaches: \(attachOps.count)")
-            
             let startTime = CFAbsoluteTimeGetCurrent()
             
             // 🔧 FIX: Delete phase - remove from layout tree FIRST, before creating new views

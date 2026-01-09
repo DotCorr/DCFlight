@@ -44,39 +44,29 @@ internal object ScrollViewKey {
 class DCFCustomScrollView(context: Context) : NestedScrollView(context) {
     var centerContent: Boolean = false
     
+    // CRITICAL: Flag to prevent layout loops when setting expectedContentHeight during measurement
+    private var isMeasuring = false
+    
+    // CRITICAL: Backing field for expectedContentHeight to allow direct setting during measurement
+    private var _expectedContentHeight: Int = 0
+    
     /**
      * Expected content height from Yoga layout.
      * Set by DCFScrollContentViewComponent when Yoga calculates the layout.
      * Used in measureChildWithMargins() to ensure NestedScrollView knows the correct content size.
      */
-    var expectedContentHeight: Int = 0
+    var expectedContentHeight: Int
+        get() = _expectedContentHeight
         set(value) {
-            if (field != value) {
-                val oldValue = field
-                field = value
-                Log.d("DCFCustomScrollView", "📏 expectedContentHeight changed: $oldValue -> $value")
+            if (_expectedContentHeight != value) {
+                _expectedContentHeight = value
                 
-                // CRITICAL: Force complete re-measurement when height changes
-                // This ensures NestedScrollView recalculates its scroll bounds
-                if (value > 0) {
-                    // Invalidate measurement cache and trigger full re-layout
-                    invalidate()
-                    forceLayout()
+                // CRITICAL: Only trigger re-layout if we're NOT currently measuring
+                // This prevents infinite layout loops where setting expectedContentHeight
+                // triggers requestLayout() which calls onMeasure() which sets expectedContentHeight again
+                if (value > 0 && !isMeasuring) {
+                    // Single layout request - no recursive calls
                     requestLayout()
-                    
-                    // Also force re-layout on child (content view) if present
-                    if (childCount > 0) {
-                        val child = getChildAt(0)
-                        child?.invalidate()
-                        child?.forceLayout()
-                        child?.requestLayout()
-                    }
-                    
-                    // Post another layout request to ensure it happens after current frame
-                    post {
-                        forceLayout()
-                        requestLayout()
-                    }
                 }
             }
         }
@@ -104,52 +94,42 @@ class DCFCustomScrollView(context: Context) : NestedScrollView(context) {
         parentHeightMeasureSpec: Int,
         heightUsed: Int
     ) {
-        // If we have an expected content height from Yoga, use it
-        if (expectedContentHeight > 0) {
-            val lp = child.layoutParams as MarginLayoutParams
-            
-            // Calculate width spec normally
-            val childWidthMeasureSpec = getChildMeasureSpec(
-                parentWidthMeasureSpec,
-                paddingLeft + paddingRight + lp.leftMargin + lp.rightMargin + widthUsed,
-                lp.width
-            )
-            
-            // Use expected height from Yoga instead of UNSPECIFIED
-            val childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(
-                expectedContentHeight,
-                MeasureSpec.EXACTLY
-            )
-            
-            child.measure(childWidthMeasureSpec, childHeightMeasureSpec)
-            Log.d("DCFCustomScrollView", "📏 measureChildWithMargins: Using expectedContentHeight=$expectedContentHeight, child measured to ${child.measuredWidth}x${child.measuredHeight}")
-        } else {
-            // ROTATION FIX: If expectedContentHeight is 0, let child measure itself first
-            // This handles the initial measurement before expectedContentHeight is set
-            // The child (DCFScrollContentView) will measure its children and return the correct height
-            super.measureChildWithMargins(child, parentWidthMeasureSpec, widthUsed, parentHeightMeasureSpec, heightUsed)
-            
-            // CRITICAL: If child measured to a non-zero height, capture it as expectedContentHeight
-            // This ensures subsequent measurements use the correct height immediately
-            // This is the key fix - we capture the measured height from the first measurement
-            // and use it for subsequent measurements, matching what rotation does
-            // Rotation works because it triggers a full layout pass where children are already
-            // added and measured, so expectedContentHeight gets set correctly
-            if (child.measuredHeight > 0 && expectedContentHeight == 0) {
-                expectedContentHeight = child.measuredHeight
-                Log.d("DCFCustomScrollView", "📏 measureChildWithMargins: ROTATION FIX - Captured measured height=${child.measuredHeight} as expectedContentHeight (initial measurement, matches rotation behavior)")
+        // CRITICAL: Set flag to prevent layout loops
+        isMeasuring = true
+        try {
+            // If we have an expected content height from Yoga, use it
+            if (expectedContentHeight > 0) {
+                val lp = child.layoutParams as MarginLayoutParams
                 
-                // Force re-measurement with the captured height
-                // This ensures NestedScrollView uses the correct height immediately
-                // Post to ensure it happens after the current layout pass
-                post {
-                    forceLayout()
-                    requestLayout()
-                    Log.d("DCFCustomScrollView", "📏 measureChildWithMargins: Requested re-measurement with captured expectedContentHeight=$expectedContentHeight")
+                // Calculate width spec normally
+                val childWidthMeasureSpec = getChildMeasureSpec(
+                    parentWidthMeasureSpec,
+                    paddingLeft + paddingRight + lp.leftMargin + lp.rightMargin + widthUsed,
+                    lp.width
+                )
+                
+                // Use expected height from Yoga instead of UNSPECIFIED
+                val childHeightMeasureSpec = MeasureSpec.makeMeasureSpec(
+                    expectedContentHeight,
+                    MeasureSpec.EXACTLY
+                )
+                
+                child.measure(childWidthMeasureSpec, childHeightMeasureSpec)
+            } else {
+                // ROTATION FIX: If expectedContentHeight is 0, let child measure itself first
+                // This handles the initial measurement before expectedContentHeight is set
+                super.measureChildWithMargins(child, parentWidthMeasureSpec, widthUsed, parentHeightMeasureSpec, heightUsed)
+                
+                // CRITICAL: If child measured to a non-zero height, capture it as expectedContentHeight
+                // Only set if different to avoid triggering layout loop
+                // Set directly to backing field without triggering setter's requestLayout
+                // We're already measuring, so we don't want to trigger another layout request
+                if (child.measuredHeight > 0 && _expectedContentHeight != child.measuredHeight) {
+                    _expectedContentHeight = child.measuredHeight
                 }
             }
-            
-            Log.d("DCFCustomScrollView", "📏 measureChildWithMargins: No expectedContentHeight initially, child measured to ${child.measuredWidth}x${child.measuredHeight}, expectedContentHeight now=$expectedContentHeight")
+        } finally {
+            isMeasuring = false
         }
     }
     
