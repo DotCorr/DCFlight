@@ -23,8 +23,6 @@ class AppRoot extends DCFStatefulComponent {
     // Use a fixed offset that works on both iOS and Android
     final buttonTop = safeAreaTop + 72;
     
-    // INVESTIGATION: Try wrapping content in a separate view to see if that helps
-    // This isolates the content change from the button
     return DCFView(
       layout: DCFLayout(width: '100%', height: '100%'),
       children: [
@@ -35,14 +33,14 @@ class AppRoot extends DCFStatefulComponent {
           children: [
             if (showExamples.state)
               StyleSheetExamplesScreen(
-                key: 'examples-screen',
+                // key: 'examples-screen',
                 onBack: () {
                   showExamples.setState(false);
                 },
               )
             else
               DotCorrLanding(
-                key: 'landing-screen',
+                // key: 'landing-screen',
                 onToggleExamples: () {
                   showExamples.setState(true);
                 },
