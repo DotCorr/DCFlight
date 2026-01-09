@@ -23,63 +23,71 @@ class AppRoot extends DCFStatefulComponent {
     // Use a fixed offset that works on both iOS and Android
     final buttonTop = safeAreaTop + 72;
     
+    // INVESTIGATION: Try wrapping content in a separate view to see if that helps
+    // This isolates the content change from the button
     return DCFView(
       layout: DCFLayout(width: '100%', height: '100%'),
       children: [
+        // Content wrapper - this changes when navigating
+        DCFView(
+          key: 'content-wrapper',
+          layout: DCFLayout(width: '100%', height: '100%'),
+          children: [
+            if (showExamples.state)
+              StyleSheetExamplesScreen(
+                key: 'examples-screen',
+                onBack: () {
+                  showExamples.setState(false);
+                },
+              )
+            else
+              DotCorrLanding(
+                key: 'landing-screen',
+                onToggleExamples: () {
+                  showExamples.setState(true);
+                },
+              ),
+          ],
+        ),
         
-        // Content
-        if (showExamples.state)
-          StyleSheetExamplesScreen(
-            onBack: () {
-              showExamples.setState(false);
-            },
-          )
-        else
-          DotCorrLanding(
-            onToggleExamples: () {
-              showExamples.setState(true);
-            },
-          ),
-          // Toggle Button - positioned absolutely in top-right
-        // Testing if absolute positioning works correctly on iOS
-       
-            DCFTouchableOpacity(
-               layout: DCFLayout(
+        // Toggle Button - positioned absolutely in top-right
+        // CRITICAL: This button must stay as the LAST child to ensure it renders on top
+        // INVESTIGATION: Adding key to preserve identity during reconciliation
+        DCFTouchableOpacity(
+          key: 'toggle-button',
+          layout: DCFLayout(
             position: DCFPositionType.absolute,
             absoluteLayout: AbsoluteLayout(
               top: buttonTop,
               right: 20,
             ),
-         padding: 12,
-                minWidth: 120, // Ensure button has minimum width
+            padding: 12,
+            minWidth: 120, // Ensure button has minimum width
           ),
-              onPress: (data) {
-                showExamples.setState(!showExamples.state);
-              },
-              styleSheet: DCFStyleSheet(
-                backgroundColor: DCFColors.blue500,
-                borderRadius: 8,
-                shadowColor: DCFColors.black,
-                shadowOpacity: 0.3,
-                shadowRadius: 6,
-                shadowOffsetX: 0,
-                shadowOffsetY: 3,
+          onPress: (data) {
+            showExamples.setState(!showExamples.state);
+          },
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFColors.blue500,
+            borderRadius: 8,
+            shadowColor: DCFColors.black,
+            shadowOpacity: 0.3,
+            shadowRadius: 6,
+            shadowOffsetX: 0,
+            shadowOffsetY: 3,
+          ),
+          children: [
+            DCFText(
+              content: showExamples.state ? '← Landing' : 'Examples →',
+              textProps: DCFTextProps(
+                fontSize: 14,
+                fontWeight: DCFFontWeight.bold,
               ),
-           
-              children: [
-                DCFText(
-                  content: showExamples.state ? '← Landing' : 'Examples →',
-                  textProps: DCFTextProps(
-                    fontSize: 14,
-                    fontWeight: DCFFontWeight.bold,
-                  ),
-                  styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
-                ),
-              ],
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
             ),
           ],
-        
-    
+        ),
+      ],
     );
   }
 }
