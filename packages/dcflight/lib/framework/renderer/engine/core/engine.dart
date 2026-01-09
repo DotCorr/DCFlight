@@ -5278,9 +5278,42 @@ class DCFEngine {
           _componentInstancesByProps[childPropsKey] = newChild;
         }
 
+        // 🔥 CRITICAL FIX: Preserve view ID BEFORE reconciliation for matched children
+        // This ensures stable children (like buttons) keep their view IDs even if reconciliation
+        // doesn't assign one. This makes the framework stable without requiring keys or wrappers.
+        // The Button should preserve its view ID even though DotCorrLanding is replaced.
+        final oldViewIdBeforeReconcile = oldChild.effectiveNativeViewId;
+        
         await _reconcile(oldChild, newChild);
         childViewId =
             newChild.effectiveNativeViewId ?? oldChild.effectiveNativeViewId;
+        
+        // 🔥 CRITICAL: If reconciliation didn't assign a view ID but old child had one,
+        // preserve it to prevent view loss. This is especially important for stable children.
+        if (childViewId == null && oldViewIdBeforeReconcile != null) {
+          childViewId = oldViewIdBeforeReconcile;
+          if (newChild is DCFElement) {
+            newChild.nativeViewId = childViewId;
+          } else if (newChild is DCFStatefulComponent ||
+              newChild is DCFStatelessComponent) {
+            newChild.contentViewId = childViewId;
+          }
+          // Update mapping to point to newChild
+          final nodeToMap = newChild is DCFElement
+              ? newChild
+              : (newChild.renderedNode is DCFElement
+                  ? newChild.renderedNode as DCFElement
+                  : newChild);
+          _nodesByViewId[childViewId!] = nodeToMap;
+          EngineDebugLogger.log('RECONCILE_SIMPLE_PRESERVED_VIEW_ID',
+              '✅ PRESERVED view ID for matched child (reconciliation didn\'t assign one)',
+              extra: {
+                'ViewId': childViewId,
+                'Index': newIndex,
+                'OldType': oldChild.runtimeType.toString(),
+                'NewType': newChild.runtimeType.toString(),
+              });
+        }
 
         // CRITICAL: After reconciling each child, IMMEDIATELY ensure the mapping points to newChild
         if (childViewId != null) {

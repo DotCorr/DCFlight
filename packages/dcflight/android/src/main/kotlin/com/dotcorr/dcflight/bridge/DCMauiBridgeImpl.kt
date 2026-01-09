@@ -617,6 +617,25 @@ class DCMauiBridgeImpl private constructor() {
                 Log.d(TAG, "   Removed child ${child.id} (no longer in children list)")
             }
             
+            // 🔥 CRITICAL: After setChildren completes, bring absolutely positioned views to front
+            // This ensures they appear above other views, especially during navigation
+            // This fixes the issue where the button disappears on Android when navigating to examples
+            for (childId in childrenIds) {
+                val childView = ViewRegistry.shared.getView(childId)
+                if (childView != null) {
+                    val shadowNode = YogaShadowTree.shared.getShadowNode(childId)
+                    if (shadowNode != null && shadowNode.yogaNode.positionType == com.facebook.yoga.YogaPositionType.ABSOLUTE) {
+                        parentViewGroup.bringChildToFront(childView)
+                        Log.d(TAG, "   ✅ Brought absolutely positioned view $childId to front")
+                        // Also ensure parent doesn't clip absolutely positioned children
+                        if (parentViewGroup is com.dotcorr.dcflight.components.DCFFrameLayout) {
+                            parentViewGroup.clipChildren = false
+                            parentViewGroup.clipToPadding = false
+                        }
+                    }
+                }
+            }
+            
             Log.d(TAG, "✅ setChildren: COMPLETE for viewId=$viewId - added: $addedCount, skipped: $skippedCount, removed: ${childrenToRemove.size}")
             true
         } catch (e: Exception) {
