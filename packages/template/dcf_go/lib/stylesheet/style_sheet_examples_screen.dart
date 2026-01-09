@@ -75,7 +75,7 @@ class StyleSheetExamplesScreen extends DCFStatelessComponent {
         ...exampleNames.map((name) {
           final example = StyleSheetExamplesRegistry.getExample(name);
           if (example == null) return DCFView(layout: DCFLayout(), children: []);
-
+          
           return example; // Render the example directly
         }).toList(),
       ],
