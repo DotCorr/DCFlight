@@ -2250,6 +2250,28 @@ class DCFEngine {
       }
     } else if (oldNode is DCFStatelessComponent &&
         newNode is DCFStatelessComponent) {
+      // 🚀 OPTIMIZATION: Early exit for DCFSuspense when shouldRender hasn't changed
+      // This prevents unnecessary reconciliation during navigation when screens haven't changed state
+      if (oldNode.runtimeType == newNode.runtimeType &&
+          oldNode.runtimeType.toString().contains('DCFSuspense')) {
+        try {
+          // Use reflection to check if shouldRender prop is the same
+          final oldShouldRender = (oldNode as dynamic).shouldRender;
+          final newShouldRender = (newNode as dynamic).shouldRender;
+          
+          if (oldShouldRender == newShouldRender) {
+            // shouldRender hasn't changed - skip reconciliation entirely
+            // Transfer view IDs and rendered node to preserve state
+            newNode.nativeViewId = oldNode.nativeViewId;
+            newNode.contentViewId = oldNode.contentViewId;
+            newNode.renderedNode = oldNode.renderedNode;
+            return;
+          }
+        } catch (e) {
+          // If reflection fails, continue with normal reconciliation
+        }
+      }
+      
       // Different component classes (e.g., DCFView vs DCFScrollView) mean different components
       // We need to reconcile their RENDERED elements, not the components themselves
       if (oldNode.runtimeType != newNode.runtimeType) {
