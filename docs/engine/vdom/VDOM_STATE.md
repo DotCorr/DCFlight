@@ -314,10 +314,18 @@ DCFView(
 ## Future Improvements
 
 Potential areas for future optimization:
-- More workers for very large trees (1000+ nodes)
-- Incremental reconciliation for extremely large trees
-- Better caching strategies
-- More granular performance metrics
+- **More workers for very large trees (1000+ nodes)**: Currently 2 workers handle most cases efficiently. Could scale to 4+ workers for extremely large trees.
+- **Incremental reconciliation for extremely large trees**: For trees with 1000+ nodes, could implement chunked reconciliation to maintain responsiveness.
+- **Better caching strategies**: Enhanced similarity cache with smarter eviction policies for better hit rates.
+- **More granular performance metrics**: Per-component reconciliation timing, isolate efficiency tracking, and memory usage profiling.
+
+### Recently Completed (2025)
+
+✅ **Lowered isolate threshold** (50 → 20 nodes) - More trees benefit from parallel processing  
+✅ **Direct replacement optimization** (100+ nodes, <20% similarity) - Instant navigation achieved  
+✅ **Optimized logging** - Debug logs removed for production performance  
+✅ **Android ScrollView timing fixes** - Fixed red background issue by setting `expectedContentHeight` before measurement  
+✅ **Layout loop prevention** - Added `isMeasuring` flag to prevent recursive `requestLayout()` calls
 
 ## Conclusion
 
