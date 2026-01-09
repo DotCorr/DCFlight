@@ -28,7 +28,7 @@ class AppRoot extends DCFStatefulComponent {
       children: [
         // Content wrapper - this changes when navigating
         DCFView(
-          key: 'content-wrapper',
+         
           layout: DCFLayout(width: '100%', height: '100%'),
           children: [
             if (showExamples.state)
