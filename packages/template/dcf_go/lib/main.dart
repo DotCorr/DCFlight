@@ -42,17 +42,17 @@ class AppRoot extends DCFStatefulComponent {
           ),
           // Toggle Button - positioned absolutely in top-right
         // Testing if absolute positioning works correctly on iOS
-        DCFView(
-          layout: DCFLayout(
+       
+            DCFTouchableOpacity(
+               layout: DCFLayout(
             position: DCFPositionType.absolute,
             absoluteLayout: AbsoluteLayout(
               top: buttonTop,
               right: 20,
             ),
-       
+         padding: 12,
+                minWidth: 120, // Ensure button has minimum width
           ),
-          children: [
-            DCFTouchableOpacity(
               onPress: (data) {
                 showExamples.setState(!showExamples.state);
               },
@@ -65,10 +65,7 @@ class AppRoot extends DCFStatefulComponent {
                 shadowOffsetX: 0,
                 shadowOffsetY: 3,
               ),
-              layout: DCFLayout(
-                padding: 12,
-                minWidth: 120, // Ensure button has minimum width
-              ),
+           
               children: [
                 DCFText(
                   content: showExamples.state ? '← Landing' : 'Examples →',
@@ -81,8 +78,8 @@ class AppRoot extends DCFStatefulComponent {
               ],
             ),
           ],
-        ),
-      ],
+        
+    
     );
   }
 }

@@ -22,10 +22,10 @@ class StyleSheetExamplesScreen extends DCFStatelessComponent {
       padding: 20,
     ),
   });
-
+    final exampleNames = StyleSheetExamplesRegistry.exampleNames;
   @override
   DCFComponentNode render() {
-    final exampleNames = StyleSheetExamplesRegistry.exampleNames;
+
 
     return DCFScrollView(
       layout: layouts['container']!,
