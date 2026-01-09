@@ -3210,14 +3210,32 @@ class DCFEngine {
         }
 
         // Commit batch update if we started it
+        // 🔥 CRITICAL: Always commit batch update, even if _reconcileElement created many views
+        // This ensures all queued attach operations are processed
         if (!wasBatchMode && _batchUpdateInProgress) {
+          print('✅ ISOLATES: Committing batch update after applying isolate diff');
           await commitBatchUpdate();
         }
-      } catch (e) {
-        // If we started batch mode, cancel it on error
+      } catch (e, stackTrace) {
+        print('❌ ISOLATES: Error in _applyIsolateDiff: $e');
+        print('❌ ISOLATES: Stack trace: $stackTrace');
+        // 🔥 CRITICAL: Even on error, try to commit batch update to prevent hanging
+        // This ensures queued attach operations are processed even if reconciliation fails
         if (!wasBatchMode && _batchUpdateInProgress) {
-          await _nativeBridge.cancelBatchUpdate();
-          _batchUpdateInProgress = false;
+          try {
+            print('⚠️ ISOLATES: Attempting to commit batch update after error to prevent hanging');
+            await commitBatchUpdate();
+          } catch (commitError) {
+            print('❌ ISOLATES: Failed to commit batch update after error: $commitError');
+            // Cancel batch update as last resort
+            try {
+              await _nativeBridge.cancelBatchUpdate();
+              _batchUpdateInProgress = false;
+            } catch (cancelError) {
+              print('❌ ISOLATES: Failed to cancel batch update: $cancelError');
+              _batchUpdateInProgress = false;
+            }
+          }
         }
         rethrow;
       }
