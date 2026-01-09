@@ -21,6 +21,8 @@ final int _maxWorkers = 4;
 - ✅ `_concurrentThreshold` = 5 (activates when 5+ updates pending)
 - ✅ Worker isolates infrastructure ready
 - ✅ Max 4 workers configured
+- ✅ Isolate threshold lowered to 20 nodes (from 50) for better performance
+- ✅ Direct replacement optimization for large dissimilar trees (100+ nodes, <20% similarity)
 
 ---
 
@@ -348,6 +350,16 @@ Future<void> shutdownConcurrentProcessing() async {
    - `isConcurrentProcessingOptimal` - Check if beneficial
    - `shutdownConcurrentProcessing()` - Cleanup
 
+7. **Isolate Reconciliation** ✅
+   - Lowered threshold to 20 nodes (from 50) for better performance
+   - More trees benefit from parallel processing
+   - Pre-spawned workers ready immediately
+
+8. **Direct Replacement Optimization** ✅
+   - For large dissimilar trees (100+ nodes, <20% similarity)
+   - Enables instant navigation between completely different screens
+   - Game changer for complex apps
+
 ---
 
 ## Code Locations
@@ -364,6 +376,8 @@ Future<void> shutdownConcurrentProcessing() async {
 | Stats API | `engine.dart` | 4085-4098 |
 | Optimal check | `engine.dart` | 4136-4140 |
 | Shutdown | `engine.dart` | 4142-4165 |
+| Isolate reconciliation | `engine.dart` | 2456-2481 |
+| Direct replacement | `engine.dart` | 1805-1841 |
 
 ---
 
@@ -377,8 +391,10 @@ Future<void> shutdownConcurrentProcessing() async {
 4. ✅ **Interruption** - High-priority can interrupt low-priority
 5. ✅ **Performance tracking** - Monitors efficiency
 6. ✅ **Public API** - Exposes stats and controls
+7. ✅ **Isolate reconciliation** - Lowered threshold to 20 nodes (from 50)
+8. ✅ **Direct replacement** - For large dissimilar trees (100+ nodes, <20% similarity) - instant navigation
 
-**The implementation is production-ready and actively used in the VDOM engine.**
+**The implementation is production-ready and actively used in the VDOM engine. Recent optimizations enable instant navigation for complex apps.**
 
 ---
 

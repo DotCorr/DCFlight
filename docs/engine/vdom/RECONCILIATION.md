@@ -463,7 +463,7 @@ _effectList.add(Effect(EffectType.update, viewId, props));
 _commitEffects(); // Applies all effects synchronously
 ```
 
-### 7. Dual Trees
+### 8. Dual Trees
 
 - **Current Tree**: Currently rendered UI
 - **WorkInProgress Tree**: Ongoing reconciliation

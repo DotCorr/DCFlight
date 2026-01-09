@@ -4,6 +4,7 @@
 
 DCFlight VDOM implements **React Fiber-inspired concurrent features** optimized for mobile, including:
 - **Isolate-based parallel reconciliation** for heavy trees (20+ nodes)
+- **Direct replacement optimization** for large dissimilar trees (100+ nodes, <20% similarity) - enables instant navigation
 - **Incremental rendering** with deadline-based scheduling
 - **Dual trees** (Current/WorkInProgress) for safe updates
 - **Effect list** for atomic commit phase
@@ -268,7 +269,8 @@ Each priority has a delay:
 ### DCFlight Concurrent Mode
 
 **Features:**
-- ✅ Isolate-based parallel reconciliation (50+ nodes)
+- ✅ Isolate-based parallel reconciliation (20+ nodes, lowered from 50)
+- ✅ Direct replacement for large dissimilar trees (100+ nodes, <20% similarity) - instant navigation
 - ✅ Incremental rendering with deadline-based scheduling
 - ✅ Dual trees (Current/WorkInProgress)
 - ✅ Effect list for atomic commit phase
@@ -279,6 +281,7 @@ Each priority has a delay:
 - ✅ LRU cache with eviction
 - ✅ Error recovery with retry strategies
 - ✅ Performance monitoring
+- ✅ Optimized logging (debug logs removed for production performance)
 - ❌ No time slicing (not needed - faster per operation)
 - ❌ No Suspense (not needed - mobile handles async differently)
 
