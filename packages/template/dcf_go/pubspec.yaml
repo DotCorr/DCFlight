@@ -34,7 +34,7 @@ dev_dependencies:
 # after updating the image_path, run
 # ```flutter pub get dart run icons_launcher:create```
 icons_launcher:
-  image_path: "assets/dcf/dcf.png"
+  image_path: "assets/dcf/dcf2.png"
   platforms:
     android:
       enable: true

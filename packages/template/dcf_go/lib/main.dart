@@ -3,20 +3,100 @@ import 'dart:math' as math;
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:dcf_go/stylesheet/style_sheet_examples_screen.dart';
 
 void main() async {
-  await DCFlight.go(app: DotCorrLanding());
+  await DCFlight.go(app: AppRoot());
+}
+
+/// App Root - Handles navigation between landing page and StyleSheet examples
+class AppRoot extends DCFStatefulComponent {
+  AppRoot({super.key});
+
+  @override
+  DCFComponentNode render() {
+    final showExamples = useState<bool>(false);
+    final screenUtils = ScreenUtilities.instance;
+    final safeAreaTop = screenUtils.safeAreaTop;
+    
+    // Position button below NavigationBar (which is ~72px tall including safe area)
+    // Use a fixed offset that works on both iOS and Android
+    final buttonTop = safeAreaTop + 72;
+    
+    return DCFView(
+      layout: DCFLayout(width: '100%', height: '100%'),
+      children: [
+        
+        // Content
+        if (showExamples.state)
+          StyleSheetExamplesScreen(
+            onBack: () {
+              showExamples.setState(false);
+            },
+          )
+        else
+          DotCorrLanding(
+            onToggleExamples: () {
+              showExamples.setState(true);
+            },
+          ),
+          // Toggle Button - positioned absolutely in top-right
+        // Testing if absolute positioning works correctly on iOS
+       
+            DCFTouchableOpacity(
+               layout: DCFLayout(
+            position: DCFPositionType.absolute,
+            absoluteLayout: AbsoluteLayout(
+              top: buttonTop,
+              right: 20,
+            ),
+         padding: 12,
+                minWidth: 120, // Ensure button has minimum width
+          ),
+              onPress: (data) {
+                showExamples.setState(!showExamples.state);
+              },
+              styleSheet: DCFStyleSheet(
+                backgroundColor: DCFColors.blue500,
+                borderRadius: 8,
+                shadowColor: DCFColors.black,
+                shadowOpacity: 0.3,
+                shadowRadius: 6,
+                shadowOffsetX: 0,
+                shadowOffsetY: 3,
+              ),
+           
+              children: [
+                DCFText(
+                  content: showExamples.state ? '← Landing' : 'Examples →',
+                  textProps: DCFTextProps(
+                    fontSize: 14,
+                    fontWeight: DCFFontWeight.bold,
+                  ),
+                  styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+                ),
+              ],
+            ),
+          ],
+        
+    
+    );
+  }
 }
 
 /// DotCorr Landing Page - Matching Web Design
 class DotCorrLanding extends DCFStatelessComponent {
+  final VoidCallback? onToggleExamples;
+  
+  DotCorrLanding({this.onToggleExamples, super.key});
+
   @override
   DCFComponentNode render() {
     return DCFScrollView(
       layout: DCFLayout(width: '100%', height: '100%'),
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
-      children: [
-        NavigationBar(),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
+      scrollContent: [
+        NavigationBar(onToggleExamples: onToggleExamples),
         HeroSection(),
         // EcosystemSection(),
         BuildersAndMachinesSection(),
@@ -29,6 +109,10 @@ class DotCorrLanding extends DCFStatelessComponent {
 }
 
 class NavigationBar extends DCFStatelessComponent {
+  final VoidCallback? onToggleExamples;
+  
+  NavigationBar({this.onToggleExamples, super.key});
+
   @override
   DCFComponentNode render() {
     final screenUtils = ScreenUtilities.instance;
@@ -45,7 +129,7 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.green,
+        backgroundColor: DCFColors.white,
         borderBottomWidth: 1,
         borderBottomColor: DCFColors.gray100,
       ),
@@ -90,6 +174,7 @@ class NavigationBar extends DCFStatelessComponent {
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
               ),
             ),
+  
           ],
         ),
       ],
@@ -118,6 +203,7 @@ class HeroSection extends DCFStatefulComponent {
         styleSheet: DCFStyleSheet(backgroundColor: DCFColors.white),
         children: [
           DCFButton(
+            styleSheet: DCFStyleSheet(backgroundColor: DCFColors.black),
             onPress: (data) {
               showTest.setState(!showTest.state);
             },
@@ -125,7 +211,7 @@ class HeroSection extends DCFStatefulComponent {
               DCFText(
                 content: textLength,
                 textProps: DCFTextProps(fontSize: 20),
-                styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
+                styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
               ),
             ],
             layout: DCFLayout(width: '100%', height: 50, padding: 2),
@@ -273,7 +359,7 @@ class HeroSection extends DCFStatefulComponent {
                             gap: 12,
                           ),
                           styleSheet: DCFStyleSheet(
-                            backgroundColor: DCFColors.red,
+                            backgroundColor: DCFColors.black,
                             borderRadius: 2, // Small radius like web
                           ),
                           onPress: (data) {

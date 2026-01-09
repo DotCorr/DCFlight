@@ -168,13 +168,15 @@ class DCFCustomScrollView: UIScrollView {
      * 
      * contentSize is determined by contentView.frame.size
      */
-    public var contentSize: CGSize {
-        if !CGSizeEqualToSize(_scrollView.contentSize, .zero) {
-            return _scrollView.contentSize
+    @objc public var contentSize: CGSize {
+        get {
+            if !CGSizeEqualToSize(_scrollView.contentSize, .zero) {
+                return _scrollView.contentSize
+            }
+            // Use contentView.frame.size directly
+            // Yoga has already calculated this, so we just use it
+            return _contentView?.frame.size ?? .zero
         }
-        // Use contentView.frame.size directly
-        // Yoga has already calculated this, so we just use it
-        return _contentView?.frame.size ?? .zero
     }
     
     /**
@@ -187,7 +189,6 @@ class DCFCustomScrollView: UIScrollView {
      */
     public func updateContentSizeFromContentView() {
         guard let contentView = _contentView else {
-            print("⚠️ DCFScrollView.updateContentSizeFromContentView: No contentView, setting contentSize to zero")
             _scrollView.contentSize = .zero
             return
         }
@@ -204,7 +205,6 @@ class DCFCustomScrollView: UIScrollView {
                 CATransaction.commit()
                 contentView.setNeedsLayout()
                 contentView.layoutIfNeeded()
-                print("⚠️ DCFScrollView.updateContentSizeFromContentView: Frame was zero, restored from pendingFrame=\(pendingFrame), actualFrame=\(contentView.frame)")
             }
         }
         
@@ -212,7 +212,6 @@ class DCFCustomScrollView: UIScrollView {
         // ScrollContentView is in the Yoga tree, so Yoga has already calculated its size
         // DCFScrollContentViewComponent.applyLayout sets contentView.frame from Yoga layout
         let contentSize = contentView.frame.size
-        print("🔍 DCFScrollView.updateContentSizeFromContentView: contentView.frame=\(contentView.frame), contentSize=\(contentSize), current scrollView.contentSize=\(_scrollView.contentSize), subviews.count=\(contentView.subviews.count)")
         
         if !CGSizeEqualToSize(_scrollView.contentSize, contentSize) {
             // When contentSize is set manually, ScrollView internals will reset
@@ -222,9 +221,6 @@ class DCFCustomScrollView: UIScrollView {
             let newOffset = calculateOffsetForContentSize(contentSize)
             _scrollView.contentSize = contentSize
             _scrollView.contentOffset = newOffset
-            print("✅ DCFScrollView.updateContentSizeFromContentView: Updated contentSize=\(contentSize), contentOffset=\(newOffset)")
-        } else {
-            print("ℹ️ DCFScrollView.updateContentSizeFromContentView: contentSize unchanged")
         }
     }
     
@@ -288,7 +284,6 @@ class DCFCustomScrollView: UIScrollView {
         // Remove existing contentView if it exists and is different
         // This prevents assertion errors when ScrollContentView is re-attached or replaced
         if let existingContentView = _contentView, existingContentView != view {
-            print("⚠️ DCFScrollView.insertContentView: Removing existing contentView before adding new one")
             existingContentView.removeFromSuperview()
             _contentView = nil
         }
@@ -298,7 +293,6 @@ class DCFCustomScrollView: UIScrollView {
         
         // If this is the same view, we're done (already attached)
         if _contentView == view {
-            print("🔍 DCFScrollView.insertContentView: ContentView already attached, skipping")
             return
         }
         
@@ -323,7 +317,6 @@ class DCFCustomScrollView: UIScrollView {
         
         // Verify the stored reference was set correctly
         let storedRef = objc_getAssociatedObject(view, &ScrollViewKey) as? DCFScrollView
-        print("🔍 DCFScrollView.insertContentView: Stored ScrollView reference, storedRef=\(storedRef != nil ? "set" : "nil"), self=\(self)")
         
         _scrollView.addSubview(view)
         
@@ -346,11 +339,9 @@ class DCFCustomScrollView: UIScrollView {
             CATransaction.commit()
             view.setNeedsLayout()
             view.layoutIfNeeded()
-            print("✅ DCFScrollView.insertContentView: Restored frame=\(frame) after addSubview (was \(frameBeforeAdd), pendingFrame=\(pendingFrame != nil ? String(describing: pendingFrame!) : "nil"))")
             // Update contentSize immediately since frame is valid
             updateContentSizeFromContentView()
         } else {
-            print("⚠️ DCFScrollView.insertContentView: No frame to restore - frameBeforeAdd=\(frameBeforeAdd), pendingFrame=\(pendingFrame != nil ? String(describing: pendingFrame!) : "nil") - will wait for applyLayout")
             // Set a flag so applyLayout knows to restore the frame and update contentSize
             objc_setAssociatedObject(view,
                                      UnsafeRawPointer(bitPattern: "needsFrameRestore".hashValue)!,
@@ -603,7 +594,7 @@ class DCFCustomScrollView: UIScrollView {
      * Refresh content insets based on layout guides.
      * Called automatically by DCFWrapperViewController when layout guides change.
      */
-    @objc public func refreshContentInset() {
+    public func refreshContentInset() {
         UIView.autoAdjustInsets(
             for: self,
             with: _scrollView,
@@ -611,4 +602,3 @@ class DCFCustomScrollView: UIScrollView {
         )
     }
 }
-

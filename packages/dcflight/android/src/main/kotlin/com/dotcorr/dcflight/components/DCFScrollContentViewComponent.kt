@@ -204,38 +204,46 @@ class DCFScrollContentViewComponent : DCFComponent() {
                 Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame was incorrect, restored to $frame, actualFrame=$actualFrame")
             }
             
-            // CRITICAL: Set expectedContentHeight on DCFCustomScrollView
-            // This is the key fix - it tells the scroll view the expected content height
-            // BEFORE measurement happens, so NestedScrollView knows the correct size
+            // 🔥 CRITICAL: Always set expectedContentHeight, even if it's the same
+            // This ensures ScrollView re-measures if it measured to 0 before
+            // This fixes the red background issue when navigating to examples
             if (frame.height() > 0) {
-                sv.scrollView.expectedContentHeight = frame.height()
-                Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Set expectedContentHeight=${frame.height()} on DCFCustomScrollView")
+                val newHeight = frame.height().toInt()
+                val customScrollView = sv.scrollView
+                val oldHeight = customScrollView.expectedContentHeight
+                
+                // 🔥 CRITICAL: Update content view's layout params BEFORE setting expectedContentHeight
+                // This ensures the content view has the correct size when ScrollView re-measures
+                // This fixes the red background issue when navigating to examples
+                if (view.layoutParams != null) {
+                    view.layoutParams.height = newHeight
+                    view.layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+                } else {
+                    view.layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        newHeight
+                    )
+                }
+                
+                customScrollView.expectedContentHeight = newHeight
+                
+                // Force re-measurement if ScrollView measured to 0 before
+                if (oldHeight == 0 && newHeight > 0) {
+                    Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: expectedContentHeight changed from 0 to $newHeight, forcing re-measurement (layout params updated)")
+                    // Use post to ensure layout params are applied before re-measurement
+                    customScrollView.post {
+                        customScrollView.requestLayout()
+                    }
+                }
             }
             
             val storedRefSet = view.getTag(scrollViewKey) != null
             Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Found ScrollView (stored=$storedRefSet), contentView.frame=$actualFrame, updating contentSize")
             sv.updateContentSizeFromContentView()
             
-            // 🔥 CRITICAL: Force complete re-measurement cycle on ScrollView
-            // This ensures NestedScrollView re-measures its child (ScrollContentView) after pendingFrame is set
-            // We need to force layout on both contentView and ScrollView to ensure measurement happens
-            // Post to next frame to ensure it happens after current layout pass completes
-            view.forceLayout()
-            view.requestLayout()
-            sv.scrollView.forceLayout()
-            sv.scrollView.requestLayout()
-            
-            // Also post async to ensure re-measurement happens in next layout pass
-            // This is critical because if ScrollView already measured with 0 height,
-            // we need to force it to re-measure in the next frame
-            Handler(Looper.getMainLooper()).post {
-                view.forceLayout()
-                view.requestLayout()
-                sv.scrollView.forceLayout()
-                sv.scrollView.requestLayout()
-                Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Forced re-measurement on ScrollView after pendingFrame was set")
-            }
-            Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout: Requested forceLayout+requestLayout on ScrollView to trigger re-measurement")
+            // CRITICAL: Only request layout if content size actually changed
+            // The expectedContentHeight setter already handles layout requests when needed
+            // No need for aggressive forceLayout/requestLayout calls that cause loops
         } ?: run {
             // If not found, the view might not be attached yet or stored reference wasn't set
             // Use async to retry after a brief delay to ensure attachment is complete
@@ -285,18 +293,19 @@ class DCFScrollContentViewComponent : DCFComponent() {
                 }
                 
                 foundScrollView?.let { sv ->
+                    val customScrollView = sv.scrollView
                     // CRITICAL: Set expectedContentHeight in async callback as well
-                    if (frame.height() > 0) {
-                        sv.scrollView.expectedContentHeight = frame.height()
-                        Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout (async): Set expectedContentHeight=${frame.height()}")
+                    // Only set if different to prevent layout loops
+                    if (frame.height() > 0 && customScrollView.expectedContentHeight != frame.height().toInt()) {
+                        customScrollView.expectedContentHeight = frame.height().toInt()
                     }
                     
                     Log.d(TAG, "✅ DCFScrollContentViewComponent.applyLayout (async): Found ScrollView, contentView.frame=$actualFrame, updating contentSize")
                     sv.updateContentSizeFromContentView()
                     
                     // Force re-measurement
-                    sv.scrollView.forceLayout()
-                    sv.scrollView.requestLayout()
+                    customScrollView.forceLayout()
+                    customScrollView.requestLayout()
                 } ?: run {
                     val storedRefSet = contentView.getTag(scrollViewKey) != null
                     Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout (async): Could not find ScrollView, contentView.parent=${contentView.parent?.javaClass?.simpleName ?: "nil"}, frame=$actualFrame, storedRef=$storedRefSet")
@@ -409,9 +418,116 @@ class DCFScrollContentViewComponent : DCFComponent() {
         // Rotation works because pendingFrame is already set from previous layout pass
         Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Added ${childViews.size} children (NOT requesting layout - will be done in applyLayout() after pendingFrame is set)")
         
-        // Only update if ScrollView found, but don't trigger measurement yet
+        // 🔥 CRITICAL: If ScrollView found, try to set expectedContentHeight immediately
+        // This ensures ScrollView knows the correct height even if it measures before applyLayout()
+        // This fixes the issue where navigation to examples shows red background
         scrollView?.let { sv ->
-            Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: ScrollView found, will update contentSize in applyLayout() after pendingFrame is set")
+            val customScrollView = sv.scrollView
+            val pendingFrameKey = "pendingFrame".hashCode()
+            val pendingFrame = view.getTag(pendingFrameKey) as? Rect
+            
+            if (pendingFrame != null && pendingFrame.height() > 0) {
+                // pendingFrame is available - set expectedContentHeight immediately
+                if (customScrollView.expectedContentHeight != pendingFrame.height().toInt()) {
+                    customScrollView.expectedContentHeight = pendingFrame.height().toInt()
+                    Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Set expectedContentHeight=${pendingFrame.height()} from pendingFrame (during setChildren)")
+                }
+            } else {
+                // pendingFrame not available yet - try to estimate from children
+                // This is a fallback for when NestedScrollView.onMeasure() is called before pendingFrame is set
+                // We measure children to get an approximate height
+                if (view is ViewGroup && view.childCount > 0) {
+                    var estimatedHeight = 0
+                    for (i in 0 until view.childCount) {
+                        val child = view.getChildAt(i)
+                        if (child.visibility == View.VISIBLE) {
+                            // Measure child if not already measured
+                            if (child.measuredHeight == 0 && child.measuredWidth == 0) {
+                                child.measure(
+                                    View.MeasureSpec.makeMeasureSpec(view.width.coerceAtLeast(0), View.MeasureSpec.AT_MOST),
+                                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                                )
+                            }
+                            estimatedHeight += child.measuredHeight
+                        }
+                    }
+                    
+                    // Only set if we got a reasonable estimate (at least some height)
+                    if (estimatedHeight > 0 && customScrollView.expectedContentHeight == 0) {
+                        customScrollView.expectedContentHeight = estimatedHeight
+                        Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Set estimated expectedContentHeight=$estimatedHeight from children (fallback, pendingFrame not available yet)")
+                        
+                        // 🔥 CRITICAL: Update content view's layout params to match estimated height
+                        // This ensures the content view has the correct size when ScrollView re-measures
+                        if (view.layoutParams != null) {
+                            view.layoutParams.height = estimatedHeight
+                            view.layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+                        } else {
+                            view.layoutParams = FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                estimatedHeight
+                            )
+                        }
+                        
+                        // 🔥 CRITICAL: Force re-measurement of ScrollView after setting expectedContentHeight
+                        // This fixes the red background issue when navigating to examples
+                        // The ScrollView might have measured to 0 before children were added
+                        // By setting expectedContentHeight and forcing re-measurement, we ensure it measures correctly
+                        customScrollView.post {
+                            // Force layout on content view first
+                            view.requestLayout()
+                            // Then force layout on ScrollView
+                            customScrollView.requestLayout()
+                            Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Forced re-measurement of ScrollView after setting expectedContentHeight=$estimatedHeight")
+                        }
+                    } else {
+                        Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: ScrollView found, will update contentSize in applyLayout() after pendingFrame is set (estimatedHeight=$estimatedHeight)")
+                    }
+                } else {
+                    Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: ScrollView found, will update contentSize in applyLayout() after pendingFrame is set (no children yet)")
+                }
+            }
+            
+            // 🔥 CRITICAL: Even if pendingFrame is not available, try to measure content view after children are added
+            // This is a last resort to prevent red background when navigating to examples
+            // Measure the content view with all its children to get actual height
+            if (view is ViewGroup && view.childCount > 0 && customScrollView.expectedContentHeight == 0) {
+                // Measure content view with all children
+                // Use parent's measured width if available, otherwise use screen width as fallback
+                val parentView = view.parent as? View
+                val availableWidth = when {
+                    parentView != null && parentView.measuredWidth > 0 -> parentView.measuredWidth
+                    parentView != null && parentView.width > 0 -> parentView.width
+                    else -> view.context.resources.displayMetrics.widthPixels
+                }
+                val widthSpec = View.MeasureSpec.makeMeasureSpec(
+                    availableWidth.coerceAtLeast(0),
+                    View.MeasureSpec.AT_MOST
+                )
+                val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                view.measure(widthSpec, heightSpec)
+                
+                if (view.measuredHeight > 0) {
+                    customScrollView.expectedContentHeight = view.measuredHeight
+                    if (view.layoutParams != null) {
+                        view.layoutParams.height = view.measuredHeight
+                        view.layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+                    } else {
+                        view.layoutParams = FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            view.measuredHeight
+                        )
+                    }
+                    Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Measured content view height=${view.measuredHeight}, set expectedContentHeight and layout params")
+                    
+                    // Force re-measurement
+                    customScrollView.post {
+                        view.requestLayout()
+                        customScrollView.requestLayout()
+                        Log.d(TAG, "✅ DCFScrollContentViewComponent.setChildren: Forced re-measurement after measuring content view (height=${view.measuredHeight})")
+                    }
+                }
+            }
         } ?: run {
             Log.w(TAG, "⚠️ DCFScrollContentViewComponent.setChildren: Could not find ScrollView")
         }

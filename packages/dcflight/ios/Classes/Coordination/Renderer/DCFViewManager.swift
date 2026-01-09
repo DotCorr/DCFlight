@@ -351,6 +351,15 @@ class DCFViewManager {
             targetView.addSubview(childView)
         }
         
+        // CRITICAL: After attaching, check if child is absolutely positioned
+        // If so, disable clipping on parent to allow absolutely positioned child to be visible outside bounds
+        // Check the Yoga node's position type directly
+        if let shadowView = YogaShadowTree.shared.getShadowView(for: childId),
+           YGNodeStyleGetPositionType(shadowView.yogaNode) == YGPositionType.absolute {
+            targetView.clipsToBounds = false
+            print("✅ DCFViewManager: Disabled clipping on parent (viewId=\(parentId)) for absolutely positioned child (viewId=\(childId))")
+        }
+        
         if !childIsScreen {
             DCFLayoutManager.shared.addChildNode(parentId: parentId, childId: childId, index: index)
         }

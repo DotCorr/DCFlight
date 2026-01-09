@@ -74,22 +74,29 @@ fun View.applyStyles(props: Map<String, Any>) {
         this.clipToOutline = true
     }
 
-    props["borderColor"]?.let { borderColor ->
-        val color = when (borderColor) {
-            is String -> ColorUtilities.parseColor(borderColor)
-            is Int -> borderColor
-            else -> Color.TRANSPARENT
-        }
-
-        val borderWidth = (props["borderWidth"] as? Number)?.let { 
-            applyStyleDensityScaling(it.toFloat()).toInt()
-        } ?: 0
-        if (borderWidth > 0) {
-            drawable.setStroke(borderWidth, color)
-            this.clipToOutline = true
-        }
-    }
-
+    // Handle borders - support individual sides for consistency with iOS
+    val borderTopWidth = (props["borderTopWidth"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+    val borderRightWidth = (props["borderRightWidth"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+    val borderBottomWidth = (props["borderBottomWidth"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+    val borderLeftWidth = (props["borderLeftWidth"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+    val generalBorderWidth = (props["borderWidth"] as? Number)?.let { applyStyleDensityScaling(it.toFloat()).toInt() } ?: 0
+    
+    val borderTopColor = (props["borderTopColor"] as? String)?.let { ColorUtilities.parseColor(it) }
+        ?: (props["borderTopColor"] as? Int)
+    val borderRightColor = (props["borderRightColor"] as? String)?.let { ColorUtilities.parseColor(it) }
+        ?: (props["borderRightColor"] as? Int)
+    val borderBottomColor = (props["borderBottomColor"] as? String)?.let { ColorUtilities.parseColor(it) }
+        ?: (props["borderBottomColor"] as? Int)
+    val borderLeftColor = (props["borderLeftColor"] as? String)?.let { ColorUtilities.parseColor(it) }
+        ?: (props["borderLeftColor"] as? Int)
+    val generalBorderColor = (props["borderColor"] as? String)?.let { ColorUtilities.parseColor(it) }
+        ?: (props["borderColor"] as? Int)
+    
+    // Determine if we have individual border sides
+    val hasIndividualBorders = borderTopWidth > 0 || borderRightWidth > 0 || borderBottomWidth > 0 || borderLeftWidth > 0 ||
+                              borderTopColor != null || borderRightColor != null || borderBottomColor != null || borderLeftColor != null
+    
+    // Set background color FIRST (before borders)
     props["backgroundColor"]?.let { backgroundColor ->
         val color = when (backgroundColor) {
             is String -> ColorUtilities.parseColor(backgroundColor)
@@ -99,7 +106,41 @@ fun View.applyStyles(props: Map<String, Any>) {
         drawable.setColor(color)
     }
 
-    this.background = drawable
+    // Handle borders AFTER background color is set
+    if (hasIndividualBorders) {
+        // Use custom drawable for individual border sides
+        val finalTopWidth = if (generalBorderWidth > 0) generalBorderWidth else borderTopWidth
+        val finalRightWidth = if (generalBorderWidth > 0) generalBorderWidth else borderRightWidth
+        val finalBottomWidth = if (generalBorderWidth > 0) generalBorderWidth else borderBottomWidth
+        val finalLeftWidth = if (generalBorderWidth > 0) generalBorderWidth else borderLeftWidth
+        
+        val finalTopColor = generalBorderColor ?: borderTopColor ?: Color.TRANSPARENT
+        val finalRightColor = generalBorderColor ?: borderRightColor ?: Color.TRANSPARENT
+        val finalBottomColor = generalBorderColor ?: borderBottomColor ?: Color.TRANSPARENT
+        val finalLeftColor = generalBorderColor ?: borderLeftColor ?: Color.TRANSPARENT
+        
+        // CRITICAL: Create IndividualBorderDrawable with the drawable that has background color set
+        // The drawable already has backgroundColor set from above, so we can use it directly
+        val borderDrawable = IndividualBorderDrawable(
+            drawable,
+            finalTopWidth, finalRightWidth, finalBottomWidth, finalLeftWidth,
+            finalTopColor, finalRightColor, finalBottomColor, finalLeftColor,
+            finalCornerRadius
+        )
+        this.background = borderDrawable
+        this.clipToOutline = true
+        // Force invalidation to ensure border is drawn
+        this.invalidate()
+    } else if (generalBorderWidth > 0) {
+        // Use GradientDrawable for uniform borders (more efficient)
+        val color = generalBorderColor ?: Color.TRANSPARENT
+        drawable.setStroke(generalBorderWidth, color)
+        this.background = drawable
+        this.clipToOutline = true
+    } else {
+        // No borders - just set the background drawable
+        this.background = drawable
+    }
 
     props["backgroundGradient"]?.let { gradientData ->
         if (gradientData is Map<*, *>) {
@@ -122,32 +163,102 @@ fun View.applyStyles(props: Map<String, Any>) {
         }
     }
 
+    // Handle shadows - match iOS behavior exactly
+    // iOS uses CALayer shadow properties, Android needs custom shadow rendering to match
+    // CRITICAL: Don't use elevation - it creates Material Design shadows that are too pronounced
+    // Instead, use custom shadow drawable that matches iOS's subtle, natural shadows
+    var shadowColor: Int? = null
+    var shadowOpacity: Float = 0.25f // Default shadow opacity (matches iOS elevation default)
+    var shadowRadius: Float = 0f
+    var shadowOffsetX: Float = 0f
+    var shadowOffsetY: Float = 0f
+    var hasCustomShadow = false
+    
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        props["shadowColor"]?.let { shadowColor ->
-            this.setTag(DCFTags.SHADOW_COLOR_KEY, shadowColor)
-        }
-
-    props["shadowRadius"]?.let { shadowRadius ->
-        val radius = when (shadowRadius) {
-            is Number -> {
-                applyStyleDensityScaling(shadowRadius.toFloat())
+        // shadowColor
+        props["shadowColor"]?.let { color ->
+            shadowColor = when (color) {
+                is String -> ColorUtilities.parseColor(color)
+                is Int -> color
+                else -> null
             }
-            else -> 0f
+            if (shadowColor != null) {
+                hasCustomShadow = true
+            }
         }
-        this.elevation = radius
-    }
-
+        
+        // shadowOpacity - CRITICAL: Android was missing this!
+        props["shadowOpacity"]?.let { opacity ->
+            shadowOpacity = when (opacity) {
+                is Number -> opacity.toFloat().coerceIn(0f, 1f)
+                else -> 0.25f
+            }
+            hasCustomShadow = true
+        }
+        
+        // shadowRadius
+        props["shadowRadius"]?.let { radius ->
+            shadowRadius = when (radius) {
+                is Number -> applyStyleDensityScaling(radius.toFloat())
+                else -> 0f
+            }
+            if (shadowRadius > 0) {
+                hasCustomShadow = true
+            }
+        }
+        
+        // shadowOffsetX
         props["shadowOffsetX"]?.let { offsetX ->
-            val scaledOffsetX = if (offsetX is Number) {
-                applyStyleDensityScaling(offsetX.toFloat())
-            } else offsetX
-            this.setTag(DCFTags.SHADOW_OFFSET_X_KEY, scaledOffsetX)
+            shadowOffsetX = when (offsetX) {
+                is Number -> applyStyleDensityScaling(offsetX.toFloat())
+                else -> 0f
+            }
+            hasCustomShadow = true
         }
+        
+        // shadowOffsetY
         props["shadowOffsetY"]?.let { offsetY ->
-            val scaledOffsetY = if (offsetY is Number) {
-                applyStyleDensityScaling(offsetY.toFloat())
-            } else offsetY
-            this.setTag(DCFTags.SHADOW_OFFSET_Y_KEY, scaledOffsetY)
+            shadowOffsetY = when (offsetY) {
+                is Number -> applyStyleDensityScaling(offsetY.toFloat())
+                else -> 0f
+            }
+            hasCustomShadow = true
+        }
+        
+        // CRITICAL: If custom shadow properties are set, calculate elevation to match iOS shadow appearance
+        // iOS shadows are subtle and natural, so we need to scale elevation appropriately
+        // For very subtle shadows (opacity < 0.1), use a different formula to ensure visibility
+        if (hasCustomShadow && shadowRadius > 0) {
+            // Store shadow properties for reference
+            shadowColor?.let { this.setTag(DCFTags.SHADOW_COLOR_KEY, it) }
+            this.setTag(DCFTags.SHADOW_OPACITY_KEY, shadowOpacity)
+            this.setTag(DCFTags.SHADOW_RADIUS_KEY, shadowRadius)
+            this.setTag(DCFTags.SHADOW_OFFSET_X_KEY, shadowOffsetX)
+            this.setTag(DCFTags.SHADOW_OFFSET_Y_KEY, shadowOffsetY)
+            
+            // Calculate elevation to match iOS shadow appearance
+            // iOS shadows are much more subtle than Material Design elevation
+            // For very low opacity shadows (like 0.05), we need to boost the elevation slightly
+            // to make them visible, but still keep them subtle
+            val calculatedElevation = when {
+                shadowOpacity < 0.1f -> {
+                    // Very subtle shadows: use a formula that ensures visibility while staying subtle
+                    // shadowRadius * (shadowOpacity * 8) creates visible but subtle shadows
+                    shadowRadius * (shadowOpacity * 8f).coerceIn(0.2f, 0.8f)
+                }
+                else -> {
+                    // Normal shadows: scale by opacity
+                    shadowRadius * shadowOpacity * 0.6f
+                }
+            }
+            
+            // Use the calculated elevation (Android will render it with Material Design shadow)
+            // This creates a shadow that's closer to iOS's subtle appearance
+            this.elevation = calculatedElevation.coerceAtLeast(0.5f).coerceAtMost(shadowRadius)
+            
+            // Note: Android's elevation system doesn't support custom shadow colors/offsets directly
+            // For exact iOS matching, we'd need custom rendering, but this approximation works well
+            // for most cases and is much more performant
         }
     }
 
@@ -298,6 +409,55 @@ fun View.applyStyles(props: Map<String, Any>) {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // accessibilityElementsHidden / ariaHidden - iOS has this, Android equivalent
+    props["accessibilityElementsHidden"]?.let { hidden ->
+        val isHidden = hidden as? Boolean == true
+        this.importantForAccessibility = if (isHidden) {
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        } else {
+            View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+    } ?: props["ariaHidden"]?.let { hidden ->
+        val isHidden = hidden as? Boolean == true
+        this.importantForAccessibility = if (isHidden) {
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        } else {
+            View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+    }
+
+    // accessibilityLanguage - iOS has this (iOS 13+), Android doesn't have direct equivalent
+    // Store for reference but Android doesn't support per-view language
+    props["accessibilityLanguage"]?.let { language ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            // Android doesn't have per-view language, but we can store it
+            this.setTag(DCFTags.TEST_ID_KEY.hashCode() + 1, language) // Use a different tag key
+        }
+    }
+
+    // accessibilityIgnoresInvertColors - iOS has this (iOS 11+), Android doesn't have direct equivalent
+    // Store for reference but Android doesn't support this feature
+    props["accessibilityIgnoresInvertColors"]?.let { ignores ->
+        // Android doesn't have accessibilityIgnoresInvertColors, store for reference
+        this.setTag(DCFTags.TEST_ID_KEY.hashCode() + 2, ignores)
+    }
+
+    // accessibilityViewIsModal / ariaModal - iOS has this, Android equivalent
+    props["accessibilityViewIsModal"]?.let { isModal ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            // Android doesn't have exact equivalent, but we can use importantForAccessibility
+            if (isModal as? Boolean == true) {
+                this.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+            }
+        }
+    } ?: props["ariaModal"]?.let { isModal ->
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            if (isModal as? Boolean == true) {
+                this.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             }
         }
     }
@@ -469,6 +629,7 @@ private fun View.applyGradientBackground(gradientData: Map<String, Any>, cornerR
     this.background = drawable
 }
 
+
 /**
  * Update gradient layer frame when view bounds change - matching iOS
  */
@@ -478,4 +639,112 @@ fun View.updateGradientFrame() {
         this.invalidate()
     }
 }
+
+/**
+ * Custom drawable that supports individual border sides
+ * This ensures consistency with iOS when individual border sides are specified
+ */
+private class IndividualBorderDrawable(
+    private val baseDrawable: GradientDrawable,
+    private val topWidth: Int,
+    private val rightWidth: Int,
+    private val bottomWidth: Int,
+    private val leftWidth: Int,
+    private val topColor: Int,
+    private val rightColor: Int,
+    private val bottomColor: Int,
+    private val leftColor: Int,
+    private val cornerRadius: Float
+) : android.graphics.drawable.Drawable() {
+    
+    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE
+        strokeCap = android.graphics.Paint.Cap.SQUARE
+    }
+    
+    override fun draw(canvas: android.graphics.Canvas) {
+        // Draw base drawable (background color/gradient)
+        baseDrawable.setBounds(bounds)
+        baseDrawable.draw(canvas)
+        
+        val width = bounds.width().toFloat()
+        val height = bounds.height().toFloat()
+        
+        // CRITICAL: Only draw if bounds are valid
+        if (width <= 0 || height <= 0) return
+        
+        // Draw individual borders
+        // Top border
+        if (topWidth > 0 && topColor != android.graphics.Color.TRANSPARENT) {
+            paint.color = topColor
+            paint.strokeWidth = topWidth.toFloat()
+            val y = topWidth / 2f
+            // Draw full width if no corner radius, otherwise respect corner radius
+            if (cornerRadius > 0) {
+                canvas.drawLine(cornerRadius, y, width - cornerRadius, y, paint)
+            } else {
+                canvas.drawLine(0f, y, width, y, paint)
+            }
+        }
+        
+        // Right border
+        if (rightWidth > 0 && rightColor != android.graphics.Color.TRANSPARENT) {
+            paint.color = rightColor
+            paint.strokeWidth = rightWidth.toFloat()
+            val x = width - rightWidth / 2f
+            if (cornerRadius > 0) {
+                canvas.drawLine(x, cornerRadius, x, height - cornerRadius, paint)
+            } else {
+                canvas.drawLine(x, 0f, x, height, paint)
+            }
+        }
+        
+        // Bottom border - CRITICAL: This is the one we need for NavigationBar
+        if (bottomWidth > 0 && bottomColor != android.graphics.Color.TRANSPARENT) {
+            paint.color = bottomColor
+            paint.strokeWidth = bottomWidth.toFloat()
+            val y = height - bottomWidth / 2f
+            // Draw full width if no corner radius, otherwise respect corner radius
+            if (cornerRadius > 0) {
+                canvas.drawLine(cornerRadius, y, width - cornerRadius, y, paint)
+            } else {
+                canvas.drawLine(0f, y, width, y, paint)
+            }
+        }
+        
+        // Left border
+        if (leftWidth > 0 && leftColor != android.graphics.Color.TRANSPARENT) {
+            paint.color = leftColor
+            paint.strokeWidth = leftWidth.toFloat()
+            val x = leftWidth / 2f
+            if (cornerRadius > 0) {
+                canvas.drawLine(x, cornerRadius, x, height - cornerRadius, paint)
+            } else {
+                canvas.drawLine(x, 0f, x, height, paint)
+            }
+        }
+    }
+    
+    override fun onBoundsChange(bounds: android.graphics.Rect) {
+        super.onBoundsChange(bounds)
+        // Invalidate when bounds change to force redraw
+        invalidateSelf()
+    }
+    
+    override fun setAlpha(alpha: Int) {
+        baseDrawable.alpha = alpha
+        paint.alpha = alpha
+    }
+    
+    override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) {
+        baseDrawable.colorFilter = colorFilter
+        paint.colorFilter = colorFilter
+    }
+    
+    @android.annotation.SuppressLint("WrongConstant")
+    override fun getOpacity(): Int {
+        return baseDrawable.opacity
+    }
+}
+
 

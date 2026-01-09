@@ -22,6 +22,8 @@ import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.DCFComposeWrapper
 import com.dotcorr.dcflight.layout.ViewRegistry
+import com.dotcorr.dcflight.layout.YogaShadowTree
+import com.facebook.yoga.YogaPositionType
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -491,6 +493,22 @@ class DCFLayoutManager private constructor() {
                 // CRITICAL FIX: Don't make visible here - batch visibility after ALL layouts are applied
                 // This prevents flash during reconciliation (views flash when visible but not yet laid out)
                 // Visibility will be set in batch after all layouts complete
+                
+                // 🔥 CRITICAL: Bring absolutely positioned views to front
+                // This ensures they appear above other views, especially during direct replacement (navigation)
+                // This fixes the issue where the button disappears on Android when navigating to examples
+                val shadowNode = YogaShadowTree.shared.getShadowNode(viewId)
+                if (shadowNode != null && shadowNode.yogaNode.positionType == YogaPositionType.ABSOLUTE) {
+                    val parent = view.parent
+                    if (parent is android.view.ViewGroup) {
+                        parent.bringChildToFront(view)
+                        // Also ensure parent doesn't clip absolutely positioned children
+                        if (parent is DCFFrameLayout) {
+                            parent.clipChildren = false
+                            parent.clipToPadding = false
+                        }
+                    }
+                }
 
                 // Only invalidate if layout actually changed to prevent flicker
                 val currentLeft = view.left.toFloat()

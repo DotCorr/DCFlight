@@ -15,6 +15,8 @@ object DCFTags {
     const val COMPONENT_TYPE = "dcf_component_type"
     const val GRADIENT_DRAWABLE = "dcf_gradient_drawable"
     const val SHADOW_COLOR = "dcf_shadow_color"
+    const val SHADOW_OPACITY = "dcf_shadow_opacity"
+    const val SHADOW_RADIUS = "dcf_shadow_radius"
     const val SHADOW_OFFSET_X = "dcf_shadow_offset_x"
     const val SHADOW_OFFSET_Y = "dcf_shadow_offset_y"
     const val HIT_SLOP_TOP = "dcf_hit_slop_top"
@@ -30,6 +32,8 @@ object DCFTags {
     val COMPONENT_TYPE_KEY = COMPONENT_TYPE.hashCode()
     val GRADIENT_DRAWABLE_KEY = GRADIENT_DRAWABLE.hashCode()
     val SHADOW_COLOR_KEY = SHADOW_COLOR.hashCode()
+    val SHADOW_OPACITY_KEY = SHADOW_OPACITY.hashCode()
+    val SHADOW_RADIUS_KEY = SHADOW_RADIUS.hashCode()
     val SHADOW_OFFSET_X_KEY = SHADOW_OFFSET_X.hashCode()
     val SHADOW_OFFSET_Y_KEY = SHADOW_OFFSET_Y.hashCode()
     val HIT_SLOP_TOP_KEY = HIT_SLOP_TOP.hashCode()

@@ -192,7 +192,7 @@ class DCFScrollView extends DCFStatelessComponent
   ComponentPriority get priority => ComponentPriority.high;
 
   /// Child nodes
-  final List<DCFComponentNode> children;
+  final List<DCFComponentNode> scrollContent;
 
   /// Whether to scroll horizontally
   final bool horizontal;
@@ -258,7 +258,7 @@ class DCFScrollView extends DCFStatelessComponent
   final Map<String, dynamic>? events;
 
   DCFScrollView({
-    required this.children,
+    required this.scrollContent,
     this.horizontal = false,
     this.layout = const DCFLayout(flex: 1),
     this.styleSheet = const DCFStyleSheet(),
@@ -392,8 +392,8 @@ class DCFScrollView extends DCFStatelessComponent
     DCFComponentNode contentView;
     
     // Check if first child is already a ScrollContentView (backwards compat)
-    if (children.isNotEmpty && children.first is DCFElement) {
-      final firstElement = children.first as DCFElement;
+    if (scrollContent.isNotEmpty && scrollContent.first is DCFElement) {
+      final firstElement = scrollContent.first as DCFElement;
       if (firstElement.type == 'ScrollContentView') {
         // User manually provided ScrollContentView - use it directly (backwards compat)
         contentView = firstElement;
@@ -409,7 +409,7 @@ class DCFScrollView extends DCFStatelessComponent
             // Setting height: '100%' would constrain it to ScrollView's height, preventing scrolling
           ),
           styleSheet: contentContainerStyle,
-          children: children,
+          children: scrollContent,
         ).render();
       }
     } else {
@@ -422,7 +422,7 @@ class DCFScrollView extends DCFStatelessComponent
           // Setting height: '100%' would constrain it to ScrollView's height, preventing scrolling
         ),
         styleSheet: contentContainerStyle,
-        children: children,
+        children: scrollContent,
       ).render();
     }
 

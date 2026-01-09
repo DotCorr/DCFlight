@@ -418,8 +418,6 @@ extension DCFLayoutManager {
             windowBounds = UIScreen.main.bounds
         }
         
-        print("🎯 DCFLayoutManager: calculateLayoutNow called - \(viewRegistry.count) views registered, window size: \(windowBounds.width)x\(windowBounds.height)")
-        
         let success = YogaShadowTree.shared.calculateAndApplyLayout(
             width: windowBounds.width,
             height: windowBounds.height
@@ -430,23 +428,16 @@ extension DCFLayoutManager {
             if let rootView = viewRegistry[0] {
                 rootView.isHidden = false
                 rootView.alpha = 1.0
-                print("✅ DCFLayoutManager: Root view (0) made visible")
-            } else {
-                print("⚠️ DCFLayoutManager: Root view (0) not found in registry")
             }
             
-            var visibleCount = 0
             for (viewId, view) in viewRegistry {
                 if viewId != 0 { // Root view already handled above
                     view.isHidden = false
                     view.alpha = 1.0
-                    visibleCount += 1
                 }
             }
-            
-            print("✅ DCFLayoutManager: Made \(visibleCount) child views visible after layout calculation (total: \(viewRegistry.count))")
         } else {
-            print("⚠️ DCFLayoutManager: Layout calculation returned false - retrying in 100ms")
+            // Layout calculation returned false - will retry
             // Retry layout calculation if it failed (might be due to reconciliation in progress)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 let retrySuccess = YogaShadowTree.shared.calculateAndApplyLayout(

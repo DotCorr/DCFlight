@@ -60,6 +60,7 @@ export 'framework/constants/layout/layout_properties.dart';
 export 'framework/constants/layout/layout_config.dart';
 export 'package:dcflight/framework/constants/layout/absolute_layout.dart';
 export 'framework/constants/style/style_properties.dart';
+export 'framework/constants/style/gradient.dart'; // Export DCFGradient
 export 'framework/constants/style/color_utils.dart';
 
 export 'framework/utils/screen_utilities.dart';

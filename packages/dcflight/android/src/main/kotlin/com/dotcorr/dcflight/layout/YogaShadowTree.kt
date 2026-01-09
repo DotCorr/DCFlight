@@ -90,8 +90,6 @@ class YogaShadowTree private constructor() {
         nodes["0"] = rootYogaNode
             nodeTypes["0"] = "View"
         
-        Log.d(TAG, "Initializing YogaShadowTree")
-        
         updateDensityScaleFactor()
     }
     
@@ -104,7 +102,6 @@ class YogaShadowTree private constructor() {
             val displayMetrics = Resources.getSystem().displayMetrics
             densityScaleFactor = displayMetrics.density
             
-            Log.d(TAG, "Density scale factor updated: $densityScaleFactor (density: ${displayMetrics.densityDpi} dpi)")
         } catch (e: Exception) {
             Log.w(TAG, "Failed to update density scale factor, using default 1.0", e)
             densityScaleFactor = 1.0f
@@ -153,8 +150,6 @@ class YogaShadowTree private constructor() {
         nodes[id] = node
         nodeTypes[id] = componentType
         shadowNodes[viewId] = shadowNode
-        
-        Log.d(TAG, "   Created shadow node: viewId=$viewId, initial frame=${shadowNode.frame}, yogaNode style: width=${node.width.value}, height=${node.height.value}, isMeasureDefined=${node.isMeasureDefined}")
         
         // CRITICAL: Text components set their own measure function in DCFTextShadowNode.init
         // Don't override it here - it uses getText() to collect text from children with spans
@@ -345,8 +340,6 @@ class YogaShadowTree private constructor() {
                         val measuredWidth = layout.width.toFloat()
                         val measuredHeight = layout.height.toFloat()
                         
-                        Log.d(TAG, "Measured Text node $nodeId: text length=${text.length}, constraints=${constraintWidth}x${constraintHeight}, layout=${measuredWidth}x${measuredHeight}")
-                        
                         return@setMeasureFunction YogaMeasureOutput.make(measuredWidth.toFloat(), measuredHeight.toFloat())
                     }
                     
@@ -444,17 +437,12 @@ class YogaShadowTree private constructor() {
         }
         
         if (screenRootIds.contains(childIdStr)) {
-            Log.d(TAG, "Skipping screen root child attachment")
             return
         }
         
         // DEBUG: Log parent and child state before adding
         val parentShadowNode = shadowNodes[parentId]
         val childShadowNode = shadowNodes[childId]
-        Log.d(TAG, "🔍 addChildNode: Adding child viewId=$childId to parent viewId=$parentId at index=$index")
-        Log.d(TAG, "   Parent (viewId=$parentId): frame=${parentShadowNode?.frame}, yoga style: width=${parentNode.width.value}, height=${parentNode.height.value}, flexDirection=${parentNode.flexDirection}")
-        Log.d(TAG, "   Child (viewId=$childId): frame=${childShadowNode?.frame}, yoga style: width=${childNode.width.value}, height=${childNode.height.value}")
-        
         nodeParents[childIdStr]?.let { oldParentId ->
             nodes[oldParentId]?.let { oldParentNode ->
                 safeRemoveChildFromParent(oldParentNode, childNode, childIdStr)
@@ -483,9 +471,6 @@ class YogaShadowTree private constructor() {
                 setupMeasureFunction(childIdStr, childNode)
             }
             
-            Log.d(TAG, "✅ Added child: $childIdStr to parent: $parentIdStr at index: $safeIndex")
-            Log.d(TAG, "   After adding: parent childCount=${parentNode.childCount}, child parent=${childNode.parent != null}")
-            
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add child node", e)
         }
@@ -493,12 +478,10 @@ class YogaShadowTree private constructor() {
 
     @Synchronized
     fun removeNode(nodeId: String) {
-        if (isLayoutCalculating) {
-            mainHandler.postDelayed({
-                removeNode(nodeId)
-            }, 16) // Retry after 1 frame
-            return
-        }
+        // CRITICAL: Never block or defer - always proceed immediately
+        // Layout calculation and node removal can happen concurrently safely
+        // The @Synchronized annotation ensures thread safety
+        // This prevents all hangs during batch updates
         
         isReconciling = true
         
@@ -527,8 +510,6 @@ class YogaShadowTree private constructor() {
         nodeTypes.remove(nodeId)
         
         isReconciling = false
-        
-        Log.d(TAG, "Removed node: $nodeId")
     }
 
     private fun safeRemoveChildFromParent(parentNode: YogaNode, childNode: YogaNode, childId: String) {
@@ -596,9 +577,8 @@ class YogaShadowTree private constructor() {
                         // Verify measure function is set
                         val node = nodes[nodeId]
                         if (node != null) {
-                            Log.d(TAG, "✅ Set text content for viewId=$viewId: '$textValue' (length=${textValue.length}), isMeasureDefined=${node.isMeasureDefined}, childCount=${node.childCount}")
                         } else {
-                            Log.w(TAG, "⚠️ Node not found for viewId=$viewId")
+                            Log.w(TAG, "Node not found for viewId=$viewId")
                         }
                     }
                     "fontSize" -> {
@@ -660,53 +640,24 @@ class YogaShadowTree private constructor() {
 
     @Synchronized
     fun calculateAndApplyLayout(width: Float, height: Float): Boolean {
-        Log.e(TAG, "🔥🔥🔥 calculateAndApplyLayout: ENTRY POINT - width=$width, height=$height")
-        Log.e(TAG, "🔥🔥🔥 calculateAndApplyLayout: isReconciling=$isReconciling, isLayoutCalculating=$isLayoutCalculating")
-        Log.e(TAG, "🔥🔥🔥 calculateAndApplyLayout: Thread=${Thread.currentThread().name}, isMainThread=${Looper.getMainLooper().thread == Thread.currentThread()}")
-        Log.e(TAG, "🔥🔥🔥 calculateAndApplyLayout: Stack trace:")
-        Thread.currentThread().stackTrace.take(15).forEach { 
-            Log.e(TAG, "   at ${it.className}.${it.methodName}(${it.fileName}:${it.lineNumber})")
-        }
-        
-        Log.d(TAG, "🎯 calculateAndApplyLayout: START - width=$width, height=$height, isReconciling=$isReconciling, isLayoutCalculating=$isLayoutCalculating")
-        Log.d(TAG, "🎯 calculateAndApplyLayout: Thread=${Thread.currentThread().name}, isMainThread=${Looper.getMainLooper().thread == Thread.currentThread()}")
-        
-        // DEBUG: Log shadow tree state
-        Log.d(TAG, "🎯 calculateAndApplyLayout: Shadow tree state:")
-        Log.d(TAG, "   Total nodes: ${nodes.size}")
-        Log.d(TAG, "   Total shadow nodes: ${shadowNodes.size}")
-        Log.d(TAG, "   Root node exists: ${rootNode != null}")
-        Log.d(TAG, "   Root shadow node exists: ${rootShadowNode != null}")
-        
-        if (isReconciling) {
-            Log.e(TAG, "⚠️⚠️⚠️ Layout calculation deferred - currently reconciling")
-            return false
-        }
-        
+        // CRITICAL: Allow layout during reconciliation if it's safe
+        // Reconciliation (node removal) and layout calculation can happen concurrently
+        // as long as we're not modifying the same nodes
+        // Only block if layout is already calculating (prevent double calculation)
         if (isLayoutCalculating) {
-            Log.e(TAG, "⚠️⚠️⚠️ Layout calculation already in progress, skipping")
             return false
         }
+        
+        // Note: We allow layout during reconciliation now - this prevents UI lag
+        // Reconciliation (removing nodes) and layout (calculating positions) are independent
         
         isLayoutCalculating = true
         
         try {
             val rootShadowNode = this.rootShadowNode
             if (rootShadowNode == null) {
-                Log.e(TAG, "❌ Root shadow node not found")
-                Log.e(TAG, "   Available shadow nodes: ${shadowNodes.keys.sorted()}")
+                Log.e(TAG, "Root shadow node not found")
                 return false
-            }
-            
-            Log.d(TAG, "✅ Root shadow node found: viewId=${rootShadowNode.viewId}, current frame=${rootShadowNode.frame}")
-            Log.d(TAG, "   Root Yoga node childCount: ${rootShadowNode.yogaNode.childCount}")
-            
-            // CRITICAL: Log all children of root before layout to debug layout issues
-            Log.d(TAG, "   Root Yoga node children before layout:")
-            for (i in 0 until rootShadowNode.yogaNode.childCount) {
-                val child = rootShadowNode.yogaNode.getChildAt(i)
-                val childShadowNode = getShadowNode(child)
-                Log.d(TAG, "     Child $i: viewId=${childShadowNode?.viewId}, yoga style: width=${child.width.value} (unit=${child.width.unit}), height=${child.height.value} (unit=${child.height.unit})")
             }
             
             // Update root available size FIRST (matches iOS 1:1)
@@ -714,13 +665,10 @@ class YogaShadowTree private constructor() {
             // iOS does NOT set root frame before calculateLayout - it lets applyLayoutNode set it from Yoga's calculated values
             // Setting root frame before calculateLayout can cause coordinate system mismatches and negative child positions
             rootShadowNode.availableSize = PointF(width, height)
-            Log.d(TAG, "✅ Root availableSize set to ($width, $height)")
             
             // Calculate layout using shadow node's collectViewsWithUpdatedFrames (matches iOS 1:1)
             // The root frame will be set by applyLayoutNode from Yoga's calculated values
-            Log.d(TAG, "🔍 Calling collectViewsWithUpdatedFrames on root shadow node...")
             val viewsWithNewFrame = rootShadowNode.collectViewsWithUpdatedFrames()
-            Log.d(TAG, "✅ collectViewsWithUpdatedFrames returned ${viewsWithNewFrame.size} views with new frames")
             
             // CRITICAL FIX: Set pendingFrame on all views with new frames IMMEDIATELY on main thread
             // This ensures pendingFrame is available when NestedScrollView.onMeasure() is called
@@ -774,8 +722,45 @@ class YogaShadowTree private constructor() {
                                 
                                 scrollView?.let { sv ->
                                     if (shadowNode.frame.height() > 0) {
-                                        sv.scrollView.expectedContentHeight = shadowNode.frame.height().toInt()
-                                        Log.d(TAG, "✅ YogaShadowTree: Set expectedContentHeight=${shadowNode.frame.height()} on ScrollView for viewId=${shadowNode.viewId} (synchronously, before measurement)")
+                                        val newHeight = shadowNode.frame.height().toInt()
+                                        val customScrollView = sv.scrollView
+                                        val oldHeight = customScrollView.expectedContentHeight
+                                        val wasPlaceholder = oldHeight > 0 && oldHeight == view.context.resources.displayMetrics.heightPixels
+                                        
+                                        // 🔥 CRITICAL: Update content view's layout params BEFORE setting expectedContentHeight
+                                        // This ensures the content view has the correct size when ScrollView re-measures
+                                        // This fixes the red background issue when navigating to examples
+                                        if (view.layoutParams != null) {
+                                            view.layoutParams.height = newHeight
+                                            view.layoutParams.width = android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                                        } else {
+                                            view.layoutParams = android.widget.FrameLayout.LayoutParams(
+                                                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                                newHeight
+                                            )
+                                        }
+                                        
+                                        // 🔥 CRITICAL: Always set expectedContentHeight, even if it's the same
+                                        // This ensures ScrollView re-measures if it measured to 0 before
+                                        customScrollView.expectedContentHeight = newHeight
+                                        Log.d(TAG, "✅ YogaShadowTree: Set expectedContentHeight=$newHeight on ScrollView (synchronously, before measurement, layout params updated, wasPlaceholder=$wasPlaceholder)")
+                                        
+                                        // 🔥 CRITICAL: Force full layout pass if ScrollView already measured OR if updating from placeholder
+                                        // This fixes the red background issue when navigating to examples
+                                        // The ScrollView might have measured before pendingFrame was set, so we need to re-measure AND re-layout
+                                        if (customScrollView.measuredHeight == 0 || wasPlaceholder) {
+                                            Log.d(TAG, "✅ YogaShadowTree: Forcing full layout pass (measuredHeight=${customScrollView.measuredHeight}, wasPlaceholder=$wasPlaceholder, newHeight=$newHeight)")
+                                            // Use post to ensure layout params are applied before re-measurement
+                                            customScrollView.post {
+                                                // Force full layout pass: invalidate + requestLayout
+                                                customScrollView.invalidate()
+                                                customScrollView.requestLayout()
+                                                // Also request layout on parent DCFScrollView wrapper to ensure it's laid out
+                                                // The wrapper's onLayout will call updateContentSizeFromContentView automatically
+                                                sv.requestLayout()
+                                                Log.d(TAG, "✅ YogaShadowTree: Requested layout for ScrollView (wrapper's onLayout will update content size)")
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -788,20 +773,13 @@ class YogaShadowTree private constructor() {
                 try {
                     latch.await(100, java.util.concurrent.TimeUnit.MILLISECONDS)
                 } catch (e: InterruptedException) {
-                    Log.w(TAG, "⚠️ Interrupted while waiting for pendingFrame to be set", e)
+                    // Interrupted - continue anyway
                 }
             }
             
             if (viewsWithNewFrame.isEmpty()) {
-                Log.w(TAG, "⚠️ WARNING: No views with new frames collected! This might indicate a problem.")
-            } else {
-                Log.d(TAG, "📋 Views with new frames:")
-                viewsWithNewFrame.forEach { shadowNode ->
-                    Log.d(TAG, "   viewId=${shadowNode.viewId}, frame=${shadowNode.frame}")
-                }
+                Log.w(TAG, "No views with new frames collected - this might indicate a problem")
             }
-            
-            Log.d(TAG, "✅ Main root layout calculated successfully")
             
             for ((screenId, screenRoot) in screenRoots) {
                 screenRoot.setWidth(width)
@@ -809,7 +787,6 @@ class YogaShadowTree private constructor() {
                 
                 try {
                     screenRoot.calculateLayout(width, height)
-                    Log.d(TAG, "Screen root $screenId layout calculated successfully")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to calculate screen root $screenId layout", e)
                     continue
@@ -818,12 +795,10 @@ class YogaShadowTree private constructor() {
             
             // Apply frames to actual Views (excluding root view which we set explicitly)
             // CRITICAL: Apply layouts on main thread to match React Native behavior
-            Log.d(TAG, "🔍 Preparing layouts to apply (${viewsWithNewFrame.size} views with new frames)...")
             val layoutsToApply = mutableListOf<Pair<Int, Rect>>()
             for (shadowNode in viewsWithNewFrame) {
                 // Skip root view (viewId=0) - we set it explicitly below
                 if (shadowNode.viewId == 0) {
-                    Log.d(TAG, "   Skipping root view (viewId=0)")
                     continue
                 }
                 
@@ -839,30 +814,18 @@ class YogaShadowTree private constructor() {
                 // Negative positions are valid in Yoga and may be intentional
                 if (isValidLayoutBounds(layout)) {
                     layoutsToApply.add(Pair(shadowNode.viewId, layout))
-                    Log.d(TAG, "   ✅ Added layout for viewId=${shadowNode.viewId}: $layout")
                 } else {
-                    Log.w(TAG, "   ❌ Invalid layout bounds for node ${shadowNode.viewId}: $layout")
+                    Log.w(TAG, "Invalid layout bounds for node ${shadowNode.viewId}: $layout")
                 }
             }
-            
-            Log.d(TAG, "📋 Prepared ${layoutsToApply.size} layouts to apply (out of ${viewsWithNewFrame.size} views with new frames)")
             
             // CRITICAL: Verify root view exists BEFORE posting to main thread
             val rootViewCheck = DCFLayoutManager.shared.getView(0)
             if (rootViewCheck == null) {
-                Log.e(TAG, "❌❌❌ CRITICAL ERROR: Root view (0) not found BEFORE posting to main thread!")
-                Log.e(TAG, "   Available viewIds: ${DCFLayoutManager.shared.viewRegistry.keys.sorted()}")
-                Log.e(TAG, "   This will cause white screen!")
-            } else {
-                Log.d(TAG, "✅ Root view (0) exists before posting to main thread")
-                Log.d(TAG, "   Root view state: isAttached=${rootViewCheck.isAttachedToWindow}, hasParent=${rootViewCheck.parent != null}, dimensions=(${rootViewCheck.width}, ${rootViewCheck.height})")
+                Log.e(TAG, "Root view (0) not found before posting to main thread")
             }
             
             // Apply all layouts on main thread (matches React Native's UIViewOperationQueue pattern)
-            Log.d(TAG, "🔍 Posting layout application to main thread...")
-            Log.d(TAG, "   Current thread: ${Thread.currentThread().name}")
-            Log.d(TAG, "   Main looper thread: ${Looper.getMainLooper().thread.name}")
-            Log.d(TAG, "   Main handler exists: ${mainHandler != null}")
             mainHandler.post {
                 Log.d(TAG, "✅✅✅ Main thread handler EXECUTED - layout application starting")
                 Log.d(TAG, "🎯 Layout application on main thread: START")
@@ -1118,10 +1081,8 @@ class YogaShadowTree private constructor() {
         
         val success = calculateAndApplyLayout(screenWidth, screenHeight)
         
-        if (success) {
-            Log.d(TAG, "✅ Layout calculated for all roots successfully")
-        } else {
-            Log.w(TAG, "⚠️ Layout calculation for all roots encountered issues")
+        if (!success) {
+            Log.w(TAG, "Layout calculation for all roots encountered issues")
         }
     }
     
@@ -1939,38 +1900,51 @@ class YogaShadowTree private constructor() {
     fun clearAll() {
         isReconciling = true
         
-        while (isLayoutCalculating) {
-            Thread.sleep(1)
+        // CRITICAL: Don't block on layout calculation - proceed anyway
+        // Layout will be recalculated after clearAll completes
+        // This prevents hangs during hot restart or cleanup
+        if (isLayoutCalculating) {
+            Log.w(TAG, "⚠️ clearAll: Layout calculating, proceeding anyway (will recalculate after clear)")
+            // Reset flag to allow cleanup
+            isLayoutCalculating = false
         }
         
-        // Remove all children from root
-        rootNode?.let { root ->
-            val childCount = root.childCount
-            for (i in childCount - 1 downTo 0) {
-                val child = root.getChildAt(i)
-                root.removeChildAt(i)
+        try {
+            // Remove all children from root
+            rootNode?.let { root ->
+                val childCount = root.childCount
+                for (i in childCount - 1 downTo 0) {
+                    try {
+                        val child = root.getChildAt(i)
+                        root.removeChildAt(i)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error removing child at index $i", e)
+                    }
+                }
             }
+            
+            // Clear all shadow nodes except root
+            val allViewIds = shadowNodes.keys.filter { it != 0 }
+            for (viewId in allViewIds) {
+                shadowNodes.remove(viewId)
+            }
+            
+            // Clear nodes and nodeParents (except root)
+            val allNodeIds = nodes.keys.filter { it != "0" }
+            for (nodeId in allNodeIds) {
+                nodes.remove(nodeId)
+                nodeParents.remove(nodeId)
+            }
+            
+            // Clear screen roots
+            screenRoots.clear()
+            screenRootIds.clear()
+            nodeTypes.clear()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in clearAll", e)
+        } finally {
+            isReconciling = false
+            isLayoutCalculating = false
         }
-        
-        // Clear all shadow nodes except root
-        val allViewIds = shadowNodes.keys.filter { it != 0 }
-        for (viewId in allViewIds) {
-            shadowNodes.remove(viewId)
-        }
-        
-        // Clear nodes and nodeParents (except root)
-        val allNodeIds = nodes.keys.filter { it != "0" }
-        for (nodeId in allNodeIds) {
-            nodes.remove(nodeId)
-            nodeParents.remove(nodeId)
-        }
-        
-        // Clear screen roots
-        screenRoots.clear()
-        screenRootIds.clear()
-        nodeTypes.clear()
-        
-        isReconciling = false
-        isLayoutCalculating = false
     }
 }

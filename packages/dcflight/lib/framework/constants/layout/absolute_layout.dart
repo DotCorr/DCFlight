@@ -7,6 +7,13 @@
 
 
 /// Absolute layout properties for positioning elements
+/// 
+/// **Important Notes:**
+/// - Absolute positioning is relative to the nearest positioned ancestor (parent with `position: relative` or `position: absolute`)
+/// - When a parent is a ScrollView, absolute positioning is relative to the ScrollView's content area, not the screen
+/// - For screen-relative positioning, ensure the absolutely positioned element is a child of a non-scrolling container
+/// - Consider using flexbox layout instead of absolute positioning when possible for better cross-platform consistency
+/// 
 /// When using absolute positioning, these properties work together to precisely position elements
 class AbsoluteLayout {
   final dynamic left;

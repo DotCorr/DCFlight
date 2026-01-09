@@ -7,6 +7,7 @@
 
 package com.dotcorr.dcflight.utils
 
+import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Point
@@ -14,7 +15,11 @@ import android.os.Build
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Display
+import android.view.View
 import android.view.WindowManager
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.dotcorr.dcflight.layout.DCFLayoutManager
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
@@ -29,6 +34,8 @@ object DCFScreenUtilities {
     private const val CHANNEL_NAME = "com.dcmaui.screen_dimensions"
 
     private var context: Context? = null
+    private var activity: Activity? = null
+    private var rootView: View? = null
     private var methodChannel: MethodChannel? = null
     private var displayMetrics: DisplayMetrics = DisplayMetrics()
     private var screenWidth: Float = 0f
@@ -52,6 +59,10 @@ object DCFScreenUtilities {
 
         appContext?.let {
             this.context = it.applicationContext
+            // Try to get Activity from context
+            if (appContext is Activity) {
+                this.activity = appContext
+            }
             updateDisplayMetrics()
         }
 
@@ -61,6 +72,26 @@ object DCFScreenUtilities {
         }
 
         Log.d(TAG, "DCFScreenUtilities initialized")
+    }
+    
+    /**
+     * Set the root view for safe area calculations
+     * Called from DCDivergerUtil after root view is created
+     */
+    fun setRootView(view: View?) {
+        this.rootView = view
+        // Try to get Activity from view context
+        view?.context?.let { ctx ->
+            if (ctx is Activity) {
+                this.activity = ctx
+            } else if (ctx is android.content.ContextWrapper) {
+                val baseContext = ctx.baseContext
+                if (baseContext is Activity) {
+                    this.activity = baseContext
+                }
+            }
+        }
+        Log.d(TAG, "Root view set for safe area calculations: ${view != null}, activity: ${activity != null}")
     }
 
     /**
@@ -188,6 +219,15 @@ object DCFScreenUtilities {
      */
     fun getScreenDimensions(): Map<String, Any> {
         val fontScale = getFontScale()
+        
+        // 🔥 CRITICAL: Calculate actual safe area insets
+        val safeAreaInsets = getActualSafeAreaInsets()
+        val safeAreaTop = safeAreaInsets["top"]?.toDouble() ?: 0.0
+        val safeAreaBottom = safeAreaInsets["bottom"]?.toDouble() ?: 0.0
+        val safeAreaLeft = safeAreaInsets["left"]?.toDouble() ?: 0.0
+        val safeAreaRight = safeAreaInsets["right"]?.toDouble() ?: 0.0
+        val statusBarHeight = safeAreaTop // Status bar height is same as safe area top
+        
         return mapOf(
             "width" to convertPxToDp(screenWidth).toDouble(),
             "height" to convertPxToDp(screenHeight).toDouble(),
@@ -195,11 +235,94 @@ object DCFScreenUtilities {
             "heightDp" to convertPxToDp(screenHeight),
             "scale" to density.toDouble(),
             "fontScale" to fontScale.toDouble(),
-            "statusBarHeight" to 0.0,
-            "safeAreaTop" to 0.0,
-            "safeAreaBottom" to 0.0,
-            "safeAreaLeft" to 0.0,
-            "safeAreaRight" to 0.0
+            "statusBarHeight" to statusBarHeight,
+            "safeAreaTop" to safeAreaTop,
+            "safeAreaBottom" to safeAreaBottom,
+            "safeAreaLeft" to safeAreaLeft,
+            "safeAreaRight" to safeAreaRight
+        )
+    }
+    
+    /**
+     * Get actual safe area insets from WindowInsets
+     * This calculates the real safe area based on system UI (status bar, navigation bar, etc.)
+     */
+    private fun getActualSafeAreaInsets(): Map<String, Float> {
+        try {
+            // Try to get from activity's window decor view
+            val decorView = activity?.window?.decorView
+            if (decorView != null) {
+                val insets = ViewCompat.getRootWindowInsets(decorView)
+                if (insets != null) {
+                    val statusBarInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+                    val navigationBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+                    val displayCutoutInsets = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+                    } else {
+                        Insets.of(0, 0, 0, 0)
+                    }
+                    
+                    // Safe area is the maximum of status bar, navigation bar, and display cutout
+                    val topPx = maxOf(statusBarInsets.top, displayCutoutInsets.top).toFloat()
+                    val bottomPx = maxOf(navigationBarInsets.bottom, displayCutoutInsets.bottom).toFloat()
+                    val leftPx = maxOf(displayCutoutInsets.left, 0).toFloat()
+                    val rightPx = maxOf(displayCutoutInsets.right, 0).toFloat()
+                    
+                    // Convert to DP
+                    val topDp = convertPxToDp(topPx)
+                    val bottomDp = convertPxToDp(bottomPx)
+                    val leftDp = convertPxToDp(leftPx)
+                    val rightDp = convertPxToDp(rightPx)
+                    
+                    return mapOf<String, Float>(
+                        "top" to topDp,
+                        "bottom" to bottomDp,
+                        "left" to leftDp,
+                        "right" to rightDp
+                    )
+                }
+            }
+            
+            // Fallback: Try to get from root view
+            rootView?.let { view ->
+                val insets = ViewCompat.getRootWindowInsets(view)
+                if (insets != null) {
+                    val statusBarInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+                    val navigationBarInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+                    val displayCutoutInsets = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        insets.getInsets(WindowInsetsCompat.Type.displayCutout())
+                    } else {
+                        androidx.core.graphics.Insets.of(0, 0, 0, 0)
+                    }
+                    
+                    val topPx = maxOf(statusBarInsets.top, displayCutoutInsets.top).toFloat()
+                    val bottomPx = maxOf(navigationBarInsets.bottom, displayCutoutInsets.bottom).toFloat()
+                    val leftPx = maxOf(displayCutoutInsets.left, 0).toFloat()
+                    val rightPx = maxOf(displayCutoutInsets.right, 0).toFloat()
+                    
+                    val topDp = convertPxToDp(topPx)
+                    val bottomDp = convertPxToDp(bottomPx)
+                    val leftDp = convertPxToDp(leftPx)
+                    val rightDp = convertPxToDp(rightPx)
+                    
+                    return mapOf<String, Float>(
+                        "top" to topDp,
+                        "bottom" to bottomDp,
+                        "left" to leftDp,
+                        "right" to rightDp
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculating safe area insets", e)
+        }
+        
+        // Fallback: Return 0 if we can't calculate
+        return mapOf<String, Float>(
+            "top" to 0f,
+            "bottom" to 0f,
+            "left" to 0f,
+            "right" to 0f
         )
     }
 
@@ -353,15 +476,10 @@ object DCFScreenUtilities {
     }
 
     /**
-     * Get safe area insets (simplified version)
+     * Get safe area insets (uses actual WindowInsets)
      */
     fun getSafeAreaInsets(): Map<String, Float> {
-        return mapOf(
-            "top" to 0f,
-            "bottom" to 0f,
-            "left" to 0f,
-            "right" to 0f
-        )
+        return getActualSafeAreaInsets()
     }
 
     /**

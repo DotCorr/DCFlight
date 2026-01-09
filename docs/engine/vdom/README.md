@@ -31,7 +31,8 @@ This directory contains comprehensive documentation about DCFlight's Virtual DOM
    - Performance optimizations
 
 5. **[Concurrent Features](./CONCURRENT_FEATURES.md)**
-   - Isolate-based parallel reconciliation (50+ nodes)
+   - Isolate-based parallel reconciliation (20+ nodes, lowered from 50)
+   - Direct replacement for large dissimilar trees (100+ nodes, <20% similarity) - instant navigation
    - Incremental rendering with deadline-based scheduling
    - Dual trees (Current/WorkInProgress)
    - Effect list for commit phase
@@ -75,8 +76,9 @@ Native View (iOS/Android)
 
 - **VDOM Tree**: Lightweight representation of UI
 - **Reconciliation**: Efficient diffing and updating with smart component/element-level reconciliation
-- **Isolate Workers**: 2 pre-spawned worker isolates for parallel reconciliation of heavy trees (50+ nodes)
+- **Isolate Workers**: 2 pre-spawned worker isolates for parallel reconciliation of heavy trees (20+ nodes, lowered from 50)
 - **Smart Reconciliation**: Element-level reconciliation when components render to the same element type (prevents unnecessary view replacement)
+- **Direct Replacement**: For large dissimilar trees (100+ nodes, <20% similarity) - enables instant navigation
 - **Integer View IDs**: Integer-based view identifiers (0 = root, like React Native)
 - **Dual Trees**: Current and WorkInProgress trees for safe updates
 - **Effect List**: Side-effects collected during render, applied in commit phase

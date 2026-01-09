@@ -282,7 +282,7 @@ When element type changes:
 ### When Isolates Are Used
 
 Isolates are automatically used for reconciliation when:
-- Tree has **50+ nodes** (old + new combined)
+- Tree has **20+ nodes** (old + new combined, lowered from 50 for better performance)
 - Not initial render (initial render must be synchronous)
 - Worker isolates are available (2 workers pre-spawned at startup for optimal performance)
 
@@ -318,7 +318,7 @@ Isolates are automatically used for reconciliation when:
 
 ### Benefits
 
-- **Heavy Trees**: 50+ nodes diffed in parallel
+- **Heavy Trees**: 20+ nodes diffed in parallel (lowered threshold means more trees benefit)
 - **UI Responsiveness**: Main thread stays responsive
 - **Performance**: 50-80% faster for large reconciliations (typically saves 60-100ms)
 - **Safety**: All UI updates on main thread (no race conditions)
@@ -370,6 +370,27 @@ Element-level reconciliation activates when:
 
 **Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 2611-2643)
 
+## Direct Replacement for Large Dissimilar Trees
+
+### When Direct Replacement Is Used
+
+For very large trees (100+ nodes) with low structural similarity (<20%), DCFlight uses direct replacement instead of reconciliation. This enables **instant navigation** when switching between completely different screens.
+
+### How It Works
+
+1. **Tree Size Check**: If combined node count is 100+
+2. **Similarity Calculation**: Computes structural similarity using LCS algorithm
+3. **Direct Replace**: If similarity < 20%, uses `_replaceNode()` instead of reconciliation
+4. **Result**: Instant screen transitions without expensive reconciliation
+
+### Benefits
+
+- **Instant Navigation**: Screen transitions are instant for large dissimilar trees
+- **No Reconciliation Overhead**: Skips expensive diffing for completely different structures
+- **Game Changer**: Makes complex apps with large component trees feel snappy
+
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 1805-1841)
+
 ## Performance Optimizations
 
 ### 1. Memoization (LRU Cache)
@@ -417,12 +438,20 @@ if (changedProps.isNotEmpty) {
 
 ### 5. Isolate-Based Parallel Reconciliation
 
-For trees with 50+ nodes:
+For trees with 20+ nodes:
 - Diffing happens in worker isolate (parallel)
 - Main thread stays responsive
 - All UI updates applied on main thread
+- Lower threshold (20 vs 50) means more trees benefit
 
-### 6. Effect List (Commit Phase)
+### 6. Direct Replacement for Large Dissimilar Trees
+
+For trees with 100+ nodes and <20% structural similarity:
+- Uses direct replacement instead of reconciliation
+- Enables instant navigation between completely different screens
+- Skips expensive diffing for dissimilar structures
+
+### 7. Effect List (Commit Phase)
 
 Side-effects collected during render, applied atomically in commit:
 
@@ -434,7 +463,7 @@ _effectList.add(Effect(EffectType.update, viewId, props));
 _commitEffects(); // Applies all effects synchronously
 ```
 
-### 7. Dual Trees
+### 8. Dual Trees
 
 - **Current Tree**: Currently rendered UI
 - **WorkInProgress Tree**: Ongoing reconciliation
