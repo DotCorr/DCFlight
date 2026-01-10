@@ -92,7 +92,6 @@ class DCFLayoutManager private constructor() {
             YogaShadowTree.shared.applyWebDefaults()
         }
 
-        Log.d(TAG, "UseWebDefaults set to $enabled")
     }
 
     /**
@@ -147,7 +146,6 @@ class DCFLayoutManager private constructor() {
                     )
                     // Layout root view
                     rootView.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
-                    Log.d(TAG, "✅ DCFLayoutManager: Root view frame set to (${rootFrame.left}, ${rootFrame.top}, ${rootFrame.width()}, ${rootFrame.height()})")
                 }
             }
             
@@ -158,9 +156,7 @@ class DCFLayoutManager private constructor() {
                 mainHandler.post {
                     needsLayoutCalculation.set(false)
                     if (success) {
-                        Log.d(TAG, "Layout calculation successful")
                     } else {
-                        Log.w(TAG, "Layout calculation deferred, rescheduling")
                         needsLayoutCalculation.set(true)
                         scheduleLayoutCalculation()
                     }
@@ -186,7 +182,6 @@ class DCFLayoutManager private constructor() {
                         )
                         // Layout root view
                         rootView.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
-                        Log.d(TAG, "✅ DCFLayoutManager: Root view frame set to (${rootFrame.left}, ${rootFrame.top}, ${rootFrame.width()}, ${rootFrame.height()})")
                     }
                 }
                 
@@ -197,9 +192,7 @@ class DCFLayoutManager private constructor() {
                     mainHandler.post {
                         needsLayoutCalculation.set(false)
                         if (success) {
-                            Log.d(TAG, "Layout calculation successful")
                         } else {
-                            Log.w(TAG, "Layout calculation deferred, rescheduling")
                             needsLayoutCalculation.set(true)
                             scheduleLayoutCalculation()
                         }
@@ -487,7 +480,6 @@ class DCFLayoutManager private constructor() {
                 if (view.visibility == View.INVISIBLE && viewId != 0 && layout.width > 0 && layout.height > 0) {
                     view.visibility = View.VISIBLE
                     view.alpha = 1.0f
-                    Log.d(TAG, "✅ Made view $viewId visible after layout application (frame=${layout.left},${layout.top},${layout.width},${layout.height})")
                 }
 
                 // CRITICAL FIX: Don't make visible here - batch visibility after ALL layouts are applied
@@ -532,7 +524,6 @@ class DCFLayoutManager private constructor() {
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Error applying layout to view $viewId", e)
             // Fallback to direct layout on error
             try {
                 view.layout(
@@ -586,7 +577,6 @@ class DCFLayoutManager private constructor() {
                     view.requestLayout()
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Error applying layout to view", e)
             }
         }
     }

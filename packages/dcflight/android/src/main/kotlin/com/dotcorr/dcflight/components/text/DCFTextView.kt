@@ -13,7 +13,6 @@ class DCFTextView(context: Context) : View(context) {
         set(value) {
             if (_textLayout != value) {
                 _textLayout = value
-                android.util.Log.d("DCFTextView", "🎨 Layout set: ${if (value != null) "width=${value.width}, height=${value.height}, lineCount=${value.lineCount}" else "NULL"}")
                 // Force measure and layout update
                 requestLayout()
                 invalidate()
@@ -58,8 +57,6 @@ class DCFTextView(context: Context) : View(context) {
             return
         }
         
-        android.util.Log.d("DCFTextView", "🖼️ onDraw: layout width=${layout.width}, height=${layout.height}, text='${layout.text}'")
-        
         // CRITICAL: Match React Native's DrawTextLayout.onDraw exactly
         // React Native: canvas.translate(left, top); mLayout.draw(canvas); canvas.translate(-left, -top);
         // In our case, left/top are the padding offsets (textFrame position) relative to the view
@@ -67,14 +64,10 @@ class DCFTextView(context: Context) : View(context) {
         val left = textFrameLeft
         val top = textFrameTop
         
-        android.util.Log.d("DCFTextView", "📍 Drawing at position: left=$left, top=$top")
-        
         canvas.save()
         canvas.translate(left, top)
         layout.draw(canvas)
         canvas.translate(-left, -top)
         canvas.restore()
-        
-        android.util.Log.d("DCFTextView", "✅ onDraw complete")
     }
 }

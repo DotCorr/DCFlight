@@ -51,7 +51,6 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
      */
     fun setRootFrame(width: Float, height: Float) {
         frame = android.graphics.Rect(0, 0, width.toInt(), height.toInt())
-        Log.d(TAG, "✅ setRootFrame: Set root frame to (0, 0, ${width.toInt()}, ${height.toInt()})")
     }
     
     /**
@@ -117,7 +116,6 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         if (frame != rootFrame) {
             frame = rootFrame
             viewsWithNewFrame.add(this)
-            Log.d(TAG, "✅ Root frame set to $rootFrame (Yoga layout: left=$layoutX, top=$layoutY, width=$layoutWidth, height=$layoutHeight)")
         }
         
         // CRITICAL: Root node's absolute position is always (0, 0)
@@ -147,17 +145,6 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             availableSize.y
         }
         
-        // DEBUG: Log root node state before layout
-        Log.d(TAG, "🔍 DCFRootShadowNode: Before layout")
-        Log.d(TAG, "   availableSize=${availableSize}")
-        Log.d(TAG, "   availableWidth=$availableWidth, availableHeight=$availableHeight")
-        Log.d(TAG, "   Root frame BEFORE layout: $frame")
-        Log.d(TAG, "   Root Yoga node style: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
-        Log.d(TAG, "   Root Yoga node childCount: ${yogaNode.childCount}")
-        Log.d(TAG, "   Root Yoga node flexDirection: ${yogaNode.flexDirection}")
-        Log.d(TAG, "   Root Yoga node justifyContent: ${yogaNode.justifyContent}")
-        Log.d(TAG, "   Root Yoga node alignItems: ${yogaNode.alignItems}")
-        
         // CRITICAL: Match iOS behavior exactly - DO NOT set explicit width/height on root Yoga node
         // iOS DCFRootShadowView does NOT set explicit width/height on the root Yoga node
         // Instead, it passes availableWidth/availableHeight to YGNodeCalculateLayout, and Yoga determines
@@ -173,19 +160,15 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         val hasExplicitWidth = yogaNode.width.unit == YogaUnit.POINT || yogaNode.width.unit == YogaUnit.PERCENT
         val hasExplicitHeight = yogaNode.height.unit == YogaUnit.POINT || yogaNode.height.unit == YogaUnit.PERCENT
         if (hasExplicitWidth || hasExplicitHeight) {
-            Log.d(TAG, "⚠️ Root Yoga node has explicit dimensions - clearing to match iOS behavior")
-            Log.d(TAG, "   Before: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
             // Set to AUTO so Yoga uses available size from calculateLayout (matches iOS behavior)
             yogaNode.setWidthAuto()
             yogaNode.setHeightAuto()
-            Log.d(TAG, "   After: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
         }
         
         // CRITICAL: Ensure root node's flex properties allow children to expand
         // Root node should allow its first child (ScrollView) to expand to fill the screen
         // Set flexGrow to 1 for root node to ensure it fills available space
         if (yogaNode.flexGrow != 1.0f) {
-            Log.d(TAG, "🔧 Setting root node flexGrow to 1.0 to ensure it fills available space")
             yogaNode.setFlexGrow(1.0f)
         }
         
@@ -194,41 +177,17 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         // React Native sets direction via setDirection() before calculateLayout
         // Always set direction to ensure it's correct (YogaNode doesn't have a readable direction property)
         yogaNode.setDirection(baseDirection)
-        Log.d(TAG, "🔧 Root Yoga node direction set to $baseDirection")
         
-        // CRITICAL: Ensure root node has no margins or padding that could affect child positioning
-        // Root node should be at (0, 0) with no insets - margins/padding on root can cause coordinate system issues
-        // Match iOS exactly - root node should have zero margins and padding
-        // Note: We check layout values (computed after layout) as a diagnostic, but the real fix is to ensure
-        // margins/padding are never set on root node in the first place (handled in prop setting code)
-        // This check is just for debugging - if layout margins/padding are non-zero, it indicates a setup issue
-        val rootMarginLeft = yogaNode.getLayoutMargin(YogaEdge.LEFT)
-        val rootMarginTop = yogaNode.getLayoutMargin(YogaEdge.TOP)
-        val rootPaddingLeft = yogaNode.getLayoutPadding(YogaEdge.LEFT)
-        val rootPaddingTop = yogaNode.getLayoutPadding(YogaEdge.TOP)
-        if (rootMarginLeft != 0f || rootMarginTop != 0f || rootPaddingLeft != 0f || rootPaddingTop != 0f) {
-        }
-        
-        // Log all children before layout
-        for (i in 0 until yogaNode.childCount) {
-            val child = yogaNode.getChildAt(i)
-            val childShadowNode = YogaShadowTree.shared.getShadowNode(child)
-            Log.d(TAG, "   Child $i (viewId=${childShadowNode?.viewId}):")
-            Log.d(TAG, "     Yoga style: width=${child.width.value} (unit=${child.width.unit}), height=${child.height.value} (unit=${child.height.unit})")
-            Log.d(TAG, "     minWidth=${child.minWidth.value}, minHeight=${child.minHeight.value}")
-            Log.d(TAG, "     flexDirection=${child.flexDirection}, justifyContent=${child.justifyContent}, alignItems=${child.alignItems}")
-            Log.d(TAG, "     Child frame BEFORE layout: ${childShadowNode?.frame}")
-            
-            // CRITICAL: Ensure root view's first child expands to fill parent
-            // If the child has undefined width/height, it should expand to fill the root
-            // This is especially important for ScrollView which should fill the screen
-            if (i == 0 && child.width.unit == YogaUnit.UNDEFINED && child.height.unit == YogaUnit.UNDEFINED) {
-                Log.d(TAG, "     🔧 Root's first child has undefined dimensions - ensuring it expands to fill parent")
+        // CRITICAL: Ensure root view's first child expands to fill parent
+        // If the child has undefined width/height, it should expand to fill the root
+        // This is especially important for ScrollView which should fill the screen
+        if (yogaNode.childCount > 0) {
+            val firstChild = yogaNode.getChildAt(0)
+            if (firstChild.width.unit == YogaUnit.UNDEFINED && firstChild.height.unit == YogaUnit.UNDEFINED) {
                 // CRITICAL: Set flexGrow to 1.0 to ensure child expands to fill parent
                 // This is necessary for ScrollView to fill the screen
-                if (child.flexGrow != 1.0f) {
-                    Log.d(TAG, "     🔧 Setting first child flexGrow to 1.0 to ensure it expands")
-                    child.setFlexGrow(1.0f)
+                if (firstChild.flexGrow != 1.0f) {
+                    firstChild.setFlexGrow(1.0f)
                 }
             }
         }
@@ -286,23 +245,6 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             Log.e(TAG, "   Root Yoga node has explicit dimensions: ${yogaNode.width.unit != YogaUnit.UNDEFINED || yogaNode.height.unit != YogaUnit.UNDEFINED}")
         }
         if (!rootSizeValid) {
-        }
-        
-        // DEBUG: Log root node layout after calculation
-        Log.d(TAG, "🔍 DCFRootShadowNode: After layout")
-        Log.d(TAG, "   Root node layout: left=$rootLayoutX, top=$rootLayoutY, width=$rootLayoutWidth, height=$rootLayoutHeight")
-        Log.d(TAG, "   Root frame AFTER layout calculation: $frame")
-        
-        // DEBUG: Log ALL children after layout
-        Log.d(TAG, "   Root has ${yogaNode.childCount} children after layout:")
-        for (i in 0 until yogaNode.childCount) {
-            val child = yogaNode.getChildAt(i)
-            val childShadowNode = YogaShadowTree.shared.getShadowNode(child)
-            Log.d(TAG, "   Child $i (viewId=${childShadowNode?.viewId}):")
-            Log.d(TAG, "     Yoga layout: left=${child.layoutX}, top=${child.layoutY}, width=${child.layoutWidth}, height=${child.layoutHeight}")
-            Log.d(TAG, "     Child frame AFTER layout: ${childShadowNode?.frame}")
-            if (child.layoutY < 0) {
-            }
         }
         
         val viewsWithNewFrame = mutableSetOf<DCFShadowNode>()

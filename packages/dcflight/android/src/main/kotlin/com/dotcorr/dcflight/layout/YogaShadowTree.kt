@@ -103,7 +103,6 @@ class YogaShadowTree private constructor() {
             densityScaleFactor = displayMetrics.density
             
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to update density scale factor, using default 1.0", e)
             densityScaleFactor = 1.0f
         }
     }
@@ -384,7 +383,6 @@ class YogaShadowTree private constructor() {
                             }
                         } catch (e: Exception) {
                             // If measurement fails, fall back to intrinsic size
-                            Log.w(TAG, "Failed to measure view $nodeId with constraints, using intrinsic size", e)
                         }
                     }
                     
@@ -432,7 +430,6 @@ class YogaShadowTree private constructor() {
         val childNode = nodes[childIdStr]
         
         if (parentNode == null || childNode == null) {
-            Log.w(TAG, "Cannot add child - parent or child node not found")
             return
         }
         
@@ -524,7 +521,6 @@ class YogaShadowTree private constructor() {
                     break
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Error removing child at index $i", e)
                 break
             }
         }
@@ -548,7 +544,6 @@ class YogaShadowTree private constructor() {
                 childCount = newChildCount
                 
             } catch (e: Exception) {
-                Log.w(TAG, "Error removing children from $nodeId", e)
                 break
             }
         }
@@ -578,7 +573,6 @@ class YogaShadowTree private constructor() {
                         val node = nodes[nodeId]
                         if (node != null) {
                         } else {
-                            Log.w(TAG, "Node not found for viewId=$viewId")
                         }
                     }
                     "fontSize" -> {
@@ -635,7 +629,6 @@ class YogaShadowTree private constructor() {
         
         validateNodeLayoutConfig(nodeId)
         
-        Log.d(TAG, "Updated node layout props: $nodeId")
     }
 
     @Synchronized
@@ -687,7 +680,6 @@ class YogaShadowTree private constructor() {
                             if (view != null && shadowNode.frame.width() > 0 && shadowNode.frame.height() > 0) {
                                 val pendingFrameKey = "pendingFrame".hashCode()
                                 view.setTag(pendingFrameKey, shadowNode.frame)
-                                Log.d(TAG, "✅ YogaShadowTree: Set pendingFrame=${shadowNode.frame} on viewId=${shadowNode.viewId} (synchronously on main thread, before measurement)")
                                 
                                 // 🔥 CRITICAL: If this is a ScrollContentView, set expectedContentHeight immediately
                                 // This ensures ScrollView knows the correct height BEFORE it measures
@@ -743,13 +735,11 @@ class YogaShadowTree private constructor() {
                                         // 🔥 CRITICAL: Always set expectedContentHeight, even if it's the same
                                         // This ensures ScrollView re-measures if it measured to 0 before
                                         customScrollView.expectedContentHeight = newHeight
-                                        Log.d(TAG, "✅ YogaShadowTree: Set expectedContentHeight=$newHeight on ScrollView (synchronously, before measurement, layout params updated, wasPlaceholder=$wasPlaceholder)")
                                         
                                         // 🔥 CRITICAL: Force full layout pass if ScrollView already measured OR if updating from placeholder
                                         // This fixes the red background issue when navigating to examples
                                         // The ScrollView might have measured before pendingFrame was set, so we need to re-measure AND re-layout
                                         if (customScrollView.measuredHeight == 0 || wasPlaceholder) {
-                                            Log.d(TAG, "✅ YogaShadowTree: Forcing full layout pass (measuredHeight=${customScrollView.measuredHeight}, wasPlaceholder=$wasPlaceholder, newHeight=$newHeight)")
                                             // Use post to ensure layout params are applied before re-measurement
                                             customScrollView.post {
                                                 // Force full layout pass: invalidate + requestLayout
@@ -758,7 +748,6 @@ class YogaShadowTree private constructor() {
                                                 // Also request layout on parent DCFScrollView wrapper to ensure it's laid out
                                                 // The wrapper's onLayout will call updateContentSizeFromContentView automatically
                                                 sv.requestLayout()
-                                                Log.d(TAG, "✅ YogaShadowTree: Requested layout for ScrollView (wrapper's onLayout will update content size)")
                                             }
                                         }
                                     }
@@ -778,7 +767,6 @@ class YogaShadowTree private constructor() {
             }
             
             if (viewsWithNewFrame.isEmpty()) {
-                Log.w(TAG, "No views with new frames collected - this might indicate a problem")
             }
             
             for ((screenId, screenRoot) in screenRoots) {
@@ -815,7 +803,6 @@ class YogaShadowTree private constructor() {
                 if (isValidLayoutBounds(layout)) {
                     layoutsToApply.add(Pair(shadowNode.viewId, layout))
                 } else {
-                    Log.w(TAG, "Invalid layout bounds for node ${shadowNode.viewId}: $layout")
                 }
             }
             
@@ -827,20 +814,14 @@ class YogaShadowTree private constructor() {
             
             // Apply all layouts on main thread (matches React Native's UIViewOperationQueue pattern)
             mainHandler.post {
-                Log.d(TAG, "✅✅✅ Main thread handler EXECUTED - layout application starting")
-                Log.d(TAG, "🎯 Layout application on main thread: START")
-                Log.d(TAG, "   Thread: ${Thread.currentThread().name}, isMainThread=${Looper.getMainLooper().thread == Thread.currentThread()}")
                 
                 // First, ensure root view is properly sized (matches React Native's root view handling)
-                Log.d(TAG, "   🔍 Checking root view (viewId=0)...")
                 val rootView = DCFLayoutManager.shared.getView(0)
-                Log.d(TAG, "   Root view from DCFLayoutManager: ${rootView != null}")
                 if (rootView != null) {
                     // CRITICAL: Check root view attachment to window
                     val isAttachedToWindow = rootView.isAttachedToWindow
                     val hasParent = rootView.parent != null
                     val rootViewParent = rootView.parent
-                    Log.d(TAG, "   🔍 Root view attachment status: isAttachedToWindow=$isAttachedToWindow, hasParent=$hasParent, parentType=${rootViewParent?.javaClass?.simpleName}")
                     
                     if (!isAttachedToWindow) {
                         Log.e(TAG, "   ❌❌❌ CRITICAL: Root view is NOT attached to window! This will cause white screen!")
@@ -848,15 +829,10 @@ class YogaShadowTree private constructor() {
                         Log.e(TAG, "   Root view rootView: ${rootView.rootView}")
                     }
                     
-                    Log.d(TAG, "   Root view current state: left=${rootView.left}, top=${rootView.top}, width=${rootView.width}, height=${rootView.height}, visibility=${rootView.visibility}, alpha=${rootView.alpha}")
                     val rootFrame = Rect(0, 0, width.toInt(), height.toInt())
-                    Log.d(TAG, "   ✅ Root view found, current frame: (${rootView.left}, ${rootView.top}, ${rootView.width}, ${rootView.height})")
-                    Log.d(TAG, "   🔍 Target root frame: $rootFrame")
                     
                     // CRITICAL: Check if root view has zero dimensions
                     if (rootView.width == 0 || rootView.height == 0) {
-                        Log.w(TAG, "   ⚠️ WARNING: Root view has zero dimensions! width=${rootView.width}, height=${rootView.height}")
-                        Log.w(TAG, "   This might cause white screen. Will force layout to screen size.")
                     }
                     
                     // Measure root view first (matches React Native's updateLayout pattern)
@@ -864,11 +840,9 @@ class YogaShadowTree private constructor() {
                         android.view.View.MeasureSpec.makeMeasureSpec(rootFrame.width(), android.view.View.MeasureSpec.EXACTLY),
                         android.view.View.MeasureSpec.makeMeasureSpec(rootFrame.height(), android.view.View.MeasureSpec.EXACTLY)
                     )
-                    Log.d(TAG, "   Root view measured: (${rootView.measuredWidth}, ${rootView.measuredHeight})")
                     
                     // Layout root view - ALWAYS apply layout to ensure it's correct
                     rootView.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
-                    Log.d(TAG, "   ✅ Root view layout applied: (${rootView.left}, ${rootView.top}, ${rootView.width}, ${rootView.height})")
                     
                     // CRITICAL: Verify root view has correct dimensions after layout
                     if (rootView.width == 0 || rootView.height == 0) {
@@ -879,62 +853,32 @@ class YogaShadowTree private constructor() {
                     // Ensure root view is visible
                     if (rootView.visibility != android.view.View.VISIBLE) {
                         rootView.visibility = android.view.View.VISIBLE
-                        Log.d(TAG, "   ✅ Root view made visible")
                     }
                     if (rootView.alpha < 1.0f) {
                         rootView.alpha = 1.0f
-                        Log.d(TAG, "   ✅ Root view alpha set to 1.0")
                     }
                     
-                    // CRITICAL: Force root view to request layout to ensure it's drawn
-                    rootView.requestLayout()
-                    rootView.invalidate()
+                    // OPTIMIZED: Only invalidate if dimensions changed (reduces unnecessary redraws)
+                    if (rootView.width != rootFrame.width() || rootView.height != rootFrame.height()) {
+                        rootView.invalidate()
+                    }
                     
-                    Log.d(TAG, "   ✅ Root view (0) verified at (${rootView.left}, ${rootView.top}, ${rootView.width}, ${rootView.height})")
-                    Log.d(TAG, "   ✅ Root view final state: visibility=${rootView.visibility}, alpha=${rootView.alpha}, isAttached=${rootView.isAttachedToWindow}")
                 } else {
                     Log.e(TAG, "   ❌ Root view (0) not found in registry!")
                     Log.e(TAG, "   Available viewIds: ${DCFLayoutManager.shared.viewRegistry.keys.sorted()}")
                 }
                 
-                // Apply layouts to all child views
+                // OPTIMIZED: Apply layouts efficiently - batch operations and minimize checks
                 // CRITICAL: Match React Native's NativeViewHierarchyManager.updateLayout pattern exactly
-                // React Native does NOT check isAttachedToWindow - it just measures and layouts
-                // Views will be attached later, and when they are, they'll already have correct layout
-                // 1. Call measure() with EXACTLY specs before layout()
-                // 2. Only require view exists and has parent (for view.layout() to work)
-                // 3. Apply layouts synchronously on main thread (we're already on main thread)
-                Log.d(TAG, "   🔍 Applying layouts to ${layoutsToApply.size} child views...")
-                Log.d(TAG, "   DCFLayoutManager viewRegistry has ${DCFLayoutManager.shared.viewRegistry.size} views")
-                var appliedCount = 0
-                var skippedNoView = 0
-                var skippedNoParent = 0
+                val viewRegistry = DCFLayoutManager.shared.viewRegistry
                 for ((viewId, layout) in layoutsToApply) {
-                    val view = DCFLayoutManager.shared.getView(viewId)
-                    Log.d(TAG, "   🔍 Processing viewId=$viewId: view exists=${view != null}, has parent=${view?.parent != null}, isAttached=${view?.isAttachedToWindow}, layout=$layout")
+                    val view = viewRegistry[viewId] ?: continue
                     
-                    // CRITICAL: Match React Native's pattern - view must exist
-                    // React Native does NOT check isAttachedToWindow or parent - it applies layout regardless
-                    // React Native's updateLayout applies layout even if view isn't attached yet
-                    // The view will have correct layout when it's eventually attached
-                    if (view == null) {
-                        skippedNoView++
-                        Log.w(TAG, "   ⚠️ View $viewId not found in registry")
-                        continue
-                    }
-                    
-                    // CRITICAL: React Native applies layout even if view has no parent
-                    // The layout will be applied when the view is attached
-                    // However, view.layout() requires a parent, so we skip if no parent
-                    // But we still make the view visible (it will be laid out when attached)
+                    // Skip if no parent (view.layout() requires parent)
                     if (view.parent == null) {
-                        skippedNoParent++
-                        Log.w(TAG, "   ⚠️ View $viewId has no parent, skipping layout (view.layout() requires parent)")
-                        // CRITICAL: Still make view visible even without parent (matches React Native)
-                        // The view will be laid out when it's attached
+                        // Still make visible - will be laid out when attached
                         if (view.visibility != android.view.View.VISIBLE) {
                             view.visibility = android.view.View.VISIBLE
-                            Log.d(TAG, "      ✅ Made viewId=$viewId visible (no parent yet, will layout when attached)")
                         }
                         if (view.alpha < 1.0f) {
                             view.alpha = 1.0f
@@ -942,101 +886,48 @@ class YogaShadowTree private constructor() {
                         continue
                     }
                     
-                        // CRITICAL: Match React Native's updateLayout pattern exactly
-                        // React Native calls measure() with EXACTLY specs before layout()
-                        // DCFLayoutManager.applyLayout() -> applyLayoutDirectly() already calls measure() before component.applyLayout()
-                        // So we don't need to call measure() here - just validate and apply
-                        try {
-                            val width = layout.width().toInt().coerceAtLeast(0)
-                            val height = layout.height().toInt().coerceAtLeast(0)
-                            val left = layout.left.toInt()
-                            val top = layout.top.toInt()
-                            
-                            // Validate layout values (matches React Native's validation)
-                            if (width <= 0 || height <= 0 || width > 100000000 || height > 100000000) {
-                                Log.w(TAG, "   ⚠️ View $viewId has invalid dimensions: width=$width, height=$height, skipping")
-                                continue
-                            }
-                            
-                            // CRITICAL: Apply layout via DCFLayoutManager.applyLayout() (matches React Native's NativeViewHierarchyManager.updateLayout)
-                            // DCFLayoutManager.applyLayout() will:
-                            // 1. Call measure() with EXACTLY specs (matches React Native)
-                            // 2. Call component.applyLayout() which calls view.layout() (matches React Native)
-                            // Frame is in relative coordinates (relative to parent), which is what View.layout() expects
-                            Log.d(TAG, "   🔍 Applying layout to viewId=$viewId: left=$left, top=$top, width=$width, height=$height")
-                            DCFLayoutManager.shared.applyLayout(
-                                viewId,
-                                left.toFloat(),
-                                top.toFloat(),
-                                width.toFloat(),
-                                height.toFloat()
-                            )
+                    try {
+                        val width = layout.width().toInt().coerceAtLeast(0)
+                        val height = layout.height().toInt().coerceAtLeast(0)
                         
-                        // CRITICAL: Ensure view is visible after layout (matches React Native behavior)
-                        // Views should be visible after layout is applied
+                        // Quick validation - skip invalid layouts
+                        if (width <= 0 || height <= 0 || width > 100000000 || height > 100000000) {
+                            continue
+                        }
+                        
+                        // Apply layout via DCFLayoutManager.applyLayout()
+                        DCFLayoutManager.shared.applyLayout(
+                            viewId,
+                            layout.left.toFloat(),
+                            layout.top.toFloat(),
+                            width.toFloat(),
+                            height.toFloat()
+                        )
+                        
+                        // Ensure view is visible after layout
                         if (view.visibility != android.view.View.VISIBLE) {
                             view.visibility = android.view.View.VISIBLE
-                            Log.d(TAG, "      ✅ Made viewId=$viewId visible")
                         }
                         if (view.alpha < 1.0f) {
                             view.alpha = 1.0f
-                            Log.d(TAG, "      ✅ Set viewId=$viewId alpha to 1.0")
                         }
-                        
-                        // CRITICAL: Verify layout was applied correctly
-                        if (view.width == 0 || view.height == 0) {
-                            Log.w(TAG, "      ⚠️ WARNING: View $viewId has zero dimensions after layout! width=${view.width}, height=${view.height}")
-                        } else {
-                            Log.d(TAG, "      ✅ Applied layout to viewId=$viewId: frame=(${view.left}, ${view.top}, ${view.width}, ${view.height})")
-                        }
-                        
-                        appliedCount++
                     } catch (e: Exception) {
-                        Log.e(TAG, "   ❌ Error applying layout to viewId=$viewId", e)
+                        Log.e(TAG, "Error applying layout to viewId=$viewId", e)
                     }
                 }
                 
-                Log.d(TAG, "   ✅ Applied layout to $appliedCount views out of ${layoutsToApply.size} layouts")
-                if (skippedNoView > 0) {
-                    Log.w(TAG, "   ⚠️ Skipped $skippedNoView views (not found in registry)")
-                }
-                if (skippedNoParent > 0) {
-                    Log.w(TAG, "   ⚠️ Skipped $skippedNoParent views (no parent)")
-                }
-                
-                // CRITICAL: Make ALL views visible (matches React Native behavior)
-                // React Native views are visible by default and remain visible
-                // This ensures views that were skipped during layout are still visible
-                var madeVisibleCount = 0
-                DCFLayoutManager.shared.viewRegistry.forEach { (viewId, view) ->
-                    // Skip root view (already handled above)
-                    if (viewId == 0) return@forEach
-                    
-                    // CRITICAL: Make ALL views visible, regardless of parent status (matches React Native)
-                    // React Native doesn't check parent before making views visible
-                    // Views will be laid out when they're attached
+                // OPTIMIZED: Batch visibility update - single pass through registry
+                // Make ALL views visible (matches React Native behavior)
+                for ((viewId, view) in viewRegistry) {
+                    if (viewId == 0) continue // Skip root (already handled)
                     if (view.visibility != android.view.View.VISIBLE) {
                         view.visibility = android.view.View.VISIBLE
-                        madeVisibleCount++
                     }
                     if (view.alpha < 1.0f) {
                         view.alpha = 1.0f
                     }
                 }
-                if (madeVisibleCount > 0) {
-                    Log.d(TAG, "   ✅ Made $madeVisibleCount additional views visible (final visibility pass)")
-                }
-                
-                // DEBUG: Log final state of all views after layout application
-                Log.d(TAG, "   🔍 Final view state after layout application:")
-                DCFLayoutManager.shared.viewRegistry.forEach { (viewId, view) ->
-                    Log.d(TAG, "      viewId=$viewId: visibility=${view.visibility}, alpha=${view.alpha}, frame=(${view.left}, ${view.top}, ${view.width}, ${view.height}), hasParent=${view.parent != null}, isAttached=${view.isAttachedToWindow}")
-                }
-                
-                Log.d(TAG, "🎯 Layout application on main thread: COMPLETE")
             }
-            
-            Log.d(TAG, "✅ Layout calculation and application completed successfully")
             return true
             
         } catch (e: Exception) {
@@ -1057,7 +948,6 @@ class YogaShadowTree private constructor() {
         for ((screenId, screenRoot) in screenRoots) {
             screenRoot.setWidth(width)
             screenRoot.setHeight(height)
-            Log.d(TAG, "Updated screen root dimensions: $screenId")
         }
     }
 
@@ -1067,7 +957,6 @@ class YogaShadowTree private constructor() {
      */
     @Synchronized
     fun calculateLayoutForAllRoots() {
-        Log.d(TAG, "Calculating layout for all roots")
         
         refreshDensityScaleFactor()
         
@@ -1082,7 +971,6 @@ class YogaShadowTree private constructor() {
         val success = calculateAndApplyLayout(screenWidth, screenHeight)
         
         if (!success) {
-            Log.w(TAG, "Layout calculation for all roots encountered issues")
         }
     }
     
@@ -1101,7 +989,6 @@ class YogaShadowTree private constructor() {
             }
         }
         
-        Log.d(TAG, "🔄 Invalidated $invalidatedCount leaf nodes (out of ${nodes.size} total)")
     }
     
     /**
@@ -1131,7 +1018,6 @@ class YogaShadowTree private constructor() {
         if (node.isMeasureDefined) {
             node.markLayoutSeen() // Reset layout seen flag
             node.dirty() // Mark as dirty to force re-measure
-            Log.d(TAG, "Marked node $nodeId as dirty")
         }
     }
 
@@ -1242,12 +1128,10 @@ class YogaShadowTree private constructor() {
                 }
                 // Clear the update tracking
                 viewsHiddenForUpdate.clear()
-                Log.d(TAG, "Made ${viewsToMakeVisible.size} views visible after batch layout (newly created + updated)")
             }
         }
         
         if (layouts.isNotEmpty()) {
-            Log.d(TAG, "Applied ${layouts.size} layouts in batch")
         }
     }
 
@@ -1298,7 +1182,6 @@ class YogaShadowTree private constructor() {
             root.setAlignContent(YogaAlign.STRETCH)
             root.setFlexShrink(1.0f)
             
-            Log.d(TAG, "Applied web defaults to root node")
         }
         
         for ((_, screenRoot) in screenRoots) {
@@ -1307,7 +1190,6 @@ class YogaShadowTree private constructor() {
             screenRoot.setFlexShrink(1.0f)
         }
         
-        Log.d(TAG, "Applied web defaults to ${screenRoots.size} screen roots")
     }
 
     private fun applyDefaultNodeStyles(node: YogaNode, nodeType: String) {
@@ -1904,7 +1786,6 @@ class YogaShadowTree private constructor() {
         // Layout will be recalculated after clearAll completes
         // This prevents hangs during hot restart or cleanup
         if (isLayoutCalculating) {
-            Log.w(TAG, "⚠️ clearAll: Layout calculating, proceeding anyway (will recalculate after clear)")
             // Reset flag to allow cleanup
             isLayoutCalculating = false
         }
@@ -1918,7 +1799,6 @@ class YogaShadowTree private constructor() {
                         val child = root.getChildAt(i)
                         root.removeChildAt(i)
                     } catch (e: Exception) {
-                        Log.w(TAG, "Error removing child at index $i", e)
                     }
                 }
             }

@@ -395,7 +395,6 @@ class DCMauiBridgeImpl private constructor() {
             val parentView = ViewRegistry.shared.getView(viewId)
             
             if (parentView == null) {
-                Log.w(TAG, "❌ setChildren: parent view '$viewId' not found in registry (likely pending batch creation)")
                 return false
             }
             
