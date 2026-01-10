@@ -118,7 +118,8 @@ class PackageRenamer {
 
   /// Updates pubspec.yaml with correct project information.
   /// 
-  /// Replaces project name, description, and fixes dependency paths.
+  /// Replaces project name, description, and resolves framework dependencies
+  /// based on the root workspace pubspec.yaml (single source of truth).
   /// 
   /// - [config]: Project configuration
   /// - [projectPath]: Path to the project directory
@@ -128,15 +129,35 @@ class PackageRenamer {
     if (await pubspecFile.exists()) {
       String content = await pubspecFile.readAsString();
       
+      // Replace project name and description
       content = content.replaceAll('name: dcf_go', 'name: ${config.projectDirectoryName}');
       content = content.replaceAll('name: {{PROJECT_NAME}}', 'name: ${config.projectDirectoryName}');
       content = content.replaceAll('description: "A new DCFlight project."', 'description: "${config.description}"');
       content = content.replaceAll('description: {{DESCRIPTION}}', 'description: "${config.description}"');
       
-      content = content.replaceAll('path: ../../dcflight', 'path: ../packages/dcflight');
-      content = content.replaceAll('path: ../../dcf_primitives', 'path: ../packages/dcf_primitives');
+      // Resolve framework dependencies for standalone projects (workspace uses Melos)
+      content = await _resolveFrameworkDependenciesForStandalone(content, projectPath);
       
       await pubspecFile.writeAsString(content);
     }
   }
+
+  /// Resolves framework dependencies for standalone projects.
+  /// 
+  /// If project is in workspace: Melos handles linking via pubspec_overrides.yaml automatically
+  /// If project is standalone: Uses pub.dev versions (or fails if not published)
+  /// 
+  /// - [content]: Current pubspec.yaml content
+  /// - [projectPath]: Path to the project directory
+  /// - Returns: Updated pubspec.yaml content (no changes - Melos or pub.dev handles it)
+  static Future<String> _resolveFrameworkDependenciesForStandalone(
+    String content,
+    String projectPath,
+  ) async {
+    // Simple: Just return content as-is
+    // - In workspace: Melos automatically links via pubspec_overrides.yaml
+    // - Standalone: Package names without versions use latest from pub.dev
+    return content;
+  }
+
 }

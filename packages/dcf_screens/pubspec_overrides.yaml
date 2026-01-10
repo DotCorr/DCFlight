@@ -1,0 +1,13 @@
+# Auto-generated workspace dependency overrides
+# Generated from root pubspec.yaml - DO NOT EDIT MANUALLY
+# Run: dart run scripts/sync_workspace_deps.dart
+
+dependency_overrides:
+  dcflight:
+    path: ../dcflight
+  dcf_primitives:
+    path: ../dcf_primitives
+  dcf_reanimated:
+    path: ../dcf_reanimated
+  dcf_screens:
+    path: .

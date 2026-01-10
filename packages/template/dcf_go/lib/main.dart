@@ -33,10 +33,7 @@ class AppRoot extends DCFStatefulComponent {
           children: [
             if (showExamples.state)
               StyleSheetExamplesScreen(
-                // key: 'examples-screen',
-                onBack: () {
-                  showExamples.setState(false);
-                },
+                
               )
             else
               DotCorrLanding(

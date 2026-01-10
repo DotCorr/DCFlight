@@ -1,0 +1,37 @@
+name: todo_app
+description: "Todo app"
+publish_to: "none"
+
+version: 1.0.0+1
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # framework dependencies
+  dcflight:
+  dcf_primitives:
+  dcf_reanimated:
+  dcf_screens:
+
+  icons_launcher: ^3.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+# setup icon for your app
+# after updating the image_path, run
+# ```flutter pub get dart run icons_launcher:create```
+icons_launcher:
+  image_path: "assets/dcf/dcf2.png"
+  platforms:
+    android:
+      enable: true
+    ios:
+      enable: true
+
+# Assets go here
+flutter:
+  assets:
+    - assets/

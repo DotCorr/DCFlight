@@ -11,9 +11,9 @@ import 'package:dcf_go/stylesheet/examples_registry.dart';
 /// Main StyleSheet Examples Screen
 /// Displays a list of all StyleSheet examples
 class StyleSheetExamplesScreen extends DCFStatelessComponent {
-  final VoidCallback? onBack;
+
   
-  StyleSheetExamplesScreen({this.onBack, super.key});
+  StyleSheetExamplesScreen({super.key});
 
   static final layouts = DCFLayout.create({
     'container': DCFLayout(
@@ -29,34 +29,9 @@ class StyleSheetExamplesScreen extends DCFStatelessComponent {
 
     return DCFScrollView(
       layout: layouts['container']!,
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
+      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.cyan),
       scrollContent: [
-        // Back Button
-        if (onBack != null)
-          DCFTouchableOpacity(
-            onPress: (data) {
-              onBack?.call();
-            },
-            styleSheet: DCFStyleSheet(
-              backgroundColor: DCFColors.blue500,
-              borderRadius: 8,
-            ),
-            layout: DCFLayout(
-              padding: 12,
-              marginBottom: 16,
-              alignSelf: DCFAlign.flexStart,
-            ),
-            children: [
-              DCFText(
-                content: '← Back to Landing',
-                textProps: DCFTextProps(
-                  fontSize: 14,
-                  fontWeight: DCFFontWeight.bold,
-                ),
-                styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
-              ),
-            ],
-          ),
+       
         DCFText(
           content: 'StyleSheet Examples',
           textProps: DCFTextProps(

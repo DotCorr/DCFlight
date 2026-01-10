@@ -11,12 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # framework dependencies (prod)
-  # dcflight: ^0.0.1
-
-  # framework dependencies (local)
+  # framework dependencies
   dcflight:
-    path: ../dcflight
   equatable: ^2.0.5
 
 dev_dependencies:

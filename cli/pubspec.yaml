@@ -15,8 +15,9 @@ dependencies:
   http: ^1.2.0               # HTTP client for downloading
   archive: ^3.4.0            # Archive extraction (tar, zip)
 
+  # framework dependencies
+  # Melos automatically links these via pubspec_overrides.yaml in workspace
   dcflight:
-    path: ../packages/dcflight
 
 dev_dependencies:
   lints: ^5.0.0

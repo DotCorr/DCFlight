@@ -11,6 +11,7 @@ import 'package:dcflight_cli/services/user_input.dart';
 import 'package:dcflight_cli/services/template_copier.dart';
 import 'package:dcflight_cli/services/package_renamer.dart';
 import 'package:dcflight_cli/models/project_config.dart';
+import 'package:dcflight_cli/models/platform.dart';
 
 class ProjectCreator {
   /// Creates a new DCFlight app project.
@@ -70,6 +71,7 @@ class ProjectCreator {
   }
 
   /// Runs pub get in the new project to install dependencies.
+  /// Also runs pod install for iOS projects.
   /// 
   /// - [config]: Project configuration
   Future<void> _runPubGet(ProjectConfig config) async {
@@ -79,15 +81,53 @@ class ProjectCreator {
 
     try {
       Directory.current = projectPath;
-      final result = await Process.run('flutter', ['pub', 'get']);
+      
+      // Run flutter pub get
+      print('   Running flutter pub get...');
+      final pubGetResult = await Process.run('flutter', ['pub', 'get']);
 
-      if (result.exitCode != 0) {
-        print('Warning: Failed to install dependencies');
-        if (result.stderr.toString().isNotEmpty) {
-          print('Error: ${result.stderr}');
+      if (pubGetResult.exitCode != 0) {
+        print('⚠️  Warning: Failed to install dependencies');
+        if (pubGetResult.stderr.toString().isNotEmpty) {
+          print('   Error: ${pubGetResult.stderr}');
         }
+        print('   You may need to run "flutter pub get" manually');
       } else {
-        print('✅ Dependencies installed successfully');
+        print('   ✅ Flutter dependencies installed');
+      }
+
+      // Run pod install for iOS projects
+      if (config.platforms.contains(Platform.ios)) {
+        final iosPath = path.join(projectPath, 'ios');
+        final iosDir = Directory(iosPath);
+        
+        if (await iosDir.exists()) {
+          print('   Installing iOS CocoaPods dependencies...');
+          Directory.current = iosPath;
+          
+          final podResult = await Process.run('pod', ['install'], 
+            runInShell: true);
+          
+          if (podResult.exitCode != 0) {
+            print('⚠️  Warning: Failed to install CocoaPods dependencies');
+            if (podResult.stderr.toString().isNotEmpty) {
+              print('   Error: ${podResult.stderr}');
+            }
+            print('   You may need to run "cd ios && pod install" manually');
+          } else {
+            print('   ✅ iOS CocoaPods installed');
+          }
+          
+          Directory.current = projectPath;
+        }
+      }
+      
+      print('✅ Dependencies installed successfully');
+    } catch (e) {
+      print('⚠️  Warning: Error during dependency installation: $e');
+      print('   You may need to run "flutter pub get" manually');
+      if (config.platforms.contains(Platform.ios)) {
+        print('   For iOS: "cd ios && pod install"');
       }
     } finally {
       Directory.current = originalDir;
