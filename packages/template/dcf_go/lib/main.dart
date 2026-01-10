@@ -73,7 +73,7 @@ class AppRoot extends DCFStatefulComponent {
           ),
           children: [
             DCFText(
-              content: showExamples.state ? '← Landing' : 'Examples →',
+              content: showExamples.state ? '← Landing' : 'Test →',
               textProps: DCFTextProps(
                 fontSize: 14,
                 fontWeight: DCFFontWeight.bold,
