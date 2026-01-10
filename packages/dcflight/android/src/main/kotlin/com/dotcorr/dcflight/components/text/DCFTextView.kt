@@ -55,7 +55,6 @@ class DCFTextView(context: Context) : View(context) {
         val layout = textLayout
         
         if (layout == null) {
-            android.util.Log.w("DCFTextView", "⚠️ onDraw called but layout is NULL")
             return
         }
         

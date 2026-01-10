@@ -112,9 +112,6 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         
         // CRITICAL: If Yoga returned non-zero position for root, log a warning but use (0, 0)
         if (layoutX != 0f || layoutY != 0f) {
-            Log.w(TAG, "⚠️ WARNING: Yoga returned non-zero position for root node: layoutX=$layoutX, layoutY=$layoutY")
-            Log.w(TAG, "   This indicates a Yoga setup issue. Root should always be at (0, 0).")
-            Log.w(TAG, "   Correcting root frame to (0, 0, $layoutWidth, $layoutHeight)")
         }
         
         if (frame != rootFrame) {
@@ -210,10 +207,6 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
         val rootPaddingLeft = yogaNode.getLayoutPadding(YogaEdge.LEFT)
         val rootPaddingTop = yogaNode.getLayoutPadding(YogaEdge.TOP)
         if (rootMarginLeft != 0f || rootMarginTop != 0f || rootPaddingLeft != 0f || rootPaddingTop != 0f) {
-            Log.w(TAG, "⚠️ WARNING: Root node has non-zero layout margins/padding!")
-            Log.w(TAG, "   layoutMarginLeft=$rootMarginLeft, layoutMarginTop=$rootMarginTop, layoutPaddingLeft=$rootPaddingLeft, layoutPaddingTop=$rootPaddingTop")
-            Log.w(TAG, "   This can cause coordinate system issues. Root should have zero margins/padding.")
-            Log.w(TAG, "   This is a diagnostic warning - margins/padding should not be set on root node.")
         }
         
         // Log all children before layout
@@ -293,10 +286,6 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             Log.e(TAG, "   Root Yoga node has explicit dimensions: ${yogaNode.width.unit != YogaUnit.UNDEFINED || yogaNode.height.unit != YogaUnit.UNDEFINED}")
         }
         if (!rootSizeValid) {
-            Log.w(TAG, "⚠️ WARNING: Root node size doesn't match available size!")
-            Log.w(TAG, "   layoutWidth=$rootLayoutWidth (expected ~$availableWidth), layoutHeight=$rootLayoutHeight (expected ~$availableHeight)")
-            Log.w(TAG, "   Root Yoga node style: width=${yogaNode.width.value} (unit=${yogaNode.width.unit}), height=${yogaNode.height.value} (unit=${yogaNode.height.unit})")
-            Log.w(TAG, "   This might cause layout issues, but continuing...")
         }
         
         // DEBUG: Log root node layout after calculation
@@ -313,7 +302,6 @@ class DCFRootShadowNode(viewId: Int) : DCFShadowNode(viewId) {
             Log.d(TAG, "     Yoga layout: left=${child.layoutX}, top=${child.layoutY}, width=${child.layoutWidth}, height=${child.layoutHeight}")
             Log.d(TAG, "     Child frame AFTER layout: ${childShadowNode?.frame}")
             if (child.layoutY < 0) {
-                Log.w(TAG, "     ⚠️ WARNING: Child has negative Y position!")
             }
         }
         

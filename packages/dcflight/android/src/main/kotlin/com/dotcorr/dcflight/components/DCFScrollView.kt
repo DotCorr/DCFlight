@@ -344,7 +344,6 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
      */
     fun updateContentSizeFromContentView() {
         val contentView = _contentView ?: run {
-            Log.w(TAG, "⚠️ DCFScrollView.updateContentSizeFromContentView: No contentView, setting contentSize to zero")
             return
         }
         
@@ -380,9 +379,7 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
                     pendingFrame.right,
                     pendingFrame.bottom
                 )
-                Log.w(TAG, "⚠️ DCFScrollView.updateContentSizeFromContentView: Frame was zero, restored from pendingFrame=$pendingFrame, actualFrame=(${contentView.left}, ${contentView.top}, ${contentView.width}, ${contentView.height})")
             } else {
-                Log.w(TAG, "⚠️ DCFScrollView.updateContentSizeFromContentView: Frame is zero and no pendingFrame available - will wait for applyLayout")
                 return
             }
         }
@@ -504,7 +501,6 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         // This prevents assertion errors when ScrollContentView is re-attached or replaced
         val existingContentView = _contentView
         if (existingContentView != null && existingContentView != view) {
-            Log.w(TAG, "⚠️ DCFScrollView.insertContentView: Removing existing contentView before adding new one")
             _scrollView.removeView(existingContentView)
             _contentView = null
         }
@@ -608,7 +604,6 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
             // Update contentSize immediately since frame is valid
             updateContentSizeFromContentView()
         } else {
-            Log.w(TAG, "⚠️ DCFScrollView.insertContentView: No frame to restore - frameBeforeAdd=$frameBeforeAdd, pendingFrame=${pendingFrame?.toString() ?: "nil"} - will wait for applyLayout")
             // Set a flag so applyLayout knows to restore the frame and update contentSize
             val needsFrameRestoreKey = "needsFrameRestore".hashCode()
             view.setTag(needsFrameRestoreKey, true)
@@ -623,7 +618,6 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
      */
     fun removeContentView(subview: View) {
         if (_contentView != subview) {
-            Log.w(TAG, "⚠️ DCFScrollView.removeContentView: Attempted to remove non-existent subview. Expected: ${_contentView?.javaClass?.simpleName ?: "null"}, Got: ${subview.javaClass.simpleName}")
             // Don't crash - just return if it's not the contentView
             return
         }
@@ -689,7 +683,6 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         
         // Defensive check - handle case where _scrollView might not be added yet
         if (childCount == 0) {
-            Log.w(TAG, "⚠️ DCFScrollView.onLayout: No children, _scrollView not added yet")
             // Try to recover by adding _scrollView if it exists
             if (_scrollView.parent != this) {
                 addView(_scrollView)
@@ -705,7 +698,6 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         }
         
         if (childCount != 1) {
-            Log.w(TAG, "⚠️ DCFScrollView.onLayout: Expected 1 child, got $childCount. This may indicate a reconciliation issue.")
             // Try to recover by removing extra children and ensuring _scrollView is present
             while (childCount > 1) {
                 val child = getChildAt(0)
@@ -728,7 +720,6 @@ class DCFScrollView(context: Context) : ViewGroup(context), DCFScrollableProtoco
         
         val firstChild = getChildAt(0)
         if (firstChild != _scrollView) {
-            Log.w(TAG, "⚠️ DCFScrollView.onLayout: First child is not _scrollView (type: ${firstChild.javaClass.simpleName}). Attempting to fix...")
             // Try to recover by removing wrong child and adding _scrollView
             removeViewAt(0)
             if (_scrollView.parent != this) {

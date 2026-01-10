@@ -175,7 +175,6 @@ class DCMauiEventMethodHandler : MethodChannel.MethodCallHandler {
                 }
             }
             else -> {
-                Log.w(TAG, "Unknown event type: $eventType")
             }
         }
     }

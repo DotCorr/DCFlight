@@ -128,7 +128,6 @@ class DCFFlutterWidgetComponent : DCFComponent() {
         private fun setupMethodChannel() {
             // Get Flutter engine and create method channel
             val engine = DCDivergerUtil.getFlutterEngine() ?: run {
-                android.util.Log.w(TAG, "⚠️ FlutterEngine not available")
                 return
             }
             
@@ -143,7 +142,6 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             
             // Request widget rendering from Dart side
             val currentWidgetId = widgetId ?: run {
-                android.util.Log.w(TAG, "⚠️ No widgetId available")
                 return
             }
             
@@ -192,11 +190,9 @@ class DCFFlutterWidgetComponent : DCFComponent() {
                             android.util.Log.e(TAG, "❌ renderWidget error: $errorCode - $errorMessage")
                         }
                         override fun notImplemented() {
-                            android.util.Log.w(TAG, "⚠️ renderWidget not implemented")
                         }
                     })
                 } else {
-                    android.util.Log.w(TAG, "⚠️ Invalid frame ($width x $height), will wait for updateWidgetFrame")
                 }
             }
         }
@@ -214,12 +210,10 @@ class DCFFlutterWidgetComponent : DCFComponent() {
             }
             
             val currentWidgetId = widgetId ?: run {
-                android.util.Log.w(TAG, "⚠️ updateFlutterWidgetFrame: No widgetId")
                 return
             }
             // Use stored nodeId (actual viewId), not id
             val viewId = nodeId ?: run {
-                android.util.Log.w(TAG, "⚠️ updateFlutterWidgetFrame: No nodeId")
                 return
             }
             
@@ -249,7 +243,6 @@ class DCFFlutterWidgetComponent : DCFComponent() {
                     android.util.Log.e(TAG, "❌ updateWidgetFrame error: $errorCode - $errorMessage")
                 }
                 override fun notImplemented() {
-                    android.util.Log.w(TAG, "⚠️ updateWidgetFrame not implemented")
                 }
             })
             
@@ -267,10 +260,8 @@ class DCFFlutterWidgetComponent : DCFComponent() {
                     android.util.Log.d(TAG, "✅ renderWidget (from updateFlutterWidgetFrame) succeeded")
                 }
                 override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
-                    android.util.Log.w(TAG, "⚠️ renderWidget (from updateFlutterWidgetFrame) error: $errorCode - $errorMessage")
                 }
                 override fun notImplemented() {
-                    android.util.Log.w(TAG, "⚠️ renderWidget (from updateFlutterWidgetFrame) not implemented")
                 }
             })
         }

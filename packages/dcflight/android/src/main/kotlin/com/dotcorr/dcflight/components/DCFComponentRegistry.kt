@@ -46,7 +46,6 @@ class DCFComponentRegistry private constructor() {
      */
     fun registerComponent(type: String, componentClass: Class<out DCFComponent>) {
         if (componentTypes.containsKey(type)) {
-            Log.w(TAG, "⚠️ Component '$type' already registered, overwriting...")
         }
         componentTypes[type] = componentClass
         Log.d(TAG, "✅ Registered component type: $type")

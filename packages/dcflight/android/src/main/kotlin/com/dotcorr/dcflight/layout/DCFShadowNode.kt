@@ -155,7 +155,6 @@ open class DCFShadowNode {
             if (childCount > 0) {
                 // Node has children - silently ignore the assignment to prevent crash
                 // This can happen if registerView is called after children are attached
-                Log.w(TAG, "Attempted to set intrinsicContentSize on node with children (viewId=$viewId, childCount=$childCount)")
                 return
             }
             
@@ -485,7 +484,6 @@ open class DCFShadowNode {
                 try {
                     latch.await(100, java.util.concurrent.TimeUnit.MILLISECONDS)
                 } catch (e: InterruptedException) {
-                    Log.w(TAG, "⚠️ Interrupted while waiting for pendingFrame to be set", e)
                 }
             }
         }
@@ -528,7 +526,6 @@ open class DCFShadowNode {
                 Log.d(TAG, "   Processing child $i: viewId=${childShadowNode.viewId}, Yoga layout: left=${childNode.layoutX}, top=${childNode.layoutY}, width=${childNode.layoutWidth}, height=${childNode.layoutHeight}")
                 childShadowNode.applyLayoutNode(childNode, viewsWithNewFrame, absolutePosition)
             } else {
-                Log.w(TAG, "   ⚠️ Child $i shadow node not found for Yoga node")
             }
         }
     }

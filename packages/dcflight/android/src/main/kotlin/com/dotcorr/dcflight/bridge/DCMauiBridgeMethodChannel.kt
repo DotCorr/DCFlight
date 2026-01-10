@@ -108,7 +108,6 @@ class DCMauiBridgeMethodChannel : MethodChannel.MethodCallHandler {
             }
 
             else -> {
-                Log.w(TAG, "Unknown method: ${call.method}")
                 result.notImplemented()
             }
         }

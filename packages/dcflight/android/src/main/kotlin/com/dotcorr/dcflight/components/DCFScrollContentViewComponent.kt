@@ -142,9 +142,7 @@ class DCFScrollContentViewComponent : DCFComponent() {
                     frame.bottom
                 )
                 view.requestLayout()
-                Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame was zero/mismatch/needsRestore - restored to $frame, actualFrame=$actualFrame")
             } else {
-                Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame needs restore but view has no parent yet - frame=$frame, actualFrame=$actualFrame")
             }
             
             // Clear the needsFrameRestore flag
@@ -201,7 +199,6 @@ class DCFScrollContentViewComponent : DCFComponent() {
                     frame.bottom
                 )
                 view.requestLayout()
-                Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout: Frame was incorrect, restored to $frame, actualFrame=$actualFrame")
             }
             
             // 🔥 CRITICAL: Always set expectedContentHeight, even if it's the same
@@ -260,7 +257,6 @@ class DCFScrollContentViewComponent : DCFComponent() {
                         frame.bottom
                     )
                     contentView.requestLayout()
-                    Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout (async): Restored frame=$frame, actualFrame=$actualFrame")
                 }
                 
                 // Try to find ScrollView using stored reference first (most reliable)
@@ -308,7 +304,6 @@ class DCFScrollContentViewComponent : DCFComponent() {
                     customScrollView.requestLayout()
                 } ?: run {
                     val storedRefSet = contentView.getTag(scrollViewKey) != null
-                    Log.w(TAG, "⚠️ DCFScrollContentViewComponent.applyLayout (async): Could not find ScrollView, contentView.parent=${contentView.parent?.javaClass?.simpleName ?: "nil"}, frame=$actualFrame, storedRef=$storedRefSet")
                 }
             }
         }
@@ -529,7 +524,6 @@ class DCFScrollContentViewComponent : DCFComponent() {
                 }
             }
         } ?: run {
-            Log.w(TAG, "⚠️ DCFScrollContentViewComponent.setChildren: Could not find ScrollView")
         }
         
         val childCount = if (view is ViewGroup) view.childCount else 0

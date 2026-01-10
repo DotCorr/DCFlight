@@ -96,6 +96,8 @@ class DCFViewManager private constructor() {
 
         // ✅ Use pure Kotlin tag keys instead of XML resource IDs
         view.setTag(com.dotcorr.dcflight.components.DCFTags.COMPONENT_TYPE_KEY, viewType)
+        // CRITICAL: Set view ID tag so we can look it up later (for setChildren cleanup)
+        view.setTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY, viewId)
 
         // CRITICAL: Prevent flash - keep views invisible until layout is applied
         // Root view (0) is always visible

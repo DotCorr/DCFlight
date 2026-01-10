@@ -290,7 +290,6 @@ class DCFScrollContentView @JvmOverloads constructor(
             // CRITICAL: If we measured to 0 but have children, something is wrong
             // This can happen if children are invisible or not properly set up
             // Log a warning but don't set expectedContentHeight to 0 (keep previous value if any)
-            android.util.Log.w("DCFScrollContentView", "⚠️ onMeasure (fallback): Measured to 0 height but have $childCount children - children may not be visible or properly set up")
         }
         
         setMeasuredDimension(measuredWidth, measuredHeight)

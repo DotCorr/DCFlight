@@ -65,7 +65,6 @@ object DCDivergerUtil {
             registerMethod.invoke(null, flutterEngine)
             Log.d(TAG, "✅ DCDivergerUtil: Registered all plugins with custom FlutterEngine")
         } catch (e: Exception) {
-            Log.w(TAG, "⚠️ DCDivergerUtil: Could not register plugins (may already be registered): ${e.message}")
         }
 
         // 🚀 PERFORMANCE: Only create FlutterView if ENABLE_FLUTTER_VIEW flag is set
@@ -162,7 +161,6 @@ object DCDivergerUtil {
                     Log.d(TAG, "Native container already exists and attached, preserving UI state")
                     return
                 } else {
-                    Log.w(TAG, "⚠️ Root view exists but not attached (isAttached=$isAttached, hasParent=$hasParent) - recreating")
                     // Clean up the old root view
                     rootView = null
                 }
@@ -191,10 +189,8 @@ object DCDivergerUtil {
                         setMethod.invoke(null, this, activity)
                         Log.d(TAG, "✅ ViewTreeLifecycleOwner attached to root view via reflection")
                     } catch (e: Exception) {
-                        Log.w(TAG, "ViewTreeLifecycleOwner not available, Compose may not work properly", e)
                     }
                 } else {
-                    Log.w(TAG, "Activity is not a LifecycleOwner, Compose may not work properly")
                 }
                 
                 // Also attach SavedStateRegistryOwner for Compose support
@@ -206,10 +202,8 @@ object DCDivergerUtil {
                         setMethod.invoke(null, this, activity)
                         Log.d(TAG, "✅ ViewTreeSavedStateRegistryOwner attached to root view via reflection")
                     } catch (e: Exception) {
-                        Log.w(TAG, "ViewTreeSavedStateRegistryOwner not available, Compose may not work properly", e)
                     }
                 } else {
-                    Log.w(TAG, "Activity is not a SavedStateRegistryOwner, Compose may not work properly")
                 }
             }
 

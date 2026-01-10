@@ -122,7 +122,7 @@ class ProjectCreator {
         }
       }
       
-      print('✅ Dependencies installed successfully');
+        print('✅ Dependencies installed successfully');
     } catch (e) {
       print('⚠️  Warning: Error during dependency installation: $e');
       print('   You may need to run "flutter pub get" manually');

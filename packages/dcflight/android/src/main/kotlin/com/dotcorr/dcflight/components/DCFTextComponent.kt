@@ -99,13 +99,11 @@ class DCFTextComponent : DCFComponent() {
      */
     private fun updateShadowNodeProps(props: Map<String, Any?>) {
         if (nodeId == null) {
-            android.util.Log.w(TAG, "⚠️ updateShadowNodeProps: nodeId is NULL")
             return
         }
         
         val viewIdInt = nodeId?.toIntOrNull()
         if (viewIdInt == null) {
-            android.util.Log.w(TAG, "⚠️ updateShadowNodeProps: Could not parse nodeId=$nodeId")
             return
         }
         
@@ -114,7 +112,6 @@ class DCFTextComponent : DCFComponent() {
         val shadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewIdInt) as? DCFVirtualTextShadowNode
         
         if (shadowNode == null) {
-            android.util.Log.w(TAG, "⚠️ Shadow node is NULL for viewId=$viewIdInt")
             return
         }
         
@@ -194,12 +191,10 @@ class DCFTextComponent : DCFComponent() {
             collectedText
         } else {
             val fallbackText = props["content"]?.toString() ?: ""
-            android.util.Log.w(TAG, "⚠️ Shadow node NULL, using fallback text: '$fallbackText'")
             fallbackText
         }
         
         if (text.isEmpty()) {
-            android.util.Log.w(TAG, "⚠️ Text is empty, setting textLayout to null")
                 textView.textLayout = null
                 return
         }
@@ -374,7 +369,6 @@ class DCFTextComponent : DCFComponent() {
         } as? DCFVirtualTextShadowNode
         
         if (shadowNode == null) {
-            android.util.Log.w(TAG, "⚠️ Shadow node NULL in applyLayout, nodeId=$viewNodeId")
             val props = getStoredProps(view)
             updateTextView(textView, props)
             return
@@ -527,11 +521,9 @@ class DCFTextComponent : DCFComponent() {
                     android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent Yoga: width=${parentShadowNode.yogaNode.layoutWidth}, height=${parentShadowNode.yogaNode.layoutHeight}")
                     android.util.Log.d(TAG, "🔍 [CONTAINER DEBUG] Parent frame: ${parentShadowNode.frame}")
                 } else {
-                    android.util.Log.w(TAG, "⚠️ [CONTAINER DEBUG] Parent shadow node NOT found for nodeId=$parentNodeId")
                 }
             }
         } else {
-            android.util.Log.w(TAG, "⚠️ [CONTAINER DEBUG] Parent is not a View, type=${parent?.javaClass?.simpleName}")
         }
     }
     

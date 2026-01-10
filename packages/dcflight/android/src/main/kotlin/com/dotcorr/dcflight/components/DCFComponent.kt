@@ -316,10 +316,8 @@ fun propagateEvent(
                 android.util.Log.d("DCFComponent", "🚀 FIRING EVENT: $eventName to Flutter!")
                 eventCallback(eventName, data)
             } else {
-                android.util.Log.w("DCFComponent", "❌ Event $eventName/$normalizedEventName not in registered types: $eventTypes")
             }
         } else {
-            android.util.Log.w("DCFComponent", "❌ propagateEvent: Missing registration - viewId=$viewId, eventTypes=$eventTypes, callback=$eventCallback")
         }
     } catch (e: Exception) {
         android.util.Log.e("DCFComponent", "Error in propagateEvent: ${e.message}", e)

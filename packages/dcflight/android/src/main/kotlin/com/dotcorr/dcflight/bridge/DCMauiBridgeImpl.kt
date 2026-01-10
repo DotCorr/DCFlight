@@ -88,7 +88,6 @@ class DCMauiBridgeImpl private constructor() {
      */
     fun initialize(): Boolean {
         if (isInitialized) return true
-        Log.d(TAG, "Initializing DCMauiBridgeImpl")
         isInitialized = true
         return true
     }
@@ -102,7 +101,6 @@ class DCMauiBridgeImpl private constructor() {
      * @return The result of the method call, or `null` if it failed
      */
     fun handleTunnelMethod(componentType: String, method: String, params: Map<String, Any>): Any? {
-        Log.d(TAG, "Tunneling $method to $componentType")
         
         return try {
             // ⚡ PERFORMANCE: Use cached component instance
@@ -174,10 +172,8 @@ class DCMauiBridgeImpl private constructor() {
                 if (viewId == 0) {
                 view.visibility = View.VISIBLE
                 view.alpha = 1.0f
-                    Log.d(TAG, "✅ createView: Root view (0) made visible immediately")
                 } else {
                     // Non-root views start invisible - will be made visible after layout
-                    Log.d(TAG, "🔍 createView: Non-root view (viewId=$viewId) starts invisible, will be made visible after layout")
                 }
             } else {
                 Log.e(TAG, "View '$viewId' was created but not found in registry")
@@ -291,7 +287,6 @@ class DCMauiBridgeImpl private constructor() {
                     // This prevents duplicate calls to insertContentView
                     val scrollView = parentView as DCFScrollView
                     if (scrollView.contentView == childView) {
-                        Log.d(TAG, "🔍 attachView: ScrollContentView already attached, skipping insertContentView")
                         // Still add to Yoga tree if not already added
                         childToParent[childId.toString()] = parentId.toString()
                         viewHierarchy.getOrPut(parentId.toString()) { mutableListOf() }.add(childId.toString())
@@ -299,31 +294,19 @@ class DCMauiBridgeImpl private constructor() {
                         return true
                     }
                     
-                    Log.d(TAG, "🔍 attachView: Detected ScrollContentView being attached to ScrollView, using insertContentView")
                     
                     // Remove from existing parent before attaching
                     if (childView.parent != null) {
                         (childView.parent as? ViewGroup)?.removeView(childView)
-                        Log.d(TAG, "Removed child '$childId' from existing parent")
                     }
                     
                     scrollView.insertContentView(childView)
                     
-                    // CRITICAL: Make view visible immediately when attached (matches React Native)
-                    val wasInvisible = childView.visibility != View.VISIBLE || childView.alpha < 1.0f
                     childView.visibility = View.VISIBLE
                     childView.alpha = 1.0f
-                    
-                    // Add to Yoga tree for layout
                     childToParent[childId.toString()] = parentId.toString()
                     viewHierarchy.getOrPut(parentId.toString()) { mutableListOf() }.add(childId.toString())
                     YogaShadowTree.shared.addChildNode(parentId, childId, index)
-                    
-                    if (wasInvisible) {
-                        Log.d(TAG, "✅ attachView: ScrollContentView attached via insertContentView, made visible (was invisible)")
-                    } else {
-                        Log.d(TAG, "✅ attachView: ScrollContentView attached via insertContentView (already visible)")
-                    }
                     return true
                 }
                 // If child is NOT ScrollContentView, fall through to normal attachment
@@ -336,40 +319,23 @@ class DCMauiBridgeImpl private constructor() {
                 val contentContainer = parentView.getContentContainer()
                 if (contentContainer != null) {
                     actualParent = contentContainer
-                    Log.d(TAG, "Content container provider detected: attaching to content container")
                 }
             }
 
-            if (childView.parent != null) {
-                (childView.parent as? ViewGroup)?.removeView(childView)
-                Log.d(TAG, "Removed child '$childId' from existing parent")
-            }
-
-                try {
-                    if (index >= 0 && index <= actualParent.childCount) {
-                        actualParent.addView(childView, index)
-                        Log.d(TAG, "Attached child '$childId' to parent '$parentId' at index $index")
-                    } else {
-                        actualParent.addView(childView)
-                        Log.d(TAG, "Attached child '$childId' to parent '$parentId' at end")
-                    }
-                    
-                    // CRITICAL: DON'T make view visible here - wait until layout is applied
-                    // This prevents flash of incorrect layout (views at 0,0,0,0 before layout)
-                    // Views will be made visible in applyLayout after correct frame is set
-                    val wasInvisible = childView.visibility != View.VISIBLE || childView.alpha < 1.0f
-                    // Keep view invisible until layout is applied
-                    if (childId != 0) { // Root view (0) is always visible
-                        childView.visibility = View.INVISIBLE
-                        childView.alpha = 1.0f // Keep alpha at 1.0 so fade-in works when made visible
-                    }
-                    
-                    if (wasInvisible) {
-                        Log.d(TAG, "✅ attachView: Successfully attached child '$childId' to parent '$parentId' (kept invisible until layout)")
-                    } else {
-                        Log.d(TAG, "✅ attachView: Successfully attached child '$childId' to parent '$parentId' (already visible)")
-                    }
-                } catch (e: Exception) {
+            (childView.parent as? ViewGroup)?.removeView(childView)
+            
+            try {
+                if (index >= 0 && index <= actualParent.childCount) {
+                    actualParent.addView(childView, index)
+                } else {
+                    actualParent.addView(childView)
+                }
+                
+                if (childId != 0) {
+                    childView.visibility = View.INVISIBLE
+                    childView.alpha = 1.0f
+                }
+            } catch (e: Exception) {
                 Log.e(TAG, "Error in attachment: ${e.message}", e)
                 throw e
             }
@@ -425,7 +391,6 @@ class DCMauiBridgeImpl private constructor() {
      */
     fun setChildren(viewId: Int, childrenIds: List<Int>): Boolean {
         return try {
-            Log.d(TAG, "🔍 setChildren: START for viewId=$viewId, childrenIds=$childrenIds")
             
             val parentView = ViewRegistry.shared.getView(viewId)
             
@@ -441,46 +406,45 @@ class DCMauiBridgeImpl private constructor() {
                 return false
             }
             
-            Log.d(TAG, "   Parent view type: ${parentView.javaClass.simpleName}, current childCount: ${parentViewGroup.childCount}")
 
             // Check if this is a DCFScreenComponent's FrameLayout (has DCFScreen tag)
             if (parentViewGroup.tag == "DCFScreen") {
-                Log.d(TAG, "🎯 Using custom setChildren for DCFScreen: $viewId")
                 val childViews = childrenIds.mapNotNull { childId ->
                     ViewRegistry.shared.getView(childId)
                 }
                 
-                // Remove existing children (except navigation bar)
+                // OPTIMIZED: Batch remove and add
                 val childCount = parentViewGroup.childCount
+                val toRemove = mutableListOf<android.view.View>()
                 for (i in childCount - 1 downTo 0) {
                     val child = parentViewGroup.getChildAt(i)
-                    if (child.tag != "NavigationBar") { // Keep navigation bar
-                        parentViewGroup.removeViewAt(i)
+                    if (child.tag != "NavigationBar") {
+                        toRemove.add(child)
                     }
                 }
+                toRemove.forEach { parentViewGroup.removeView(it) }
                 
-                // Add new children
+                // Batch add with layout params
+                val layoutParams = android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                )
                 childViews.forEach { childView ->
-                    parentViewGroup.addView(childView)
-                    childView.layoutParams = android.widget.FrameLayout.LayoutParams(
-                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT
-                    )
+                    childView.layoutParams = layoutParams
                     childView.visibility = android.view.View.VISIBLE
                     childView.alpha = 1.0f
+                    parentViewGroup.addView(childView)
                 }
                 
-                // Update view hierarchy
+                // Single-pass hierarchy update
                 val viewIdStr = viewId.toString()
-                viewHierarchy[viewIdStr]?.clear()
-                childrenIds.forEach { childId ->
-                    val childIdStr = childId.toString()
-                    childToParent[childIdStr] = viewIdStr
-                    viewHierarchy.getOrPut(viewIdStr) { mutableListOf() }.add(childIdStr)
-                    DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = childrenIds.indexOf(childId))
+                val childrenIdsStr = childrenIds.map { it.toString() }
+                viewHierarchy[viewIdStr] = childrenIdsStr.toMutableList()
+                childrenIdsStr.forEach { childToParent[it] = viewIdStr }
+                childrenIds.forEachIndexed { index, childId ->
+                    DCFLayoutManager.shared.addChildNode(viewId, childId, index)
                 }
                 
-                Log.d(TAG, "✅ Added ${childViews.size} children to DCFScreen: $viewId")
                 return true
             }
 
@@ -492,49 +456,24 @@ class DCMauiBridgeImpl private constructor() {
                     // Get component instance (use cached instance, matches iOS pattern)
                     val componentInstance = getCachedComponentInstance(viewInfo.type)
                     if (componentInstance != null) {
-                        // CRITICAL: Match React Native - verify ALL children exist before proceeding
-                        // React Native throws exception if view not found, we log error but continue
-                        val missingChildren = childrenIds.filter { ViewRegistry.shared.getView(it) == null }
-                        if (missingChildren.isNotEmpty()) {
-                            Log.e(TAG, "❌ setChildren: Missing child views: $missingChildren (component: ${viewInfo.type})")
-                            // Don't return false - let component.handleChildren handle it or fall through to fallback
-                        }
-                        
-                        // Get child views (filtered - only registered views, matches iOS compactMap pattern)
+                        // OPTIMIZED: Single pass for child views and hierarchy
                         val childViews = childrenIds.mapNotNull { ViewRegistry.shared.getView(it) }
                         
-                        Log.d(TAG, "🔍 setChildren: Component '${viewInfo.type}' has custom setChildren, routing ${childViews.size} children (requested ${childrenIds.size})")
-                        
-                        // Call component's setChildren if it exists (matches iOS pattern)
                         if (componentInstance.setChildren(parentView, childViews, viewId.toString())) {
-                            Log.d(TAG, "✅ setChildren: Component '${viewInfo.type}' handled children routing")
-                            
-                            // CRITICAL: Use ORIGINAL childrenIds for hierarchy tracking (matches iOS)
-                            // This ensures all children are tracked, even if not yet registered
                             val viewIdStr = viewId.toString()
                             val childrenIdsStr = childrenIds.map { it.toString() }
                             viewHierarchy[viewIdStr] = childrenIdsStr.toMutableList()
-                            for (childIdStr in childrenIdsStr) {
-                                childToParent[childIdStr] = viewIdStr
-                            }
+                            childrenIdsStr.forEach { childToParent[it] = viewIdStr }
                             
-                            // Update layout manager for registered children only
-                            for ((index, childId) in childrenIds.withIndex()) {
-                                if (ViewRegistry.shared.getView(childId) != null) {
-                                    DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
-                                }
-                            }
-                            
-                            // CRITICAL: Make all child views visible (matches iOS pattern)
-                            childViews.forEach { childView ->
+                            // Batch update layout manager and visibility
+                            childViews.forEachIndexed { index, childView ->
+                                val childId = childrenIds[index]
+                                DCFLayoutManager.shared.addChildNode(viewId, childId, index)
                                 childView.visibility = View.VISIBLE
                                 childView.alpha = 1.0f
                             }
                             
-                            Log.d(TAG, "✅ setChildren: Component handled successfully for viewId=$viewId")
                             return true
-                        } else {
-                            Log.d(TAG, "❌ setChildren: Component '${viewInfo.type}' setChildren returned false, falling back to normal")
                         }
                     }
                 }
@@ -543,100 +482,72 @@ class DCMauiBridgeImpl private constructor() {
             // CRITICAL: Fallback to React Native's exact pattern
             // React Native's setChildren does NOT call removeAllViews() - just adds children in order
             // Android's ViewGroup.addView() automatically removes view from previous parent
-            Log.d(TAG, "⚠️ setChildren: Using React Native pattern (no removeAllViews) for viewId=$viewId")
             
             val viewIdStr = viewId.toString()
             val childrenIdsStr = childrenIds.map { it.toString() }
             
-            // Update hierarchy tracking (matches React Native's internal tracking)
+            // OPTIMIZED: Single-pass hierarchy update and view operations
+            val childrenIdsSet = childrenIds.toSet() // For O(1) lookup
             val oldChildren = viewHierarchy[viewIdStr] ?: mutableListOf()
-            for (oldChildIdStr in oldChildren) {
-                if (!childrenIdsStr.contains(oldChildIdStr)) {
+            
+            // Update hierarchy in one pass
+            oldChildren.forEach { oldChildIdStr ->
+                if (!childrenIdsSet.contains(oldChildIdStr.toIntOrNull())) {
                     childToParent.remove(oldChildIdStr)
-                    Log.d(TAG, "   Removed old child from hierarchy: $oldChildIdStr")
                 }
             }
-            
             viewHierarchy[viewIdStr] = childrenIdsStr.toMutableList()
-            for (childIdStr in childrenIdsStr) {
-                    childToParent[childIdStr] = viewIdStr
-            }
+            childrenIdsStr.forEach { childToParent[it] = viewIdStr }
             
-            // CRITICAL: Match React Native exactly - do NOT call removeAllViews()
-            // Just add children in order - Android's addView() handles parent removal automatically
-            // This is the key difference from our previous implementation!
-            var addedCount = 0
-            var skippedCount = 0
-            for ((index, childId) in childrenIds.withIndex()) {
-                val childView = ViewRegistry.shared.getView(childId)
-                if (childView == null) {
-                    // CRITICAL: React Native throws exception here, we log error but continue
-                    Log.e(TAG, "❌ setChildren: Child view '$childId' not found at index $index (React Native would throw)")
-                    skippedCount++
-                    continue
-                }
-                
-                // CRITICAL: Check if view already has a parent
-                val currentParent = childView.parent
-                if (currentParent != null && currentParent != parentViewGroup) {
-                    Log.d(TAG, "   Child $childId already has parent ${currentParent.javaClass.simpleName}, will be moved")
-                    (currentParent as? ViewGroup)?.removeView(childView)
-                }
-                
-                // CRITICAL: Match React Native - just call addView at index
-                // Android will automatically handle reordering if view is already a child
-                try {
-                    parentViewGroup.addView(childView, index)
-                    Log.d(TAG, "   ✅ Added child $childId at index $index")
-                    
-                    // CRITICAL: Make child view visible immediately (matches React Native pattern)
-                    childView.visibility = View.VISIBLE
-                    childView.alpha = 1.0f
-                    
-                    DCFLayoutManager.shared.addChildNode(parentId = viewId, childId = childId, index = index)
-                    addedCount++
-                } catch (e: Exception) {
-                    Log.e(TAG, "❌ setChildren: Error adding child $childId at index $index", e)
-                    skippedCount++
-                }
-            }
-            
-            // CRITICAL: Remove any children that are no longer in the list
-            // React Native doesn't do this explicitly, but we need to for correctness
-            val currentChildCount = parentViewGroup.childCount
+            // Collect views once, process in single pass
+            val childViews = childrenIds.mapNotNull { ViewRegistry.shared.getView(it) }
             val childrenToRemove = mutableListOf<android.view.View>()
+            val absoluteViews = mutableListOf<android.view.View>()
+            
+            // Single pass: collect removals and process additions
+            val currentChildCount = parentViewGroup.childCount
             for (i in 0 until currentChildCount) {
                 val child = parentViewGroup.getChildAt(i)
-                val childId = child.id
-                if (childId != 0 && !childrenIds.contains(childId)) {
+                val childId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
+                if (childId != null && !childrenIdsSet.contains(childId)) {
                     childrenToRemove.add(child)
                 }
             }
-            for (child in childrenToRemove) {
-                parentViewGroup.removeView(child)
-                Log.d(TAG, "   Removed child ${child.id} (no longer in children list)")
-            }
             
-            // 🔥 CRITICAL: After setChildren completes, bring absolutely positioned views to front
-            // This ensures they appear above other views, especially during navigation
-            // This fixes the issue where the button disappears on Android when navigating to examples
-            for (childId in childrenIds) {
-                val childView = ViewRegistry.shared.getView(childId)
-                if (childView != null) {
+            // Batch remove old children
+            childrenToRemove.forEach { parentViewGroup.removeView(it) }
+            
+            // Single pass: add all children and collect absolute views
+            childViews.forEachIndexed { index, childView ->
+                val childId = childrenIds[index]
+                val currentParent = childView.parent
+                if (currentParent != null && currentParent != parentViewGroup) {
+                    (currentParent as? ViewGroup)?.removeView(childView)
+                }
+                
+                try {
+                    parentViewGroup.addView(childView, index)
+                    childView.visibility = View.VISIBLE
+                    childView.alpha = 1.0f
+                    DCFLayoutManager.shared.addChildNode(viewId, childId, index)
+                    
+                    // Collect absolute views for batch processing
                     val shadowNode = YogaShadowTree.shared.getShadowNode(childId)
-                    if (shadowNode != null && shadowNode.yogaNode.positionType == com.facebook.yoga.YogaPositionType.ABSOLUTE) {
-                        parentViewGroup.bringChildToFront(childView)
-                        Log.d(TAG, "   ✅ Brought absolutely positioned view $childId to front")
-                        // Also ensure parent doesn't clip absolutely positioned children
-                        if (parentViewGroup is com.dotcorr.dcflight.components.DCFFrameLayout) {
-                            parentViewGroup.clipChildren = false
-                            parentViewGroup.clipToPadding = false
-                        }
+                    if (shadowNode?.yogaNode?.positionType == com.facebook.yoga.YogaPositionType.ABSOLUTE) {
+                        absoluteViews.add(childView)
                     }
+                } catch (e: Exception) {
+                    Log.e(TAG, "setChildren: Error adding child $childId", e)
                 }
             }
             
-            Log.d(TAG, "✅ setChildren: COMPLETE for viewId=$viewId - added: $addedCount, skipped: $skippedCount, removed: ${childrenToRemove.size}")
+            // Batch process absolute views
+            if (absoluteViews.isNotEmpty() && parentViewGroup is com.dotcorr.dcflight.components.DCFFrameLayout) {
+                parentViewGroup.clipChildren = false
+                parentViewGroup.clipToPadding = false
+                absoluteViews.forEach { parentViewGroup.bringChildToFront(it) }
+            }
+            
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ setChildren: Failed to set children for view: $viewId", e)
@@ -747,107 +658,55 @@ class DCMauiBridgeImpl private constructor() {
         }
         
         try {
-            // 🔧 FIX: Delete views FIRST but defer view removal from parent to prevent layout shifts
-            // We remove from registry/layout tree but keep views in hierarchy until creates are done
-            // Use a Set to avoid duplicates and ensure proper cleanup
+            // OPTIMIZED: Single-pass deletion - collect everything once, remove in batch
+            // Defer view removal from parent to prevent layout shifts during batch
             val viewsToRemoveSet = mutableSetOf<android.view.View>()
+            val allIdsToRemove = mutableSetOf<Int>()
             
-            // Collect all views to remove (parent + children) without removing from parent yet
-            fun collectViewsToRemove(parentId: Int) {
+            // Single recursive pass: collect views, IDs, and clear hierarchy in one go
+            fun collectAndRemoveRecursive(parentId: Int) {
                 val view = ViewRegistry.shared.getView(parentId)
                 if (view != null) {
                     viewsToRemoveSet.add(view)
                 }
+                allIdsToRemove.add(parentId)
+                
                 val parentIdStr = parentId.toString()
                 val children = viewHierarchy[parentIdStr] ?: return
                 children.forEach { childIdStr ->
                     val childId = childIdStr.toIntOrNull()
                     if (childId != null) {
-                        collectViewsToRemove(childId)
+                        collectAndRemoveRecursive(childId)
                     }
                 }
+                // Clear hierarchy immediately during collection
+                viewHierarchy[parentIdStr]?.clear()
             }
             
-            // 🔧 FIX: Delete phase - remove from layout tree FIRST, before creating new views
-            // This prevents both old and new views from being in the layout tree simultaneously,
-            // which causes the "imaginary margin" / layout shift issue
+            // Delete phase - remove from layout tree FIRST, before creating new views
             deleteOps.forEach { op ->
-                collectViewsToRemove(op.viewId)
-                
-                // 🔧 CRITICAL: Remove from layout tree FIRST (before creates)
-                // This ensures old view is not in layout tree when new view is added
+                collectAndRemoveRecursive(op.viewId)
+                cleanupHierarchyReferences(op.viewId.toString())
+            }
+            
+            // Batch remove all collected IDs (much faster than individual removals)
+            allIdsToRemove.forEach { viewId ->
                 try {
-                    YogaShadowTree.shared.removeNode(op.viewId.toString())
+                    YogaShadowTree.shared.removeNode(viewId.toString())
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ Error removing node ${op.viewId} from layout tree", e)
-                    // Continue with cleanup even if removeNode fails
-                }
-                
-                // Remove from registry (but keep in hierarchy for now)
-                ViewRegistry.shared.removeView(op.viewId)
-                DCFLayoutManager.shared.unregisterView(op.viewId)
-                views.remove(op.viewId)
-                
-                // Clean up tracking recursively
-                // CRITICAL: Collect all child IDs first, then remove them
-                // This prevents issues if removeNode defers due to layout calculation
-                val childrenToRemove = mutableListOf<Int>()
-                fun collectChildrenToRemove(parentId: Int) {
-                    val parentIdStr = parentId.toString()
-                    val children = viewHierarchy[parentIdStr] ?: return
-                    children.forEach { childIdStr ->
-                        val childId = childIdStr.toIntOrNull()
-                        if (childId != null) {
-                            childrenToRemove.add(childId)
-                            collectChildrenToRemove(childId)
-                        }
-                    }
-                }
-                collectChildrenToRemove(op.viewId)
-                
-                // Now remove all children (in reverse order to handle dependencies)
-                // CRITICAL: Wrap each removal in try-catch to prevent one failure from blocking others
-                childrenToRemove.reversed().forEach { childId ->
-                    val childIdStr = childId.toString()
-                    try {
-                        YogaShadowTree.shared.removeNode(childIdStr)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error removing node $childIdStr from layout tree", e)
-                        // Continue with other removals
-                    }
-                    try {
-                        ViewRegistry.shared.removeView(childId)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error removing view $childId from registry", e)
-                    }
-                    try {
-                        DCFLayoutManager.shared.unregisterView(childId)
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error unregistering view $childId", e)
-                    }
-                    views.remove(childId) // Safe - just removes from map
-                }
-                
-                // Clear hierarchy after all removals
-                // CRITICAL: Get children list BEFORE clearing to avoid concurrent modification
-                fun clearHierarchy(parentId: Int) {
-                    val parentIdStr = parentId.toString()
-                    val children = viewHierarchy[parentIdStr]?.toList() ?: emptyList() // Copy list before clearing
-                    viewHierarchy[parentIdStr]?.clear() // Clear after getting copy
-                    children.forEach { childIdStr ->
-                        val childId = childIdStr.toIntOrNull()
-                        if (childId != null) {
-                            clearHierarchy(childId)
-                        }
-                    }
+                    // Silent - continue with other removals
                 }
                 try {
-                    clearHierarchy(op.viewId)
-                    cleanupHierarchyReferences(op.viewId.toString())
+                    ViewRegistry.shared.removeView(viewId)
                 } catch (e: Exception) {
-                    Log.w(TAG, "Error clearing hierarchy for viewId=${op.viewId}", e)
-                    // Continue - hierarchy cleanup is not critical
+                    // Silent - continue
                 }
+                try {
+                    DCFLayoutManager.shared.unregisterView(viewId)
+                } catch (e: Exception) {
+                    // Silent - continue
+                }
+                views.remove(viewId)
             }
             
             // Execute phase - process all operations
@@ -890,16 +749,9 @@ class DCMauiBridgeImpl private constructor() {
                 }
             }
             
-            // 🔧 FIX: Finally remove ALL old views from parent AFTER layout tree removal
-            // This ensures layout is stable before removing from hierarchy
-            if (viewsToRemoveSet.isNotEmpty()) {
-                viewsToRemoveSet.forEach { view ->
-                    val parentView = view.parent as? android.view.ViewGroup
-                    if (parentView != null) {
-                        parentView.removeView(view)
-                    }
-                }
-                viewsToRemoveSet.clear()
+            // Batch remove all old views from parents (after all operations complete)
+            viewsToRemoveSet.forEach { view ->
+                (view.parent as? android.view.ViewGroup)?.removeView(view)
             }
             
             eventOps.forEach { op ->
@@ -932,8 +784,6 @@ class DCMauiBridgeImpl private constructor() {
                     root.width != rootFrame.width() || root.height != rootFrame.height()) {
                     root.layout(rootFrame.left, rootFrame.top, rootFrame.right, rootFrame.bottom)
                 }
-            } ?: run {
-                Log.e(TAG, "Root view (0) not found!")
             }
             
             // CRITICAL: Layout calculation must never hang or throw uncaught exceptions
@@ -955,34 +805,9 @@ class DCMauiBridgeImpl private constructor() {
             // Do NOT make views visible here - it causes a race condition where views are visible but not laid out
             // This matches iOS behavior where calculateLayoutNow() makes views visible after layout completes
             
-            // Invalidate all views to ensure they redraw with new layouts
-            // CRITICAL: Wrap in try-catch to prevent crashes during invalidation
-            rootView?.let { root ->
-                try {
-                    fun invalidateAll(v: View) {
-                        try {
-                            v.invalidate()
-                            if (v is ViewGroup) {
-                                for (i in 0 until v.childCount) {
-                                    try {
-                                        invalidateAll(v.getChildAt(i))
-                                    } catch (e: Exception) {
-                                        Log.w(TAG, "Error invalidating child at index $i", e)
-                                        // Continue with other children
-                                    }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Error invalidating view", e)
-                            // Continue with other views
-                        }
-                    }
-                    invalidateAll(root)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Error during view invalidation (non-fatal)", e)
-                    // Continue - invalidation is not critical for app functionality
-                }
-            }
+            // OPTIMIZED: Only invalidate root - Android will handle child invalidation automatically
+            // Recursive invalidation is expensive and unnecessary
+            rootView?.invalidate()
             
             return true
         } catch (e: Exception) {

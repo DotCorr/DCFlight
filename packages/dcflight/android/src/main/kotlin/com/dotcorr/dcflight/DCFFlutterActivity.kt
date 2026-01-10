@@ -81,7 +81,6 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
             }
             
             if (!rootViewExists) {
-                Log.w(TAG, "⚠️ Root view missing despite divergence flag - re-diverging")
                 isFrameworkDiverged = false // Reset flag to allow re-divergence
                 divergeToFlightSafely()
             } else {
@@ -110,14 +109,12 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
             val rootView = com.dotcorr.dcflight.layout.ViewRegistry.shared.getView(0)
             if (rootView != null) {
                 if (!rootView.isAttachedToWindow) {
-                    Log.w(TAG, "⚠️ Root view not attached on resume - re-attaching")
                     val contentView = findViewById<ViewGroup>(android.R.id.content)
                     if (rootView.parent == null && contentView != null) {
                         contentView.addView(rootView)
                     }
                 }
                 if (rootView.visibility != View.VISIBLE) {
-                    Log.w(TAG, "⚠️ Root view not visible on resume - making visible")
                     rootView.visibility = View.VISIBLE
                     rootView.alpha = 1.0f
                 }
@@ -150,7 +147,6 @@ open class DCFFlutterActivity : FlutterActivity(), LifecycleOwner, SavedStateReg
                 Log.d(TAG, "✅ Flutter engine available - diverging immediately")
                 divergeToFlight(engine)
             } else {
-                Log.w(TAG, "⏳ Flutter engine not available yet - retrying...")
                 // Retry after a short delay (max 5 attempts = 1 second max wait)
                 var attempts = 0
                 val maxAttempts = 5

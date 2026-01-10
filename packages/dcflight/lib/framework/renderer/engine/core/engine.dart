@@ -124,6 +124,7 @@ class DCFEngine {
   /// Structural shock flag - when true, force full replacement instead of reconciliation
   /// This prevents component/prop leakage when app structure changes dramatically
   bool _isStructuralShock = false;
+  bool _isHotReloading = false; // Flag to prevent concurrent hot reloads
 
   /// Concurrent processing features
   static const int _concurrentThreshold = 5;
@@ -1230,6 +1231,25 @@ class DCFEngine {
 
       final previousRenderedNode = _previousRenderedNodes[componentId];
       if (previousRenderedNode != null) {
+        // 🔥 CRITICAL: Transfer view IDs BEFORE reconciliation for hot reload
+        // This ensures reconciliation can match old and new nodes properly
+        // Without this, both old and new nodes have null view IDs, causing full re-render
+        final oldViewId = previousRenderedNode.effectiveNativeViewId;
+        if (oldViewId != null && newRenderedNode.effectiveNativeViewId == null) {
+          // Transfer view ID from old to new node before reconciliation
+          if (previousRenderedNode is DCFElement && newRenderedNode is DCFElement) {
+            newRenderedNode.nativeViewId = previousRenderedNode.nativeViewId;
+            newRenderedNode.contentViewId = previousRenderedNode.contentViewId;
+            print('🔥 HOT_RELOAD: Transferred view ID $oldViewId to new rendered node before reconciliation');
+          } else if (previousRenderedNode is DCFStatefulComponent && newRenderedNode is DCFStatefulComponent) {
+            newRenderedNode.nativeViewId = previousRenderedNode.nativeViewId;
+            newRenderedNode.contentViewId = previousRenderedNode.contentViewId;
+            print('🔥 HOT_RELOAD: Transferred view ID $oldViewId to new component before reconciliation');
+          } else if (previousRenderedNode is DCFStatelessComponent && newRenderedNode is DCFStatelessComponent) {
+            newRenderedNode.contentViewId = previousRenderedNode.contentViewId;
+            print('🔥 HOT_RELOAD: Transferred view ID $oldViewId to new stateless component before reconciliation');
+          }
+        }
         // Comprehensive type checking - handle all valid reconciliation cases
         bool canReconcile = false;
         if (previousRenderedNode is DCFElement &&
@@ -4024,7 +4044,14 @@ class DCFEngine {
 
   /// Force a complete re-render of the entire component tree for hot reload support
   /// This re-executes all render() methods while preserving navigation state
+  /// Uses incremental updates to prevent UI crashes during hot reload
   Future<void> forceFullTreeReRender() async {
+    // Prevent concurrent hot reloads
+    if (_isHotReloading) {
+      print('⚠️ HOT_RELOAD: Already in progress, skipping...');
+      return;
+    }
+
     if (rootComponent == null) {
       print('❌ HOT_RELOAD: No root component to re-render');
       EngineDebugLogger.log(
@@ -4032,9 +4059,10 @@ class DCFEngine {
       return;
     }
 
-    print('🔥🔥🔥 HOT_RELOAD: Starting full tree re-render 🔥🔥🔥');
+    _isHotReloading = true;
+    print('🔥🔥🔥 HOT_RELOAD: Starting incremental tree re-render 🔥🔥🔥');
     EngineDebugLogger.log(
-        'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
+        'HOT_RELOAD_START', 'Starting incremental tree re-render for hot reload');
 
     try {
       // Ensure isolates are ready before hot reload
@@ -4046,23 +4074,94 @@ class DCFEngine {
         await Future.delayed(Duration(milliseconds: 100));
       }
       
-      print('🔥 HOT_RELOAD: Scheduling updates for ${_statefulComponents.length} components...');
-      for (final component in _statefulComponents.values) {
-        _scheduleComponentUpdate(component);
+      // 🔥 CRITICAL: Instead of invalidating all components at once, invalidate incrementally
+      // This prevents the entire UI from being invalidated simultaneously, which causes crashes
+      // We invalidate the renderedNode cache but preserve the tree structure
+      final components = _statefulComponents.values.toList();
+      print('🔥 HOT_RELOAD: Invalidating ${components.length} components incrementally...');
+      
+      // Step 1: Invalidate renderedNode cache for all components (but preserve view IDs)
+      // This allows components to re-render with new code while preserving view IDs for reconciliation
+      for (final component in components) {
+        try {
+          // 🔥 CRITICAL: Preserve view IDs BEFORE invalidating cache
+          // View IDs are stored on rendered nodes, so we need to extract them first
+          final oldRenderedNode = component.renderedNode;
+          if (oldRenderedNode != null) {
+            _previousRenderedNodes[component.instanceId] = oldRenderedNode;
+            
+            // Extract view ID from rendered node and store on component
+            // This ensures reconciliation can match old and new nodes
+            final oldViewId = oldRenderedNode.effectiveNativeViewId;
+            if (oldViewId != null && component.contentViewId == null) {
+              component.contentViewId = oldViewId;
+              print('🔥 HOT_RELOAD: Preserved view ID $oldViewId for component ${component.instanceId}');
+            }
+            
+            // Also preserve view ID on the rendered node itself if it's an element
+            if (oldRenderedNode is DCFElement && oldRenderedNode.nativeViewId != null) {
+              // View ID is already on the element, it will be preserved in _previousRenderedNodes
+            } else if (oldRenderedNode is DCFStatefulComponent || oldRenderedNode is DCFStatelessComponent) {
+              // For nested components, try to get view ID from their rendered node
+              final nestedRenderedNode = oldRenderedNode.renderedNode;
+              if (nestedRenderedNode is DCFElement && nestedRenderedNode.nativeViewId != null) {
+                // View ID is on nested element, will be preserved
+              }
+            }
+          }
+          // Clear cache - this will force render() to be called again
+          // But view IDs are preserved in _previousRenderedNodes and component.contentViewId
+          component.renderedNode = null;
+        } catch (e) {
+          print('⚠️ HOT_RELOAD: Error invalidating component ${component.instanceId}: $e');
+          // Continue with other components even if one fails
+        }
+      }
+      
+      // Step 2: Schedule updates incrementally, starting from root
+      // This ensures parent components update before children, maintaining tree structure
+      print('🔥 HOT_RELOAD: Scheduling incremental updates from root...');
+      
+      // Start with root component first
+      if (rootComponent is DCFStatefulComponent) {
+        _scheduleComponentUpdate(rootComponent as DCFStatefulComponent);
+      }
+      
+      // Then schedule updates for all other components
+      // Process in batches to avoid overwhelming the system
+      const batchSize = 10;
+      for (int i = 0; i < components.length; i += batchSize) {
+        final batch = components.skip(i).take(batchSize).where((c) => c != rootComponent).toList();
+        for (final component in batch) {
+          try {
+            _scheduleComponentUpdate(component);
+          } catch (e) {
+            print('⚠️ HOT_RELOAD: Error scheduling update for component ${component.instanceId}: $e');
+            // Continue with other components even if one fails
+          }
+        }
+        // Small delay between batches to prevent overwhelming the system
+        if (i + batchSize < components.length) {
+          await Future.delayed(Duration(milliseconds: 10));
+        }
       }
 
       print('🔥 HOT_RELOAD: Processing pending updates...');
       await _processPendingUpdates();
 
-      print('✅✅✅ HOT_RELOAD: Full tree re-render completed successfully ✅✅✅');
+      print('✅✅✅ HOT_RELOAD: Incremental tree re-render completed successfully ✅✅✅');
       EngineDebugLogger.log(
-          'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');
+          'HOT_RELOAD_COMPLETE', 'Incremental tree re-render completed successfully');
     } catch (e, stackTrace) {
       print('❌❌❌ HOT_RELOAD: Failed to complete hot reload: $e');
       print('❌ HOT_RELOAD: Stack trace: $stackTrace');
       EngineDebugLogger.log(
           'HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');
-      rethrow;
+      // Don't rethrow - allow app to continue even if hot reload fails
+      // This prevents crashes during development
+      print('⚠️ HOT_RELOAD: Continuing despite error to prevent app crash');
+    } finally {
+      _isHotReloading = false;
     }
   }
 

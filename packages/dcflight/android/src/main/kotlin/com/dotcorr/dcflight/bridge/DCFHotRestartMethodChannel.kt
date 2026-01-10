@@ -66,7 +66,6 @@ class DCFHotRestartMethodChannel : MethodChannel.MethodCallHandler {
             }
 
             else -> {
-                Log.w(TAG, "Unknown hot restart method: ${call.method}")
                 result.notImplemented()
             }
         }

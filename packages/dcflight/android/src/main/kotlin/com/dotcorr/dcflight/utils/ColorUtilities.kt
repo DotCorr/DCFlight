@@ -138,7 +138,6 @@ object ColorUtilities {
                     }
                 }
                 else -> {
-                    Log.w(TAG, "Invalid hex color format: $hexString")
                     Color.MAGENTA
                 }
             }

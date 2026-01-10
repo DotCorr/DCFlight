@@ -268,7 +268,6 @@ abstract class DCFTextShadowNode(viewId: Int) : DCFShadowNode(viewId) {
              } else {
                 17f * android.content.res.Resources.getSystem().displayMetrics.density
             }
-            android.util.Log.w("DCFTextShadowNode", "⚠️ Layout height is 0, using minimum height of $minHeight")
             minHeight
         } else {
             roundedHeight.toFloat()
