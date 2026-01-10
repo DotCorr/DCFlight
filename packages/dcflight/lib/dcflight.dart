@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+
 library;
 
 import 'dart:io';
@@ -50,7 +51,7 @@ export 'package:dcflight/framework/utils/flutter_framework_interop.dart'
 
 export 'dart:async';
 export 'framework/renderer/engine/index.dart';
-export 'framework/devtools/hot_reload_listener.dart';
+// Hot reload is handled via Flutter's built-in system - no custom listener needed
 
 export 'framework/renderer/interface/interface.dart';
 export 'framework/renderer/interface/interface_impl.dart';
@@ -93,7 +94,7 @@ import 'framework/protocol/plugin_protocol.dart';
 export 'framework/renderer/interface/tunnel.dart';
 import 'framework/devtools/hot_restart.dart';
 import 'framework/utils/dcf_logger.dart';
-import 'framework/devtools/hot_reload_listener.dart';
+import 'framework/devtools/hot_reload.dart';
 import 'package:flutter/material.dart';
 import 'framework/utils/flutter_widget_renderer.dart';
 export 'package:equatable/equatable.dart';
@@ -155,12 +156,6 @@ class DCFlight {
     DCFLogger.setInstanceId(DateTime.now().millisecondsSinceEpoch.toString());
     DCFLogger.setProjectId(_getProjectId());
 
-    if (!const bool.fromEnvironment('dart.vm.product')) {
-      print('🔥 DCFlight: Starting hot reload listener...');
-      await HotReloadListener.start();
-      print('🔥 DCFlight: Hot reload listener started successfully');
-    }
-
     final wasHotRestart = await HotRestartDetector.detectAndCleanup();
 
     final vdom = DCFEngineAPI.instance;
@@ -175,6 +170,13 @@ class DCFlight {
     final mainApp = RootErrorBoundary(coreWrapper);
 
     await vdom.createRoot(mainApp);
+    
+    // Create minimal Flutter widget for hot reload detection
+    // This widget uses reassemble() which Flutter calls automatically on hot reload
+    // When Flutter hot reloads, reassemble() is called, which notifies VDOM to update
+    if (!const bool.fromEnvironment('dart.vm.product')) {
+      runApp(_DCFlightHotReloadDetector());
+    }
 
     if (wasHotRestart) {
       print('🔥 DCFlight: Hot restart detected');
@@ -183,3 +185,44 @@ class DCFlight {
     vdom.isReady.whenComplete(() async {});
   }
 }
+
+/// Minimal Flutter widget that detects hot reload via reassemble()
+/// Flutter automatically calls reassemble() on all State objects during hot reload
+/// This widget is invisible and only exists to detect hot reload and notify VDOM
+class _DCFlightHotReloadDetector extends StatefulWidget {
+  @override
+  State<_DCFlightHotReloadDetector> createState() => _DCFlightHotReloadDetectorState();
+}
+
+class _DCFlightHotReloadDetectorState extends State<_DCFlightHotReloadDetector> {
+  @override
+  void initState() {
+    super.initState();
+    HotReloadDetector.instance.initialize();
+  }
+  
+  /// Flutter calls this automatically when hot reload happens
+  /// This is the standard Flutter hot reload detection mechanism
+  @override
+  void reassemble() {
+    super.reassemble();
+    print('🔥 DCFlight: Hot reload detected via reassemble() - notifying VDOM...');
+    // Notify VDOM to update when Flutter hot reloads
+    HotReloadDetector.instance.handleHotReload();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    // Return minimal transparent widget - this widget is invisible
+    // It only exists to detect hot reload via reassemble()
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SizedBox.shrink(), // Completely invisible
+      ),
+    );
+  }
+}
+
+

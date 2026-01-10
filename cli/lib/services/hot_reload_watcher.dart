@@ -16,11 +16,7 @@ class HotReloadWatcher {
   late StreamSubscription _watcherSubscription;
   final bool verbose;
   final List<String> additionalArgs;
-  bool _isAndroidDevice = false;
-  bool _isIOSPhysicalDevice = false;
-  String? _selectedDeviceId;
-  Process? _iproxyProcess;
-  bool _iproxySetup = false; // Track if iproxy has been set up
+  // Device tracking variables removed - no longer needed (no custom HTTP server)
   bool _normalShutdown = false; // Track if shutdown was normal (via 'q') or forced (Ctrl+C)
 
   // Terminal styling
@@ -105,7 +101,7 @@ class HotReloadWatcher {
 
     // Clean shutdown
     await _watcherSubscription.cancel();
-    await _cleanupIproxy();
+    // Cleanup removed - no custom HTTP server
     
     // Only print shutdown message if it was a normal shutdown
     if (_normalShutdown) {
@@ -128,7 +124,7 @@ class HotReloadWatcher {
     } catch (e) {
       // Already cancelled
     }
-    await _cleanupIproxy();
+    // Cleanup removed - no custom HTTP server
     
     // Exit immediately without printing shutdown message
     exit(0);
@@ -358,87 +354,26 @@ class HotReloadWatcher {
     });
   }
 
-  /// Trigger hot reload by sending 'r' to Flutter process and HTTP request to DCFlight app
+  /// Trigger hot reload by sending 'r' to Flutter process
+  /// Flutter's hot reload automatically triggers reassemble() in _DCFlightHotReloadDetector widget
+  /// which notifies VDOM to update - no custom HTTP server needed
   Future<void> _triggerHotReload() async {
     try {
       _logWatcher('🔥', 'Triggering hot reload...', _magenta);
 
-      // Send 'r' to Flutter process (for Flutter's own hot reload)
+      // Send 'r' to Flutter process - Flutter handles hot reload automatically
+      // The _DCFlightHotReloadDetector widget in the framework detects it via reassemble()
+      // and notifies VDOM to update
       _flutterProcess.stdin.writeln('r');
       await _flutterProcess.stdin.flush();
-
-      // Also send HTTP request to DCFlight app for VDOM hot reload
-      await _triggerDCFlightHotReload();
+      
+      _logWatcher('✅', 'Hot reload triggered - Flutter will handle it automatically', _green);
     } catch (e) {
       _logWatcher('❌', 'Failed to trigger hot reload: $e', _red);
     }
   }
 
-  /// Send HTTP request to DCFlight app to trigger VDOM hot reload
-  Future<void> _triggerDCFlightHotReload() async {
-    const int maxRetries = 3;
-    const Duration retryDelay = Duration(milliseconds: 500);
-    
-    // First check if server is healthy
-    final isHealthy = await _checkServerHealth();
-    if (!isHealthy) {
-      _logWatcher('⚠️', 'Skipping DCFlight hot reload - server not healthy', _yellow);
-      return;
-    }
-    
-    final possibleIPs = ['localhost', '127.0.0.1', '10.0.2.2'];
-    
-    for (final ip in possibleIPs) {
-      for (int attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          final timestamp = DateTime.now().millisecondsSinceEpoch;
-          print('🔥 WATCHER: Trying hot reload at http://$ip:8765/hot-reload (attempt $attempt, timestamp: $timestamp)');
-          final client = HttpClient();
-          final request = await client.postUrl(Uri.parse('http://$ip:8765/hot-reload?t=$timestamp'));
-          request.headers.set('Content-Type', 'application/json');
-          request.headers.set('X-Timestamp', timestamp.toString());
-
-          // Send the request
-          final response = await request.close();
-
-          if (response.statusCode == 200) {
-            // Read response body to see instance ID
-            final responseBody = await response.transform(utf8.decoder).join();
-            try {
-              final responseData = jsonDecode(responseBody);
-              final instanceId = responseData['instanceId'];
-              final responseTimestamp = responseData['timestamp'];
-              print('✅ WATCHER: Hot reload successful at $ip - Instance: $instanceId, ResponseTime: $responseTimestamp, RequestTime: $timestamp');
-            } catch (e) {
-              print('✅ WATCHER: Hot reload successful at $ip (could not parse response: $e)');
-            }
-            _logWatcher('✅', 'DCFlight VDOM hot reload triggered at $ip (attempt $attempt)', _green);
-            client.close();
-            return;
-          } else {
-            print('⚠️ WATCHER: Server at $ip returned status ${response.statusCode}');
-          }
-
-          client.close();
-          
-          // If not the last attempt, wait before retrying
-          if (attempt < maxRetries) {
-            await Future.delayed(retryDelay);
-          }
-        } catch (e) {
-          print('⚠️ WATCHER: Hot reload attempt $attempt at $ip failed: $e');
-          
-          // If not the last attempt, wait before retrying
-          if (attempt < maxRetries) {
-            await Future.delayed(retryDelay);
-          }
-        }
-      }
-    }
-    
-    // All attempts failed
-    _logWatcher('❌', 'DCFlight hot reload failed on all IPs after $maxRetries attempts each', _red);
-  }
+  // HTTP server code removed - Flutter's hot reload + reassemble() handles VDOM updates automatically
 
   /// Select device for Flutter
   Future<String> _selectDevice() async {
@@ -509,19 +444,7 @@ class HotReloadWatcher {
     final deviceName = selectedDevice['name'] as String;
     final targetPlatform = selectedDevice['targetPlatform'] as String?;
 
-    // Store device info
-    _isAndroidDevice = targetPlatform?.toLowerCase().contains('android') ?? false;
-    final isEmulator = selectedDevice['emulator'] == true;
-    _isIOSPhysicalDevice = !_isAndroidDevice && !isEmulator; // iOS physical device
-    _selectedDeviceId = deviceId; // Store for ADB/iproxy port forwarding
-
     print('✅ Selected: $deviceName');
-    if (verbose && _isAndroidDevice) {
-      print('🤖 Android device detected - will use ADB port forwarding');
-    }
-    if (verbose && _isIOSPhysicalDevice) {
-      print('📱 iOS physical device detected - will use iproxy USB forwarding');
-    }
     print('=' * 60 + '\n');
 
     return deviceId;
@@ -644,147 +567,11 @@ class HotReloadWatcher {
     print('$_dim💡 Thanks for using DCFlight Hot Reload System!$_reset\n');
   }
 
-  /// Setup ADB port forwarding for Android devices
-  Future<void> _setupAdbForwarding() async {
-    if (!_isAndroidDevice || _selectedDeviceId == null) return;
+  // ADB port forwarding removed - no longer needed (no custom HTTP server)
 
-    print('🔧 Setting up ADB port forwarding for Android device: $_selectedDeviceId...');
-    
-    try {
-      // Remove any existing forwarding first (for this specific device)
-      await Process.run('adb', ['-s', _selectedDeviceId!, 'forward', '--remove', 'tcp:8765']);
-      
-      // Wait a moment for the port to be released
-      await Future.delayed(Duration(milliseconds: 100));
-      
-      // Setup new forwarding: host:8765 -> device:8765
-      // adb forward maps HOST port to DEVICE port
-      // Use -s flag to target specific device when multiple devices are connected
-      final result = await Process.run('adb', ['-s', _selectedDeviceId!, 'forward', 'tcp:8765', 'tcp:8765']);
-      
-      if (result.exitCode == 0) {
-        print('✅ ADB port forwarding active: host:8765 → device:8765 (device: $_selectedDeviceId)');
-        
-        // Verify the forwarding
-        final verifyResult = await Process.run('adb', ['-s', _selectedDeviceId!, 'forward', '--list']);
-        if (verifyResult.exitCode == 0) {
-          print('📋 Active port forwards: ${verifyResult.stdout.toString().trim()}');
-        }
-      } else {
-        final error = result.stderr.toString();
-        print('⚠️  ADB port forwarding failed: $error');
-      }
-    } catch (e) {
-      print('⚠️  Could not setup ADB forwarding: $e');
-    }
-  }
+  // iproxy forwarding removed - no longer needed (no custom HTTP server)
 
-  /// Check if iproxy is installed and available
-  Future<bool> _checkIproxyAvailable() async {
-    try {
-      final result = await Process.run('which', ['iproxy']);
-      return result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Setup iproxy USB forwarding for iOS physical devices (only once)
-  Future<void> _setupIproxyForwarding() async {
-    if (!_isIOSPhysicalDevice || _selectedDeviceId == null) return;
-    
-    // Only setup once - don't restart on every health check
-    if (_iproxySetup && _iproxyProcess != null) {
-      // Check if process is still alive
-      try {
-        await _iproxyProcess!.exitCode.timeout(
-          Duration(milliseconds: 50),
-        );
-        // Process died, need to restart
-        _iproxyProcess = null;
-        _iproxySetup = false;
-      } catch (e) {
-        // Process still running, all good
-        return;
-      }
-    }
-    
-    if (_iproxySetup) return; // Already set up and running
-
-    print('🔧 Setting up iproxy USB forwarding for iOS device: $_selectedDeviceId...');
-    
-    // Check if iproxy is installed first
-    final iproxyAvailable = await _checkIproxyAvailable();
-    if (!iproxyAvailable) {
-      print('');
-      print('❌ iproxy is not installed!');
-      print('');
-      print('📦 To install iproxy (required for iOS physical device hot reload):');
-      print('   brew install libimobiledevice');
-      print('');
-      print('💡 After installing, restart the hot reload watcher.');
-      print('');
-      _logWatcher('❌', 'iproxy not installed - iOS physical device hot reload unavailable', _red);
-      return;
-    }
-    
-    try {
-      // Kill any existing iproxy process on port 8765
-      try {
-        await Process.run('pkill', ['-f', 'iproxy.*8765']);
-        await Future.delayed(Duration(milliseconds: 200));
-      } catch (e) {
-        // pkill might fail if no process exists, that's okay
-      }
-
-      // Start iproxy: maps localhost:8765 to device:8765 via USB
-      // iproxy requires device UDID (which is the device ID for iOS)
-      _iproxyProcess = await Process.start(
-        'iproxy',
-        ['8765', '8765', '-u', _selectedDeviceId!],
-        mode: ProcessStartMode.detached,
-      );
-
-      // Wait a moment for iproxy to establish connection
-      await Future.delayed(Duration(milliseconds: 500));
-
-      // Check if process is still running (if it died immediately, it failed)
-      try {
-        await _iproxyProcess!.exitCode.timeout(
-          Duration(milliseconds: 100),
-        );
-        // If we got here without timeout, process died = failure
-        print('⚠️  iproxy failed to start');
-        print('💡 Make sure your iOS device is connected and trusted');
-        _iproxyProcess = null;
-        _iproxySetup = false;
-      } catch (e) {
-        // Timeout means process is still running = success
-        print('✅ iproxy USB forwarding active: localhost:8765 → device:8765 (UDID: $_selectedDeviceId)');
-        _iproxySetup = true;
-      }
-    } catch (e) {
-      print('⚠️  Could not setup iproxy forwarding: $e');
-      print('💡 Make sure your iOS device is connected via USB and trusted');
-      _iproxyProcess = null;
-      _iproxySetup = false;
-    }
-  }
-
-  /// Cleanup iproxy process on shutdown
-  Future<void> _cleanupIproxy() async {
-    if (_iproxyProcess != null) {
-      try {
-        _iproxyProcess!.kill();
-        await _iproxyProcess!.exitCode.timeout(Duration(seconds: 1));
-        print('🧹 Cleaned up iproxy process');
-      } catch (e) {
-        // Process might already be dead, that's okay
-      }
-      _iproxyProcess = null;
-      _iproxySetup = false;
-    }
-  }
+  // iproxy cleanup removed - no longer needed (no custom HTTP server)
 
   /// Handle opening IDE (when user presses 'c')
   /// Automatically installs IDE if not already installed
@@ -824,44 +611,5 @@ class HotReloadWatcher {
     }
   }
   
-  /// Check if DCFlight hot reload server is healthy
-  Future<bool> _checkServerHealth() async {
-    // Setup port forwarding based on device type
-    if (_isAndroidDevice) {
-      await _setupAdbForwarding();
-    } else if (_isIOSPhysicalDevice) {
-      await _setupIproxyForwarding();
-    }
-    // iOS simulators don't need forwarding (use localhost directly)
-    
-    final possibleIPs = ['localhost', '127.0.0.1'];
-    
-    for (final ip in possibleIPs) {
-      try {
-        print('🔍 WATCHER: Trying to connect to http://$ip:8765/health');
-        final client = HttpClient();
-        client.connectionTimeout = Duration(seconds: 3);
-        
-        final request = await client.getUrl(Uri.parse('http://$ip:8765/health'));
-        final response = await request.close();
-        final responseBody = await response.transform(utf8.decoder).join();
-        
-        client.close();
-        
-        if (response.statusCode == 200) {
-          final healthData = jsonDecode(responseBody);
-          final instanceId = healthData['instanceId'];
-          print('💚 WATCHER: Server healthy at $ip - Instance: $instanceId');
-          _logWatcher('💚', 'DCFlight server healthy at $ip (Instance: $instanceId)', _green);
-          return true;
-        }
-      } catch (e) {
-        print('⚠️ WATCHER: Failed to connect to $ip: $e');
-        continue;
-      }
-    }
-    
-    _logWatcher('💔', 'DCFlight server not reachable on any IP', _yellow);
-    return false;
-  }
+  // Server health check removed - no longer needed (no custom HTTP server)
 }

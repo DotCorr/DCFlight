@@ -6,6 +6,7 @@
  */
 
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
@@ -28,16 +29,13 @@ class HotReloadDetector {
   HotReloadDetector._();
 
   /// Initialize hot reload detection system
+  /// Hot reload is detected via reassemble() in _DCFlightHotReloadDetector widget
+  /// Flutter automatically calls reassemble() on all State objects during hot reload
   void initialize() {
     if (!kDebugMode || _isInitialized) return;
     
-    DCFLogger.debug('Initializing hot reload detection system', 'HOT_RELOAD');
-    
-    WidgetsBinding.instance.addObserver(_HotReloadObserver(this));
-    
+    DCFLogger.debug('Hot reload detection ready - will be triggered via reassemble() on hot reload', 'HOT_RELOAD');
     _isInitialized = true;
-    
-    DCFLogger.debug('Hot reload detection system initialized with automatic detection', 'HOT_RELOAD');
   }
 
   /// Cleanup the hot reload detection system
@@ -114,8 +112,9 @@ class HotReloadDetector {
   }
 }
 
-/// A Flutter widget wrapper that can detect hot reloads 
-/// Use this if you need to wrap any Flutter widgets in your DCFlight app
+/// A Flutter widget wrapper that detects hot reloads via reassemble()
+/// Flutter automatically calls reassemble() on all State objects during hot reload
+/// This is the standard way to detect hot reload in Flutter apps
 class HotReloadDetectorWidget extends StatefulWidget {
   final Widget child;
   
@@ -138,9 +137,12 @@ class _HotReloadDetectorWidgetState extends State<HotReloadDetectorWidget> {
     super.dispose();
   }
   
+  /// Flutter calls this automatically on hot reload
+  /// This is the standard Flutter hot reload detection mechanism
   @override
   void reassemble() {
     super.reassemble();
+    // Flutter's hot reload detected - notify VDOM to update
     HotReloadDetector.instance.handleHotReload();
   }
   
@@ -173,25 +175,14 @@ void triggerManualHotReload() {
 }
 
 /// Observer to detect Flutter hot reload events
+/// Uses reassemble() which Flutter calls automatically on hot reload
 class _HotReloadObserver extends WidgetsBindingObserver {
   final HotReloadDetector _detector;
   
   _HotReloadObserver(this._detector);
   
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-  }
-  
-  @override
-  Future<bool> didPushRoute(String route) async {
-    if (kDebugMode) {
-      _detector.handleHotReload();
-    }
-    return false;
-  }
-  
-  @override
-  void didHaveMemoryPressure() {
-  }
+  // Note: Flutter doesn't have a direct hot reload callback in WidgetsBindingObserver
+  // Hot reload is detected via reassemble() in StatefulWidget states
+  // This observer is kept for potential future use or lifecycle events
 }
 
