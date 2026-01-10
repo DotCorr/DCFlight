@@ -1,0 +1,19 @@
+# Mono repo configuration for DCFlight workspace
+# Manages multiple Dart packages within a single repository
+
+github:
+  # Generate GitHub Actions workflows
+  workflows:
+    dart:
+      name: Dart CI
+      stages:
+        - analyze
+        - test
+
+# Self-validate configuration
+self_validate: analyze
+
+# Merge stages across packages to create fewer jobs
+merge_stages:
+  - analyze
+

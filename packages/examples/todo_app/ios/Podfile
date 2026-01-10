@@ -1,0 +1,114 @@
+# Uncomment this line to define a global platform for your project
+platform :ios, '13.5'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+  
+  # Combine Skia architecture-specific libraries and add to Xcode project
+  # Find dcf_reanimated - check both sandbox and symlinks
+  dcf_paths = []
+  
+  # Check sandbox first
+  dcf_paths += Dir.glob(File.join(installer.sandbox.root, '**', 'dcf_reanimated')).select { |p| File.directory?(p) }
+  
+  # Also check symlinks (Flutter uses symlinks)
+  symlink_path = File.join(File.dirname(File.realpath(__FILE__)), '.symlinks', 'plugins', 'dcf_reanimated', 'ios')
+  dcf_paths << symlink_path if File.directory?(symlink_path)
+  
+  dcf_paths.uniq.each do |dcf_path|
+    skia_lib_path = File.join(dcf_path, 'Skia', 'lib')
+    
+    if Dir.exist?(skia_lib_path)
+      lib_x86_64 = File.join(skia_lib_path, 'libskia_x86_64.a')
+      lib_arm64 = File.join(skia_lib_path, 'libskia_arm64.a')
+      lib_arm64e = File.join(skia_lib_path, 'libskia_arm64e.a')
+      lib_combined = File.join(skia_lib_path, 'libskia.a')
+      
+      if File.exist?(lib_x86_64) && File.exist?(lib_arm64) && File.exist?(lib_arm64e)
+        unless File.exist?(lib_combined)
+          puts "Combining Skia architectures (x86_64, arm64, arm64e)..."
+          success = system("lipo -create \"#{lib_x86_64}\" \"#{lib_arm64}\" \"#{lib_arm64e}\" -output \"#{lib_combined}\"")
+          if success && File.exist?(lib_combined)
+            puts "Successfully combined Skia library: #{lib_combined}"
+          else
+            puts "Warning: Failed to combine Skia library"
+          end
+        end
+        
+        if File.exist?(lib_combined)
+          # Add the library file directly to the Xcode project and link it
+          installer.pods_project.targets.each do |target|
+            if target.name == 'dcf_reanimated'
+              puts "Adding libskia.a to dcf_reanimated target..."
+              
+              # Get absolute path
+              abs_lib_path = File.expand_path(lib_combined)
+              
+              # Add library file reference to the project
+              lib_file_ref = installer.pods_project.new_file(abs_lib_path)
+              
+              # Add to target's frameworks build phase
+              frameworks_build_phase = target.frameworks_build_phase
+              frameworks_build_phase.add_file_reference(lib_file_ref, true)
+              
+              target.build_configurations.each do |config|
+                # Remove any problematic OTHER_LDFLAGS entries
+                ldflags = config.build_settings['OTHER_LDFLAGS'] || []
+                ldflags = [ldflags] unless ldflags.is_a?(Array)
+                ldflags.reject! { |f| f.to_s.include?('libskia.a') }
+                config.build_settings['OTHER_LDFLAGS'] = ldflags
+                
+                # For simulator builds, allow both x86_64 (Intel) and arm64 (Apple Silicon)
+                # Flutter will automatically choose the right architecture
+                if config.build_settings['PLATFORM_NAME'] == 'iphonesimulator'
+                  # Don't force x86_64 - let Flutter/Xcode choose based on Mac architecture
+                  # This allows native arm64 simulator on Apple Silicon (faster)
+                  # and x86_64 on Intel Macs
+                end
+              end
+              
+              puts "Successfully added libskia.a to Xcode project"
+            end
+          end
+        end
+      end
+    end
+  end
+end

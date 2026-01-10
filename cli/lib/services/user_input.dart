@@ -58,16 +58,12 @@ class UserInput {
     print('? Select target platforms (enter numbers separated by commas):');
     print('  1. Android');
     print('  2. iOS');
-    print('  3. Web');
-    print('  4. macOS');
-    print('  5. Windows');
-    print('  6. Linux');
     
-    stdout.write('Selected platforms (default: 1,2,3): ');
+    stdout.write('Selected platforms (default: 1,2): ');
     final input = stdin.readLineSync()?.trim() ?? '';
     
     if (input.isEmpty) {
-      return [Platform.android, Platform.ios, Platform.web];
+      return [Platform.android, Platform.ios];
     }
     
     final selectedNumbers = input.split(',').map((s) => int.tryParse(s.trim())).where((n) => n != null).toList();
@@ -81,22 +77,10 @@ class UserInput {
         case 2:
           platforms.add(Platform.ios);
           break;
-        case 3:
-          platforms.add(Platform.web);
-          break;
-        case 4:
-          platforms.add(Platform.macos);
-          break;
-        case 5:
-          platforms.add(Platform.windows);
-          break;
-        case 6:
-          platforms.add(Platform.linux);
-          break;
       }
     }
     
-    return platforms.isNotEmpty ? platforms : [Platform.android, Platform.ios, Platform.web];
+    return platforms.isNotEmpty ? platforms : [Platform.android, Platform.ios];
   }
 
   static Future<String> promptDescription() async {

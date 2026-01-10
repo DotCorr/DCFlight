@@ -1,0 +1,13 @@
+# Workspace-level dependency overrides
+# All packages in this workspace automatically inherit these path dependencies
+# This is the single source of truth - defined once, used everywhere
+dependency_overrides:
+  dcflight:
+    path: packages/dcflight
+  dcf_primitives:
+    path: packages/dcf_primitives
+  dcf_reanimated:
+    path: packages/dcf_reanimated
+  dcf_screens:
+    path: packages/dcf_screens
+

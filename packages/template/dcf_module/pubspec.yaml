@@ -11,7 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  dcflight: ^0.0.1
+  # framework dependencies
+  # Melos automatically links these via pubspec_overrides.yaml in workspace
+  dcflight:
 
 dev_dependencies:
   flutter_test:

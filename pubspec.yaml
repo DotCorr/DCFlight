@@ -1,0 +1,25 @@
+name: dcflight_workspace
+description: DCFlight Framework Workspace - Single source of truth for framework package paths
+publish_to: "none"
+
+# ============================================================================
+# SINGLE SOURCE OF TRUTH FOR FRAMEWORK PACKAGE PATHS
+# ============================================================================
+# This file serves as the single source of truth for framework package paths.
+# All packages in this workspace reference these paths.
+# Framework packages are local, never exposed to pub.dev
+# Only dcflight itself is published to pub.dev
+# ============================================================================
+
+# Framework package paths (for local development in mono repo)
+framework_paths:
+  dcflight: packages/dcflight
+  dcf_primitives: packages/dcf_primitives
+  dcf_reanimated: packages/dcf_reanimated
+  dcf_screens: packages/dcf_screens
+
+# Mono repo tool for managing multiple packages
+dev_dependencies:
+  mono_repo: ^6.6.3
+  yaml: ^3.1.2  # For sync_workspace_deps script
+
