@@ -47,6 +47,19 @@ import Foundation
     /// Create a view with properties
     @objc func createView(viewId: Int, viewType: String, propsJson: String) -> Bool {
         
+        // 🔥 CRITICAL FIX: Match Android behavior - check if view already exists
+        // During hot reload, views are preserved but Dart may try to "create" them again
+        // If view exists and is in hierarchy, update it instead of creating a new one
+        if let existingView = ViewRegistry.shared.getView(id: viewId) {
+            // Check if view is actually in the hierarchy - if not, delete and recreate
+            if existingView.superview == nil {
+                deleteView(viewId: viewId)
+            } else {
+                // View exists and is in hierarchy - update it instead of creating
+                return updateView(viewId: viewId, propsJson: propsJson)
+            }
+        }
+        
         guard let propsData = propsJson.data(using: .utf8),
               let props = try? JSONSerialization.jsonObject(with: propsData, options: []) as? [String: Any] else {
             return false

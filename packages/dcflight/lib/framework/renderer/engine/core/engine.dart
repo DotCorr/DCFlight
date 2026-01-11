@@ -4046,6 +4046,36 @@ class DCFEngine {
         await Future.delayed(Duration(milliseconds: 100));
       }
       
+      // 🔥 CRITICAL: Re-render and reconcile the root component first
+      // This ensures the root tree is updated before stateful components
+      print('🔥 HOT_RELOAD: Re-rendering root component...');
+      
+      if (rootComponent is DCFStatefulComponent) {
+        // Root is stateful - schedule an update
+        print('🔥 HOT_RELOAD: Root is stateful, scheduling update...');
+        _scheduleComponentUpdate(rootComponent as DCFStatefulComponent);
+      } else if (rootComponent is DCFStatelessComponent) {
+        // Root is stateless - re-render and reconcile
+        final statelessRoot = rootComponent as DCFStatelessComponent;
+        final oldRootRendered = statelessRoot.renderedNode;
+        
+        // Re-render the stateless root component
+        final newRootRendered = statelessRoot.render();
+        statelessRoot.renderedNode = newRootRendered;
+        
+        // Reconcile the old and new root trees
+        if (oldRootRendered != null) {
+          print('🔥 HOT_RELOAD: Reconciling root component tree...');
+          await _reconcile(oldRootRendered, newRootRendered);
+        } else {
+          // No old tree - just render the new one
+          print('🔥 HOT_RELOAD: No old root tree, rendering new root...');
+          await _nativeBridge.startBatchUpdate();
+          await renderToNative(newRootRendered, parentViewId: 0);
+          await _nativeBridge.commitBatchUpdate();
+        }
+      }
+      
       print('🔥 HOT_RELOAD: Scheduling updates for ${_statefulComponents.length} components...');
       for (final component in _statefulComponents.values) {
         _scheduleComponentUpdate(component);
