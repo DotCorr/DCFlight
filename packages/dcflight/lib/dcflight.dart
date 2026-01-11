@@ -166,11 +166,7 @@ class DCFlight {
     // 
     // Core Wrapper: Wrap in SystemChangeListener to listen to OS-level changes
     // (font scale, language, etc.) and trigger re-renders when they occur
-    final coreWrapper = CoreWrapper(app);
-    final mainApp = RootErrorBoundary(coreWrapper);
-
-    await vdom.createRoot(mainApp);
-    
+    await vdom.createRoot(CoreWrapper(app));
     // Create minimal Flutter widget for hot reload detection
     // This widget uses reassemble() which Flutter calls automatically on hot reload
     // When Flutter hot reloads, reassemble() is called, which notifies VDOM to update
@@ -216,11 +212,8 @@ class _DCFlightHotReloadDetectorState extends State<_DCFlightHotReloadDetector> 
     // Return minimal transparent widget - this widget is invisible
     // It only exists to detect hot reload via reassemble()
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SizedBox.shrink(), // Completely invisible
-      ),
+      debugShowCheckedModeBanner: true,
+      home:  SizedBox.shrink(), // Completely invisible
     );
   }
 }
