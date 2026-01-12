@@ -6,8 +6,9 @@
  */
 
 import 'dart:async';
-import 'dart:isolate';
 import 'dart:math' as math;
+import 'package:worker_manager/worker_manager.dart' as worker_manager;
+import 'package:worker_manager/src/scheduling/work_priority.dart' as worker_priority show WorkPriority;
 
 import 'package:dcflight/framework/renderer/engine/core/cache/lru_cache.dart';
 import 'package:dcflight/framework/renderer/engine/core/concurrency/priority.dart';
@@ -65,6 +66,9 @@ class DCFEngine {
   bool _isReconciling = false;
   bool _shouldPauseReconciliation = false;
   bool _incrementalReconciliationEnabled = true;
+  
+  /// Hot reload state - prevents worker_manager reconciliation during hot reload
+  bool _isHotReloading = false;
 
   /// Component instance tracking by position + type
   /// Key: "parentViewId:index:type" -> Component instance
@@ -125,23 +129,8 @@ class DCFEngine {
   /// This prevents component/prop leakage when app structure changes dramatically
   bool _isStructuralShock = false;
 
-  /// Concurrent processing features
-  static const int _concurrentThreshold = 5;
-  bool _concurrentEnabled = false;
-  final List<Isolate> _workerIsolates = [];
-  final List<SendPort> _workerPorts = [];
-  final List<bool> _workerAvailable = [];
-  final List<DateTime> _workerLastUsed =
-      []; // Track when each worker was last used
-  final int _maxWorkers = 2; // Maximum number of worker isolates
-  final int _minWorkers =
-      2; // Keep all pre-spawned workers alive for optimal performance
-  final Duration _isolateIdleTimeout = const Duration(
-      seconds: 30); // Close after 30s idle (but won't close if at minWorkers)
-  Timer? _isolateCleanupTimer;
-  final ReceivePort _mainIsolateReceivePort = ReceivePort();
-  StreamSubscription<dynamic>? _mainIsolateReceivePortSubscription;
-  final Map<String, Completer<Map<String, dynamic>>> _isolateTasks = {};
+  /// Worker manager for parallel reconciliation (singleton instance)
+  bool _workerManagerInitialized = false;
 
   /// Performance tracking and monitoring
   final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
@@ -179,11 +168,10 @@ class DCFEngine {
       _nativeBridge.setEventHandler(_handleNativeEvent);
       print('✅ DCFEngine: Event handler registered with PlatformInterface');
 
-      // Initialize concurrent processing (non-blocking - just sets up listener)
-      // This doesn't spawn isolates, so it's fast and won't block initialization
-      _initializeConcurrentProcessing().catchError((e) {
+      // Initialize worker manager for parallel reconciliation
+      _initializeWorkerManager().catchError((e) {
         EngineDebugLogger.log(
-            'ISOLATE_INIT_ERROR', 'Isolate infrastructure setup failed: $e');
+            'WORKER_MANAGER_INIT_ERROR', 'Worker manager setup failed: $e');
       });
 
       _readyCompleter.complete();
@@ -196,231 +184,33 @@ class DCFEngine {
     }
   }
 
-  /// Initialize concurrent processing capabilities (lazy - only sets up listener)
-  Future<void> _initializeConcurrentProcessing() async {
-    if (_concurrentEnabled) {
-      print(
-          '✅ ISOLATES: Already initialized (${_workerIsolates.length} workers ready)');
+  /// Initialize worker manager for parallel reconciliation
+  Future<void> _initializeWorkerManager() async {
+    if (_workerManagerInitialized) {
+      print('✅ WORKER_MANAGER: Already initialized');
       return;
     }
 
     try {
+      print('🔄 WORKER_MANAGER: Initializing worker manager...');
+      EngineDebugLogger.log('WORKER_MANAGER_INIT', 'Initializing worker manager');
+
+      await worker_manager.workerManager.init(dynamicSpawning: true);
+      _workerManagerInitialized = true;
+
+      print('✅ WORKER_MANAGER: Initialized successfully');
       print(
-          '🔄 ISOLATES: Setting up isolate infrastructure (lazy initialization)...');
-      EngineDebugLogger.log('ISOLATE_INIT',
-          'Setting up isolate infrastructure (lazy initialization)');
-
-      // Cancel existing subscription if any (for hot restart)
-      await _mainIsolateReceivePortSubscription?.cancel();
-
-      // Set up main receive port listener for isolate responses
-      _mainIsolateReceivePortSubscription =
-          _mainIsolateReceivePort.listen((message) {
-        if (message is Map<String, dynamic>) {
-          final taskId = message['id'] as String?;
-          if (taskId != null && _isolateTasks.containsKey(taskId)) {
-            final completer = _isolateTasks.remove(taskId)!;
-            if (message['success'] == true) {
-              completer.complete(message['data'] as Map<String, dynamic>);
-            } else {
-              completer.completeError(Exception(
-                  message['error'] as String? ?? 'Isolate task failed'));
-            }
-          }
-        } else if (message is SendPort) {
-          // Isolate sending its port back
-          final index = _workerPorts.length;
-          _workerPorts.add(message);
-          if (index < _workerAvailable.length) {
-            _workerAvailable[index] = true;
-          } else {
-            _workerAvailable.add(true);
-          }
-          if (index < _workerLastUsed.length) {
-            _workerLastUsed[index] = DateTime.now();
-          } else {
-            _workerLastUsed.add(DateTime.now());
-          }
-          print(
-              '✅ ISOLATES: Worker isolate $index ready (total: ${_workerPorts.length})');
-          EngineDebugLogger.log(
-              'ISOLATE_PORT_RECEIVED', 'Worker isolate $index sent port');
-        }
-      });
-
-      // Start cleanup timer to close idle isolates
-      _startIsolateCleanupTimer();
-
-      _concurrentEnabled = true;
-
-      // Pre-spawn all worker isolates at startup for optimal performance
-      // This avoids spawning delays during reconciliation
-      // Do this asynchronously so it doesn't block app startup
-      print(
-          '🔄 ISOLATES: Pre-spawning ${_maxWorkers} worker isolates for optimal performance...');
-      _preSpawnIsolates().catchError((e) {
-        print('⚠️ ISOLATES: Error during pre-spawning: $e');
-      });
-
-      print('✅ ISOLATES: Infrastructure ready (workers will be ready shortly)');
-      print(
-          '⚡ ISOLATES: Performance mode enabled - Large trees (50+ nodes) will use parallel reconciliation');
-      EngineDebugLogger.log('ISOLATE_INIT_SUCCESS',
-          'Isolate infrastructure ready, pre-spawning workers');
+          '⚡ WORKER_MANAGER: Performance mode enabled - Large trees (20+ nodes) will use parallel reconciliation');
+      EngineDebugLogger.log('WORKER_MANAGER_INIT_SUCCESS',
+          'Worker manager initialized successfully');
     } catch (e) {
-      print('❌ ISOLATES: Initialization failed: $e');
-      EngineDebugLogger.log('ISOLATE_INIT_ERROR',
-          'Failed to initialize isolate infrastructure: $e');
-      _concurrentEnabled = false;
+      print('❌ WORKER_MANAGER: Initialization failed: $e');
+      EngineDebugLogger.log('WORKER_MANAGER_INIT_ERROR',
+          'Failed to initialize worker manager: $e');
+      _workerManagerInitialized = false;
     }
   }
 
-  /// Pre-spawn all worker isolates at startup
-  Future<void> _preSpawnIsolates() async {
-    for (int i = 0; i < _maxWorkers; i++) {
-      try {
-        final spawned = await _spawnWorkerIsolate();
-        if (!spawned) {
-          print(
-              '⚠️ ISOLATES: Failed to pre-spawn worker $i, will spawn on demand');
-        }
-      } catch (e) {
-        print('⚠️ ISOLATES: Error pre-spawning worker $i: $e');
-      }
-    }
-    // After pre-spawning, ensure we keep at least the pre-spawned workers
-    // This prevents cleanup from closing them
-    final int preSpawnedCount = _workerPorts.length;
-    print(
-        '✅ ISOLATES: Pre-spawning complete (${_workerPorts.length}/${_maxWorkers} workers ready)');
-    if (preSpawnedCount > 0) {
-      print(
-          '⚡ ISOLATES: ${preSpawnedCount} workers ready for parallel reconciliation - optimal performance enabled');
-    }
-  }
-
-  /// Spawn a single worker isolate on demand
-  Future<bool> _spawnWorkerIsolate() async {
-    if (_workerIsolates.length >= _maxWorkers) {
-      return false; // Already at max
-    }
-
-    try {
-      final index = _workerIsolates.length;
-      print('🔄 ISOLATES: Spawning worker isolate $index...');
-
-      final isolate = await Isolate.spawn(
-        _workerIsolateEntry,
-        _mainIsolateReceivePort.sendPort,
-      );
-
-      _workerIsolates.add(isolate);
-      _workerAvailable.add(false);
-      _workerLastUsed.add(DateTime.now());
-
-      print('⏳ ISOLATES: Waiting for worker isolate $index to send port...');
-
-      // Wait for isolate to send its port (with longer timeout for reliability)
-      // The isolate should send its port immediately after spawning
-      int attempts = 0;
-      final maxAttempts = 100; // 1 second total wait time
-      while (_workerPorts.length <= index && attempts < maxAttempts) {
-        await Future.delayed(const Duration(milliseconds: 10));
-        attempts++;
-      }
-
-      // Double-check: the port might have been added but index might be different
-      // if multiple isolates spawned concurrently
-      if (_workerPorts.length > index && index < _workerPorts.length) {
-        print(
-            '✅ ISOLATES: Worker isolate $index ready (total: ${_workerPorts.length})');
-        // Ensure isolate is marked as available
-        if (index < _workerAvailable.length) {
-          _workerAvailable[index] = true;
-        } else {
-          while (_workerAvailable.length <= index) {
-            _workerAvailable.add(true);
-          }
-        }
-        print('✅ ISOLATES: Worker isolate $index ready and port received, marked as available');
-        return true;
-      } else if (_workerPorts.length > 0) {
-        // Port was received but index might be different - this is okay
-        // Find the actual index of the newly received port
-        final actualIndex = _workerPorts.length - 1;
-        if (actualIndex < _workerAvailable.length) {
-          _workerAvailable[actualIndex] = true;
-        } else {
-          while (_workerAvailable.length <= actualIndex) {
-            _workerAvailable.add(true);
-          }
-        }
-        print(
-            '✅ ISOLATES: Worker isolate spawned (port received at index $actualIndex, total: ${_workerPorts.length}), marked as available');
-        return true;
-      } else {
-        print(
-            '⚠️ ISOLATES: Worker isolate $index failed to send port after ${maxAttempts * 10}ms');
-        isolate.kill();
-        _workerIsolates.removeAt(index);
-        if (index < _workerAvailable.length) {
-          _workerAvailable.removeAt(index);
-        }
-        if (index < _workerLastUsed.length) {
-          _workerLastUsed.removeAt(index);
-        }
-        return false;
-      }
-    } catch (e) {
-      print('❌ ISOLATES: Failed to spawn isolate: $e');
-      return false;
-    }
-  }
-
-  /// Start timer to cleanup idle isolates
-  void _startIsolateCleanupTimer() {
-    _isolateCleanupTimer?.cancel();
-    _isolateCleanupTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      _cleanupIdleIsolates();
-    });
-  }
-
-  /// Close isolates that have been idle for too long
-  void _cleanupIdleIsolates() {
-    if (_workerIsolates.isEmpty) return;
-
-    final now = DateTime.now();
-    final toRemove = <int>[];
-
-    // Find idle isolates (available and not used recently)
-    for (int i = _workerIsolates.length - 1; i >= 0; i--) {
-      if (i < _workerAvailable.length &&
-          i < _workerLastUsed.length &&
-          _workerAvailable[i]) {
-        final idleTime = now.difference(_workerLastUsed[i]);
-        if (idleTime > _isolateIdleTimeout) {
-          toRemove.add(i);
-        }
-      }
-    }
-
-    // Remove idle isolates (keep at least _minWorkers)
-    final keepCount = _workerIsolates.length - toRemove.length;
-    if (keepCount >= _minWorkers) {
-      for (final index in toRemove) {
-        EngineDebugLogger.log('ISOLATE_CLEANUP', 'Closing idle isolate $index');
-        try {
-          _workerIsolates[index].kill();
-        } catch (e) {
-          // Ignore errors when killing
-        }
-        _workerIsolates.removeAt(index);
-        _workerPorts.removeAt(index);
-        _workerAvailable.removeAt(index);
-        _workerLastUsed.removeAt(index);
-      }
-    }
-  }
 
   Future<void> get isReady => _readyCompleter.future;
 
@@ -949,7 +739,8 @@ class DCFEngine {
       final updateCount = _pendingUpdates.length;
       final startTime = DateTime.now();
 
-      if (_concurrentEnabled && updateCount >= _concurrentThreshold) {
+      // Use worker_manager for concurrent processing if available
+      if (_workerManagerInitialized && updateCount >= 5) {
         await _processPendingUpdatesConcurrently();
       } else {
         await _processPendingUpdatesSerially();
@@ -957,7 +748,7 @@ class DCFEngine {
 
       final processingTime = DateTime.now().difference(startTime);
       _updatePerformanceStats(
-          updateCount >= _concurrentThreshold, processingTime);
+          updateCount >= 5, processingTime);
 
       if (_pendingUpdates.isNotEmpty) {
         EngineDebugLogger.log('BATCH_NEW_UPDATES',
@@ -1009,8 +800,7 @@ class DCFEngine {
     }
 
     try {
-      final batchSize =
-          (_maxWorkers * 2); // Process more than workers to keep them busy
+      final batchSize = 4; // Process in batches to keep workers busy
       for (int i = 0; i < sortedUpdates.length; i += batchSize) {
         final batchEnd = (i + batchSize < sortedUpdates.length)
             ? i + batchSize
@@ -1100,7 +890,7 @@ class DCFEngine {
 
     // Determine priority based on update count
     final priority =
-        sortedUpdates.length > 200 ? WorkPriority.low : WorkPriority.high;
+        sortedUpdates.length > 200 ? WorkPriority.low : WorkPriority.high; // This is frame_scheduler WorkPriority, not worker_manager
 
     final completer = Completer<void>();
     bool hasError = false;
@@ -1773,18 +1563,20 @@ class DCFEngine {
     // on the main thread to ensure proper UI synchronization
     final isInitialRender = oldNode.effectiveNativeViewId == null;
 
-    // Use isolate-based reconciliation for large trees (but NOT for initial render)
+    // Use worker_manager for parallel reconciliation (but NOT for initial render)
+    // 🔥 CRITICAL: Disable worker_manager reconciliation during hot reload to prevent issues
     bool usedIsolate = false;
     if (!isInitialRender &&
-        _concurrentEnabled &&
+        !_isHotReloading &&
+        _workerManagerInitialized &&
         _shouldUseIsolateReconciliation(oldNode, newNode)) {
       try {
         await _reconcileWithIsolate(oldNode, newNode);
         usedIsolate = true;
       } catch (e) {
         EngineDebugLogger.logReconcile(
-            'ISOLATE_FALLBACK_ERROR', oldNode, newNode,
-            reason: 'Isolate reconciliation failed, falling back: $e');
+            'WORKER_MANAGER_FALLBACK_ERROR', oldNode, newNode,
+            reason: 'Worker_manager reconciliation failed, falling back: $e');
         // Continue with regular reconciliation
       }
     } else if (!isInitialRender) {
@@ -2455,25 +2247,21 @@ class DCFEngine {
   /// Check if isolate-based reconciliation should be used
   bool _shouldUseIsolateReconciliation(
       DCFComponentNode oldNode, DCFComponentNode newNode) {
-    // Use isolates for trees with 50+ nodes (workers will be spawned on demand)
+    // Use worker manager for trees with 20+ nodes
     final oldNodeCount = _countNodeChildren(oldNode);
     final newNodeCount = _countNodeChildren(newNode);
     final totalNodes = oldNodeCount + newNodeCount;
 
-    // 🚀 OPTIMIZATION: Lower threshold from 50 to 20 for better performance
-    // Large component structures (like examples screen) benefit from parallel reconciliation
-    // Workers will be spawned inside _reconcileWithIsolate if needed
-    final shouldUse = totalNodes >= 20 && _concurrentEnabled;
+    // 🚀 OPTIMIZATION: Use worker manager for trees with 20+ nodes
+    // Large component structures benefit from parallel reconciliation
+    final shouldUse = totalNodes >= 20 && _workerManagerInitialized && !_isHotReloading;
 
     if (totalNodes >= 20) {
       if (shouldUse) {
         print(
-            '⚡ ISOLATES: Large tree detected ($totalNodes nodes) - Using parallel isolate reconciliation for optimal performance');
+            '⚡ WORKER_MANAGER: Large tree detected ($totalNodes nodes) - Using parallel reconciliation for optimal performance');
         print(
-            '   └─ Workers available: ${_workerPorts.length} | Estimated speedup: ${((totalNodes / 20) * 0.3).toStringAsFixed(1)}x');
-      } else {
-        print(
-            '📊 ISOLATES: Tree size: $totalNodes nodes | Enabled: $_concurrentEnabled | Workers: ${_workerPorts.length} | Will use: $shouldUse');
+            '   └─ Estimated speedup: ${((totalNodes / 20) * 0.3).toStringAsFixed(1)}x');
       }
     }
 
@@ -2496,21 +2284,25 @@ class DCFEngine {
     return count;
   }
 
-  /// Reconcile using isolate-based parallel diffing
+  /// Reconcile using worker_manager for parallel diffing
   Future<void> _reconcileWithIsolate(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
+    if (!_workerManagerInitialized) {
+      throw Exception('Worker manager not initialized');
+    }
+
     final totalNodes =
         _countNodeChildren(oldNode) + _countNodeChildren(newNode);
     final startTime = DateTime.now();
-    print('🚀 ISOLATES: Starting parallel reconciliation ($totalNodes nodes)');
-    EngineDebugLogger.logReconcile('ISOLATE_START', oldNode, newNode,
-        reason: 'Using isolate-based reconciliation');
+    print('🚀 WORKER_MANAGER: Starting parallel reconciliation ($totalNodes nodes)');
+    EngineDebugLogger.logReconcile('WORKER_MANAGER_START', oldNode, newNode,
+        reason: 'Using worker_manager for parallel reconciliation');
 
     try {
       // Check if oldNode has been rendered - if not, treat as initial render
       final oldNodeRendered = oldNode.effectiveNativeViewId != null;
 
-      // Serialize trees to maps for isolate
+      // Serialize trees to maps for worker
       final serializeStart = DateTime.now();
       final oldTreeData =
           oldNodeRendered ? _serializeNodeForIsolate(oldNode) : null;
@@ -2518,102 +2310,25 @@ class DCFEngine {
       final serializeTime =
           DateTime.now().difference(serializeStart).inMilliseconds;
 
-      // Find available isolate or spawn one if needed
-      int isolateIndex = -1;
-      // Check existing workers - iterate over ports length to ensure we check all
-      // CRITICAL: Only check isolates that have both a port AND are marked as available
-      for (int i = 0; i < _workerPorts.length; i++) {
-        // Ensure availability list is sized correctly
-        if (i >= _workerAvailable.length) {
-          _workerAvailable.add(true);
-        }
-        // Only consider isolate available if it has a port AND is marked available
-        if (i < _workerPorts.length && _workerAvailable[i]) {
-          isolateIndex = i;
-          break;
-        }
-      }
-
-      // If no isolate available, try to spawn one
-      if (isolateIndex == -1 && _workerIsolates.length < _maxWorkers) {
-        print('🔄 ISOLATES: No workers available, spawning on demand...');
-        final spawned = await _spawnWorkerIsolate();
-        if (spawned && _workerPorts.isNotEmpty) {
-          print(
-              '✅ ISOLATES: Worker spawned successfully, finding available isolate...');
-          // Find the newly spawned isolate - check from the end backwards
-          // Make sure the isolate has a port and is marked as available
-          for (int i = _workerPorts.length - 1; i >= 0; i--) {
-            // Ensure availability list is sized correctly
-            if (i >= _workerAvailable.length) {
-              _workerAvailable.add(true);
-            }
-            if (i < _workerPorts.length && 
-                i < _workerAvailable.length && 
-                _workerAvailable[i]) {
-              isolateIndex = i;
-              break;
-            }
-          }
-        }
-      }
-
-      if (isolateIndex == -1) {
-        // Fallback to regular reconciliation if no isolates available
-        print(
-            '⚠️ ISOLATES: No isolates available (${_workerPorts.length} ports, ${_workerAvailable.length} availability flags), falling back to regular reconciliation');
-        EngineDebugLogger.logReconcile('ISOLATE_FALLBACK', oldNode, newNode,
-            reason: 'No isolates available, using regular reconciliation');
-        // Throw to trigger fallback in _reconcile
-        throw Exception('No isolates available for reconciliation');
-      }
-
-      print('✅ ISOLATES: Using worker isolate $isolateIndex');
-      _workerAvailable[isolateIndex] = false;
-      _workerLastUsed[isolateIndex] = DateTime.now();
-
-      final completer = Completer<Map<String, dynamic>>();
-      final taskId =
-          'reconcile_${DateTime.now().millisecondsSinceEpoch}_$isolateIndex';
-      _isolateTasks[taskId] = completer;
-
-      // Send task to isolate
-      final isolateStartTime = DateTime.now();
-      _workerPorts[isolateIndex].send({
-        'type': 'treeReconciliation',
-        'id': taskId,
-        'data': {
+      // Execute reconciliation in worker isolate using worker_manager
+      final workerStartTime = DateTime.now();
+      final result = await worker_manager.workerManager.execute<Map<String, dynamic>>(
+        () => _reconcileTreeInIsolate({
           'oldTree': oldTreeData,
           'newTree': newTreeData,
-        },
-      });
-
-      // Wait for result
-      final result = await completer.future;
-      final isolateProcessingTime =
-          DateTime.now().difference(isolateStartTime).inMilliseconds;
-
-      // Mark isolate as available and update last used time
-      // Ensure lists are properly sized
-      while (isolateIndex >= _workerAvailable.length) {
-        _workerAvailable.add(true);
-      }
-      _workerAvailable[isolateIndex] = true;
-
-      while (isolateIndex >= _workerLastUsed.length) {
-        _workerLastUsed.add(DateTime.now());
-      }
-      _workerLastUsed[isolateIndex] = DateTime.now();
+        }),
+        priority: worker_priority.WorkPriority.immediately,
+      );
+      final workerProcessingTime =
+          DateTime.now().difference(workerStartTime).inMilliseconds;
 
       final changesCount = (result['changes'] as List?)?.length ?? 0;
       final metrics = result['metrics'] as Map<String, dynamic>? ?? {};
-      final isolateProcessingTimeMs =
-          result['processingTimeMs'] as int? ?? isolateProcessingTime;
 
       print(
-          '⚡ ISOLATES: Parallel diff computed in ${isolateProcessingTimeMs}ms (serialization: ${serializeTime}ms)');
+          '⚡ WORKER_MANAGER: Parallel diff computed in ${workerProcessingTime}ms (serialization: ${serializeTime}ms)');
       print(
-          '📊 ISOLATES: Performance - Nodes: $totalNodes | Changes: $changesCount | Complexity: ${metrics['complexity'] ?? 'unknown'}');
+          '📊 WORKER_MANAGER: Performance - Nodes: $totalNodes | Changes: $changesCount | Complexity: ${metrics['complexity'] ?? 'unknown'}');
 
       // Apply diff results
       final applyStartTime = DateTime.now();
@@ -2629,18 +2344,18 @@ class DCFEngine {
           : 0;
 
       print(
-          '✅ ISOLATES: Diff applied in ${applyTime}ms | Total: ${totalTime}ms');
+          '✅ WORKER_MANAGER: Diff applied in ${applyTime}ms | Total: ${totalTime}ms');
       if (timeSaved > 0) {
         print(
-            '🎯 ISOLATES: Performance boost - Saved ~${timeSaved}ms by offloading to isolate (${((timeSaved / estimatedMainThreadTime) * 100).toStringAsFixed(1)}% faster)');
+            '🎯 WORKER_MANAGER: Performance boost - Saved ~${timeSaved}ms by offloading to worker (${((timeSaved / estimatedMainThreadTime) * 100).toStringAsFixed(1)}% faster)');
       }
-      EngineDebugLogger.logReconcile('ISOLATE_COMPLETE', oldNode, newNode,
-          reason: 'Isolate-based reconciliation completed');
+      EngineDebugLogger.logReconcile('WORKER_MANAGER_COMPLETE', oldNode, newNode,
+          reason: 'Worker_manager-based reconciliation completed');
     } catch (e, stackTrace) {
-      print('❌ ISOLATES: Reconciliation failed with error: $e');
-      print('❌ ISOLATES: Stack trace: $stackTrace');
-      EngineDebugLogger.logReconcile('ISOLATE_ERROR', oldNode, newNode,
-          reason: 'Isolate reconciliation failed: $e');
+      print('❌ WORKER_MANAGER: Reconciliation failed with error: $e');
+      print('❌ WORKER_MANAGER: Stack trace: $stackTrace');
+      EngineDebugLogger.logReconcile('WORKER_MANAGER_ERROR', oldNode, newNode,
+          reason: 'Worker_manager reconciliation failed: $e');
       // CRITICAL: Rethrow to trigger fallback to regular reconciliation
       rethrow;
     }
@@ -2686,10 +2401,7 @@ class DCFEngine {
         continue;
       }
 
-      // Skip ReceivePort and other isolate-specific types
-      if (value is SendPort || value is ReceivePort) {
-        continue;
-      }
+      // Skip non-serializable types (worker_manager handles serialization)
 
       // Recursively serialize nested maps and lists
       if (value is Map) {
@@ -2705,9 +2417,7 @@ class DCFEngine {
           serialized[entry.key] = value.map((item) {
             if (item is Map) {
               return _serializePropsForIsolate(Map<String, dynamic>.from(item));
-            } else if (item is Function ||
-                item is SendPort ||
-                item is ReceivePort) {
+            } else if (item is Function) {
               return null; // Replace non-serializable items with null
             }
             return item;
@@ -2899,26 +2609,14 @@ class DCFEngine {
                       newRendered.parent = oldRendered.parent;
                       // Reconcile the rendered elements directly using _reconcileElement
                       // This bypasses _reconcile's component type checks
-                      final wasConcurrentEnabled = _concurrentEnabled;
-                      _concurrentEnabled = false;
-                      try {
-                        await _reconcileElement(oldRendered, newRendered);
-                      } finally {
-                        _concurrentEnabled = wasConcurrentEnabled;
-                      }
+                      await _reconcileElement(oldRendered, newRendered);
                     } else if (oldChild is DCFStatelessComponent ||
                         oldChild is DCFStatefulComponent ||
                         newChild is DCFStatelessComponent ||
                         newChild is DCFStatefulComponent) {
                       print(
                           '🔍 ISOLATES: Reconciling component - using regular reconciliation');
-                      final wasConcurrentEnabled = _concurrentEnabled;
-                      _concurrentEnabled = false;
-                      try {
-                        await _reconcile(oldChild, newChild);
-                      } finally {
-                        _concurrentEnabled = wasConcurrentEnabled;
-                      }
+                      await _reconcile(oldChild, newChild);
                     } else if (newChild is DCFElement &&
                         oldChild is DCFElement) {
                       // Direct element match - update props if changed
@@ -3133,13 +2831,7 @@ class DCFEngine {
                       newRendered.parent = oldRendered.parent;
                       // Reconcile the rendered elements directly using _reconcileElement
                       // This bypasses _reconcile's component type checks
-                      final wasConcurrentEnabled = _concurrentEnabled;
-                      _concurrentEnabled = false;
-                      try {
-                        await _reconcileElement(oldRendered, newRendered);
-                      } finally {
-                        _concurrentEnabled = wasConcurrentEnabled;
-                      }
+                      await _reconcileElement(oldRendered, newRendered);
                     } else if (newChild is DCFStatelessComponent ||
                         newChild is DCFStatefulComponent) {
                       // Components need reconciliation to update their rendered children
@@ -3147,14 +2839,7 @@ class DCFEngine {
                       // and ensure we actually detect and apply changes
                       print(
                           '🔍 ISOLATES: Reconciling component (props changed: ${propsDiff.isNotEmpty}) - using regular reconciliation');
-                      // Temporarily disable isolate reconciliation for this nested call
-                      final wasConcurrentEnabled = _concurrentEnabled;
-                      _concurrentEnabled = false;
-                      try {
-                        await _reconcile(oldChild, newChild);
-                      } finally {
-                        _concurrentEnabled = wasConcurrentEnabled;
-                      }
+                      await _reconcile(oldChild, newChild);
                     } else if (newChild is DCFElement &&
                         oldChild is DCFElement) {
                       // Elements only need prop updates if props changed
@@ -3826,12 +3511,9 @@ class DCFEngine {
       // This prevents timers and microtasks from firing after cleanup
       cancelAllPendingWork();
 
-      // 🔥 CRITICAL: Shutdown isolates during hot restart to prevent stale state
-      // Isolates will be reinitialized after cleanup
+      // 🔥 CRITICAL: Shutdown worker manager during hot restart to prevent stale state
+      // Worker manager will be reinitialized after cleanup
       await shutdownConcurrentProcessing();
-
-      // Clear isolate task map
-      _isolateTasks.clear();
 
       // Small delay to let any in-flight timers/microtasks drain
       await Future.delayed(Duration(milliseconds: 50));
@@ -3882,12 +3564,12 @@ class DCFEngine {
 
       rootComponent = component;
 
-      // 🔥 CRITICAL: Reinitialize isolates after hot restart cleanup (non-blocking)
-      // This ensures isolates are in a clean state for the new app
+      // 🔥 CRITICAL: Reinitialize worker manager after hot restart cleanup (non-blocking)
+      // This ensures worker manager is in a clean state for the new app
       // Don't await - let it initialize in background, initial render must happen first
-      _initializeConcurrentProcessing().catchError((e) {
-        EngineDebugLogger.log('ISOLATE_INIT_DEFERRED',
-            'Isolate initialization deferred due to error: $e');
+      _initializeWorkerManager().catchError((e) {
+        EngineDebugLogger.log('WORKER_MANAGER_INIT_DEFERRED',
+            'Worker manager initialization deferred due to error: $e');
       });
 
       await _nativeBridge.startBatchUpdate();
@@ -4037,13 +3719,10 @@ class DCFEngine {
         'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
 
     try {
-      // Ensure isolates are ready before hot reload
-      // This helps avoid "No isolates available" errors
-      if (_concurrentEnabled && _workerPorts.isEmpty && _workerIsolates.length < _maxWorkers) {
-        print('🔥 HOT_RELOAD: Ensuring isolates are ready...');
-        await _preSpawnIsolates();
-        // Give isolates a moment to send their ports
-        await Future.delayed(Duration(milliseconds: 100));
+      // Ensure worker manager is ready before hot reload
+      if (!_workerManagerInitialized) {
+        print('🔥 HOT_RELOAD: Initializing worker manager...');
+        await _initializeWorkerManager();
       }
       
       // 🔥 CRITICAL: Re-render and reconcile the root component first
@@ -5791,14 +5470,7 @@ class DCFEngine {
     _pendingUpdates.clear();
     _componentPriorities.clear();
 
-    // Clear isolate tasks (complete any pending with errors to prevent hanging)
-    final isolateTaskCount = _isolateTasks.length;
-    for (final completer in _isolateTasks.values) {
-      if (!completer.isCompleted) {
-        completer.completeError(Exception('Task cancelled due to hot restart'));
-      }
-    }
-    _isolateTasks.clear();
+    // Worker manager handles task cancellation automatically
 
     // Clear effect queues (these use Future.microtask which can't be cancelled,
     // but clearing the sets prevents them from executing)
@@ -5811,7 +5483,7 @@ class DCFEngine {
         'CANCEL_ALL_WORK_COMPLETE', 'Cancelled all pending async work',
         extra: {
           'PendingUpdates': pendingCount,
-          'IsolateTasks': isolateTaskCount,
+          'WorkerManagerEnabled': _workerManagerInitialized,
           'LayoutEffects': layoutCount,
           'InsertionEffects': insertionCount,
         });
@@ -5850,12 +5522,7 @@ class DCFEngine {
   Map<String, dynamic> getConcurrentStats() {
     return {
       ..._performanceStats,
-      'concurrentEnabled': _concurrentEnabled,
-      'concurrentThreshold': _concurrentThreshold,
-      'maxWorkers': _maxWorkers,
-      'availableWorkers':
-          _workerAvailable.where((available) => available).length,
-      'totalWorkers': _workerIsolates.length,
+      'workerManagerEnabled': _workerManagerInitialized,
     };
   }
 
@@ -5900,97 +5567,26 @@ class DCFEngine {
   /// Check if concurrent processing is beneficial
   bool get isConcurrentProcessingOptimal {
     final efficiency = _performanceStats['concurrentEfficiency'] as double;
-    return _concurrentEnabled && efficiency > 10.0; // 10% improvement threshold
+    return _workerManagerInitialized && efficiency > 10.0; // 10% improvement threshold
   }
 
   /// Shutdown concurrent processing
+  /// Shutdown worker manager
   Future<void> shutdownConcurrentProcessing() async {
-    if (!_concurrentEnabled) return;
+    if (!_workerManagerInitialized) return;
 
     EngineDebugLogger.log(
-        'VDOM_CONCURRENT_SHUTDOWN', 'Shutting down concurrent processing');
+        'WORKER_MANAGER_SHUTDOWN', 'Shutting down worker manager');
 
-    // Cancel cleanup timer
-    _isolateCleanupTimer?.cancel();
-    _isolateCleanupTimer = null;
-
-    // Cancel receive port subscription
-    await _mainIsolateReceivePortSubscription?.cancel();
-    _mainIsolateReceivePortSubscription = null;
-
-    for (final isolate in _workerIsolates) {
-      try {
-        isolate.kill();
-      } catch (e) {
-        EngineDebugLogger.log('VDOM_CONCURRENT_SHUTDOWN_ERROR',
-            'Error killing worker isolate: $e');
-      }
+    try {
+      await worker_manager.workerManager.dispose();
+      _workerManagerInitialized = false;
+      EngineDebugLogger.log(
+          'WORKER_MANAGER_SHUTDOWN', 'Worker manager shutdown complete');
+    } catch (e) {
+      EngineDebugLogger.log('WORKER_MANAGER_SHUTDOWN_ERROR',
+          'Error disposing worker manager: $e');
     }
-
-    _workerIsolates.clear();
-    _workerPorts.clear();
-    _workerAvailable.clear();
-    _workerLastUsed.clear();
-    _concurrentEnabled = false;
-
-    EngineDebugLogger.log(
-        'VDOM_CONCURRENT_SHUTDOWN', 'Concurrent processing shutdown complete');
-  }
-
-  /// Worker isolate entry point - handles real concurrent processing
-  static void _workerIsolateEntry(SendPort mainSendPort) {
-    final receivePort = ReceivePort();
-    mainSendPort.send(receivePort.sendPort);
-
-    receivePort.listen((message) async {
-      try {
-        final Map<String, dynamic> messageData =
-            message as Map<String, dynamic>;
-        final String taskType = messageData['type'] as String;
-        final String taskId = messageData['id'] as String;
-        final Map<String, dynamic> taskData =
-            messageData['data'] as Map<String, dynamic>;
-
-        Map<String, dynamic> result;
-        final startTime = DateTime.now();
-
-        switch (taskType) {
-          case 'treeReconciliation':
-            result = await _reconcileTreeInIsolate(taskData);
-            break;
-          case 'propsDiff':
-            result = await _computePropsInIsolate(taskData);
-            break;
-          case 'listProcessing':
-            result = await _processLargeListInIsolate(taskData);
-            break;
-          case 'componentSerialization':
-            result = await _serializeComponentInIsolate(taskData);
-            break;
-          default:
-            result = {'error': 'Unknown task type: $taskType'};
-        }
-
-        final processingTime = DateTime.now().difference(startTime);
-
-        mainSendPort.send({
-          'type': 'result',
-          'id': taskId,
-          'success': true,
-          'data': result,
-          'processingTimeMs': processingTime.inMilliseconds,
-        });
-      } catch (e) {
-        final Map<String, dynamic> safeMessageData =
-            message is Map<String, dynamic> ? message : {};
-        mainSendPort.send({
-          'type': 'result',
-          'id': safeMessageData['id'] ?? 'unknown',
-          'success': false,
-          'error': e.toString(),
-        });
-      }
-    });
   }
 
   /// Reconcile tree structure in isolate (heavy algorithmic work)

@@ -24,7 +24,7 @@ class AppRoot extends DCFStatefulComponent {
     final buttonTop = safeAreaTop + 72;
     
     return DCFView(
-      layout: DCFLayout(width: '100%', height: '100%'),
+      layout: DCFLayout(width: '50   %', height: '100%'),
       children: [
         // Content wrapper - this changes when navigating
         DCFView(
@@ -49,7 +49,7 @@ class AppRoot extends DCFStatefulComponent {
         // CRITICAL: This button must stay as the LAST child to ensure it renders on top
         // INVESTIGATION: Adding key to preserve identity during reconciliation
         DCFTouchableOpacity(
-          key: 'toggle-button',
+          // key: 'toggle-button',
           layout: DCFLayout(
             position: DCFPositionType.absolute,
             absoluteLayout: AbsoluteLayout(
@@ -63,7 +63,7 @@ class AppRoot extends DCFStatefulComponent {
             showExamples.setState(!showExamples.state);
           },
           styleSheet: DCFStyleSheet(
-            backgroundColor: DCFColors.blue,
+            backgroundColor: DCFColors.red,
             borderRadius: 8,
             shadowColor: DCFColors.black,
             shadowOpacity: 0.3,
@@ -132,7 +132,7 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.white,
+        backgroundColor: DCFColors.pink,
         borderBottomWidth: 1,
         borderBottomColor: DCFColors.gray100,
       ),

@@ -158,7 +158,7 @@ class DCFlight {
 
     final wasHotRestart = await HotRestartDetector.detectAndCleanup();
 
-    final vdom = DCFEngineAPI.instance;
+    final engine = DCFEngineAPI.instance;
 
     // CRASH PROTECTION: Automatically wrap app in error boundary at framework level
     // This provides React Native-style crash protection without requiring developers
@@ -166,7 +166,7 @@ class DCFlight {
     // 
     // Core Wrapper: Wrap in SystemChangeListener to listen to OS-level changes
     // (font scale, language, etc.) and trigger re-renders when they occur
-    await vdom.createRoot(CoreWrapper(app));
+    await engine.createRoot(CoreWrapper(app));
     // Create minimal Flutter widget for hot reload detection
     // This widget uses reassemble() which Flutter calls automatically on hot reload
     // When Flutter hot reloads, reassemble() is called, which notifies VDOM to update
@@ -177,8 +177,6 @@ class DCFlight {
     if (wasHotRestart) {
       print('🔥 DCFlight: Hot restart detected');
     }
-
-    vdom.isReady.whenComplete(() async {});
   }
 }
 

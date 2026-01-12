@@ -14,6 +14,10 @@ dependencies:
   # framework dependencies (prod)
   equatable: ^2.0.7
   logger: ^2.6.2
+  worker_manager:
+    git:
+      url: https://github.com/presence-app/worker_manager.git
+      ref: master
 
   # Note: dcflight does NOT depend on dcf_primitives
   # The primitives are a separate plugin that depends on dcflight
