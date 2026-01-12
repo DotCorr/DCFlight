@@ -21,60 +21,49 @@ ReanimatedView(
   workletConfig: {
     'damping': 0.8,
     'frequency': 10.0,
+    'targetProperty': 'scale',  // Optional: which property to animate
   },
 )
 ```
 
-### 3. Generate Native Code (Before Building)
-
-Run the generation script to write native code to files:
-
-```bash
-dart scripts/generate_worklets.dart
-```
-
-Or programmatically:
-
-```dart
-import 'package:dcflight/framework/worklets/compiler/build_hook.dart';
-
-// In your main() or build script
-await WorkletBuildHook.writeGeneratedCode();
-```
-
-### 4. Include Generated Files in Build
-
-**Android:**
-- File: `android/src/main/kotlin/com/dotcorr/dcflight/worklets/GeneratedWorklets.kt`
-- Automatically included if in `src/main/kotlin`
-
-**iOS:**
-- File: `ios/Classes/Worklets/GeneratedWorklets.swift`
-- Add to Xcode project manually or via podspec
-
-### 5. Rebuild Native App
-
-```bash
-flutter build apk  # Android
-flutter build ios   # iOS
-```
+**That's it!** No build steps, no code generation - just write and use!
 
 ## How It Works
 
+### Runtime IR Interpretation
+
 1. **Compilation (Automatic)**
-   - When you use `@Worklet`, the system automatically compiles it
-   - Generates Kotlin (Android) and Swift (iOS) code
-   - Includes code in `WorkletConfig`
+   - When you use `@Worklet`, the system automatically compiles it to IR (Intermediate Representation)
+   - IR is a JSON structure that describes your worklet's logic
+   - IR is sent to native via `WorkletConfig`
 
-2. **Build-Time (Manual)**
-   - Run `generate_worklets.dart` to write code to files
-   - Include files in native build
-   - Functions are compiled into the app
+2. **Runtime Execution (Native)**
+   - Native `WorkletInterpreter` executes the IR directly on the UI thread
+   - Just like React Native Reanimated's JavaScript interpreter
+   - **Zero rebuilds needed** - hot reload works perfectly!
 
-3. **Runtime (Automatic)**
-   - Native code detects compiled worklets
-   - Uses reflection to call generated functions
-   - Falls back to pattern matching if needed
+3. **Property Updates**
+   - Worklet results are applied via `WorkletRuntime` API
+   - Universal API works on any view (not component-specific)
+   - Automatically handles shadow views and layout updates
+
+### Flow
+
+```
+Dart: @Worklet double myWorklet(double time) => time * 2;
+  ↓
+Compile to IR: { type: 'binaryOp', operator: 'multiply', left: 'time', right: 2 }
+  ↓
+Send IR to Native (via WorkletConfig)
+  ↓
+Native: WorkletInterpreter.execute(ir, elapsed, config)
+  ↓
+Result: 4.0 (if elapsed = 2.0)
+  ↓
+WorkletRuntime.getView(viewId).setProperty("scale", 4.0)
+  ↓
+UI updates on UI thread (60fps)
+```
 
 ## Supported Operations
 
@@ -86,7 +75,7 @@ See [WORKLET_SUPPORTED_OPERATIONS.md](./WORKLET_SUPPORTED_OPERATIONS.md) for ful
 - ✅ List operations (`list[index]`, `list.length`)
 - ✅ String operations (`string.substring`, `string.length`)
 - ✅ Conditionals (`? :`)
-- ✅ Property access (`object.property`)
+- ✅ `WorkletRuntime` API calls (universal view manipulation)
 
 **Not Supported:**
 - ❌ Loops (`for`, `while`)
@@ -112,6 +101,7 @@ AnimatedText(
   workletConfig: {
     'words': ['Hello', 'World'],
     'speed': 10.0,
+    'updateTextChild': true,  // Required for text worklets
   },
 )
 ```
@@ -126,16 +116,22 @@ double pulse(double time) {
 
 ReanimatedView(
   worklet: pulse,
-  // Result is applied to view properties automatically
+  workletConfig: {
+    'targetProperty': 'opacity',  // Animate opacity
+  },
 )
 ```
 
-### Complex Calculation
+### Complex Calculation with WorkletRuntime
 
 ```dart
 @Worklet
 double elasticBounce(double time, double damping, double frequency) {
-  return Math.sin(time * frequency) * Math.exp(-time * damping);
+  final scale = Math.sin(time * frequency) * Math.exp(-time * damping);
+  // Use WorkletRuntime to update multiple views
+  WorkletRuntime.getView(10).setProperty("scale", scale);
+  WorkletRuntime.getView(11).setProperty("opacity", scale);
+  return scale;
 }
 
 ReanimatedView(
@@ -147,41 +143,65 @@ ReanimatedView(
 )
 ```
 
-## Troubleshooting
+## WorkletRuntime API
 
-### "GeneratedWorklets class not found"
+The `WorkletRuntime` API is **universal** - works on any view, not just specific components:
 
-**Solution:** Run the generation script:
-```bash
-dart scripts/generate_worklets.dart
+```dart
+@Worklet
+double animateView(double time) {
+  // Works on ANY view (Button, Container, Image, etc.)
+  WorkletRuntime.getView(viewId).setProperty("opacity", 0.5);
+  WorkletRuntime.getView(viewId).setProperty("scale", 1.5);
+  WorkletRuntime.getView(viewId).setProperty("translateX", 100.0);
+  WorkletRuntime.getView(viewId).setProperty("rotation", 45.0);
+  return time;
+}
 ```
 
-Then rebuild your native app.
+**Universal Properties:**
+- `opacity` / `alpha` - Works on any view
+- `scale`, `scaleX`, `scaleY` - Works on any view
+- `translateX`, `translateY` - Works on any view
+- `rotation`, `rotationX`, `rotationY` - Works on any view
 
-### "Function not found in GeneratedWorklets"
-
-**Solution:** 
-1. Check that the worklet compiled successfully
-2. Verify the generated file exists
-3. Ensure the file is included in the native build
-4. Rebuild the native app
-
-### "Compilation failed"
-
-**Solution:**
-- Check that your worklet only uses supported operations
-- See [WORKLET_SUPPORTED_OPERATIONS.md](./WORKLET_SUPPORTED_OPERATIONS.md)
-- Check compiler logs for specific errors
+**Component-Specific:**
+- `text` - Only works on text views
 
 ## Performance
 
-- ✅ Zero bridge calls during execution
-- ✅ Runs on UI thread (60fps guaranteed)
-- ✅ Cannot be blocked by Dart thread
-- ✅ Optimized by native compilers
+- ✅ **Zero bridge calls** during execution
+- ✅ **Runs on UI thread** (60fps guaranteed)
+- ✅ **Cannot be blocked** by Dart thread
+- ✅ **Runtime interpretation** (like React Native Reanimated)
+- ✅ **No rebuilds needed** (hot reload works!)
+- ✅ **Low CPU usage** - efficient IR interpretation
+
+## Troubleshooting
+
+### "Worklet not executing"
+
+**Solution:**
+1. Check that worklet only uses supported operations
+2. Verify `workletConfig` is provided
+3. Check native logs for IR interpretation errors
+
+### "Property not updating"
+
+**Solution:**
+1. Verify `targetProperty` is set in `workletConfig`
+2. Check that viewId is correct (for `WorkletRuntime` calls)
+3. Ensure property is supported (see WorkletRuntime API)
+
+### "Text not updating"
+
+**Solution:**
+1. Set `updateTextChild: true` in `workletConfig`
+2. Ensure worklet returns `String` type
+3. Check that text view exists in hierarchy
 
 ## Next Steps
 
-- See [WORKLET_BUILD_INTEGRATION.md](./WORKLET_BUILD_INTEGRATION.md) for build integration details
-- See [WORKLET_COMPILATION_ROADMAP.md](../architecture/WORKLET_COMPILATION_ROADMAP.md) for architecture details
-
+- See [WORKLET_RUNTIME_EXECUTION.md](./WORKLET_RUNTIME_EXECUTION.md) for technical details
+- See [WORKLET_SUPPORTED_OPERATIONS.md](./WORKLET_SUPPORTED_OPERATIONS.md) for full operation list
+- See [WORKLET_BUILD_INTEGRATION.md](./WORKLET_BUILD_INTEGRATION.md) for build-time integration (future)

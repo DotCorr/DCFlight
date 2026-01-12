@@ -11,7 +11,7 @@ import android.view.View
 import com.dotcorr.dcflight.layout.ViewRegistry
 import com.dotcorr.dcflight.layout.YogaShadowTree
 import com.dotcorr.dcflight.layout.DCFLayoutManager
-import com.dotcorr.dcflight.layout.DCFTextShadowView
+import com.dotcorr.dcflight.components.text.DCFTextShadowNode
 
 /**
  * WorkletRuntime - Provides a Reanimated-like API for worklets to directly access and modify native views.
@@ -106,15 +106,15 @@ class WorkletViewProxy(
      * Set text property - automatically handles shadow view and layout updates.
      */
     private fun setText(text: String) {
-        // Update shadow view if it's a text shadow view
-        val shadowView = YogaShadowTree.shared.getShadowView(viewId)
-        if (shadowView is DCFTextShadowView) {
-            shadowView.text = text
-            shadowView.dirtyText()
+        // Update shadow node if it's a text shadow node
+        val shadowNode = YogaShadowTree.shared.getShadowNode(viewId)
+        if (shadowNode is DCFTextShadowNode) {
+            shadowNode.text = text
+            shadowNode.dirtyText()
             // Trigger layout to update native view
             DCFLayoutManager.shared.calculateLayoutNow()
         } else {
-            android.util.Log.w("WorkletRuntime", "⚠️ WORKLET: Cannot update text - shadow view not found for viewId=$viewId")
+            android.util.Log.w("WorkletRuntime", "⚠️ WORKLET: Cannot update text - shadow node not found for viewId=$viewId")
         }
     }
     

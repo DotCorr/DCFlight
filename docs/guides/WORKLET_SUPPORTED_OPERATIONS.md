@@ -80,6 +80,26 @@ Supported:
 - Ternary operator: `condition ? then : else`
 - If/else expressions (via ternary)
 
+### WorkletRuntime API (Universal View Manipulation)
+```dart
+@Worklet
+double animateView(double time, int viewId) {
+  // Universal API - works on ANY view (Button, Container, Image, etc.)
+  WorkletRuntime.getView(viewId).setProperty("opacity", 0.5);
+  WorkletRuntime.getView(viewId).setProperty("scale", 1.5);
+  WorkletRuntime.getView(viewId).setProperty("translateX", 100.0);
+  WorkletRuntime.getView(viewId).setProperty("rotation", 45.0);
+  return time;
+}
+```
+
+Supported properties:
+- `opacity` / `alpha` - Works on any view
+- `scale`, `scaleX`, `scaleY` - Works on any view
+- `translateX`, `translateY` - Works on any view
+- `rotation`, `rotationX`, `rotationY` - Works on any view
+- `text` - Only works on text views
+
 ### Complex Expressions
 ```dart
 @Worklet
@@ -194,15 +214,24 @@ String getItem(double index, List<String> items) {
   final idx = index.floor() % items.length;
   return items[idx];
 }
+
+// WorkletRuntime API
+@Worklet
+double animateMultipleViews(double time) {
+  WorkletRuntime.getView(10).setProperty("scale", Math.sin(time));
+  WorkletRuntime.getView(11).setProperty("opacity", Math.cos(time));
+  return time;
+}
 ```
 
 ## Performance
 
-All supported operations compile to **pure native code** (Kotlin/Swift) that runs directly on the UI thread with:
+All supported operations are **interpreted at runtime** via IR (Intermediate Representation) on the UI thread with:
 - ✅ Zero bridge calls
 - ✅ 60fps guaranteed
 - ✅ Cannot be blocked by Dart thread
-- ✅ Optimized by native compilers
+- ✅ Low CPU usage (efficient IR interpretation)
+- ✅ No rebuilds needed (hot reload works!)
 
 ## Migration Guide
 

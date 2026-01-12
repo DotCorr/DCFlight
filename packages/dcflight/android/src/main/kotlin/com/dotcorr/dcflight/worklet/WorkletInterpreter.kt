@@ -322,7 +322,7 @@ object WorkletInterpreter {
                 // viewProxy.setProperty(property, value)
                 if (arguments.size >= 2) {
                     val property = arguments[0] as? String ?: return null
-                    val value = arguments[1]
+                    val value = arguments[1] ?: return null
                     viewProxy.setProperty(property, value)
                     true
                 } else {

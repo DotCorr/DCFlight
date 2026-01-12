@@ -13,15 +13,15 @@ New VDOM Tree Created
     ↓
 Check Tree Size
     ↓
-    ├─ 50+ nodes → Isolate Reconciliation (Parallel)
+    ├─ 20+ nodes → worker_manager Reconciliation (Parallel)
     │   ↓
-    │   Serialize Trees → Worker Isolate
+    │   Serialize Trees → worker_manager Isolate
     │   ↓
     │   Parallel Diffing in Isolate
     │   ↓
     │   Return Diff Results
     │   ↓
-    └─ < 50 nodes → Main Thread Reconciliation
+    └─ < 20 nodes → Main Thread Reconciliation
         ↓
 Compare with Old Tree
     ↓
@@ -277,14 +277,15 @@ When element type changes:
    - Always re-render
    - Reconcile renderedNode
 
-## Isolate-Based Reconciliation
+## worker_manager-Based Parallel Reconciliation
 
-### When Isolates Are Used
+### When worker_manager Is Used
 
-Isolates are automatically used for reconciliation when:
+worker_manager is automatically used for reconciliation when:
 - Tree has **20+ nodes** (old + new combined, lowered from 50 for better performance)
 - Not initial render (initial render must be synchronous)
-- Worker isolates are available (2 workers pre-spawned at startup for optimal performance)
+- Not hot reloading (disabled for safety)
+- worker_manager initialized successfully
 
 ### How It Works
 
@@ -294,13 +295,15 @@ Isolates are automatically used for reconciliation when:
    final newTreeData = _serializeNodeForIsolate(newNode);
    ```
 
-2. **Send to Worker Isolate**
+2. **Execute in worker_manager Isolate**
    ```dart
-   _workerPorts[isolateIndex].send({
-     'type': 'treeReconciliation',
-     'oldTree': oldTreeData,
-     'newTree': newTreeData,
-   });
+   final result = await worker_manager.workerManager.execute<Map<String, dynamic>>(
+     () => _reconcileTreeInIsolate({
+       'oldTree': oldTreeData,
+       'newTree': newTreeData,
+     }),
+     priority: worker_priority.WorkPriority.immediately,
+   );
    ```
 
 3. **Parallel Diffing in Isolate**
@@ -322,9 +325,10 @@ Isolates are automatically used for reconciliation when:
 - **UI Responsiveness**: Main thread stays responsive
 - **Performance**: 50-80% faster for large reconciliations (typically saves 60-100ms)
 - **Safety**: All UI updates on main thread (no race conditions)
-- **Pre-spawned Workers**: 2 workers ready at startup (no spawning delay)
+- **Efficient Isolates**: worker_manager handles isolate lifecycle (spawning, reuse, cleanup)
+- **Hot Reload Safe**: Disabled during hot reload to prevent issues
 
-**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 2064-2160)
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 2303-2389)
 
 ## Smart Element-Level Reconciliation
 
@@ -436,13 +440,14 @@ if (changedProps.isNotEmpty) {
 }
 ```
 
-### 5. Isolate-Based Parallel Reconciliation
+### 5. worker_manager-Based Parallel Reconciliation
 
 For trees with 20+ nodes:
-- Diffing happens in worker isolate (parallel)
+- Diffing happens in worker_manager isolate (parallel)
 - Main thread stays responsive
 - All UI updates applied on main thread
 - Lower threshold (20 vs 50) means more trees benefit
+- Disabled during hot reload for safety
 
 ### 6. Direct Replacement for Large Dissimilar Trees
 

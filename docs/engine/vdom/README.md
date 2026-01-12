@@ -31,12 +31,13 @@ This directory contains comprehensive documentation about DCFlight's Virtual DOM
    - Performance optimizations
 
 5. **[Concurrent Features](./CONCURRENT_FEATURES.md)**
-   - Isolate-based parallel reconciliation (20+ nodes, lowered from 50)
+   - worker_manager-based parallel reconciliation (20+ nodes, lowered from 50)
    - Direct replacement for large dissimilar trees (100+ nodes, <20% similarity) - instant navigation
    - Incremental rendering with deadline-based scheduling
    - Dual trees (Current/WorkInProgress)
    - Effect list for commit phase
    - Priority-based update scheduling
+   - Hot reload safety
    - Performance benefits
 
 6. **[Concurrent Mode Evidence](./CONCURRENT_MODE_EVIDENCE.md)**
@@ -76,9 +77,10 @@ Native View (iOS/Android)
 
 - **VDOM Tree**: Lightweight representation of UI
 - **Reconciliation**: Efficient diffing and updating with smart component/element-level reconciliation
-- **Isolate Workers**: 2 pre-spawned worker isolates for parallel reconciliation of heavy trees (20+ nodes, lowered from 50)
+- **worker_manager**: Uses worker_manager package for parallel reconciliation of heavy trees (20+ nodes, lowered from 50)
 - **Smart Reconciliation**: Element-level reconciliation when components render to the same element type (prevents unnecessary view replacement)
 - **Direct Replacement**: For large dissimilar trees (100+ nodes, <20% similarity) - enables instant navigation
+- **Hot Reload Safety**: Disables worker_manager during hot reload to prevent issues
 - **Integer View IDs**: Integer-based view identifiers (0 = root, like React Native)
 - **Dual Trees**: Current and WorkInProgress trees for safe updates
 - **Effect List**: Side-effects collected during render, applied in commit phase
@@ -111,7 +113,7 @@ Native View (iOS/Android)
 │                    VDOM Engine                            │
 │  • Component Rendering                                    │
 │  • VDOM Tree Construction                                 │
-│  • Reconciliation (Main Thread + Isolates)               │
+│  • Reconciliation (Main Thread + worker_manager)         │
 │  • Props Diffing                                          │
 │  • Incremental Rendering                                  │
 │  • Effect List (Commit Phase)                             │
@@ -120,11 +122,12 @@ Native View (iOS/Android)
                        │
                        ↓
 ┌─────────────────────────────────────────────────────────┐
-│              Worker Isolates (2 pre-spawned)             │
-│  • Parallel Tree Diffing (50+ nodes)                      │
-│  • Props Computation                                      │
+│              worker_manager Isolates                      │
+│  • Parallel Tree Diffing (20+ nodes)                      │
+│  • Dynamic Spawning (efficient isolate reuse)            │
 │  • Large List Processing                                  │
 │  • Smart Element-Level Reconciliation                    │
+│  • Hot Reload Safety                                      │
 └──────────────────────┬──────────────────────────────────┘
                        │
                        ↓
@@ -169,9 +172,10 @@ Native View Update
 - `packages/dcflight/lib/framework/renderer/engine/core/engine.dart`
   - Main VDOM engine
   - Rendering and reconciliation logic
-  - Isolate-based parallel reconciliation
+  - worker_manager-based parallel reconciliation
   - Incremental rendering with frame scheduler
   - Dual trees and effect list management
+  - Hot reload safety
 
 ### Components
 - `packages/dcflight/lib/framework/components/component_node.dart`

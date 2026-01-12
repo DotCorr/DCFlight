@@ -132,7 +132,7 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.blue,
+        backgroundColor: DCFColors.white,
         borderBottomWidth: 1,
         borderBottomColor: DCFColors.gray100,
       ),

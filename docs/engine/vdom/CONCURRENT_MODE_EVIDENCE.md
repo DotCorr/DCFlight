@@ -2,48 +2,51 @@
 
 ## Direct Code Evidence
 
-### 1. Concurrent Processing Infrastructure
+### 1. worker_manager Infrastructure
 
-**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 88-94)
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 10-11, 133-137)
 
 ```dart
-/// Concurrent processing features
-static const int _concurrentThreshold = 5;
-bool _concurrentEnabled = false;
-final List<Isolate> _workerIsolates = [];
-final List<SendPort> _workerPorts = [];
-final List<bool> _workerAvailable = [];
-final int _maxWorkers = 4;
+import 'package:worker_manager/worker_manager.dart' as worker_manager;
+import 'package:worker_manager/src/scheduling/work_priority.dart' as worker_priority show WorkPriority;
+
+bool _workerManagerInitialized = false;
+bool _skipWorkerManagerForThisReconciliation = false;
+bool _isHotReloading = false;
 ```
 
 **Evidence:**
-- ✅ `_concurrentEnabled` flag exists
-- ✅ `_concurrentThreshold` = 5 (activates when 5+ updates pending)
-- ✅ Worker isolates infrastructure ready
-- ✅ Max 4 workers configured
-- ✅ Isolate threshold lowered to 20 nodes (from 50) for better performance
+- ✅ Uses `worker_manager` package for isolate management
+- ✅ `_workerManagerInitialized` flag tracks initialization
+- ✅ `_skipWorkerManagerForThisReconciliation` prevents infinite loops
+- ✅ `_isHotReloading` flag disables worker_manager during hot reload
+- ✅ Threshold is 20 nodes (from 50) for better performance
 - ✅ Direct replacement optimization for large dissimilar trees (100+ nodes, <20% similarity)
 
 ---
 
-### 2. Concurrent Processing Initialization
+### 2. worker_manager Initialization
 
-**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 122, 134-139)
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 176, 192-216)
 
 ```dart
 // In _initialize()
-await _initializeConcurrentProcessing();
+_initializeWorkerManager().catchError((e) {
+  EngineDebugLogger.log('WORKER_MANAGER_INIT_ERROR', 'Worker manager setup failed: $e');
+});
 
 // Method definition
-/// Initialize concurrent processing capabilities
-Future<void> _initializeConcurrentProcessing() async {
-  // Initialization logic here
+Future<void> _initializeWorkerManager() async {
+  await worker_manager.workerManager.init(dynamicSpawning: true);
+  _workerManagerInitialized = true;
 }
 ```
 
 **Evidence:**
-- ✅ Concurrent processing is initialized on engine startup
+- ✅ worker_manager is initialized on engine startup
+- ✅ Uses `dynamicSpawning: true` for efficient isolate management
 - ✅ Separate initialization method exists
+- ✅ Error handling for initialization failures
 
 ---
 
@@ -91,58 +94,39 @@ if (_concurrentEnabled && updateCount >= _concurrentThreshold) {
 
 ---
 
-### 5. Parallel Processing Implementation
+### 5. worker_manager Parallel Reconciliation
 
-**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 696-747)
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 2303-2389)
 
 ```dart
-/// Process updates using concurrent processing
-Future<void> _processPendingUpdatesConcurrently() async {
-  EngineDebugLogger.log(
-      'BATCH_CONCURRENT', 'Processing updates concurrently');
+/// Reconcile using worker_manager for parallel diffing
+Future<void> _reconcileWithIsolate(
+    DCFComponentNode oldNode, DCFComponentNode newNode) async {
+  // Serialize trees to maps for worker
+  final oldTreeData = _serializeNodeForIsolate(oldNode);
+  final newTreeData = _serializeNodeForIsolate(newNode);
 
-  final sortedUpdates = PriorityUtils.sortByPriority(
-      _pendingUpdates.toList(), _componentPriorities);
+  // Execute reconciliation in worker isolate using worker_manager
+  final result = await worker_manager.workerManager.execute<Map<String, dynamic>>(
+    () => _reconcileTreeInIsolate({
+      'oldTree': oldTreeData,
+      'newTree': newTreeData,
+    }),
+    priority: worker_priority.WorkPriority.immediately,
+  );
 
-  // ... clear pending updates ...
-
-  EngineDebugLogger.logBridge('START_BATCH', 'root');
-  await _nativeBridge.startBatchUpdate();
-
-  try {
-    final batchSize = (_maxWorkers * 2); // Process more than workers to keep them busy
-    for (int i = 0; i < sortedUpdates.length; i += batchSize) {
-      final batchEnd = (i + batchSize < sortedUpdates.length)
-          ? i + batchSize
-          : sortedUpdates.length;
-      final batch = sortedUpdates.sublist(i, batchEnd);
-
-      final futures = <Future>[];
-      for (final componentId in batch) {
-        futures.add(_updateComponentById(componentId));
-      }
-
-      await Future.wait(futures); // ⭐ PARALLEL PROCESSING
-    }
-
-    EngineDebugLogger.logBridge('COMMIT_BATCH', 'root');
-    await _nativeBridge.commitBatchUpdate();
-    
-    _performanceStats['totalConcurrentUpdates'] =
-        (_performanceStats['totalConcurrentUpdates'] as int) +
-            sortedUpdates.length;
-  } catch (e) {
-    // Error handling...
-  }
+  // Apply diff results on main thread
+  await _applyIsolateDiff(oldNode, newNode, result);
 }
 ```
 
 **Evidence:**
-- ✅ **`Future.wait(futures)`** - Processes updates in parallel
-- ✅ Updates sorted by priority first
-- ✅ Batched into groups of `_maxWorkers * 2`
-- ✅ Multiple components update simultaneously
-- ✅ Tracks concurrent update statistics
+- ✅ **`worker_manager.workerManager.execute()`** - Executes reconciliation in isolate
+- ✅ Trees serialized for isolate communication
+- ✅ Parallel diffing happens in background isolate
+- ✅ Results applied on main thread (safe)
+- ✅ Uses `WorkPriority.immediately` for high priority
+- ✅ Automatic fallback to regular reconciliation on errors
 
 ---
 
@@ -350,10 +334,11 @@ Future<void> shutdownConcurrentProcessing() async {
    - `isConcurrentProcessingOptimal` - Check if beneficial
    - `shutdownConcurrentProcessing()` - Cleanup
 
-7. **Isolate Reconciliation** ✅
-   - Lowered threshold to 20 nodes (from 50) for better performance
+7. **worker_manager Reconciliation** ✅
+   - Threshold is 20 nodes (from 50) for better performance
    - More trees benefit from parallel processing
-   - Pre-spawned workers ready immediately
+   - Dynamic spawning with `dynamicSpawning: true` (efficient isolate reuse)
+   - Disabled during hot reload for safety
 
 8. **Direct Replacement Optimization** ✅
    - For large dissimilar trees (100+ nodes, <20% similarity)
@@ -366,17 +351,17 @@ Future<void> shutdownConcurrentProcessing() async {
 
 | Feature | File | Lines |
 |---------|------|-------|
-| Concurrent infrastructure | `engine.dart` | 88-94 |
-| Initialization | `engine.dart` | 122, 134-139 |
+| worker_manager imports | `engine.dart` | 10-11 |
+| worker_manager infrastructure | `engine.dart` | 133-137 |
+| Initialization | `engine.dart` | 176, 192-216 |
 | Priority enum | `priority.dart` | 11-49 |
-| Decision logic | `engine.dart` | 665-669 |
-| Parallel processing | `engine.dart` | 696-747 |
+| Decision logic | `engine.dart` | 1575-1606 |
+| Parallel reconciliation | `engine.dart` | 2303-2389 |
 | Priority interruption | `priority.dart` | 112-117 |
 | Performance tracking | `engine.dart` | 97-103, 4099-4134 |
 | Stats API | `engine.dart` | 4085-4098 |
 | Optimal check | `engine.dart` | 4136-4140 |
-| Shutdown | `engine.dart` | 4142-4165 |
-| Isolate reconciliation | `engine.dart` | 2456-2481 |
+| Shutdown | `engine.dart` | 5580-5585 |
 | Direct replacement | `engine.dart` | 1805-1841 |
 
 ---
@@ -386,15 +371,16 @@ Future<void> shutdownConcurrentProcessing() async {
 **✅ DCFlight VDOM HAS concurrent mode** - The code evidence is clear:
 
 1. ✅ **Priority-based scheduling** - Fully implemented
-2. ✅ **Parallel processing** - Uses `Future.wait()` for concurrent updates
-3. ✅ **Automatic activation** - Switches based on update count
+2. ✅ **Parallel reconciliation** - Uses `worker_manager` package for isolate-based diffing
+3. ✅ **Automatic activation** - Switches based on tree size (20+ nodes)
 4. ✅ **Interruption** - High-priority can interrupt low-priority
 5. ✅ **Performance tracking** - Monitors efficiency
 6. ✅ **Public API** - Exposes stats and controls
-7. ✅ **Isolate reconciliation** - Lowered threshold to 20 nodes (from 50)
+7. ✅ **worker_manager reconciliation** - Threshold is 20 nodes (from 50)
 8. ✅ **Direct replacement** - For large dissimilar trees (100+ nodes, <20% similarity) - instant navigation
+9. ✅ **Hot reload safety** - Disables worker_manager during hot reload
 
-**The implementation is production-ready and actively used in the VDOM engine. Recent optimizations enable instant navigation for complex apps.**
+**The implementation is production-ready and actively used in the VDOM engine. Uses worker_manager package for efficient isolate management. Recent optimizations enable instant navigation for complex apps.**
 
 ---
 

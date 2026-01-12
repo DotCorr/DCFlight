@@ -18,19 +18,20 @@ Native View (iOS/Android)
 
 ## Key Upgrades
 
-### 1. Pre-Spawned Isolate Workers
+### 1. worker_manager Package Integration
 
-**Before:** Workers spawned on-demand (causing delays)
+**Before:** Custom isolate management with manual spawning
 
-**Now:** 2 worker isolates pre-spawned at engine startup
+**Now:** Uses `worker_manager` package for efficient isolate management
 
 **Benefits:**
-- No spawning delay - workers ready immediately
-- Optimal performance from first reconciliation
-- Consistent performance characteristics
+- Dynamic spawning with `dynamicSpawning: true` (efficient isolate reuse)
+- Automatic isolate lifecycle management (spawning, reuse, cleanup)
+- Better error handling and fallback
 - Lower threshold (20 nodes vs 50) means more trees benefit
+- Hot reload safety (disabled during hot reload)
 
-**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (`_preSpawnIsolates`)
+**Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (`_initializeWorkerManager`)
 
 ### 2. Smart Element-Level Reconciliation
 
@@ -56,15 +57,17 @@ Native View (iOS/Android)
 
 **Location:** `packages/dcflight/lib/framework/renderer/engine/core/engine.dart` (lines 2611-2643)
 
-### 3. Improved Isolate Reconciliation
+### 3. Improved worker_manager Reconciliation
 
-**Before:** Basic isolate reconciliation with on-demand spawning
+**Before:** Basic isolate reconciliation with manual management
 
 **Now:** 
-- Pre-spawned workers (2 workers)
+- worker_manager package for efficient isolate management
+- Dynamic spawning with `dynamicSpawning: true`
 - Smart element-level reconciliation
 - Better error handling and fallback
 - Performance metrics and logging
+- Hot reload safety
 
 **Performance:**
 - 50-80% faster for trees with 20+ nodes (lowered threshold)
@@ -85,16 +88,16 @@ New VDOM Tree Created
     ↓
 Check Tree Size
     ↓
-    ├─ 20-99 nodes → Isolate Reconciliation
+    ├─ 20-99 nodes → worker_manager Reconciliation
     │   ↓
-    │   (Parallel diffing in isolate)
+    │   (Parallel diffing in worker_manager isolate)
     │
     ├─ 100+ nodes → Check Similarity
     │   ↓
     │   ├─ < 20% similar? → Direct Replace (Instant Navigation)
-    │   └─ ≥ 20% similar? → Isolate Reconciliation
+    │   └─ ≥ 20% similar? → worker_manager Reconciliation
     │   ↓
-    │   Serialize Trees → Worker Isolate
+    │   Serialize Trees → worker_manager Isolate
     │   ↓
     │   Parallel Diffing in Isolate
     │   ↓
@@ -123,10 +126,10 @@ Check Tree Size
 
 ## Performance Characteristics
 
-### Isolate Reconciliation (20-99 nodes)
+### worker_manager Reconciliation (20-99 nodes)
 
 - **Serialization**: ~2-3ms
-- **Parallel Diffing**: ~5-10ms (in isolate)
+- **Parallel Diffing**: ~5-10ms (in worker_manager isolate)
 - **Diff Application**: ~15-25ms (on main thread)
 - **Total**: ~25-40ms
 - **Savings**: 60-100ms vs regular reconciliation
@@ -220,11 +223,12 @@ Check Tree Size
 
 ## Key Features
 
-### ✅ Pre-Spawned Isolates
-- 2 workers ready at startup
-- No spawning delay
-- Optimal performance
+### ✅ worker_manager Integration
+- Efficient isolate management via worker_manager package
+- Dynamic spawning with `dynamicSpawning: true`
+- Automatic isolate lifecycle (spawning, reuse, cleanup)
 - Lower threshold (20 nodes) means more trees benefit
+- Hot reload safety (disabled during hot reload)
 
 ### ✅ Smart Reconciliation
 - Element-level when possible
@@ -232,12 +236,13 @@ Check Tree Size
 - Automatic strategy selection
 
 ### ✅ Performance Optimizations
-- Isolate-based parallel diffing (20+ nodes, lowered threshold)
+- worker_manager-based parallel diffing (20+ nodes, lowered threshold)
 - Direct replacement for large dissimilar trees (100+ nodes, <20% similarity) - instant navigation
 - Props diffing (only changed props)
 - Batch updates
 - Effect list (atomic commits)
 - Optimized logging (debug logs removed for production performance)
+- Hot reload safety (disables worker_manager during hot reload)
 
 ### ✅ Layout Stability
 - Element-level reconciliation prevents layout shifts
@@ -248,14 +253,15 @@ Check Tree Size
 
 | Feature | Before | Now |
 |---------|--------|-----|
-| Isolate Workers | On-demand spawning | Pre-spawned (2 workers) |
+| Isolate Management | Manual spawning | worker_manager package |
 | Reconciliation Strategy | Component-level only | Smart (element + component) |
 | Layout Shifts | Possible when switching components | Eliminated via element-level reconciliation |
 | Performance (20+ nodes) | ~100-150ms | ~25-40ms (60-100ms saved) |
-| Worker Availability | Spawning delay | Immediate (ready at startup) |
+| Isolate Lifecycle | Manual management | Automatic (spawning, reuse, cleanup) |
 | Isolate Threshold | 50 nodes | 20 nodes (more trees benefit) |
 | Large Tree Optimization | None | Direct replacement (100+ nodes, <20% similarity) - instant navigation |
 | Debug Logging | Extensive (performance impact) | Optimized (removed for production) |
+| Hot Reload Safety | Not handled | Disabled during hot reload |
 
 ## Best Practices
 
@@ -288,20 +294,20 @@ DCFView(
 
 ### Logs to Watch
 
-**Isolate Reconciliation:**
+**worker_manager Reconciliation:**
 ```
-⚡ ISOLATES: Large tree detected (66 nodes) - Using parallel isolate reconciliation
-🚀 ISOLATES: Starting parallel reconciliation (66 nodes)
-✅ ISOLATES: Using worker isolate 0
-⚡ ISOLATES: Parallel diff computed in 8ms (serialization: 2ms)
-✅ ISOLATES: Diff applied in 19ms | Total: 31ms
-🎯 ISOLATES: Performance boost - Saved ~101ms by offloading to isolate (76.5% faster)
+⚡ WORKER_MANAGER: Large tree detected (66 nodes) - Using parallel reconciliation for optimal performance
+🚀 WORKER_MANAGER: Starting parallel reconciliation (66 nodes)
+⚡ WORKER_MANAGER: Parallel diff computed in 8ms (serialization: 2ms)
+📊 WORKER_MANAGER: Performance - Nodes: 66 | Changes: 12
+✅ WORKER_MANAGER: Diff applied in 19ms | Total: 31ms
+🎯 WORKER_MANAGER: Performance boost - Saved ~101ms by offloading to worker (76.5% faster)
 ```
 
 **Element-Level Reconciliation:**
 ```
-✅ ISOLATES: Types match (rendered: View), reconciling instead of replacing
-🔍 ISOLATES: Reconciling rendered nodes directly (bypassing component type check)
+✅ WORKER_MANAGER: Types match (rendered: View), reconciling instead of replacing
+🔍 WORKER_MANAGER: Reconciling rendered nodes directly (bypassing component type check)
 🔍 RECONCILE_ELEMENT: Starting - oldViewId: 18, newViewId: 18, type: View
 ```
 
@@ -321,8 +327,10 @@ Potential areas for future optimization:
 
 ### Recently Completed (2025)
 
-✅ **Lowered isolate threshold** (50 → 20 nodes) - More trees benefit from parallel processing  
+✅ **Migrated to worker_manager package** - Efficient isolate management with dynamic spawning  
+✅ **Lowered threshold** (50 → 20 nodes) - More trees benefit from parallel processing  
 ✅ **Direct replacement optimization** (100+ nodes, <20% similarity) - Instant navigation achieved  
+✅ **Hot reload safety** - Disables worker_manager during hot reload to prevent issues  
 ✅ **Optimized logging** - Debug logs removed for production performance  
 ✅ **Android ScrollView timing fixes** - Fixed red background issue by setting `expectedContentHeight` before measurement  
 ✅ **Layout loop prevention** - Added `isMeasuring` flag to prevent recursive `requestLayout()` calls
@@ -330,11 +338,12 @@ Potential areas for future optimization:
 ## Conclusion
 
 The VDOM has been significantly upgraded with:
-- ✅ Pre-spawned isolate workers (optimal performance)
+- ✅ worker_manager package integration (efficient isolate management)
 - ✅ Smart element-level reconciliation (no layout shifts)
 - ✅ 50-80% performance improvement for large trees
-- ✅ Lower isolate threshold (20 nodes vs 50) - more trees benefit
+- ✅ Lower threshold (20 nodes vs 50) - more trees benefit
 - ✅ Direct replacement for large dissimilar trees (100+ nodes, <20% similarity) - instant navigation
+- ✅ Hot reload safety (disables worker_manager during hot reload)
 - ✅ Optimized logging (debug logs removed for production performance)
 - ✅ Better error handling and fallback
 - ✅ Game changer for complex apps - instant navigation between screens
