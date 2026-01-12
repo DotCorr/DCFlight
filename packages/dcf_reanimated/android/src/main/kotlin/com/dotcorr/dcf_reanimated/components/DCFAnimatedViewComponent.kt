@@ -667,6 +667,7 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     
     /**
      * Update child text component directly from UI thread (zero bridge calls).
+     * Uses WorkletRuntime API for parity with iOS.
      */
     private fun updateChildText(text: String) {
         // Find child DCFTextView
@@ -678,19 +679,14 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
                 // Get the viewId to find the shadow node
                 val viewId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
                 if (viewId != null) {
-                    // Update shadow node text directly (this updates the layout)
-                    val shadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
-                    if (shadowNode is com.dotcorr.dcflight.components.text.DCFTextShadowNode) {
-                        // Update text on shadow node (this will trigger layout recalculation via dirtyText())
-                        // Setting text automatically calls dirtyText() which marks the node as dirty
-                        shadowNode.text = text
-                        
-                        // Force invalidate to trigger redraw
-                        child.invalidate()
-                        invalidate()
-                        
-                        Log.d(TAG, "✅ WORKLET: Updated text to '$text' on UI thread")
+                    // Use WorkletRuntime API - parity with iOS!
+                    val viewProxy = com.dotcorr.dcflight.worklet.WorkletRuntime.getView(viewId)
+                    if (viewProxy != null) {
+                        viewProxy.setProperty("text", text)
+                        Log.d(TAG, "✅ WORKLET: Updated text to '$text' on UI thread via WorkletRuntime")
                         return
+                    } else {
+                        Log.w(TAG, "⚠️ WORKLET: WorkletRuntime.getView failed for viewId=$viewId")
                     }
                 }
             }
@@ -708,12 +704,10 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
             if (child.javaClass.simpleName == "DCFTextView") {
                 val viewId = child.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
                 if (viewId != null) {
-                    val shadowNode = com.dotcorr.dcflight.layout.YogaShadowTree.shared.getShadowNode(viewId)
-                    if (shadowNode is com.dotcorr.dcflight.components.text.DCFTextShadowNode) {
-                        // Setting text automatically calls dirtyText() which marks the node as dirty
-                        shadowNode.text = text
-                        child.invalidate()
-                        parent.invalidate()
+                    // Use WorkletRuntime API - parity with iOS!
+                    val viewProxy = com.dotcorr.dcflight.worklet.WorkletRuntime.getView(viewId)
+                    if (viewProxy != null) {
+                        viewProxy.setProperty("text", text)
                         return
                     }
                 }

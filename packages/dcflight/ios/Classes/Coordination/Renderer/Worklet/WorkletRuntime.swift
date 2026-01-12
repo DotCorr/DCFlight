@@ -145,65 +145,144 @@ public class WorkletViewProxy {
     }
     
     /**
-     * Set scale - directly updates native view transform.
+     * Extract current transform components from CGAffineTransform.
+     * iOS doesn't have independent transform properties like Android,
+     * so we need to extract values from the matrix.
+     */
+    private func extractTransformComponents(_ transform: CGAffineTransform) -> (scaleX: CGFloat, scaleY: CGFloat, rotation: CGFloat, translateX: CGFloat, translateY: CGFloat) {
+        // Extract scale (magnitude of basis vectors)
+        let scaleX = sqrt(transform.a * transform.a + transform.b * transform.b)
+        let scaleY = sqrt(transform.c * transform.c + transform.d * transform.d)
+        
+        // Extract rotation (angle of basis vector)
+        let rotation = atan2(transform.b, transform.a)
+        
+        // Translation is directly in tx and ty
+        let translateX = transform.tx
+        let translateY = transform.ty
+        
+        return (scaleX, scaleY, rotation, translateX, translateY)
+    }
+    
+    /**
+     * Reconstruct CGAffineTransform from components.
+     * This properly combines scale, rotation, and translation.
+     */
+    private func makeTransform(scaleX: CGFloat, scaleY: CGFloat, rotation: CGFloat, translateX: CGFloat, translateY: CGFloat) -> CGAffineTransform {
+        // Start with identity
+        var transform = CGAffineTransform.identity
+        
+        // Apply translation first (before rotation/scale)
+        transform = transform.translatedBy(x: translateX, y: translateY)
+        
+        // Apply rotation
+        transform = transform.rotated(by: rotation)
+        
+        // Apply scale
+        transform = transform.scaledBy(x: scaleX, y: scaleY)
+        
+        return transform
+    }
+    
+    /**
+     * Set scale - preserves rotation and translation (parity with Android).
      */
     private func setScale(_ scale: Double) {
         DispatchQueue.main.async {
             let scaleValue = CGFloat(scale)
-            self.view.transform = CGAffineTransform(scaleX: scaleValue, y: scaleValue)
+            let current = self.extractTransformComponents(self.view.transform)
+            self.view.transform = self.makeTransform(
+                scaleX: scaleValue,
+                scaleY: scaleValue,
+                rotation: current.rotation,
+                translateX: current.translateX,
+                translateY: current.translateY
+            )
         }
     }
     
     /**
-     * Set scaleX - directly updates native view transform.
+     * Set scaleX - preserves rotation, scaleY, and translation (parity with Android).
      */
     private func setScaleX(_ scaleX: Double) {
         DispatchQueue.main.async {
-            var transform = self.view.transform
-            transform.a = CGFloat(scaleX)
-            self.view.transform = transform
+            let scaleXValue = CGFloat(scaleX)
+            let current = self.extractTransformComponents(self.view.transform)
+            self.view.transform = self.makeTransform(
+                scaleX: scaleXValue,
+                scaleY: current.scaleY,
+                rotation: current.rotation,
+                translateX: current.translateX,
+                translateY: current.translateY
+            )
         }
     }
     
     /**
-     * Set scaleY - directly updates native view transform.
+     * Set scaleY - preserves rotation, scaleX, and translation (parity with Android).
      */
     private func setScaleY(_ scaleY: Double) {
         DispatchQueue.main.async {
-            var transform = self.view.transform
-            transform.d = CGFloat(scaleY)
-            self.view.transform = transform
+            let scaleYValue = CGFloat(scaleY)
+            let current = self.extractTransformComponents(self.view.transform)
+            self.view.transform = self.makeTransform(
+                scaleX: current.scaleX,
+                scaleY: scaleYValue,
+                rotation: current.rotation,
+                translateX: current.translateX,
+                translateY: current.translateY
+            )
         }
     }
     
     /**
-     * Set translateX - directly updates native view transform.
+     * Set translateX - preserves scale and rotation (parity with Android).
      */
     private func setTranslateX(_ translateX: Double) {
         DispatchQueue.main.async {
-            var transform = self.view.transform
-            transform.tx = CGFloat(translateX)
-            self.view.transform = transform
+            let translateXValue = CGFloat(translateX)
+            let current = self.extractTransformComponents(self.view.transform)
+            self.view.transform = self.makeTransform(
+                scaleX: current.scaleX,
+                scaleY: current.scaleY,
+                rotation: current.rotation,
+                translateX: translateXValue,
+                translateY: current.translateY
+            )
         }
     }
     
     /**
-     * Set translateY - directly updates native view transform.
+     * Set translateY - preserves scale and rotation (parity with Android).
      */
     private func setTranslateY(_ translateY: Double) {
         DispatchQueue.main.async {
-            var transform = self.view.transform
-            transform.ty = CGFloat(translateY)
-            self.view.transform = transform
+            let translateYValue = CGFloat(translateY)
+            let current = self.extractTransformComponents(self.view.transform)
+            self.view.transform = self.makeTransform(
+                scaleX: current.scaleX,
+                scaleY: current.scaleY,
+                rotation: current.rotation,
+                translateX: current.translateX,
+                translateY: translateYValue
+            )
         }
     }
     
     /**
-     * Set rotation - directly updates native view transform.
+     * Set rotation - preserves scale and translation (parity with Android).
      */
     private func setRotation(_ rotation: Double) {
         DispatchQueue.main.async {
-            self.view.transform = CGAffineTransform(rotationAngle: CGFloat(rotation))
+            let rotationValue = CGFloat(rotation)
+            let current = self.extractTransformComponents(self.view.transform)
+            self.view.transform = self.makeTransform(
+                scaleX: current.scaleX,
+                scaleY: current.scaleY,
+                rotation: rotationValue,
+                translateX: current.translateX,
+                translateY: current.translateY
+            )
         }
     }
     
