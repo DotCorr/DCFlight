@@ -31,7 +31,7 @@ import dcflight
  * - Caches text storage to avoid recomputation
  * - Supports automatic font size adjustment to fit bounds
  */
-open class DCFTextShadowView: DCFShadowView {
+public class DCFTextShadowView: DCFShadowView {
     
     // MARK: - Constants
     

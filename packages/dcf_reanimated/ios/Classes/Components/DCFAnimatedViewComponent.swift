@@ -492,6 +492,7 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     private var animationStartTime: CFTimeInterval = 0
     private var frameCount = 0
     var isAnimating = false
+    private var logCounter = 0 // Counter for reducing log spam
     
     // MARK: - DCFLayoutIndependent Protocol
     
@@ -859,12 +860,18 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         let functionData = worklet["function"] as? [String: Any]
         let workletType = functionData?["type"] as? String ?? "dart_function"
         
-        print("🔄 WORKLET: Executing worklet - returnType=\(returnType), updateTextChild=\(updateTextChild), elapsed=\(elapsed)")
+        // Only log every 100th execution to reduce CPU usage
+        logCounter += 1
+        if logCounter % 100 == 0 {
+            print("🔄 WORKLET: Executing worklet - returnType=\(returnType), updateTextChild=\(updateTextChild), elapsed=\(elapsed)")
+        }
         
         // Check if this is an interpretable worklet (runtime execution - NO REBUILD NEEDED!)
         let ir = functionData?["ir"] as? [String: Any]
         if ir != nil || workletType == "interpretable" {
-            print("🚀 WORKLET: Executing worklet at runtime (no rebuild needed!)")
+            if logCounter % 100 == 0 {
+                print("🚀 WORKLET: Executing worklet at runtime (no rebuild needed!)")
+            }
             
             // For text worklets, use existing pattern matching (works perfectly)
             if returnType == "String" && updateTextChild {
@@ -1039,24 +1046,69 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         }
         
         // Update child text component directly on UI thread
-        updateChildText(resultText)
+        // Only update if text actually changed to prevent unnecessary work
+        if resultText != lastUpdatedText {
+            updateChildText(resultText)
+        }
     }
+    
+    // Guard to prevent infinite loops
+    private var isUpdatingText = false
+    private var lastUpdatedText: String = ""
+    private var consecutiveFailures = 0
+    private let maxConsecutiveFailures = 10
+    private var isWorkletDisabled = false
     
     /**
      * Update child text component directly from UI thread (zero bridge calls).
      * Uses runtime type checking and method invocation to avoid direct type dependencies.
      */
     private func updateChildText(_ text: String) {
-        print("🔍 WORKLET: updateChildText called with text='\(text)', subviews count=\(subviews.count)")
+        // 🔥 CRITICAL: Disable worklet if it keeps failing to prevent CPU drain
+        if isWorkletDisabled {
+            return
+        }
+        
+        // 🔥 CRITICAL: Prevent infinite loops
+        if isUpdatingText {
+            return // Already updating, skip this call
+        }
+        
+        // Skip if text hasn't changed
+        if text == lastUpdatedText {
+            return
+        }
+        
+        isUpdatingText = true
+        defer { 
+            isUpdatingText = false
+            // Reset failure counter on success
+            if consecutiveFailures > 0 {
+                consecutiveFailures = 0
+            }
+        }
+        
+        lastUpdatedText = text
+        
+        // Only log every 100th call to reduce spam
+        if arc4random_uniform(100) == 0 {
+            print("🔍 WORKLET: updateChildText called with text='\(text)', subviews count=\(subviews.count)")
+        }
         
         // Find child text views using runtime type checking
         for subview in subviews {
             // Check if this is a DCFTextView using runtime class name (avoids import issues)
             let className = String(describing: type(of: subview))
-            print("🔍 WORKLET: Checking subview type: \(className)")
+            // Only log occasionally to reduce spam
+            if arc4random_uniform(100) == 0 {
+                print("🔍 WORKLET: Checking subview type: \(className)")
+            }
             
             if className.contains("DCFTextView") {
-                print("✅ WORKLET: Found DCFTextView!")
+                // Only log occasionally to reduce spam
+                if arc4random_uniform(100) == 0 {
+                    print("✅ WORKLET: Found DCFTextView!")
+                }
                 // Get the viewId from ViewRegistry or associated object
                 var viewId: Int? = nil
                 
@@ -1064,7 +1116,10 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
                 for (id, viewInfo) in ViewRegistry.shared.registry {
                     if viewInfo.view === subview {
                         viewId = id
-                        print("✅ WORKLET: Found viewId=\(id) from ViewRegistry")
+                        // Only log occasionally to reduce spam
+                        if arc4random_uniform(100) == 0 {
+                            print("✅ WORKLET: Found viewId=\(id) from ViewRegistry")
+                        }
                         break
                     }
                 }
@@ -1078,70 +1133,85 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
                 }
                 
                 if let viewId = viewId {
-                    print("🔍 WORKLET: Attempting to update text for viewId=\(viewId)")
-                    // Access YogaShadowTree through runtime
-                    // Use the module-qualified class name for Swift classes
-                    let shadowTreeClassName = "dcflight.YogaShadowTree"
-                    if let shadowTreeClass = NSClassFromString(shadowTreeClassName) as? NSObject.Type {
-                        print("✅ WORKLET: Found YogaShadowTree class")
-                        // Get shared instance using value(forKey:)
-                        if let shared = shadowTreeClass.value(forKey: "shared") as? NSObject {
-                            print("✅ WORKLET: Got YogaShadowTree shared instance")
-                            // Call getShadowView(for:) using performSelector
-                            // Swift method getShadowView(for:) becomes getShadowViewFor: in Objective-C
-                            let selector = NSSelectorFromString("getShadowViewFor:")
-                            if shared.responds(to: selector) {
-                                print("✅ WORKLET: Calling getShadowViewFor: with viewId=\(viewId)")
-                                // Use perform(_:with:) which returns Unmanaged<AnyObject>?
-                                let result = shared.perform(selector, with: viewId)
-                                if let result = result {
-                                    let shadowView = result.takeUnretainedValue() as AnyObject
-                                    // Check if it's a DCFTextShadowView and update text property
-                                    let shadowClassName = String(describing: type(of: shadowView))
-                                    print("🔍 WORKLET: Shadow view type: \(shadowClassName)")
-                                    if shadowClassName.contains("DCFTextShadowView") {
-                                        print("✅ WORKLET: Found DCFTextShadowView, updating text to '\(text)'")
-                                        // Update text property using KVC
-                                        shadowView.setValue(text, forKey: "text")
-                                        
-                                        // Try to trigger dirtyText or similar method to force layout
-                                        if let shadowViewObj = shadowView as? NSObject {
-                                            let dirtySelector = NSSelectorFromString("dirtyText")
-                                            if shadowViewObj.responds(to: dirtySelector) {
-                                                shadowViewObj.perform(dirtySelector)
-                                                print("✅ WORKLET: Called dirtyText() on shadow view")
-                                            }
-                                        }
-                                        
-                                        // Force layout update
-                                        subview.setNeedsLayout()
-                                        subview.layoutIfNeeded()
-                                        setNeedsLayout()
-                                        layoutIfNeeded()
-                                        
-                                        // Force redraw
-                                        subview.setNeedsDisplay()
-                                        setNeedsDisplay()
-                                        
-                                        print("✅ WORKLET: Updated text to '\(text)' on UI thread (viewId=\(viewId))")
-                                        return
-                                    } else {
-                                        print("⚠️ WORKLET: Shadow view is not DCFTextShadowView, type=\(shadowClassName)")
-                                    }
-                                } else {
-                                    print("⚠️ WORKLET: getShadowViewFor: returned nil")
+                    // Only log occasionally to reduce spam
+                    if arc4random_uniform(100) == 0 {
+                        print("🔍 WORKLET: Attempting to update text for viewId=\(viewId)")
+                    }
+                    
+                    // 🔥 FIX: Access YogaShadowTree directly since we import dcflight
+                    // No need for runtime lookup - we can access it directly!
+                    let shadowView = YogaShadowTree.shared.getShadowView(for: viewId)
+                    
+                    if let shadowView = shadowView {
+                        // Check if it's a DCFTextShadowView and update text property
+                        let shadowClassName = String(describing: type(of: shadowView))
+                        // Only log occasionally to reduce spam
+                        if arc4random_uniform(100) == 0 {
+                            print("🔍 WORKLET: Shadow view type: \(shadowClassName)")
+                        }
+                        
+                        if shadowClassName.contains("DCFTextShadowView") {
+                            // Only log occasionally to reduce spam
+                            if arc4random_uniform(100) == 0 {
+                                print("✅ WORKLET: Found DCFTextShadowView, updating text to '\(text)'")
+                            }
+                            
+                            // Update text property directly (DCFTextShadowView has a text property)
+                            if let textShadowView = shadowView as? DCFTextShadowView {
+                                // Update text property
+                                textShadowView.text = text
+                                
+                                // 🔥 CRITICAL: Mark shadow view as dirty to force text recomputation
+                                // This clears cached text storage and marks Yoga node as dirty
+                                textShadowView.dirtyText()
+                                
+                                // 🔥 CRITICAL: Trigger immediate layout recalculation so applyLayoutNode runs
+                                // This computes computedTextStorage from the new text, which then
+                                // gets applied to the native view in applyLayout
+                                // Use calculateLayoutNow() for immediate updates (worklets run every frame)
+                                DCFLayoutManager.shared.calculateLayoutNow()
+                                
+                                // Only log occasionally to reduce spam
+                                if arc4random_uniform(100) == 0 {
+                                    print("✅ WORKLET: Updated text to '\(text)' on UI thread (viewId=\(viewId))")
                                 }
+                                consecutiveFailures = 0 // Reset on success
+                                return
                             } else {
-                                print("⚠️ WORKLET: YogaShadowTree does not respond to getShadowViewFor:")
+                                // Try using KVC as fallback
+                                (shadowView as AnyObject).setValue(text, forKey: "text")
+                                consecutiveFailures = 0 // Reset on success
+                                return
                             }
                         } else {
-                            print("⚠️ WORKLET: Could not get YogaShadowTree shared instance")
+                            consecutiveFailures += 1
+                            if consecutiveFailures >= maxConsecutiveFailures {
+                                isWorkletDisabled = true
+                                print("❌ WORKLET: Disabled worklet after \(maxConsecutiveFailures) consecutive failures (not DCFTextShadowView)")
+                                return
+                            }
+                            // Only log occasionally to reduce spam
+                            if arc4random_uniform(100) == 0 {
+                                print("⚠️ WORKLET: Shadow view is not DCFTextShadowView, type=\(shadowClassName)")
+                            }
                         }
                     } else {
-                        print("⚠️ WORKLET: Could not find YogaShadowTree class")
+                        consecutiveFailures += 1
+                        if consecutiveFailures >= maxConsecutiveFailures {
+                            isWorkletDisabled = true
+                            print("❌ WORKLET: Disabled worklet after \(maxConsecutiveFailures) consecutive failures (shadowView is nil)")
+                            return
+                        }
+                        // Only log failure occasionally to reduce spam
+                        if arc4random_uniform(100) == 0 {
+                            print("⚠️ WORKLET: Could not get shadowView for viewId=\(viewId)")
+                        }
                     }
                 } else {
-                    print("⚠️ WORKLET: Could not find viewId for DCFTextView")
+                    // Only log failure occasionally to reduce spam
+                    if arc4random_uniform(100) == 0 {
+                        print("⚠️ WORKLET: Could not find viewId for DCFTextView")
+                    }
                 }
             }
             
@@ -1149,7 +1219,10 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
             updateChildTextRecursive(subview, text: text)
         }
         
-        print("⚠️ WORKLET: No text view found to update!")
+        // Only log failure occasionally to reduce spam
+        if arc4random_uniform(100) == 0 {
+            print("⚠️ WORKLET: No text view found to update!")
+        }
     }
     
     private func updateChildTextRecursive(_ parent: UIView, text: String) {

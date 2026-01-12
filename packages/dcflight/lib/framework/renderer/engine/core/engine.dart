@@ -3810,6 +3810,29 @@ class DCFEngine {
       print('🔥 HOT_RELOAD: Processing pending updates...');
       await _processPendingUpdates();
 
+      // 🔥 CRITICAL: Ensure all batch updates are committed
+      // _processPendingUpdates should handle this, but we ensure it's done
+      if (_batchUpdateInProgress) {
+        print('🔥 HOT_RELOAD: Committing final batch update...');
+        await _nativeBridge.commitBatchUpdate();
+      }
+      
+      // 🔥 CRITICAL: Trigger a final layout calculation to ensure views are laid out and made visible
+      // After hot reload, views may have been updated but not laid out or made visible
+      // Committing an empty batch will trigger layout calculation on native side
+      print('🔥 HOT_RELOAD: Triggering final layout calculation...');
+      await _nativeBridge.startBatchUpdate();
+      await _nativeBridge.commitBatchUpdate();
+      
+      // 🔥 CRITICAL: On iOS, add a delay and trigger another layout to ensure visibility
+      // After hot reload, the first layout calculation might fail because views aren't in the
+      // layout tree yet. The delay allows the layout tree to settle, then we trigger layout again.
+      // iOS's calculateLayoutNow() will retry if it fails, but we ensure it runs again.
+      print('🔥 HOT_RELOAD: Ensuring views are visible (iOS retry mechanism)...');
+      await Future.delayed(Duration(milliseconds: 150)); // Wait for iOS retry + buffer
+      await _nativeBridge.startBatchUpdate();
+      await _nativeBridge.commitBatchUpdate();
+
       print('✅✅✅ HOT_RELOAD: Full tree re-render completed successfully ✅✅✅');
       EngineDebugLogger.log(
           'HOT_RELOAD_COMPLETE', 'Full tree re-render completed successfully');

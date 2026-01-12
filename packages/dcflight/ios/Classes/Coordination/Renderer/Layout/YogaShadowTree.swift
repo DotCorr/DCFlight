@@ -16,8 +16,8 @@ import yoga
  * This manages the shadow view hierarchy and coordinates with Yoga layout engine
  * to calculate and apply layout to views.
  */
-class YogaShadowTree {
-    static let shared = YogaShadowTree()
+@objc public class YogaShadowTree: NSObject {
+    @objc public static let shared = YogaShadowTree()
     
     // MARK: - Shadow View Registry
     
@@ -42,7 +42,14 @@ class YogaShadowTree {
     private let syncQueue = DispatchQueue(label: "YogaShadowTree.sync", qos: .userInitiated)
     private let syncQueueKey = DispatchSpecificKey<String>()
     private var isLayoutCalculating = false
-    private var isReconciling = false
+    private var _isReconciling = false
+    
+    /// Check if reconciliation is currently in progress (thread-safe)
+    public var isReconciling: Bool {
+        return syncQueue.sync {
+            return _isReconciling
+        }
+    }
     
     // MARK: - Legacy Compatibility (for migration)
     
@@ -72,7 +79,8 @@ class YogaShadowTree {
     
     // MARK: - Initialization
     
-    private init() {
+    @objc override init() {
+        super.init()
         // Setup queue-specific key for re-entrancy detection
         setupSyncQueueKey()
         
@@ -209,8 +217,8 @@ class YogaShadowTree {
         guard let viewId = Int(nodeId) else { return }
         
         syncQueue.sync {
-            isReconciling = true
-            defer { isReconciling = false }
+            _isReconciling = true
+            defer { _isReconciling = false }
             
             while isLayoutCalculating {
                 usleep(1000)
@@ -296,7 +304,7 @@ class YogaShadowTree {
     
     func calculateAndApplyLayout(width: CGFloat, height: CGFloat) -> Bool {
         let result = syncQueue.sync { () -> (Bool, Set<DCFShadowView>, Int, Int) in
-            if isReconciling {
+            if _isReconciling {
                 return (false, Set<DCFShadowView>(), 0, 0)
             }
             
@@ -404,7 +412,7 @@ class YogaShadowTree {
     
     func resetFlags() {
         syncQueue.sync {
-            isReconciling = false
+            _isReconciling = false
             isLayoutCalculating = false
         }
     }
@@ -427,7 +435,7 @@ class YogaShadowTree {
     
     func clearAll() {
         syncQueue.sync {
-            isReconciling = true
+            _isReconciling = true
             
             while isLayoutCalculating {
                 usleep(1000)
@@ -452,7 +460,7 @@ class YogaShadowTree {
             screenRootIds.removeAll()
             nodeTypes.removeAll()
             
-            isReconciling = false
+            _isReconciling = false
             isLayoutCalculating = false
         }
     }
@@ -529,7 +537,7 @@ class YogaShadowTree {
         }
     }
     
-    func getShadowView(for viewId: Int) -> DCFShadowView? {
+    public func getShadowView(for viewId: Int) -> DCFShadowView? {
         // Check if we're already on the sync queue to avoid deadlock
         if DispatchQueue.getSpecific(key: syncQueueKey) != nil {
             // Already on sync queue, access directly
