@@ -213,6 +213,19 @@ class WorkletExecutor {
     // Check if compilation was successful
     final isCompiled = compilationResult?.success ?? false;
     
+    // Debug: Log compilation status
+    if (!isCompiled) {
+      print('⚠️ WORKLET: Compilation failed for worklet $workletId');
+      if (compilationResult != null) {
+        print('⚠️ WORKLET: Compilation errors: ${compilationResult.errors}');
+      } else {
+        print('⚠️ WORKLET: No compilation result returned');
+      }
+    } else {
+      print('✅ WORKLET: Compilation successful for worklet $workletId');
+      print('✅ WORKLET: IR available: ${compilationResult?.ir != null}');
+    }
+    
     // Serialize function body for RUNTIME INTERPRETATION (no rebuild needed!)
     final serializedFunction = {
       'source': functionString,
@@ -227,6 +240,10 @@ class WorkletExecutor {
         'swiftCode': compilationResult.swiftCode,
       },
     };
+    
+    // Debug: Log what's being serialized
+    print('🔍 WORKLET: Serialized function keys: ${serializedFunction.keys}');
+    print('🔍 WORKLET: IR included: ${serializedFunction.containsKey('ir')}');
     
     return WorkletConfig(
       id: id,

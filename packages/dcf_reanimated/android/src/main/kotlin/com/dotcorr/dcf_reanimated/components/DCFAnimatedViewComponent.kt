@@ -224,17 +224,26 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     fun configureWorklet(workletData: Map<String, Any?>, config: Map<String, Any?>?) {
         Log.d(TAG, "🔧 WORKLET: Configuring worklet for pure UI thread execution")
         
+        // Debug: Log full worklet structure
+        Log.d(TAG, "🔍 WORKLET: configureWorklet - workletData keys: ${workletData.keys}")
+        
         // Check if worklet is compiled
         val functionData = workletData["function"] as? Map<*, *>
+        Log.d(TAG, "🔍 WORKLET: configureWorklet - functionData keys: ${functionData?.keys}")
+        
         val isCompiled = workletData["isCompiled"] as? Boolean ?: false
         val workletType = functionData?.get("type") as? String ?: "dart_function"
         
         // Check if worklet has IR for runtime interpretation
-        val ir = functionData?.get("ir") as? Map<*, *>
+        val ir = functionData?.get("ir")
+        Log.d(TAG, "🔍 WORKLET: configureWorklet - ir type: ${ir?.javaClass?.name}, ir: $ir")
+        
         if (ir != null || workletType == "interpretable") {
             val workletId = functionData?.get("workletId") as? String
             Log.d(TAG, "✅ WORKLET: Interpretable worklet detected! workletId=$workletId")
             Log.d(TAG, "📝 WORKLET: IR available for runtime interpretation (no rebuild needed!)")
+        } else {
+            Log.w(TAG, "⚠️ WORKLET: No IR found in configureWorklet - workletType=$workletType, ir=$ir")
         }
         
         this.workletConfig = workletData
@@ -492,49 +501,103 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     private fun executeWorklet(elapsed: Double, worklet: Map<String, Any?>) {
         // Get worklet configuration
         val functionData = worklet["function"] as? Map<*, *>
-        val returnType = worklet["returnType"] as? String ?: "dynamic"
+        // Check returnType from both worklet and workletExecutionConfig (AnimatedText sets it in config)
+        val returnType = workletExecutionConfig?.get("returnType") as? String 
+            ?: worklet["returnType"] as? String 
+            ?: "dynamic"
         val updateTextChild = workletExecutionConfig?.get("updateTextChild") as? Boolean ?: false
         val isCompiled = worklet["isCompiled"] as? Boolean ?: false
         val workletType = functionData?.get("type") as? String ?: "dart_function"
         
+        Log.d(TAG, "🔍 WORKLET: executeWorklet - returnType=$returnType, updateTextChild=$updateTextChild")
+        
+        // Debug: Log worklet structure to understand what we're receiving
+        Log.d(TAG, "🔍 WORKLET: executeWorklet - worklet keys: ${worklet.keys}")
+        Log.d(TAG, "🔍 WORKLET: executeWorklet - functionData: ${functionData}")
+        Log.d(TAG, "🔍 WORKLET: executeWorklet - functionData keys: ${functionData?.keys}")
+        Log.d(TAG, "🔍 WORKLET: executeWorklet - workletType: $workletType")
+        
         // Check if this is an interpretable worklet (runtime execution - NO REBUILD NEEDED!)
-        val ir = functionData?.get("ir") as? Map<*, *>
-        if (ir != null || workletType == "interpretable") {
-            Log.d(TAG, "🚀 WORKLET: Executing worklet at runtime (no rebuild needed!)")
-            
-            // For text worklets, use existing pattern matching (works perfectly)
-            if (returnType == "String" && updateTextChild) {
-                executeTextWorklet(elapsed, worklet)
-                return
+        // Extract IR with proper type handling (bridge serialization might change types)
+        val irValue = functionData?.get("ir")
+        Log.d(TAG, "🔍 WORKLET: executeWorklet - irValue: $irValue")
+        Log.d(TAG, "🔍 WORKLET: executeWorklet - irValue type: ${irValue?.javaClass?.name}")
+        
+        // Convert IR to Map<String, Any?> - handle different map types from bridge
+        // The IR structure from WorkletRuntimeInterpreter.serializeIR is:
+        // { 'functionName': ..., 'returnType': ..., 'parameters': [...], 'body': {...} }
+        val irMap = when {
+            irValue == null -> {
+                Log.w(TAG, "⚠️ WORKLET: IR value is null in executeWorklet")
+                null
             }
-            
-            // For numeric worklets, interpret IR at runtime (like React Native Reanimated!)
-            if (ir != null) {
-                val result = com.dotcorr.dcflight.worklet.WorkletInterpreter.execute(
-                    ir as Map<String, Any?>,
-                    elapsed,
-                    workletExecutionConfig
-                )
-                if (result != null) {
-                    Log.d(TAG, "✅ WORKLET: Successfully executed worklet at runtime")
-                    applyWorkletResult(result, returnType)
-                    return
+            irValue is Map<*, *> -> {
+                // Convert Map<*, *> to Map<String, Any?>
+                try {
+                    val converted = mutableMapOf<String, Any?>()
+                    irValue.forEach { (key, value) ->
+                        converted[key.toString()] = value
+                    }
+                    Log.d(TAG, "✅ WORKLET: Successfully converted IR map with ${converted.size} entries")
+                    Log.d(TAG, "🔍 WORKLET: IR map keys: ${converted.keys}")
+                    Log.d(TAG, "🔍 WORKLET: IR map body type: ${converted["body"]?.javaClass?.name}")
+                    converted
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ WORKLET: Error converting IR map: ${e.message}", e)
+                    null
                 }
             }
-            
-            // Fall back to pattern matching if interpretation failed
-            Log.d(TAG, "⚠️ WORKLET: Could not interpret worklet, falling back to pattern matching")
+            else -> {
+                Log.w(TAG, "⚠️ WORKLET: IR value is not a Map, type: ${irValue?.javaClass?.name}")
+                null
+            }
         }
         
-        // Check if this is a text-updating worklet (like typewriter)
+        Log.d(TAG, "🔍 WORKLET: executeWorklet - irMap found: ${irMap != null}, size: ${irMap?.size ?: 0}")
+        
+        // 🔥 CRITICAL: For text worklets, ALWAYS use pattern matching (works perfectly, no IR needed)
+        // Text worklets often have loops which can't be compiled to IR, so pattern matching is the fallback
         if (returnType == "String" && updateTextChild) {
+            Log.d(TAG, "📝 WORKLET: Text worklet detected - using pattern matching (no IR needed)")
             executeTextWorklet(elapsed, worklet)
             return
         }
         
-        // Legacy fallback - if we get here, worklet wasn't interpretable
-        // This shouldn't happen with proper IR, but handle gracefully
-        Log.w(TAG, "⚠️ WORKLET: No IR found, cannot execute worklet")
+        // For numeric worklets, try IR interpretation first (framework-level WorkletInterpreter)
+        if (irMap != null || workletType == "interpretable") {
+            Log.d(TAG, "🚀 WORKLET: Executing worklet at runtime (no rebuild needed!)")
+            
+            // For numeric worklets, interpret IR at runtime using framework-level WorkletInterpreter
+            // This is the same as iOS - worklets are handled at framework level, not component level
+            if (irMap != null) {
+                try {
+                    // Use framework-level WorkletInterpreter (same as iOS uses dcflight.WorkletInterpreter)
+                    val result = com.dotcorr.dcflight.worklet.WorkletInterpreter.execute(
+                        irMap,
+                        elapsed,
+                        workletExecutionConfig
+                    )
+                    if (result != null) {
+                        Log.d(TAG, "✅ WORKLET: Successfully executed worklet at runtime using framework WorkletInterpreter")
+                        applyWorkletResult(result, returnType)
+                        return
+                    } else {
+                        Log.w(TAG, "⚠️ WORKLET: WorkletInterpreter.execute returned null")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ WORKLET: Error executing worklet: ${e.message}", e)
+                }
+            } else {
+                Log.w(TAG, "⚠️ WORKLET: IR map is null - worklet may contain unsupported operations (loops, etc.)")
+                Log.w(TAG, "⚠️ WORKLET: For numeric worklets, IR is required. Text worklets can use pattern matching.")
+            }
+            
+            // Fall back to pattern matching if interpretation failed (only for text worklets)
+            Log.d(TAG, "⚠️ WORKLET: Could not interpret worklet, falling back to pattern matching")
+        }
+        
+        // Legacy fallback - if we get here, worklet wasn't interpretable and isn't a text worklet
+        Log.w(TAG, "⚠️ WORKLET: No IR found and not a text worklet, cannot execute")
         stopPureAnimation()
     }
     

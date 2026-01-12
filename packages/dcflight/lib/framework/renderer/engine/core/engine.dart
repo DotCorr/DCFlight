@@ -28,6 +28,7 @@ import 'package:dcflight/src/components/error_boundary.dart';
 import 'package:dcflight/src/components/dcf_element.dart';
 import 'package:dcflight/src/components/component_node.dart';
 import 'package:dcflight/src/components/fragment.dart';
+import 'package:dcflight/framework/events/event_registry.dart';
 import 'package:dcflight/framework/utils/flutter_widget_renderer.dart';
 import 'package:dcflight/framework/utils/widget_to_dcf_adaptor.dart';
 import 'package:dcflight/framework/utils/system_state_manager.dart';
@@ -248,125 +249,21 @@ class DCFEngine {
     }
   }
 
-  /// O(1) - Handle a native event by finding the appropriate component
-  /// Handles native events received from the platform bridge.
-  ///
-  /// Looks up the node associated with the viewId and executes the appropriate
-  /// event handler. If the node is a component instead of an element, it fixes
-  /// the mapping to point to the rendered element.
+  /// O(1) - Handle a native event using centralized EventRegistry
+  /// 
+  /// 🔥 NEW: Uses EventRegistry instead of fragile prop lookup
+  /// Events are registered automatically when views are rendered
   void _handleNativeEvent(
       int viewId, String eventType, Map<dynamic, dynamic> eventData) {
-    print(
-        '🦁 DCFEngine: _handleNativeEvent called for view $viewId, event $eventType');
-
-    EngineDebugLogger.log(
-        'NATIVE_EVENT', 'Received event: $eventType for view: $viewId',
-        extra: {
-          'EventData': eventData.toString(),
-          'TotalMappings': _nodesByViewId.length,
-          'AvailableViewIds': _nodesByViewId.keys.take(20).toList()
-        });
-
-    final node = _nodesByViewId[viewId]; // O(1) lookup
-    if (node == null) {
-      print('🦁 DCFEngine: ❌ No node found for view ID: $viewId');
-      EngineDebugLogger.log(
-          'NATIVE_EVENT_ERROR', 'No node found for view ID: $viewId',
-          extra: {
-            'AvailableViewIds': _nodesByViewId.keys.take(20).toList(),
-            'TotalMappings': _nodesByViewId.length
-          });
-      return;
-    }
-    print('🦁 DCFEngine: ✅ Found node for view $viewId: ${node.runtimeType}');
-
-    EngineDebugLogger.log('NATIVE_EVENT_NODE_FOUND', 'Found node for view ID',
-        extra: {
-          'ViewId': viewId,
-          'NodeType': node.runtimeType.toString(),
-          'IsElement': node is DCFElement,
-          'IsComponent':
-              node is DCFStatefulComponent || node is DCFStatelessComponent
-        });
-
-    if (node is DCFElement) {
-      final eventHandlerKeys = [
-        eventType,
-        'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
-        eventType.toLowerCase(),
-        'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
-      ];
-
-      EngineDebugLogger.log(
-          'NATIVE_EVENT_ELEMENT_PROPS', 'Element props for event lookup',
-          extra: {
-            'ElementType': node.type,
-            'AllProps': node.elementProps.keys.toList(),
-            'EventType': eventType,
-            'HandlerKeys': eventHandlerKeys
-          });
-
-      for (final key in eventHandlerKeys) {
-        if (node.elementProps.containsKey(key) &&
-            node.elementProps[key] is Function) {
-          EngineDebugLogger.log('EVENT_HANDLER_FOUND',
-              'Found handler for $eventType using key: $key');
-          _executeEventHandler(node.elementProps[key], eventData);
-          return;
-        } else if (node.elementProps.containsKey(key)) {
-          EngineDebugLogger.log('EVENT_HANDLER_WRONG_TYPE',
-              'Handler exists but is not a Function', extra: {
-            'Key': key,
-            'ValueType': node.elementProps[key].runtimeType.toString()
-          });
-        }
-      }
-
-      EngineDebugLogger.log(
-          'EVENT_HANDLER_NOT_FOUND', 'No handler found for event: $eventType',
-          extra: {
-            'AvailableProps': node.elementProps.keys.toList(),
-            'TriedKeys': eventHandlerKeys,
-            'ElementType': node.type
-          });
-    } else {
-      if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
-        if (node.renderedNode is DCFElement) {
-          final renderedElement = node.renderedNode as DCFElement;
-
-          // Fix the mapping if we find a component instead of element.
-          // This can happen when SafeArea re-renders and Button components
-          // get mapped instead of their rendered elements.
-          final elementViewId =
-              renderedElement.nativeViewId ?? node.contentViewId;
-          if (elementViewId == viewId || node.contentViewId == viewId) {
-            _nodesByViewId[viewId] = renderedElement;
-            // Also ensure the rendered element has the viewId set
-            if (renderedElement.nativeViewId != viewId) {
-              renderedElement.nativeViewId = viewId;
-            }
-            // Retry handler lookup
-            final handlerKeys = [
-              eventType,
-              'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
-              eventType.toLowerCase(),
-              'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
-            ];
-            for (final key in handlerKeys) {
-              if (renderedElement.elementProps.containsKey(key) &&
-                  renderedElement.elementProps[key] is Function) {
-                print('✅ EVENT: Found handler in rendered element, executing');
-                _executeEventHandler(
-                    renderedElement.elementProps[key]!, eventData);
-                return;
-              }
-            }
-          }
-        }
-      }
-      EngineDebugLogger.log('NATIVE_EVENT_WRONG_NODE_TYPE',
-          'Node is not a DCFElement, cannot handle events',
-          extra: {'NodeType': node.runtimeType.toString(), 'ViewId': viewId});
+    // 🔥 NEW: Use centralized EventRegistry - clean, no fallbacks
+    final registry = EventRegistry();
+    final handled = registry.handleEvent(viewId, eventType, Map<String, dynamic>.from(eventData));
+    
+    if (!handled) {
+      // Event not registered - this is expected for views without handlers
+      // Fail-fast: no fallback, no error - just ignore
+      EngineDebugLogger.log('EVENT_NOT_REGISTERED', 
+          'Event $eventType for view $viewId not registered - ignoring (fail-fast)');
     }
   }
 
@@ -1523,6 +1420,31 @@ class DCFEngine {
       EngineDebugLogger.logBridge('ADD_EVENT_LISTENERS', viewId,
           data: {'EventTypes': eventTypes});
       await _nativeBridge.addEventListeners(viewId, eventTypes);
+      
+      // 🔥 NEW: Register events in centralized EventRegistry
+      final eventHandlers = <String, Function>{};
+      for (final eventType in eventTypes) {
+        // Try to find handler in element props with various key formats
+        final handlerKeys = [
+          eventType,
+          'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
+          eventType.toLowerCase(),
+          'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
+        ];
+        
+        for (final key in handlerKeys) {
+          if (element.elementProps.containsKey(key) && element.elementProps[key] is Function) {
+            eventHandlers[eventType] = element.elementProps[key] as Function;
+            break;
+          }
+        }
+      }
+      
+      if (eventHandlers.isNotEmpty) {
+        final registry = EventRegistry();
+        registry.register(viewId, eventHandlers);
+        EngineDebugLogger.log('EVENT_REGISTRY', 'Registered ${eventHandlers.length} events for view $viewId');
+      }
     }
 
     final childIds = <int>[];
@@ -3648,6 +3570,11 @@ class DCFEngine {
 
   /// Delete a view from the native side
   Future<void> deleteView(int viewId) async {
+    // 🔥 NEW: Unregister events when view is deleted (automatic lifecycle management)
+    final registry = EventRegistry();
+    registry.unregister(viewId);
+    EngineDebugLogger.log('EVENT_REGISTRY', 'Unregistered events for deleted view $viewId');
+    
     await isReady;
     EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
     await _nativeBridge.deleteView(viewId);

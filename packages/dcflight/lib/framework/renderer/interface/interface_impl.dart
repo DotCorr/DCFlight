@@ -9,6 +9,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:dcflight/framework/renderer/interface/interface_util.dart';
+import 'package:dcflight/framework/events/event_registry.dart';
 import 'package:flutter/services.dart';
 import 'interface.dart';
 
@@ -23,10 +24,8 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
   // IMPORTANT: We disable platform-level batching on Android due to implementation issues
 
-  final Map<int, Map<String, Function>> _eventCallbacks = {};
-
-  Function(int viewId, String eventType, Map<String, dynamic> eventData)?
-      _eventHandler;
+  // 🔥 NEW: Use centralized EventRegistry instead of fragile callbacks
+  final EventRegistry _eventRegistry = EventRegistry();
 
   PlatformInterfaceImpl() {
     _setupMethodChannelEventHandling();
@@ -47,12 +46,12 @@ class PlatformInterfaceImpl implements PlatformInterface {
         final Map<dynamic, dynamic> eventData = args['eventData'] ?? {};
 
         print('🎯 Dart Bridge: Processing event $eventType for view $viewId');
-
-        final typedEventData = eventData.map<String, dynamic>(
-          (key, value) => MapEntry(key.toString(), value),
-        );
-
-        handleNativeEvent(viewId, eventType, typedEventData);
+        
+        // 🔥 NEW: Use centralized EventRegistry - clean, no fallbacks
+        final handled = _eventRegistry.handleEvent(viewId, eventType, Map<String, dynamic>.from(eventData));
+        if (!handled) {
+          print('⚠️ Dart Bridge: Event $eventType for view $viewId not registered - ignoring (fail-fast)');
+        }
       } else {
         print('⚠️ Dart Bridge: Unknown method ${call.method}');
       }
@@ -319,8 +318,9 @@ class PlatformInterfaceImpl implements PlatformInterface {
   void setEventHandler(
       Function(int viewId, String eventType, Map<String, dynamic> eventData)
           handler) {
-    _eventHandler = handler;
-    print('✅ PlatformInterface: Event handler set successfully');
+    // 🔥 NEW: Use EventRegistry for global handler
+    _eventRegistry.setGlobalHandler(handler);
+    print('✅ PlatformInterface: Event handler set successfully (using EventRegistry)');
   }
 
   /// Starts a batch update operation.
@@ -398,13 +398,13 @@ class PlatformInterfaceImpl implements PlatformInterface {
 
   @override
   void registerEventCallback(int viewId, String eventType, Function callback) {
-    _eventCallbacks[viewId] ??= {};
-    _eventCallbacks[viewId]![eventType] = callback;
+    // 🔥 NEW: Use EventRegistry instead of fragile callbacks
+    _eventRegistry.register(viewId, {eventType: callback});
   }
 
   /// Handles native events received from the platform bridge.
   ///
-  /// First checks for view-specific callbacks, then falls back to the global event handler.
+  /// Handle event from native - uses centralized EventRegistry
   ///
   /// - [viewId]: Unique identifier for the view that triggered the event
   /// - [eventType]: Type of event (e.g., "onPress", "onChange")
@@ -412,46 +412,26 @@ class PlatformInterfaceImpl implements PlatformInterface {
   @override
   void handleNativeEvent(
       int viewId, String eventType, Map<String, dynamic> eventData) {
-    print(
-        '🎯 PlatformInterface: handleNativeEvent called for view $viewId, event $eventType');
-
-    final callback = _eventCallbacks[viewId]?[eventType];
-    if (callback != null) {
-      print(
-          '🎯 PlatformInterface: Found specific callback for view $viewId, executing...');
-      try {
-        final Function func = callback;
-        if (func is Function()) {
-          func();
-        } else if (func is Function(Map<String, dynamic>)) {
-          func(eventData);
-        } else {
-          Function.apply(callback, [], {});
-        }
-        return;
-      } catch (e) {
-        print('⚠️ PlatformInterface: Error in specific callback: $e');
-        // Error in callback - fall through to global handler
-      }
-    } else {
-      print(
-          '🎯 PlatformInterface: No specific callback found for view $viewId');
+    // 🔥 NEW: Use centralized EventRegistry - clean, no fallbacks
+    final handled = _eventRegistry.handleEvent(viewId, eventType, eventData);
+    if (!handled) {
+      print('⚠️ PlatformInterface: Event $eventType for view $viewId not registered - ignoring (fail-fast)');
     }
-
-    if (_eventHandler != null) {
-      print('🎯 PlatformInterface: Delegating to global event handler');
-      try {
-        _eventHandler!(viewId, eventType, eventData);
-      } catch (e) {
-        print('⚠️ PlatformInterface: Error in global handler: $e');
-        // Error in global handler - silently fail
-      }
-    } else {
-      print('⚠️ PlatformInterface: Global event handler is null!');
-      print('⚠️ PlatformInterface: Event handler was not set. Events will not be processed.');
-      print('⚠️ PlatformInterface: This usually means the Engine was not properly initialized or the handler was cleared.');
-      print('⚠️ PlatformInterface: Check that DCFEngine._initialize() completed successfully.');
-    }
+  }
+  
+  /// Register events for a view - uses centralized EventRegistry
+  void registerEvents(int viewId, Map<String, Function> events) {
+    _eventRegistry.register(viewId, events);
+  }
+  
+  /// Unregister events for a view (called automatically on view removal)
+  void unregisterEvents(int viewId) {
+    _eventRegistry.unregister(viewId);
+  }
+  
+  /// Set global event handler (optional - for debugging)
+  void setGlobalEventHandler(void Function(int viewId, String eventType, Map<String, dynamic> eventData)? handler) {
+    _eventRegistry.setGlobalHandler(handler);
   }
 
   /// Calls a method on a native component via the tunnel mechanism.

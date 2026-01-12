@@ -418,18 +418,14 @@ extension DCFLayoutManager {
             windowBounds = UIScreen.main.bounds
         }
         
-        // 🔥 ROOT CAUSE FIX: Wait for reconciliation to complete before calculating layout
-        // During hot reload, reconciliation might still be in progress, causing layout to fail
-        // We wait up to 100ms for reconciliation to complete
-        var waitCount = 0
-        let maxWait = 10 // 10 * 10ms = 100ms max wait
-        while YogaShadowTree.shared.isReconciling && waitCount < maxWait {
-            Thread.sleep(forTimeInterval: 0.01) // 10ms
-            waitCount += 1
-        }
-        
-        if waitCount > 0 {
-            print("⏳ DCFLayoutManager: Waited \(waitCount * 10)ms for reconciliation to complete")
+        // 🔥 CRITICAL FIX: Never block main thread! Use async dispatch instead of Thread.sleep
+        // If reconciliation is in progress, schedule layout for next run loop
+        if YogaShadowTree.shared.isReconciling {
+            print("⏳ DCFLayoutManager: Reconciliation in progress, scheduling layout for next run loop")
+            DispatchQueue.main.async { [weak self] in
+                self?.calculateLayoutNow()
+            }
+            return
         }
         
         let success = YogaShadowTree.shared.calculateAndApplyLayout(
