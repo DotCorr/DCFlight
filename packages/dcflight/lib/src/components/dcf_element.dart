@@ -57,23 +57,38 @@ class DCFElement extends DCFComponentNode {
   }
 
   /// Get list of event types from elementProps
+  /// 
+  /// 🔥 NEW: Returns ALL function props as potential events (no prefix guessing)
+  /// Supports both "onPress" and "scrolled" style names
+  /// Native side queries the registry to know what events are available
   List<String> get eventTypes {
     final List<String> types = [];
 
+    // Extract ALL function props as events - no prefix requirement
+    // This supports both "onPress" and "scrolled" style names
     for (final key in elementProps.keys) {
       if (elementProps[key] is Function) {
-        if (key.startsWith('on') && key.length > 2) {
-          types.add(key);
-          
-          final eventName = key.substring(2, 3).toLowerCase() + key.substring(3);
-          if (!types.contains(eventName)) {
-            types.add(eventName);
-          }
-        }
+        types.add(key); // Register exact prop name as event type
       }
     }
 
     return types;
+  }
+  
+  /// Get event handlers map (eventType -> handler function)
+  /// 
+  /// 🔥 NEW: Returns exact mapping of event names to handlers
+  /// No prefix guessing - native queries this registry
+  Map<String, Function> get eventHandlers {
+    final Map<String, Function> handlers = {};
+    
+    for (final key in elementProps.keys) {
+      if (elementProps[key] is Function) {
+        handlers[key] = elementProps[key] as Function;
+      }
+    }
+    
+    return handlers;
   }
 
   @override

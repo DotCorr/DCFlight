@@ -1422,28 +1422,15 @@ class DCFEngine {
       await _nativeBridge.addEventListeners(viewId, eventTypes);
       
       // 🔥 NEW: Register events in centralized EventRegistry
-      final eventHandlers = <String, Function>{};
-      for (final eventType in eventTypes) {
-        // Try to find handler in element props with various key formats
-        final handlerKeys = [
-          eventType,
-          'on${eventType.substring(0, 1).toUpperCase()}${eventType.substring(1)}',
-          eventType.toLowerCase(),
-          'on${eventType.toLowerCase().substring(0, 1).toUpperCase()}${eventType.toLowerCase().substring(1)}'
-        ];
-        
-        for (final key in handlerKeys) {
-          if (element.elementProps.containsKey(key) && element.elementProps[key] is Function) {
-            eventHandlers[eventType] = element.elementProps[key] as Function;
-            break;
-          }
-        }
-      }
+      // No prefix guessing - use exact event names from element props
+      // Native side queries the registry to know what events are available
+      final eventHandlers = element.eventHandlers;
       
       if (eventHandlers.isNotEmpty) {
         final registry = EventRegistry();
         registry.register(viewId, eventHandlers);
-        EngineDebugLogger.log('EVENT_REGISTRY', 'Registered ${eventHandlers.length} events for view $viewId');
+        EngineDebugLogger.log('EVENT_REGISTRY', 
+            'Registered ${eventHandlers.length} events for view $viewId: ${eventHandlers.keys.join(", ")}');
       }
     }
 

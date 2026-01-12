@@ -17,6 +17,8 @@ library;
 /// - Automatic lifecycle management - events are cleaned up when views are removed
 /// - Central registry - all events go through this system
 /// - Type-safe - events are registered with their handlers upfront
+/// - No prefix guessing - exact event names from props (supports "onPress", "scrolled", etc.)
+/// - Native queries registry - native side knows exactly what events to listen for
 class EventRegistry {
   static final EventRegistry _instance = EventRegistry._internal();
   factory EventRegistry() => _instance;
@@ -126,6 +128,19 @@ class EventRegistry {
     _handlers.clear();
     _registeredEvents.clear();
     _globalHandler = null;
+  }
+  
+  /// Get all registered event types for a view (for native side to query)
+  /// 
+  /// Native side can call this to know exactly what events to listen for
+  /// No guessing needed - just query the registry
+  List<String> getRegisteredEventTypes(int viewId) {
+    return _registeredEvents[viewId]?.toList() ?? [];
+  }
+  
+  /// Check if a view has any registered events
+  bool hasRegisteredEvents(int viewId) {
+    return _registeredEvents.containsKey(viewId) && _registeredEvents[viewId]!.isNotEmpty;
   }
 }
 
