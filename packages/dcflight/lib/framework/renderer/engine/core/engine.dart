@@ -131,6 +131,10 @@ class DCFEngine {
 
   /// Worker manager for parallel reconciliation (singleton instance)
   bool _workerManagerInitialized = false;
+  
+  /// Flag to prevent infinite loops when falling back from worker_manager
+  /// When true, worker_manager will be skipped for this reconciliation
+  bool _skipWorkerManagerForThisReconciliation = false;
 
   /// Performance tracking and monitoring
   final PerformanceMonitor _performanceMonitor = PerformanceMonitor();
@@ -1566,27 +1570,39 @@ class DCFEngine {
     // Use worker_manager for parallel reconciliation (but NOT for initial render)
     // 🔥 CRITICAL: Disable worker_manager reconciliation during hot reload to prevent issues
     bool usedIsolate = false;
+    final shouldSkipWorkerManager = _skipWorkerManagerForThisReconciliation;
+    
     if (!isInitialRender &&
         !_isHotReloading &&
+        !shouldSkipWorkerManager &&
         _workerManagerInitialized &&
         _shouldUseIsolateReconciliation(oldNode, newNode)) {
       try {
         await _reconcileWithIsolate(oldNode, newNode);
         usedIsolate = true;
+        // Reset flag only on success
+        _skipWorkerManagerForThisReconciliation = false;
       } catch (e) {
         EngineDebugLogger.logReconcile(
             'WORKER_MANAGER_FALLBACK_ERROR', oldNode, newNode,
             reason: 'Worker_manager reconciliation failed, falling back: $e');
+        // Set flag to prevent re-entering worker_manager in nested reconciliations
+        _skipWorkerManagerForThisReconciliation = true;
         // Continue with regular reconciliation
       }
-    } else if (!isInitialRender) {
-      // Log why isolates weren't used (for debugging)
-      final nodeCount =
-          _countNodeChildren(oldNode) + _countNodeChildren(newNode);
-      if (nodeCount < 50) {
-        // Tree too small - this is normal, don't log
+    } else {
+      // Reset flag when not using worker_manager
+      _skipWorkerManagerForThisReconciliation = false;
+      
+      if (!isInitialRender) {
+        // Log why isolates weren't used (for debugging)
+        final nodeCount =
+            _countNodeChildren(oldNode) + _countNodeChildren(newNode);
+        if (nodeCount < 50) {
+          // Tree too small - this is normal, don't log
+        }
+        // Note: No need to log about missing workers - they will be spawned on demand
       }
-      // Note: No need to log about missing workers - they will be spawned on demand
     }
 
     // If isolate reconciliation completed, we're done
@@ -2330,6 +2346,17 @@ class DCFEngine {
       print(
           '📊 WORKER_MANAGER: Performance - Nodes: $totalNodes | Changes: $changesCount | Complexity: ${metrics['complexity'] ?? 'unknown'}');
 
+      // If no changes detected, the diff algorithm might have missed structural changes
+      // Instead of throwing, just return and let regular reconciliation handle it
+      // This prevents infinite loops while still allowing proper reconciliation
+      if (changesCount == 0) {
+        print('⚠️ WORKER_MANAGER: No changes detected by diff algorithm, but structural changes may exist');
+        print('⚠️ WORKER_MANAGER: Falling back to regular reconciliation to ensure changes are applied');
+        // Don't throw - just return false to indicate we need regular reconciliation
+        // The caller will handle the fallback
+        throw Exception('No changes detected - fallback to regular reconciliation');
+      }
+
       // Apply diff results
       final applyStartTime = DateTime.now();
       await _applyIsolateDiff(oldNode, newNode, result);
@@ -2475,6 +2502,25 @@ class DCFEngine {
 
       try {
         print('🔍 ISOLATES: Processing ${changes.length} changes from isolate');
+        
+        // If no changes detected, the diff algorithm might have missed structural changes
+        // Set flag to prevent worker_manager from being used again, then throw to trigger fallback
+        if (changes.isEmpty) {
+          print('⚠️ ISOLATES: No changes detected by diff algorithm, but structural changes may exist');
+          print('⚠️ ISOLATES: Falling back to regular reconciliation (worker_manager will be skipped)');
+          
+          // Set flag to prevent worker_manager from being used in the fallback reconciliation
+          _skipWorkerManagerForThisReconciliation = true;
+          
+          // Commit batch update if we started it
+          if (!wasBatchMode && _batchUpdateInProgress) {
+            await commitBatchUpdate();
+          }
+          
+          // Throw to trigger fallback to regular reconciliation
+          throw Exception('No changes detected - fallback to regular reconciliation');
+        }
+        
         for (int i = 0; i < changes.length; i++) {
           final change = changes[i];
           final changeMap = change as Map<String, dynamic>;
@@ -2882,11 +2928,8 @@ class DCFEngine {
 
         // CRITICAL: Don't reconcile children here if we've already processed changes from isolate
         // The isolate diff should have handled all necessary updates
-        // Only reconcile children if there were no changes from the isolate
-        if (changes.isEmpty && oldNode is DCFElement && newNode is DCFElement) {
-          // No changes from isolate, do regular reconciliation
-          await _reconcileElement(oldNode, newNode);
-        } else if (changes.isNotEmpty) {
+        // Note: If changes.isEmpty, we already handled it above and returned early
+        if (changes.isNotEmpty) {
           // We had changes from isolate - they should have been applied above
           // But we still need to reconcile any children that weren't covered by the diff
           // Actually, the isolate diff should cover all children, so we can skip this
@@ -3718,8 +3761,12 @@ class DCFEngine {
     EngineDebugLogger.log(
         'HOT_RELOAD_START', 'Starting full tree re-render for hot reload');
 
+    // 🔥 CRITICAL: Set hot reload flag to disable worker_manager during hot reload
+    // This prevents infinite recursion and ensures proper reconciliation
+    _isHotReloading = true;
+    
     try {
-      // Ensure worker manager is ready before hot reload
+      // Ensure worker manager is ready before hot reload (but won't be used during hot reload)
       if (!_workerManagerInitialized) {
         print('🔥 HOT_RELOAD: Initializing worker manager...');
         await _initializeWorkerManager();
@@ -3772,6 +3819,10 @@ class DCFEngine {
       EngineDebugLogger.log(
           'HOT_RELOAD_ERROR', 'Failed to complete hot reload: $e');
       rethrow;
+    } finally {
+      // 🔥 CRITICAL: Always reset hot reload flag, even on error
+      _isHotReloading = false;
+      print('🔥 HOT_RELOAD: Hot reload flag reset');
     }
   }
 

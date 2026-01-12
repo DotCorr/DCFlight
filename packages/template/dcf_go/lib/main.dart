@@ -24,7 +24,7 @@ class AppRoot extends DCFStatefulComponent {
     final buttonTop = safeAreaTop + 72;
     
     return DCFView(
-      layout: DCFLayout(width: '50   %', height: '100%'),
+      layout: DCFLayout(width: '100%', height: '100%'),
       children: [
         // Content wrapper - this changes when navigating
         DCFView(
@@ -132,7 +132,7 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.pink,
+        backgroundColor: DCFColors.blue,
         borderBottomWidth: 1,
         borderBottomColor: DCFColors.gray100,
       ),
