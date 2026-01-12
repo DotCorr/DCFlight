@@ -19,7 +19,7 @@ import com.dotcorr.dcflight.components.DCFNodeLayout
 import com.dotcorr.dcflight.components.DCFTags
 import com.dotcorr.dcflight.components.propagateEvent
 import com.dotcorr.dcflight.extensions.applyStyles
-import com.dotcorr.dcf_reanimated.components.WorkletInterpreter
+import com.dotcorr.dcflight.worklet.WorkletInterpreter
 import java.util.concurrent.TimeUnit
 
 /**
@@ -510,7 +510,7 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
             
             // For numeric worklets, interpret IR at runtime (like React Native Reanimated!)
             if (ir != null) {
-                val result = WorkletInterpreter.execute(
+                val result = com.dotcorr.dcflight.worklet.WorkletInterpreter.execute(
                     ir as Map<String, Any?>,
                     elapsed,
                     workletExecutionConfig
@@ -540,40 +540,44 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     
     
     /**
-     * Apply worklet result to view based on return type and target property
+     * Apply worklet result to view based on return type and target property.
+     * 
+     * 🔥 NOW USES WorkletRuntime API - proper Reanimated-like abstraction!
+     * No more component-specific glue code.
      */
     private fun applyWorkletResult(result: Any?, returnType: String) {
         when (returnType) {
             "double", "int" -> {
-                val value = (result as? Number)?.toFloat() ?: return
+                val value = (result as? Number)?.toDouble() ?: return
                 
-                // Check if there's a target property in config
-                val targetProperty = workletExecutionConfig?.get("targetProperty") as? String
+                // Get target property from config
+                val targetProperty = workletExecutionConfig?.get("targetProperty") as? String ?: "scale"
                 
-                when (targetProperty) {
-                    "opacity" -> alpha = value.coerceIn(0f, 1f)
-                    "scale" -> {
-                        scaleX = value
-                        scaleY = value
+                // Get target viewId from config, or find self's viewId from ViewRegistry
+                var targetViewId: Int? = workletExecutionConfig?.get("targetViewId") as? Int
+                
+                // If no targetViewId specified, find self's viewId from ViewRegistry
+                if (targetViewId == null) {
+                    for (viewId in com.dotcorr.dcflight.layout.ViewRegistry.shared.allViewIds) {
+                        val viewInfo = com.dotcorr.dcflight.layout.ViewRegistry.shared.getViewInfo(viewId)
+                        if (viewInfo?.view === this) {
+                            targetViewId = viewId
+                            break
+                        }
                     }
-                    "scaleX" -> scaleX = value
-                    "scaleY" -> scaleY = value
-                    "translateX" -> translationX = value
-                    "translateY" -> translationY = value
-                    "rotation" -> rotation = value
-                    "rotationX" -> rotationX = value
-                    "rotationY" -> rotationY = value
-                    "rotationZ" -> rotation = value
-                    null -> {
-                        // Default: apply as scale if no property specified
-                        scaleX = value
-                        scaleY = value
+                }
+                
+                // Use WorkletRuntime API - clean abstraction!
+                if (targetViewId != null) {
+                    val viewProxy = com.dotcorr.dcflight.worklet.WorkletRuntime.getView(targetViewId)
+                    if (viewProxy != null) {
+                        viewProxy.setProperty(targetProperty, value)
+                        return
+                    } else {
+                        Log.e(TAG, "❌ WORKLET: WorkletRuntime.getView failed for viewId=$targetViewId")
                     }
-                    else -> {
-                        Log.d(TAG, "🔄 WORKLET: Unknown target property '$targetProperty', applying as scale")
-                        scaleX = value
-                        scaleY = value
-                    }
+                } else {
+                    Log.e(TAG, "❌ WORKLET: Could not find targetViewId")
                 }
             }
             "String" -> {

@@ -5,18 +5,20 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package com.dotcorr.dcf_reanimated.components
+package com.dotcorr.dcflight.worklet
 
 import android.util.Log
 import kotlin.math.*
 
 /**
- * Runtime interpreter for worklets - executes IR directly without rebuilding!
+ * WorkletInterpreter - Runtime interpreter for worklets that executes IR directly without rebuilding!
  * 
  * This is like React Native Reanimated - worklets run at runtime by interpreting
  * the IR (Intermediate Representation) sent from Dart.
  * 
  * NO REBUILD NEEDED - just write @Worklet and it works!
+ * 
+ * This is a framework-level component - available to all components and packages.
  */
 object WorkletInterpreter {
     private const val TAG = "WorkletInterpreter"
@@ -134,8 +136,11 @@ object WorkletInterpreter {
                     interpretNode(it, context) 
                 } ?: emptyList()
                 
-                // Handle math functions
+                // Handle WorkletRuntime calls (Reanimated-like API)
                 when {
+                    functionName.startsWith("WorkletRuntime.") -> {
+                        executeWorkletRuntimeCall(functionName, arguments, context)
+                    }
                     functionName.startsWith("Math.") -> {
                         val func = functionName.substring(5)
                         executeMathFunction(func, arguments)
@@ -262,6 +267,72 @@ object WorkletInterpreter {
                 }
             }
             else -> null
+        }
+    }
+    
+    /**
+     * Execute WorkletRuntime calls (Reanimated-like API).
+     * Supports:
+     * - WorkletRuntime.getView(viewId).setProperty(property, value)
+     */
+    private fun executeWorkletRuntimeCall(functionName: String, arguments: List<Any?>, context: Map<String, Any?>): Any? {
+        // Parse function name like "WorkletRuntime.getView" or "WorkletRuntime.getView.setProperty"
+        val parts = functionName.split(".")
+        if (parts.size < 2) return null
+        
+        val apiName = parts[0] // "WorkletRuntime"
+        if (apiName != "WorkletRuntime") return null
+        
+        val method = parts[1] // "getView"
+        
+        return when (method) {
+            "getView" -> {
+                // WorkletRuntime.getView(viewId)
+                if (arguments.isNotEmpty()) {
+                    val viewId = (arguments[0] as? Number)?.toInt() ?: return null
+                    
+                    // Return a proxy object that can be chained
+                    val viewProxy = WorkletRuntime.getView(viewId)
+                    if (viewProxy != null) {
+                        // If this is part of a chain (e.g., .setProperty), handle it
+                        if (parts.size >= 3) {
+                            val chainMethod = parts[2]
+                            handleWorkletRuntimeChain(viewProxy, chainMethod, arguments.drop(1))
+                        } else {
+                            // Otherwise return the proxy (for future chaining)
+                            viewProxy
+                        }
+                    } else {
+                        null
+                    }
+                } else {
+                    null
+                }
+            }
+            else -> null
+        }
+    }
+    
+    /**
+     * Handle chained WorkletRuntime calls (e.g., getView(viewId).setProperty(...)).
+     */
+    private fun handleWorkletRuntimeChain(viewProxy: WorkletViewProxy, method: String, arguments: List<Any?>): Any? {
+        return when (method) {
+            "setProperty" -> {
+                // viewProxy.setProperty(property, value)
+                if (arguments.size >= 2) {
+                    val property = arguments[0] as? String ?: return null
+                    val value = arguments[1]
+                    viewProxy.setProperty(property, value)
+                    true
+                } else {
+                    null
+                }
+            }
+            else -> {
+                Log.w(TAG, "Unknown WorkletRuntime method: $method")
+                null
+            }
         }
     }
 }
