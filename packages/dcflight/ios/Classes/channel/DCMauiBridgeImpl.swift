@@ -89,6 +89,15 @@ import Foundation
     
     /// Delete a view
     @objc func deleteView(viewId: Int) -> Bool {
+        // 🔥 CRITICAL FIX: Stop animations before deleting to prevent freeze
+        if let view = views[viewId] {
+            // Stop animations for ReanimatedView components using runtime check
+            // This avoids direct dependency on dcf_reanimated module
+            if view.responds(to: Selector(("stopPureAnimation"))) {
+                view.perform(Selector(("stopPureAnimation")))
+                print("🛑 Stopped animation for ReanimatedView \(viewId) before deletion")
+            }
+        }
         
         let success = DCFViewManager.shared.deleteView(viewId: viewId)
         

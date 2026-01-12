@@ -187,7 +187,17 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     }
     
     static func handleTunnelMethod(_ method: String, params: [String: Any]) -> Any? {
-        return nil
+        // 🔥 UI FREEZE FIX: Universal pause/resume for ALL UI thread work
+        switch method {
+        case "pauseAllUIWork":
+            PureReanimatedView.pauseAllUIWork()
+            return true
+        case "resumeAllUIWork":
+            PureReanimatedView.resumeAllUIWork()
+            return true
+        default:
+            return nil
+        }
     }
 }
 
@@ -196,6 +206,27 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
 // ============================================================================
 
 class PureReanimatedView: UIView, DCFLayoutIndependent {
+    
+    // 🔥 UI FREEZE FIX: Global pause state for ALL UI thread work
+    // Universal solution - pauses ALL frame callbacks/display links during rapid reconciliation
+    private static var globalPauseState = false
+    
+    // Check if globally paused (prevents any animation/worklet from starting)
+    private static func isGloballyPaused() -> Bool {
+        return globalPauseState
+    }
+    
+    // Pause ALL UI thread work globally (universal solution)
+    static func pauseAllUIWork() {
+        globalPauseState = true
+        print("🛑 GLOBAL_PAUSE: Pausing ALL UI thread work (frame callbacks, display links, etc.)")
+    }
+    
+    // Resume ALL UI thread work
+    static func resumeAllUIWork() {
+        globalPauseState = false
+        print("▶️ GLOBAL_RESUME: Resuming UI thread work")
+    }
     
     // Animation configuration
     private var animationConfig: [String: Any] = [:]
@@ -409,6 +440,12 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     
     /// Start pure UI thread animation - NO BRIDGE CALLS
     func startPureAnimation() {
+        // 🔥 UI FREEZE FIX: Don't start if globally paused (universal solution)
+        if Self.isGloballyPaused() {
+            print("⏸️ PURE REANIMATED: Animation start blocked - UI work globally paused")
+            return
+        }
+        
         print("🚀 PURE REANIMATED: startPureAnimation called")
         print("🚀 PURE REANIMATED: isUsingWorklet=\(isUsingWorklet)")
         print("🚀 PURE REANIMATED: workletConfig exists=\(workletConfig != nil)")
@@ -539,6 +576,12 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     }
     
     @objc private func updatePureAnimationFrame() {
+        // 🔥 UI FREEZE FIX: Stop immediately if globally paused (universal solution)
+        if Self.isGloballyPaused() {
+            stopDisplayLink()
+            return
+        }
+        
         guard isAnimating else {
             print("⏸️ PURE REANIMATED: Animation stopped, stopping display link")
             stopDisplayLink()

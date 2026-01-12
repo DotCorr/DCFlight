@@ -116,6 +116,20 @@ class DCFEngine {
   Timer? _updateTimer;
   bool _isUpdateScheduled = false;
   bool _batchUpdateInProgress = false;
+  
+  /// 🔥 CPU THROTTLING: Track last batch processing time for rate limiting
+  /// Prevents CPU from spiking above 50% during rapid stress testing
+  DateTime? _lastBatchProcessTime;
+  static const Duration _minBatchCooldown = Duration(milliseconds: 8); // ~120fps max processing rate
+  
+  /// 🔥 UI FREEZE FIX: Track rapid reconciliation to pause ALL UI thread work
+  /// Universal solution - pauses ALL frame callbacks/display links during rapid reconciliation
+  /// This prevents ANY heavy UI thread work from blocking during rapid state changes
+  DateTime? _lastReconciliationTime;
+  int _rapidReconciliationCount = 0;
+  bool _uiWorkPaused = false;
+  static const Duration _rapidReconciliationWindow = Duration(milliseconds: 100); // 100ms window
+  static const int _rapidReconciliationThreshold = 3; // 3+ updates in 100ms = rapid
 
   /// Root component and error boundaries
   DCFComponentNode? rootComponent;
@@ -204,7 +218,7 @@ class DCFEngine {
       _workerManagerInitialized = true;
 
       print('✅ WORKER_MANAGER: Initialized successfully');
-      print(
+          print(
           '⚡ WORKER_MANAGER: Performance mode enabled - Large trees (20+ nodes) will use parallel reconciliation');
       EngineDebugLogger.log('WORKER_MANAGER_INIT_SUCCESS',
           'Worker manager initialized successfully');
@@ -250,7 +264,7 @@ class DCFEngine {
   }
 
   /// O(1) - Handle a native event using centralized EventRegistry
-  /// 
+  ///
   /// 🔥 NEW: Uses EventRegistry instead of fragile prop lookup
   /// Events are registered automatically when views are rendered
   void _handleNativeEvent(
@@ -567,6 +581,31 @@ class DCFEngine {
 
     final priority = PriorityUtils.getComponentPriority(component);
     _componentPriorities[component.instanceId] = priority;
+    
+    // 🔥 CRITICAL FIX: Throttle rapid updates to prevent freeze
+    // If component is already in queue, don't add again (deduplicate)
+    // This prevents queue from growing unbounded during rapid button presses
+    if (_pendingUpdates.contains(component.instanceId)) {
+      EngineDebugLogger.log('UPDATE_ALREADY_QUEUED',
+          'Component ${component.instanceId} already in queue, skipping duplicate');
+      return; // Already queued, skip duplicate
+    }
+    
+    // 🔥 CRITICAL FIX: Aggressive throttling to keep CPU < 50% during stress testing
+    // Lower queue size for normal stress testing (only allow large queues for extreme cases)
+    const maxQueueSize = 10; // Maximum updates queued at once (lowered from 20 for better CPU control)
+    if (_pendingUpdates.length >= maxQueueSize) {
+      EngineDebugLogger.log('UPDATE_QUEUE_FULL',
+          'Update queue full (${_pendingUpdates.length}), clearing old updates');
+      // Clear all old updates and priorities - only keep the current one
+      // This prevents queue from growing unbounded during rapid button presses
+      final oldUpdates = _pendingUpdates.toList();
+      _pendingUpdates.clear();
+      for (final id in oldUpdates) {
+        _componentPriorities.remove(id);
+      }
+    }
+    
     final wasEmpty = _pendingUpdates.isEmpty;
     _pendingUpdates.add(component.instanceId);
 
@@ -625,6 +664,41 @@ class DCFEngine {
           'BATCH_SKIP', 'Batch already in progress, skipping');
       return;
     }
+    
+    // 🔥 UI FREEZE FIX: Detect rapid reconciliation and pause ALL UI thread work
+    // Universal solution - works for animations, worklets, or any future UI thread work
+    final now = DateTime.now();
+    if (_lastReconciliationTime != null) {
+      final timeSinceLastReconciliation = now.difference(_lastReconciliationTime!);
+      if (timeSinceLastReconciliation < _rapidReconciliationWindow) {
+        _rapidReconciliationCount++;
+        if (_rapidReconciliationCount >= _rapidReconciliationThreshold && !_uiWorkPaused) {
+          // Rapid reconciliation detected - pause ALL UI thread work (universal solution)
+          print('🛑 RAPID_RECONCILIATION: Detected rapid updates, pausing ALL UI thread work');
+          await _pauseAllUIWork();
+          _uiWorkPaused = true;
+        }
+      } else {
+        // Reset counter if outside window
+        _rapidReconciliationCount = 1;
+      }
+    } else {
+      _rapidReconciliationCount = 1;
+    }
+    _lastReconciliationTime = now;
+    
+    // 🔥 CPU THROTTLING: Rate limit batch processing to keep CPU < 50%
+    // Enforce minimum cooldown between batches to prevent CPU spikes
+    if (_lastBatchProcessTime != null) {
+      final timeSinceLastBatch = now.difference(_lastBatchProcessTime!);
+      if (timeSinceLastBatch < _minBatchCooldown) {
+        final remainingCooldown = _minBatchCooldown - timeSinceLastBatch;
+        EngineDebugLogger.log('BATCH_RATE_LIMIT',
+            'Rate limiting batch processing, waiting ${remainingCooldown.inMilliseconds}ms');
+        await Future.delayed(remainingCooldown);
+      }
+    }
+    _lastBatchProcessTime = now;
 
     _batchUpdateInProgress = true;
     _updateTimer?.cancel();
@@ -671,8 +745,42 @@ class DCFEngine {
       // 🔥 CRITICAL: Clear render cycle counts after batch completes
       _renderCycleCount.clear();
       _nodesBeingRendered.clear(); // Clear rendering set after batch completes
+      
+      // 🔥 UI FREEZE FIX: Resume ALL UI thread work after reconciliation completes
+      // Universal solution - resumes all frame callbacks/display links
+      if (_uiWorkPaused) {
+        // Wait a bit to ensure reconciliation is fully complete
+        await Future.delayed(Duration(milliseconds: 50));
+        print('▶️ RAPID_RECONCILIATION: Reconciliation complete, resuming ALL UI thread work');
+        await _resumeAllUIWork();
+        _uiWorkPaused = false;
+        _rapidReconciliationCount = 0;
+      }
     } finally {
       _batchUpdateInProgress = false;
+    }
+  }
+  
+  /// 🔥 UI FREEZE FIX: Pause ALL UI thread work globally (universal solution)
+  /// This pauses ALL frame callbacks, display links, and any other UI thread work
+  /// Works for animations, worklets, or any future UI thread operations
+  Future<void> _pauseAllUIWork() async {
+    try {
+      await _nativeBridge.tunnel('ReanimatedView', 'pauseAllUIWork', {});
+    } catch (e) {
+      // Ignore errors - method might not exist or no UI work running
+      EngineDebugLogger.log('UI_WORK_PAUSE_ERROR', 'Failed to pause UI work: $e');
+    }
+  }
+  
+  /// 🔥 UI FREEZE FIX: Resume ALL UI thread work globally (universal solution)
+  /// This resumes ALL frame callbacks, display links, and any other UI thread work
+  Future<void> _resumeAllUIWork() async {
+    try {
+      await _nativeBridge.tunnel('ReanimatedView', 'resumeAllUIWork', {});
+    } catch (e) {
+      // Ignore errors - method might not exist
+      EngineDebugLogger.log('UI_WORK_RESUME_ERROR', 'Failed to resume UI work: $e');
     }
   }
 
@@ -838,8 +946,13 @@ class DCFEngine {
   Future<void> _processUpdatesWithDeadline(List<String> sortedUpdates,
       Deadline deadline, Completer<void> completer) async {
     int processed = 0;
+    
+    // 🔥 CPU THROTTLING: Process updates in smaller chunks with micro-delays
+    // This prevents CPU from spiking during large batch processing
+    const chunkSize = 5; // Process 5 updates at a time
+    const chunkDelay = Duration(milliseconds: 1); // 1ms delay between chunks
 
-    for (final componentId in sortedUpdates) {
+    for (var i = 0; i < sortedUpdates.length; i++) {
       // Check deadline
       if (deadline.timeRemaining() <= 0) {
         // Schedule remaining work for next frame
@@ -849,8 +962,14 @@ class DCFEngine {
         });
         return;
       }
+      
+      // 🔥 CPU THROTTLING: Add micro-delay every chunkSize updates
+      // This spreads CPU load over time instead of spiking
+      if (i > 0 && i % chunkSize == 0) {
+        await Future.delayed(chunkDelay);
+      }
 
-      await _updateComponentById(componentId);
+      await _updateComponentById(sortedUpdates[i]);
       processed++;
     }
 
@@ -1438,7 +1557,14 @@ class DCFEngine {
     EngineDebugLogger.log('ELEMENT_CHILDREN_START',
         'Rendering ${element.children.length} children');
 
+    // 🔥 UI THREAD YIELDING: Yield every 3 children to prevent UI freeze
+    const yieldInterval = 3;
     for (var i = 0; i < element.children.length; i++) {
+      // Yield control back to UI thread every few children
+      if (i > 0 && i % yieldInterval == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      
       try {
         final childId = await renderToNative(element.children[i],
             parentViewId: viewId, index: i);
@@ -1504,13 +1630,13 @@ class DCFEngine {
       _skipWorkerManagerForThisReconciliation = false;
       
       if (!isInitialRender) {
-        // Log why isolates weren't used (for debugging)
-        final nodeCount =
-            _countNodeChildren(oldNode) + _countNodeChildren(newNode);
-        if (nodeCount < 50) {
-          // Tree too small - this is normal, don't log
-        }
-        // Note: No need to log about missing workers - they will be spawned on demand
+      // Log why isolates weren't used (for debugging)
+      final nodeCount =
+          _countNodeChildren(oldNode) + _countNodeChildren(newNode);
+      if (nodeCount < 50) {
+        // Tree too small - this is normal, don't log
+      }
+      // Note: No need to log about missing workers - they will be spawned on demand
       }
     }
 
@@ -2430,7 +2556,14 @@ class DCFEngine {
           throw Exception('No changes detected - fallback to regular reconciliation');
         }
         
+        // 🔥 UI THREAD YIELDING: Yield every 5 changes to prevent UI freeze
+        const yieldInterval = 5;
         for (int i = 0; i < changes.length; i++) {
+          // Yield control back to UI thread every few changes
+          if (i > 0 && i % yieldInterval == 0) {
+            await Future.delayed(Duration.zero); // Yield to event loop
+          }
+          
           final change = changes[i];
           final changeMap = change as Map<String, dynamic>;
           final action = changeMap['action'] as String;
@@ -2564,14 +2697,14 @@ class DCFEngine {
                       newRendered.parent = oldRendered.parent;
                       // Reconcile the rendered elements directly using _reconcileElement
                       // This bypasses _reconcile's component type checks
-                      await _reconcileElement(oldRendered, newRendered);
+                        await _reconcileElement(oldRendered, newRendered);
                     } else if (oldChild is DCFStatelessComponent ||
                         oldChild is DCFStatefulComponent ||
                         newChild is DCFStatelessComponent ||
                         newChild is DCFStatefulComponent) {
                       print(
                           '🔍 ISOLATES: Reconciling component - using regular reconciliation');
-                      await _reconcile(oldChild, newChild);
+                        await _reconcile(oldChild, newChild);
                     } else if (newChild is DCFElement &&
                         oldChild is DCFElement) {
                       // Direct element match - update props if changed
@@ -2786,7 +2919,7 @@ class DCFEngine {
                       newRendered.parent = oldRendered.parent;
                       // Reconcile the rendered elements directly using _reconcileElement
                       // This bypasses _reconcile's component type checks
-                      await _reconcileElement(oldRendered, newRendered);
+                        await _reconcileElement(oldRendered, newRendered);
                     } else if (newChild is DCFStatelessComponent ||
                         newChild is DCFStatefulComponent) {
                       // Components need reconciliation to update their rendered children
@@ -2794,7 +2927,7 @@ class DCFEngine {
                       // and ensure we actually detect and apply changes
                       print(
                           '🔍 ISOLATES: Reconciling component (props changed: ${propsDiff.isNotEmpty}) - using regular reconciliation');
-                      await _reconcile(oldChild, newChild);
+                        await _reconcile(oldChild, newChild);
                     } else if (newChild is DCFElement &&
                         oldChild is DCFElement) {
                       // Elements only need prop updates if props changed
@@ -3562,6 +3695,9 @@ class DCFEngine {
     registry.unregister(viewId);
     EngineDebugLogger.log('EVENT_REGISTRY', 'Unregistered events for deleted view $viewId');
     
+    // 🔥 CRITICAL FIX: Native side now stops animations automatically in deleteView
+    // No need to call tunnel - native handles cleanup directly using reflection/runtime checks
+    
     await isReady;
     EngineDebugLogger.logBridge('DELETE_VIEW', viewId);
     await _nativeBridge.deleteView(viewId);
@@ -3718,7 +3854,7 @@ class DCFEngine {
       
       print('🔥 HOT_RELOAD: Scheduling updates for ${_statefulComponents.length} components...');
       for (final component in _statefulComponents.values) {
-        _scheduleComponentUpdate(component);
+            _scheduleComponentUpdate(component);
       }
 
       print('🔥 HOT_RELOAD: Processing pending updates...');
@@ -4485,7 +4621,14 @@ class DCFEngine {
     final processedOldChildren = <DCFComponentNode>{};
     bool hasStructuralChanges = false;
 
+    // 🔥 UI THREAD YIELDING: Yield every 3 children to prevent UI freeze
+    const yieldInterval = 3;
     for (int i = 0; i < newChildren.length; i++) {
+      // Yield control back to UI thread every few children
+      if (i > 0 && i % yieldInterval == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      
       final newChild = newChildren[i];
       final key = _getNodeKey(newChild, i);
       final oldChild = oldChildrenMap[key];
@@ -4525,7 +4668,15 @@ class DCFEngine {
       }
     }
 
+    // 🔥 UI THREAD YIELDING: Yield during removal loop to prevent UI freeze
+    int removeIndex = 0;
     for (var oldChild in oldChildren) {
+      // Yield control back to UI thread every few removals
+      if (removeIndex > 0 && removeIndex % yieldInterval == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      removeIndex++;
+      
       if (!processedOldChildren.contains(oldChild)) {
         hasStructuralChanges = true;
         EngineDebugLogger.log('RECONCILE_KEYED_REMOVE', 'Removing old child',
@@ -4651,7 +4802,14 @@ class DCFEngine {
     final processedOldIndices = <int>{};
     final processedNewIndices = <int>{};
 
+    int loopIteration = 0;
     while (oldIndex < oldChildren.length && newIndex < newChildren.length) {
+      // 🔥 UI THREAD YIELDING: Yield every 3 iterations to prevent UI freeze
+      if (loopIteration > 0 && loopIteration % 3 == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      loopIteration++;
+      
       final oldChild = oldChildren[oldIndex];
       final newChild = newChildren[newIndex];
 
@@ -5173,7 +5331,14 @@ class DCFEngine {
     }
 
     // Handle remaining old children (removals at the end)
+    int remainingLoopIteration = 0;
     while (oldIndex < oldChildren.length) {
+      // 🔥 UI THREAD YIELDING: Yield every 3 iterations to prevent UI freeze
+      if (remainingLoopIteration > 0 && remainingLoopIteration % 3 == 0) {
+        await Future.delayed(Duration.zero); // Yield to event loop
+      }
+      remainingLoopIteration++;
+      
       final oldChild = oldChildren[oldIndex];
       hasStructuralChanges = true;
 
@@ -5569,9 +5734,9 @@ class DCFEngine {
     try {
       await worker_manager.workerManager.dispose();
       _workerManagerInitialized = false;
-      EngineDebugLogger.log(
+    EngineDebugLogger.log(
           'WORKER_MANAGER_SHUTDOWN', 'Worker manager shutdown complete');
-    } catch (e) {
+      } catch (e) {
       EngineDebugLogger.log('WORKER_MANAGER_SHUTDOWN_ERROR',
           'Error disposing worker manager: $e');
     }

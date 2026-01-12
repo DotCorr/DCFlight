@@ -21,3 +21,5 @@ echo "✅ Workspace ready! All packages have dependencies synced and installed."
 echo ""
 echo "💡 Tip: Run 'dart run scripts/sync_workspace_deps.dart' whenever you add new packages"
 
+
+

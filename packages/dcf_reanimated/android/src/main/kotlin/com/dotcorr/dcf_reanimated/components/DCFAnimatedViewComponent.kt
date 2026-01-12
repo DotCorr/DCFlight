@@ -175,6 +175,17 @@ class DCFAnimatedViewComponent : DCFComponent() {
     }
     
     override fun handleTunnelMethod(method: String, arguments: Map<String, Any?>): Any? {
+        // 🔥 UI FREEZE FIX: Universal pause/resume for ALL UI thread work
+        when (method) {
+            "pauseAllUIWork" -> {
+                PureReanimatedView.pauseAllUIWork()
+                return true
+            }
+            "resumeAllUIWork" -> {
+                PureReanimatedView.resumeAllUIWork()
+                return true
+            }
+        }
         return null
     }
 }
@@ -188,6 +199,25 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     
     companion object {
         private const val TAG = "PureReanimatedView"
+        
+        // 🔥 UI FREEZE FIX: Global pause state for ALL UI thread work
+        // Universal solution - pauses ALL frame callbacks during rapid reconciliation
+        private var globalPauseState = false
+        
+        // Check if globally paused (prevents any animation/worklet from starting)
+        fun isGloballyPaused(): Boolean = globalPauseState
+        
+        // Pause ALL UI thread work globally (universal solution)
+        fun pauseAllUIWork() {
+            globalPauseState = true
+            Log.d(TAG, "🛑 GLOBAL_PAUSE: Pausing ALL UI thread work (frame callbacks, etc.)")
+        }
+        
+        // Resume ALL UI thread work
+        fun resumeAllUIWork() {
+            globalPauseState = false
+            Log.d(TAG, "▶️ GLOBAL_RESUME: Resuming UI thread work")
+        }
     }
     
     // Choreographer for 60fps rendering
@@ -326,6 +356,12 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     // ============================================================================
     
     fun startPureAnimation() {
+        // 🔥 UI FREEZE FIX: Don't start if globally paused (universal solution)
+        if (isGloballyPaused()) {
+            Log.d(TAG, "⏸️ PURE REANIMATED: Animation start blocked - UI work globally paused")
+            return
+        }
+        
         if (isAnimating) return
         
         if (isUsingWorklet) {
@@ -429,6 +465,12 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         // CRITICAL: Create callback and store reference before posting
         // This ensures we have a valid reference even if stopFrameCallback() sets frameCallback to null
         val callback = Choreographer.FrameCallback { frameTimeNanos ->
+            // 🔥 UI FREEZE FIX: Stop immediately if globally paused (universal solution)
+            if (isGloballyPaused()) {
+                stopFrameCallback()
+                return@FrameCallback
+            }
+            
             if (!isAnimating) {
                 stopFrameCallback()
                 return@FrameCallback

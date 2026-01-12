@@ -227,9 +227,22 @@ class DCMauiBridgeImpl private constructor() {
      */
     fun deleteView(viewId: Int): Boolean {
         return try {
+            // 🔥 CRITICAL FIX: Stop animations before deleting to prevent freeze
+            val view = ViewRegistry.shared.getView(viewId)
+            if (view != null) {
+                // Stop animations for ReanimatedView components using reflection
+                // This avoids direct dependency on dcf_reanimated package
+                try {
+                    val stopMethod = view.javaClass.getMethod("stopPureAnimation")
+                    stopMethod.invoke(view)
+                    Log.d(TAG, "🛑 Stopped animation for ReanimatedView $viewId before deletion")
+                } catch (e: Exception) {
+                    // Not a ReanimatedView or method doesn't exist - ignore
+                }
+            }
+            
             deleteChildrenRecursively(viewId.toString())
             
-            val view = ViewRegistry.shared.getView(viewId)
             val viewType = ViewRegistry.shared.getViewType(viewId)
             
             if (view != null) {
