@@ -92,6 +92,17 @@ class DCFAnimatedViewComponent : DCFComponent() {
         val previousAutoStart = existingProps["autoStart"] as? Boolean ?: false
         val currentAutoStart = mergedProps["autoStart"] as? Boolean ?: false
         
+        // 🔥 LIFECYCLE FIX: If worklet prop is removed (component replaced with non-worklet),
+        // stop the old worklet animation immediately
+        val hadWorklet = reanimatedView.isUsingWorklet
+        val hasWorklet = mergedProps["worklet"] is Map<*, *>
+        
+        if (hadWorklet && !hasWorklet) {
+            // Worklet was removed - stop animation immediately
+            Log.d(TAG, "🛑 WORKLET: Worklet prop removed, stopping old animation")
+            reanimatedView.stopPureAnimation()
+        }
+        
         // Update worklet or animation style
         if (mergedProps["worklet"] is Map<*, *>) {
             val workletData = mergedProps["worklet"] as Map<String, Any?>
@@ -287,12 +298,47 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     }
     
     fun updateWorklet(workletData: Map<String, Any?>, config: Map<String, Any?>?) {
-        val wasAnimating = isAnimating
-        stopPureAnimation()
+        // 🔥 LIFECYCLE FIX: UI thread worklets must be fully stopped before new ones start
+        // Since worklets run on native UI thread (not Dart), they don't auto-cleanup when Dart components are replaced
+        // We must explicitly stop the old worklet's frame callback and clear its state
+        
+        // CRITICAL: Always stop old worklet FIRST if it exists
+        // This prevents orphaned frame callbacks from running after component replacement
+        if (workletConfig != null) {
+            val functionData = workletData["function"] as? Map<*, *>
+            val newWorkletId = functionData?.get("workletId") as? String
+            val oldFunctionData = workletConfig?.get("function") as? Map<*, *>
+            val oldWorkletId = oldFunctionData?.get("workletId") as? String
+            
+            if (newWorkletId != null && oldWorkletId != null && newWorkletId != oldWorkletId) {
+                Log.d(TAG, "🛑 WORKLET: Worklet ID changed (old: $oldWorkletId, new: $newWorkletId), stopping old worklet")
+            } else {
+                Log.d(TAG, "🛑 WORKLET: Worklet updated, stopping old worklet to prevent orphaned callbacks")
+            }
+            
+            // CRITICAL: Stop frame callback IMMEDIATELY and synchronously
+            // This removes the callback so no more frames can execute
+            isAnimating = false
+            stopFrameCallback()
+            
+            // CRITICAL: Clear worklet config to prevent old worklet from being executed
+            // This ensures the frame callback (if it somehow still fires) won't execute old worklet
+            workletConfig = null
+            isUsingWorklet = false
+        }
+        
+        // Configure new worklet (this sets new workletConfig)
         configureWorklet(workletData, config)
-        // Only restart animation if it was already running
-        // This prevents auto-starting on prop updates
-        if (wasAnimating) {
+        
+        // Start new worklet on next frame to ensure old frame callback is fully removed
+        Handler(Looper.getMainLooper()).post {
+            // Final safety check - ensure old animation is stopped
+            if (isAnimating && frameCallback != null) {
+                Log.w(TAG, "⚠️ WORKLET: Old animation still running, force stopping")
+                isAnimating = false
+                stopFrameCallback()
+            }
+            // Start new worklet
             startPureAnimation()
         }
     }
@@ -477,6 +523,28 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
             }
             
             if (!isAnimating) {
+                stopFrameCallback()
+                return@FrameCallback
+            }
+            
+            // 🔥 LIFECYCLE FIX: Guard against orphaned worklet callbacks
+            // Since worklets run on native UI thread, frame callbacks can fire even after
+            // component is replaced. Check if workletConfig is still valid before executing.
+            if (isUsingWorklet && workletConfig == null) {
+                // Worklet was cleared (component replaced) but frame callback still fired
+                Log.w(TAG, "🛑 WORKLET: Orphaned callback detected - worklet cleared, stopping")
+                isAnimating = false
+                stopFrameCallback()
+                return@FrameCallback
+            }
+            
+            // 🔥 LIFECYCLE FIX: Check if view is still in hierarchy
+            // If view was removed from parent (deleted/replaced), stop worklet immediately
+            if (parent == null) {
+                Log.w(TAG, "🛑 WORKLET: View removed from hierarchy, stopping orphaned worklet")
+                isAnimating = false
+                workletConfig = null
+                isUsingWorklet = false
                 stopFrameCallback()
                 return@FrameCallback
             }
@@ -847,9 +915,15 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     }
     
     override fun onDetachedFromWindow() {
+        // 🔥 LIFECYCLE FIX: Stop worklet when view is detached from window
+        // This ensures worklets don't continue running after component is deleted
+        // Since worklets run on UI thread, they don't auto-stop when Dart components are replaced
+        Log.d(TAG, "🛑 WORKLET: View detached from window, stopping worklet")
+        isAnimating = false
+        workletConfig = null
+        isUsingWorklet = false
+        stopFrameCallback()
         super.onDetachedFromWindow()
-        stopPureAnimation()
-        Log.d(TAG, "🗑️ PURE REANIMATED: View detached from window")
     }
 }
 

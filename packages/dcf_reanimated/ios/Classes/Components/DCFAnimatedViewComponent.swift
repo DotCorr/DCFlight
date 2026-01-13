@@ -349,9 +349,50 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     }
     
     func updateWorklet(_ workletData: [String: Any], _ config: [String: Any]?) {
-        stopPureAnimation()
+        // 🔥 LIFECYCLE FIX: UI thread worklets must be fully stopped before new ones start
+        // Since worklets run on native UI thread (not Dart), they don't auto-cleanup when Dart components are replaced
+        // We must explicitly stop the old worklet's display link and clear its state
+        
+        // CRITICAL: Always stop old worklet FIRST if it exists
+        // This prevents orphaned display link callbacks from running after component replacement
+        if workletConfig != nil {
+            let functionData = workletData["function"] as? [String: Any]
+            let newWorkletId = functionData?["workletId"] as? String
+            let oldFunctionData = workletConfig?["function"] as? [String: Any]
+            let oldWorkletId = oldFunctionData?["workletId"] as? String
+            
+            if let newId = newWorkletId, let oldId = oldWorkletId, newId != oldId {
+                print("🛑 WORKLET: Worklet ID changed (old: \(oldId), new: \(newId)), stopping old worklet")
+            } else {
+                print("🛑 WORKLET: Worklet updated, stopping old worklet to prevent orphaned callbacks")
+            }
+            
+            // CRITICAL: Stop display link IMMEDIATELY and synchronously
+            // This invalidates the display link so no more frame callbacks can execute
+            isAnimating = false
+            stopDisplayLink()
+            
+            // CRITICAL: Clear worklet config to prevent old worklet from being executed
+            // This ensures the frame callback (if it somehow still fires) won't execute old worklet
+            workletConfig = nil
+            isUsingWorklet = false
+        }
+        
+        // Configure new worklet (this sets new workletConfig)
         configureWorklet(workletData, config)
-        startPureAnimation()
+        
+        // Start new worklet on next frame to ensure old display link is fully invalidated
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            // Final safety check - ensure old animation is stopped
+            if self.isAnimating && self.displayLink != nil {
+                print("⚠️ WORKLET: Old animation still running, force stopping")
+                self.isAnimating = false
+                self.stopDisplayLink()
+            }
+            // Start new worklet
+            self.startPureAnimation()
+        }
     }
     
     // ============================================================================
@@ -587,6 +628,28 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
         
         guard isAnimating else {
             print("⏸️ PURE REANIMATED: Animation stopped, stopping display link")
+            stopDisplayLink()
+            return
+        }
+        
+        // 🔥 LIFECYCLE FIX: Guard against orphaned worklet callbacks
+        // Since worklets run on native UI thread, display link callbacks can fire even after
+        // component is replaced. Check if workletConfig is still valid before executing.
+        guard isUsingWorklet, workletConfig != nil else {
+            // Worklet was cleared (component replaced) but display link callback still fired
+            print("🛑 WORKLET: Orphaned callback detected - worklet cleared, stopping")
+            isAnimating = false
+            stopDisplayLink()
+            return
+        }
+        
+        // 🔥 LIFECYCLE FIX: Check if view is still in hierarchy
+        // If view was removed from superview (deleted/replaced), stop worklet immediately
+        if superview == nil {
+            print("🛑 WORKLET: View removed from hierarchy, stopping orphaned worklet")
+            isAnimating = false
+            workletConfig = nil
+            isUsingWorklet = false
             stopDisplayLink()
             return
         }
@@ -998,8 +1061,25 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     }
     
     deinit {
+        // 🔥 LIFECYCLE FIX: Stop worklet when view is deallocated
+        // This ensures worklets don't continue running after component is deleted
+        print("🛑 WORKLET: View deallocated, stopping worklet")
+        isAnimating = false
+        workletConfig = nil
+        isUsingWorklet = false
         stopDisplayLink()
-        print("🗑️ PURE REANIMATED: View deallocated")
+    }
+    
+    override func removeFromSuperview() {
+        // 🔥 LIFECYCLE FIX: Stop worklet when view is removed from hierarchy
+        // This catches cases where view is deleted but not yet deallocated
+        // Since worklets run on UI thread, they don't auto-stop when Dart components are replaced
+        print("🛑 WORKLET: View removed from superview, stopping worklet")
+        isAnimating = false
+        workletConfig = nil
+        isUsingWorklet = false
+        stopDisplayLink()
+        super.removeFromSuperview()
     }
 }
 
