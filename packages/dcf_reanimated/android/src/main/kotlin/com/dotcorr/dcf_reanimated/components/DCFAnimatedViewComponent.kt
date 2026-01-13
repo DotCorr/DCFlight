@@ -9,6 +9,8 @@ package com.dotcorr.dcf_reanimated.components
 
 import android.content.Context
 import android.graphics.PointF
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.Choreographer
 import android.view.View
@@ -101,6 +103,8 @@ class DCFAnimatedViewComponent : DCFComponent() {
             // Worklet was removed - stop animation immediately
             Log.d(TAG, "🛑 WORKLET: Worklet prop removed, stopping old animation")
             reanimatedView.stopPureAnimation()
+            reanimatedView.workletConfig = null
+            reanimatedView.isUsingWorklet = false
         }
         
         // Update worklet or animation style
@@ -253,9 +257,9 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     private var currentAnimations = mutableMapOf<String, PureAnimationState>()
     
     // Worklet configuration
-    private var workletConfig: Map<String, Any?>? = null
+    internal var workletConfig: Map<String, Any?>? = null
     private var workletExecutionConfig: Map<String, Any?>? = null
-    private var isUsingWorklet = false
+    internal var isUsingWorklet = false
     
     // Identifiers for callbacks
     var nodeId: String? = null

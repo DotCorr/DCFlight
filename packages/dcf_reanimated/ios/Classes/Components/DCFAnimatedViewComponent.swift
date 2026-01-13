@@ -95,6 +95,19 @@ class DCFAnimatedViewComponent: NSObject, DCFComponent {
     func updateView(_ view: UIView, withProps props: [String: Any]) -> Bool {
         guard let reanimatedView = view as? PureReanimatedView else { return false }
         
+        // 🔥 LIFECYCLE FIX: If worklet prop is removed (component replaced with non-worklet),
+        // stop the old worklet animation immediately
+        let hadWorklet = reanimatedView.isUsingWorklet
+        let hasWorklet = props["worklet"] != nil
+        
+        if hadWorklet && !hasWorklet {
+            // Worklet was removed - stop animation immediately
+            print("🛑 WORKLET: Worklet prop removed in updateView, stopping old animation")
+            reanimatedView.stopPureAnimation()
+            reanimatedView.workletConfig = nil
+            reanimatedView.isUsingWorklet = false
+        }
+        
         // Update worklet or animation style
         if let workletData = props["worklet"] as? [String: Any] {
             let workletConfig = props["workletConfig"] as? [String: Any]
