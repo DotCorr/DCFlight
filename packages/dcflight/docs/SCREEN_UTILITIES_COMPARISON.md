@@ -158,3 +158,4 @@ Both Android and iOS provide all fields required by Dart:
 1. ✅ Android safe area now calculated from WindowInsets (was hardcoded to 0.0)
 2. ✅ Dart `onDimensionChange` handler now updates `statusBarHeight` (was missing)
 
+

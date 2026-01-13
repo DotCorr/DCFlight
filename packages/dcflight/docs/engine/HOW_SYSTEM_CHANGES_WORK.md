@@ -304,3 +304,4 @@ Just include `_systemVersion` in props and the same flow applies!
 
 The magic is in the **version counter** (`SystemStateManager`) that increments on system changes, which causes props to change, which triggers reconciliation, which updates native, which re-measures text!
 
+

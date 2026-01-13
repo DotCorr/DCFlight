@@ -261,9 +261,9 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     private var currentAnimations: [String: PureAnimationState] = [:]
     
     // Worklet configuration
-    private var workletConfig: [String: Any]?
+    internal var workletConfig: [String: Any]?
     private var workletExecutionConfig: [String: Any]?
-    private var isUsingWorklet = false
+    internal var isUsingWorklet = false
     
     // Identifiers for callbacks
     var nodeId: String?
