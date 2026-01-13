@@ -576,8 +576,11 @@ class PureReanimatedView: UIView, DCFLayoutIndependent {
     }
     
     @objc private func updatePureAnimationFrame() {
-        // 🔥 UI FREEZE FIX: Stop immediately if globally paused (universal solution)
+        // 🔥 UI FREEZE FIX: Check pause flag FIRST before any work (universal solution)
+        // This prevents any CPU consumption during rapid reconciliation
         if Self.isGloballyPaused() {
+            // Immediately stop and don't schedule next frame
+            isAnimating = false
             stopDisplayLink()
             return
         }

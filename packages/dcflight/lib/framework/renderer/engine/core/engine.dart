@@ -130,6 +130,10 @@ class DCFEngine {
   bool _uiWorkPaused = false;
   static const Duration _rapidReconciliationWindow = Duration(milliseconds: 100); // 100ms window
   static const int _rapidReconciliationThreshold = 3; // 3+ updates in 100ms = rapid
+  
+  /// 🔥 NESTED LOOP FIX: Track reconciliation depth to prevent infinite loops
+  int _reconciliationDepth = 0;
+  static const int _maxReconciliationDepth = 3; // Max 3 levels deep
 
   /// Root component and error boundaries
   DCFComponentNode? rootComponent;
@@ -591,6 +595,22 @@ class DCFEngine {
       return; // Already queued, skip duplicate
     }
     
+    // 🔥 NESTED LOOP FIX: If reconciliation depth is too high, skip this update
+    // This prevents queueing up updates that will cause nested loops and UI freeze
+    if (_reconciliationDepth >= _maxReconciliationDepth) {
+      EngineDebugLogger.log('UPDATE_SKIPPED_DEPTH',
+          'Skipping update - reconciliation depth too high (${_reconciliationDepth})');
+      return; // Skip to prevent nested loops
+    }
+    
+    // 🔥 UI FREEZE FIX: If UI work is paused (rapid reconciliation), skip this update
+    // This prevents queueing up updates during rapid state changes that will cause UI freeze
+    if (_uiWorkPaused) {
+      EngineDebugLogger.log('UPDATE_SKIPPED_PAUSED',
+          'Skipping update - UI work is paused due to rapid reconciliation');
+      return; // Skip to prevent UI freeze
+    }
+    
     // 🔥 CRITICAL FIX: Aggressive throttling to keep CPU < 50% during stress testing
     // Lower queue size for normal stress testing (only allow large queues for extreme cases)
     const maxQueueSize = 10; // Maximum updates queued at once (lowered from 20 for better CPU control)
@@ -665,16 +685,18 @@ class DCFEngine {
       return;
     }
     
-    // 🔥 UI FREEZE FIX: Detect rapid reconciliation and pause ALL UI thread work
+    // 🔥 UI FREEZE FIX: Detect rapid reconciliation and pause ALL UI thread work IMMEDIATELY
     // Universal solution - works for animations, worklets, or any future UI thread work
+    // Pause BEFORE processing to prevent animations from consuming CPU during reconciliation
     final now = DateTime.now();
     if (_lastReconciliationTime != null) {
       final timeSinceLastReconciliation = now.difference(_lastReconciliationTime!);
       if (timeSinceLastReconciliation < _rapidReconciliationWindow) {
         _rapidReconciliationCount++;
-        if (_rapidReconciliationCount >= _rapidReconciliationThreshold && !_uiWorkPaused) {
-          // Rapid reconciliation detected - pause ALL UI thread work (universal solution)
-          print('🛑 RAPID_RECONCILIATION: Detected rapid updates, pausing ALL UI thread work');
+        // 🔥 AGGRESSIVE: Pause immediately on 2nd rapid update (not 3rd) to prevent freeze
+        if (_rapidReconciliationCount >= 2 && !_uiWorkPaused) {
+          // Rapid reconciliation detected - pause ALL UI thread work IMMEDIATELY
+          print('🛑 RAPID_RECONCILIATION: Detected rapid updates (${_rapidReconciliationCount}), pausing ALL UI thread work IMMEDIATELY');
           await _pauseAllUIWork();
           _uiWorkPaused = true;
         }
@@ -749,12 +771,27 @@ class DCFEngine {
       // 🔥 UI FREEZE FIX: Resume ALL UI thread work after reconciliation completes
       // Universal solution - resumes all frame callbacks/display links
       if (_uiWorkPaused) {
-        // Wait a bit to ensure reconciliation is fully complete
-        await Future.delayed(Duration(milliseconds: 50));
-        print('▶️ RAPID_RECONCILIATION: Reconciliation complete, resuming ALL UI thread work');
-        await _resumeAllUIWork();
-        _uiWorkPaused = false;
-        _rapidReconciliationCount = 0;
+        // Wait longer to ensure all reconciliation is fully complete and UI is stable
+        // This prevents animations from restarting too early and causing freeze
+        await Future.delayed(Duration(milliseconds: 200));
+        
+        // 🔥 AGGRESSIVE: Check if more updates are queued - if so, keep paused
+        if (_pendingUpdates.isNotEmpty) {
+          print('⏸️ RAPID_RECONCILIATION: More updates queued (${_pendingUpdates.length}), keeping UI work paused');
+          // Don't resume yet - wait for next batch
+        } else {
+          print('▶️ RAPID_RECONCILIATION: Reconciliation complete, resuming ALL UI thread work');
+          await _resumeAllUIWork();
+          _uiWorkPaused = false;
+          _rapidReconciliationCount = 0;
+        }
+      }
+      
+      // 🔥 NESTED LOOP FIX: Ensure reconciliation depth is reset after batch completes
+      if (_reconciliationDepth > 0) {
+        print('⚠️ RAPID_RECONCILIATION: Resetting reconciliation depth (was: $_reconciliationDepth)');
+        _reconciliationDepth = 0;
+        _skipWorkerManagerForThisReconciliation = false;
       }
     } finally {
       _batchUpdateInProgress = false;
@@ -1591,43 +1628,52 @@ class DCFEngine {
   /// Supports incremental rendering with pause/resume and isolate-based parallel diffing
   Future<void> _reconcile(
       DCFComponentNode oldNode, DCFComponentNode newNode) async {
-    EngineDebugLogger.logReconcile('START', oldNode, newNode,
-        reason: 'Beginning reconciliation');
-
-    // Set work in progress tree
-    _workInProgressTree = newNode;
-
-    // CRITICAL: Only use isolate reconciliation for updates to existing trees
-    // Never use it for initial render - initial render must happen synchronously
-    // on the main thread to ensure proper UI synchronization
-    final isInitialRender = oldNode.effectiveNativeViewId == null;
-
-    // Use worker_manager for parallel reconciliation (but NOT for initial render)
-    // 🔥 CRITICAL: Disable worker_manager reconciliation during hot reload to prevent issues
-    bool usedIsolate = false;
-    final shouldSkipWorkerManager = _skipWorkerManagerForThisReconciliation;
+    // 🔥 NESTED LOOP FIX: Prevent infinite recursion
+    if (_reconciliationDepth >= _maxReconciliationDepth) {
+      EngineDebugLogger.logReconcile('MAX_DEPTH_REACHED', oldNode, newNode,
+          reason: 'Max reconciliation depth reached, using regular reconciliation');
+      _skipWorkerManagerForThisReconciliation = true;
+    }
     
-    if (!isInitialRender &&
-        !_isHotReloading &&
-        !shouldSkipWorkerManager &&
-        _workerManagerInitialized &&
-        _shouldUseIsolateReconciliation(oldNode, newNode)) {
-      try {
-        await _reconcileWithIsolate(oldNode, newNode);
-        usedIsolate = true;
-        // Reset flag only on success
-        _skipWorkerManagerForThisReconciliation = false;
-      } catch (e) {
-        EngineDebugLogger.logReconcile(
-            'WORKER_MANAGER_FALLBACK_ERROR', oldNode, newNode,
-            reason: 'Worker_manager reconciliation failed, falling back: $e');
-        // Set flag to prevent re-entering worker_manager in nested reconciliations
-        _skipWorkerManagerForThisReconciliation = true;
-        // Continue with regular reconciliation
-      }
-    } else {
-      // Reset flag when not using worker_manager
-      _skipWorkerManagerForThisReconciliation = false;
+    _reconciliationDepth++;
+    try {
+      EngineDebugLogger.logReconcile('START', oldNode, newNode,
+          reason: 'Beginning reconciliation (depth: $_reconciliationDepth)');
+
+      // Set work in progress tree
+      _workInProgressTree = newNode;
+
+      // CRITICAL: Only use isolate reconciliation for updates to existing trees
+      // Never use it for initial render - initial render must happen synchronously
+      // on the main thread to ensure proper UI synchronization
+      final isInitialRender = oldNode.effectiveNativeViewId == null;
+
+      // Use worker_manager for parallel reconciliation (but NOT for initial render)
+      // 🔥 CRITICAL: Disable worker_manager reconciliation during hot reload and nested calls
+      bool usedIsolate = false;
+      final shouldSkipWorkerManager = _skipWorkerManagerForThisReconciliation || _reconciliationDepth > 1;
+      
+      if (!isInitialRender &&
+          !_isHotReloading &&
+          !shouldSkipWorkerManager &&
+          _workerManagerInitialized &&
+          _shouldUseIsolateReconciliation(oldNode, newNode)) {
+        try {
+          // 🔥 NESTED LOOP FIX: Set flag BEFORE calling to prevent nested isolate calls
+          _skipWorkerManagerForThisReconciliation = true;
+          await _reconcileWithIsolate(oldNode, newNode);
+          usedIsolate = true;
+        } catch (e) {
+          EngineDebugLogger.logReconcile(
+              'WORKER_MANAGER_FALLBACK_ERROR', oldNode, newNode,
+              reason: 'Worker_manager reconciliation failed, falling back: $e');
+          // Flag already set, continue with regular reconciliation
+        }
+      } else {
+        // Reset flag only at top level
+        if (_reconciliationDepth == 1) {
+          _skipWorkerManagerForThisReconciliation = false;
+        }
       
       if (!isInitialRender) {
       // Log why isolates weren't used (for debugging)
@@ -1640,10 +1686,10 @@ class DCFEngine {
       }
     }
 
-    // If isolate reconciliation completed, we're done
-    if (usedIsolate) {
-      return;
-    }
+      // If isolate reconciliation completed, we're done
+      if (usedIsolate) {
+        return;
+      }
     
     // 🚀 OPTIMIZATION: For very large trees that are completely different, use direct replace
     // This makes navigation instant instead of slow reconciliation
@@ -2291,8 +2337,16 @@ class DCFEngine {
       return;
     }
 
-    EngineDebugLogger.logReconcile('COMPLETE', oldNode, newNode,
-        reason: 'Reconciliation completed successfully');
+      EngineDebugLogger.logReconcile('COMPLETE', oldNode, newNode,
+          reason: 'Reconciliation completed successfully');
+    } finally {
+      // 🔥 NESTED LOOP FIX: Always decrement depth, even on error
+      _reconciliationDepth--;
+      if (_reconciliationDepth == 0) {
+        // Reset flag only when back at top level
+        _skipWorkerManagerForThisReconciliation = false;
+      }
+    }
   }
 
   /// Check if isolate-based reconciliation should be used

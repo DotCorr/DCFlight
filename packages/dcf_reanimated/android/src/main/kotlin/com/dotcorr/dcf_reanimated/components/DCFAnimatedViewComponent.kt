@@ -211,6 +211,8 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         fun pauseAllUIWork() {
             globalPauseState = true
             Log.d(TAG, "🛑 GLOBAL_PAUSE: Pausing ALL UI thread work (frame callbacks, etc.)")
+            // 🔥 AGGRESSIVE: Force stop all frame callbacks immediately
+            // This prevents any frame callbacks from running during rapid reconciliation
         }
         
         // Resume ALL UI thread work
@@ -465,8 +467,11 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         // CRITICAL: Create callback and store reference before posting
         // This ensures we have a valid reference even if stopFrameCallback() sets frameCallback to null
         val callback = Choreographer.FrameCallback { frameTimeNanos ->
-            // 🔥 UI FREEZE FIX: Stop immediately if globally paused (universal solution)
+            // 🔥 UI FREEZE FIX: Check pause flag FIRST before any work (universal solution)
+            // This prevents any CPU consumption during rapid reconciliation
             if (isGloballyPaused()) {
+                // Immediately stop and don't schedule next frame
+                isAnimating = false
                 stopFrameCallback()
                 return@FrameCallback
             }
