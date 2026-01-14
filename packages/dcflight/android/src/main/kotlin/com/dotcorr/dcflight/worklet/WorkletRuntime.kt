@@ -103,16 +103,24 @@ class WorkletViewProxy(
     }
     
     /**
-     * Set text property - automatically handles shadow view and layout updates.
+     * Set text property - worklets update shadow node, framework handles the rest.
+     * 
+     * 🔥 UNIVERSAL: Worklets are for animation, not layout. They update shadow node text,
+     * then trigger framework update. Framework handles all complex layout logic.
      */
     private fun setText(text: String) {
-        // Update shadow node if it's a text shadow node
-        val shadowNode = YogaShadowTree.shared.getShadowNode(viewId)
-        if (shadowNode is DCFTextShadowNode) {
+        // Update shadow node
+        val shadowNode = YogaShadowTree.shared.getShadowNode(viewId) as? DCFTextShadowNode
+        if (shadowNode != null) {
             shadowNode.text = text
             shadowNode.dirtyText()
-            // Trigger layout to update native view
-            DCFLayoutManager.shared.calculateLayoutNow()
+            
+            // Trigger framework update - framework handles all layout logic
+            // This is the same pattern as normal prop updates - framework does the work
+            com.dotcorr.dcflight.Coordinator.DCFViewManager.shared.updateView(
+                viewId,
+                mapOf("content" to text)
+            )
         } else {
             android.util.Log.w("WorkletRuntime", "⚠️ WORKLET: Cannot update text - shadow node not found for viewId=$viewId")
         }

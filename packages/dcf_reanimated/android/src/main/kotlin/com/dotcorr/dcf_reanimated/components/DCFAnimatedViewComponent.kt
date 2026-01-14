@@ -815,6 +815,8 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
     /**
      * Get or cache WorkletViewProxy for a view (works for ALL worklet types).
      * This avoids ANY lookups per frame - just direct property updates like native animations.
+     * 
+     * 🔥 PERFORMANCE: Check tag FIRST (O(1)) before doing linear search (O(n))
      */
     private fun getCachedWorkletProxy(view: android.view.View): com.dotcorr.dcflight.worklet.WorkletViewProxy? {
         // If same view, return cached proxy (zero lookups)
@@ -825,18 +827,18 @@ class PureReanimatedView(context: Context) : FrameLayout(context), DCFLayoutInde
         // Cache miss - find viewId (only happens once)
         var viewId: Int? = null
         
-        // Try ViewRegistry lookup
-        for (id in com.dotcorr.dcflight.layout.ViewRegistry.shared.allViewIds) {
-            val viewInfo = com.dotcorr.dcflight.layout.ViewRegistry.shared.getViewInfo(id)
-            if (viewInfo?.view === view) {
-                viewId = id
-                break
-            }
-        }
+        // 🔥 PERFORMANCE: Check tag FIRST (O(1) operation) before linear search
+        viewId = view.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
         
-        // Fallback: try tag
+        // Fallback: Try ViewRegistry lookup (only if tag is missing - rare case)
         if (viewId == null) {
-            viewId = view.getTag(com.dotcorr.dcflight.components.DCFTags.VIEW_ID_KEY) as? Int
+            for (id in com.dotcorr.dcflight.layout.ViewRegistry.shared.allViewIds) {
+                val viewInfo = com.dotcorr.dcflight.layout.ViewRegistry.shared.getViewInfo(id)
+                if (viewInfo?.view === view) {
+                    viewId = id
+                    break
+                }
+            }
         }
         
         if (viewId != null) {
