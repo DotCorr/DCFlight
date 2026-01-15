@@ -432,8 +432,8 @@ class WorkletThreading {
       );
       return result;
     } catch (e) {
-      // Fallback: if WorkletExecutor component doesn't exist, use method channel
-      return await _executeWorkletViaMethodChannel(config, [arg1, arg2, arg3, arg4, arg5]);
+      // Fallback: if WorkletExecutor component doesn't exist, use tunnel (FFI/JNI)
+      return await _executeWorkletViaTunnel(config, [arg1, arg2, arg3, arg4, arg5]);
     }
   }
 
@@ -497,12 +497,12 @@ class WorkletThreading {
     return PlatformInterface.instance;
   }
 
-  /// Execute worklet via method channel (fallback)
-  static Future<dynamic> _executeWorkletViaMethodChannel(
+  /// Execute worklet via tunnel (FFI/JNI)
+  static Future<dynamic> _executeWorkletViaTunnel(
     WorkletConfig config,
     List<dynamic> arguments,
   ) async {
-    // Fallback: use tunnel system with WorkletExecutor component
+    // Use tunnel system (FFI/JNI) with WorkletExecutor component
     // If that doesn't exist, this will throw and caller can handle it
     return await FrameworkTunnel.call(
       'WorkletExecutor',

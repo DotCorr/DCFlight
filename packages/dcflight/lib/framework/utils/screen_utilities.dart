@@ -6,18 +6,17 @@
  */
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' as developer;
-import 'package:flutter/services.dart';
+import 'dart:io';
 import 'package:dcflight/framework/utils/system_state_manager.dart';
+import 'package:dcflight/framework/renderer/interface/dcflight_ffi_wrapper.dart';
+import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart' show DCFlightJniWrapper;
 
 /// Utility class for handling screen dimensions and orientation changes
-/// Enhanced with window size change detection for iPad multitasking
 class ScreenUtilities {
   /// Singleton instance
   static final ScreenUtilities instance = ScreenUtilities._();
-
-  /// Method channel for communication with native side
-  final _methodChannel = const MethodChannel('com.dcmaui.screen_dimensions');
 
   /// Stream of dimension change events
   final _dimensionController = StreamController<void>.broadcast();
@@ -52,105 +51,62 @@ class ScreenUtilities {
 
   /// Private constructor
   ScreenUtilities._() {
-    _methodChannel.setMethodCallHandler(_handleMethodCall);
-
+    _setupDimensionCallback();
     refreshDimensions();
   }
 
-  /// Handle method calls from the native side
-  Future<dynamic> _handleMethodCall(MethodCall call) async {
-    switch (call.method) {
-      case 'dimensionsChanged':
-        final Map<dynamic, dynamic> args = call.arguments;
+  /// Set up dimension change callback via FFI/JNI
+  void _setupDimensionCallback() {
+    if (Platform.isIOS) {
+      // iOS: Set up FFI callback for dimension changes
+      DCFlightFfiWrapper.setScreenDimensionsChangeHandler(_handleDimensionChange);
+    } else if (Platform.isAndroid) {
+      // Android: Set up JNI callback for dimension changes
+      // The callback is set up in DCFlightJniWrapper._setupEventCallback
+      // We'll register our handler there
+      DCFlightJniWrapper.setScreenDimensionsChangeHandler(_handleDimensionChange);
+    }
+  }
 
-        final newWidth = args['width'] as double;
-        final newHeight = args['height'] as double;
-        final oldFontScale = _fontScale;
-        final newFontScale = args['fontScale'] as double? ?? 1.0;
+  /// Handle dimension change from native (called via FFI/JNI callback)
+  void _handleDimensionChange(Map<String, dynamic> dimensions) {
+    final newWidth = dimensions['width'] as double? ?? 0.0;
+    final newHeight = dimensions['height'] as double? ?? 0.0;
+    final oldFontScale = _fontScale;
+    final newFontScale = dimensions['fontScale'] as double? ?? 1.0;
 
-        if (newWidth != _screenWidth || newHeight != _screenHeight) {
-          _previousWidth = _screenWidth;
-          _previousHeight = _screenHeight;
+    if (newWidth != _screenWidth || newHeight != _screenHeight) {
+      _previousWidth = _screenWidth;
+      _previousHeight = _screenHeight;
 
-          _screenWidth = newWidth;
-          _screenHeight = newHeight;
-          _scaleFactor = args['scale'] as double;
-          _fontScale = newFontScale;
-          _statusBarHeight = args['statusBarHeight'] as double;
-          _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
-          _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
-          _safeAreaLeft = args['safeAreaLeft'] as double? ?? 0.0;
-          _safeAreaRight = args['safeAreaRight'] as double? ?? 0.0;
+      _screenWidth = newWidth;
+      _screenHeight = newHeight;
+      _scaleFactor = dimensions['scale'] as double? ?? 1.0;
+      _fontScale = newFontScale;
+      _statusBarHeight = dimensions['statusBarHeight'] as double? ?? 0.0;
+      _safeAreaTop = dimensions['safeAreaTop'] as double? ?? 0.0;
+      _safeAreaBottom = dimensions['safeAreaBottom'] as double? ?? 0.0;
+      _safeAreaLeft = dimensions['safeAreaLeft'] as double? ?? 0.0;
+      _safeAreaRight = dimensions['safeAreaRight'] as double? ?? 0.0;
 
-          final changeType = _determineChangeType();
-          developer.log(
-              'Screen dimensions changed ($changeType): ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
-              name: 'ScreenUtilities');
+      final changeType = _determineChangeType();
+      developer.log(
+          'Screen dimensions changed ($changeType): ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
+          name: 'ScreenUtilities');
 
-          _notifyDimensionChangeListeners();
-        } else if (oldFontScale != newFontScale) {
-          // Font scale changed without dimension change (system font size change)
-          _fontScale = newFontScale;
-          developer.log(
-              'Font scale changed: $oldFontScale → $newFontScale',
-              name: 'ScreenUtilities');
-          
-          // Notify SystemStateManager of font scale change
-          // This increments the system version, causing components with _systemVersion
-          // in props to be updated during reconciliation
-          SystemStateManager.onSystemChange(fontScale: true);
-          
-          // Notify listeners - SystemChangeListener will trigger re-render
-          _notifyDimensionChangeListeners();
-        }
-        return null;
-        
-      case 'onDimensionChange':
-        final Map<dynamic, dynamic> args = call.arguments;
-        
-        final newWidth = args['width'] as double;
-        final newHeight = args['height'] as double;
-        final oldFontScale = _fontScale;
-        final newFontScale = args['fontScale'] as double? ?? 1.0;
-        
-        if (newWidth != _screenWidth || newHeight != _screenHeight) {
-          _previousWidth = _screenWidth;
-          _previousHeight = _screenHeight;
-
-          _screenWidth = newWidth;
-          _screenHeight = newHeight;
-          _scaleFactor = args['scale'] as double;
-          _fontScale = newFontScale;
-          _statusBarHeight = args['statusBarHeight'] as double? ?? 0.0;
-          _safeAreaTop = args['safeAreaTop'] as double? ?? 0.0;
-          _safeAreaBottom = args['safeAreaBottom'] as double? ?? 0.0;
-          _safeAreaLeft = args['safeAreaLeft'] as double? ?? 0.0;
-          _safeAreaRight = args['safeAreaRight'] as double? ?? 0.0;
-
-          developer.log(
-              'Window size changed: ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
-              name: 'ScreenUtilities');
-
-          _notifyDimensionChangeListeners();
-        } else if (oldFontScale != newFontScale) {
-          // Font scale changed without dimension change (system font size change)
-          _fontScale = newFontScale;
-          developer.log(
-              'Font scale changed: $oldFontScale → $newFontScale',
-              name: 'ScreenUtilities');
-          
-          // Notify SystemStateManager of font scale change
-          // This increments the system version, causing components with _systemVersion
-          // in props to be updated during reconciliation
-          SystemStateManager.onSystemChange(fontScale: true);
-          
-          // Notify listeners - SystemChangeListener will trigger re-render
-          _notifyDimensionChangeListeners();
-        }
-        return null;
-        
-      default:
-        return null;
+      _notifyDimensionChangeListeners();
+    } else if (oldFontScale != newFontScale) {
+      // Font scale changed without dimension change (system font size change)
+      _fontScale = newFontScale;
+      developer.log(
+          'Font scale changed: $oldFontScale → $newFontScale',
+          name: 'ScreenUtilities');
+      
+      // Notify SystemStateManager of font scale change
+      SystemStateManager.onSystemChange(fontScale: true);
+      
+      // Notify listeners - SystemChangeListener will trigger re-render
+      _notifyDimensionChangeListeners();
     }
   }
 
@@ -170,20 +126,26 @@ class ScreenUtilities {
     }
   }
 
-  /// Refresh dimensions from native side
+  /// Refresh dimensions from native side via FFI/JNI
   Future<void> refreshDimensions() async {
     try {
-      final result = await _methodChannel
-          .invokeMapMethod<String, dynamic>('getScreenDimensions');
+      Map<String, dynamic>? result;
+      
+      if (Platform.isIOS) {
+        result = await DCFlightFfiWrapper.getScreenDimensions();
+      } else if (Platform.isAndroid) {
+        result = await DCFlightJniWrapper.getScreenDimensions();
+      }
+      
       if (result != null) {
         _previousWidth = _screenWidth;
         _previousHeight = _screenHeight;
         
-        _screenWidth = result['width'] as double;
-        _screenHeight = result['height'] as double;
-        _scaleFactor = result['scale'] as double;
+        _screenWidth = result['width'] as double? ?? 0.0;
+        _screenHeight = result['height'] as double? ?? 0.0;
+        _scaleFactor = result['scale'] as double? ?? 1.0;
         _fontScale = result['fontScale'] as double? ?? 1.0;
-        _statusBarHeight = result['statusBarHeight'] as double;
+        _statusBarHeight = result['statusBarHeight'] as double? ?? 0.0;
         _safeAreaTop = result['safeAreaTop'] as double? ?? 0.0;
         _safeAreaBottom = result['safeAreaBottom'] as double? ?? 0.0;
         _safeAreaLeft = result['safeAreaLeft'] as double? ?? 0.0;

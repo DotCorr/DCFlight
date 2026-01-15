@@ -54,7 +54,7 @@ export 'framework/renderer/engine/index.dart';
 // Hot reload is handled via Flutter's built-in system - no custom listener needed
 
 export 'framework/renderer/interface/interface.dart';
-export 'framework/renderer/interface/interface_impl.dart';
+export 'framework/renderer/interface/native_platform.dart';
 export 'framework/events/event_registry.dart';
 export 'framework/worklets/worklet.dart';
 export 'framework/constants/layout/yoga_enums.dart';

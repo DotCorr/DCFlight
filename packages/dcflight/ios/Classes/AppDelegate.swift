@@ -15,10 +15,6 @@ import UIKit
     var flutterEngine: FlutterEngine?
     
     @objc public static func registerWithRegistrar(_ registrar: FlutterPluginRegistrar) {
-        
-        let messenger = registrar.messenger()
-        DCMauiBridgeMethodChannel.shared.initialize(with: messenger)
-        DCMauiEventMethodHandler.shared.initialize(with: messenger)
     }
     
     override open func application(

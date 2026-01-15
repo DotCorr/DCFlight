@@ -5,31 +5,33 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-
+import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+import 'package:dcflight/framework/renderer/interface/dcflight_ffi_wrapper.dart';
+import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart' show DCFlightJniWrapper;
 
-/// Hot restart detection and cleanup system for development
-/// Only active when kDebugMode is true
 class HotRestartDetector {
-  static const MethodChannel _channel = MethodChannel('dcflight/hot_restart');
+  static const String _tag = 'HotRestartDetector';
   
-  /// Check if a hot restart occurred and cleanup if needed
   static Future<bool> detectAndCleanup() async {
     if (!kDebugMode) {
       return false;
     }
     
     try {
-      final sessionToken = await _channel.invokeMethod<String>('getSessionToken');
+      String? sessionToken;
+      
+      if (Platform.isIOS) {
+        final result = await DCFlightFfiWrapper.getSessionToken();
+        sessionToken = result as String?;
+      } else if (Platform.isAndroid) {
+        sessionToken = await DCFlightJniWrapper.getSessionToken();
+      }
       
       if (sessionToken != null) {
-        
         await _cleanupNativeViews();
-        
         return true;
       } else {
-        
         await _createSessionToken();
         return false;
       }
@@ -38,28 +40,37 @@ class HotRestartDetector {
     }
   }
   
-  /// Create a new session token in native memory
   static Future<void> _createSessionToken() async {
     try {
-      await _channel.invokeMethod('createSessionToken');
+      if (Platform.isIOS) {
+        await DCFlightFfiWrapper.createSessionToken();
+      } else if (Platform.isAndroid) {
+        await DCFlightJniWrapper.createSessionToken();
+      }
     } catch (e) {
     }
   }
   
-  /// Trigger native view cleanup
   static Future<void> _cleanupNativeViews() async {
     try {
-      await _channel.invokeMethod('cleanupViews');
+      if (Platform.isIOS) {
+        await DCFlightFfiWrapper.cleanupViews();
+      } else if (Platform.isAndroid) {
+        await DCFlightJniWrapper.cleanupViews();
+      }
     } catch (e) {
     }
   }
   
-  /// Clear session token (useful for testing or full app shutdown)
   static Future<void> clearSessionToken() async {
     if (!kDebugMode) return;
     
     try {
-      await _channel.invokeMethod('clearSessionToken');
+      if (Platform.isIOS) {
+        await DCFlightFfiWrapper.clearSessionToken();
+      } else if (Platform.isAndroid) {
+        await DCFlightJniWrapper.clearSessionToken();
+      }
     } catch (e) {
     }
   }

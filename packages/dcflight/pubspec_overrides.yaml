@@ -3,8 +3,6 @@
 # Run: dart run scripts/sync_workspace_deps.dart
 
 dependency_overrides:
-  dcflight:
-    path: .
   dcf_primitives:
     path: ../dcf_primitives
   dcf_reanimated:

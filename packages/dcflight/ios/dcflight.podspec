@@ -23,5 +23,12 @@ A crossplatform framework.
   s.static_framework = false
   
   s.swift_version = '5.0'
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
+  s.pod_target_xcconfig = { 
+    'DEFINES_MODULE' => 'YES',
+    'SWIFT_OBJC_INTERFACE_HEADER_NAME' => 'dcflight-Swift.h',
+    'SWIFT_OBJC_BRIDGING_HEADER' => '',
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+    'PRODUCT_MODULE_NAME' => 'dcflight',
+    'HEADER_SEARCH_PATHS' => '$(inherited) "${BUILT_PRODUCTS_DIR}/dcflight.framework/Headers" "${CONFIGURATION_BUILD_DIR}/dcflight.build/Objects-normal/${CURRENT_ARCH}"'
+  }
 end

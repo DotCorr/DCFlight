@@ -8,10 +8,11 @@
 import UIKit
 import Foundation
 
-/// Bridge between Dart FFI and native Swift/Objective-C code
-@objc class DCMauiBridgeImpl: NSObject {
+/// Native implementation for iOS view operations.
+/// Called directly via FFI from Dart (no MethodChannel).
+@objc public class DCFlightNative: NSObject {
     
-    @objc static let shared = DCMauiBridgeImpl()
+    @objc public static let shared = DCFlightNative()
     
     internal var views = [Int: UIView]()
     
@@ -31,21 +32,27 @@ import Foundation
     }
     
     /// Initialize the framework
-    @objc func initialize() -> Bool {
+    @objc public func initialize() -> Bool {
+        print("🔄 DCFlightNative: initialize() called")
         
         if let rootView = views[0] {
-            
+            print("✅ DCFlightNative: Root view found (viewId: 0)")
             if YogaShadowTree.shared.nodes["0"] == nil {
                 YogaShadowTree.shared.createNode(id: "0", componentType: "View")
+                print("✅ DCFlightNative: Created root node in YogaShadowTree")
+            } else {
+                print("✅ DCFlightNative: Root node already exists in YogaShadowTree")
             }
         } else {
+            print("⚠️ DCFlightNative: No root view found (viewId: 0) - this is OK if root will be created later")
         }
         
+        print("✅ DCFlightNative: initialize() completed successfully")
         return true
     }
     
     /// Create a view with properties
-    @objc func createView(viewId: Int, viewType: String, propsJson: String) -> Bool {
+    @objc public func createView(viewId: Int, viewType: String, propsJson: String) -> Bool {
         
         // 🔥 CRITICAL FIX: Match Android behavior - check if view already exists
         // During hot reload, views are preserved but Dart may try to "create" them again
@@ -77,7 +84,7 @@ import Foundation
     }
     
     /// Update a view's properties
-    @objc func updateView(viewId: Int, propsJson: String) -> Bool {
+    @objc public func updateView(viewId: Int, propsJson: String) -> Bool {
         
         guard let propsData = propsJson.data(using: .utf8),
               let props = try? JSONSerialization.jsonObject(with: propsData, options: []) as? [String: Any] else {
@@ -88,7 +95,7 @@ import Foundation
     }
     
     /// Delete a view
-    @objc func deleteView(viewId: Int) -> Bool {
+    @objc public func deleteView(viewId: Int) -> Bool {
         // 🔥 CRITICAL FIX: Stop animations before deleting to prevent freeze
         if let view = views[viewId] {
             // Stop animations for ReanimatedView components using runtime check
@@ -177,7 +184,7 @@ import Foundation
     }
     
     /// Attach a child view to a parent view
-    @objc func attachView(childId: Int, parentId: Int, index: Int) -> Bool {
+    @objc public func attachView(childId: Int, parentId: Int, index: Int) -> Bool {
         
         let success = DCFViewManager.shared.attachView(childId: childId, parentId: parentId, index: index)
         
@@ -203,7 +210,7 @@ import Foundation
     }
     
     /// Set all children for a view
-    @objc func setChildren(viewId: Int, childrenIds: [Int]) -> Bool {
+    @objc public func setChildren(viewId: Int, childrenIds: [Int]) -> Bool {
         
         guard let parentView = self.views[viewId] else {
             print("❌ setChildren: Parent view not found for viewId=\(viewId)")
@@ -302,7 +309,7 @@ import Foundation
     
     
     /// Detach a view from its parent
-    @objc func detachView(childId: Int) -> Bool {
+    @objc public func detachView(childId: Int) -> Bool {
         
         guard let childView = self.views[childId] else {
             return false
@@ -357,7 +364,7 @@ import Foundation
     /// 
     /// Removes all non-root views from the view hierarchy, clears root view's subviews,
     /// and resets all hierarchy tracking dictionaries. The root view is preserved.
-    @objc func cleanupForHotRestart() {
+    @objc public func cleanupForHotRestart() {
         // Remove all non-root views from superview
         let nonRootViews = views.filter { $0.key != 0 }
         for (viewId, view) in nonRootViews {
@@ -388,7 +395,7 @@ import Foundation
     
     
     /// Start a batch update (no-op on iOS, kept for compatibility)
-    @objc func startBatchUpdate() -> Bool {
+    @objc public func startBatchUpdate() -> Bool {
         return true
     }
     
@@ -400,7 +407,7 @@ import Foundation
     /// 
     /// - Parameter updates: Array of operation dictionaries containing view operations
     /// - Returns: `true` if all operations succeeded, `false` otherwise
-    @objc func commitBatchUpdate(updates: [[String: Any]]) -> Bool {
+    @objc public func commitBatchUpdate(updates: [[String: Any]]) -> Bool {
         // Separate pre-serialized JSON operations from legacy Map operations
         var deleteOps: [Int] = []
         var createOps: [(viewId: Int, viewType: String, propsJson: String)] = []
@@ -680,8 +687,60 @@ import Foundation
     }
     
     /// Cancel a batch update (no-op on iOS, kept for compatibility)
-    @objc func cancelBatchUpdate() -> Bool {
+    @objc public func cancelBatchUpdate() -> Bool {
         return true
+    }
+    
+    /// Handle tunnel method calls from Dart to native components
+    /// - Parameters:
+    ///   - componentType: Type of component to call the method on
+    ///   - method: Method name to call
+    ///   - params: Parameters for the method call
+    /// - Returns: Result of the method call, or nil if it failed
+    @objc public func handleTunnelMethod(componentType: String, method: String, params: [String: Any]) -> Any? {
+        guard let componentClass = DCFComponentRegistry.shared.getComponent(componentType) else {
+            print("❌ DCFlightNative: Component \(componentType) not registered")
+            return nil
+        }
+        
+        print("✅ DCFlightNative: Found component class for \(componentType). Dispatching \(method)...")
+        
+        if let response = componentClass.handleTunnelMethod(method, params: params) {
+            print("✅ DCFlightNative: \(method) handled successfully")
+            return response
+        } else {
+            print("⚠️ DCFlightNative: Method \(method) not handled by \(componentType)")
+            return nil
+        }
+    }
+    
+    /// Add event listeners to a view (FFI access)
+    /// - Parameters:
+    ///   - viewId: Unique identifier for the view
+    ///   - eventTypes: Array of event types to listen for
+    /// - Returns: true if listeners were added successfully, false otherwise
+    @objc public func addEventListeners(viewId: Int, eventTypes: [String]) -> Bool {
+        var view: UIView? = ViewRegistry.shared.getView(id: viewId)
+        
+        if view == nil {
+            view = DCFLayoutManager.shared.getView(withId: viewId)
+        }
+        
+        guard let foundView = view else {
+            print("⚠️ DCFlightNative: View \(viewId) not found for event listener registration")
+            return false
+        }
+        
+        return DCMauiEventMethodHandler.shared.addEventListenersForBatch(viewId: viewId, eventTypes: eventTypes)
+    }
+    
+    /// Remove event listeners from a view (FFI access)
+    /// - Parameters:
+    ///   - viewId: Unique identifier for the view
+    ///   - eventTypes: Array of event types to remove
+    /// - Returns: true if listeners were removed successfully, false otherwise
+    @objc public func removeEventListeners(viewId: Int, eventTypes: [String]) -> Bool {
+        return DCMauiEventMethodHandler.shared.removeEventListeners(viewId: viewId, eventTypes: eventTypes)
     }
 }
 

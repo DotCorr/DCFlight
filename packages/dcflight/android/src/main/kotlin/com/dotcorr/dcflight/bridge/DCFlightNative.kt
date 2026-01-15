@@ -28,15 +28,16 @@ import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Bridge between Dart and native Android code
+ * Native implementation for Android view operations.
+ * Called directly via JNI from Dart (no MethodChannel).
  */
-class DCMauiBridgeImpl private constructor() {
+class DCFlightNative private constructor() {
 
     companion object {
-        private const val TAG = "DCMauiBridgeImpl"
+        private const val TAG = "DCFlightNative"
 
         @JvmField
-        val shared = DCMauiBridgeImpl()
+        val shared = DCFlightNative()
     }
 
     internal val views = ConcurrentHashMap<Int, View>()
@@ -88,7 +89,7 @@ class DCMauiBridgeImpl private constructor() {
      */
     fun initialize(): Boolean {
         if (isInitialized) return true
-        Log.d(TAG, "Initializing DCMauiBridgeImpl")
+        Log.d(TAG, "Initializing DCFlightNative")
         isInitialized = true
         return true
     }
@@ -1026,7 +1027,7 @@ class DCMauiBridgeImpl private constructor() {
             viewHierarchy.clear()
             componentInstanceCache.clear()
         } catch (e: Exception) {
-            Log.e(TAG, "Error clearing DCMauiBridgeImpl", e)
+            Log.e(TAG, "Error clearing DCFlightNative", e)
         }
     }
 
