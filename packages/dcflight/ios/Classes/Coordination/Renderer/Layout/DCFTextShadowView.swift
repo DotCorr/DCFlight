@@ -432,8 +432,17 @@ public class DCFTextShadowView: DCFShadowView {
         _cachedAttributedString = nil
         _cachedTextStorageWidth = -1
         
-        // Mark Yoga node as dirty for layout recalculation
-        YGNodeMarkDirty(self.yogaNode)
+        // CRITICAL: Only mark node dirty if it's in a valid state
+        // Yoga will crash if we mark a node dirty that has both measure function and children
+        // Text nodes should be leaf nodes (no children) when they have a measure function
+        let childCount = YGNodeGetChildCount(self.yogaNode)
+        if childCount == 0 {
+            // Safe to mark dirty - node is a leaf (no children)
+            YGNodeMarkDirty(self.yogaNode)
+        } else {
+            // Node has children - don't mark dirty, let parent handle it
+            // This prevents the "Only leaf nodes with custom measure functions should manually mark themselves as dirty" crash
+        }
         
         // Call super to maintain text lifecycle tracking
         super.dirtyText()

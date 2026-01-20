@@ -375,27 +375,49 @@ import Foundation
         YogaShadowTree.shared.clearAll()
         print("🔥 DCFlightNative: YogaShadowTree cleared")
 
-        // CRITICAL: Clear view registry (except root)
+        // CRITICAL: Clear view registry (except root) - same pattern as Android
+        // Save root view info, clear all, then restore root
+        let rootViewInfo = ViewRegistry.shared.registry[0]
         let allViewIds = Array(ViewRegistry.shared.registry.keys)
         for viewId in allViewIds {
-            if viewId != 0 { // Keep root view (id: 0)
-                ViewRegistry.shared.removeView(id: viewId)
+            ViewRegistry.shared.removeView(id: viewId)
+        }
+        // Restore root view if it existed
+        if let rootInfo = rootViewInfo {
+            ViewRegistry.shared.registry[0] = rootInfo
+            print("🔥 DCFlightNative: Preserved root view during cleanup")
+        }
+        print("🔥 DCFlightNative: ViewRegistry cleared (except root) - removed \(allViewIds.count - (rootViewInfo != nil ? 1 : 0)) views")
+
+        // CRITICAL: Also clear DCFLayoutManager's view registry
+        // DCFLayoutManager maintains its own view registry that needs to be cleared
+        let layoutManagerViewIds = Array(DCFLayoutManager.shared.viewRegistry.keys)
+        for viewId in layoutManagerViewIds {
+            if viewId != 0 { // Keep root view
+                DCFLayoutManager.shared.unregisterView(withId: viewId)
             }
         }
-        print("🔥 DCFlightNative: ViewRegistry cleared (except root)")
+        print("🔥 DCFlightNative: DCFLayoutManager view registry cleared (except root) - removed \(layoutManagerViewIds.count - (layoutManagerViewIds.contains(0) ? 1 : 0)) views")
 
         // Remove all non-root views from superview
         let nonRootViews = views.filter { $0.key != 0 }
+        print("🔥 DCFlightNative: Removing \(nonRootViews.count) non-root views from superview")
         for (viewId, view) in nonRootViews {
             view.removeFromSuperview()
             views.removeValue(forKey: viewId)
         }
+        print("🔥 DCFlightNative: Removed all non-root views from superview")
 
         // Clear root view's subviews
         if let rootView = views[0] {
+            let subviewCount = rootView.subviews.count
+            print("🔥 DCFlightNative: Clearing \(subviewCount) subviews from root view")
             for subview in rootView.subviews {
                 subview.removeFromSuperview()
             }
+            print("🔥 DCFlightNative: Cleared all subviews from root view")
+        } else {
+            print("⚠️ DCFlightNative: Root view (id: 0) not found in views dictionary")
         }
 
         // Clear hierarchy tracking

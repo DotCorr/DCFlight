@@ -6,6 +6,7 @@
  */
 
 #import <Foundation/Foundation.h>
+#import <string.h>
 #import "DCFlightFfi.h"
 
 // Helper macro to safely execute on main thread
@@ -433,51 +434,112 @@ bool dcflight_get_screen_dimensions(char* resultJson, int32_t resultSize) {
 }
 
 static NSString* g_sessionToken = nil;
+static NSString* const kSessionTokenKey = @"dcflight_session_token";
+
+// Helper to get session token from UserDefaults (persists across hot restarts)
+static NSString* _getSessionToken() {
+    if (g_sessionToken != nil) {
+        return g_sessionToken;
+    }
+    // Try to load from UserDefaults (persists across hot restarts)
+    NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
+    NSString* savedToken = [defaults stringForKey:kSessionTokenKey];
+    if (savedToken != nil && savedToken.length > 0) {
+        g_sessionToken = savedToken;
+        return savedToken;
+    }
+    return nil;
+}
+
+// Helper to save session token to UserDefaults
+static void _saveSessionToken(NSString* token) {
+    g_sessionToken = token;
+    NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
+    if (token != nil && token.length > 0) {
+        [defaults setObject:token forKey:kSessionTokenKey];
+    } else {
+        [defaults removeObjectForKey:kSessionTokenKey];
+    }
+    [defaults synchronize];
+}
 
 bool dcflight_get_session_token(char* resultJson, int32_t resultSize) {
     if (resultJson == NULL || resultSize <= 0) {
+        NSLog(@"❌ dcflight_get_session_token: Invalid parameters");
         return false;
     }
     
-    NSString* token = g_sessionToken ?: @"";
+    NSString* token = _getSessionToken();
+    NSLog(@"🔥 dcflight_get_session_token: Retrieved token from UserDefaults: %@", token ?: @"(nil)");
+    
+    // Always return true, but write empty string if no token (Dart will convert to null)
+    if (token == nil || token.length == 0) {
+        NSLog(@"🔥 dcflight_get_session_token: No token found, returning empty string");
+        resultJson[0] = '\0';
+        return true; // Return true with empty string
+    }
+    
     const char* tokenCStr = [token UTF8String];
     size_t tokenLen = strlen(tokenCStr);
     
     if (tokenLen >= (size_t)resultSize) {
+        NSLog(@"❌ dcflight_get_session_token: Token too long: %zu >= %d", tokenLen, resultSize);
         return false;
     }
     
     strncpy(resultJson, tokenCStr, resultSize - 1);
     resultJson[resultSize - 1] = '\0';
+    NSLog(@"✅ dcflight_get_session_token: Token copied to buffer: %s", resultJson);
     return true;
 }
 
 bool dcflight_create_session_token(char* resultJson, int32_t resultSize) {
     if (resultJson == NULL || resultSize <= 0) {
+        NSLog(@"❌ dcflight_create_session_token: Invalid parameters - resultJson=%p, resultSize=%d", resultJson, resultSize);
         return false;
     }
+    
+    // Zero-initialize the buffer first
+    memset(resultJson, 0, resultSize);
     
     NSString* token = [NSString stringWithFormat:@"dcf_session_%lld", (long long)([[NSDate date] timeIntervalSince1970] * 1000)];
-    g_sessionToken = token;
+    NSLog(@"🔥 dcflight_create_session_token: Creating token: %@", token);
+    _saveSessionToken(token);
+    
+    // Verify it was saved
+    NSString* savedToken = _getSessionToken();
+    NSLog(@"🔥 dcflight_create_session_token: Saved token (verified): %@", savedToken);
     
     const char* tokenCStr = [token UTF8String];
-    size_t tokenLen = strlen(tokenCStr);
-    
-    if (tokenLen >= (size_t)resultSize) {
+    if (tokenCStr == NULL) {
+        NSLog(@"❌ dcflight_create_session_token: Failed to convert token to UTF8");
         return false;
     }
     
-    strncpy(resultJson, tokenCStr, resultSize - 1);
-    resultJson[resultSize - 1] = '\0';
+    size_t tokenLen = strlen(tokenCStr);
+    NSLog(@"🔥 dcflight_create_session_token: Token length: %zu, buffer size: %d", tokenLen, resultSize);
+    
+    if (tokenLen >= (size_t)resultSize) {
+        NSLog(@"❌ dcflight_create_session_token: Token too long: %zu >= %d", tokenLen, resultSize);
+        return false;
+    }
+    
+    // Copy token to buffer
+    memcpy(resultJson, tokenCStr, tokenLen);
+    resultJson[tokenLen] = '\0'; // Ensure null termination
+    
+    NSLog(@"✅ dcflight_create_session_token: Token copied to buffer: '%s' (length: %zu)", resultJson, strlen(resultJson));
     return true;
 }
 
 void dcflight_clear_session_token(void) {
-    g_sessionToken = nil;
+    _saveSessionToken(nil);
 }
 
 void dcflight_cleanup_views(void) {
-    dispatch_async(dispatch_get_main_queue(), ^{
+    // CRITICAL: Must execute on main thread synchronously to ensure cleanup completes
+    // UI operations require main thread, and we need to wait for cleanup to finish
+    SAFE_MAIN_THREAD_EXEC(^{
         [DCFlightNative.shared cleanupForHotRestart];
     });
 }

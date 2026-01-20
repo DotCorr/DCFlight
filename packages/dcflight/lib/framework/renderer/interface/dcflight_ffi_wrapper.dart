@@ -130,18 +130,26 @@ class DCFlightFfiWrapper implements PlatformInterface {
         final wrapper = DCFlightFfiWrapper();
         await wrapper.initialize();
       }
-      final resultBuffer = malloc<ffi.Uint8>(256);
+      final resultBuffer = malloc<ffi.Char>(256);
       try {
+        // Zero-initialize buffer using Uint8 view
+        resultBuffer.cast<ffi.Uint8>().asTypedList(256).fillRange(0, 256, 0);
+        
+        log('🔥 DCFlightFfiWrapper: Calling dcflight_get_session_token...');
         final success = _bindings!.dcflight_get_session_token(
-          resultBuffer.cast(),
+          resultBuffer,
           256,
-        ) == 1;
+        );
+        
+        log('🔥 DCFlightFfiWrapper: dcflight_get_session_token returned: success=$success');
         
         if (!success) {
+          log('❌ DCFlightFfiWrapper: Failed to get session token');
           return null;
         }
         
         final tokenStr = resultBuffer.cast<Utf8>().toDartString();
+        log('🔥 DCFlightFfiWrapper: Token from native: "$tokenStr" (length: ${tokenStr.length})');
         return tokenStr.isEmpty ? null : tokenStr;
       } finally {
         malloc.free(resultBuffer);
@@ -158,23 +166,45 @@ class DCFlightFfiWrapper implements PlatformInterface {
         final wrapper = DCFlightFfiWrapper();
         await wrapper.initialize();
       }
-      final resultBuffer = malloc<ffi.Uint8>(256);
+      final resultBuffer = malloc<ffi.Char>(256);
       try {
+        // Zero-initialize buffer using Uint8 view
+        resultBuffer.cast<ffi.Uint8>().asTypedList(256).fillRange(0, 256, 0);
+        
+        log('🔥 DCFlightFfiWrapper: Calling dcflight_create_session_token...');
         final success = _bindings!.dcflight_create_session_token(
-          resultBuffer.cast(),
+          resultBuffer,
           256,
-        ) == 1;
+        );
+        
+        log('🔥 DCFlightFfiWrapper: dcflight_create_session_token returned: success=$success');
         
         if (!success) {
+          log('❌ DCFlightFfiWrapper: Failed to create session token');
+          // Check buffer contents even on failure
+          final bufferHex = resultBuffer.cast<ffi.Uint8>().asTypedList(50).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+          log('⚠️ DCFlightFfiWrapper: Buffer contents on failure: $bufferHex');
           return '';
         }
         
-        return resultBuffer.cast<Utf8>().toDartString();
+        final tokenStr = resultBuffer.cast<Utf8>().toDartString();
+        log('🔥 DCFlightFfiWrapper: Token from native: "$tokenStr" (length: ${tokenStr.length})');
+        
+        if (tokenStr.isEmpty) {
+          final bufferHex = resultBuffer.cast<ffi.Uint8>().asTypedList(50).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+          log('⚠️ DCFlightFfiWrapper: Token is empty! Buffer contents: $bufferHex');
+          // Try reading as raw bytes to see what's there
+          final rawBytes = resultBuffer.cast<ffi.Uint8>().asTypedList(50).where((b) => b != 0).toList();
+          log('⚠️ DCFlightFfiWrapper: Non-zero bytes in buffer: $rawBytes');
+        }
+        
+        return tokenStr;
       } finally {
         malloc.free(resultBuffer);
       }
-    } catch (e) {
-      log('Error creating session token: $e');
+    } catch (e, stackTrace) {
+      log('❌ DCFlightFfiWrapper: Error creating session token: $e');
+      log('Stack trace: $stackTrace');
       return '';
     }
   }
@@ -197,9 +227,16 @@ class DCFlightFfiWrapper implements PlatformInterface {
         final wrapper = DCFlightFfiWrapper();
         await wrapper.initialize();
       }
+      
+      // CRITICAL: Call cleanup synchronously (SAFE_MAIN_THREAD_EXEC ensures main thread)
       _bindings!.dcflight_cleanup_views();
+      
+      // Small delay to ensure cleanup completes on native side
+      await Future.delayed(const Duration(milliseconds: 50));
+      
+      log('✅ DCFlightFfiWrapper: Cleanup completed');
     } catch (e) {
-      log('Error cleaning up views: $e');
+      log('❌ DCFlightFfiWrapper: Error cleaning up views: $e');
     }
   }
 
