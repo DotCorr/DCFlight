@@ -365,32 +365,53 @@ import Foundation
     /// Removes all non-root views from the view hierarchy, clears root view's subviews,
     /// and resets all hierarchy tracking dictionaries. The root view is preserved.
     @objc public func cleanupForHotRestart() {
+        print("🔥 DCFlightNative: Starting hot restart cleanup")
+
+        // CRITICAL: Cancel all pending layout work first
+        DCFLayoutManager.shared.cancelAllPendingLayoutWork()
+        print("🔥 DCFlightNative: Layout manager cancelled pending work")
+
+        // CRITICAL: Clear Yoga shadow tree (except root)
+        YogaShadowTree.shared.clearAll()
+        print("🔥 DCFlightNative: YogaShadowTree cleared")
+
+        // CRITICAL: Clear view registry (except root)
+        let allViewIds = Array(ViewRegistry.shared.registry.keys)
+        for viewId in allViewIds {
+            if viewId != 0 { // Keep root view (id: 0)
+                ViewRegistry.shared.removeView(id: viewId)
+            }
+        }
+        print("🔥 DCFlightNative: ViewRegistry cleared (except root)")
+
         // Remove all non-root views from superview
         let nonRootViews = views.filter { $0.key != 0 }
         for (viewId, view) in nonRootViews {
             view.removeFromSuperview()
             views.removeValue(forKey: viewId)
         }
-        
+
         // Clear root view's subviews
         if let rootView = views[0] {
             for subview in rootView.subviews {
                 subview.removeFromSuperview()
             }
         }
-        
+
         // Clear hierarchy tracking
         let nonRootHierarchy = viewHierarchy.filter { $0.key != "0" }
         for (parentId, _) in nonRootHierarchy {
             viewHierarchy.removeValue(forKey: parentId)
         }
-        
+
         let nonRootChildMappings = childToParent.filter { $0.value != "0" && $0.key != "0" }
         for (childId, _) in nonRootChildMappings {
             childToParent.removeValue(forKey: childId)
         }
-        
+
         viewHierarchy["0"] = []
+
+        print("✅ DCFlightNative: Hot restart cleanup completed")
     }
     
     

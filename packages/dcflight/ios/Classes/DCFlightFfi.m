@@ -357,20 +357,14 @@ void dcflight_set_screen_dimensions_callback(DCFlightScreenDimensionsCallback ca
 }
 
 void dcflight_send_screen_dimensions_changed(const char* dimensionsJson) {
-    // Call callback directly if set - FFI callbacks can be called from any thread
-    // Dart side uses scheduleMicrotask to handle on the isolate thread
+    // Queue the dimensions change for Dart to poll - we can't call FFI callbacks from native threads
     // EXACT SAME PATTERN AS EVENTS
-    if (g_screenDimensionsCallback != NULL) {
-        g_screenDimensionsCallback(dimensionsJson ?: "");
-    } else {
-        // Fallback: Queue if callback not set yet (shouldn't happen in normal flow)
-        @synchronized(g_screenDimensionsQueue) {
-            if (g_screenDimensionsQueue == nil) {
-                g_screenDimensionsQueue = [[NSMutableArray alloc] init];
-            }
-            NSString* dimensionsStr = [NSString stringWithUTF8String:dimensionsJson ?: ""];
-            [g_screenDimensionsQueue addObject:dimensionsStr];
+    @synchronized(g_screenDimensionsQueue) {
+        if (g_screenDimensionsQueue == nil) {
+            g_screenDimensionsQueue = [[NSMutableArray alloc] init];
         }
+        NSString* dimensionsStr = [NSString stringWithUTF8String:dimensionsJson ?: ""];
+        [g_screenDimensionsQueue addObject:dimensionsStr];
     }
 }
 
