@@ -3878,15 +3878,85 @@ class DCFEngine {
       _clearAllViewIdsFromTree(rootComponent!);
       
       // Also clear viewIds from all stateful components
-      for (final component in _statefulComponents.values) {
+      // Save components list before clearing (we'll dispose them)
+      final oldStatefulComponents = List<DCFComponentNode>.from(_statefulComponents.values);
+      for (final component in oldStatefulComponents) {
         _clearAllViewIdsFromTree(component);
       }
       
-      print('🔥 HOT_RELOAD: ViewIds cleared from VDOM tree (root + ${_statefulComponents.length} stateful components)');
+      print('🔥 HOT_RELOAD: ViewIds cleared from VDOM tree (root + ${oldStatefulComponents.length} stateful components)');
+      
+      // 🔥 CRITICAL: Dispose root component's old renderedNode tree FIRST
+      // This cleans up the entire old VDOM tree before disposing individual components
+      // The root component itself is preserved, but its old renderedNode must be disposed
+      if (rootComponent != null) {
+        final oldRootRenderedNode = rootComponent!.renderedNode;
+        if (oldRootRenderedNode != null) {
+          print('🔥 HOT_RELOAD: Disposing root component\'s old renderedNode tree...');
+          try {
+            await _disposeOldComponent(oldRootRenderedNode, skipChildrenDisposal: false);
+            rootComponent!.renderedNode = null; // Clear reference after disposal
+          } catch (e) {
+            print('⚠️ HOT_RELOAD: Error disposing root renderedNode: $e');
+          }
+          print('🔥 HOT_RELOAD: Root renderedNode tree disposed');
+        }
+      }
+      
+      // 🔥 CRITICAL: Dispose old component instances to allow GC
+      // This calls componentWillUnmount and breaks internal references
+      // We do this BEFORE clearing maps so we can still access components
+      // Use skipChildrenDisposal: false to fully clean up component trees
+      print('🔥 HOT_RELOAD: Disposing old component instances...');
+      for (final component in oldStatefulComponents) {
+        try {
+          await _disposeOldComponent(component, skipChildrenDisposal: false);
+        } catch (e) {
+          print('⚠️ HOT_RELOAD: Error disposing component: $e');
+        }
+      }
+      print('🔥 HOT_RELOAD: Disposed ${oldStatefulComponents.length} old component instances');
+      
+      // 🔥 CRITICAL: Break parent-child references in disposed components
+      // Even though components are disposed, parent-child refs prevent GC
+      // We break them AFTER disposal so componentWillUnmount can still access children
+      print('🔥 HOT_RELOAD: Breaking parent-child references in disposed components...');
+      for (final component in oldStatefulComponents) {
+        try {
+          _breakComponentReferences(component);
+        } catch (e) {
+          print('⚠️ HOT_RELOAD: Error breaking component references: $e');
+        }
+      }
+      // Also break references in root's old renderedNode tree if it wasn't already disposed
+      if (rootComponent != null && rootComponent!.renderedNode != null) {
+        // This shouldn't happen since we disposed it above, but be safe
+        _breakNodeReferences(rootComponent!.renderedNode!);
+        rootComponent!.renderedNode = null;
+      }
+      print('🔥 HOT_RELOAD: Parent-child references broken');
       
       // 🔥 CRITICAL: Clear all tracking maps to prevent memory leaks
       // These maps hold references to old components/nodes that prevent GC
       // During hot reload, old rendered nodes and component instances accumulate if not cleared
+      print('🔥 HOT_RELOAD: Memory tracking before clear:');
+      print('  - _nodesByViewId: ${_nodesByViewId.length} entries');
+      print('  - _previousRenderedNodes: ${_previousRenderedNodes.length} entries');
+      print('  - _componentInstancesByPosition: ${_componentInstancesByPosition.length} entries');
+      print('  - _componentInstancesByProps: ${_componentInstancesByProps.length} entries');
+      print('  - _statefulComponents: ${_statefulComponents.length} entries (already cleared by disposal)');
+      print('  - _pendingUpdates: ${_pendingUpdates.length} entries');
+      print('  - _renderCycleCount: ${_renderCycleCount.length} entries');
+      
+      // 🔥 CRITICAL: _statefulComponents is already cleared by disposal
+      // _disposeOldComponent automatically removes components from _statefulComponents
+      // But we still clear it explicitly to be safe and handle any edge cases
+      final oldStatefulCount = _statefulComponents.length;
+      _statefulComponents.clear();
+      if (oldStatefulCount > 0) {
+        print('🔥 HOT_RELOAD: Cleared _statefulComponents map (was $oldStatefulCount entries)');
+      }
+      
       _nodesByViewId.clear();
       _previousRenderedNodes.clear(); // Clear previous rendered nodes (holds old renderedNode refs)
       _componentInstancesByPosition.clear(); // Clear component instance cache
@@ -3894,7 +3964,10 @@ class DCFEngine {
       _similarityCache.clear(); // Clear similarity cache
       _nodesBeingRendered.clear(); // Clear rendering set to prevent stale state
       _errorRecovery.clear(); // Clear error recovery state
-      print('🔥 HOT_RELOAD: Cleared all tracking maps to prevent memory leaks (7 maps cleared)');
+      _pendingUpdates.clear(); // Clear pending updates
+      _renderCycleCount.clear(); // Clear render cycle count
+      
+      print('🔥 HOT_RELOAD: Cleared all tracking maps to prevent memory leaks (9 maps cleared)');
       
       // Ensure worker manager is ready before hot reload (but won't be used during hot reload)
       if (!_workerManagerInitialized) {
@@ -3955,6 +4028,52 @@ class DCFEngine {
       // 🔥 CRITICAL: Always reset hot reload flag, even on error
       _isHotReloading = false;
       print('🔥 HOT_RELOAD: Hot reload flag reset');
+    }
+  }
+
+  /// Break parent-child references in a component to allow GC after disposal
+  /// This is called AFTER disposal so componentWillUnmount can still access children
+  void _breakComponentReferences(DCFComponentNode component) {
+    // Break parent reference
+    component.parent = null;
+    
+    // Break references in renderedNode if it exists
+    if (component is DCFStatefulComponent || component is DCFStatelessComponent) {
+      final renderedNode = component.renderedNode;
+      if (renderedNode != null) {
+        _breakNodeReferences(renderedNode);
+      }
+      // Clear renderedNode reference after breaking its references
+      component.renderedNode = null;
+    }
+  }
+  
+  /// Recursively break all parent-child references in a node tree
+  /// This allows GC to collect the entire tree even if root component holds closure references
+  void _breakNodeReferences(DCFComponentNode node) {
+    // Break parent reference
+    node.parent = null;
+    
+    // Break children references
+    if (node is DCFFragment) {
+      final children = List<DCFComponentNode>.from(node.children);
+      node.children.clear();
+      for (final child in children) {
+        _breakNodeReferences(child);
+      }
+    } else if (node is DCFElement) {
+      final children = List<DCFComponentNode>.from(node.children);
+      node.children.clear();
+      for (final child in children) {
+        _breakNodeReferences(child);
+      }
+    } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      final renderedNode = node.renderedNode;
+      if (renderedNode != null) {
+        _breakNodeReferences(renderedNode);
+      }
+      // Clear renderedNode reference after breaking its references
+      node.renderedNode = null;
     }
   }
 
