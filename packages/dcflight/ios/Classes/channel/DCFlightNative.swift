@@ -436,6 +436,11 @@ import Foundation
         print("✅ DCFlightNative: Hot restart cleanup completed")
     }
     
+    /// Force all views to be visible (used after hot reload)
+    /// This ensures views are visible even if layout calculation had issues
+    @objc public func forceAllViewsVisible() {
+        DCFLayoutManager.shared.forceAllViewsVisible()
+    }
     
     /// Start a batch update (no-op on iOS, kept for compatibility)
     @objc public func startBatchUpdate() -> Bool {

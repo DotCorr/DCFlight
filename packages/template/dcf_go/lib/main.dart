@@ -22,10 +22,15 @@ class AppRoot extends DCFStatefulComponent {
     // Use a fixed offset that works on both iOS and Android
     final buttonTop = safeAreaTop + 72;
 
-    return DCFView(
-      styleSheet: DCFStyleSheet(backgroundColor: DCFColors.orange),
-      layout: DCFLayout(width: '100%', height: '100%'), children: [
-      DCFText(content: "Hello, World!", textProps: DCFTextProps(fontSize: 20), styleSheet: DCFStyleSheet(primaryColor: DCFColors.white)),
+    return DCFView(layout: DCFLayout(width: '100%', height: '100%'), children: [
+      // Content wrapper - this changes when navigating
+
+      DotCorrLanding(
+        // key: 'landing-screen',
+        onToggleExamples: () {
+          showExamples.setState(true);
+        },
+      )
     ]);
   }
 }

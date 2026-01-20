@@ -6,12 +6,15 @@
  */
 
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:dcflight/framework/renderer/engine/engine_api.dart';
 import 'package:dcflight/framework/utils/dcf_logger.dart';
+import 'package:dcflight/framework/renderer/interface/dcflight_ffi_wrapper.dart';
+import 'package:dcflight/framework/renderer/interface/dcflight_jni_wrapper.dart' show DCFlightJniWrapper;
 
 /// Hot reload detection and handling system for development
 /// Uses a code change detection mechanism since DCFlight diverges from Flutter widgets
