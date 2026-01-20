@@ -3924,26 +3924,13 @@ class DCFEngine {
       await _nativeBridge.commitBatchUpdate();
       print('🔥 HOT_RELOAD: New tree rendered from scratch');
 
-      // 🔥 CRITICAL: Ensure all batch updates are committed
-      // _processPendingUpdates should handle this, but we ensure it's done
-      if (_batchUpdateInProgress) {
-        print('🔥 HOT_RELOAD: Committing final batch update...');
-        await _nativeBridge.commitBatchUpdate();
-      }
+      // 🔥 CRITICAL: After rendering from scratch, ensure layout is calculated
+      // The commitBatchUpdate above should have triggered layout, but we ensure it completes
+      print('🔥 HOT_RELOAD: Waiting for layout calculation to complete...');
+      await Future.delayed(Duration(milliseconds: 100)); // Wait for layout to complete
       
-      // 🔥 CRITICAL: Trigger a final layout calculation to ensure views are laid out and made visible
-      // After hot reload, views may have been updated but not laid out or made visible
-      // Committing an empty batch will trigger layout calculation on native side
-      print('🔥 HOT_RELOAD: Triggering final layout calculation...');
-      await _nativeBridge.startBatchUpdate();
-      await _nativeBridge.commitBatchUpdate();
-      
-      // 🔥 CRITICAL: On iOS, add a delay and trigger another layout to ensure visibility
-      // After hot reload, the first layout calculation might fail because views aren't in the
-      // layout tree yet. The delay allows the layout tree to settle, then we trigger layout again.
-      // iOS's calculateLayoutNow() will retry if it fails, but we ensure it runs again.
-      print('🔥 HOT_RELOAD: Ensuring views are visible (iOS retry mechanism)...');
-      await Future.delayed(Duration(milliseconds: 150)); // Wait for iOS retry + buffer
+      // Trigger one final layout pass to ensure everything is correct
+      print('🔥 HOT_RELOAD: Triggering final layout pass...');
       await _nativeBridge.startBatchUpdate();
       await _nativeBridge.commitBatchUpdate();
 
@@ -3965,21 +3952,24 @@ class DCFEngine {
 
   /// Clear all viewIds from a component tree (used after hot reload cleanup)
   /// This ensures reconciliation treats nodes as new views to create, not existing views to update
+  /// Also clears renderedNode so components re-render fresh
   void _clearAllViewIdsFromTree(DCFComponentNode node) {
     // Clear viewId from the component itself
     if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
       node.nativeViewId = null;
       node.contentViewId = null;
       
-      // Clear viewId from rendered node
-      final renderedNode = node.renderedNode;
-      if (renderedNode != null) {
-        _clearViewIdsFromNode(renderedNode);
-      }
+      // 🔥 CRITICAL: Clear renderedNode so component re-renders fresh
+      // After cleanup, the old renderedNode might be stale
+      node.renderedNode = null;
+      
+      // Clear viewIds from rendered node if it exists
+      // (But we just cleared it, so this is just for safety)
     }
   }
   
   /// Recursively clear viewIds from a node and all its children
+  /// Also clears renderedNode from components so they re-render fresh
   void _clearViewIdsFromNode(DCFComponentNode node) {
     if (node is DCFElement) {
       node.nativeViewId = null;
@@ -3988,10 +3978,8 @@ class DCFEngine {
       node.nativeViewId = null;
       node.contentViewId = null;
       
-      final renderedNode = node.renderedNode;
-      if (renderedNode != null) {
-        _clearViewIdsFromNode(renderedNode);
-      }
+      // 🔥 CRITICAL: Clear renderedNode so component re-renders fresh
+      node.renderedNode = null;
     }
     
     // Clear viewIds from all children

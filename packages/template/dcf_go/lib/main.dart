@@ -23,7 +23,7 @@ class AppRoot extends DCFStatefulComponent {
     final buttonTop = safeAreaTop + 72;
 
     return DCFView(layout: DCFLayout(width: '100%', height: '100%'),
-    styleSheet: DCFStyleSheet(backgroundColor: DCFColors.blue),
+    styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
        children: [
       DCFText(content: "Hello, World!", textProps: DCFTextProps(fontSize: 20), styleSheet: DCFStyleSheet(primaryColor: DCFColors.white)),
       // Content wrapper - this changes when navigating
