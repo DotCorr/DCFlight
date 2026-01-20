@@ -3884,9 +3884,17 @@ class DCFEngine {
       
       print('🔥 HOT_RELOAD: ViewIds cleared from VDOM tree (root + ${_statefulComponents.length} stateful components)');
       
-      // Clear node tracking since views were deleted
+      // 🔥 CRITICAL: Clear all tracking maps to prevent memory leaks
+      // These maps hold references to old components/nodes that prevent GC
+      // During hot reload, old rendered nodes and component instances accumulate if not cleared
       _nodesByViewId.clear();
-      print('🔥 HOT_RELOAD: Cleared _nodesByViewId tracking');
+      _previousRenderedNodes.clear(); // Clear previous rendered nodes (holds old renderedNode refs)
+      _componentInstancesByPosition.clear(); // Clear component instance cache
+      _componentInstancesByProps.clear(); // Clear component instance cache by props
+      _similarityCache.clear(); // Clear similarity cache
+      _nodesBeingRendered.clear(); // Clear rendering set to prevent stale state
+      _errorRecovery.clear(); // Clear error recovery state
+      print('🔥 HOT_RELOAD: Cleared all tracking maps to prevent memory leaks (7 maps cleared)');
       
       // Ensure worker manager is ready before hot reload (but won't be used during hot reload)
       if (!_workerManagerInitialized) {
