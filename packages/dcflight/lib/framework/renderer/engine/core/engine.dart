@@ -3870,49 +3870,59 @@ class DCFEngine {
     _isHotReloading = true;
     
     try {
+      // 🔥 CRITICAL: Clear all viewIds from VDOM after cleanup
+      // After cleanup, native views are deleted, but VDOM still has old viewIds
+      // We need to clear them so reconciliation treats nodes as new views to create
+      // (not existing views to update)
+      print('🔥 HOT_RELOAD: Clearing viewIds from VDOM (views were deleted during cleanup)...');
+      _clearAllViewIdsFromTree(rootComponent!);
+      
+      // Also clear viewIds from all stateful components
+      for (final component in _statefulComponents.values) {
+        _clearAllViewIdsFromTree(component);
+      }
+      
+      print('🔥 HOT_RELOAD: ViewIds cleared from VDOM tree (root + ${_statefulComponents.length} stateful components)');
+      
+      // Clear node tracking since views were deleted
+      _nodesByViewId.clear();
+      print('🔥 HOT_RELOAD: Cleared _nodesByViewId tracking');
+      
       // Ensure worker manager is ready before hot reload (but won't be used during hot reload)
       if (!_workerManagerInitialized) {
         print('🔥 HOT_RELOAD: Initializing worker manager...');
         await _initializeWorkerManager();
       }
       
-      // 🔥 CRITICAL: Re-render and reconcile the root component first
-      // This ensures the root tree is updated before stateful components
-      print('🔥 HOT_RELOAD: Re-rendering root component...');
+      // 🔥 CRITICAL: After cleanup, views are deleted, so we need to render from scratch
+      // Don't reconcile - just render the new tree as if it's the first render
+      // Reconciliation would try to update deleted views, which fails
+      print('🔥 HOT_RELOAD: Rendering from scratch (views were deleted during cleanup)...');
       
+      // Re-render root component to get new tree
+      DCFComponentNode newRootRendered;
       if (rootComponent is DCFStatefulComponent) {
-        // Root is stateful - schedule an update
-        print('🔥 HOT_RELOAD: Root is stateful, scheduling update...');
-        _scheduleComponentUpdate(rootComponent as DCFStatefulComponent);
+        // Root is stateful - force re-render
+        final statefulRoot = rootComponent as DCFStatefulComponent;
+        newRootRendered = statefulRoot.render();
+        statefulRoot.renderedNode = newRootRendered;
       } else if (rootComponent is DCFStatelessComponent) {
-        // Root is stateless - re-render and reconcile
+        // Root is stateless - re-render
         final statelessRoot = rootComponent as DCFStatelessComponent;
-        final oldRootRendered = statelessRoot.renderedNode;
-        
-        // Re-render the stateless root component
-        final newRootRendered = statelessRoot.render();
+        newRootRendered = statelessRoot.render();
         statelessRoot.renderedNode = newRootRendered;
-        
-        // Reconcile the old and new root trees
-        if (oldRootRendered != null) {
-          print('🔥 HOT_RELOAD: Reconciling root component tree...');
-          await _reconcile(oldRootRendered, newRootRendered);
-        } else {
-          // No old tree - just render the new one
-          print('🔥 HOT_RELOAD: No old root tree, rendering new root...');
-          await _nativeBridge.startBatchUpdate();
-          await renderToNative(newRootRendered, parentViewId: 0);
-          await _nativeBridge.commitBatchUpdate();
-        }
+      } else {
+        throw Exception('Root component is neither stateful nor stateless');
       }
       
-      print('🔥 HOT_RELOAD: Scheduling updates for ${_statefulComponents.length} components...');
-      for (final component in _statefulComponents.values) {
-            _scheduleComponentUpdate(component);
-      }
-
-      print('🔥 HOT_RELOAD: Processing pending updates...');
-      await _processPendingUpdates();
+      // Render the entire tree from scratch (like initial render)
+      // renderToNative recursively renders the entire tree, including all stateful components
+      // This creates all views fresh instead of trying to reconcile with deleted views
+      print('🔥 HOT_RELOAD: Rendering new tree from scratch to root view...');
+      await _nativeBridge.startBatchUpdate();
+      await renderToNative(newRootRendered, parentViewId: 0);
+      await _nativeBridge.commitBatchUpdate();
+      print('🔥 HOT_RELOAD: New tree rendered from scratch');
 
       // 🔥 CRITICAL: Ensure all batch updates are committed
       // _processPendingUpdates should handle this, but we ensure it's done
@@ -3950,6 +3960,49 @@ class DCFEngine {
       // 🔥 CRITICAL: Always reset hot reload flag, even on error
       _isHotReloading = false;
       print('🔥 HOT_RELOAD: Hot reload flag reset');
+    }
+  }
+
+  /// Clear all viewIds from a component tree (used after hot reload cleanup)
+  /// This ensures reconciliation treats nodes as new views to create, not existing views to update
+  void _clearAllViewIdsFromTree(DCFComponentNode node) {
+    // Clear viewId from the component itself
+    if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      node.nativeViewId = null;
+      node.contentViewId = null;
+      
+      // Clear viewId from rendered node
+      final renderedNode = node.renderedNode;
+      if (renderedNode != null) {
+        _clearViewIdsFromNode(renderedNode);
+      }
+    }
+  }
+  
+  /// Recursively clear viewIds from a node and all its children
+  void _clearViewIdsFromNode(DCFComponentNode node) {
+    if (node is DCFElement) {
+      node.nativeViewId = null;
+      node.contentViewId = null;
+    } else if (node is DCFStatefulComponent || node is DCFStatelessComponent) {
+      node.nativeViewId = null;
+      node.contentViewId = null;
+      
+      final renderedNode = node.renderedNode;
+      if (renderedNode != null) {
+        _clearViewIdsFromNode(renderedNode);
+      }
+    }
+    
+    // Clear viewIds from all children
+    if (node is DCFFragment) {
+      for (final child in node.children) {
+        _clearViewIdsFromNode(child);
+      }
+    } else if (node is DCFElement) {
+      for (final child in node.children) {
+        _clearViewIdsFromNode(child);
+      }
     }
   }
 

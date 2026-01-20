@@ -49,12 +49,27 @@ class HotReloadDetector {
   }
 
   /// Handle hot reload - this is called when actual hot reload occurs
+  /// 
+  /// Hot reload behavior:
+  /// - Flutter recompiles changed code and injects it into the running Dart VM
+  /// - Native views are cleared (like hot restart) so VDOM can recreate them from updated code
+  /// - VDOM then recreates all views from the new component tree
+  /// 
+  /// This is different from hot restart:
+  /// - Hot restart: Restarts Dart VM, clears all state, VDOM recreates from scratch
+  /// - Hot reload: Recompiles code, clears native views, VDOM recreates from updated code
+  /// 
+  /// Both clear native views, but hot reload preserves Dart VM state (variables, etc.)
   Future<void> handleHotReload() async {
     if (!kDebugMode) return;
     
-    DCFLogger.debug('Hot reload detected! Triggering VDOM tree re-render...', 'HOT_RELOAD');
+    DCFLogger.debug('Hot reload detected! Clearing native views and triggering VDOM re-render...', 'HOT_RELOAD');
     
     try {
+      // CRITICAL: Clear native views (like hot restart) so VDOM can recreate from updated code
+      // Hot reload recompiles the code, so we need to clear views and let VDOM recreate them
+      await _cleanupNativeViews();
+      
       final vdom = DCFEngineAPI.instance;
       await vdom.isReady;
       await vdom.forceFullTreeReRender();
@@ -62,6 +77,20 @@ class HotReloadDetector {
     } catch (e, stackTrace) {
       DCFLogger.error('Failed to handle hot reload: $e', tag: 'HOT_RELOAD');
       debugPrint('Hot reload error: $e\n$stackTrace');
+    }
+  }
+  
+  /// Cleanup native views for hot reload (same as hot restart)
+  Future<void> _cleanupNativeViews() async {
+    try {
+      if (Platform.isIOS) {
+        await DCFlightFfiWrapper.cleanupViews();
+      } else if (Platform.isAndroid) {
+        await DCFlightJniWrapper.cleanupViews();
+      }
+      DCFLogger.debug('Hot reload: Native views cleared', 'HOT_RELOAD');
+    } catch (e) {
+      DCFLogger.debug('Hot reload cleanup failed (non-critical): $e', 'HOT_RELOAD');
     }
   }
 }
