@@ -101,9 +101,8 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
     
     func initialize(with binaryMessenger: FlutterBinaryMessenger?) {
         // NO MethodChannel - all communication uses direct FFI callbacks
-        DispatchQueue.main.async {
-            self.updateScreenDimensions()
-        }
+        // No async needed - FFI callbacks can be called from any thread
+        updateScreenDimensions()
         
         print("✅ DCFScreenUtilities: Initialized - using FFI callbacks instead of MethodChannel")
     }
@@ -201,9 +200,8 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
         updateScreenDimensions()
         
         // Use FFI callback instead of MethodChannel
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.notifyDartOfDimensionChange()
-        }
+        // No async needed - FFI callbacks can be called from any thread
+        notifyDartOfDimensionChange()
     }
     
     var screenWidth: CGFloat {
