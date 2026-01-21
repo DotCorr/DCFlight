@@ -19,6 +19,12 @@ class StyleSheetExamplesScreen extends DCFStatelessComponent {
     'container': DCFLayout(
       flex: 1,
       flexDirection: DCFFlexDirection.column,
+      // CRITICAL: Don't set padding on ScrollView - it causes content to not fill width
+      // Padding should be on the content wrapper instead
+    ),
+    'contentWrapper': DCFLayout(
+      width: '100%',
+      flexDirection: DCFFlexDirection.column,
       padding: 20,
     ),
   });
@@ -28,31 +34,36 @@ class StyleSheetExamplesScreen extends DCFStatelessComponent {
 
 
     return DCFScrollView(
-      layout: layouts['container']!,
+      layout: layouts['container'],
       styleSheet: DCFStyleSheet(backgroundColor: DCFColors.cyan),
       scrollContent: [
-       
-        DCFText(
-          content: 'StyleSheet Examples',
-          textProps: DCFTextProps(
-            fontSize: 32,
-            fontWeight: DCFFontWeight.bold,
-          ),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
-          layout: DCFLayout(marginBottom: 8, paddingTop: 20),
+        // Wrap all content in a container with padding to ensure it fills width properly
+        DCFView(
+          layout: layouts['contentWrapper'],
+          children: [
+            DCFText(
+              content: 'StyleSheet Examples',
+              textProps: DCFTextProps(
+                fontSize: 32,
+                fontWeight: DCFFontWeight.bold,
+              ),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.black),
+              layout: DCFLayout(marginBottom: 8, paddingTop: 20),
+            ),
+            DCFText(
+              content: 'Explore all StyleSheet properties and best practices',
+              textProps: DCFTextProps(fontSize: 16),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
+              layout: DCFLayout(marginBottom: 24),
+            ),
+            ...exampleNames.map((name) {
+              final example = StyleSheetExamplesRegistry.getExample(name);
+              if (example == null) return DCFView(layout: DCFLayout(), children: []);
+              
+              return example; // Render the example directly
+            }).toList(),
+          ],
         ),
-        DCFText(
-          content: 'Explore all StyleSheet properties and best practices',
-          textProps: DCFTextProps(fontSize: 16),
-          styleSheet: DCFStyleSheet(primaryColor: DCFColors.gray600),
-          layout: DCFLayout(marginBottom: 24, paddingHorizontal: 20),
-        ),
-        ...exampleNames.map((name) {
-          final example = StyleSheetExamplesRegistry.getExample(name);
-          if (example == null) return DCFView(layout: DCFLayout(), children: []);
-          
-          return example; // Render the example directly
-        }).toList(),
       ],
     );
   }
