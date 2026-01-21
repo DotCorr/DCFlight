@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:dcf_primitives/dcf_primitives.dart';
 import 'package:dcf_reanimated/dcf_reanimated.dart';
 import 'package:dcflight/dcflight.dart';
+import 'package:dcf_go/stylesheet/style_sheet_examples_screen.dart';
 
 void main() async {
   await DCFlight.go(app: AppRoot());
@@ -17,31 +18,80 @@ class AppRoot extends DCFStatefulComponent {
     final showExamples = useState<bool>(false);
     final screenUtils = ScreenUtilities.instance;
     final safeAreaTop = screenUtils.safeAreaTop;
-
+    print('safeAreaTop: $safeAreaTop');
+    
     // Position button below NavigationBar (which is ~72px tall including safe area)
     // Use a fixed offset that works on both iOS and Android
     final buttonTop = safeAreaTop + 72;
-
-    return DCFView(layout: DCFLayout(width: '100%', height: '100%'),
-    styleSheet: DCFStyleSheet(backgroundColor: DCFColors.red),
-       children: [
-      DCFText(content: "Hello, World!", textProps: DCFTextProps(fontSize: 20), styleSheet: DCFStyleSheet(primaryColor: DCFColors.white)),
-      // Content wrapper - this changes when navigating
-
-      // DotCorrLanding(
-      //   // key: 'landing-screen',
-      //   onToggleExamples: () {
-      //     showExamples.setState(true);
-      //   },
-      // )
-    ]);
+    
+    return DCFView(
+      layout: DCFLayout(width: '100%', height: '100%'),
+      children: [
+        // Content wrapper - this changes when navigating
+        DCFView(
+         
+          layout: DCFLayout(width: '100%', height: '100%'),
+          children: [
+            if (showExamples.state)
+              StyleSheetExamplesScreen(
+                
+              )
+            else
+              DotCorrLanding(
+                // key: 'landing-screen',
+                onToggleExamples: () {
+                  showExamples.setState(true);
+                },
+              ),
+          ],
+        ),
+        
+        // Toggle Button - positioned absolutely in top-right
+        // CRITICAL: This button must stay as the LAST child to ensure it renders on top
+        // INVESTIGATION: Adding key to preserve identity during reconciliation
+        DCFTouchableOpacity(
+          // key: 'toggle-button',
+          layout: DCFLayout(
+            position: DCFPositionType.absolute,
+            absoluteLayout: AbsoluteLayout(
+              top: buttonTop,
+              right: 20,
+            ),
+            padding: 12,
+            minWidth: 120, // Ensure button has minimum width
+          ),
+          onPress: (data) {
+            showExamples.setState(!showExamples.state);
+          },
+          styleSheet: DCFStyleSheet(
+            backgroundColor: DCFColors.green,
+            borderRadius: 8,
+            shadowColor: DCFColors.black,
+            shadowOpacity: 0.3,
+            shadowRadius: 6,
+            shadowOffsetX: 0,
+            shadowOffsetY: 3,
+          ),
+          children: [
+            DCFText(
+              content: showExamples.state ? '← Landing' : 'Examples →',
+              textProps: DCFTextProps(
+                fontSize: 14,
+                fontWeight: DCFFontWeight.bold,
+              ),
+              styleSheet: DCFStyleSheet(primaryColor: DCFColors.white),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
 /// DotCorr Landing Page - Matching Web Design
 class DotCorrLanding extends DCFStatelessComponent {
   final VoidCallback? onToggleExamples;
-
+  
   DotCorrLanding({this.onToggleExamples, super.key});
 
   @override
@@ -64,7 +114,7 @@ class DotCorrLanding extends DCFStatelessComponent {
 
 class NavigationBar extends DCFStatelessComponent {
   final VoidCallback? onToggleExamples;
-
+  
   NavigationBar({this.onToggleExamples, super.key});
 
   @override
@@ -83,7 +133,7 @@ class NavigationBar extends DCFStatelessComponent {
         alignItems: DCFAlign.center,
       ),
       styleSheet: DCFStyleSheet(
-        backgroundColor: DCFColors.green,
+        backgroundColor: DCFColors.orange,
         borderBottomWidth: 1,
         borderBottomColor: DCFColors.gray100,
       ),
@@ -128,6 +178,7 @@ class NavigationBar extends DCFStatelessComponent {
                 minWidth: 0, // CRITICAL: Allow shrinking below content size
               ),
             ),
+  
           ],
         ),
       ],
@@ -169,7 +220,9 @@ class HeroSection extends DCFStatefulComponent {
             ],
             layout: DCFLayout(width: '100%', height: 50, padding: 2),
           ),
+
           DCFSpinner(style: "large"),
+
           DCFText(
             content: "Hello, World!",
             textProps: DCFTextProps(fontSize: 20),
@@ -498,7 +551,8 @@ String typewriterWorklet(
   // Calculate total time per word cycle
   double totalTimePerCycle = 0;
   for (String word in words) {
-    totalTimePerCycle += (word.length * typeSpeed / 1000.0) +
+    totalTimePerCycle +=
+        (word.length * typeSpeed / 1000.0) +
         pauseDuration / 1000.0 +
         (word.length * deleteSpeed / 1000.0);
   }
@@ -820,9 +874,10 @@ class BuildersAndMachinesSection extends DCFStatelessComponent {
                 textAlign: DCFTextAlign.left, // Left align text
               ),
               styleSheet: DCFStyleSheet(
-                primaryColor: text == DCFColors.black
-                    ? DCFColors.gray500
-                    : DCFColors.gray300,
+                primaryColor:
+                    text == DCFColors.black
+                        ? DCFColors.gray500
+                        : DCFColors.gray300,
               ),
               // Remove explicit width - let text size naturally based on parent constraints
               // Yoga will automatically constrain it to parent's available width (after padding)
