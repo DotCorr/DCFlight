@@ -6,7 +6,6 @@
  */
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:dcflight/framework/utils/system_state_manager.dart';
@@ -74,6 +73,14 @@ class ScreenUtilities {
     final newHeight = dimensions['height'] as double? ?? 0.0;
     final oldFontScale = _fontScale;
     final newFontScale = dimensions['fontScale'] as double? ?? 1.0;
+    final newSafeAreaTop = dimensions['safeAreaTop'] as double? ?? 0.0;
+    final newSafeAreaBottom = dimensions['safeAreaBottom'] as double? ?? 0.0;
+    final newSafeAreaLeft = dimensions['safeAreaLeft'] as double? ?? 0.0;
+    final newSafeAreaRight = dimensions['safeAreaRight'] as double? ?? 0.0;
+    final safeAreaChanged = newSafeAreaTop != _safeAreaTop || 
+                           newSafeAreaBottom != _safeAreaBottom ||
+                           newSafeAreaLeft != _safeAreaLeft ||
+                           newSafeAreaRight != _safeAreaRight;
 
     if (newWidth != _screenWidth || newHeight != _screenHeight) {
       _previousWidth = _screenWidth;
@@ -84,16 +91,29 @@ class ScreenUtilities {
       _scaleFactor = dimensions['scale'] as double? ?? 1.0;
       _fontScale = newFontScale;
       _statusBarHeight = dimensions['statusBarHeight'] as double? ?? 0.0;
-      _safeAreaTop = dimensions['safeAreaTop'] as double? ?? 0.0;
-      _safeAreaBottom = dimensions['safeAreaBottom'] as double? ?? 0.0;
-      _safeAreaLeft = dimensions['safeAreaLeft'] as double? ?? 0.0;
-      _safeAreaRight = dimensions['safeAreaRight'] as double? ?? 0.0;
+      _safeAreaTop = newSafeAreaTop;
+      _safeAreaBottom = newSafeAreaBottom;
+      _safeAreaLeft = newSafeAreaLeft;
+      _safeAreaRight = newSafeAreaRight;
 
       final changeType = _determineChangeType();
       developer.log(
-          'Screen dimensions changed ($changeType): ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}',
+          'Screen dimensions changed ($changeType): ${_previousWidth.toInt()}x${_previousHeight.toInt()} → ${_screenWidth.toInt()}x${_screenHeight.toInt()}, safeAreaTop: $_safeAreaTop',
           name: 'ScreenUtilities');
 
+      _notifyDimensionChangeListeners();
+    } else if (oldFontScale != newFontScale || safeAreaChanged) {
+      // Font scale or safe area changed without dimension change
+      _fontScale = newFontScale;
+      _safeAreaTop = newSafeAreaTop;
+      _safeAreaBottom = newSafeAreaBottom;
+      _safeAreaLeft = newSafeAreaLeft;
+      _safeAreaRight = newSafeAreaRight;
+      
+      developer.log(
+          'Safe area or font scale changed: safeAreaTop=$_safeAreaTop, fontScale=$_fontScale',
+          name: 'ScreenUtilities');
+      
       _notifyDimensionChangeListeners();
     } else if (oldFontScale != newFontScale) {
       // Font scale changed without dimension change (system font size change)
@@ -152,12 +172,14 @@ class ScreenUtilities {
         _safeAreaRight = result['safeAreaRight'] as double? ?? 0.0;
 
         developer.log(
-            'Screen dimensions refreshed: $_screenWidth x $_screenHeight',
+            'Screen dimensions refreshed: $_screenWidth x $_screenHeight, safeAreaTop: $_safeAreaTop',
             name: 'ScreenUtilities');
 
         if (_previousWidth != _screenWidth || _previousHeight != _screenHeight) {
           _notifyDimensionChangeListeners();
         }
+      } else {
+        developer.log('Failed to refresh screen dimensions: result is null', name: 'ScreenUtilities');
       }
     } catch (e) {
       developer.log('Failed to refresh screen dimensions: $e', name: 'ScreenUtilities');

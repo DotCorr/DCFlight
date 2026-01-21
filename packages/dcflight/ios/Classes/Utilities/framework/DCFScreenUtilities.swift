@@ -104,6 +104,10 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
         // No async needed - FFI callbacks can be called from any thread
         updateScreenDimensions()
         
+        // CRITICAL: Always notify Dart of initial dimensions (even if unchanged)
+        // This ensures safeAreaTop and other values are available immediately
+        notifyDartOfDimensionChange()
+        
         print("✅ DCFScreenUtilities: Initialized - using FFI callbacks instead of MethodChannel")
     }
     
@@ -180,6 +184,11 @@ func dcflight_send_screen_dimensions_changed(_ dimensionsJson: UnsafePointer<CCh
     
     /// Get screen dimensions as dictionary (for FFI)
     @objc public func getScreenDimensionsDict() -> [String: Any] {
+        // CRITICAL: Ensure dimensions are up-to-date before returning
+        // This is called from dcflight_get_screen_dimensions which might be called
+        // before initialize() has completed, so we refresh dimensions here
+        updateScreenDimensions()
+        
         return [
             "width": _screenWidth,
             "height": _screenHeight,

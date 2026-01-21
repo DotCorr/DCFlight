@@ -84,7 +84,19 @@ class DCFlightFfiWrapper implements PlatformInterface {
     scheduleMicrotask(() {
       try {
         final dimensions = jsonDecode(dimensionsJsonStr) as Map<String, dynamic>;
-        _screenDimensionsChangeHandler?.call(dimensions);
+        // Normalize all numeric values to double (iOS JSON can return int for CGFloat)
+        final normalizedDimensions = <String, dynamic>{
+          'width': (dimensions['width'] as num?)?.toDouble() ?? 0.0,
+          'height': (dimensions['height'] as num?)?.toDouble() ?? 0.0,
+          'scale': (dimensions['scale'] as num?)?.toDouble() ?? 1.0,
+          'fontScale': (dimensions['fontScale'] as num?)?.toDouble() ?? 1.0,
+          'statusBarHeight': (dimensions['statusBarHeight'] as num?)?.toDouble() ?? 0.0,
+          'safeAreaTop': (dimensions['safeAreaTop'] as num?)?.toDouble() ?? 0.0,
+          'safeAreaBottom': (dimensions['safeAreaBottom'] as num?)?.toDouble() ?? 0.0,
+          'safeAreaLeft': (dimensions['safeAreaLeft'] as num?)?.toDouble() ?? 0.0,
+          'safeAreaRight': (dimensions['safeAreaRight'] as num?)?.toDouble() ?? 0.0,
+        };
+        _screenDimensionsChangeHandler?.call(normalizedDimensions);
       } catch (e) {
         log('Error handling screen dimensions change: $e');
       }
@@ -110,7 +122,19 @@ class DCFlightFfiWrapper implements PlatformInterface {
         }
         
         final dimensionsStr = resultBuffer.cast<Utf8>().toDartString();
-        return jsonDecode(dimensionsStr) as Map<String, dynamic>;
+        final dimensions = jsonDecode(dimensionsStr) as Map<String, dynamic>;
+        // Normalize all numeric values to double (iOS JSON can return int for CGFloat)
+        return <String, dynamic>{
+          'width': (dimensions['width'] as num?)?.toDouble() ?? 0.0,
+          'height': (dimensions['height'] as num?)?.toDouble() ?? 0.0,
+          'scale': (dimensions['scale'] as num?)?.toDouble() ?? 1.0,
+          'fontScale': (dimensions['fontScale'] as num?)?.toDouble() ?? 1.0,
+          'statusBarHeight': (dimensions['statusBarHeight'] as num?)?.toDouble() ?? 0.0,
+          'safeAreaTop': (dimensions['safeAreaTop'] as num?)?.toDouble() ?? 0.0,
+          'safeAreaBottom': (dimensions['safeAreaBottom'] as num?)?.toDouble() ?? 0.0,
+          'safeAreaLeft': (dimensions['safeAreaLeft'] as num?)?.toDouble() ?? 0.0,
+          'safeAreaRight': (dimensions['safeAreaRight'] as num?)?.toDouble() ?? 0.0,
+        };
       } finally {
         malloc.free(resultBuffer);
       }
@@ -330,7 +354,19 @@ class DCFlightFfiWrapper implements PlatformInterface {
           try {
             final dimensionsJson = dimensionsJsonPtr.cast<Utf8>().toDartString();
             final dimensions = jsonDecode(dimensionsJson) as Map<String, dynamic>;
-            _screenDimensionsChangeHandler?.call(dimensions);
+            // Normalize all numeric values to double (iOS JSON can return int for CGFloat)
+            final normalizedDimensions = <String, dynamic>{
+              'width': (dimensions['width'] as num?)?.toDouble() ?? 0.0,
+              'height': (dimensions['height'] as num?)?.toDouble() ?? 0.0,
+              'scale': (dimensions['scale'] as num?)?.toDouble() ?? 1.0,
+              'fontScale': (dimensions['fontScale'] as num?)?.toDouble() ?? 1.0,
+              'statusBarHeight': (dimensions['statusBarHeight'] as num?)?.toDouble() ?? 0.0,
+              'safeAreaTop': (dimensions['safeAreaTop'] as num?)?.toDouble() ?? 0.0,
+              'safeAreaBottom': (dimensions['safeAreaBottom'] as num?)?.toDouble() ?? 0.0,
+              'safeAreaLeft': (dimensions['safeAreaLeft'] as num?)?.toDouble() ?? 0.0,
+              'safeAreaRight': (dimensions['safeAreaRight'] as num?)?.toDouble() ?? 0.0,
+            };
+            _screenDimensionsChangeHandler?.call(normalizedDimensions);
             // Free the memory allocated by native code (strdup)
             malloc.free(dimensionsJsonPtr);
           } catch (e) {
@@ -462,7 +498,6 @@ class DCFlightFfiWrapper implements PlatformInterface {
     }
     
     try {
-      final childrenArray = childrenIds.map((id) => id).toList();
       final pointer = malloc<ffi.Int32>(ffi.sizeOf<ffi.Int32>() * childrenIds.length);
       for (int i = 0; i < childrenIds.length; i++) {
         pointer[i] = childrenIds[i];
